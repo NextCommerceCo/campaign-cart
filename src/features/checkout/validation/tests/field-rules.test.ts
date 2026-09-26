@@ -138,7 +138,7 @@ describe('applyRule', () => {
 
   /**
    * The blur verdict and the submit verdict now come from the same place: both resolve the
-   * live `intl-tel-input` instance through `phoneSource` and hand it to `checkPhone`.
+   * live phone field through `phoneSource` and hand it to `checkPhone`.
    * Before that, this path could only count digits, so a number one check accepted the
    * other could refuse.
    */

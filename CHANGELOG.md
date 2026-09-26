@@ -4,12 +4,29 @@
 
 ### New
 
-- **`data-next-address` builds the address fields each country collects, in the order that country writes them.** Put an empty `<div data-next-address="shipping"></div>` in the checkout form and the SDK builds the fields for the selected country, rebuilds them when the country changes, and keeps what the shopper typed. A Japanese address leads with its postcode, and a field the country does not collect is left out. Fields the form already collects outside the block are not built twice. `data-next-address="billing"` builds the billing address, and `data-next-address-lang` picks the label language. See [Address block](docs/guides/pages/checkout-page.md#address-block).
+- **`data-next-address` builds the address fields each country collects, in the order that country writes them.** Put an empty `<div data-next-address="shipping"></div>` in the checkout form and the SDK builds the fields for the selected country from `i18n-rules.nextcommerce.com`, rebuilds them when the country changes, and keeps what the shopper typed. A Japanese address leads with its postcode, a field the country does not collect is left out, and a country with no postcode is not asked for one. Labels, the optional note on a field that is not required, and postcode masks come from the country's rules, and a value the country has only one of (such as the city in Singapore) is sent without asking. Fields the form already collects outside the block, such as a name or phone in the contact step, are not built twice. `data-next-address="billing"` builds the billing address. See [Contact and address](docs/guides/pages/checkout-page.md#contact-and-address).
 - **If the first layout cannot be loaded, the block builds a generic English address form** instead of staying empty, so the shopper can still check out.
+- **`data-next-i18n` translates page text and attributes by key**, in i18next's syntax: `data-next-i18n="checkout.contact.title"` translates the text, `[placeholder]fields.email.label` an attribute (`placeholder`, `aria-label`, `title` or `alt`), and `;` separates several. A key is read from the page's `translations` first, then from the texts the address service has for that language, and the original text stays when neither has it. The service ships the four checkout headings (`checkout.contact.title`, `checkout.shipping.title`, `checkout.billing.title`, `checkout.billing.same_as_shipping`) and every field's `fields.<field>.label` and `fields.<field>.label_optional`. See [Translated text](docs/guides/reference/data-attributes.md#translated-text).
+- **Validation messages are whole sentences in the form's language, one set per field**, from the address service: `Enter a ZIP Code` in the US, `กรุณากรอกรหัสไปรษณีย์` on a Thai page. A page rewords one in `translations`, keyed `fields.<field>.errors.<error>` (`blank`, `not_selected`, `invalid`, `invalid_characters`, `contains_emoji`), and `{{example}}` in a postcode's `invalid` message becomes the country's example. See [Validation messages](docs/guides/pages/checkout-page.md#validation-messages).
+- **`translations` accepts nested i18next JSON** as well as dotted keys, so a language file exported from a translation tool can be pasted in as it is.
+- **`first_name` and `last_name` are accepted as `data-next-checkout-field` names**, the names the orders API and the address service use. `fname` and `lname` keep working everywhere, including `requiredFields` for express checkout and `data-next-checkout-review`.
+- **The debug locale picker offers every language the address service has**, adding Danish, Finnish, Norwegian and Thai.
 
 ### Changed
 
-- **Country lists, address rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
+- **Country lists, address and phone rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service, and are asked for in the page's language. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
+- **The phone field no longer uses `intl-tel-input`.** The SDK writes the number in the country's format as the shopper types (`(415) 555-2671` in the US), picking the mask by how the number starts, and sends it as E.164 (`+14155552671`). Its own check is loose, and the order API validates the number. The flag is an image from `i18n-rules.nextcommerce.com`, stacked above the input, so a page that sets a Content-Security-Policy must also allow that host in `img-src`, or the flag does not show. See [Contact information](docs/guides/pages/checkout-page.md#contact-information).
+- **Enter in a checkout field moves to the next field instead of submitting the order.** The submit button is the only way to place it, and the keyboard labels its Enter key to match.
+- **No checkout field accepts an emoji**, with the service's message for it.
+- **Address fields no longer show a hint underneath.** A stylesheet rule for `.next-address-hint` no longer matches anything.
+
+### Deprecated
+
+- **Writing the address inputs yourself is deprecated, for billing as well as shipping.** Replace the shipping inputs and their `data-next-component="location"` wrapper with `<div data-next-address="shipping"></div>`, and the billing copy (`shipping-form`, `shipping-field-row` and an empty `billing-form`) with `<div data-next-address="billing"></div>` in the `different-billing-address` section. Fields written by hand are the same in every country and miss later fixes to a country's address rules. Both keep working in this release.
+
+### Removed
+
+- **The `.iti` markup around the phone input, and the `intl-tel-input` dependency.** A stylesheet that targets `.iti` or `.iti__*` stops matching; style the phone field with `.next-phone-field`, `.next-phone-flag` and `.next-phone-input` instead. A floating label written as `input + label` now reaches the phone input's label, so a workaround for the wrapper can go.
 
 ### Fixed
 
@@ -19,9 +36,9 @@
 
 ### Documentation
 
-- **The checkout guide leads with the address block**, and says why static address fields suit a page that ships to one country.
+- **The checkout guide has one Contact and address section**, in the order a shopper fills the form: contact information, shipping address, billing address, validation messages and styling, with a new screenshot. It shows how the contact step can ask for the name, and no longer shows address inputs written by hand.
 - **`AddressConfig` says when each setting applies.** `defaultCountry`, `countries` and `showCountries` are read only when the campaign has no shipping countries (or, for `defaultCountry`, an empty list), so none of them picks the country a form opens on. US territories stay out of the state list whatever `dontShowStates` says. `enableAutocomplete` is documented for the first time.
-- **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign. The `location` group needs no `next-hidden` class, because the SDK hides and shows it itself and sets `display: flex` when it does. The SDK rewrites the state and postal labels for each country. The phone example uses `autocomplete="tel"`.
+- **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign, and the phone example uses `autocomplete="tel"`.
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 

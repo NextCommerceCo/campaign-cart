@@ -630,6 +630,11 @@ export interface EventMap {
     fields: string[];
   };
   /**
+   * The address-rules service's texts arrived, in `lang`, so a text translated before
+   * they did can be translated again.
+   */
+  'address:messages-loaded': { lang: string };
+  /**
    * The shipping address fields were revealed — the visitor moved past the
    * collapsed autocomplete input, so state, city, and postcode are now on screen.
    *
@@ -1550,10 +1555,33 @@ export interface ConfigState {
    * An unparseable tag (`"de_DE"` with an underscore is the common typo) is rejected with a
    * warning and the browser locale is used instead, so a bad value never breaks prices.
    *
+   * It also picks the language of the checkout form's labels and messages. Unset, that
+   * is English, not the browser's language.
+   *
    * @example "de-DE"
    * @default undefined (use the browser's locale)
    */
   locale?: string;
+
+  /**
+   * Your own wording for the checkout's validation messages, by language.
+   *
+   * Keys are the address-rules service's: `fields.<field>.errors.<error>` for a message
+   * (`fields.postcode.errors.blank`), and any key `data-next-i18n` names. Nested objects
+   * are read as dotted keys, as i18next reads them. Set only the keys you want to change;
+   * the rest come from the service, then English, a whole sentence at a time.
+   *
+   * The language is the one the form is in: `locale`, or English when it is unset.
+   *
+   * @example
+   * ```ts
+   * translations: {
+   *   th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' },
+   * }
+   * ```
+   * @default undefined (the service's wording)
+   */
+  translations?: Record<string, Readonly<Record<string, string>>>;
 
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;

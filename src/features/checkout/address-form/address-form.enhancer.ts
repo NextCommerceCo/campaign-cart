@@ -1,17 +1,17 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { getSelectedLocale } from '@/core/currency-formatter';
 import { useCheckoutStore } from '@/state/checkout';
-import { useConfigStore } from '@/state/config';
+import { addressLang, type CountryRules } from '@/core/country-service';
 
-import {
-  builtInAddressSpec,
-  fetchAddressSpec,
-  type AddressSpec,
-} from './address-form.api';
-import { readRenderedValues, renderAddressSpec } from './address-form.renderer';
+import { builtInRules, fetchCountryRules } from './address-form.api';
+import { readRenderedValues, renderLayout } from './address-form.renderer';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 const FALLBACK_COUNTRY = 'US';
 
+/**
+ * `data-next-address`: the address fields a country asks for, the name and phone
+ * included, built from its rules in the order that country writes them.
+ */
 export class AddressFormEnhancer extends BaseEnhancer {
   private form: 'shipping' | 'billing' = 'shipping';
   private lang?: string;
@@ -69,7 +69,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * Field names the surrounding form already collects outside this block.
+   * Field names the surrounding form collects outside this block, which it does not build.
    *
    * Read fresh on every render: a country change replaces this block's own inputs, and
    * those must never count as already collected or the block would empty itself.
@@ -84,7 +84,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
       .forEach(field => {
         if (this.element.contains(field)) return;
         const name = field.getAttribute('data-next-checkout-field');
-        if (name) names.add(name);
+        if (name) names.add(sdkCheckoutFieldName(name));
       });
     return names;
   }
@@ -94,13 +94,8 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.element.setAttribute('data-next-address-state', state);
   }
 
-  /**
-   * Picker > `data-next-address-lang` > `nextConfig.locale` > the API's `en` default.
-   * The browser's own language is deliberately not a tier: a shipped page would then
-   * relabel itself per visitor.
-   */
-  private resolveLang(): string | undefined {
-    return getSelectedLocale() ?? this.lang ?? useConfigStore.getState().locale;
+  private resolveLang(): string {
+    return addressLang(this.lang);
   }
 
   /**
@@ -113,11 +108,11 @@ export class AddressFormEnhancer extends BaseEnhancer {
     if (!this.renderedCountry) this.setState('loading');
 
     const lang = this.resolveLang();
-    let spec: AddressSpec;
+    let rules: CountryRules;
     try {
-      spec = await fetchAddressSpec(countryCode, {
+      rules = await fetchCountryRules(countryCode, {
         ...(this.baseUrl ? { baseUrl: this.baseUrl } : {}),
-        ...(lang ? { lang } : {}),
+        lang,
       });
     } catch (error) {
       this.logger.error(
@@ -130,7 +125,7 @@ export class AddressFormEnhancer extends BaseEnhancer {
         this.requestedCountry = this.renderedCountry;
         return;
       }
-      spec = builtInAddressSpec(countryCode);
+      rules = builtInRules(countryCode);
     }
 
     // A later country or language was asked for while this layout was in flight.
@@ -144,17 +139,22 @@ export class AddressFormEnhancer extends BaseEnhancer {
     }
 
     const values = readRenderedValues(this.element);
-    const fields = renderAddressSpec(this.element, spec, {
-      form: this.form,
-      values,
-      alreadyCollected: this.collectedElsewhere(),
-    });
+    const fields = renderLayout(
+      this.element,
+      rules.address.layout,
+      rules.fields,
+      {
+        form: this.form,
+        values,
+        alreadyCollected: this.collectedElsewhere(),
+      }
+    );
     this.renderedCountry = countryCode;
     this.setState('ready');
 
     this.logger.debug(
       `Rendered ${fields.length} address fields for ${countryCode}`,
-      { fallbackLayout: Boolean(spec.fallback) }
+      { fallbackLayout: rules.curated === false }
     );
 
     // The checkout form scanned before these existed, and binds listeners per field.

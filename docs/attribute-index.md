@@ -9,7 +9,7 @@ category: "Attributes"
 <!-- Generated from the feature manifests. Do not edit by hand:
      edit the feature's *.manifest.ts, then run `npm run docs:reference`. -->
 
-Every attribute the SDK reads or writes — 269 of them across 28 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
+Every attribute the SDK reads or writes — 270 of them across 28 features — with the feature that owns each one. Follow a feature link for what its attributes mean, their defaults, and their traps.
 
 Attributes marked **sets** are written *by* the SDK for you to read from CSS or tests; you do not set them yourself.
 
@@ -65,6 +65,9 @@ Classes the SDK toggles for you. Style these rather than tracking the same state
 | `next-no-discounts` | [cart-summary](../src/features/cart/cart-summary/guide/reference/attributes.md) |
 | `next-not-calculating` | [cart-summary](../src/features/cart/cart-summary/guide/reference/attributes.md) |
 | `next-not-in-cart` | [package-toggle](../src/features/cart/package-toggle/guide/reference/attributes.md) |
+| `next-phone-field` | [checkout-form](../src/features/checkout/checkout-form/guide/reference/attributes.md) |
+| `next-phone-flag` | [checkout-form](../src/features/checkout/checkout-form/guide/reference/attributes.md) |
+| `next-phone-input` | [checkout-form](../src/features/checkout/checkout-form/guide/reference/attributes.md) |
 | `next-selected` | [bundle-selector](../src/features/cart/bundle-selector/guide/reference/attributes.md) |
 | `next-selected` | [package-toggle](../src/features/cart/package-toggle/guide/reference/attributes.md) |
 | `next-selected` | [upsell](../src/features/order/upsell/guide/reference/attributes.md) |
@@ -366,6 +369,7 @@ Turned on by `form[data-next-checkout]`.
 | `data-next-payment-form` | on another element | — |
 | `data-next-error-for` | **sets** | — |
 | `data-next-payment-state` | **sets** | — |
+| `data-next-phone-country` | **sets** | — |
 
 ### [checkout-review](../src/features/checkout/checkout-review/guide/overview.md) *(optional)*
 

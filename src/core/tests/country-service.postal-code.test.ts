@@ -3,14 +3,13 @@ import {
   formatPostalCode,
   getDefaultCountryConfig,
   validatePostalCode,
-  withPostcodeFormats,
 } from '@/core/country-service/country-service.postal-code';
 import type { CountryConfig } from '@/core/country-service';
 import type { Logger } from '@/core/logger';
 
 /**
  * Snapshot of every country the countries CDN
- * (`next-address…/v1/layout/{CODE}`) ships a
+ * (`next-address…/v1/countries/{CODE}`) ships a
  * `postcodeFormat` for, captured 2026-08-26. Frozen here so the domain pass runs
  * against the authority's own data without a network call.
  *
@@ -116,14 +115,11 @@ const rowOf = (code: string): CdnRow => {
   return row;
 };
 
-/**
- * The config a caller actually holds: what the countries service sent, read
- * through `withPostcodeFormats` the way `CountryService` reads it.
- */
+/** The config a caller holds for a frozen CDN row. */
 function configOf(code: string, overrides?: Partial<CountryConfig>) {
   const [, postcodeFormat, postcodeRegex, min, max, postcodeExample] =
     rowOf(code);
-  return withPostcodeFormats(code, {
+  return {
     stateLabel: 'State',
     stateRequired: false,
     postcodeLabel: 'Postcode',
@@ -135,7 +131,7 @@ function configOf(code: string, overrides?: Partial<CountryConfig>) {
     currencyCode: 'USD',
     currencySymbol: '$',
     ...overrides,
-  } satisfies CountryConfig);
+  } satisfies CountryConfig;
 }
 
 /** Formats with `code`'s config and asserts the result against its own regex. */
@@ -245,64 +241,64 @@ describe('formatPostalCode over countries whose format carries literals', () => 
   });
 });
 
-// ─── formatPostalCode — a config carrying several formats ────────────────────
+// ─── formatPostalCode — the masks the address-rules service sends ────────────
 
-describe('formatPostalCode tries every format the config lists', () => {
-  // withPostcodeFormats puts this SDK's formats in front of the one the service
-  // sent, for the patterns neither anchor expresses.
-  const cases: [string, string, string][] = [
-    ['IM', 'im21aa', 'IM2 1AA'],
-    ['JE', 'je23zz', 'JE2 3ZZ'],
-    ['GI', 'GX111AA', 'GX11 1AA'],
-    ['LT', 'LT55798', 'LT-55798'],
+describe("formatPostalCode writes a postcode by the service's masks", () => {
+  /** A config as `toCountryConfig` builds it: a compact pattern and the country's masks. */
+  const served = (postcodeRegex: string, masks: string[]): CountryConfig => ({
+    stateLabel: 'State',
+    stateRequired: false,
+    postcodeLabel: 'Postcode',
+    postcodeRegex,
+    postcodeCompact: true,
+    postcodeMinLength: 0,
+    postcodeMaxLength: 64,
+    postcodeExample: null,
+    postcodeFormat: masks,
+    currencyCode: 'USD',
+    currencySymbol: '$',
+  });
+
+  // Copied from the address-rules service's country files (i18n-rules-v2 `src/rules/*.json`).
+  const cases: [string, string, string, CountryConfig][] = [
+    [
+      'IM',
+      'im21aa',
+      'IM2 1AA',
+      served('^IM[0-9]{2,3}[A-Z]{2}$', ['### ###', '#### ###']),
+    ],
+    ['JE', 'je23zz', 'JE2 3ZZ', served('^JE[0-9]{2}[A-Z]{2}$', ['### ###'])],
+    [
+      'LT',
+      'LT55798',
+      'LT-55798',
+      served('^(LT)?[0-9]{5}$', ['#####', '##-#####']),
+    ],
+    ['JP', '1000001', '100-0001', served('^[0-9]{7}$', ['###-####'])],
+    [
+      'BR',
+      '01310100',
+      '01310-100',
+      served('^[0-9]{5}([0-9]{3})?$', ['#####', '#####-###']),
+    ],
   ];
 
-  it.each(cases)('%s %s becomes %s', (code, input, expected) => {
-    expect(expectAcceptedByOwnRegex(code, input)).toBe(expected);
+  it.each(cases)('%s %s becomes %s', (_, input, expected, config) => {
+    expect(formatPostalCode(input, config)).toBe(expected);
+    // A separator the mask placed is not one the pattern has to accept.
+    expect(validatePostalCode(loggerStub(), expected, 'XX', config)).toBe(true);
   });
 
-  it('leaves a 7-character IM code unspaced, since spaced it exceeds the country maximum', () => {
-    expect(formatPostalCode('IM991AA', configOf('IM'))).toBe('IM991AA');
-  });
-});
-
-// ─── a config that lists its own formats ─────────────────────────────────────
-
-describe('withPostcodeFormats', () => {
-  it('leaves a country it has no formats for untouched', () => {
-    const [, format, regex, min, max, example] = rowOf('DE');
-    const sent = {
-      stateLabel: 'State',
-      stateRequired: false,
-      postcodeLabel: 'Postcode',
-      postcodeRegex: regex,
-      postcodeMinLength: min,
-      postcodeMaxLength: max,
-      postcodeExample: example,
-      postcodeFormat: format,
-      currencyCode: 'EUR',
-      currencySymbol: '€',
-    } satisfies CountryConfig;
-
-    expect(withPostcodeFormats('DE', sent)).toBe(sent);
-  });
-
-  it("puts its own formats in front of the service's, without repeating one", () => {
-    const merged = withPostcodeFormats('LT', configOf('LT'));
-    expect(merged.postcodeFormat).toEqual(['LT-NNNNN', 'AA-NNNNN']);
-  });
-
-  it('is case-insensitive about the country code', () => {
-    const merged = withPostcodeFormats('gi', configOf('DE'));
-    expect(merged.postcodeFormat).toEqual(['AANN NAA', 'NNNNN']);
+  it('leaves a postcode no mask has room for as typed', () => {
+    const jp = served('^[0-9]{7}$', ['###-####']);
+    expect(formatPostalCode('10000', jp)).toBe('10000');
   });
 });
 
 describe('formatPostalCode with a list in the config', () => {
-  // A country described by three formats instead of one, which is what a
-  // countries service shipping a list for GB would send.
+  // GB's three masks, one per length, as the address-rules service sends them.
   const gbAsAList = configOf('GB', {
-    postcodeFormat: ['AANN NAA', 'AAN NAA', 'AN NAA'],
+    postcodeFormat: ['## ###', '### ###', '#### ###'],
   });
 
   const cases: [string, string][] = [
@@ -324,9 +320,8 @@ describe('formatPostalCode with a list in the config', () => {
 // ─── the built-in config, used when the countries service does not answer ────
 
 describe('the built-in GB config formats without the countries service', () => {
-  // What `CountryService.getDefaultCountryConfig` hands back: the built-in
-  // config read through the same merge every other config goes through.
-  const gb = withPostcodeFormats('GB', getDefaultCountryConfig('GB'));
+  // What `CountryService.getDefaultCountryConfig` hands back.
+  const gb = getDefaultCountryConfig('GB');
 
   const cases: [string, string][] = [
     ['m11ae', 'M1 1AE'],

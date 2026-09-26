@@ -1,4 +1,4 @@
-import type { AddressFieldSpec, AddressSpec } from './address-form.api';
+import type { RulesField } from '@/core/country-service';
 
 /** `line3` is null: the orders API carries address1 and address2 and has no third. */
 const SDK_FIELD_NAMES: Record<string, string | null> = {
@@ -11,6 +11,7 @@ const SDK_FIELD_NAMES: Record<string, string | null> = {
   city: 'city',
   state: 'province',
   postcode: 'postal',
+  email: 'email',
   phone_number: 'phone',
 };
 
@@ -25,10 +26,9 @@ export interface AddressRenderContext {
   /** Keyed by this SDK's field names. */
   values?: Record<string, string>;
   /**
-   * Checkout fields the page already collects somewhere else, which are not built again.
-   * A country's layout describes a whole address form, contact details included, but a
-   * page is free to collect the name and phone in a step of its own — and two elements
-   * carrying one field name leave the order built from whichever was scanned last.
+   * Checkout fields the page already collects somewhere else, which are not built again:
+   * a page is free to write any field itself, and two elements carrying one field name
+   * leave the order built from whichever was scanned last.
    */
   alreadyCollected?: ReadonlySet<string>;
 }
@@ -42,22 +42,28 @@ export function sdkFieldName(
   return form === 'billing' ? `billing-${base}` : base;
 }
 
-function labelFor(field: AddressFieldSpec, id: string): HTMLLabelElement {
+/** What a field is called on the form: the rules' optional label when it is not required. */
+function shownLabel(field: RulesField): string {
+  return field.required ? field.label : (field.labelOptional ?? field.label);
+}
+
+function labelFor(text: string, id: string): HTMLLabelElement {
   const label = document.createElement('label');
   label.htmlFor = id;
   label.className = 'next-address-label';
-  label.textContent = field.label;
+  label.textContent = text;
   return label;
 }
 
 function controlFor(
-  field: AddressFieldSpec,
+  field: RulesField,
+  text: string,
   checkoutField: string,
   form: 'shipping' | 'billing',
   id: string
 ): HTMLInputElement | HTMLSelectElement {
   const control =
-    field.control === 'select'
+    field.input.type === 'select'
       ? document.createElement('select')
       : document.createElement('input');
 
@@ -71,24 +77,29 @@ function controlFor(
   if (field.required) control.required = true;
 
   if (control instanceof HTMLInputElement) {
-    control.type = field.control === 'tel' ? 'tel' : 'text';
+    control.type = field.input.type;
     // Always set, falling back to the label: it is what makes `:placeholder-shown` usable
     // for a scriptless floating label, and an empty box has to say what it wants — a
     // floating label is hidden until there is a value, so a blank placeholder leaves
     // nothing on screen at all.
-    control.placeholder = field.placeholder || field.label;
-    if (field.maxLength) control.maxLength = field.maxLength;
-    if (field.inputMode) control.inputMode = field.inputMode;
-    if (field.autoCapitalize) control.autocapitalize = field.autoCapitalize;
+    control.placeholder = field.input.placeholder || text;
+    const { maxLength, inputMode, autoCapitalize } = field.input;
+    if (maxLength) control.maxLength = maxLength;
+    if (inputMode) control.inputMode = inputMode;
+    if (autoCapitalize) control.autocapitalize = autoCapitalize;
   }
 
   return control;
 }
 
-/** Returns the checkout-field names it rendered, in layout order. */
-export function renderAddressSpec(
+/**
+ * Renders a country's address layout into `container`. Returns the checkout-field
+ * names it rendered, in layout order.
+ */
+export function renderLayout(
   container: HTMLElement,
-  spec: AddressSpec,
+  layout: readonly string[][],
+  fields: Readonly<Record<string, RulesField | undefined>>,
   ctx: AddressRenderContext
 ): string[] {
   const rendered: string[] = [];
@@ -96,12 +107,12 @@ export function renderAddressSpec(
   const fragment = document.createDocumentFragment();
   // Only rows *after* the street address wait for it. A country that writes its postcode
   // first (JP) uses it to look the address up, so hiding it there would hide the way in.
-  const line1Row = spec.layout.findIndex(row => row.includes('line1'));
+  const line1Row = layout.findIndex(row => row.includes('line1'));
 
-  spec.layout.forEach((row, rowIndex) => {
+  layout.forEach((row, rowIndex) => {
     const cells = row
-      .map(name => ({ name, field: spec.fields[name] }))
-      .filter((entry): entry is { name: string; field: AddressFieldSpec } => {
+      .map(name => ({ name, field: fields[name] }))
+      .filter((entry): entry is { name: string; field: RulesField } => {
         const checkoutField = sdkFieldName(entry.name, ctx.form);
         if (
           !entry.field ||
@@ -145,23 +156,17 @@ export function renderAddressSpec(
       // no states all query for it.
       cell.className = 'form-group next-address-field';
       cell.setAttribute('data-next-address-field', checkoutField);
-      if (field.span) cell.style.flexGrow = String(field.span);
+      if (field.input.span) cell.style.flexGrow = String(field.input.span);
 
-      const control = controlFor(field, checkoutField, ctx.form, id);
+      const text = shownLabel(field);
+      const control = controlFor(field, text, checkoutField, ctx.form, id);
       const value = ctx.values?.[checkoutField];
       if (value && control instanceof HTMLInputElement) control.value = value;
 
       // Control first, label second: a floating label is positioned over the control by
       // CSS, and `control + label` is the only way to reach it from the control's state.
       // `for`/`id` carries the pairing, so the reading order is unaffected.
-      cell.append(control, labelFor(field, id));
-
-      if (field.hint) {
-        const hint = document.createElement('span');
-        hint.className = 'next-address-hint';
-        hint.textContent = field.hint;
-        cell.append(hint);
-      }
+      cell.append(control, labelFor(text, id));
 
       rowElement.append(cell);
       rendered.push(checkoutField);

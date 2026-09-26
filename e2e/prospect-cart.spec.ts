@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, stubProspectCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
+import { stubCampaign, stubCart, stubProspectCart, bootSdk, routeAddressService, countryRules, ruleField } from './fixtures/routes';
 
 /**
  * E2E for the prospect-cart enhancer.
@@ -19,25 +19,17 @@ const FIXTURE = '/e2e/fixtures/prospect-cart.html';
 
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
-  const spec = {
-    country: 'US',
-    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-    fields: {
-      state: { label: 'State', required: false },
-      postcode: { label: 'ZIP', required: true },
-    },
-  };
-  await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    if (route.request().url().includes('/v1/layout/')) {
-      return route.fulfill({ json: { spec, states: [] } });
+  const rules = countryRules(
+    'US',
+    [['country'], ['line1'], ['city', 'state', 'postcode']],
+    {
+      state: ruleField('State', 'address-level1', { type: 'text' }, { required: false }),
+      postcode: ruleField('ZIP', 'postal-code'),
     }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US' },
-        spec,
-        countries: [{ code: 'US', name: 'United States' }],
-      },
-    });
+  );
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () => rules,
   });
 }
 

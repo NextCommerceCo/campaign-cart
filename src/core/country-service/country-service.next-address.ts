@@ -6,15 +6,18 @@
  * the postcode formatter — is unchanged: this module only fetches and translates.
  *
  * The API is public, `GET`-only and unauthenticated; see `docs/http-api.md` in the
- * next-address repo. Two routes carry everything this SDK asks for:
+ * next-address repo. Four routes carry everything this SDK asks for:
  *
  * | Route | Answers |
  * |---|---|
- * | `GET /v1/bootstrap` | the visitor's country, its rules, its states, and the country list, in one round trip |
- * | `GET /v1/layout/:country?include=states` | one country's rules and states |
+ * | `GET /v1/geo?include=rules,states` | the visitor, and the rules and states of the country they are in |
+ * | `GET /v1/countries` | the country list |
+ * | `GET /v1/countries/:country?include=states` | one country's rules and states |
+ * | `GET /v1/locales/:lang` | the message templates, in one language |
  *
- * `geo` carries the visitor's currency and IP alongside their country, so the whole of
- * `LocationData` comes from one request. The currency is a reading of where the visitor
+ * Only the first depends on the visitor, so the first three of `LocationData`'s requests
+ * go out together and two of them come from the edge cache. `geo` carries the visitor's
+ * currency and IP alongside their country. The currency is a reading of where the visitor
  * is, not an instruction about what to charge: the SDK uses it as the lowest-priority
  * default, under `?currency=` and the choice saved for the session.
  *
@@ -30,94 +33,95 @@ import type {
   LocationData,
   State,
 } from '@/core/country-service/country-service';
+import { flattenTexts } from '@/utils/flatten-texts';
+import type { PhoneRules } from '@/core/country-service/country-service.phone';
 
 const NEXT_ADDRESS_BASE_URL =
   'https://i18n-rules.nextcommerce.com';
 
-/**
- * Pinned rather than left to `Accept-Language`.
- *
- * next-address localizes labels into twelve languages and falls back to the browser's
- * header when `?lang=` is absent, so omitting it would start showing a Thai shopper
- * "รหัสไปรษณีย์" where every shipped page says "Postcode" today. Switching the SDK to
- * localized labels is a change worth making on purpose, not one to arrive as a side
- * effect of changing data source.
- */
-const LANG = 'en';
-
-/** The subset of next-address's `FieldSpec` this SDK reads. */
-interface FieldSpec {
-  label?: string;
-  required?: boolean;
-  pattern?: string;
-  example?: string;
-  maxLength?: number;
+/** The country's flag, a 4:3 SVG served by the same service: `…/v1/flags/gb.svg`. */
+export function flagUrl(
+  countryCode: string,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): string {
+  return `${baseUrl}/v1/flags/${encodeURIComponent(countryCode.toLowerCase())}.svg`;
 }
 
-/** The subset of next-address's `ResolvedCountrySpec` this SDK reads. */
-interface CountrySpec {
+/**
+ * Always sent, never left to `Accept-Language`: without `?lang=` the service answers in
+ * the browser's language, and a shipped page would relabel itself per visitor. A name
+ * the service has no translation for comes back in English.
+ */
+const DEFAULT_LANG = 'en';
+
+/** A field of a country's rules, as the address-rules service describes it. */
+export interface RulesField {
+  /** On the form. */
+  label: string;
+  /** The label when the field is not required, with the language's note. */
+  labelOptional?: string;
+  /**
+   * What the form says when a value is refused, by what is wrong (`blank`, `not_selected`,
+   * `invalid`, `invalid_characters`, `contains_emoji`, `too_long`), in `lang`.
+   */
+  errors?: Readonly<Record<string, string>>;
+  required: boolean;
+  autocomplete: string;
+  input: {
+    type: 'text' | 'email' | 'tel' | 'select';
+    inputMode?: 'text' | 'numeric' | 'tel' | 'email';
+    autoCapitalize?: 'none' | 'words' | 'characters';
+    maxLength?: number;
+    placeholder?: string;
+    options?: 'countries' | 'states';
+    span?: number;
+  };
+  /** On `postcode` and `phone_number` only: see `docs/http-api.md` in the service's repo. */
+  format?: {
+    pattern?: string;
+    example?: string;
+    masks?: string[] | PhoneRules['masks'];
+    callingCode?: string;
+    nationalPrefix?: string;
+  };
+}
+
+/** Values every address in a country shares, sent without being asked for. */
+export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>;
+
+/**
+ * One country's rules: `GET /v1/countries/:country`, and `rules` in
+ * `GET /v1/geo?include=rules`. Field names are the service's (`first_name`, `postcode`).
+ */
+export interface CountryRules {
   country: string;
-  layout: string[][];
-  fields: Record<string, FieldSpec | undefined>;
-  postcode?: { formatter?: string };
-}
-
-/**
- * next-address names a postcode's written form; this SDK describes it as a slot pattern.
- *
- * Every slot character in `country-service.postal-code.ts` accepts any character, so a
- * pattern only says **where the separators fall**. That makes each of the four named
- * formatters one pattern, read straight off its implementation in next-address's
- * `packages/core/src/normalize.ts`:
- *
- * | Formatter | Does | Pattern |
- * |---|---|---|
- * | `ca-postal` | `k1a0b1` → `K1A 0B1` | `NNN NNN` |
- * | `jp-postal` | `1000001` → `100-0001` | `NNN-NNNN` |
- * | `nl-postal` | `1012ab` → `1012 AB` | `NNNN NN` |
- *
- * `gb-postcode` is deliberately absent. It splits before the final three characters
- * whatever the length, which is three patterns rather than one, and
- * {@link withPostcodeFormats} already carries all three for GB. Emitting a single pattern
- * here would append a fourth, wrong-length shape behind them.
- */
-const POSTCODE_PATTERNS: Record<string, string> = {
-  'ca-postal': 'NNN NNN',
-  'jp-postal': 'NNN-NNNN',
-  'nl-postal': 'NNNN NN',
-};
-
-interface LayoutResponse {
-  spec: CountrySpec;
+  /** The language `label`, `labelOptional` and `errors` are in. */
+  lang?: string;
+  /** `false` for a country the service serves the default layout. */
+  curated?: boolean;
+  address: { layout: string[][]; fixed?: FixedValues };
+  /** Every field the address layout names, and the email. */
+  fields: Record<string, RulesField | undefined>;
   states?: State[];
 }
 
-interface BootstrapResponse extends LayoutResponse {
-  countries: Array<{ code: string; name: string }>;
-  geo?: { ip?: string | null; currency?: string | null };
+/** A row of `GET /v1/countries`, as far as this SDK reads it. */
+interface CountryRow {
+  code: string;
+  name: string;
+}
+
+interface GeoResponse {
+  ip?: string | null;
+  currency?: string | null;
+  rules?: unknown;
 }
 
 /**
- * Whether this country actually collects `field`.
- *
- * `spec.fields` describes all ten fields for every country; `spec.layout` is what says
- * which of them are rendered, required and validated. Reading `fields.state` alone would
- * report a state label for Germany, which collects none — next-address's own
- * `listCountries` makes the same check for the same reason.
- */
-function collects(spec: CountrySpec, field: string): boolean {
-  return spec.layout.some(row => row.includes(field));
-}
-
-function fieldOf(spec: CountrySpec, name: string): FieldSpec | undefined {
-  return collects(spec, name) ? spec.fields[name] : undefined;
-}
-
-/**
- * One country's spec as the `CountryConfig` the rest of the SDK already understands.
+ * One country's rules as the `CountryConfig` the rest of the SDK already understands.
  *
  * `postcodeCompact` is the one flag that has to travel with the value: next-address
- * matches `pattern` against the postcode *compacted* — uppercased, spaces removed — so a
+ * matches `pattern` against the postcode *compacted* — uppercased, spaces and hyphens removed — so a
  * GB pattern accepts every spacing a shopper might type. Handing that pattern to a
  * validator that tests the raw string rejects `SW1A 1AA` and blocks the checkout, which
  * is why {@link CountryConfig.postcodeCompact} exists and `validatePostalCode` reads it.
@@ -126,22 +130,33 @@ function fieldOf(spec: CountrySpec, name: string): FieldSpec | undefined {
  * shape check, and a length floor on top of it can only disagree with it.
  */
 export function toCountryConfig(
-  spec: CountrySpec,
+  rules: CountryRules,
   currencyCode?: string | null
 ): CountryConfig {
-  const state = fieldOf(spec, 'state');
-  const postcode = fieldOf(spec, 'postcode');
+  const state = rules.fields.state;
+  const postcode = rules.fields.postcode;
+  const postcodeFormat = postcode?.format;
+  const phone = rules.fields.phone_number?.format;
 
   return {
     stateLabel: state?.label ?? 'State',
     stateRequired: state?.required ?? false,
     postcodeLabel: postcode?.label ?? 'Postal Code',
-    postcodeRegex: postcode?.pattern ?? null,
-    postcodeCompact: Boolean(postcode?.pattern),
+    // A country that asks for no postcode (Hong Kong) cannot be refused for leaving one
+    // out, and one whose postcode is fixed (Vatican City) sends it without asking.
+    postcodeRequired: postcode?.required ?? false,
+    postcodeRegex: postcodeFormat?.pattern ?? null,
+    postcodeCompact: Boolean(postcodeFormat?.pattern),
     postcodeMinLength: 0,
-    postcodeMaxLength: postcode?.maxLength ?? Number.MAX_SAFE_INTEGER,
-    postcodeExample: postcode?.example ?? null,
-    postcodeFormat: POSTCODE_PATTERNS[spec.postcode?.formatter ?? ''] ?? null,
+    postcodeMaxLength: postcode?.input.maxLength ?? Number.MAX_SAFE_INTEGER,
+    postcodeExample: postcodeFormat?.example ?? null,
+    postcodeFormat: (postcodeFormat?.masks as string[] | undefined) ?? null,
+    // Only a rule with a pattern checks a number; a country with no file of its own sends
+    // just the calling code and an example.
+    ...(phone?.pattern ? { phone: phone as PhoneRules } : {}),
+    ...(rules.address.fixed && Object.keys(rules.address.fixed).length > 0
+      ? { fixed: rules.address.fixed }
+      : {}),
     currencyCode: currencyCode ?? '',
     currencySymbol: '',
   };
@@ -152,7 +167,7 @@ export function toCountryConfig(
  * writes `''` for `phonecode` on every country it builds itself, and currency is read
  * through `LocationData.detectedCountryConfig`, never from a row of this list.
  */
-function toCountries(rows: BootstrapResponse['countries']): Country[] {
+function toCountries(rows: CountryRow[]): Country[] {
   return rows.map(row => ({
     code: row.code,
     name: row.name,
@@ -167,22 +182,97 @@ async function getJson<T>(url: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`${url} responded ${response.status} ${response.statusText}`);
   }
-
-  const body = await response.json();
-  // Checked here rather than left to the first `layout.some(...)`, which would throw a
-  // TypeError from inside the mapping and tell the caller nothing about the cause.
-  if (!Array.isArray(body?.spec?.layout)) {
-    throw new Error(`${url} carried no address layout`);
-  }
-  return body as T;
+  return (await response.json()) as T;
 }
 
 /**
- * The visitor's country, its rules and states, and the country list — one request.
+ * A country's rules as the service answered them at `url`, with `country` read down to
+ * its code. The service answers `{ code, name }`; a deployment from before it named the
+ * country answers the bare code, and both are read.
  *
- * `/v1/bootstrap` exists for exactly this: a form cannot know which country's rules to
- * ask for until geo has answered, so `/v1/geo` + `/v1/countries` + `/v1/layout` would be
- * two serial round trips on a checkout page's critical path.
+ * Checked for shape here rather than left to the first `layout.some(...)`, which would
+ * throw a TypeError from inside the mapping and tell the caller nothing about the cause.
+ */
+export function readCountryRules(body: unknown, url: string): CountryRules {
+  const rules = body as
+    | (Omit<CountryRules, 'country'> & {
+        country?: string | { code?: string };
+      })
+    | undefined;
+  const code =
+    typeof rules?.country === 'string' ? rules.country : rules?.country?.code;
+  if (
+    !rules ||
+    !code ||
+    !Array.isArray(rules.address?.layout) ||
+    !rules.fields
+  ) {
+    throw new Error(`${url} carried no address layout`);
+  }
+  return { ...rules, country: code };
+}
+
+/**
+ * The message templates in `lang`, or `undefined` when the service could not answer: the
+ * messages are then the SDK's English, and the checkout goes on. A language the service
+ * has no file for comes back in English; `messagesLang` (the language `rules` came back
+ * in) is what stops those being used for a page in another language.
+ */
+async function fetchMessages(
+  baseUrl: string,
+  lang: string
+): Promise<Record<string, string> | undefined> {
+  try {
+    return flattenTexts(
+      await getJson<unknown>(`${baseUrl}/v1/locales/${encodeURIComponent(lang)}`)
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The service's texts in `lang`, and the language they are really in: one it has no file
+ * for is answered in English, and says so in `Content-Language` (a CORS-safelisted
+ * header). `undefined` when the service could not answer.
+ */
+export async function fetchTexts(
+  lang: string,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<{ texts: Record<string, string>; lang: string } | undefined> {
+  try {
+    const response = await fetch(
+      `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
+    );
+    if (!response.ok) return undefined;
+    const texts = flattenTexts(await response.json());
+    return { texts, lang: response.headers.get('content-language') ?? lang };
+  } catch {
+    return undefined;
+  }
+}
+
+/** What a country's rules give the messages: each field's errors, and their language. */
+function errorsOf(
+  rules: CountryRules
+): Pick<LocationData, 'fieldErrors' | 'messagesLang'> {
+  const fieldErrors: Record<string, Readonly<Record<string, string>>> = {};
+  for (const [name, field] of Object.entries(rules.fields)) {
+    if (field?.errors) fieldErrors[name] = field.errors;
+  }
+  return {
+    fieldErrors,
+    ...(rules.lang ? { messagesLang: rules.lang } : {}),
+  };
+}
+
+/**
+ * The visitor's country, its rules and states, the country list and the messages.
+ *
+ * The three requests go out at once. Only geo depends on the visitor, and it carries the
+ * rules of the country it detected, because a form cannot know which country's rules to
+ * ask for until geo has answered: asking afterwards would be two round trips in a row on
+ * a checkout page's critical path.
  *
  * The country list is not narrowed with `?countries=` even though the route accepts it:
  * `applyCountryFiltering` already narrows it against the campaign and the page config,
@@ -190,23 +280,32 @@ async function getJson<T>(url: string): Promise<T> {
  * loaded first.
  */
 export async function fetchLocationData(
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
+  baseUrl: string = NEXT_ADDRESS_BASE_URL,
+  lang: string = DEFAULT_LANG
 ): Promise<LocationData> {
-  const data = await getJson<BootstrapResponse>(
-    `${baseUrl}/v1/bootstrap?lang=${LANG}`
-  );
+  const query = `lang=${encodeURIComponent(lang)}`;
+  const geoUrl = `${baseUrl}/v1/geo?include=rules,states&${query}`;
+  const [geo, countries, messages] = await Promise.all([
+    getJson<GeoResponse>(geoUrl),
+    getJson<CountryRow[]>(`${baseUrl}/v1/countries?${query}`),
+    fetchMessages(baseUrl, lang),
+  ]);
+  const rules = readCountryRules(geo.rules, geoUrl);
 
   return {
-    detectedCountryCode: data.spec.country,
-    detectedCountryConfig: toCountryConfig(data.spec, data.geo?.currency),
-    detectedStates: data.states ?? [],
-    countries: toCountries(data.countries),
-    ...(data.geo?.ip ? { detectedIp: data.geo.ip } : {}),
+    detectedCountryCode: rules.country,
+    detectedCountryConfig: toCountryConfig(rules, geo.currency),
+    detectedStates: rules.states ?? [],
+    countries: toCountries(countries),
+    ...(geo.ip ? { detectedIp: geo.ip } : {}),
+    ...(messages ? { messages } : {}),
+    ...errorsOf(rules),
   };
 }
 
 /**
- * One country's rules and its subdivisions.
+ * One country's rules and its subdivisions. The messages came with `LocationData` and
+ * do not change with the country; the names inside them do.
  *
  * An uncurated country is answered with the default layout under its own code rather
  * than a `404`, so there is no not-found branch here: a visitor from such a country
@@ -214,16 +313,18 @@ export async function fetchLocationData(
  */
 export async function fetchCountryStates(
   countryCode: string,
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
+  baseUrl: string = NEXT_ADDRESS_BASE_URL,
+  lang: string = DEFAULT_LANG
 ): Promise<CountryStatesData> {
-  const data = await getJson<LayoutResponse>(
-    `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?include=states&lang=${LANG}`
-  );
+  const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?include=states&lang=${encodeURIComponent(lang)}`;
+  const rules = readCountryRules(await getJson<unknown>(url), url);
 
-  // No currency: `/v1/layout` describes a country, not the visitor. The one the SDK
-  // prices in is read once, from the bootstrap geo, and held in the config store.
+  // No currency: a country's rules describe a country, not the visitor. The one the SDK
+  // prices in is read once, from geo, and held in the config store.
   return {
-    countryConfig: toCountryConfig(data.spec),
-    states: data.states ?? [],
+    countryConfig: toCountryConfig(rules),
+    states: rules.states ?? [],
+    rules,
+    ...errorsOf(rules),
   };
 }

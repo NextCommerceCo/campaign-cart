@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Iti } from 'intl-tel-input';
 import type { Logger } from '@/core/logger';
+import type { PhoneNumberSource } from '../../validation/phone-validation';
 import {
   persistContactField,
   type ContactPersistenceContext,
@@ -36,11 +36,11 @@ function createCtx(
   const updateEmail = vi.fn();
   const checkAndCreateCart = vi.fn();
 
-  const phoneInputs = new Map<string, Iti>();
+  const phoneInputs = new Map<string, PhoneNumberSource>();
   if (options.phoneNumber !== undefined) {
     phoneInputs.set('shipping', {
       getNumber: vi.fn(() => options.phoneNumber),
-    } as unknown as Iti);
+    } as unknown as PhoneNumberSource);
   }
 
   const ctx: ContactPersistenceContext = {
@@ -105,7 +105,7 @@ describe('persistContactField', () => {
     expect(updateUserDataMock).toHaveBeenCalledWith({ phone: '07700' });
   });
 
-  it('stores the typed phone when no instance exists', () => {
+  it('stores the typed phone when no phone field exists', () => {
     const { ctx } = createCtx();
 
     persistContactField(ctx, 'phone', '07700 900123');

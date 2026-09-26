@@ -3,7 +3,7 @@
  *
  * Three cases the store must not be given raw:
  *
- * - a **phone** is stored as the E.164 number `intl-tel-input` assembled (`+447700900123`),
+ * - a **phone** is stored as the E.164 number its phone field assembled (`+447700900123`),
  *   not the national text the shopper reads (`07700 900123`) — the orders API rejects the
  *   latter for anything outside the field's own country;
  * - a **checkbox or radio** is stored as a boolean, not the string `"on"` a browser puts in
@@ -11,7 +11,7 @@
  * - everything else is the string as typed.
  *
  * Extracted from the field-name routing half of `handleFieldChange`. One dependency: the
- * map of `intl-tel-input` instances.
+ * map of phone fields.
  *
  * This module is reached for the shipping form's fields only — a `billing-*` name is routed
  * by [`billing-field-routing.ts`](./billing-field-routing.ts) before it gets here. The
@@ -19,24 +19,25 @@
  * addresses put an E.164 number on the order by the same rule.
  */
 
-import intlTelInput from 'intl-tel-input';
-import type { Iti } from 'intl-tel-input';
+import {
+  normalizePhone,
+  type PhoneNumberSource,
+} from '../validation/phone-validation';
 
-import { normalizePhone } from '../validation/phone-validation';
+import { phoneFieldFor } from './phone-input';
 
 /**
  * The E.164 number for a phone field (`+447700900123`), or the text the shopper typed when
  * there is no number to be had.
  *
- * Pass `instance` when the caller already holds the field's `intl-tel-input` wrapper.
- * Otherwise the live instance is looked up from the element itself, which is where the
- * library registers it — that is how the billing branch, which holds no such map, still
- * gets the international number.
+ * Pass `field` when the caller already holds the input's phone field. Otherwise it is
+ * looked up by the element — that is how the billing branch, which holds no such map,
+ * still gets the international number.
  *
- * Two ways there is no number, and both store the typed text rather than nothing: the page
- * never loaded `intl-tel-input` (a form without it is supported, and the order is better
- * off with `07700 900123` than with an empty phone), or the library has an instance but
- * cannot parse what has been typed so far.
+ * Two ways there is no number, and both store the typed text rather than nothing: the
+ * input has no phone field (a form without one is supported, and the order is better off
+ * with `07700 900123` than with an empty phone), or the field has no rules to read what
+ * has been typed so far.
  *
  * @example
  * ```ts
@@ -46,22 +47,20 @@ import { normalizePhone } from '../validation/phone-validation';
  */
 export function readPhoneValue(
   target: HTMLInputElement | HTMLSelectElement,
-  instance?: Iti | undefined
+  field?: PhoneNumberSource
 ): string {
-  const live =
-    instance ??
-    (target instanceof HTMLInputElement
-      ? intlTelInput.getInstance(target)
-      : null);
-
-  return normalizePhone(target.value, live ?? undefined);
+  return normalizePhone(
+    target.value,
+    field ??
+      (target instanceof HTMLInputElement ? phoneFieldFor(target) : undefined)
+  );
 }
 
 /**
  * The value to store for `fieldName`, given the element the shopper interacted with.
  *
  * `phoneInputs` is keyed `shipping` / `billing`; a field with no entry there falls back to
- * the instance on the element, then to the typed text — see {@link readPhoneValue}.
+ * the phone field on the element, then to the typed text — see {@link readPhoneValue}.
  *
  * @example
  * ```ts
@@ -72,7 +71,7 @@ export function readPhoneValue(
 export function readFieldValue(
   fieldName: string,
   target: HTMLInputElement | HTMLSelectElement,
-  phoneInputs: Map<string, Iti>
+  phoneInputs: ReadonlyMap<string, PhoneNumberSource>
 ): string | boolean {
   if (fieldName === 'phone') {
     return readPhoneValue(target, phoneInputs.get('shipping'));

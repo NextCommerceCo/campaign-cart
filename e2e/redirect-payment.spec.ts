@@ -72,8 +72,8 @@ async function submitWith(page: Page, method: string): Promise<void> {
   await page.fill('[data-next-checkout-field="address1"]', '1 Test Street');
   await page.fill('[data-next-checkout-field="city"]', 'New York');
   await page.fill('[data-next-checkout-field="postal"]', '10001');
-  // A number libphonenumber accepts — the form runs intl-tel-input, and a
-  // 555-01xx placeholder is rejected as invalid.
+  // A number valid under the US phone rules the address-rules stub serves; the
+  // form validates against them.
   await page.fill('[data-next-checkout-field="phone"]', '4155552671');
   await page.selectOption('[data-next-checkout-field="country"]', 'US');
   await page.selectOption('[data-next-checkout-field="province"]', 'NY');

@@ -55,6 +55,64 @@ afterEach(() => {
 });
 
 describe('validateForm', () => {
+  it('names an emoji in any field, over the message a name or email gets', async () => {
+    const result = await validateForm(
+      createContext(),
+      {
+        ...completeForm(),
+        fname: 'Ada 😀',
+        email: 'ada🎉@example.com',
+        address2: '🏠',
+      },
+      configs
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toEqual({
+      fname: 'First name can’t contain emojis',
+      email: 'Email can’t contain emojis',
+      address2: 'Address line 2 can’t contain emojis',
+    });
+  });
+
+  it('does not ask for a postcode where the country has none', async () => {
+    const hk = new Map<string, CountryConfig>([
+      ['HK', countryConfig({ postcodeRequired: false })],
+    ]);
+    const form = { ...completeForm(), country: 'HK', postal: '' };
+
+    const result = await validateForm(createContext(), form, hk);
+
+    expect(result.errors).not.toHaveProperty('postal');
+    expect(result.isValid).toBe(true);
+  });
+
+  it('asks for a billing postcode only where the billing country has one', async () => {
+    const hk = new Map<string, CountryConfig>([
+      ['HK', countryConfig({ postcodeRequired: false })],
+    ]);
+    const billing = {
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      address1: '1 Queen’s Road',
+      city: 'Central',
+      country: 'HK',
+      postal: '',
+    };
+
+    const result = await validateForm(
+      createContext(),
+      { ...completeForm(), country: 'HK' },
+      hk,
+      undefined,
+      false,
+      billing,
+      false
+    );
+
+    expect(result.errors).not.toHaveProperty('billing-postal');
+  });
+
   it('accepts a complete form', async () => {
     const result = await validateForm(createContext(), completeForm(), configs);
 
@@ -84,9 +142,22 @@ describe('validateForm', () => {
     ]);
     const form = { ...completeForm(), country: 'GB' };
 
-    const result = await validateForm(createContext(), form, gb, gb.get('GB'));
+    const result = await validateForm(
+      createContext({
+        countryService: {
+          validatePostalCode: vi.fn().mockReturnValue(true),
+          getFieldErrors: (country?: string) =>
+            country === 'GB'
+              ? { state: { not_selected: 'Select a county' } }
+              : {},
+        },
+      }),
+      form,
+      gb,
+      gb.get('GB')
+    );
 
-    expect(result.errors.province).toBe('County is required');
+    expect(result.errors.province).toBe('Select a county');
   });
 
   it('checks the postal code against the country and quotes an example', async () => {
@@ -102,7 +173,7 @@ describe('validateForm', () => {
     );
 
     expect(result.errors.postal).toBe(
-      'Please enter a valid zip code (e.g. 90210)'
+      'Postal code isn’t valid, for example 90210'
     );
   });
 
@@ -181,12 +252,8 @@ describe('validateForm', () => {
       false
     );
 
-    expect(result.errors['billing-fname']).toBe(
-      'Billing first name is required'
-    );
-    expect(result.errors['billing-postal']).toBe(
-      'Billing zip/postal code is required'
-    );
+    expect(result.errors['billing-fname']).toBe('First name is required');
+    expect(result.errors['billing-postal']).toBe('Postal code is required');
   });
 
   it('checks the card when a card service is present', async () => {
@@ -274,12 +341,8 @@ describe('validateForm', () => {
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors['billing-fname']).toBe(
-      'Billing first name is required'
-    );
-    expect(result.errors['billing-country']).toBe(
-      'Billing country is required'
-    );
+    expect(result.errors['billing-fname']).toBe('First name is required');
+    expect(result.errors['billing-country']).toBe('Country is required');
   });
 
   /**

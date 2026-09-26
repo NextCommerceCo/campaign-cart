@@ -2,9 +2,9 @@
  * The next-address adapter: what the Worker serves, as the `CountryConfig` the rest of
  * the SDK already reads.
  *
- * The shapes asserted here are taken from the next-address repo's `docs/http-api.md` and
- * its `packages/data/src/types.ts`, not invented — a spec describes all ten fields for
- * every country and uses `layout` to say which of them the country actually collects.
+ * The shapes asserted here are taken from the service repo's `docs/http-api.md`, not
+ * invented: a country's rules name the fields it asks for in `address`, and describe exactly
+ * those, and the email, in `fields`.
  */
 
 import { describe, expect, it, vi, afterEach } from 'vitest';
@@ -12,89 +12,164 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   fetchCountryStates,
   fetchLocationData,
+  flagUrl,
+  readCountryRules,
   toCountryConfig,
+  type CountryRules,
+  type RulesField,
 } from '@/core/country-service/country-service.next-address';
 import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
+import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
+import { CountryService } from '@/core/country-service';
+import { useConfigStore } from '@/state/config';
+
+const field = (
+  label: string,
+  format?: RulesField['format'],
+  input: Partial<RulesField['input']> = {}
+): RulesField => ({
+  label,
+  required: true,
+  autocomplete: 'off',
+  input: { type: 'text', ...input },
+  ...(format ? { format } : {}),
+});
+
+const rules = (
+  country: string,
+  address: string[][],
+  fields: Record<string, RulesField>,
+  extra: Partial<CountryRules> = {}
+): CountryRules => ({
+  country,
+  lang: 'en',
+  address: { layout: address, fixed: {} },
+  fields,
+  ...extra,
+});
 
 /** GB: a state-less country whose postcode pattern is written against the compact value. */
-const GB_SPEC = {
-  country: 'GB',
-  layout: [
-    ['country'],
-    ['first_name', 'last_name'],
-    ['line1'],
-    ['city'],
-    ['postcode'],
-  ],
-  fields: {
-    state: { label: 'County', required: true },
-    postcode: {
-      label: 'Postcode',
-      required: true,
+const GB = rules('GB', [['country'], ['line1'], ['city'], ['postcode']], {
+  postcode: field(
+    'Postcode',
+    {
       pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
       example: 'SW1A 1AA',
-      maxLength: 8,
+      masks: ['## ###', '### ###', '#### ###'],
     },
-  },
-};
+    { maxLength: 8 }
+  ),
+});
 
-/** DE collects no postcode rule of its own and no state at all. */
-const DE_SPEC = {
-  country: 'DE',
-  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city']],
-  fields: { state: { label: 'Bundesland', required: true } },
-};
+/** DE collects no state at all, and no postcode rule of its own. */
+const DE = rules('DE', [['country'], ['line1'], ['city']], {});
 
-const US_SPEC = {
-  country: 'US',
-  layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    state: { label: 'State', required: true },
-    postcode: { label: 'ZIP Code', required: true, pattern: '^\\d{5}$', maxLength: 5 },
-  },
-};
-
-function stubFetch(body: unknown): ReturnType<typeof vi.fn> {
-  const fn = vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-    json: async () => body,
-  });
-  vi.stubGlobal('fetch', fn);
-  return fn;
-}
+const US = rules(
+  'US',
+  [['country'], ['line1'], ['city', 'state', 'postcode']],
+  {
+    state: field('State', undefined, { type: 'select', options: 'states' }),
+    postcode: field('ZIP Code', { pattern: '^\\d{5}$' }, { maxLength: 5 }),
+  }
+);
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
+describe('readCountryRules', () => {
+  const answer = {
+    address: { layout: [['country']] },
+    fields: {},
+  };
+
+  it('reads a named country down to its code', () => {
+    const rules = readCountryRules(
+      { ...answer, country: { code: 'NP', name: 'Nepal' } },
+      'u'
+    );
+    expect(rules.country).toBe('NP');
+  });
+
+  it('reads the bare code an older deployment answers', () => {
+    expect(readCountryRules({ ...answer, country: 'NP' }, 'u').country).toBe(
+      'NP'
+    );
+  });
+
+  it('refuses an answer with no country or no layout', () => {
+    expect(() => readCountryRules(answer, 'u')).toThrow('carried no address');
+    expect(() =>
+      readCountryRules({ country: 'NP', fields: {} }, 'u')
+    ).toThrow('carried no address');
+    expect(() => readCountryRules(undefined, 'u')).toThrow('carried no address');
+  });
+});
+
 describe('toCountryConfig', () => {
-  it('reads the state label only when the country collects a state', () => {
-    expect(toCountryConfig(US_SPEC).stateLabel).toBe('State');
-    expect(toCountryConfig(US_SPEC).stateRequired).toBe(true);
+  it("carries the country's phone rule from the phone_number field", () => {
+    const phone = {
+      callingCode: '49',
+      nationalPrefix: '0',
+      pattern: '^[0-9]{5,15}$',
+    };
+    const config = toCountryConfig({
+      ...DE,
+      fields: { phone_number: field('Phone', phone, { type: 'tel' }) },
+    });
+    expect(config.phone).toEqual(phone);
   });
 
-  /**
-   * `fields.state` is present for every country; `layout` is what says it is collected.
-   * Reading the field alone would put a "Bundesland" dropdown on a German address, which
-   * collects no state — the same check next-address's own `listCountries` makes.
-   */
-  it('ignores a state field the layout does not render', () => {
-    const config = toCountryConfig(DE_SPEC);
-    expect(config.stateLabel).toBe('State');
+  it('checks no number for a phone field with only a calling code and an example', () => {
+    const config = toCountryConfig({
+      ...DE,
+      fields: {
+        phone_number: field('Phone', { callingCode: '977', example: '984-1234567' }),
+      },
+    });
+    expect(config.phone).toBeUndefined();
+  });
+
+  it('reads the state label and whether it is required', () => {
+    expect(toCountryConfig(US).stateLabel).toBe('State');
+    expect(toCountryConfig(US).stateRequired).toBe(true);
+  });
+
+  it('asks for no state and no postcode where the country names neither', () => {
+    const config = toCountryConfig(DE);
     expect(config.stateRequired).toBe(false);
+    expect(config.postcodeRequired).toBe(false);
+    expect(config.postcodeRegex).toBeNull();
+    expect(config.postcodeCompact).toBe(false);
   });
 
-  it('ignores a postcode field the layout does not render', () => {
-    expect(toCountryConfig(DE_SPEC).postcodeRegex).toBeNull();
-    expect(toCountryConfig(DE_SPEC).postcodeCompact).toBe(false);
+  it('asks for a postcode where the country names one', () => {
+    expect(toCountryConfig(US).postcodeRequired).toBe(true);
+  });
+
+  it('carries the values the country fixes, and none where it fixes nothing', () => {
+    const va = rules(
+      'VA',
+      [['country'], ['line1']],
+      {},
+      {
+        address: {
+          layout: [['country'], ['line1']],
+          fixed: { city: 'Vatican City', postcode: '00120' },
+        },
+      }
+    );
+    expect(toCountryConfig(va).fixed).toEqual({
+      city: 'Vatican City',
+      postcode: '00120',
+    });
+    expect(toCountryConfig(US).fixed).toBeUndefined();
   });
 
   it('marks a served pattern as compact-matching', () => {
-    expect(toCountryConfig(GB_SPEC).postcodeCompact).toBe(true);
+    expect(toCountryConfig(GB).postcodeCompact).toBe(true);
   });
 
   /**
@@ -102,41 +177,30 @@ describe('toCountryConfig', () => {
    * on top of it can only disagree with it.
    */
   it('sets no postcode minimum length', () => {
-    expect(toCountryConfig(GB_SPEC).postcodeMinLength).toBe(0);
+    expect(toCountryConfig(GB).postcodeMinLength).toBe(0);
+    expect(toCountryConfig(GB).postcodeMaxLength).toBe(8);
   });
 
-  /**
-   * next-address names the written form (`ca-postal`); this SDK describes it as a slot
-   * pattern. Without the translation Canadian postcodes stop being spaced at all, because
-   * `withPostcodeFormats` carries no built-in entry for CA.
-   */
-  it.each([
-    ['ca-postal', 'NNN NNN'],
-    ['jp-postal', 'NNN-NNNN'],
-    ['nl-postal', 'NNNN NN'],
-  ])('turns the %s formatter into %s', (formatter, pattern) => {
-    const spec = { ...US_SPEC, postcode: { formatter } };
-    expect(toCountryConfig(spec).postcodeFormat).toBe(pattern);
+  it("uses the country's masks as its postcode formats", () => {
+    expect(toCountryConfig(GB).postcodeFormat).toEqual([
+      '## ###',
+      '### ###',
+      '#### ###',
+    ]);
   });
 
-  /** GB has three shapes by length, which `withPostcodeFormats` already owns. */
-  it('emits no pattern for gb-postcode', () => {
-    const spec = { ...GB_SPEC, postcode: { formatter: 'gb-postcode' } };
-    expect(toCountryConfig(spec).postcodeFormat).toBeNull();
-  });
-
-  it('emits no pattern for a country with no formatter', () => {
-    expect(toCountryConfig(US_SPEC).postcodeFormat).toBeNull();
+  it('has no postcode format for a country with no masks', () => {
+    expect(toCountryConfig(US).postcodeFormat).toBeNull();
   });
 
   it('carries the currency it is given, and no symbol', () => {
-    expect(toCountryConfig(US_SPEC, 'USD').currencyCode).toBe('USD');
+    expect(toCountryConfig(US, 'USD').currencyCode).toBe('USD');
     // Intl derives the symbol from the code in `core/currency-formatter.ts`.
-    expect(toCountryConfig(US_SPEC, 'USD').currencySymbol).toBe('');
+    expect(toCountryConfig(US, 'USD').currencySymbol).toBe('');
   });
 
   it('leaves currency empty when the service names none', () => {
-    expect(toCountryConfig(US_SPEC, null).currencyCode).toBe('');
+    expect(toCountryConfig(US, null).currencyCode).toBe('');
   });
 });
 
@@ -148,7 +212,7 @@ describe('toCountryConfig', () => {
  */
 describe('a compact pattern against a postcode as typed', () => {
   const logger = new Logger('test');
-  const gb = toCountryConfig(GB_SPEC);
+  const gb = toCountryConfig(GB);
 
   it.each(['SW1A 1AA', 'sw1a 1aa', 'SW1A1AA', 'sw1a1aa'])(
     'accepts %s',
@@ -162,43 +226,106 @@ describe('a compact pattern against a postcode as typed', () => {
   });
 
   it('leaves a raw-matched country alone', () => {
-    const raw = { ...toCountryConfig(US_SPEC), postcodeCompact: false };
+    const raw = { ...toCountryConfig(US), postcodeCompact: false };
     expect(validatePostalCode(logger, '90210', 'US', raw)).toBe(true);
   });
 });
 
+/**
+ * The service, one answer per route: `geo` for `/v1/geo`, `countries` for the list,
+ * `country` for `/v1/countries/:country`, `locale` for `/v1/locales/:lang`. A route with
+ * no answer is a 404, which is how a request that failed looks to the SDK.
+ */
+function stubService(answers: {
+  geo?: unknown;
+  countries?: unknown;
+  country?: unknown;
+  locale?: unknown;
+}): ReturnType<typeof vi.fn> {
+  const fn = vi.fn(async (url: string) => {
+    const { pathname } = new URL(url);
+    const body = pathname.startsWith('/v1/geo')
+      ? answers.geo
+      : pathname.startsWith('/v1/locales/')
+        ? answers.locale
+        : pathname === '/v1/countries'
+          ? answers.countries
+          : answers.country;
+    return body === undefined
+      ? { ok: false, status: 404, statusText: 'Not Found' }
+      : { ok: true, status: 200, statusText: 'OK', json: async () => body };
+  });
+  vi.stubGlobal('fetch', fn);
+  return fn;
+}
+
+const urlsOf = (fn: ReturnType<typeof vi.fn>): string[] =>
+  fn.mock.calls.map(call => String(call[0]));
+
 describe('fetchLocationData', () => {
-  it('reads the detected country, its rules, its states and the country list', async () => {
-    const fetchMock = stubFetch({
-      geo: { country: 'GB' },
-      spec: GB_SPEC,
+  it('asks geo for the rules, and the list and messages at the same time', async () => {
+    const fetchMock = stubService({
+      geo: {
+        country: 'GB',
+        rules: { ...GB, states: [{ code: 'ENG', name: 'England' }] },
+      },
       countries: [
         { code: 'GB', name: 'United Kingdom' },
         { code: 'US', name: 'United States' },
       ],
-      states: [{ code: 'ENG', name: 'England' }],
+      // i18next JSON, nested, as /v1/locales serves it.
+      locale: { checkout: { contact: { title: 'Contact' } } },
     });
 
     const data = await fetchLocationData('https://addr.test');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://addr.test/v1/bootstrap?lang=en');
+    expect(urlsOf(fetchMock).sort()).toEqual([
+      'https://addr.test/v1/countries?lang=en',
+      'https://addr.test/v1/geo?include=rules,states&lang=en',
+      'https://addr.test/v1/locales/en',
+    ]);
     expect(data.detectedCountryCode).toBe('GB');
     expect(data.detectedCountryConfig.postcodeLabel).toBe('Postcode');
     expect(data.detectedStates).toEqual([{ code: 'ENG', name: 'England' }]);
     expect(data.countries.map(c => c.code)).toEqual(['GB', 'US']);
+    expect(data.messages?.['checkout.contact.title']).toBe('Contact');
+    expect(data.messagesLang).toBe('en');
+  });
+
+  it('goes on without messages when the service could not send them', async () => {
+    stubService({
+      geo: {
+        rules: {
+          ...GB,
+          fields: {
+            line1: { ...field('Address'), errors: { blank: 'Enter an address' } },
+          },
+        },
+      },
+      countries: [],
+    });
+
+    const data = await fetchLocationData('https://addr.test', 'vi');
+
+    expect(data.messages).toBeUndefined();
+    // The errors came back in English, which is what stops a Vietnamese page showing
+    // them as if they were its own.
+    expect(data.messagesLang).toBe('en');
+    expect(data.fieldErrors).toEqual({ line1: { blank: 'Enter an address' } });
   });
 
   /** A country with no subdivisions omits `states` entirely rather than sending `[]`. */
   it('reports no states when the response carries none', async () => {
-    stubFetch({ geo: { country: 'DE' }, spec: DE_SPEC, countries: [] });
-    expect((await fetchLocationData('https://addr.test')).detectedStates).toEqual([]);
+    stubService({ geo: { rules: DE }, countries: [] });
+    expect(
+      (await fetchLocationData('https://addr.test')).detectedStates
+    ).toEqual([]);
   });
 
   it('reads the visitor currency and IP the service reports with their country', async () => {
-    stubFetch({
-      geo: { country: 'GB', currency: 'GBP', ip: '203.0.113.7' },
-      spec: GB_SPEC,
-      countries: [{ code: 'GB', name: 'United Kingdom' }],
+    stubService({
+      geo: { currency: 'GBP', ip: '203.0.113.7', rules: GB },
+      countries: [],
     });
 
     const data = await fetchLocationData('https://addr.test');
@@ -208,47 +335,150 @@ describe('fetchLocationData', () => {
   });
 
   it('reports no IP rather than an empty one when the edge resolved none', async () => {
-    stubFetch({
-      geo: { country: 'GB', currency: 'GBP', ip: null },
-      spec: GB_SPEC,
-      countries: [],
-    });
-
-    expect(await fetchLocationData('https://addr.test')).not.toHaveProperty('detectedIp');
+    stubService({ geo: { ip: null, rules: GB }, countries: [] });
+    expect(await fetchLocationData('https://addr.test')).not.toHaveProperty(
+      'detectedIp'
+    );
   });
 
-  it('rejects a body whose layout is not a list of rows', async () => {
-    stubFetch({ geo: {}, spec: { country: 'US', layout: {}, fields: {} }, countries: [] });
+  it('rejects an answer whose layout is not a list of rows', async () => {
+    stubService({
+      geo: { rules: { ...US, address: { layout: {} } } },
+      countries: [],
+    });
+    await expect(fetchLocationData('https://addr.test')).rejects.toThrow(
+      'carried no address layout'
+    );
+  });
+
+  it('rejects a geo answer that carries no rules', async () => {
+    stubService({ geo: { country: 'GB' }, countries: [] });
     await expect(fetchLocationData('https://addr.test')).rejects.toThrow(
       'carried no address layout'
     );
   });
 
   it('throws on a non-ok response so the caller can fall back', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Unavailable' })
-    );
-    await expect(fetchLocationData('https://addr.test')).rejects.toThrow('503');
+    stubService({ countries: [] });
+    await expect(fetchLocationData('https://addr.test')).rejects.toThrow('404');
   });
 });
 
 describe('fetchCountryStates', () => {
-  it('asks for the country layout with its states', async () => {
-    const fetchMock = stubFetch({ spec: US_SPEC, states: [{ code: 'NY', name: 'New York' }] });
+  it("asks for the country's rules with its states", async () => {
+    const fetchMock = stubService({
+      country: { ...US, states: [{ code: 'NY', name: 'New York' }] },
+    });
 
     const data = await fetchCountryStates('US', 'https://addr.test');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://addr.test/v1/layout/US?include=states&lang=en'
-    );
+    expect(urlsOf(fetchMock)).toEqual([
+      'https://addr.test/v1/countries/US?include=states&lang=en',
+    ]);
     expect(data.countryConfig.postcodeLabel).toBe('ZIP Code');
     expect(data.states).toEqual([{ code: 'NY', name: 'New York' }]);
+    expect(data.messagesLang).toBe('en');
   });
 
   it('escapes the country code rather than pasting it into the path', async () => {
-    const fetchMock = stubFetch({ spec: US_SPEC });
+    const fetchMock = stubService({ country: US });
     await fetchCountryStates('../v1/geo', 'https://addr.test');
-    expect(fetchMock.mock.calls[0][0]).toContain('%2F');
+    expect(urlsOf(fetchMock)[0]).toContain('%2F');
+  });
+});
+
+describe('flagUrl', () => {
+  it('asks the address-rules service for the lower-case code', () => {
+    expect(flagUrl('GB')).toBe(
+      'https://i18n-rules.nextcommerce.com/v1/flags/gb.svg'
+    );
+  });
+});
+
+describe('CountryService language', () => {
+  afterEach(() => {
+    localStorage.clear();
+    useConfigStore.setState({ locale: undefined });
+  });
+
+  it("asks in the page's locale, and keeps English where none is set", async () => {
+    const fetchMock = stubService({ country: { ...US, states: [] } });
+    const service = CountryService.getInstance();
+
+    await service.getCountryStates('US');
+    useConfigStore.setState({ locale: 'th-TH' });
+    await service.getCountryStates('US');
+
+    expect(urlsOf(fetchMock)).toEqual([
+      expect.stringContaining('/v1/countries/US?include=states&lang=en'),
+      expect.stringContaining('/v1/countries/US?include=states&lang=th-TH'),
+    ]);
+  });
+
+  it("keeps each country's field errors, and the last as the default", async () => {
+    const service = CountryService.getInstance();
+    const withBlank = (answer: CountryRules, blank: string): CountryRules => ({
+      ...answer,
+      fields: {
+        ...answer.fields,
+        postcode: { ...(answer.fields.postcode as RulesField), errors: { blank } },
+      },
+    });
+    stubService({ country: withBlank(US, 'Enter a ZIP Code') });
+    await service.getCountryStates('US');
+    stubService({ country: withBlank(GB, 'Enter a postcode') });
+    await service.getCountryStates('GB');
+
+    expect(service.getFieldErrors('US').postcode?.blank).toBe('Enter a ZIP Code');
+    expect(service.getFieldErrors('GB').postcode?.blank).toBe('Enter a postcode');
+    expect(service.getFieldErrors().postcode?.blank).toBe('Enter a postcode');
+  });
+
+  it('refetches rather than serve a cached answer in another language', async () => {
+    const fetchMock = stubService({ country: { ...US, states: [] } });
+    const service = CountryService.getInstance();
+
+    await service.getCountryStates('US');
+    await service.getCountryStates('US');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    useConfigStore.setState({ locale: 'th' });
+    await service.getCountryStates('US');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('CountryService texts', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const answer = (texts: Record<string, string>, lang: string) => ({
+    ok: true,
+    json: async () => texts,
+    headers: new Headers({ 'content-language': lang }),
+  });
+
+  it('loads a language once however many callers ask, and says when it lands', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(answer({ 'checkout.contact.title': 'Yhteystiedot' }, 'fi'));
+    vi.stubGlobal('fetch', fetchMock);
+    const service = CountryService.getInstance();
+    const loaded = vi.fn();
+    const off = EventBus.getInstance().on('address:messages-loaded', loaded);
+
+    await Promise.all([service.loadTexts('fi-FI'), service.loadTexts('fi')]);
+    off();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(service.getTexts('fi')?.['checkout.contact.title']).toBe('Yhteystiedot');
+    expect(loaded).toHaveBeenCalledWith({ lang: 'fi' });
+  });
+
+  it('keeps no answer the service gave in another language', async () => {
+    // A language it has no file for is answered in English.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer({ 'checkout.contact.title': 'Contact' }, 'en')));
+    const service = CountryService.getInstance();
+
+    await service.loadTexts('sv');
+
+    expect(service.getTexts('sv')).toBeUndefined();
   });
 });

@@ -1,12 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { Iti } from 'intl-tel-input';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFieldValue, readPhoneValue } from '../field-value';
+import { phoneFieldFor, type PhoneField } from '../phone-input';
+
+// The phone field registered on an element, when a test says there is one.
+vi.mock('../phone-input', () => ({ phoneFieldFor: vi.fn() }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function phoneInstance(number: string | null): Iti {
-  return { getNumber: vi.fn(() => number) } as unknown as Iti;
+/** A phone field that answers `number` for whatever is in its input. */
+function phoneInstance(number: string | null): PhoneField {
+  return { getNumber: vi.fn(() => number) } as unknown as PhoneField;
 }
+
+beforeEach(() => {
+  vi.mocked(phoneFieldFor).mockReset();
+});
 
 function input(
   attributes: { type?: string; value?: string; checked?: boolean } = {}
@@ -36,8 +44,8 @@ describe('readFieldValue', () => {
   });
 
   /**
-   * `getNumber()` returns null for a number the library cannot parse. The typed text is
-   * stored instead so the order carries something a human can act on rather than nothing.
+   * A field with no number to give answers nothing. The typed text is stored instead so
+   * the order carries something a human can act on rather than nothing.
    */
   it('falls back to the typed text when the number cannot be parsed', () => {
     const phoneInputs = new Map([['shipping', phoneInstance(null)]]);
@@ -47,7 +55,7 @@ describe('readFieldValue', () => {
     );
   });
 
-  it('falls back to the typed text when there is no phone instance', () => {
+  it('falls back to the typed text when there is no phone field', () => {
     expect(
       readFieldValue('phone', input({ value: '07700 900123' }), new Map())
     ).toBe('07700 900123');
@@ -111,16 +119,25 @@ describe('readFieldValue', () => {
 });
 
 describe('readPhoneValue', () => {
-  it('prefers the instance it is handed', () => {
-    // Both instances answer for the same typed number; only the handed one is asked.
-    // Passing an instance bound to a different field is a caller bug — see the contract
+  it('prefers the phone field it is handed', () => {
+    // Both fields answer for the same typed number; only the handed one is asked.
+    // Passing a field bound to a different input is a caller bug — see the contract
     // on `checkPhone` in `validation/phone-validation.ts`.
     const handed = phoneInstance('+447700900123');
-    const onTheElement = phoneInstance('+447700900999');
-    const field = input({ value: '07700 900123' });
-    (field as unknown as { iti: Iti }).iti = onTheElement;
+    vi.mocked(phoneFieldFor).mockReturnValue(phoneInstance('+447700900999'));
 
-    expect(readPhoneValue(field, handed)).toBe('+447700900123');
+    expect(readPhoneValue(input({ value: '07700 900123' }), handed)).toBe(
+      '+447700900123'
+    );
+  });
+
+  /** How the billing branch, which holds no map of fields, still stores E.164. */
+  it('asks the phone field registered on the input when none is handed', () => {
+    vi.mocked(phoneFieldFor).mockReturnValue(phoneInstance('+447700900123'));
+
+    expect(readPhoneValue(input({ value: '07700 900123' }))).toBe(
+      '+447700900123'
+    );
   });
 
   /**
@@ -128,7 +145,7 @@ describe('readPhoneValue', () => {
    * from an earlier page can be judged against a field holding something else entirely.
    * The typed value wins there rather than a stranger's number reaching the order.
    */
-  it('falls back to the typed text when there is no instance anywhere', () => {
+  it('falls back to the typed text when there is no phone field anywhere', () => {
     expect(readPhoneValue(input({ value: '07700 900123' }))).toBe(
       '07700 900123'
     );
@@ -140,7 +157,7 @@ describe('readPhoneValue', () => {
     );
   });
 
-  /** A `<select>` can never carry a phone widget, so it is never asked for one. */
+  /** A `<select>` can never carry a phone field, so it is never asked for one. */
   it('reads a select as its value', () => {
     const select = document.createElement('select');
     const option = document.createElement('option');
@@ -149,5 +166,6 @@ describe('readPhoneValue', () => {
     select.value = 'CA';
 
     expect(readPhoneValue(select)).toBe('CA');
+    expect(phoneFieldFor).not.toHaveBeenCalled();
   });
 });

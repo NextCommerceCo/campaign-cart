@@ -15,16 +15,16 @@
  *
  * @example
  * ```ts
- * const emailRule: ValidationRule = {
- *   type: 'email',
- *   message: 'Please enter a valid email address',
- * };
+ * const emailRule: ValidationRule = { type: 'email' };
  * ```
  */
 export interface ValidationRule {
   /** Which built-in check to run. `custom` runs {@link ValidationRule.validator} instead. */
   type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
-  /** Shown to the shopper when the check fails. Falls back to `"<Field name> is invalid"`. */
+  /**
+   * Shown when a `custom` check fails. A built-in check shows the address-rules service's
+   * message for it instead (`field-messages.ts`), so its wording follows the page's language.
+   */
   message?: string;
   /** Only read when `type` is `custom`. Return `true` for a value that passes. */
   validator?: (value: any, context?: any) => boolean;

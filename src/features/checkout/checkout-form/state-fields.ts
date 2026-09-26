@@ -32,6 +32,20 @@ import {
 /** Containers a province field might sit in, for hiding the whole row rather than the input. */
 const FIELD_CONTAINERS = '.frm-flds, .form-group, .form-field, .field-group';
 
+/**
+ * What to hide when a country has no province: the row it sits in, or the field alone
+ * when that row holds other fields too. A select placed straight in the `<form>` has the
+ * form as its parent, and hiding that hid the whole checkout.
+ */
+function provinceRowOf(provinceField: HTMLElement): HTMLElement {
+  const row = (provinceField.closest(FIELD_CONTAINERS) ??
+    provinceField.parentElement) as HTMLElement | null;
+  const alone =
+    row !== null &&
+    row.querySelectorAll('[data-next-checkout-field]').length === 1;
+  return alone ? row : provinceField;
+}
+
 /** Milliseconds an in-flight request stays cached after settling. */
 const PROMISE_CLEANUP_MS = 100;
 
@@ -192,8 +206,7 @@ export async function updateStateOptions(
     const hasStates = countryData.states && countryData.states.length > 0;
     const stateRequired = countryData.countryConfig.stateRequired;
 
-    const provinceContainer =
-      provinceField.closest(FIELD_CONTAINERS) ?? provinceField.parentElement;
+    const provinceContainer = provinceRowOf(provinceField);
 
     if (!stateRequired && !hasStates) {
       if (provinceContainer) {

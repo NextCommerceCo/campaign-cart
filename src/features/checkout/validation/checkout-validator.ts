@@ -35,12 +35,17 @@ import {
   type ErrorDisplayContext,
 } from './error-display';
 import { applyRule, createValidationRules } from './field-rules';
-import { formatFieldName } from './field-labels';
+import { fieldMessage, type MessageKey } from './field-messages';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  hasEmoji,
+  isValidCity,
+  isValidEmail,
+  isValidName,
+} from './validation-patterns';
 import type {
   FormValidationResult,
   ValidationResult,
@@ -53,6 +58,17 @@ export type {
   ValidationResult,
   ValidationRule,
 } from './validation.types';
+
+/** The message each built-in rule shows when it fails. */
+const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
+  required: 'blank',
+  email: 'invalid',
+  name: 'invalid_characters',
+  phone: 'invalid',
+  postal: 'invalid',
+  city: 'invalid',
+  custom: 'invalid',
+};
 
 export class CheckoutValidator {
   private logger: Logger;
@@ -84,7 +100,7 @@ export class CheckoutValidator {
   }
 
   /**
-   * Installs the lookup that hands phone checks the live `intl-tel-input` instance.
+   * Installs the lookup that hands phone checks the live phone field.
    *
    * Called by the form once the phone widgets exist. One installer for every phone check
    * in this class — per-field, per-step and submit-time all resolve the instance the same
@@ -146,6 +162,11 @@ export class CheckoutValidator {
     context?: any
   ): ValidationResult {
     const rules = this.rules.get(name) || [];
+    if (hasEmoji(value)) {
+      const emoji = fieldMessage(this.countryService, 'contains_emoji', name);
+      this.setError(name, emoji);
+      return { isValid: false, message: emoji };
+    }
     let isValid = true;
     let message: string | undefined;
 
@@ -160,7 +181,8 @@ export class CheckoutValidator {
     for (const rule of rules) {
       if (!applyRule(ruleContext, rule, value, context)) {
         message =
-          rule.message || `${formatFieldName(name, context)} is invalid`;
+          (rule.type === 'custom' ? rule.message : undefined) ??
+          fieldMessage(this.countryService, RULE_MESSAGE[rule.type], name);
         this.setError(name, message);
         isValid = false;
         break;

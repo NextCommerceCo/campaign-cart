@@ -22,6 +22,7 @@ import {
   scanExpirationFields,
   type ExpirationFieldsContext,
 } from './expiration-fields';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 /**
  * The two attributes a checkout input can be marked with, current spelling first.
@@ -140,7 +141,7 @@ export function scanAllFields(
           : 'os-checkout-field'
       );
       if (fieldName && element instanceof HTMLElement) {
-        ctx.fields.set(fieldName, element);
+        ctx.fields.set(sdkCheckoutFieldName(fieldName), element);
       }
     });
   });
@@ -188,6 +189,7 @@ export function scanAllFields(
  * @example
  * ```ts
  * getFieldNameFromElement(input); // <input os-checkout-field="fname"> → 'fname'
+ * getFieldNameFromElement(input); // <input data-next-checkout-field="first_name"> → 'fname'
  * ```
  */
 export function getFieldNameFromElement(element: HTMLElement): string | null {
@@ -199,7 +201,7 @@ export function getFieldNameFromElement(element: HTMLElement): string | null {
     element.getAttribute('os-checkout-field');
   /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
-  if (checkoutFieldName) return checkoutFieldName;
+  if (checkoutFieldName) return sdkCheckoutFieldName(checkoutFieldName);
 
   if (
     element instanceof HTMLInputElement ||

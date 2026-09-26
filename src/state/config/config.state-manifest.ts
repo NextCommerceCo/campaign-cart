@@ -137,7 +137,15 @@ export default defineStore({
       description:
         'BCP 47 tag pinning how prices are written — `de-DE` renders `69,99 €` where `en-US` renders `€69.99`. Empty means follow the visitor\'s browser, which is the default.',
       notes:
-        "The **locale** decides the decimal separator and which side the currency symbol sits on; the currency code does not. So a EUR campaign still shows `€69.99` to an `en-US` browser, and that is a locale setting, not a currency bug. Set this only when a store must render identically for every visitor — a German shopper's browser already asks for `69,99 €`. An unparseable tag (`de_DE` with an underscore) is rejected at load with a warning and the browser locale is used, so a typo costs formatting, not the page. The debug overlay's locale picker still wins over this, so a pinned campaign can be previewed in other locales.",
+        "The **locale** decides the decimal separator and which side the currency symbol sits on; the currency code does not. So a EUR campaign still shows `€69.99` to an `en-US` browser, and that is a locale setting, not a currency bug. Set this only when a store must render identically for every visitor — a German shopper's browser already asks for `69,99 €`. An unparseable tag (`de_DE` with an underscore) is rejected at load with a warning and the browser locale is used, so a typo costs formatting, not the page. The debug overlay's locale picker still wins over this, so a pinned campaign can be previewed in other locales. It also picks the language of the checkout form's labels and messages, which is English when it is unset.",
+    },
+    {
+      name: 'translations',
+      kind: 'transient',
+      description:
+        "The page's own wording, by language: `{ th: { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร' } }`. Empty means the address-rules service's wording, which is the default.",
+      notes:
+        "Keys are the service's: `fields.<field>.errors.<error>` for a message, and any key `data-next-i18n` names. Nested objects are flattened to dotted keys at load, language keys are lower-cased, and anything that is not a string is dropped. `features/checkout/validation/field-messages.ts › fieldMessage` reads the form language's entry, then its base (`th-TH`, then `th`), before the service's answer; a message missing in that language is shown in English, a whole sentence at a time.",
     },
     {
       name: 'storageScope',

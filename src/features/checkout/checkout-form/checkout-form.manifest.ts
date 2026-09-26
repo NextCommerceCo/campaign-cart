@@ -207,6 +207,14 @@ export default defineFeature({
         'On a payment form: whether it is currently shown. Animate the reveal from this rather than from the element appearing.',
       values: '`expanded` / `collapsed`',
     },
+    {
+      name: 'data-next-phone-country',
+      description:
+        'On the shipping and billing phone inputs: the country the number is formatted and checked for, and whose flag is shown. It follows the address country, or the detected country while the address country has no value.',
+      values: 'An ISO country code, e.g. `GB`',
+      notes:
+        'Absent while no country is known, and the flag is hidden then too. A number typed with `+` and a calling code does not change it: the number is shown as `+` and its digits and sent as typed.',
+    },
   ],
 
   classes: [
@@ -218,6 +226,21 @@ export default defineFeature({
     {
       name: 'next-error-field',
       description: 'On an input that failed validation.',
+    },
+    {
+      name: 'next-phone-input',
+      description:
+        'On the shipping and billing phone inputs, once the SDK formats them.',
+    },
+    {
+      name: 'next-phone-field',
+      description:
+        "On a phone input's parent element, which the flag is positioned against. The input is never wrapped or moved.",
+    },
+    {
+      name: 'next-phone-flag',
+      description:
+        "On the flag image the SDK inserts immediately before a phone input, so an `input + label` rule still reaches the input's label.",
     },
   ],
 
@@ -253,7 +276,7 @@ export default defineFeature({
       cause:
         'Submit was reached with email, first name, or last name still empty.',
       fix:
-        'Normally validation stops the submit before this, so seeing it means a field is not wired: check each of `data-next-checkout-field="email"`, `"fname"`, and `"lname"` exists and is spelled exactly that way. A misspelled field name reads as empty no matter what the visitor typed.',
+        'Normally validation stops the submit before this, so seeing it means a field is not wired: check each of `data-next-checkout-field="email"`, `"first_name"`, and `"last_name"` exists and is spelled exactly that way (`"fname"` and `"lname"`, the older names, count too). A misspelled field name reads as empty no matter what the visitor typed.',
     },
     {
       message: 'Cannot create order with empty cart',
@@ -380,8 +403,8 @@ these names are fixed rather than free text:
 | Name | Holds |
 |---|---|
 | \`email\` | Contact email |
-| \`fname\` | First name |
-| \`lname\` | Last name |
+| \`first_name\` | First name (\`fname\`, the older name, still works) |
+| \`last_name\` | Last name (\`lname\`, the older name, still works) |
 | \`phone\` | Phone number |
 | \`address1\` | Street address |
 | \`address2\` | Apartment, suite, unit |
@@ -403,8 +426,8 @@ SDK code — only the token from \`payment:tokenized\` does.
 \`\`\`html
 <form data-next-checkout>
   <input data-next-checkout-field="email" type="email">
-  <input data-next-checkout-field="fname">
-  <input data-next-checkout-field="lname">
+  <input data-next-checkout-field="first_name">
+  <input data-next-checkout-field="last_name">
   <input data-next-checkout-field="phone" type="tel" data-next-required="true">
 
   <div data-next-component="shipping-form">

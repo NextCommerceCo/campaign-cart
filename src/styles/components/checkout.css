@@ -376,36 +376,27 @@
   filter: grayscale(1);
 }
 
-
-.iti__flag-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width:3rem!important;
-    right: 0 !important;
-    left: auto !important;
-    padding: 1px;
-}
-.iti--allow-dropdown input, .iti--allow-dropdown input[type=text], .iti--allow-dropdown input[type=tel], .iti--separate-dial-code input, .iti--separate-dial-code input[type=text], .iti--separate-dial-code input[type=tel] {
-    padding-right: 52px!important;
-    padding-left: 12px!important;
-    margin-left: 0!important;
+/* ========================================
+   PHONE FIELD
+======================================== */
+/* The flag sits inside the right edge of the input. The SDK inserts it before the
+   input rather than wrapping the input, so it is positioned against the parent; the
+   SDK sets its `top` from the input's box and the input's `padding-right` inline, so
+   `top: 50%` here only holds until the field is laid out. */
+.next-phone-field {
+  position: relative;
 }
 
-  .iti__country-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 3rem !important;
-    right: 0 !important;
-    left: auto !important;
-  .iti:not(.iti--allow-dropdown) input,
-  .iti:not(.iti--allow-dropdown) input[type=text],
-  .iti:not(.iti--allow-dropdown) input[type=tel] {
-    padding-right: 52px !important;
-    padding-left: 12px !important;
-    margin-left: 0 !important;
-  }
+.next-phone-flag {
+  position: absolute;
+  /* Above the input, which comes after it and is often positioned itself. */
+  z-index: 2;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 /* ========================================

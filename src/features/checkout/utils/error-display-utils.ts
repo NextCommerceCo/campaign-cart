@@ -5,6 +5,10 @@
  */
 
 import { FieldFinder } from './field-finder-utils';
+import {
+  checkoutFieldNames,
+  sdkCheckoutFieldName,
+} from '@/utils/checkout-field-names';
 
 export interface ErrorDisplayOptions {
   wrapperClass?: string;
@@ -57,12 +61,12 @@ function holdsOneFieldAtMost(container: Element): boolean {
  * message, and an unowned message in a container holding other fields can never be cleared.
  */
 function fieldKey(field: HTMLElement): string | null {
-  return (
+  const name =
     field.getAttribute('data-next-checkout-field') ??
     field.getAttribute('os-checkout-field') ??
     field.getAttribute('name') ??
-    (field.id || null)
-  );
+    (field.id || null);
+  return name === null ? null : sdkCheckoutFieldName(name);
 }
 
 /** Where a label can sit, which depends on the author's markup. Missing one leaves a stale error. */
@@ -245,7 +249,9 @@ export class ErrorDisplayManager {
   ): HTMLElement | null {
     const name = CSS.escape(fieldName);
     const selectors = [
-      `[data-next-checkout-field="${name}"]`,
+      ...checkoutFieldNames(fieldName).map(
+        alias => `[data-next-checkout-field="${CSS.escape(alias)}"]`
+      ),
       `[os-checkout-field="${name}"]`,
       `[name="${name}"]`,
       `#${name}`,

@@ -7,7 +7,7 @@ category: "Address Form"
 # Address Form
 
 > Category: `checkout`
-> Last reviewed: 2026-09-24
+> Last reviewed: 2026-09-26
 > Owner: checkout
 
 An address form hard-coded as `address1 / city / state / zip` is correct in the United
@@ -30,7 +30,7 @@ indistinguishable from one a page author typed. Country and province dropdowns a
 **empty** and the checkout form fills them, the same way it fills hand-written ones.
 
 ```
-checkout store country ──► GET /v1/layout/{country}
+checkout store country ──► GET /v1/countries/{country}
                                     │
                                     ▼
                       rows of field names + labels
@@ -46,9 +46,13 @@ checkout store country ──► GET /v1/layout/{country}
 
 - The country comes from the checkout store. Before the form has resolved one, the block
   opens on `US` so the page is never empty while a layout is in flight.
-- A field the surrounding form already collects elsewhere is not built again. The page's
-  own markup wins, so a checkout that collects the name in its own step keeps it and the
-  block builds only what is left.
+- The block builds the country's address rows (`address.layout` in the service's rules):
+  the whole address, the name and phone included, because a billing address is one. A
+  field the surrounding form already collects elsewhere is not built again: the page's
+  own markup wins.
+- A value the country fixes for every address (Vatican City's city and postcode) is not
+  asked for; the checkout form writes it into the address as the country is chosen and
+  takes it back out when the shopper moves on (`checkout-form/fixed-address-values.ts`).
 - The city, state and postcode rows that come after the street address start hidden and
   appear once `address1` has a value (typed, autofilled or restored), the same collapse a
   hand-written form gets from `data-next-component="location"`. A row carrying any other

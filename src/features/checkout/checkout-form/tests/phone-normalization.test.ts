@@ -7,12 +7,12 @@ import type { PhoneNumberSource } from '../../validation/phone-validation';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** A widget that has its utils script and speaks for the number it is given. */
+/** A field that has its rules and speaks for the number it is given. */
 function loadedWidget(e164: string): PhoneNumberSource {
   return { getNumber: () => e164, isValidNumber: () => true };
 }
 
-/** A widget whose utils script has not landed: it can neither format nor judge. */
+/** A field whose rules have not loaded: it can neither format nor judge. */
 function loadingWidget(): PhoneNumberSource {
   return { getNumber: () => '', isValidNumber: () => null };
 }

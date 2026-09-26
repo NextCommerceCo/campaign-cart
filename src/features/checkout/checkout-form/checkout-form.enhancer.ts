@@ -14,6 +14,7 @@ import {
   CountryService,
   type Country,
   type CountryConfig,
+  type PhoneRules,
 } from '@/core/country-service';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
@@ -41,9 +42,9 @@ import {
   paymentMethodLabel,
 } from '@/utils/payment-method';
 import {
-  awaitPhoneUtils,
-  injectIntlTelInputStyles,
+  awaitPhoneRules,
   initializePhoneInputs,
+  type PhoneField,
   type PhoneInputContext,
 } from './phone-input';
 import { normalizeStoredPhones } from './phone-normalization';
@@ -75,6 +76,11 @@ import {
   setupAutofillDetection,
   type AutofillDetectionContext,
 } from './autofill-detection';
+import { setupEnterKeyNavigation } from './enter-key-navigation';
+import {
+  applyFixedValues,
+  type AppliedFixedValues,
+} from './fixed-address-values';
 import {
   updateFieldValidationDisplay,
   type FieldValidationContext,
@@ -161,7 +167,6 @@ import {
   type CheckoutUpdateContext,
   type ConfigUpdateContext,
 } from './store-subscriptions';
-import 'intl-tel-input/build/css/intlTelInput.css';
 
 /**
  * The one builder that assembles the `CreateOrder` payload. Stateless — it reads
@@ -219,9 +224,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private detectedCountryCode: string = 'US';
   private autocompleteEnhancer?: AddressAutocompleteEnhancer;
 
-  // Phone input management
-  private phoneInputs: Map<string, any> = new Map();
-  private isIntlTelInputAvailable = false;
+  /** The shipping and billing phone fields, keyed `shipping` / `billing`. */
+  private phoneInputs: Map<string, PhoneField> = new Map();
 
   /**
    * The city/state/postcode rows that stay collapsed until an address exists — see
@@ -294,6 +298,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * Was an untyped `(this as any)` stash holding only the interval.
    */
   private stopAutofillDetection?: () => void;
+  private stopEnterKeyNavigation?: () => void;
+  private readonly fixedValues: Record<
+    'shipping' | 'billing',
+    AppliedFixedValues
+  > = { shipping: {}, billing: {} };
   private hasTrackedBeginCheckout = false;
   /**
    * Handle for the `begin_checkout` delay, so a form destroyed inside that window
@@ -322,10 +331,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   public async initialize(): Promise<void> {
     this.bindFormElement();
-
-    // Injects the CSS variables intl-tel-input needs for its flag/globe images.
-    injectIntlTelInputStyles();
-
     this.detectMultiStepCheckout();
     this.loadingOverlay = new LoadingOverlay();
 
@@ -339,9 +344,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.initializeApiDependencies(config);
     await this.refreshAttribution();
     this.initializeOrderProcessors();
-
-    // intl-tel-input is now bundled with the SDK - always available
-    this.isIntlTelInputAvailable = true;
 
     this.initializeValidator();
     this.scanAllFields();
@@ -483,29 +485,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * Waits for the phone library's utils script, then puts the stored numbers in E.164.
+   * Waits for the phone fields' rules, then puts the stored numbers in E.164.
    *
    * The two go together: both `isValidNumber()` and `getNumber()` answer "nothing" until
-   * that script lands, so a check before it is not a check. Called by both gates that
-   * judge a phone.
+   * the rules load, so a check before it is not a check. Called by both gates that judge
+   * a phone.
    */
   private async settlePhoneNumbers(): Promise<void> {
-    if (!(await awaitPhoneUtils(this.phoneInputs))) {
+    if (!(await awaitPhoneRules(this.phoneInputs))) {
       this.logger.warn(
-        'intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164'
+        'Phone rules did not load in time; the phone number is sent unchecked and may not be E.164'
       );
     }
     normalizeStoredPhones(this.phoneInputs);
   }
 
   /**
-   * Runs after {@link initializePhoneInputs} so the validator can ask a live
-   * intl-tel-input instance.
+   * Runs after {@link initializePhoneInputs} so the validator can ask a live phone field.
    *
-   * Hands over the instance itself rather than a yes/no answer. The form used to pass a
-   * predicate that fell back to a permissive regex when no instance was found, which meant
-   * a page whose phone widget never got built validated phones *less* strictly than one
-   * with no widget at all. `checkPhone` handles the missing instance instead, and says so.
+   * Hands over the field itself rather than a yes/no answer. The form used to pass a
+   * predicate that fell back to a permissive regex when no field was found, which meant a
+   * page whose phone field never got built validated phones *less* strictly than one with
+   * no field at all. `checkPhone` handles the missing field instead, and says so.
    */
   private setupPhoneValidation(): void {
     this.validator.setPhoneSource(type => this.phoneInputs.get(type));
@@ -518,6 +519,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   private subscribeToStores(): void {
     this.subscribe(useCheckoutStore, this.handleCheckoutUpdate.bind(this));
+    this.syncFixedValues(useCheckoutStore.getState());
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
     // The campaign decides which payment methods this store can charge, and it
@@ -1180,14 +1182,27 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    */
   private phoneInputContext(): PhoneInputContext {
     return {
-      isIntlTelInputAvailable: this.isIntlTelInputAvailable,
       fields: this.fields,
       billingFields: this.billingFields,
       phoneInputs: this.phoneInputs,
       detectedCountryCode: this.detectedCountryCode,
+      loadPhoneRules: country => this.loadPhoneRules(country),
       updateFormData: data => this.updateFormData(data),
       logger: this.logger,
     };
+  }
+
+  /**
+   * A country's phone rules. From `getCountryStates`, as the address fields load theirs:
+   * `getCountryConfig` answers for the detected country with the visitor's own config,
+   * which is another country's when the campaign does not ship to the visitor's.
+   */
+  private async loadPhoneRules(
+    country: string
+  ): Promise<PhoneRules | undefined> {
+    const { countryConfig } =
+      await this.countryService.getCountryStates(country);
+    return countryConfig.phone;
   }
 
   private initializePhoneInputs(): void {
@@ -2324,6 +2339,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private setupEventHandlers(): void {
     this.submitHandler = this.handleFormSubmit.bind(this);
     this.form.addEventListener('submit', this.submitHandler);
+    this.stopEnterKeyNavigation = setupEnterKeyNavigation(this.form);
 
     this.changeHandler = this.handleFieldChange.bind(this);
     this.bindFieldListeners();
@@ -2490,8 +2506,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     };
   }
 
+  /** Writes the values the chosen countries fix, as either country changes. */
+  private syncFixedValues(
+    state: ReturnType<typeof useCheckoutStore.getState>
+  ): void {
+    const ctx = {
+      countryService: this.countryService,
+      logger: this.logger,
+      updateFormData: (data: Record<string, string>) =>
+        this.updateFormData(data),
+    };
+    const shipping = state.formData.country as string | undefined;
+    if (shipping !== this.fixedValues.shipping.country) {
+      void applyFixedValues(
+        ctx,
+        'shipping',
+        shipping,
+        this.fixedValues.shipping
+      );
+    }
+    const billing = state.billingAddress?.country;
+    if (billing !== this.fixedValues.billing.country) {
+      void applyFixedValues(ctx, 'billing', billing, this.fixedValues.billing);
+    }
+  }
+
   private handleCheckoutUpdate(state: any): void {
     handleCheckoutUpdate(this.checkoutUpdateContext(), state);
+    this.syncFixedValues(state);
   }
 
   private handleCartUpdate(cartState: CartState): void {
@@ -2574,6 +2616,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.stopAutofillDetection) {
       this.stopAutofillDetection();
     }
+    this.stopEnterKeyNavigation?.();
 
     if (this.paymentMethodChangeHandler) {
       const paymentRadios = this.form.querySelectorAll(
@@ -2731,13 +2774,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.prospectCartEnhancer.destroy();
     }
 
-    this.phoneInputs.forEach(instance => {
-      try {
-        instance.destroy();
-      } catch (error) {
-        // Ignore errors during cleanup
-      }
-    });
+    this.phoneInputs.forEach(field => field.destroy());
     this.phoneInputs.clear();
 
     this.autocompleteEnhancer?.destroy();

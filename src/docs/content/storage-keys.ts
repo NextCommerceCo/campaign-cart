@@ -713,7 +713,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     ttl: '1 hour',
     ttlMechanism: '`cacheExpiry` (CountryService)',
     holds:
-      'Responses from the countries service: the full country list with the detected country (`location_data`), and per country its states plus its address rules — state label, postcode label and length limits.',
+      'Responses from the countries service: the full country list with the detected country (`location_data`), and per country its states plus its address rules — state label, postcode label and length limits. Each entry records the language it was fetched in, and one in another language is refetched.',
     clearing:
       "The next page refetches. The address form's state dropdown is briefly empty and postcode validation falls back to defaults until the response lands.\n\nWritten to localStorage, because a country list does not change between sessions. The service also sweeps the same prefix out of sessionStorage, which only ever holds legacy entries from an older version.",
   },

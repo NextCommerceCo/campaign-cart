@@ -35,7 +35,6 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Invalid data-min-phone-digits value, using default:` | `config.ts › loadConfig` | yes |
 | `Email field not found for prospect cart` | `field-discovery.ts › findEmailField` | — |
 | `Phone field not found for prospect cart` | `field-discovery.ts › findPhoneField` | — |
-| `Failed to get E.164 formatted phone from existing instance:` | `field-discovery.ts › getFormattedPhoneNumber` | yes |
 | `Failed to parse stored prospect cart:` | `prospect-cart.enhancer.ts › ProspectCartEnhancer.checkExistingProspectCart` | yes |
 | `Cannot setup email entry trigger - email field not found` | `triggers.ts › setupEmailEntryTrigger` | — |
 | `Cannot setup phone entry trigger - phone field not found` | `triggers.ts › setupPhoneEntryTrigger` | — |
@@ -68,8 +67,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Prospect cart update skipped - using standard cart API` | `cart-creation.ts › updateProspectCart` | — |
 | `Found email field with selector:` | `field-discovery.ts › findEmailField` | yes |
 | `Found phone field with selector:` | `field-discovery.ts › findPhoneField` | yes |
-| `Got E.164 formatted phone from existing instance:` | `field-discovery.ts › getFormattedPhoneNumber` | yes |
-| `Using raw phone value (intlTelInput instance not found)` | `field-discovery.ts › getFormattedPhoneNumber` | — |
+| `Using raw phone value (no phone field formats it)` | `field-discovery.ts › getFormattedPhoneNumber` | — |
 | `ProspectCartEnhancer initialized` | `prospect-cart.enhancer.ts › ProspectCartEnhancer.initialize` | yes |
 | `Restored existing prospect cart:` | `prospect-cart.enhancer.ts › ProspectCartEnhancer.checkExistingProspectCart` | yes |
 | `updateEmail called with invalid email:` | `prospect-cart.enhancer.ts › ProspectCartEnhancer.updateEmail` | yes |

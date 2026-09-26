@@ -42,13 +42,13 @@ export async function createProspectCart(
     const firstName =
       (
         context.element.querySelector(
-          '[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
+          '[data-next-checkout-field="first_name"], [data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
         ) as HTMLInputElement
       )?.value || '';
     const lastName =
       (
         context.element.querySelector(
-          '[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
+          '[data-next-checkout-field="last_name"], [data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
         ) as HTMLInputElement
       )?.value || '';
     // Get phone in E.164 format if possible

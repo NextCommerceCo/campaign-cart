@@ -8,9 +8,9 @@
  *
  * Country-specific checks are deliberately *not* here, because being pure disqualifies
  * them. A postal code lives with `CountryService`; a phone number lives in
- * [phone-validation.ts](./phone-validation.ts), which asks the field's `intl-tel-input`
- * widget. It was here once as a regex plus "at least ten digits", and judging a number
- * without knowing its country is what made it wrong.
+ * [phone-validation.ts](./phone-validation.ts), which asks the input's phone field. It was
+ * here once as a regex plus "at least ten digits", and judging a number without knowing
+ * its country is what made it wrong.
  *
  * Extracted verbatim from `checkout-validator.ts`, which still exposes all three as public
  * methods.
@@ -161,4 +161,16 @@ export function isValidCity(city: string): boolean {
   // Use the CITY pattern for validation
   // This regex allows: Unicode letters, spaces, periods, apostrophes (both ' and '), and hyphens
   return VALIDATION_PATTERNS.CITY.test(trimmedCity);
+}
+
+/**
+ * A character drawn as an emoji, a symbol asked to be (`™` + U+FE0F), or a keycap (`1️⃣`).
+ * Not `\p{Extended_Pictographic}` alone: that also holds `©`, `™` and `→`, which a company
+ * line can carry, and a bare U+200D joins Indic letters as well as emojis.
+ */
+const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\u20E3/u;
+
+/** Whether a value holds an emoji. No field takes one: "invalid" alone gives no clue. */
+export function hasEmoji(value: unknown): boolean {
+  return typeof value === 'string' && EMOJI.test(value);
 }

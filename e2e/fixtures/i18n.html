@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Translated text</title>
+  </head>
+  <body>
+    <!-- No docs:example marker: the attribute is documented in
+         docs/guides/reference/data-attributes.md, which carries its own example. -->
+    <h2 id="title" data-next-i18n="checkout.contact.title">Contact</h2>
+    <p id="subtitle" data-next-i18n="checkout.contact.subtitle">
+      We'll email your receipt here.
+    </p>
+    <button
+      id="pay"
+      aria-label="Pay now"
+      data-next-i18n="checkout.pay;[aria-label]checkout.pay.aria"
+    >
+      Pay
+    </button>
+    <input
+      id="search"
+      placeholder="Search"
+      data-next-i18n="[placeholder]page.search;[href]page.link"
+    />
+    <button id="icon" data-next-i18n="checkout.pay">
+      <svg width="8" height="8"></svg>
+      Pay
+    </button>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

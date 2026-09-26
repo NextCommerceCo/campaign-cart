@@ -64,7 +64,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `[Billing] Could not set initial state - missing elements` | `billing-form-setup.ts › setInitialBillingFormState` | — |
 | `[Billing] Some stored billing values have no field` | `billing-form-setup.ts › restoreBillingAddressFields` | yes |
 | `[Billing] Click blocked - animation in progress` | `billing-toggle.ts › handleBillingAddressToggle` | — |
-| `intl-tel-input utils did not load in time; the phone number is sent unchecked and may not be E.164` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.settlePhoneNumbers` | — |
+| `Phone rules did not load in time; the phone number is sent unchecked and may not be E.164` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.settlePhoneNumbers` | — |
 | `[Spreedly] Credit card validation errors:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.initializeCreditCard` | yes |
 | `API 400 error response:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
 | `Payment error detected:` | `checkout-form.enhancer.ts › CheckoutFormEnhancer.createOrder` | yes |
@@ -77,6 +77,7 @@ The feature carried on, but something in the markup or the data was not what it 
 | `Country {countryCode} from URL not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Saved country {savedCountryOverride} not in available countries` | `country-selection.ts › resolveShippingCountry` | — |
 | `Submit button not found in checkout form` | `field-scanning.ts › scanAllFields` | — |
+| `Could not read the fixed address values of {country}` | `fixed-address-values.ts › applyFixedValues` | yes |
 | `Province {storedProvince} not found in options for country {storedCountry}` | `form-population.ts › populateFormData` | — |
 | `Payment method "{value}" is not one the SDK knows — sending it to the API as it stands` | `method-selection.ts › handlePaymentMethodChange` | — |
 | `Shipping method {methodId} is not one this campaign offers` | `method-selection.ts › handleShippingMethodChange` | yes |
@@ -192,6 +193,7 @@ Only shown with debug mode on (`?debug=true`). Expected in bulk — this is the 
 | `Updated user data storage:` | `contact-persistence.ts › persistContactField` | yes |
 | `Already shown warning for order` | `duplicate-purchase-warning.ts › handlePurchaseEvent` | yes |
 | `Found submit button:` | `field-scanning.ts › scanAllFields` | yes |
+| `Wrote the fixed {form} address values of {country ?? 'no country'}` | `fixed-address-values.ts › applyFixedValues` | yes |
 | `Restored province: {storedProvince}` | `form-population.ts › populateFormData` | — |
 | `Location fields shown` | `location-field-visibility.ts › showLocationFields` | — |
 | `Billing location fields shown` | `location-field-visibility.ts › showBillingLocationFields` | — |

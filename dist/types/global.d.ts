@@ -180,6 +180,9 @@ export interface EventMap {
         country: string;
         fields: string[];
     };
+    'address:messages-loaded': {
+        lang: string;
+    };
     'checkout:location-fields-shown': {};
     'checkout:billing-location-fields-shown': {};
     'upsell:initialized': {
@@ -499,6 +502,7 @@ export interface ConfigState {
     currencyFallbackOccurred?: boolean;
     storageScope?: string;
     locale?: string;
+    translations?: Record<string, Readonly<Record<string, string>>>;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;

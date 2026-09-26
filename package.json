@@ -68,7 +68,6 @@
     "@fortawesome/free-solid-svg-icons": "^7.3.0",
     "decimal.js": "^10.6.0",
     "highlight.js": "^11.11.1",
-    "intl-tel-input": "^25.11.3",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

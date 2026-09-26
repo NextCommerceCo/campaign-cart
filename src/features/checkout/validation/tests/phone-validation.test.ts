@@ -7,11 +7,11 @@ import {
 } from '../phone-validation';
 
 /**
- * A stand-in for one `intl-tel-input` instance.
+ * A stand-in for one phone field.
  *
- * `null` from the two verdict methods is the library's way of saying its utils script has
- * not loaded, and `''` from `getNumber()` is the same condition — so the default here is
- * the state a real instance is in for the first moments of a page.
+ * `null` from `isValidNumber()` is a field saying its rules have not loaded, and `''` from
+ * `getNumber()` is the same condition — so the default here is the state a real field is
+ * in for the first moments of a page.
  */
 function source(overrides: Partial<PhoneNumberSource> = {}): PhoneNumberSource {
   return {
@@ -22,8 +22,8 @@ function source(overrides: Partial<PhoneNumberSource> = {}): PhoneNumberSource {
 }
 
 /**
- * An instance answering as it would for a US number. `null` is the utils script not having
- * landed, which is what `isValidNumber` really returns then.
+ * A field answering as it would for a US number. `null` is the rules not having loaded,
+ * which is what `isValidNumber` really returns then.
  */
 function loadedSource(
   verdict: boolean | null,
@@ -55,11 +55,11 @@ describe('checkPhone', () => {
     expect(check.value).toBe('+10000000000');
   });
 
-  it('takes the library verdict and its E.164 number when utils are loaded', () => {
+  it("takes the field's verdict and its E.164 number when its rules are loaded", () => {
     const check = checkPhone('(415) 555-2671', loadedSource(true));
 
     expect(check.verdict).toBe('valid');
-    expect(check.reason).toBe('library-length');
+    expect(check.reason).toBe('rule');
     expect(check.value).toBe('+14155552671');
     expect(check.isE164).toBe(true);
   });
@@ -70,14 +70,14 @@ describe('checkPhone', () => {
     const check = checkPhone('415555267', loadedSource(false, '+1415555267'));
 
     expect(check.verdict).toBe('invalid');
-    expect(check.reason).toBe('library-length');
+    expect(check.reason).toBe('rule');
   });
 
-  it('says unknown rather than invalid while the utils script is loading', () => {
+  it('says unknown rather than invalid while the rules are loading', () => {
     const check = checkPhone('4155552671', source());
 
     expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('utils-not-loaded');
+    expect(check.reason).toBe('rule-not-loaded');
     expect(check.value).toBe('4155552671');
     expect(check.isE164).toBe(false);
   });
@@ -113,14 +113,14 @@ describe('checkPhone', () => {
 });
 
 describe('normalizePhone', () => {
-  it('returns the E.164 number when the library can give one', () => {
+  it('returns the E.164 number when the field can give one', () => {
     expect(normalizePhone('(415) 555-2671', loadedSource(true))).toBe(
       '+14155552671'
     );
   });
 
   it('returns the text as typed rather than blanking it mid-load', () => {
-    // `getNumber()` answers '' until the utils script lands. Writing that back would
+    // `getNumber()` answers '' until the rules load. Writing that back would
     // erase a phone the shopper had already typed.
     expect(normalizePhone('(415) 555-2671', source())).toBe('(415) 555-2671');
   });
@@ -128,8 +128,8 @@ describe('normalizePhone', () => {
 
 describe('a widget whose field is empty', () => {
   /**
-   * `getNumber()` answers `''` for an empty field just as it does while the utils script
-   * loads, but the verdict that comes with it is `false`, not `null` — a judgement on a
+   * `getNumber()` answers `''` for an empty field just as it does while the rules load,
+   * but the verdict that comes with it is `false`, not `null` — a judgement on a
    * number that is not there. A phone restored from an earlier visit is judged before the
    * field is populated, and taking that `false` would refuse a number that is fine.
    */
@@ -147,11 +147,11 @@ describe('a widget whose field is empty', () => {
     expect(check.isE164).toBe(true);
   });
 
-  it('still says unknown while the utils script is the reason there is no number', () => {
+  it('still says unknown while unloaded rules are the reason there is no number', () => {
     const check = checkPhone('4155552671', source());
 
     expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('utils-not-loaded');
+    expect(check.reason).toBe('rule-not-loaded');
   });
 });
 

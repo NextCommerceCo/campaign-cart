@@ -3,14 +3,24 @@
  * Handles fetching country and state data from the CDN API with caching
  */
 
+import type {
+  CountryRules,
+  FixedValues,
+} from '@/core/country-service/country-service.next-address';
+import type { PhoneRules } from '@/core/country-service/country-service.phone';
+import { getSelectedLocale } from '@/core/currency-formatter';
+import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
+import { useConfigStore } from '@/state/config';
 import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
 import {
   fetchCountryStates,
   fetchLocationData,
+  fetchTexts,
 } from '@/core/country-service/country-service.next-address';
+import { baseLang } from '@/core/country-service/country-service.translations';
 
 export interface CountryConfig {
   stateLabel: string;
@@ -28,7 +38,7 @@ export interface CountryConfig {
   postcodeFormat: string | string[] | null;
   /**
    * True when {@link postcodeRegex} is written against the postcode **compacted** —
-   * uppercased, spaces removed — rather than against the string as typed.
+   * uppercased, spaces and hyphens removed — rather than against the string as typed.
    *
    * next-address defines every pattern that way so one pattern accepts every spacing a
    * shopper might use (`SW1A 1AA`, `sw1a1aa`). Testing such a pattern against the raw
@@ -36,6 +46,20 @@ export interface CountryConfig {
    * pattern and `validatePostalCode` compacts before matching.
    */
   postcodeCompact?: boolean;
+  /**
+   * Whether the country asks for a postcode. `false` for one that has none (Hong Kong) and
+   * for one whose single postcode is {@link fixed}; absent where it is not known, which is
+   * read as required.
+   */
+  postcodeRequired?: boolean;
+  /** Values every address in the country shares, sent without being asked for. */
+  fixed?: FixedValues;
+  /**
+   * How the country's phone numbers are shown and checked: the address-rules service's
+   * `spec.phone`. Absent for a country with no rules of its own, or from a deployment that
+   * sends none; the phone field is then a plain input.
+   */
+  phone?: PhoneRules;
   currencyCode: string;
   currencySymbol: string;
 }
@@ -59,17 +83,50 @@ export interface LocationData {
   detectedStates: State[];
   countries: Country[];
   detectedIp?: string;
+  /** The address-rules service's texts, flattened: `checkout.contact.title`. */
+  messages?: Record<string, string>;
+  /** Each field's errors from the country's rules, keyed by the service's field name. */
+  fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+  /** The language the service answered in: the one asked for if it has it, else `en`. */
+  messagesLang?: string;
 }
 
 export interface CountryStatesData {
   countryConfig: CountryConfig;
   states: State[];
+  /** The country's rules as the service answered them, for a caller that needs its labels. */
+  rules?: CountryRules;
+  messages?: Record<string, string>;
+  fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+  messagesLang?: string;
+}
+
+/**
+ * The language the address-rules service answers in: the debug picker's locale, then the
+ * page's own when the caller has one (`data-next-address-lang`), then `nextConfig.locale`,
+ * then English. Never the browser's, or a shipped page would relabel itself per visitor.
+ */
+export function addressLang(pageLang?: string): string {
+  return (
+    getSelectedLocale() ?? pageLang ?? useConfigStore.getState().locale ?? 'en'
+  );
 }
 
 export class CountryService {
   private static instance: CountryService;
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
+  private messagesLang: string | undefined;
+  /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
+  private texts = new Map<string, Readonly<Record<string, string>>>();
+  private textRequests = new Map<string, Promise<void>>();
+  private fieldErrors = new Map<
+    string,
+    Readonly<Record<string, Readonly<Record<string, string>>>>
+  >();
+  private lastFieldErrors: Readonly<
+    Record<string, Readonly<Record<string, string>>>
+  > = {};
   private logger: Logger;
   private config: AddressConfig = {};
   private campaignShippingCountries: string[] | null = null;
@@ -132,21 +189,88 @@ export class CountryService {
     return this.campaignShippingCountries;
   }
 
+  /** The language {@link getFieldErrors} are in, once the service has said. */
+  public getMessagesLang(): string | undefined {
+    return this.messagesLang;
+  }
+
+  /**
+   * The service's texts in `lang`, or `undefined` until they are loaded. Kept apart from
+   * {@link getFieldErrors}, which come with one country's rules in one language: a page
+   * switching language reads new texts while the form's errors wait for new rules.
+   */
+  public getTexts(lang: string): Readonly<Record<string, string>> | undefined {
+    return this.texts.get(baseLang(lang));
+  }
+
+  /**
+   * Loads the service's texts in `lang`, once however many elements ask, and says so
+   * with `address:messages-loaded`. An answer in another language is not kept: a page
+   * with no texts in its language keeps its own.
+   */
+  public loadTexts(lang: string): Promise<void> {
+    const base = baseLang(lang);
+    if (this.texts.has(base)) return Promise.resolve();
+    let request = this.textRequests.get(base);
+    if (!request) {
+      request = fetchTexts(lang).then(answer => {
+        if (answer && baseLang(answer.lang) === base) {
+          this.texts.set(base, answer.texts);
+          EventBus.getInstance().emit('address:messages-loaded', {
+            lang: base,
+          });
+        }
+      });
+      this.textRequests.set(base, request);
+    }
+    return request;
+  }
+
+  /**
+   * Each field's errors from the rules of `country`, whole sentences keyed by what is
+   * wrong: `{ postcode: { blank: 'Enter a ZIP Code', … } }`. The country's own when its
+   * rules have been fetched, else the last country's.
+   */
+  public getFieldErrors(
+    country?: string
+  ): Readonly<Record<string, Readonly<Record<string, string>>>> {
+    return (country && this.fieldErrors.get(country)) || this.lastFieldErrors;
+  }
+
+  private keepMessages(
+    country: string,
+    data: Pick<LocationData, 'messages' | 'fieldErrors' | 'messagesLang'>
+  ): void {
+    if (data.messagesLang) this.messagesLang = data.messagesLang;
+    if (data.messages && data.messagesLang) {
+      this.texts.set(baseLang(data.messagesLang), data.messages);
+      EventBus.getInstance().emit('address:messages-loaded', {
+        lang: baseLang(data.messagesLang),
+      });
+    }
+    if (data.fieldErrors) {
+      this.fieldErrors.set(country, data.fieldErrors);
+      this.lastFieldErrors = data.fieldErrors;
+    }
+  }
+
   /**
    * Get location data with user's detected country and list of all countries
    */
   public async getLocationData(): Promise<LocationData> {
     // Use localStorage for location data as countries list doesn't change often
-    const cached = this.getFromCache('location_data', true);
+    const lang = addressLang();
+    const cached = this.getFromCache('location_data', lang);
 
     if (cached) {
+      this.keepMessages(cached.detectedCountryCode, cached);
       return await this.applyCountryFiltering(cached);
     }
 
     try {
-      const data = await fetchLocationData();
-      // Store in localStorage for longer persistence
-      this.setCache('location_data', data, true);
+      const data = await fetchLocationData(undefined, lang);
+      this.keepMessages(data.detectedCountryCode, data);
+      this.setCache('location_data', data, lang);
 
       this.logger.debug('Location data fetched', {
         detectedCountry: data.detectedCountryCode,
@@ -167,24 +291,22 @@ export class CountryService {
     countryCode: string
   ): Promise<CountryStatesData> {
     const cacheKey = `states_${countryCode}`;
-    // Use localStorage for country states as they don't change often
-    const cached = this.getFromCache(cacheKey, true);
+    const lang = addressLang();
+    const cached = this.getFromCache(cacheKey, lang);
 
     if (cached) {
+      this.keepMessages(countryCode, cached);
       return {
         ...cached,
-        countryConfig: postalCodeMethods.withPostcodeFormats(
-          countryCode,
-          cached.countryConfig
-        ),
+        countryConfig: cached.countryConfig,
         states: this.applyStateFiltering(cached.states || []),
       };
     }
 
     try {
-      const data = await fetchCountryStates(countryCode);
-      // Store in localStorage for longer persistence
-      this.setCache(cacheKey, data, true);
+      const data = await fetchCountryStates(countryCode, undefined, lang);
+      this.keepMessages(countryCode, data);
+      this.setCache(cacheKey, data, lang);
 
       this.logger.debug(`States data fetched for ${countryCode}`, {
         statesCount: data.states?.length,
@@ -193,10 +315,7 @@ export class CountryService {
 
       return {
         ...data,
-        countryConfig: postalCodeMethods.withPostcodeFormats(
-          countryCode,
-          data.countryConfig
-        ),
+        countryConfig: data.countryConfig,
         states: this.applyStateFiltering(data.states || []),
       };
     } catch (error) {
@@ -216,10 +335,7 @@ export class CountryService {
     // First try to get from location data if it's the detected country
     const locationData = await this.getLocationData();
     if (locationData.detectedCountryCode === countryCode) {
-      return postalCodeMethods.withPostcodeFormats(
-        countryCode,
-        locationData.detectedCountryConfig
-      );
+      return locationData.detectedCountryConfig;
     }
 
     // Otherwise fetch states data which includes country config
@@ -302,20 +418,24 @@ export class CountryService {
     }
   }
 
-  private getFromCache(key: string, useLocalStorage: boolean = false): any {
+  /**
+   * localStorage, because a country list does not change between sessions. An entry in
+   * another language is a miss; one written before entries carried a language was `en`.
+   */
+  private getFromCache(key: string, lang: string): any {
     try {
       const cacheKey = this.cachePrefix + key;
-      const storage = useLocalStorage ? localStorage : sessionStorage;
-      const cached = storage.getItem(cacheKey);
+      const cached = localStorage.getItem(cacheKey);
       if (!cached) return null;
 
-      const { data, timestamp } = JSON.parse(cached);
+      const { data, timestamp, lang: cachedLang = 'en' } = JSON.parse(cached);
       const now = Date.now();
 
       if (now - timestamp > this.cacheExpiry) {
-        storage.removeItem(cacheKey);
+        localStorage.removeItem(cacheKey);
         return null;
       }
+      if (cachedLang !== lang) return null;
 
       return data;
     } catch (error) {
@@ -324,19 +444,15 @@ export class CountryService {
     }
   }
 
-  private setCache(
-    key: string,
-    data: any,
-    useLocalStorage: boolean = false
-  ): void {
+  private setCache(key: string, data: any, lang: string): void {
     try {
       const cacheKey = this.cachePrefix + key;
       const cacheData = {
         data,
         timestamp: Date.now(),
+        lang,
       };
-      const storage = useLocalStorage ? localStorage : sessionStorage;
-      storage.setItem(cacheKey, JSON.stringify(cacheData));
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
       this.logger.warn('Failed to write to cache:', error);
       // Continue without caching if storage is unavailable
@@ -344,10 +460,7 @@ export class CountryService {
   }
 
   private getDefaultCountryConfig(countryCode: string): CountryConfig {
-    return postalCodeMethods.withPostcodeFormats(
-      countryCode,
-      postalCodeMethods.getDefaultCountryConfig(countryCode)
-    );
+    return postalCodeMethods.getDefaultCountryConfig(countryCode);
   }
 
   private getFallbackLocationData(): LocationData {

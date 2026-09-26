@@ -73,10 +73,10 @@ export function setupEmailEntryTrigger(context: TriggerContext): void {
 
   // Find first name and last name fields
   const firstNameField = context.element.querySelector(
-    '[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
+    '[data-next-checkout-field="first_name"], [data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]'
   ) as HTMLInputElement;
   const lastNameField = context.element.querySelector(
-    '[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
+    '[data-next-checkout-field="last_name"], [data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]'
   ) as HTMLInputElement;
 
   let blurTimeout: number | undefined;

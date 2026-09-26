@@ -1,130 +1,83 @@
-export interface AddressFieldSpec {
-  name: string;
-  label: string;
-  required: boolean;
-  autocomplete: string;
-  control: 'text' | 'select' | 'tel';
-  optionsSource?: 'states';
-  placeholder?: string;
-  hint?: string;
-  example?: string;
-  maxLength?: number;
-  inputMode?: 'text' | 'numeric' | 'tel';
-  autoCapitalize?: 'none' | 'words' | 'characters';
-  span?: number;
-}
+import {
+  readCountryRules,
+  type CountryRules,
+  type RulesField,
+} from '@/core/country-service';
 
-export interface AddressSpec {
-  country: string;
-  /** Rows of field names. A field absent from it is not collected at all. */
-  layout: string[][];
-  fields: Record<string, AddressFieldSpec | undefined>;
-  fallback?: boolean;
-}
+const text = (
+  label: string,
+  autocomplete: string,
+  input: Partial<RulesField['input']> = {},
+  required = false
+): RulesField => ({
+  label,
+  labelOptional: `${label} (optional)`,
+  required,
+  autocomplete,
+  input: { type: 'text', autoCapitalize: 'words', maxLength: 255, ...input },
+});
 
 /**
- * What the block renders when the first layout cannot be fetched, because a block with no
- * fields leaves the shopper nowhere to type an address. It is the service's own default
- * layout (`zz` in i18n-rules `src/rules/default.ts`), in English. State and postcode are
- * not required: the country's rules are unknown, and refusing a real address is worse
- * than accepting an odd one.
+ * What a block renders when the first answer cannot be fetched, because a block with no
+ * fields leaves the shopper nowhere to type. It is the service's own default layout
+ * (`src/rules/default.json` in i18n-rules), in English. State and postcode are not
+ * required: the country's rules are unknown, and refusing a real address is worse than
+ * accepting an odd one.
  */
-const BUILT_IN_SPEC: Omit<AddressSpec, 'country'> = {
-  layout: [
-    ['country'],
-    ['first_name', 'last_name'],
-    ['line1'],
-    ['line2'],
-    ['city', 'state', 'postcode'],
-    ['phone_number'],
-  ],
+const BUILT_IN_RULES: Omit<CountryRules, 'country'> = {
+  curated: false,
+  address: {
+    layout: [
+      ['country'],
+      ['first_name', 'last_name'],
+      ['line1'],
+      ['line2'],
+      ['city', 'state', 'postcode'],
+      ['phone_number'],
+    ],
+  },
   fields: {
     country: {
-      name: 'country',
       label: 'Country',
+      labelOptional: 'Country (optional)',
       required: true,
       autocomplete: 'country',
-      control: 'select',
+      input: { type: 'select', options: 'countries' },
     },
-    first_name: {
-      name: 'first_name',
-      label: 'First name',
+    first_name: text('First name', 'given-name', {}, true),
+    last_name: text('Last name', 'family-name', {}, true),
+    email: {
+      label: 'Email',
+      labelOptional: 'Email (optional)',
       required: true,
-      autocomplete: 'given-name',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-    },
-    last_name: {
-      name: 'last_name',
-      label: 'Last name',
-      required: true,
-      autocomplete: 'family-name',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-    },
-    line1: {
-      name: 'line1',
-      label: 'Address',
-      required: true,
-      autocomplete: 'address-line1',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-    },
-    line2: {
-      name: 'line2',
-      label: 'Apartment, suite, etc. (optional)',
-      required: false,
-      autocomplete: 'address-line2',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-    },
-    city: {
-      name: 'city',
-      label: 'City',
-      required: true,
-      autocomplete: 'address-level2',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-      span: 2,
-    },
-    state: {
-      name: 'state',
-      label: 'State/Province',
-      required: false,
-      autocomplete: 'address-level1',
-      control: 'text',
-      maxLength: 255,
-      autoCapitalize: 'words',
-    },
-    postcode: {
-      name: 'postcode',
-      label: 'Postal code',
-      required: false,
-      autocomplete: 'postal-code',
-      control: 'text',
-      maxLength: 64,
-      autoCapitalize: 'characters',
+      autocomplete: 'email',
+      input: {
+        type: 'email',
+        inputMode: 'email',
+        autoCapitalize: 'none',
+        maxLength: 254,
+      },
     },
     phone_number: {
-      name: 'phone_number',
       label: 'Phone number',
+      labelOptional: 'Phone number (optional)',
       required: false,
       autocomplete: 'tel',
-      control: 'tel',
-      maxLength: 24,
-      inputMode: 'tel',
+      input: { type: 'tel', inputMode: 'tel', maxLength: 24 },
     },
+    line1: text('Address', 'address-line1', {}, true),
+    line2: text('Apartment, suite, etc.', 'address-line2'),
+    city: text('City', 'address-level2', { span: 2 }, true),
+    state: text('State/Province', 'address-level1'),
+    postcode: text('Postal code', 'postal-code', {
+      autoCapitalize: 'characters',
+      maxLength: 64,
+    }),
   },
-  fallback: true,
 };
 
-export function builtInAddressSpec(countryCode: string): AddressSpec {
-  return { ...BUILT_IN_SPEC, country: countryCode };
+export function builtInRules(countryCode: string): CountryRules {
+  return { ...BUILT_IN_RULES, country: countryCode };
 }
 
 const DEFAULT_BASE_URL = 'https://i18n-rules.nextcommerce.com';
@@ -136,13 +89,13 @@ const DEFAULT_LANG = 'en';
  * States are deliberately not requested: the province dropdown is filled by the checkout
  * form from `CountryService`, and asking here too puts two lists on one page.
  */
-export async function fetchAddressSpec(
+export async function fetchCountryRules(
   countryCode: string,
   options: { baseUrl?: string; lang?: string } = {}
-): Promise<AddressSpec> {
+): Promise<CountryRules> {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const lang = options.lang ?? DEFAULT_LANG;
-  const url = `${baseUrl}/v1/layout/${encodeURIComponent(countryCode)}?lang=${encodeURIComponent(lang)}`;
+  const url = `${baseUrl}/v1/countries/${encodeURIComponent(countryCode)}?lang=${encodeURIComponent(lang)}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -151,11 +104,7 @@ export async function fetchAddressSpec(
     );
   }
 
-  const body = await response.json();
   // Checked for shape, not just presence: the caller guards the request, not the render,
   // so a `layout` that is not an array throws where nothing is listening.
-  if (!Array.isArray(body?.spec?.layout)) {
-    throw new Error(`Address layout for ${countryCode} carried no layout`);
-  }
-  return body.spec as AddressSpec;
+  return readCountryRules(await response.json(), url);
 }

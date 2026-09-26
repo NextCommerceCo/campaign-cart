@@ -7,6 +7,9 @@ import {
   bootSdk,
   captureEvents,
   ADDRESS_SERVICE_ROUTE,
+  routeAddressService,
+  countryRules,
+  ruleField,
 } from './fixtures/routes';
 import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
@@ -20,31 +23,50 @@ import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 const FIXTURE = '/e2e/fixtures/address-form.html';
 
-const US_SPEC = {
-  country: 'US',
-  layout: [['country'], ['first_name', 'last_name'], ['line1'], ['city', 'state', 'postcode']],
-  fields: {
-    country: { name: 'country', label: 'Country', required: true, autocomplete: 'country', control: 'select' },
-    first_name: { name: 'first_name', label: 'First name', required: true, autocomplete: 'given-name', control: 'text' },
-    last_name: { name: 'last_name', label: 'Last name', required: true, autocomplete: 'family-name', control: 'text' },
-    line1: { name: 'line1', label: 'Address', required: true, autocomplete: 'address-line1', control: 'text' },
-    city: { name: 'city', label: 'City', required: true, autocomplete: 'address-level2', control: 'text' },
-    state: { name: 'state', label: 'State', required: true, autocomplete: 'address-level1', control: 'select', optionsSource: 'states' },
-    postcode: { name: 'postcode', label: 'ZIP Code', required: true, autocomplete: 'postal-code', control: 'text' },
-  },
-};
+const US_SPEC = countryRules(
+  'US',
+  [
+    ['country'],
+    ['first_name', 'last_name'],
+    ['line1'],
+    ['city', 'state', 'postcode'],
+    ['phone_number'],
+  ],
+  {
+    country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
+    line1: ruleField('Address', 'address-line1'),
+    city: ruleField('City', 'address-level2'),
+    state: ruleField('State', 'address-level1', { type: 'select', options: 'states' }),
+    postcode: ruleField('ZIP Code', 'postal-code'),
+    first_name: ruleField('First name', 'given-name'),
+    last_name: ruleField('Last name', 'family-name'),
+    email: ruleField('Email', 'email', { type: 'email' }),
+    phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
+  }
+);
 
-const JP_SPEC = {
-  country: 'JP',
-  layout: [['country'], ['postcode', 'state'], ['city'], ['line1']],
-  fields: {
-    country: { name: 'country', label: 'Country', required: true, autocomplete: 'country', control: 'select' },
-    postcode: { name: 'postcode', label: 'Postal code', required: true, autocomplete: 'postal-code', control: 'text' },
-    state: { name: 'state', label: 'Prefecture', required: true, autocomplete: 'address-level1', control: 'select' },
-    city: { name: 'city', label: 'City', required: true, autocomplete: 'address-level2', control: 'text' },
-    line1: { name: 'line1', label: 'Street', required: true, autocomplete: 'address-line1', control: 'text' },
-  },
-};
+const JP_SPEC = countryRules(
+  'JP',
+  [
+    ['country'],
+    ['last_name', 'first_name'],
+    ['postcode', 'state'],
+    ['city'],
+    ['line1'],
+    ['phone_number'],
+  ],
+  {
+    country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
+    postcode: ruleField('Postal code', 'postal-code'),
+    state: ruleField('Prefecture', 'address-level1', { type: 'select', options: 'states' }),
+    city: ruleField('City', 'address-level2'),
+    line1: ruleField('Street', 'address-line1'),
+    first_name: ruleField('First name', 'given-name'),
+    last_name: ruleField('Last name', 'family-name'),
+    email: ruleField('Email', 'email', { type: 'email' }),
+    phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
+  }
+);
 
 /**
  * How long the block's layout request is held before it answers.
@@ -62,34 +84,25 @@ const LAYOUT_DELAY_MS = 300;
 
 /**
  * One stub for both callers: the checkout form's `CountryService` and this feature read
- * the same service, `/v1/bootstrap` for the country list and `/v1/layout/:country` for
- * one country's rules. The two are told apart by `include=states`, which only the form
- * asks for.
+ * the same service. The block's own request is the one that does not ask for states,
+ * and it is the one held back.
  */
 async function stubAddressService(page: Page): Promise<void> {
-  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
-    const url = route.request().url();
-    const country = url.match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    const spec = country === 'JP' ? JP_SPEC : US_SPEC;
-    const states = [{ code: 'NY', name: 'New York' }];
-
-    if (country) {
-      if (!url.includes('include=states')) {
+  await routeAddressService(page, {
+    geo: { currency: 'USD', ip: '203.0.113.7' },
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'JP', name: 'Japan' },
+    ],
+    rules: async (country, { withStates }) => {
+      if (!withStates) {
         await new Promise(resolve => setTimeout(resolve, LAYOUT_DELAY_MS));
       }
-      return route.fulfill({ json: { spec, states } });
-    }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US', currency: 'USD', ip: '203.0.113.7' },
-        spec: US_SPEC,
-        countries: [
-          { code: 'US', name: 'United States' },
-          { code: 'JP', name: 'Japan' },
-        ],
-        states,
-      },
-    });
+      return {
+        ...(country === 'JP' ? JP_SPEC : US_SPEC),
+        states: [{ code: 'NY', name: 'New York' }],
+      };
+    },
   });
 }
 
@@ -134,12 +147,14 @@ test('builds the fields the country collects, in the order it writes them', asyn
   await bootSdk(page, FIXTURE);
 
   const block = page.locator('[data-next-address]');
-  await expect(block.locator('[data-next-checkout-field]')).toHaveCount(5);
+  await expect(block.locator('[data-next-checkout-field]')).toHaveCount(6);
 
+  // The layout names the whole address; the page writes the name itself, so the block
+  // builds the rest, the phone included.
   const order = await block
     .locator('[data-next-checkout-field]')
     .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
-  expect(order).toEqual(['country', 'address1', 'city', 'province', 'postal']);
+  expect(order).toEqual(['country', 'address1', 'city', 'province', 'postal', 'phone']);
 });
 
 test('city, state and ZIP wait until the street address is typed', async ({
@@ -222,7 +237,7 @@ test('choosing another country rebuilds the form in that country’s shape', asy
   page,
 }) => {
   await bootSdk(page, FIXTURE);
-  await expect(page.locator('[data-next-address] [data-next-checkout-field]')).toHaveCount(5);
+  await expect(page.locator('[data-next-address] [data-next-checkout-field]')).toHaveCount(6);
 
   await page.selectOption(FIELD('country'), 'JP');
 
@@ -232,7 +247,7 @@ test('choosing another country rebuilds the form in that country’s shape', asy
         .locator('[data-next-address] [data-next-checkout-field]')
         .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')))
     )
-    .toEqual(['country', 'postal', 'province', 'city', 'address1']);
+    .toEqual(['country', 'postal', 'province', 'city', 'address1', 'phone']);
 });
 
 test('an address typed after a country change still reaches the store', async ({
@@ -305,20 +320,22 @@ test('the dropdowns are filled even when the layout arrives after boot', async (
 /**
  * A country's layout describes a whole address form, name included, but this page
  * collects the name in a step of its own. Building it again would put two elements under
- * `fname` on the page, and the order is assembled from whichever the form scanned last —
+ * the first name on the page, and the order is assembled from whichever the form scanned last —
  * so what the shopper typed in the first step is dropped.
  */
 test('a field the page already collects is not built a second time', async ({ page }) => {
   await bootSdk(page, FIXTURE);
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
-  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+  // The page writes `first_name`, the name to write; the block's own would be `fname`,
+  // the SDK's older name for the same field, and it must see them as one.
+  await expect(page.locator(FIELD('first_name'))).toHaveCount(1);
   await expect(
     page.locator(`[data-next-address] ${FIELD('fname')}`)
   ).toHaveCount(0);
 
-  await page.fill(FIELD('fname'), 'Gwen');
-  await page.locator(FIELD('fname')).blur();
+  await page.fill(FIELD('first_name'), 'Gwen');
+  await page.locator(FIELD('first_name')).blur();
 
   await expect
     .poll(() =>
@@ -391,6 +408,45 @@ test('a returning visitor sees the address they already gave', async ({ page }) 
   await expect(page.locator(FIELD('postal'))).toHaveValue('60448');
 });
 
+/**
+ * A field that is not required says so, in the language its label is in: the rules carry
+ * its optional label, written whole in that language.
+ */
+test('an optional field carries its note in the page’s language', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).nextConfig = { locale: 'th-TH' };
+  });
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () =>
+      countryRules(
+        'US',
+        [['country'], ['line1'], ['line2']],
+        {
+          country: ruleField('ประเทศ', 'country', { type: 'select', options: 'countries' }),
+          line1: ruleField('ที่อยู่', 'address-line1'),
+          line2: ruleField('ห้อง / ชั้น / อาคาร', 'address-line2', { type: 'text' }, {
+            required: false,
+            labelOptional: 'ห้อง / ชั้น / อาคาร (ไม่บังคับ)',
+          }),
+        },
+        { lang: 'th' }
+      ),
+  });
+
+  await bootSdk(page, FIXTURE);
+
+  await expect(
+    page.locator('[data-next-address-field="address2"] .next-address-label')
+  ).toHaveText('ห้อง / ชั้น / อาคาร (ไม่บังคับ)');
+  // Required, so no note.
+  await expect(
+    page.locator('[data-next-address-field="address1"] .next-address-label')
+  ).toHaveText('ที่อยู่');
+});
+
 test('a failed layout lookup still gives the shopper an address to fill', async ({
   page,
 }) => {
@@ -409,7 +465,8 @@ test('a failed layout lookup still gives the shopper an address to fill', async 
     'ready'
   );
   // The fixture writes the name itself; the built-in layout must not build it again.
-  await expect(page.locator(FIELD('fname'))).toHaveCount(1);
+  await expect(page.locator(FIELD('first_name'))).toHaveCount(1);
+  await expect(page.locator(`[data-next-address] ${FIELD('fname')}`)).toHaveCount(0);
 
   // Revealing the city proves the checkout form bound the built-in fields, not only
   // that they were drawn.
@@ -431,14 +488,16 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
   await expect(page.locator(FIELD('address1'))).toBeVisible();
 
   await page.unroute(ADDRESS_SERVICE_ROUTE);
-  await page.route(ADDRESS_SERVICE_ROUTE, async route => {
-    const country = route.request().url().match(/\/v1\/layout\/([A-Z]{2})/)?.[1];
-    if (!country) return route.fulfill({ status: 500, json: {} });
-    // JP is asked for first and answers last.
-    await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
-    return route.fulfill({
-      json: { spec: country === 'JP' ? JP_SPEC : US_SPEC, states: [] },
-    });
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'JP', name: 'Japan' },
+    ],
+    rules: async country => {
+      // JP is asked for first and answers last.
+      await new Promise(r => setTimeout(r, country === 'JP' ? 900 : 100));
+      return country === 'JP' ? JP_SPEC : US_SPEC;
+    },
   });
 
   const rendered = await captureEvents(page, 'address:fields-rendered');
@@ -461,8 +520,8 @@ test('a layout that arrives after a newer one is discarded', async ({ page }) =>
       .locator('[data-next-address] [data-next-checkout-field]')
       .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')));
 
-  // No fname/lname: the page collects those itself, so the block leaves them alone.
-  const US_ORDER = ['country', 'address1', 'city', 'province', 'postal'];
+  // No names: the page collects those itself, so the block leaves them alone.
+  const US_ORDER = ['country', 'address1', 'city', 'province', 'postal', 'phone'];
 
   await expect.poll(order, { timeout: 4000 }).toEqual(US_ORDER);
 
@@ -510,12 +569,46 @@ test('a returning visitor sees the billing address they already gave', async ({
   await expect(page.locator(FIELD('billing-city'))).toBeVisible();
 });
 
+/**
+ * A billing address is a whole address, so its block builds the names and the phone too,
+ * under their `billing-` names: the shipping block's are the shipping address's.
+ */
+test('a billing block builds the whole address, names and phone included', async ({
+  page,
+}) => {
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-next-address="billing"] [data-next-checkout-field]')
+        .evaluateAll(els => els.map(el => el.getAttribute('data-next-checkout-field')))
+    )
+    .toEqual([
+      'billing-country',
+      'billing-fname',
+      'billing-lname',
+      'billing-address1',
+      'billing-city',
+      'billing-province',
+      'billing-postal',
+      'billing-phone',
+    ]);
+  await expect(
+    page.locator('[data-next-address="shipping"] [data-next-checkout-field]')
+  ).toHaveCount(8);
+});
+
 /** The `lang` of every layout request the block makes, in order. */
 function recordLayoutLangs(page: Page): string[] {
   const langs: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
-    if (/\/v1\/layout\//.test(url.pathname) && !url.searchParams.has('include')) {
+    // The block's own request: one country's rules, without the form's states.
+    if (
+      /^\/v1\/countries\/[^/]+$/.test(url.pathname) &&
+      !url.searchParams.has('include')
+    ) {
       langs.push(url.searchParams.get('lang') ?? '');
     }
   });

@@ -20,6 +20,7 @@
 import {
   readFile,
   writeFile,
+  copyFile,
   mkdir,
   rm,
   readdir,
@@ -68,16 +69,22 @@ const staleFiles = new Set(await walk(OUT));
 
 let count = 0;
 for (const file of await walk(SRC)) {
-  const text = rewriteLinks(
-    stripGroupPrefix(
-      (await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)
-    ),
-    relative(SRC, dirname(file)) || '.'
-  );
   const target = join(OUT, relative(SRC, file));
   const temporary = `${target}.${process.pid}.tmp`;
   await mkdir(dirname(target), { recursive: true });
-  await writeFile(temporary, text);
+  // Only a page is rewritten. An image is copied byte for byte: read as UTF-8, a PNG
+  // comes out corrupted.
+  if (file.endsWith('.md')) {
+    const text = rewriteLinks(
+      stripGroupPrefix(
+        (await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)
+      ),
+      relative(SRC, dirname(file)) || '.'
+    );
+    await writeFile(temporary, text);
+  } else {
+    await copyFile(file, temporary);
+  }
   await rename(temporary, target);
   staleFiles.delete(target);
   count++;

@@ -7,31 +7,33 @@
  *
  * Checked in this order, first answer wins:
  *
- * 1. `isValidNumber()` — the library's length check, per country.
+ * 1. `isValidNumber()` — the phone field's verdict: `isPlausiblePhone` against its
+ *    country's phone rules.
  * 2. Digit count, {@link MIN_PHONE_DIGITS}..{@link MAX_PHONE_DIGITS} — `unknown`, never `valid`.
  *
- * Three verdicts because that library loads over the network: `unknown` means nobody could
+ * Three verdicts because those rules load over the network: `unknown` means nobody could
  * check it, not that the number is wrong.
  *
- * **The bar is the library's own `isValidNumber()`,** which asks whether a number is
- * well formed for its country, not whether it is in service. `0000000000` and `1234567890`
- * pass it and are sent. The library's stricter `isValidNumberPrecise()` would refuse both
- * and is deliberately not used, because the two ways of being wrong do not cost the same:
- * refusing a real number loses a sale, silently and for good, while accepting an unreachable
- * one costs a server-side rejection we can see. A rule that can only be wrong in the
- * expensive direction is not worth the numbers it catches.
+ * **The bar is deliberately loose, because the order API validates the number.** The field
+ * only refuses what is clearly not a phone number: national digits outside the country's
+ * loose pattern (`core/country-service/country-service.phone.ts › isPlausiblePhone`), or a
+ * number typed with another country's `+` code outside E.164's 8 to 15 digits. It asks
+ * nothing about number types or whether a number is in service, so `0000000000` passes in
+ * the US and is sent. The two ways of being wrong do not cost the same: refusing a real
+ * number loses a sale, silently and for good, while accepting an unreachable one costs a
+ * server-side rejection we can see.
  */
 
 /**
- * The part of `intl-tel-input`'s `Iti` this module uses.
+ * What this module asks a phone field (`checkout-form/phone-input.ts`).
  *
- * Structural, so the module stays free of the widget and the DOM. Both methods optional and
+ * Structural, so the module stays free of the field and the DOM. Both methods optional and
  * a throwing one yields `unknown`, because this runs on every keystroke.
  */
 export interface PhoneNumberSource {
-  /** E.164 for what is in the field now, or `''` before the utils script loads. */
-  getNumber?(format?: number): string;
-  /** Length-based verdict. `null` before the utils script loads. */
+  /** E.164 for what is in the field now, or `''` when there is none to give. */
+  getNumber?(): string;
+  /** Whether the number could be one for its country. `null` until the rules load. */
   isValidNumber?(): boolean | null;
 }
 
@@ -41,9 +43,11 @@ export type PhoneVerdict = 'valid' | 'invalid' | 'unknown';
 /** Which check produced the verdict. Carried for logs, never for control flow. */
 export type PhoneReason =
   | 'empty'
-  | 'library-length'
+  /** The country's phone rule decided it. */
+  | 'rule'
   | 'digit-count'
-  | 'utils-not-loaded'
+  /** The phone field is there, and has no rule to check with. */
+  | 'rule-not-loaded'
   /** No widget to ask — none on the page, or the one there is shows another number. */
   | 'no-instance';
 
@@ -93,9 +97,10 @@ function isE164Shaped(value: string): boolean {
 /**
  * The number the widget's own field holds, in E.164, or nothing.
  *
- * Nothing when the widget cannot speak for a number: none on the page, the utils script not
- * landed (`getNumber()` answers `''`), an empty field, or a bare dial code — which must
- * never be taken for the number it was asked about.
+ * Nothing when the widget cannot speak for a number: none on the page, a national number
+ * with no rules to convert it by or a rule with no calling code (`getNumber()` answers
+ * `''`), an empty field, or a bare dial code — which must never be taken for the number it
+ * was asked about.
  */
 export function e164FromWidget(widget?: PhoneNumberSource): string | undefined {
   let e164: string | undefined;
@@ -108,11 +113,11 @@ export function e164FromWidget(widget?: PhoneNumberSource): string | undefined {
 }
 
 /**
- * The widget's length verdict, `null` while its utils script loads, `undefined` when it
- * could not answer at all.
+ * The widget's verdict, `null` while its rules load, `undefined` when it could not answer
+ * at all.
  *
- * The `catch` is for one case: a destroyed instance still reachable through a stale
- * reference. Every other state the library reports rather than throws.
+ * The `catch` keeps a source that throws from failing a keystroke. The SDK's own phone
+ * field reports every state rather than throwing.
  */
 function verdictOf(widget?: PhoneNumberSource): boolean | null | undefined {
   try {
@@ -125,10 +130,10 @@ function verdictOf(widget?: PhoneNumberSource): boolean | null | undefined {
 /**
  * E.164 from the widget, then from the text when it was already written internationally.
  *
- * Deliberately no third source: `+{dialCode}{digits}` is assemblable without the utils
- * script, but whether the national number keeps its leading zero is a per-country rule (the
- * UK and Germany drop it, Italy keeps it). Guessing produces a number that looks like valid
- * E.164 and is not, which is worse than a national number the API knows it must convert.
+ * Deliberately no third source: `+{dialCode}{digits}` is assemblable without the rules,
+ * but whether the national number keeps its leading zero is a per-country rule (the UK and
+ * Germany drop it, Italy keeps it). Guessing produces a number that looks like valid E.164
+ * and is not, which is worse than a national number the API knows it must convert.
  */
 function readE164(value: string, widget?: PhoneNumberSource): string | null {
   const fromWidget = e164FromWidget(widget);
@@ -141,13 +146,14 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
 /**
  * The widget, when it is in a position to answer at all.
  *
- * It is whenever its field holds anything. `getNumber()` answers the national text for a
- * number it cannot yet parse — `"(415) 555-267"` for nine US digits — and that is the case
- * whose verdict matters most, so the test is "holds something", not "holds E.164".
+ * It is whenever its field holds anything. `getNumber()` answers for a number too short to
+ * be valid — `+1415555267` for nine US digits — and that is the case whose verdict matters
+ * most, so the test is "holds something", not "holds a valid number".
  *
  * An empty field answers `''`, and its `isValidNumber()` is `false` about a number that is
- * not there. The only usable answer left there is `null`: the utils script not having
- * landed, which is not a rejection.
+ * not there. The only usable answer left there is `null`: the rules not having loaded,
+ * which is not a rejection. A country whose rule has no calling code (Argentina) also
+ * answers `''` with a verdict, so its numbers fall through to the digit count.
  */
 function usableWidget(
   source?: PhoneNumberSource
@@ -168,9 +174,9 @@ function usableWidget(
 /**
  * Whether this phone can be used, and what to store for it.
  *
- * Pass `source` — the `intl-tel-input` instance bound to the field — whenever it is to
- * hand. Without it the answer can only be `unknown`: nothing else on the page knows what a
- * valid number looks like in the shopper's country.
+ * Pass `source` — the phone field bound to the input — whenever it is to hand. Without it
+ * the answer can only be `unknown`: nothing else on the page knows what a valid number
+ * looks like in the shopper's country.
  *
  * **`source` must be the widget for `raw`.** A widget answers about its own field, so every
  * caller either reads `raw` straight off that field or reads it from the store after
@@ -179,10 +185,10 @@ function usableWidget(
  * @example
  * ```ts
  * checkPhone('123', phoneInputs.get('shipping'));
- * // → { verdict: 'invalid', reason: 'library-length', value: '123', isE164: false }
+ * // → { verdict: 'invalid', reason: 'rule', value: '123', isE164: false }
  *
  * checkPhone('(415) 555-2671', phoneInputs.get('shipping'));
- * // → { verdict: 'valid', reason: 'library-length', value: '+14155552671', isE164: true }
+ * // → { verdict: 'valid', reason: 'rule', value: '+14155552671', isE164: true }
  * ```
  */
 export function checkPhone(
@@ -199,13 +205,13 @@ export function checkPhone(
   const e164 = readE164(value, widget);
   const resolved = { value: e164 ?? value, isE164: e164 !== null };
 
-  // `null` is the utils script not having loaded, not a rejection.
+  // `null` is the rules not having loaded, not a rejection.
   const byLength = verdictOf(widget) ?? null;
   if (byLength !== null) {
     return {
       ...resolved,
       verdict: byLength ? 'valid' : 'invalid',
-      reason: 'library-length',
+      reason: 'rule',
     };
   }
 
@@ -217,7 +223,7 @@ export function checkPhone(
     verdict: withinRange ? 'unknown' : 'invalid',
     reason: withinRange
       ? widget
-        ? 'utils-not-loaded'
+        ? 'rule-not-loaded'
         : 'no-instance'
       : 'digit-count',
   };

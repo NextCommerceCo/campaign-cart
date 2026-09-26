@@ -1,6 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  bootSdk,
+  routeAddressService,
+  countryRules,
+  ruleField,
+} from './fixtures/routes';
+import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 /**
  * E2E for the checkout-form enhancer (`form[data-next-checkout]`).
@@ -16,28 +24,58 @@ import { stubCampaign, stubCart, bootSdk, ADDRESS_SERVICE_ROUTE } from './fixtur
 
 const FIXTURE = '/e2e/fixtures/checkout-form.html';
 
+/**
+ * The service's labels and errors in Thai, a language the SDK's fallback is not in. Any
+ * other `?lang=` is answered in English, as the service answers one it lacks.
+ */
+const THAI = {
+  lang: 'th',
+  labels: { first_name: 'ชื่อ', email: 'อีเมล' },
+  emoji: { first_name: 'ชื่อต้องไม่มีอีโมจิ', email: 'อีเมลต้องไม่มีอีโมจิ' },
+};
+const ENGLISH = {
+  lang: 'en',
+  labels: { first_name: 'First name', email: 'Email' },
+  emoji: { first_name: "First name can't contain emojis", email: "Email can't contain emojis" },
+};
+
+/** Sets `window.nextConfig` before the SDK reads it. */
+async function configure(page: Page, config: object): Promise<void> {
+  await page.addInitScript(c => {
+    (window as any).nextConfig = c;
+  }, config);
+}
+
 /** Stub the country/states CDN the checkout form's CountryService calls. */
 async function stubCountryService(page: Page): Promise<void> {
-  const spec = {
-    country: 'US',
-    layout: [['country'], ['line1'], ['city', 'state', 'postcode']],
-    fields: {
-      state: { label: 'State', required: true },
-      postcode: { label: 'ZIP Code', required: true },
+  const answerIn = (lang: string) => (lang.startsWith('th') ? THAI : ENGLISH);
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'CA', name: 'Canada' },
+    ],
+    rules: (_, { lang }) => {
+      const answer = answerIn(lang);
+      const named = (name: keyof typeof answer.labels, autocomplete: string) =>
+        ruleField(answer.labels[name], autocomplete, undefined, {
+          errors: { contains_emoji: answer.emoji[name] },
+        });
+      return countryRules(
+        'US',
+        [['country'], ['line1'], ['city', 'state', 'postcode']],
+        {
+          state: ruleField('State', 'address-level1', {
+            type: 'select',
+            options: 'states',
+          }),
+          postcode: ruleField('ZIP Code', 'postal-code'),
+          first_name: named('first_name', 'given-name'),
+          email: named('email', 'email'),
+        },
+        { lang: answer.lang }
+      );
     },
-  };
-  await page.route(ADDRESS_SERVICE_ROUTE, route => {
-    if (route.request().url().includes('/v1/layout/')) {
-      return route.fulfill({ json: { spec, states: [] } });
-    }
-    return route.fulfill({
-      json: {
-        geo: { country: 'US' },
-        spec,
-        countries: [{ code: 'US', name: 'United States' },
-          { code: 'CA', name: 'Canada' }],
-      },
-    });
+    locale: () => ({}),
   });
 }
 
@@ -81,6 +119,112 @@ test('a valid email gets no-error on blur', async ({ page }) => {
   await expect(email).not.toHaveClass(/has-error/);
 });
 
+test('an emoji in any field is refused on blur, in the service’s wording', async ({
+  page,
+}) => {
+  await configure(page, { locale: 'th-TH' });
+  await bootSdk(page, FIXTURE);
+
+  for (const [field, value, message] of [
+    ['fname', 'Ada 😀', 'ชื่อต้องไม่มีอีโมจิ'],
+    // The emoji's message, not the one an invalid address gets.
+    ['email', 'ada🎉@example.com', 'อีเมลต้องไม่มีอีโมจิ'],
+  ]) {
+    const input = page.locator(`[data-next-checkout-field="${field}"]`);
+    await input.fill(value);
+    await input.blur();
+
+    await expect(input).toHaveClass(/has-error/);
+    await expect(
+      page.locator('.form-group', { has: input }).locator('.next-error-label')
+    ).toHaveText(message);
+  }
+});
+
+test('a page’s own translation replaces the service’s wording', async ({
+  page,
+}) => {
+  await configure(page, {
+    locale: 'th-TH',
+    translations: { th: { 'fields.first_name.errors.contains_emoji': 'อย่าใส่อีโมจิในชื่อ' } },
+  });
+  await bootSdk(page, FIXTURE);
+
+  const fname = page.locator('[data-next-checkout-field="fname"]');
+  await fname.fill('Ada 😀');
+  await fname.blur();
+
+  await expect(
+    page.locator('.form-group', { has: fname }).locator('.next-error-label')
+  ).toHaveText('อย่าใส่อีโมจิในชื่อ');
+});
+
+/** The negative control: an accented letter is not an emoji. */
+test('a name with an accent is accepted on blur', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+
+  const lname = page.locator('[data-next-checkout-field="lname"]');
+  await lname.fill('du Pré');
+  await lname.blur();
+
+  await expect(lname).toHaveClass(/no-error/);
+  await expect(page.locator('.next-error-label')).toHaveCount(0);
+});
+
+/** Counts the form's submit events from here on. */
+async function countSubmits(page: Page): Promise<() => Promise<number>> {
+  await page.evaluate(() => {
+    (window as any).__submits = 0;
+    document
+      .querySelector('form[data-next-checkout]')
+      ?.addEventListener('submit', () => (window as any).__submits++);
+  });
+  return () => page.evaluate(() => (window as any).__submits as number);
+}
+
+/**
+ * On a phone the keyboard's Enter key is under the shopper's thumb, and a browser
+ * submits a form on Enter. Submitting a checkout from its first field starts express
+ * checkout unvalidated or marks every empty field as an error.
+ */
+test('Enter moves to the next field and never submits the form', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const submits = await countSubmits(page);
+  const field = (name: string) =>
+    page.locator(`[data-next-checkout-field="${name}"]`);
+
+  await field('email').focus();
+  await expect(field('email')).toHaveAttribute('enterkeyhint', 'next');
+  await field('email').fill('ada@example.com');
+  await field('email').press('Enter');
+  await expect(field('fname')).toBeFocused();
+
+  await field('fname').fill('Ada');
+  await field('fname').press('Enter');
+  await expect(field('lname')).toBeFocused();
+
+  // The last field says so on the keyboard, and Enter there closes it.
+  await expect(field('lname')).toHaveAttribute('enterkeyhint', 'done');
+  await field('lname').press('Enter');
+  await expect(field('lname')).not.toBeFocused();
+
+  expect(await submits()).toBe(0);
+  // Nothing was validated as a submit would have: the empty last name is not flagged.
+  await expect(field('lname')).not.toHaveClass(/has-error/);
+});
+
+/** The negative control: the submit button still submits. */
+test('the submit button still submits the form', async ({ page }) => {
+  await bootSdk(page, FIXTURE);
+  const submits = await countSubmits(page);
+
+  await page.click('button[type="submit"]');
+
+  await expect.poll(submits).toBe(1);
+});
+
 test('submitting with empty required fields flags them', async ({ page }) => {
   await bootSdk(page, FIXTURE);
 
@@ -93,4 +237,51 @@ test('submitting with empty required fields flags them', async ({ page }) => {
     await expect(el).toHaveClass(/has-error/);
     await expect(el).toHaveClass(/next-error-field/);
   }
+});
+
+/**
+ * `first_name` and `last_name`, the names the orders API uses, are what a page should
+ * write; `fname` and `lname`, the SDK's older names, stay accepted (the fixture above
+ * writes those). A page on the new names is validated, messaged and stored the same.
+ */
+test('a page writing first_name and last_name is checked and stored as fname and lname', async ({
+  page,
+}) => {
+  await page.route('**/e2e/fixtures/checkout-form.html', async route => {
+    const response = await route.fetch();
+    const body = (await response.text())
+      .replace(/data-next-checkout-field="fname"/g, 'data-next-checkout-field="first_name"')
+      .replace(/data-next-checkout-field="lname"/g, 'data-next-checkout-field="last_name"');
+    await route.fulfill({ response, body });
+  });
+  await bootSdk(page, FIXTURE);
+
+  await page.click('button[type="submit"]');
+  for (const field of ['first_name', 'last_name']) {
+    const el = page.locator(`[data-next-checkout-field="${field}"]`);
+    await expect(el).toHaveClass(/has-error/);
+    await expect(
+      page.locator('.form-group', { has: el }).locator('.next-error-label')
+    ).toBeVisible();
+  }
+
+  // Checked as the shopper leaves it, not only on submit.
+  const lastName = page.locator('[data-next-checkout-field="last_name"]');
+  await lastName.fill('Lovelace2');
+  await lastName.blur();
+  await expect(lastName).toHaveClass(/has-error/);
+  await lastName.fill('Lovelace');
+  await lastName.blur();
+  await expect(lastName).toHaveClass(/no-error/);
+
+  await page.fill('[data-next-checkout-field="first_name"]', 'Ada');
+  await page.locator('[data-next-checkout-field="first_name"]').blur();
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw)?.state?.formData?.fname : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toBe('Ada');
 });

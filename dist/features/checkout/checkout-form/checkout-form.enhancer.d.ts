@@ -24,7 +24,6 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private detectedCountryCode;
     private autocompleteEnhancer?;
     private phoneInputs;
-    private isIntlTelInputAvailable;
     private locationFields?;
     private submitHandler?;
     private changeHandler?;
@@ -42,6 +41,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private availablePaymentMethods;
     private hasTrackedRedirectPaymentInfo;
     private stopAutofillDetection?;
+    private stopEnterKeyNavigation?;
+    private readonly fixedValues;
     private hasTrackedBeginCheckout;
     private beginCheckoutTimer?;
     private paymentErrorTimers;
@@ -96,6 +97,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAddressRestoreContext;
     private billingAnimationContext;
     private phoneInputContext;
+    private loadPhoneRules;
     private initializePhoneInputs;
     private initializeCreditCard;
     private formClearingContext;
@@ -148,6 +150,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private checkoutUpdateContext;
     private cartUpdateContext;
     private configUpdateContext;
+    private syncFixedValues;
     private handleCheckoutUpdate;
     private handleCartUpdate;
     private handleConfigUpdate;

@@ -6,4 +6,5 @@ export declare const VALIDATION_PATTERNS: {
 export declare function isValidEmail(email: string): boolean;
 export declare function isValidName(name: string): boolean;
 export declare function isValidCity(city: string): boolean;
+export declare function hasEmoji(value: unknown): boolean;
 //# sourceMappingURL=validation-patterns.d.ts.map

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   VALIDATION_PATTERNS,
+  hasEmoji,
   isValidCity,
   isValidEmail,
   isValidName,
@@ -101,5 +102,32 @@ describe('isValidCity', () => {
 
     expect(isValidCity("St. John's")).toBe(true); // U+0027
     expect(isValidCity('St. John’s')).toBe(true); // U+2019, what an iPhone types
+  });
+});
+
+describe('hasEmoji', () => {
+  it('finds any emoji, however it is built', () => {
+    for (const value of ['Jane 😀', '🇹🇭', '👩‍💻', '👍🏽', '❤️', '1️⃣', '™️']) {
+      expect(hasEmoji(value), value).toBe(true);
+    }
+  });
+
+  it('takes symbols and scripts that are text, not emojis', () => {
+    for (const value of [
+      'Acme™ Ltd',
+      '© ®',
+      'Unit 4 → rear',
+      'สมชาย ใจดี',
+      'क्‍ष',
+      'Straße 5',
+      '★',
+    ]) {
+      expect(hasEmoji(value), value).toBe(false);
+    }
+  });
+
+  it('ignores a value that is not text', () => {
+    expect(hasEmoji(undefined)).toBe(false);
+    expect(hasEmoji(true)).toBe(false);
   });
 });

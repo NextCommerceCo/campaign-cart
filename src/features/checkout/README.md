@@ -35,7 +35,7 @@ field list and nothing more.
 
 | Module | What it owns | Needs from the form |
 |---|---|---|
-| `phone-input.ts` | `intl-tel-input` wiring for the shipping and billing phone fields, so the order carries an E.164 number rather than typed text | 7 fields |
+| `phone-input.ts` | The SDK's phone field on the shipping and billing phone inputs: formats as the shopper types, and gives the order an E.164 number rather than typed text | 7 fields |
 | `billing-animation.ts` | Expanding/collapsing the billing section (height animation + a fallback for when `transitionend` never fires) | 3 fields |
 | `billing-form-setup.ts` | Cloning the shipping form into a billing one, rewriting each field's identity to `billing-`, and setting the section's opening state without animation | 3 fields |
 | `expiration-fields.ts` | The card expiry month/year dropdowns, including the rule that keeps the year list consistent with the chosen month so an already-past date cannot be assembled | 1 field |
@@ -240,7 +240,7 @@ folder moved.
 | Module | What it owns | Needs from the validator |
 |---|---|---|
 | `validation-patterns.ts` | Whether one value looks like an email, a name or a city — with no knowledge of forms or countries | 0 |
-| `phone-validation.ts` | Whether a phone number can be used, and the E.164 form to store for it. Separate from the patterns above because it has to ask the field's `intl-tel-input` widget what is valid in the shopper's country | 0 (takes the widget) |
+| `phone-validation.ts` | Whether a phone number can be used, and the E.164 form to store for it. Separate from the patterns above because it has to ask the input's phone field what is valid in the shopper's country | 0 (takes the field) |
 | `field-labels.ts` | The name a shopper sees for a field in a message, including the country's word for "state" and "postcode" | 0 |
 | `first-error-field.ts` | Which of several problems to scroll to (topmost on the page), and handing card fields to Spreedly's own focus | 0 |
 | `field-rules.ts` | The per-field rule table and running one rule — the path used while the shopper types | 2 |
@@ -291,7 +291,7 @@ The main enhancer that coordinates the entire checkout flow.
 3. **Credit card tokenization** — delegates to `CreditCardService`
 4. **Order creation** — delegates to `OrderManager` / `OrderBuilder` → `ApiClient`
 5. **Country/state** — uses `CountryService` to populate state dropdowns
-6. **Phone input** — integrates `intl-tel-input` for international phone formatting
+6. **Phone input** — formats and checks the phone fields from each country's phone rules
 7. **Billing address** — toggle for separate billing address (`[data-next-component="different-billing-address"]`)
 8. **Prospect save** — email capture via `ProspectCartEnhancer` before full order
 9. **Express checkout** — delegates PayPal/Apple Pay/Google Pay to `ExpressCheckoutProcessor`

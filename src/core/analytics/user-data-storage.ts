@@ -260,12 +260,12 @@ class UserDataStorage {
       },
       {
         selector:
-          '[name="first_name"], [data-next-checkout-field="fname"], [name="firstName"], #first-name',
+          '[name="first_name"], [data-next-checkout-field="first_name"], [data-next-checkout-field="fname"], [name="firstName"], #first-name',
         key: 'firstName',
       },
       {
         selector:
-          '[name="last_name"], [data-next-checkout-field="lname"], [name="lastName"], #last-name',
+          '[name="last_name"], [data-next-checkout-field="last_name"], [data-next-checkout-field="lname"], [name="lastName"], #last-name',
         key: 'lastName',
       },
     ];

@@ -12,12 +12,12 @@
  * its own, the fourth (`creditCardService`) is what step 3 passes through.
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/country-service';
 
-import { formatFieldName } from './field-labels';
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
+import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -37,7 +37,8 @@ import type { FormValidationResult } from './validation.types';
  * @param step The 1-based step the shopper is trying to leave.
  * @param formData The collected form values.
  * @param countryConfigs Country code → rules (state required, postal format).
- * @param currentCountryConfig The shopper's country, used for the wording of messages.
+ * @param currentCountryConfig No longer read: messages take their wording from the address-rules service
+ * (`field-messages.ts`). Kept only because the arguments after it are positional.
  * @param billingAddress The separate billing address, when there is one. Used by step 3
  * only. Pass what the checkout store holds — a missing address with `sameAsShipping`
  * `false` is itself a failure, not a reason to skip the check.
@@ -74,17 +75,10 @@ export async function validateStep(
 
   if (step === 1) {
     // Step 1: Contact information and shipping address
-    requiredFields = [
-      'email',
-      'fname',
-      'lname',
-      'country',
-      'address1',
-      'city',
-      'postal',
-    ];
+    requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city'];
 
     const countryConfig = countryConfigs.get(formData.country);
+    if (asksForPostcode(countryConfig)) requiredFields.push('postal');
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
     }
@@ -94,16 +88,9 @@ export async function validateStep(
     }
   } else if (step === 2) {
     // Step 2: Shipping method (already validated in step 1, just check if present)
-    requiredFields = [
-      'email',
-      'fname',
-      'lname',
-      'country',
-      'address1',
-      'city',
-      'postal',
-    ];
+    requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city'];
     const countryConfig = countryConfigs.get(formData.country);
+    if (asksForPostcode(countryConfig)) requiredFields.push('postal');
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
     }
@@ -123,8 +110,9 @@ export async function validateStep(
   // Validate each required field
   requiredFields.forEach(field => {
     if (!formData[field] || formData[field].trim() === '') {
-      errors[field] =
-        `${formatFieldName(field, currentCountryConfig)} is required`;
+      errors[field] = fieldMessage(ctx.countryService, 'blank', field, {
+        country: formData.country,
+      });
       isValid = false;
       if (!firstErrorField) firstErrorField = field;
     }
@@ -132,29 +120,37 @@ export async function validateStep(
 
   // Name validation
   if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname =
-      'First name can only contain letters, spaces, hyphens, and apostrophes';
+    errors.fname = fieldMessage(
+      ctx.countryService,
+      'invalid_characters',
+      'fname'
+    );
     isValid = false;
     if (!firstErrorField) firstErrorField = 'fname';
   }
 
   if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname =
-      'Last name can only contain letters, spaces, hyphens, and apostrophes';
+    errors.lname = fieldMessage(
+      ctx.countryService,
+      'invalid_characters',
+      'lname'
+    );
     isValid = false;
     if (!firstErrorField) firstErrorField = 'lname';
   }
 
   // City validation
   if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = 'Please enter a valid city name';
+    errors.city = fieldMessage(ctx.countryService, 'invalid', 'city', {
+      country: formData.country,
+    });
     isValid = false;
     if (!firstErrorField) firstErrorField = 'city';
   }
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address';
+    errors.email = fieldMessage(ctx.countryService, 'invalid', 'email');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'email';
   }
@@ -167,7 +163,7 @@ export async function validateStep(
     formData.phone &&
     !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
-    errors.phone = 'Please enter a valid phone number';
+    errors.phone = fieldMessage(ctx.countryService, 'invalid', 'phone');
     isValid = false;
     if (!firstErrorField) firstErrorField = 'phone';
   }
@@ -183,13 +179,28 @@ export async function validateStep(
         countryConfig
       )
     ) {
-      const errorMsg = countryConfig.postcodeExample
-        ? `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()} (e.g. ${countryConfig.postcodeExample})`
-        : `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()}`;
-      errors.postal = errorMsg;
+      errors.postal = postalMessage(
+        ctx.countryService,
+        'postal',
+        formData.country,
+        countryConfig
+      );
       isValid = false;
       if (!firstErrorField) firstErrorField = 'postal';
     }
+  }
+
+  // Last, so an emoji's message replaces the name or email one that says less.
+  const emojiProblems = emojiErrors(
+    ctx.countryService,
+    formData,
+    formData.country
+  );
+  Object.assign(errors, emojiProblems);
+  const firstEmoji = Object.keys(emojiProblems)[0];
+  if (firstEmoji) {
+    isValid = false;
+    if (!firstErrorField) firstErrorField = firstEmoji;
   }
 
   return { isValid, firstErrorField, errors };

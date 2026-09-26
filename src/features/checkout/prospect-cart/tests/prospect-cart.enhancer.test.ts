@@ -7,6 +7,13 @@ import { useCartStore } from '@/state/cart';
 import { useConfigStore } from '@/state/config';
 import { useCampaignStore } from '@/state/campaign';
 import { useAttributionStore } from '@/state/attribution';
+import type { PhoneNumberSource } from '../../validation/phone-validation';
+
+/** The phone field the checkout form registered on an input, when a test plants one. */
+const phoneFields = vi.hoisted(() => new WeakMap<Element, PhoneNumberSource>());
+vi.mock('../../checkout-form/phone-input', () => ({
+  phoneFieldFor: (input: Element) => phoneFields.get(input),
+}));
 
 vi.mock('@/state/cart', () => ({
   useCartStore: { getState: vi.fn(), subscribe: vi.fn(() => () => {}) },
@@ -300,21 +307,22 @@ describe('ProspectCartEnhancer', () => {
       expect((enhancer as any).isValidPhone('   ')).toBe(false);
     });
 
-    it('uses intlTelInput.isValidNumber when available', async () => {
+    it("uses the phone field's isValidNumber when the input has one", async () => {
       const container = buildContainer(
         '<input data-next-checkout-field="phone" type="tel" />'
       );
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
 
-      const phoneField = container.querySelector('input') as any;
-      phoneField.iti = { isValidNumber: vi.fn().mockReturnValue(true) };
+      const phoneField = container.querySelector('input') as HTMLInputElement;
+      const source = { isValidNumber: vi.fn().mockReturnValue(true) };
+      phoneFields.set(phoneField, source);
 
       expect((enhancer as any).isValidPhone('+15551234567')).toBe(true);
-      expect(phoneField.iti.isValidNumber).toHaveBeenCalled();
+      expect(source.isValidNumber).toHaveBeenCalled();
     });
 
-    it('falls back to digit count when intlTelInput is unavailable', async () => {
+    it('falls back to digit count when the input has no phone field', async () => {
       const enhancer = new ProspectCartEnhancer(
         buildContainer('<input type="tel" />')
       );
@@ -323,19 +331,19 @@ describe('ProspectCartEnhancer', () => {
       expect((enhancer as any).isValidPhone('555-123-4567')).toBe(true);
     });
 
-    it('falls back to digit count when intlTelInput throws', async () => {
+    it('falls back to digit count when the phone field throws', async () => {
       const container = buildContainer(
         '<input data-next-checkout-field="phone" type="tel" />'
       );
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
 
-      const phoneField = container.querySelector('input') as any;
-      phoneField.iti = {
+      const phoneField = container.querySelector('input') as HTMLInputElement;
+      phoneFields.set(phoneField, {
         isValidNumber: vi.fn().mockImplementation(() => {
           throw new Error('boom');
         }),
-      };
+      });
 
       expect((enhancer as any).isValidPhone('555-123-4567')).toBe(true);
     });
@@ -348,19 +356,21 @@ describe('ProspectCartEnhancer', () => {
       expect((enhancer as any).getFormattedPhoneNumber()).toBe('');
     });
 
-    it('returns E.164 number from intlTelInput when available', async () => {
+    it("returns the phone field's E.164 number when the input has one", async () => {
       const container = buildContainer(
         '<input data-next-checkout-field="phone" type="tel" />'
       );
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
-      const phone = container.querySelector('input') as any;
-      phone.iti = { getNumber: vi.fn().mockReturnValue('+15551234567') };
+      const phone = container.querySelector('input') as HTMLInputElement;
+      phoneFields.set(phone, {
+        getNumber: vi.fn().mockReturnValue('+15551234567'),
+      });
 
       expect((enhancer as any).getFormattedPhoneNumber()).toBe('+15551234567');
     });
 
-    it('falls back to raw input value when intlTelInput is not initialized', async () => {
+    it('falls back to raw input value when the input has no phone field', async () => {
       const container = buildContainer(
         '<input data-next-checkout-field="phone" type="tel" />'
       );
@@ -510,8 +520,11 @@ describe('ProspectCartEnhancer', () => {
 
       const phone = container.querySelector(
         '[data-next-checkout-field="phone"]'
-      ) as any;
-      phone.iti = { isValidNumber: () => true, getNumber: () => '+15551234567' };
+      ) as HTMLInputElement;
+      phoneFields.set(phone, {
+        isValidNumber: () => true,
+        getNumber: () => '+15551234567',
+      });
 
       setFieldValues(container, { phone: '+15551234567', fname: 'Jane', lname: 'Doe' });
 
@@ -528,8 +541,11 @@ describe('ProspectCartEnhancer', () => {
 
       const phone = container.querySelector(
         '[data-next-checkout-field="phone"]'
-      ) as any;
-      phone.iti = { isValidNumber: () => false, getNumber: () => '' };
+      ) as HTMLInputElement;
+      phoneFields.set(phone, {
+        isValidNumber: () => false,
+        getNumber: () => '',
+      });
 
       setFieldValues(container, {
         email: 'user@example.com',
@@ -551,8 +567,11 @@ describe('ProspectCartEnhancer', () => {
 
       const phone = container.querySelector(
         '[data-next-checkout-field="phone"]'
-      ) as any;
-      phone.iti = { isValidNumber: () => true, getNumber: () => '+15551234567' };
+      ) as HTMLInputElement;
+      phoneFields.set(phone, {
+        isValidNumber: () => true,
+        getNumber: () => '+15551234567',
+      });
 
       // Only email — should not create
       setFieldValues(container, {

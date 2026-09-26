@@ -1,9 +1,9 @@
 /**
  * Putting the phone numbers already in the store into international format.
  *
- * The field handlers do this as the shopper types, but only once `intl-tel-input`'s utils
- * script has loaded. Validation reports on the store rather than rewriting it, so this is
- * the only thing that corrects a number left behind by that race.
+ * The field handlers do this as the shopper types, but only once the field's phone rules
+ * have loaded. Validation reports on the store rather than rewriting it, so this is the
+ * only thing that corrects a number left behind by that race.
  */
 
 import { useCheckoutStore } from '@/state/checkout';
@@ -16,12 +16,12 @@ import {
 /**
  * Rewrites the stored shipping and billing numbers as the ones their fields hold.
  *
- * Call it after the utils script has settled; before that the widget has no number to give
- * and nothing is written.
+ * Call it after the rules have settled; before that a field has no number to give and
+ * nothing is written.
  *
  * @example
  * ```ts
- * await awaitPhoneUtils(this.phoneInputs);
+ * await awaitPhoneRules(this.phoneInputs);
  * normalizeStoredPhones(this.phoneInputs);
  * ```
  */

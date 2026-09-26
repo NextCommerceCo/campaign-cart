@@ -26,6 +26,8 @@ export class LocaleSelector {
     { code: 'pt-BR', name: 'Português (BR)', flag: '🇧🇷' },
     { code: 'es-ES', name: 'Español (ES)', flag: '🇪🇸' },
     { code: 'es-MX', name: 'Español (MX)', flag: '🇲🇽' },
+    { code: 'da-DK', name: 'Dansk', flag: '🇩🇰' },
+    { code: 'fi-FI', name: 'Suomi', flag: '🇫🇮' },
     { code: 'fr-FR', name: 'Français', flag: '🇫🇷' },
     { code: 'de-DE', name: 'Deutsch', flag: '🇩🇪' },
     { code: 'it-IT', name: 'Italiano', flag: '🇮🇹' },
@@ -36,8 +38,10 @@ export class LocaleSelector {
     { code: 'ar-SA', name: 'العربية', flag: '🇸🇦' },
     { code: 'hi-IN', name: 'हिन्दी', flag: '🇮🇳' },
     { code: 'nl-NL', name: 'Nederlands', flag: '🇳🇱' },
+    { code: 'no-NO', name: 'Norsk', flag: '🇳🇴' },
     { code: 'sv-SE', name: 'Svenska', flag: '🇸🇪' },
     { code: 'pl-PL', name: 'Polski', flag: '🇵🇱' },
+    { code: 'th-TH', name: 'ภาษาไทย', flag: '🇹🇭' },
     { code: 'tr-TR', name: 'Türkçe', flag: '🇹🇷' },
   ];
 

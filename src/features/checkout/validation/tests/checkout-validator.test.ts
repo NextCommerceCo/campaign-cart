@@ -79,7 +79,7 @@ describe('validateField', () => {
 
     expect(result).toEqual({
       isValid: false,
-      message: 'Please enter a valid email address',
+      message: 'Enter a valid email address',
     });
     expect(validator.isValid()).toBe(false);
   });
@@ -89,7 +89,7 @@ describe('validateField', () => {
 
     expect(validator.validateField('email', '')).toEqual({
       isValid: false,
-      message: 'This field is required',
+      message: 'Email is required',
     });
   });
 
@@ -101,6 +101,20 @@ describe('validateField', () => {
 
     expect(result).toEqual({ isValid: true });
     expect(validator.isValid()).toBe(true);
+  });
+
+  it('refuses an emoji in any field, a field with no rules included', () => {
+    const { validator, countryService } = createValidator(['address2']);
+    Object.assign(countryService, {
+      getFieldErrors: () => ({
+        line2: { contains_emoji: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ' },
+      }),
+    });
+
+    expect(validator.validateField('address2', 'Apt 4 🏠')).toEqual({
+      isValid: false,
+      message: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ',
+    });
   });
 
   /**
@@ -216,7 +230,7 @@ describe('services installed after construction', () => {
     );
 
     expect(phoneSource).toHaveBeenCalledWith('shipping');
-    expect(result.errors.phone).toBe('Please enter a valid phone number');
+    expect(result.errors.phone).toBe('Phone number isn’t valid');
   });
 
   /**

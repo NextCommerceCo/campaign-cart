@@ -1,4 +1,4 @@
-import { Iti } from 'intl-tel-input';
-export declare function readPhoneValue(target: HTMLInputElement | HTMLSelectElement, instance?: Iti | undefined): string;
-export declare function readFieldValue(fieldName: string, target: HTMLInputElement | HTMLSelectElement, phoneInputs: Map<string, Iti>): string | boolean;
+import { PhoneNumberSource } from '../validation/phone-validation';
+export declare function readPhoneValue(target: HTMLInputElement | HTMLSelectElement, field?: PhoneNumberSource): string;
+export declare function readFieldValue(fieldName: string, target: HTMLInputElement | HTMLSelectElement, phoneInputs: ReadonlyMap<string, PhoneNumberSource>): string | boolean;
 //# sourceMappingURL=field-value.d.ts.map

@@ -12,6 +12,7 @@ import {
   type PhoneNumberSource,
 } from '../validation/phone-validation';
 import type { FormValidationResult } from '../validation/validation.types';
+import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
 /** The label a shopper sees for a field in the "is required" message. */
 const FIELD_LABELS: Record<string, string> = {
@@ -29,8 +30,8 @@ const FIELD_LABELS: Record<string, string> = {
 /** What this needs from the checkout form. */
 export interface ExpressFieldValidationContext {
   /**
-   * The live `intl-tel-input` instance for a phone field, when the form has one. The same
-   * shape the validation contexts take, so the form installs one resolver for all of them.
+   * The live phone field for an address, when the form has one. The same shape the
+   * validation contexts take, so the form installs one resolver for all of them.
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
@@ -55,8 +56,11 @@ export function validateExpressFields(
   requiredFields: string[]
 ): FormValidationResult {
   const errors: Record<string, string> = {};
+  // A merchant may name a field the orders API's way (`first_name`), which is the name to
+  // write; the value is kept under the SDK's (`fname`).
+  const fields = requiredFields.map(sdkCheckoutFieldName);
 
-  for (const field of requiredFields) {
+  for (const field of fields) {
     const value = formData[field];
     const text = typeof value === 'string' ? value.trim() : value;
 
@@ -73,7 +77,7 @@ export function validateExpressFields(
   }
 
   // The order asked for is the order to report in, so the first failure is a lookup.
-  const firstErrorField = requiredFields.find(field => field in errors);
+  const firstErrorField = fields.find(field => field in errors);
 
   return {
     isValid: Object.keys(errors).length === 0,

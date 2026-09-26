@@ -5,6 +5,13 @@ import {
   getFormattedPhoneNumber,
 } from '../field-discovery';
 import type { Logger } from '@/core/logger';
+import type { PhoneNumberSource } from '../../validation/phone-validation';
+
+/** The phone field the checkout form registered on an input, when a test plants one. */
+const phoneFields = vi.hoisted(() => new WeakMap<Element, PhoneNumberSource>());
+vi.mock('../../checkout-form/phone-input', () => ({
+  phoneFieldFor: (input: Element) => phoneFields.get(input),
+}));
 
 function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -89,13 +96,15 @@ describe('getFormattedPhoneNumber', () => {
     expect(result).toBe('');
   });
 
-  it('prefers the intlTelInput instance E.164 number when available', () => {
+  it("prefers the phone field's E.164 number when the input has one", () => {
     const logger = createMockLogger();
     const container = buildContainer(
       '<input data-next-checkout-field="phone" type="tel" />'
     );
-    const phoneField = container.querySelector('input') as any;
-    phoneField.iti = { getNumber: vi.fn().mockReturnValue('+15551234567') };
+    const phoneField = container.querySelector('input') as HTMLInputElement;
+    phoneFields.set(phoneField, {
+      getNumber: vi.fn().mockReturnValue('+15551234567'),
+    });
 
     const result = getFormattedPhoneNumber({
       element: container,
@@ -104,17 +113,13 @@ describe('getFormattedPhoneNumber', () => {
     expect(result).toBe('+15551234567');
   });
 
-  it('falls back to the raw input value when intlTelInput throws', () => {
+  it('falls back to the raw input value when the phone field has no number', () => {
     const logger = createMockLogger();
     const container = buildContainer(
       '<input data-next-checkout-field="phone" type="tel" value="5551234567" />'
     );
-    const phoneField = container.querySelector('input') as any;
-    phoneField.iti = {
-      getNumber: vi.fn().mockImplementation(() => {
-        throw new Error('boom');
-      }),
-    };
+    const phoneField = container.querySelector('input') as HTMLInputElement;
+    phoneFields.set(phoneField, { getNumber: () => '' });
 
     const result = getFormattedPhoneNumber({
       element: container,

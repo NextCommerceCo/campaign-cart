@@ -1,16 +1,16 @@
 {
   "$comment": "Frozen documentation gaps (a ratchet). New gaps fail `npm run docs:coverage`; entries here are tolerated until closed. Regenerate: npm run docs:coverage:update",
   "generated": {
-    "attributes": "139/143",
-    "events": "73/73",
-    "guides": "32/32",
-    "manifests": "31/32",
-    "testedExamples": "30/31",
-    "logs": "31/32",
-    "errors": "31/32",
-    "relations": "31/32",
-    "getStarted": "31/32",
-    "useCases": "32/32",
+    "attributes": "141/145",
+    "events": "74/74",
+    "guides": "33/33",
+    "manifests": "31/33",
+    "testedExamples": "30/32",
+    "logs": "31/33",
+    "errors": "31/33",
+    "relations": "31/33",
+    "getStarted": "31/33",
+    "useCases": "33/33",
     "displayPaths": "9/9",
     "stores": "7/7",
     "storeOverviews": "7/7",
@@ -31,22 +31,28 @@
   "undescribedEvents": [],
   "featuresWithoutGuide": [],
   "featuresWithoutManifest": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutTestedExample": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutLogs": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutErrors": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutRelations": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutGetStarted": [
-    "address-form"
+    "address-form",
+    "i18n"
   ],
   "featuresWithoutUseCases": [],
   "displayNamespacesWithoutPaths": [],
@@ -56,7 +62,8 @@
     "data-next-address-field",
     "data-next-address-lang",
     "data-next-address-row",
-    "data-next-address-state"
+    "data-next-address-state",
+    "data-next-i18n"
   ],
   "storesWithoutReference": [],
   "storesWithoutOverview": [],

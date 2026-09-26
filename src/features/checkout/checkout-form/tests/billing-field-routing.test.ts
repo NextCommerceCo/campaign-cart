@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import intlTelInput from 'intl-tel-input';
-import type { Iti } from 'intl-tel-input';
 import {
   routeBillingField,
   routeBillingFieldValue,
@@ -8,6 +6,7 @@ import {
 } from '../billing-field-routing';
 import { updateBillingStateOptions } from '../state-fields';
 import { formatPostalCodeInPlace } from '../postal-code-format';
+import { phoneFieldFor, type PhoneField } from '../phone-input';
 import type { StateFieldsContext } from '../state-fields';
 import type { PostalCodeFormatContext } from '../postal-code-format';
 import { useCheckoutStore } from '@/state/checkout';
@@ -21,16 +20,13 @@ vi.mock('../postal-code-format', () => ({
 }));
 
 /**
- * The billing phone's E.164 number comes from the live `intl-tel-input` instance on the
- * field, which the library hands back through `getInstance`. Mocked here so a test can say
- * "the library is on the page and knows this number" (an instance) or "it is not"
- * (`null`) without standing up the real widget.
+ * The billing phone's E.164 number comes from the phone field registered on the input,
+ * which `phoneFieldFor` hands back. Mocked here so a test can say "the form built a field
+ * that knows this number" or "it did not" (`undefined`) without standing up the real one.
  */
-vi.mock('intl-tel-input', () => ({
-  default: { getInstance: vi.fn(() => null) },
-}));
+vi.mock('../phone-input', () => ({ phoneFieldFor: vi.fn() }));
 
-const getInstance = vi.mocked(intlTelInput.getInstance);
+const phoneFieldForInput = vi.mocked(phoneFieldFor);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -63,9 +59,9 @@ function store() {
   return useCheckoutStore.getState();
 }
 
-/** The number `intl-tel-input` would assemble from what the shopper typed. */
-function phoneInstance(number: string | null): Iti {
-  return { getNumber: vi.fn(() => number) } as unknown as Iti;
+/** The number the phone field would assemble from what the shopper typed. */
+function phoneInstance(number: string | null): PhoneField {
+  return { getNumber: vi.fn(() => number) } as unknown as PhoneField;
 }
 
 function resetCheckout(): void {
@@ -74,7 +70,7 @@ function resetCheckout(): void {
 
 beforeEach(() => {
   resetCheckout();
-  getInstance.mockReturnValue(null);
+  phoneFieldForInput.mockReturnValue(undefined);
 });
 
 afterEach(() => {
@@ -196,7 +192,7 @@ describe('routeBillingField', () => {
    */
   it('stores the E.164 number for the billing phone, not the typed text', async () => {
     const target = input('07700 900123');
-    getInstance.mockReturnValue(phoneInstance('+447700900123'));
+    phoneFieldForInput.mockReturnValue(phoneInstance('+447700900123'));
 
     await routeBillingField(createCtx(), 'billing-phone', target, store());
 
@@ -206,11 +202,11 @@ describe('routeBillingField', () => {
   });
 
   /**
-   * A form without `intl-tel-input` is supported, and the shopper's number is still worth
+   * A form without a phone field is supported, and the shopper's number is still worth
    * more on the order than nothing at all.
    */
-  it('stores the typed billing phone when intl-tel-input is not on the page', async () => {
-    getInstance.mockReturnValue(null);
+  it('stores the typed billing phone when the input has no phone field', async () => {
+    phoneFieldForInput.mockReturnValue(undefined);
 
     await routeBillingField(
       createCtx(),
@@ -224,16 +220,21 @@ describe('routeBillingField', () => {
     );
   });
 
-  /** `getNumber()` returns null for a number the library cannot parse. Same reasoning. */
+  /** A field with no number to give answers nothing. Same reasoning. */
   it('stores the typed billing phone when the number cannot be parsed', async () => {
-    getInstance.mockReturnValue(phoneInstance(null));
+    phoneFieldForInput.mockReturnValue(phoneInstance(null));
 
-    await routeBillingField(createCtx(), 'billing-phone', input('123'), store());
+    await routeBillingField(
+      createCtx(),
+      'billing-phone',
+      input('123'),
+      store()
+    );
 
     expect(useCheckoutStore.getState().billingAddress?.phone).toBe('123');
   });
 
-  it('does not ask intl-tel-input about any other billing field', async () => {
+  it('does not ask a phone field about any other billing field', async () => {
     await routeBillingField(
       createCtx(),
       'billing-city',
@@ -241,7 +242,7 @@ describe('routeBillingField', () => {
       store()
     );
 
-    expect(getInstance).not.toHaveBeenCalled();
+    expect(phoneFieldForInput).not.toHaveBeenCalled();
   });
 
   /** Regression coverage for the checkout-store reset — see `src/state/checkout`. */

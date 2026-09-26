@@ -87,6 +87,12 @@ main h4 {
   line-height: 1.5;
 }
 
+/* `loading="lazy"` is what the theme puts on a Markdown image, so header logos are not caught. */
+main img[loading='lazy'] {
+  display: block;
+  margin-inline: auto;
+}
+
 /*
  * Prose links. The theme already underlines them — it ships
  * `font-bold text-(--clean-link) underline decoration-1 underline-offset-2` on each

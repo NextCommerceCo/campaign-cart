@@ -20,12 +20,13 @@
  * checkout store.
  */
 
-import type { Iti } from 'intl-tel-input';
-
 import type { Logger } from '@/core/logger';
 import { userDataStorage } from '@/core/analytics/user-data-storage';
 import type { ProspectCartEnhancer } from '../prospect-cart/prospect-cart.enhancer';
-import { normalizePhone } from '../validation/phone-validation';
+import {
+  normalizePhone,
+  type PhoneNumberSource,
+} from '../validation/phone-validation';
 
 /** The three things this module needs from the checkout form. */
 export interface ContactPersistenceContext {
@@ -34,8 +35,8 @@ export interface ContactPersistenceContext {
    * initialise, in which case only user-data storage is written.
    */
   prospectCartEnhancer: ProspectCartEnhancer | undefined;
-  /** `intl-tel-input` instances keyed `shipping` / `billing`, for the E.164 phone number. */
-  phoneInputs: Map<string, Iti>;
+  /** Phone fields keyed `shipping` / `billing`, for the E.164 phone number. */
+  phoneInputs: ReadonlyMap<string, PhoneNumberSource>;
   logger: Logger;
 }
 
