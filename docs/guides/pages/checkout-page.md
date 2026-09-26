@@ -166,6 +166,18 @@ If the fields cannot be loaded, the block shows a generic English address form i
 
 A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
 
+Below is an example of a billing section that closes when the shopper ticks the box.
+
+```html
+<label>
+  <input type="checkbox" name="use_shipping_address">
+  Use shipping address as billing address
+</label>
+<div data-next-component="different-billing-address">
+  <div data-next-address="billing"></div>
+</div>
+```
+
 ### Validation messages
 
 Validation messages are whole sentences in the form's language, `window.nextConfig.locale`, or English when it is unset: `Enter a ZIP Code` in the US, `กรุณากรอกรหัสไปรษณีย์` on a Thai page. Each field has its own. To change one, set it in `translations` for that language, keyed by the field and what is wrong with it. A key you leave out keeps the default.
