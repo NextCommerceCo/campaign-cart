@@ -46,7 +46,7 @@ const US: Spec = {
     line1: text('Address', 'address-line1'),
     city: text('City', 'address-level2'),
     state: select('State', 'address-level1', 'states'),
-    postcode: text('ZIP Code', 'postal-code', { maxLength: 10 }),
+    postcode: text('ZIP Code', 'postal-code', { max_length: 10 }),
   },
 };
 
@@ -307,7 +307,7 @@ describe('renderLayout', () => {
         ...US.fields,
         line2: {
           ...text('Apartment, suite, etc.', 'address-line2'),
-          labelOptional: 'Apartment, suite, etc. (optional)',
+          label_optional: 'Apartment, suite, etc. (optional)',
           required: false,
         },
       },
@@ -324,6 +324,35 @@ describe('renderLayout', () => {
         '[data-next-checkout-field="address2"]'
       )?.placeholder
     ).toBe('Apartment, suite, etc. (optional)');
+  });
+
+  it("takes the page's own label, by the key the locale file shows before the field's", () => {
+    const province: Spec = {
+      ...US,
+      fields: {
+        ...US.fields,
+        state: {
+          ...select('Province', 'address-level1', 'states'),
+          label_id: 'fields.state.province',
+        },
+        city: { ...text('City', 'address-level2'), label_id: 'fields.city.default' },
+      },
+    };
+    render(container, province, {
+      form: 'shipping',
+      texts: {
+        'fields.state.province.label': 'จังหวัด',
+        'fields.state.label': 'รัฐ',
+        'fields.city.label': 'เมือง',
+      },
+    });
+
+    const labelOf = (name: string) =>
+      container.querySelector(`[data-next-address-field="${name}"] label`)
+        ?.textContent;
+    expect(labelOf('province')).toBe('จังหวัด');
+    expect(labelOf('city')).toBe('เมือง');
+    expect(labelOf('postal')).toBe('ZIP Code');
   });
 
   it('labels every control, and the label points at it', () => {

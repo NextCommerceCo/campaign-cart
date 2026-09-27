@@ -75,7 +75,7 @@ const US_RULES = countryRules(
   [['country'], ['line1'], ['city', 'state', 'postcode']],
   {
     state: stateSelect('State'),
-    postcode: ruleField('ZIP Code', 'postal-code', { type: 'text', maxLength: 10 }),
+    postcode: ruleField('ZIP Code', 'postal-code', { type: 'text', max_length: 10 }),
   }
 );
 
@@ -92,7 +92,7 @@ const CA_RULES = countryRules(
     postcode: ruleField(
       'Postal Code',
       'postal-code',
-      { type: 'text', maxLength: 6 },
+      { type: 'text', max_length: 6 },
       {
         format: {
           pattern: '^[A-Z]\\d[A-Z]\\d[A-Z]\\d$',
@@ -109,7 +109,7 @@ const GB_RULES = countryRules('GB', [['country'], ['line1'], ['city'], ['postcod
   postcode: ruleField(
     'Postcode',
     'postal-code',
-    { type: 'text', maxLength: 7 },
+    { type: 'text', max_length: 7 },
     {
       format: {
         pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',

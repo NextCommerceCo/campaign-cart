@@ -36,8 +36,7 @@ import type {
 import { flattenTexts } from '@/core/flatten-texts';
 import type { PhoneRules } from '@/core/country-service/country-service.phone';
 
-const NEXT_ADDRESS_BASE_URL =
-  'https://i18n-rules.nextcommerce.com';
+const NEXT_ADDRESS_BASE_URL = 'https://i18n-rules.nextcommerce.com';
 
 /** The country's flag, a 4:3 SVG served by the same service: `…/v1/flags/gb.svg`. */
 export function flagUrl(
@@ -56,10 +55,15 @@ const DEFAULT_LANG = 'en';
 
 /** A field of a country's rules, as the address-rules service describes it. */
 export interface RulesField {
+  /**
+   * Where the field's texts are in the service's locale file: `fields.postcode.zip_code`.
+   * A page overrides one by this key plus the text's own, `…zip_code.errors.invalid`.
+   */
+  label_id?: string;
   /** On the form. */
   label: string;
   /** The label when the field is not required, with the language's note. */
-  labelOptional?: string;
+  label_optional?: string;
   /**
    * What the form says when a value is refused, by what is wrong (`blank`, `not_selected`,
    * `invalid`, `invalid_characters`, `contains_emoji`, `too_long`), in `lang`.
@@ -69,9 +73,9 @@ export interface RulesField {
   autocomplete: string;
   input: {
     type: 'text' | 'email' | 'tel' | 'select';
-    inputMode?: 'text' | 'numeric' | 'tel' | 'email';
-    autoCapitalize?: 'none' | 'words' | 'characters';
-    maxLength?: number;
+    input_mode?: 'text' | 'numeric' | 'tel' | 'email';
+    auto_capitalize?: 'none' | 'words' | 'characters';
+    max_length?: number;
     placeholder?: string;
     options?: 'countries' | 'states';
     span?: number;
@@ -81,13 +85,15 @@ export interface RulesField {
     pattern?: string;
     example?: string;
     masks?: string[] | PhoneRules['masks'];
-    callingCode?: string;
-    nationalPrefix?: string;
+    calling_code?: string;
+    national_prefix?: string;
   };
 }
 
 /** Values every address in a country shares, sent without being asked for. */
-export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>;
+export type FixedValues = Partial<
+  Record<'city' | 'state' | 'postcode', string>
+>;
 
 /**
  * One country's rules: `GET /v1/countries/:country`, and `rules` in
@@ -95,7 +101,7 @@ export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>
  */
 export interface CountryRules {
   country: string;
-  /** The language `label`, `labelOptional` and `errors` are in. */
+  /** The language `label`, `label_optional` and `errors` are in. */
   lang?: string;
   /** `false` for a country the service serves the default layout. */
   curated?: boolean;
@@ -148,7 +154,7 @@ export function toCountryConfig(
     postcodeRegex: postcodeFormat?.pattern ?? null,
     postcodeCompact: Boolean(postcodeFormat?.pattern),
     postcodeMinLength: 0,
-    postcodeMaxLength: postcode?.input.maxLength ?? Number.MAX_SAFE_INTEGER,
+    postcodeMaxLength: postcode?.input.max_length ?? Number.MAX_SAFE_INTEGER,
     postcodeExample: postcodeFormat?.example ?? null,
     postcodeFormat: (postcodeFormat?.masks as string[] | undefined) ?? null,
     // Only a rule with a pattern checks a number; a country with no file of its own sends
@@ -180,7 +186,9 @@ function toCountries(rows: CountryRow[]): Country[] {
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`${url} responded ${response.status} ${response.statusText}`);
+    throw new Error(
+      `${url} responded ${response.status} ${response.statusText}`
+    );
   }
   return (await response.json()) as T;
 }
@@ -224,7 +232,9 @@ async function fetchMessages(
 ): Promise<Record<string, string> | undefined> {
   try {
     return flattenTexts(
-      await getJson<unknown>(`${baseUrl}/v1/locales/${encodeURIComponent(lang)}`)
+      await getJson<unknown>(
+        `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
+      )
     );
   } catch {
     return undefined;
@@ -252,16 +262,22 @@ export async function fetchTexts(
   }
 }
 
-/** What a country's rules give the messages: each field's errors, and their language. */
+/**
+ * What a country's rules give the messages: each field's errors, where its texts are, and
+ * their language.
+ */
 function errorsOf(
   rules: CountryRules
-): Pick<LocationData, 'fieldErrors' | 'messagesLang'> {
+): Pick<LocationData, 'fieldErrors' | 'fieldLabelIds' | 'messagesLang'> {
   const fieldErrors: Record<string, Readonly<Record<string, string>>> = {};
+  const fieldLabelIds: Record<string, string> = {};
   for (const [name, field] of Object.entries(rules.fields)) {
     if (field?.errors) fieldErrors[name] = field.errors;
+    if (field?.label_id) fieldLabelIds[name] = field.label_id;
   }
   return {
     fieldErrors,
+    fieldLabelIds,
     ...(rules.lang ? { messagesLang: rules.lang } : {}),
   };
 }

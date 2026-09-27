@@ -15,15 +15,15 @@ import {
 // Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
 // as `src/core/tests/country-service.phone.test.ts` does.
 const US: PhoneRules = {
-  callingCode: '1',
-  nationalPrefix: '1',
+  calling_code: '1',
+  national_prefix: '1',
   masks: [{ mask: '(###) ###-####' }],
   pattern: '^[0-9]{10,11}$',
   example: '(201) 555-0123',
 };
 const TH: PhoneRules = {
-  callingCode: '66',
-  nationalPrefix: '0',
+  calling_code: '66',
+  national_prefix: '0',
   masks: [
     { start: '02', mask: '## ### ####' },
     { start: '0[3-57]', mask: '### ### ###' },
@@ -34,8 +34,8 @@ const TH: PhoneRules = {
   example: '081 234 5678',
 };
 const GB: PhoneRules = {
-  callingCode: '44',
-  nationalPrefix: '0',
+  calling_code: '44',
+  national_prefix: '0',
   masks: [{ mask: '##### ######' }],
   pattern: '^[0-9]{7,11}$',
   example: '07400 123456',

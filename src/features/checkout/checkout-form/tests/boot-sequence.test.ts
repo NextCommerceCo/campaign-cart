@@ -231,8 +231,8 @@ describe('initializePhoneInputs', () => {
       Promise.resolve({
         countryConfig: {
           phone: {
-            callingCode: '44',
-            nationalPrefix: '0',
+            calling_code: '44',
+            national_prefix: '0',
             masks: [{ mask: '##### ######' }],
             pattern: '^[0-9]{7,11}$',
             example: '07400 123456',

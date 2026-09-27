@@ -2,9 +2,11 @@
  * Every message a checkout field shows, as a whole sentence in the form's language:
  * `Enter a ZIP Code`, `กรุณาเลือกจังหวัด`.
  *
- * Each comes from the page's `nextConfig.translations` for that language
- * (`fields.<field>.errors.<error>`), then the errors the address-rules service wrote into
- * the country's rules when they are in that language, then English. A sentence is never
+ * Each comes from the page's `nextConfig.translations` for that language, by the key the
+ * service's locale file shows (`fields.postcode.zip_code.errors.invalid`, for that wording
+ * alone) or by the field's own (`fields.postcode.errors.invalid`, for every country), then
+ * the errors the address-rules service wrote into the country's rules when they are in
+ * that language, then English. A sentence is never
  * assembled from parts in two languages: "รหัสไปรษณีย์ is required" is what that did.
  */
 
@@ -92,9 +94,15 @@ export function fieldMessage(
     serviceName
   ];
 
-  for (const error of errorsFor(key)) {
-    const own = page[`fields.${serviceName}.errors.${error}`];
-    if (own) return interpolate(own, { example: example ?? '' });
+  const labelId = source?.getFieldLabelIds?.(country)[serviceName];
+  const groups = [labelId, `fields.${serviceName}`].filter(
+    (group): group is string => !!group
+  );
+  for (const group of groups) {
+    for (const error of errorsFor(key)) {
+      const own = page[`${group}.errors.${error}`];
+      if (own) return interpolate(own, { example: example ?? '' });
+    }
   }
   for (const error of errorsFor(key)) {
     const served = service?.[error];

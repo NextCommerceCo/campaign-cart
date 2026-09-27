@@ -208,6 +208,31 @@ describe('updateFormLabels', () => {
     expect(postalField.placeholder).toBe('Postcode');
   });
 
+  it('leaves a field data-next-address built, which carries its own label', () => {
+    const form = document.createElement('form');
+    form.innerHTML = `
+      <div data-next-address-field="province">
+        <select id="next-shipping-province"></select>
+        <label for="next-shipping-province">จังหวัด</label>
+      </div>
+      <div data-next-address-field="postal">
+        <input id="next-shipping-postal" placeholder="รหัสไปรษณีย์">
+        <label for="next-shipping-postal">รหัสไปรษณีย์ (ไม่บังคับ)</label>
+      </div>`;
+    const postalField = form.querySelector('input') as HTMLInputElement;
+    const ctx = createCtx({
+      form,
+      fields: new Map([['postal', postalField]]),
+    });
+
+    updateFormLabels(ctx, createCountryConfig());
+
+    expect(
+      [...form.querySelectorAll('label')].map(label => label.textContent)
+    ).toEqual(['จังหวัด', 'รหัสไปรษณีย์ (ไม่บังคับ)']);
+    expect(postalField.placeholder).toBe('รหัสไปรษณีย์');
+  });
+
   it("replaces the label's full content, destroying any child markup the author put inside it", () => {
     // Surprising: `textContent = ...` wipes out a nested <abbr>/<span> rather
     // than updating just the label's text.

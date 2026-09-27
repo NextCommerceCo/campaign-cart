@@ -117,20 +117,20 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 /**
  * The phone rule each country's file carries on the address-rules service, served at
  * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
- * `src/rules/{us,th,gb,ar}.json`); Argentina's has no `callingCode` because its mobiles
+ * `src/rules/{us,th,gb,ar}.json`); Argentina's has no `calling_code` because its mobiles
  * keep a `15` only the order API's conversion removes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {
   US: {
-    callingCode: '1',
-    nationalPrefix: '1',
+    calling_code: '1',
+    national_prefix: '1',
     masks: [{ mask: '(###) ###-####' }],
     pattern: '^[0-9]{10,11}$',
     example: '(201) 555-0123',
   },
   TH: {
-    callingCode: '66',
-    nationalPrefix: '0',
+    calling_code: '66',
+    national_prefix: '0',
     masks: [
       { start: '02', mask: '## ### ####' },
       { start: '0[3-57]', mask: '### ### ###' },
@@ -141,14 +141,14 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     example: '081 234 5678',
   },
   GB: {
-    callingCode: '44',
-    nationalPrefix: '0',
+    calling_code: '44',
+    national_prefix: '0',
     masks: [{ mask: '##### ######' }],
     pattern: '^[0-9]{7,11}$',
     example: '07400 123456',
   },
   AR: {
-    nationalPrefix: '0',
+    national_prefix: '0',
     masks: [{ mask: '### ##-####-####' }],
     pattern: '^[0-9]{10,13}$',
     example: '011 15-2345-6789',
@@ -194,7 +194,7 @@ export function ruleField(
 ): Record<string, unknown> {
   return {
     label,
-    labelOptional: `${label} (optional)`,
+    label_optional: `${label} (optional)`,
     required: true,
     autocomplete,
     input,
@@ -360,7 +360,7 @@ export async function stubCountryService(
               phone_number: ruleField(
                 'Phone number',
                 'tel',
-                { type: 'tel', inputMode: 'tel' },
+                { type: 'tel', input_mode: 'tel' },
                 { required: false, format: phone }
               ),
             }

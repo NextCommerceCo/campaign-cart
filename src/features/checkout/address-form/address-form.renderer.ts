@@ -31,6 +31,11 @@ export interface AddressRenderContext {
    * leave the order built from whichever was scanned last.
    */
   alreadyCollected?: ReadonlySet<string>;
+  /**
+   * The page's own texts in the rules' language (`nextConfig.translations`): a label given
+   * there, by the field's `label_id` or its own key, replaces the rules' one.
+   */
+  texts?: Readonly<Record<string, string>>;
 }
 
 export function sdkFieldName(
@@ -42,9 +47,22 @@ export function sdkFieldName(
   return form === 'billing' ? `billing-${base}` : base;
 }
 
-/** What a field is called on the form: the rules' optional label when it is not required. */
-function shownLabel(field: RulesField): string {
-  return field.required ? field.label : (field.labelOptional ?? field.label);
+/**
+ * What a field is called on the form: the rules' optional label when it is not required.
+ * A page's own label wins, by the key the locale file shows (`fields.state.province.label`)
+ * and then by the field's own (`fields.state.label`, for every country).
+ */
+function shownLabel(
+  name: string,
+  field: RulesField,
+  texts: Readonly<Record<string, string>> = {}
+): string {
+  const part = field.required ? 'label' : 'label_optional';
+  const own =
+    (field.label_id && texts[`${field.label_id}.${part}`]) ||
+    texts[`fields.${name}.${part}`];
+  if (own) return own;
+  return field.required ? field.label : (field.label_optional ?? field.label);
 }
 
 function labelFor(text: string, id: string): HTMLLabelElement {
@@ -83,10 +101,10 @@ function controlFor(
     // floating label is hidden until there is a value, so a blank placeholder leaves
     // nothing on screen at all.
     control.placeholder = field.input.placeholder || text;
-    const { maxLength, inputMode, autoCapitalize } = field.input;
-    if (maxLength) control.maxLength = maxLength;
-    if (inputMode) control.inputMode = inputMode;
-    if (autoCapitalize) control.autocapitalize = autoCapitalize;
+    const { max_length, input_mode, auto_capitalize } = field.input;
+    if (max_length) control.maxLength = max_length;
+    if (input_mode) control.inputMode = input_mode;
+    if (auto_capitalize) control.autocapitalize = auto_capitalize;
   }
 
   return control;
@@ -158,7 +176,7 @@ export function renderLayout(
       cell.setAttribute('data-next-address-field', checkoutField);
       if (field.input.span) cell.style.flexGrow = String(field.input.span);
 
-      const text = shownLabel(field);
+      const text = shownLabel(name, field, ctx.texts);
       const control = controlFor(field, text, checkoutField, ctx.form, id);
       const value = ctx.values?.[checkoutField];
       if (value && control instanceof HTMLInputElement) control.value = value;
@@ -183,7 +201,9 @@ export function renderLayout(
  * A `select` is skipped: its options belong to the country being left, so carrying the
  * value across would put a province into a list that does not contain it.
  */
-export function readRenderedValues(container: HTMLElement): Record<string, string> {
+export function readRenderedValues(
+  container: HTMLElement
+): Record<string, string> {
   const values: Record<string, string> = {};
   container
     .querySelectorAll<HTMLInputElement>('input[data-next-checkout-field]')

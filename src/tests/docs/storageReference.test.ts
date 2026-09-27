@@ -23,7 +23,7 @@ import {
  * `src/docs/content/storage-keys.ts`, and fails when the committed markdown drifts.
  *
  * Regenerate:
- *   UPDATE_DOCS=1 npm run docs:reference
+ *   npm run storage:manifest    (also the first step of `npm run build`)
  *
  * The core equivalent of `stateReference.test.ts`, and a test rather than a script for
  * the same reason: the manifest loads through Vite, so TypeScript and `@/` resolve

@@ -58,7 +58,7 @@ const GB = rules('GB', [['country'], ['line1'], ['city'], ['postcode']], {
       example: 'SW1A 1AA',
       masks: ['## ###', '### ###', '#### ###'],
     },
-    { maxLength: 8 }
+    { max_length: 8 }
   ),
 });
 
@@ -70,7 +70,7 @@ const US = rules(
   [['country'], ['line1'], ['city', 'state', 'postcode']],
   {
     state: field('State', undefined, { type: 'select', options: 'states' }),
-    postcode: field('ZIP Code', { pattern: '^\\d{5}$' }, { maxLength: 5 }),
+    postcode: field('ZIP Code', { pattern: '^\\d{5}$' }, { max_length: 5 }),
   }
 );
 
@@ -111,8 +111,8 @@ describe('readCountryRules', () => {
 describe('toCountryConfig', () => {
   it("carries the country's phone rule from the phone_number field", () => {
     const phone = {
-      callingCode: '49',
-      nationalPrefix: '0',
+      calling_code: '49',
+      national_prefix: '0',
       pattern: '^[0-9]{5,15}$',
     };
     const config = toCountryConfig({
@@ -126,7 +126,7 @@ describe('toCountryConfig', () => {
     const config = toCountryConfig({
       ...DE,
       fields: {
-        phone_number: field('Phone', { callingCode: '977', example: '984-1234567' }),
+        phone_number: field('Phone', { calling_code: '977', example: '984-1234567' }),
       },
     });
     expect(config.phone).toBeUndefined();
