@@ -300,41 +300,6 @@ export class OrderManager {
     }
   }
 
-  public async handleTokenizedPayment(
-    token: string,
-    _pmData: any,
-    createOrderCallback: () => Promise<any>
-  ): Promise<void> {
-    try {
-      // Validate token
-      if (!token) {
-        throw new Error('Payment token is required');
-      }
-      
-      this.logger.debug('Calling createOrderCallback...');
-
-      // Continue with order creation now that we have the payment token
-      const order = await createOrderCallback();
-
-      this.logger.debug('Order created via callback:', {
-        ref_id: order.ref_id,
-        number: order.number
-      });
-
-      // No event for a *created* order: `order:completed` belongs to the page the
-      // shopper lands on next, where the order is fetched back paid. A card payment
-      // needing 3-D Secure gets here unpaid, which is issue #71.
-
-      // Handle redirect based on response format
-      this.logger.debug('Handling order redirect...');
-      this.handleOrderRedirect(order);
-
-    } catch (error) {
-      this.logger.error('Failed to process tokenized payment:', error);
-      throw error;
-    }
-  }
-
   // validateOrderData method removed - unused
 
   /**
