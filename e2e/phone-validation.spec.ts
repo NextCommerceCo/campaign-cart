@@ -235,6 +235,29 @@ test('a US number fills the US mask as it is typed, and is stored in E.164', asy
 });
 
 /**
+ * `phone_number`, the name the orders API and the address service use, is what a page
+ * should write; `phone`, the SDK's older name, stays accepted (the fixture writes that).
+ * A page on the new name gets the same flag, mask and E.164 value, stored under `phone`.
+ */
+test('a page writing phone_number gets the same phone field', async ({ page }) => {
+  await page.route(`**${CHECKOUT}`, async route => {
+    const response = await route.fetch();
+    const body = (await response.text())
+      .replace('data-next-checkout-field="phone"', 'data-next-checkout-field="phone_number"')
+      .replace('name="phone"', 'name="phone_number"');
+    await route.fulfill({ response, body });
+  });
+  await stubCardCheckout(page);
+  await bootSdk(page, CHECKOUT);
+
+  const input = page.locator('[data-next-checkout-field="phone_number"]');
+  await expect(page.locator(FLAG)).toHaveAttribute('src', /\/v1\/flags\/us\.svg$/);
+  await input.pressSequentially('4155552671');
+  await expect(input).toHaveValue('(415) 555-2671');
+  await expect.poll(() => storedPhone(page)).toBe('+14155552671');
+});
+
+/**
  * The US mask holds ten digits and no `1`, so a number dialled with the national prefix
  * shows the prefix before the mask, and E.164 drops it rather than doubling the code.
  */

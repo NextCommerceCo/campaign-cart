@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkoutFieldNames,
+  checkoutFieldSelector,
   sdkCheckoutFieldName,
 } from '@/utils/checkout-field-names';
 
@@ -11,6 +12,9 @@ describe('sdkCheckoutFieldName', () => {
     ['last_name', 'lname'],
     ['billing-first_name', 'billing-fname'],
     ['billing-last_name', 'billing-lname'],
+    ['phone_number', 'phone'],
+    ['billing-phone_number', 'billing-phone'],
+    ['phone', 'phone'],
     ['fname', 'fname'],
     ['email', 'email'],
     ['billing-postal', 'billing-postal'],
@@ -29,6 +33,20 @@ describe('checkoutFieldNames', () => {
       'billing-lname',
       'billing-last_name',
     ]);
+    expect(checkoutFieldNames('phone')).toEqual(['phone', 'phone_number']);
     expect(checkoutFieldNames('postal')).toEqual(['postal']);
+  });
+});
+
+describe('checkoutFieldSelector', () => {
+  it('matches an input written under either name', () => {
+    document.body.innerHTML = `
+      <input id="new" data-next-checkout-field="phone_number">
+      <input id="old" data-next-checkout-field="phone">
+      <input id="other" data-next-checkout-field="postal">`;
+    const matched = [
+      ...document.querySelectorAll(checkoutFieldSelector('phone')),
+    ].map(el => el.id);
+    expect(matched).toEqual(['new', 'old']);
   });
 });

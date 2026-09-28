@@ -146,7 +146,7 @@ Below is an example of a contact step that asks for the first name, last name an
 <div data-next-address="shipping"></div>
 ```
 
-The phone works the same way: write a `data-next-checkout-field="phone"` input in the contact step, and the address block leaves it out. Two things change when the page writes the name. Its fields stay in the order the page wrote them, where the address block writes the family name first for Japan and Korea. And a billing address block still asks for a name of its own, since the name on a bill can differ from the one on the parcel.
+The phone works the same way: write a `data-next-checkout-field="phone_number"` input in the contact step, and the address block leaves it out. Two things change when the page writes the name. Its fields stay in the order the page wrote them, where the address block writes the family name first for Japan and Korea. And a billing address block still asks for a name of its own, since the name on a bill can differ from the one on the parcel.
 
 The SDK requires the first name, last name and email. The phone is optional; a page that writes its own phone input can require it with `required` or `data-next-required="true"`. No field accepts an emoji.
 

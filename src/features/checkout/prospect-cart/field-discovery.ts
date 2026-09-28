@@ -3,6 +3,8 @@
  * feature can watch them without the form telling it where they are.
  */
 
+import { checkoutFieldSelector } from '@/utils/checkout-field-names';
+
 import { phoneFieldFor } from '../checkout-form/phone-input';
 
 import type { FieldDiscoveryContext } from './prospect-cart.types';
@@ -37,7 +39,7 @@ export function findPhoneField(
   phoneFieldName: string | undefined
 ): HTMLInputElement | undefined {
   const selectors = [
-    '[data-next-checkout-field="phone"]',
+    checkoutFieldSelector('phone'),
     '[os-checkout-field="phone"]',
     `input[name="${phoneFieldName}"]`,
     'input[type="tel"]',
@@ -66,7 +68,7 @@ export function getFormattedPhoneNumber(
 ): string {
   // Find the phone field
   const phoneField = context.element.querySelector(
-    '[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"], input[type="tel"]'
+    `${checkoutFieldSelector('phone')}, [os-checkout-field="phone"], input[name="phone"], input[type="tel"]`
   ) as HTMLInputElement;
 
   if (!phoneField) {

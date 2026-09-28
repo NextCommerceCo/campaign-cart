@@ -5,6 +5,7 @@
 
 import { createLogger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
+import { checkoutFieldSelector } from '@/utils/checkout-field-names';
 
 const logger = createLogger('UserDataStorage');
 
@@ -254,8 +255,7 @@ class UserDataStorage {
         key: 'email',
       },
       {
-        selector:
-          '[name="phone"], [data-next-checkout-field="phone"], #phone, [type="tel"]',
+        selector: `[name="phone"], ${checkoutFieldSelector('phone')}, #phone, [type="tel"]`,
         key: 'phone',
       },
       {

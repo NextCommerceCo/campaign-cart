@@ -412,12 +412,12 @@ The SDK finds inputs by `data-next-checkout-field`, not by their `name` attribut
 
 | Group | Names |
 |---|---|
-| Contact | `first_name`, `last_name`, `email`, `phone` |
+| Contact | `first_name`, `last_name`, `email`, `phone_number` |
 | Address | `country`, `address1`, `address2`, `city`, `province`, `postal` |
 | Card | `cc-number`, `cvv`, `exp-month`, `exp-year` |
 | Consent | `accepts_marketing` |
 
-> **Watch out:** The starter template writes `fname` and `lname`, the SDK's older names for the first and last name. They still work, but the orders API and the address service call these fields `first_name` and `last_name`, and new markup should too.
+> **Watch out:** The starter template writes `fname`, `lname` and `phone`, the SDK's older names for the first name, last name and phone. They still work, but the orders API and the address service call these fields `first_name`, `last_name` and `phone_number`, and new markup should too.
 
 The address fields are built by the [address block](#address-block) under these names; writing them yourself is deprecated. `cc-number` and `cvv` are not inputs you write either: leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
 
@@ -629,7 +629,7 @@ Values `data-next-checkout-review` accepts.
 | Value | Description |
 |---|---|
 | `email` | The email collected earlier |
-| `phone` | The phone number collected earlier |
+| `phone_number` | The phone number collected earlier |
 | `address` | The shipping address collected earlier |
 | `shippingMethod.name` | The chosen shipping method |
 

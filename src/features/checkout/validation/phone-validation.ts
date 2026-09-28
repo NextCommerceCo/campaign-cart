@@ -24,6 +24,8 @@
  * server-side rejection we can see.
  */
 
+import { checkoutFieldSelector } from '@/utils/checkout-field-names';
+
 /**
  * What this module asks a phone field (`checkout-form/phone-input.ts`).
  *
@@ -277,7 +279,7 @@ export function normalizePhone(
  */
 export function isPhoneMarkedRequired(): boolean {
   const field =
-    document.querySelector('[data-next-checkout-field="phone"]') ??
+    document.querySelector(checkoutFieldSelector('phone')) ??
     document.querySelector('[name="phone"]');
   return (
     field instanceof HTMLElement &&

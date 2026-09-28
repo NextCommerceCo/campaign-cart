@@ -1,12 +1,14 @@
 /**
- * `data-next-checkout-field` names that mean the same field. `first_name` and `last_name`
- * are the names the orders API and the address service use, and the ones a page should
- * write; `fname` and `lname` are the SDK's older names, still accepted everywhere, and the
- * names it keeps the values under, so a checkout stored under them still restores.
+ * `data-next-checkout-field` names that mean the same field. `first_name`, `last_name` and
+ * `phone_number` are the names the orders API and the address service use, and the ones a
+ * page should write; `fname`, `lname` and `phone` are the SDK's older names, still accepted
+ * everywhere, and the names it keeps the values under, so a checkout stored under them
+ * still restores.
  */
 const SDK_NAME: Readonly<Record<string, string>> = {
   first_name: 'fname',
   last_name: 'lname',
+  phone_number: 'phone',
 };
 
 const BILLING = 'billing-';
@@ -30,4 +32,11 @@ export function checkoutFieldNames(name: string): string[] {
     .filter(([, sdk]) => sdk === base)
     .map(([page]) => `${prefix}${page}`);
   return [`${prefix}${base}`, ...aliases];
+}
+
+/** Matches the field under any of its names: `[data-next-checkout-field="phone"], […="phone_number"]`. */
+export function checkoutFieldSelector(name: string): string {
+  return checkoutFieldNames(name)
+    .map(each => `[data-next-checkout-field="${each}"]`)
+    .join(', ');
 }
