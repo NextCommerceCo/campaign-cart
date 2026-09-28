@@ -2,16 +2,17 @@ import { CountryConfig, CountryStatesData, LocationData, State } from './country
 import { PhoneRules } from './country-service.phone';
 export declare function flagUrl(countryCode: string, baseUrl?: string): string;
 export interface RulesField {
+    label_id?: string;
     label: string;
-    labelOptional?: string;
+    label_optional?: string;
     errors?: Readonly<Record<string, string>>;
     required: boolean;
     autocomplete: string;
     input: {
         type: 'text' | 'email' | 'tel' | 'select';
-        inputMode?: 'text' | 'numeric' | 'tel' | 'email';
-        autoCapitalize?: 'none' | 'words' | 'characters';
-        maxLength?: number;
+        input_mode?: 'text' | 'numeric' | 'tel' | 'email';
+        auto_capitalize?: 'none' | 'words' | 'characters';
+        max_length?: number;
         placeholder?: string;
         options?: 'countries' | 'states';
         span?: number;
@@ -20,8 +21,8 @@ export interface RulesField {
         pattern?: string;
         example?: string;
         masks?: string[] | PhoneRules['masks'];
-        callingCode?: string;
-        nationalPrefix?: string;
+        calling_code?: string;
+        national_prefix?: string;
     };
 }
 export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>;

@@ -1,6 +1,7 @@
 type Texts = Readonly<Record<string, string>>;
 export interface MessageSource {
     getFieldErrors?: (country?: string) => Readonly<Record<string, Texts>>;
+    getFieldLabelIds?: (country?: string) => Texts;
     getMessagesLang?: () => string | undefined;
 }
 export declare function baseLang(lang: string): string;

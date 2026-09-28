@@ -36,6 +36,7 @@ export interface LocationData {
     detectedIp?: string;
     messages?: Record<string, string>;
     fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+    fieldLabelIds?: Record<string, string>;
     messagesLang?: string;
 }
 export interface CountryStatesData {
@@ -44,6 +45,7 @@ export interface CountryStatesData {
     rules?: CountryRules;
     messages?: Record<string, string>;
     fieldErrors?: Record<string, Readonly<Record<string, string>>>;
+    fieldLabelIds?: Record<string, string>;
     messagesLang?: string;
 }
 export declare function addressLang(pageLang?: string): string;
@@ -56,6 +58,8 @@ export declare class CountryService {
     private textRequests;
     private fieldErrors;
     private lastFieldErrors;
+    private fieldLabelIds;
+    private lastFieldLabelIds;
     private logger;
     private config;
     private campaignShippingCountries;
@@ -72,6 +76,7 @@ export declare class CountryService {
     getTexts(lang: string): Readonly<Record<string, string>> | undefined;
     loadTexts(lang: string): Promise<void>;
     getFieldErrors(country?: string): Readonly<Record<string, Readonly<Record<string, string>>>>;
+    getFieldLabelIds(country?: string): Readonly<Record<string, string>>;
     private keepMessages;
     getLocationData(): Promise<LocationData>;
     getCountryStates(countryCode: string): Promise<CountryStatesData>;
