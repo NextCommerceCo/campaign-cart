@@ -26,6 +26,15 @@ export const CARD_CHECKOUT = '/e2e/fixtures/card-purchase.html';
 /** What the NextPayment stand-in does when the form tokenizes a card. */
 export type NextPaymentOutcome = 'tokenize' | 'reject-number';
 
+export interface NextPaymentOptions {
+  outcome?: NextPaymentOutcome;
+  /**
+   * Keep the fields from reporting ready until the spec calls
+   * `window.__releaseNextPayment()`, for a spec that has to listen before they are.
+   */
+  holdReady?: boolean;
+}
+
 /**
  * A stand-in for NextPayment, installed before `/src/index.ts` runs: it is an off-site
  * iframe that cannot run headless.
@@ -49,7 +58,7 @@ export interface NextPaymentStub {
 
 export async function stubNextPayment(
   page: Page,
-  outcome: NextPaymentOutcome = 'tokenize'
+  { outcome = 'tokenize', holdReady = false }: NextPaymentOptions = {}
 ): Promise<NextPaymentStub> {
   const scriptRequests: string[] = [];
   const submits: unknown[] = [];
@@ -61,65 +70,70 @@ export async function stubNextPayment(
     return route.abort();
   });
 
-  await page.addInitScript(outcome => {
-    (window as any).NextPayment = class {
-      onReady = (): void => {};
-      onValidation = (_: unknown): void => {};
-      onError = (_: unknown): void => {};
-      onTokenized = (_: unknown): void => {};
-      onFieldStateChange = (_: unknown): void => {};
+  await page.addInitScript(
+    ({ outcome, holdReady }) => {
+      (window as any).NextPayment = class {
+        onReady = (): void => {};
+        onValidation = (_: unknown): void => {};
+        onError = (_: unknown): void => {};
+        onTokenized = (_: unknown): void => {};
+        onFieldStateChange = (_: unknown): void => {};
 
-      constructor() {
-        setTimeout(() => {
-          this.onReady();
-          // Then the shopper types a valid card: the fields are iframes, so a
-          // `fill()` cannot reach them.
-          this.onValidation({ errors: [] });
-        }, 0);
-      }
+        constructor() {
+          const ready = (): void => {
+            this.onReady();
+            // Then the shopper types a valid card: the fields are iframes, so a
+            // `fill()` cannot reach them.
+            this.onValidation({ errors: [] });
+          };
+          if (holdReady) (window as any).__releaseNextPayment = ready;
+          else setTimeout(ready, 0);
+        }
 
-      setFocus(): void {}
-      destroy(): void {}
+        setFocus(): void {}
+        destroy(): void {}
 
-      submit(formData: unknown): void {
-        (window as any).__recordNextPaymentSubmit(formData);
-        setTimeout(() => {
-          if (outcome === 'reject-number') {
-            this.onValidation({
-              errors: [
-                {
-                  attribute: 'number',
-                  key: 'errors.invalid',
-                  message: 'Card number is invalid',
+        submit(formData: unknown): void {
+          (window as any).__recordNextPaymentSubmit(formData);
+          setTimeout(() => {
+            if (outcome === 'reject-number') {
+              this.onValidation({
+                errors: [
+                  {
+                    attribute: 'number',
+                    key: 'errors.invalid',
+                    message: 'Card number is invalid',
+                  },
+                ],
+              });
+              this.onError('Card number must be between 13 and 19 digits');
+              return;
+            }
+            this.onTokenized({
+              message: 'Token generated',
+              tokenResponse: {
+                token: 'e2e-transaction-token',
+                payment_method: {
+                  token: 'e2e-payment-method-token',
+                  last_four_digits: '1111',
+                  card_type: 'visa',
                 },
-              ],
-            });
-            this.onError('Card number must be between 13 and 19 digits');
-            return;
-          }
-          this.onTokenized({
-            message: 'Token generated',
-            tokenResponse: {
-              token: 'e2e-transaction-token',
-              payment_method: {
-                token: 'e2e-payment-method-token',
-                last_four_digits: '1111',
-                card_type: 'visa',
               },
-            },
-          });
-        }, 0);
-      }
-    };
-  }, outcome);
+            });
+          }, 0);
+        }
+      };
+    },
+    { outcome, holdReady }
+  );
 
   return { scriptRequests, submits };
 }
 
 /**
  * Campaign, cart, tokenizer, country lists and prospect carts — everything
- * except the orders endpoint, which each spec answers its own way. `card` is what the
- * tokenizer does on submit.
+ * except the orders endpoint, which each spec answers its own way. `card` is how the
+ * tokenizer behaves.
  *
  * A non-empty `payment_env_key` is what makes the SDK build its
  * `CreditCardService` at all; `MINIMAL_CAMPAIGN` ships an empty one, and without
@@ -131,7 +145,7 @@ export async function stubNextPayment(
 export async function stubCardCheckout(
   page: Page,
   address: AddressServiceOptions = {},
-  card: NextPaymentOutcome = 'tokenize'
+  card: NextPaymentOptions = {}
 ): Promise<NextPaymentStub> {
   await stubCampaign(page, {
     ...MINIMAL_CAMPAIGN,

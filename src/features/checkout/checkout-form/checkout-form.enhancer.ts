@@ -613,7 +613,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.applySelectedCountry(country, this.countries);
     try {
-      await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+      await this.loadProvincesForSelectedCountry(
+        country,
+        country,
+        storedProvince
+      );
     } catch (error) {
       this.logger.error('Failed to refill the province options:', error);
     }
@@ -1233,6 +1237,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
+        this.emit('checkout:payment-ready', {});
         this.emit('checkout:spreedly-ready', {});
         this.logger.debug('[Spreedly] Credit card service ready');
 

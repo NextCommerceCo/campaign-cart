@@ -28,6 +28,7 @@ const INTERNAL_EVENT_PATTERNS = [
   'campaign:loaded',
   'checkout:started',
   'checkout:form-initialized',
+  'checkout:payment-ready',
   'checkout:spreedly-ready',
   'checkout:express-started',
   'order:completed',
@@ -347,12 +348,7 @@ export function watchPerformanceEvents(ctx: EventCaptureHost): void {
     startMark?: string,
     endMark?: string
   ) {
-    const result = originalMeasure.call(
-      performance,
-      name,
-      startMark,
-      endMark
-    );
+    const result = originalMeasure.call(performance, name, startMark, endMark);
     if (ctx.isRecording) {
       addEvent(ctx, {
         type: 'performance',

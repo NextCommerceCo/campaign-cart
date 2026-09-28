@@ -74,7 +74,7 @@ test("creates the card order with the payment method's token", async ({
 test('a rejected card number ends the submit with the page’s own message, and no order', async ({
   page,
 }) => {
-  await stubCardCheckout(page, {}, 'reject-number');
+  await stubCardCheckout(page, {}, { outcome: 'reject-number' });
   await addNextConfig(page, {
     translations: {
       en: { 'payment.card.number.errors.invalid': 'Check the card number' },
@@ -95,4 +95,24 @@ test('a rejected card number ends the submit with the page’s own message, and 
   // The submit is over: the button takes a second attempt.
   await expect(page.locator('[data-next-checkout-submit]')).toBeEnabled();
   expect(orders).toEqual([]);
+});
+
+test('announces the card fields ready under the new name and the deprecated one', async ({
+  page,
+}) => {
+  await stubCardCheckout(page, {}, { holdReady: true });
+  await bootSdk(page, CARD_CHECKOUT);
+
+  const payment = await captureEvents(page, 'checkout:payment-ready');
+  const spreedly = await captureEvents(page, 'checkout:spreedly-ready');
+  expect(await payment.count()).toBe(0);
+
+  await page.evaluate(() =>
+    (
+      window as unknown as { __releaseNextPayment: () => void }
+    ).__releaseNextPayment()
+  );
+
+  await expect.poll(() => payment.count()).toBe(1);
+  await expect.poll(() => spreedly.count()).toBe(1);
 });

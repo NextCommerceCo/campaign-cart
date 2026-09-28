@@ -130,7 +130,22 @@ export interface EventMap {
     /** The form element that was initialized. */
     form: HTMLFormElement;
   };
-  /** The Spreedly card iframe is ready to accept card details. */
+  /**
+   * The hosted card number and CVV fields are ready to accept card details.
+   *
+   * @example
+   * ```js
+   * next.on('checkout:payment-ready', () => {
+   *   document.querySelector('[data-next-checkout-submit]').disabled = false;
+   * });
+   * ```
+   */
+  'checkout:payment-ready': {};
+  /**
+   * The same moment as `checkout:payment-ready`, under its old name.
+   *
+   * @deprecated Listen for `checkout:payment-ready`. Both still fire, this one second.
+   */
   'checkout:spreedly-ready': {};
   /**
    * An express checkout flow started.
