@@ -38,9 +38,15 @@ export interface CardError {
 /** The payment method the provider returned with a token: last four, card type and so on. */
 export type CardPaymentMethod = Record<string, unknown>;
 
-/** The cardholder data a tokenize call sends along with the hosted fields. */
+/**
+ * The cardholder data a tokenize call sends along with the hosted fields. The name is
+ * sent split as well as whole: given `full_name` alone, the provider splits it itself,
+ * and a one-word name comes back as `first_name: "Not Provided"`.
+ */
 export interface CardHolderData {
   full_name: string;
+  first_name?: string;
+  last_name?: string;
   month: string;
   year: string;
 }

@@ -1888,9 +1888,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // span?.setAttribute('payment.type', 'credit_card');
 
         if (this.creditCardService?.ready) {
+          const firstName = String(checkoutStore.formData.fname ?? '').trim();
+          const lastName = String(checkoutStore.formData.lname ?? '').trim();
           const cardData: CreditCardData = {
-            full_name:
-              `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
+            full_name: `${firstName} ${lastName}`.trim(),
+            ...(firstName && { first_name: firstName }),
+            ...(lastName && { last_name: lastName }),
             month:
               checkoutStore.formData['cc-month'] ||
               checkoutStore.formData['exp-month'] ||

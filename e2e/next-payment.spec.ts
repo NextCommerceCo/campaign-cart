@@ -65,7 +65,13 @@ test("creates the card order with the payment method's token", async ({
   });
 
   expect(submits).toEqual([
-    { full_name: 'Ada Lovelace', month: '12', year: '2030' },
+    {
+      full_name: 'Ada Lovelace',
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      month: '12',
+      year: '2030',
+    },
   ]);
   expect(scriptRequests).toEqual([
     'https://payments.29next.com/js/v1/payment.js?env_key=e2e-env-key',
