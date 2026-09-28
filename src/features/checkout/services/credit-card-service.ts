@@ -705,6 +705,8 @@ export class CreditCardService {
     }
 
     if (state.action === 'validation') {
+      if (state.hasValue !== undefined)
+        this.fieldHasValue[field] = state.hasValue;
       if (state.valid !== undefined) {
         this.validationState[field].isValid = state.valid;
         this.validationState[field].hasError = !state.valid;

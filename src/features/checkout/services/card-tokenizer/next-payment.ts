@@ -6,12 +6,15 @@
  * Its callbacks do not line up one-to-one with a tokenize attempt, and that is what
  * most of this file is about:
  *
- * - `onValidation` reports `month` / `year` / `full_name` from NextPayment's own check
- *   inside `submit()`, and nothing else follows: no `onError`, no `onTokenized`. Those
- *   errors end the attempt here.
+ * - `onValidation` fires on submit only. It reports `month` / `year` / `full_name` from
+ *   NextPayment's own check inside `submit()`, and nothing else follows: no `onError`,
+ *   no `onTokenized`. Those errors end the attempt here.
  * - It also reports `number` / `cvv`, and a rejected attempt then gets an `onError`
- *   repeating them as a bare string. The structured errors are kept, and the echo ends
- *   the attempt with them.
+ *   repeating them as a bare string ("Invalid card number"). The structured errors are
+ *   kept, and the echo ends the attempt with them.
+ * - Whether the number or CVV is empty or wrong, and as the shopper types, comes from
+ *   `onFieldStateChange`, which carries both fields' length and validity on every
+ *   event. NextPayment's error `key` is `errors.invalid` either way.
  * - `onTokenized` hands back the whole response; the token a card order needs is
  *   `tokenResponse.payment_method.token`, not `tokenResponse.token`, which is the
  *   transaction's.
@@ -40,6 +43,23 @@ interface NextPaymentFieldError {
   message?: string;
 }
 
+/**
+ * What `onFieldStateChange` reports, on every focus, blur, keystroke and hover: the
+ * field the event is about, and the state of both fields.
+ *
+ * `{"cardType":"visa","cvvLength":3,"luhnValid":false,"numberLength":16,
+ * "validCvv":true,"validNumber":false,"action":"mouseover","field":"cvv",
+ * "focused":false,"hovered":true}`
+ */
+interface NextPaymentFieldState {
+  field?: unknown;
+  action?: unknown;
+  numberLength?: unknown;
+  cvvLength?: unknown;
+  validNumber?: unknown;
+  validCvv?: unknown;
+}
+
 interface NextPaymentOptions {
   numberEl: string;
   cvvEl: string;
@@ -57,7 +77,7 @@ interface NextPaymentInstance {
   onValidation: (payload: { errors?: NextPaymentFieldError[] }) => void;
   onError: (error: unknown) => void;
   onTokenized: (result: unknown) => void;
-  onFieldStateChange: (payload: { field?: unknown; action?: unknown }) => void;
+  onFieldStateChange: (payload: NextPaymentFieldState | undefined) => void;
   setFocus(field: HostedCardField): void;
   submit(formData: CardHolderData): void;
   destroy(): void;
@@ -138,18 +158,17 @@ export function cssTextToStyle(css: string): Record<string, string> {
 }
 
 /**
- * NextPayment sends `errors.invalid` for an empty number or CVV too, and says which it
- * was only in its English: `Card number is required` / `Card number is invalid`.
+ * `empty` says whether the field was empty. NextPayment's own `key` cannot: it sends
+ * `errors.invalid` for an empty number or CVV as well as a wrong one.
  */
-function isEmptyFieldError(error: NextPaymentFieldError): boolean {
-  return error.key === 'errors.blank' || /required/i.test(error.message ?? '');
-}
-
-function toCardError(error: NextPaymentFieldError): CardError {
+function toCardError(
+  error: NextPaymentFieldError,
+  empty: boolean = error.key === 'errors.blank'
+): CardError {
   const field = cardErrorField(error.attribute);
   return {
     ...(field && { field }),
-    textKey: cardErrorKey(field, error.key, isEmptyFieldError(error)),
+    textKey: cardErrorKey(field, error.key, empty),
     message: error.message ?? 'An error occurred processing your payment.',
   };
 }
@@ -202,6 +221,19 @@ function paymentMethodOf(result: unknown): CardPaymentMethod | undefined {
     : undefined;
 }
 
+const HOSTED_FIELDS = ['number', 'cvv'] as const;
+
+/** One field's value length and validity, from a field state change. */
+function readFieldState(
+  payload: NextPaymentFieldState,
+  field: HostedCardField
+): { length: number; valid?: boolean } | undefined {
+  const length = field === 'number' ? payload.numberLength : payload.cvvLength;
+  const valid = field === 'number' ? payload.validNumber : payload.validCvv;
+  if (typeof length !== 'number') return undefined;
+  return { length, ...(typeof valid === 'boolean' && { valid }) };
+}
+
 const PRE_VALIDATED: ReadonlySet<CardErrorField | undefined> = new Set([
   'month',
   'year',
@@ -239,6 +271,10 @@ export class NextPaymentTokenizer {
   private pending = false;
   /** The number / CVV errors of the pending attempt, for the echo that ends it. */
   private fieldErrors: CardError[] = [];
+  /** How many characters each hosted field holds, as the last field event said. */
+  private lengths: Record<HostedCardField, number> = { number: 0, cvv: 0 };
+  /** The cardholder data of the pending attempt. */
+  private submitted: CardHolderData | undefined;
 
   constructor(
     private readonly environmentKey: string,
@@ -266,6 +302,7 @@ export class NextPaymentTokenizer {
     if (!this.instance) return;
     this.pending = true;
     this.fieldErrors = [];
+    this.submitted = { ...card };
     this.instance.submit({ ...card });
   }
 
@@ -328,33 +365,39 @@ export class NextPaymentTokenizer {
     instance.onFieldStateChange = payload => {
       const field = payload?.field;
       const action = payload?.action;
-      if (field !== 'number' && field !== 'cvv') return;
+      if (!payload || (field !== 'number' && field !== 'cvv')) return;
+
+      for (const each of HOSTED_FIELDS) {
+        const state = readFieldState(payload, each);
+        if (!state) continue;
+        this.lengths[each] = state.length;
+        const { valid } = state;
+        // Only a keystroke in a field clears its error; every other event (a hover
+        // included) still carries both fields' state, which is kept current quietly.
+        events.onFieldState({
+          field: each,
+          action: action === 'input' && each === field ? 'input' : 'validation',
+          hasValue: state.length > 0,
+          ...(valid !== undefined && { valid }),
+        });
+      }
       if (action === 'focus' || action === 'blur') {
         events.onFieldState({ field, action });
       }
     };
 
+    // Fires on submit only; the fields' live state comes from `onFieldStateChange`.
     instance.onValidation = payload => {
-      const errors = (payload?.errors ?? []).map(toCardError);
+      if (!this.pending) return;
+      const errors = (payload?.errors ?? []).map(error =>
+        toCardError(error, this.wasEmpty(error))
+      );
       const preValidation = errors.filter(e => PRE_VALIDATED.has(e.field));
-      if (this.pending && preValidation.length > 0) {
+      if (preValidation.length > 0) {
         this.settle(events, preValidation);
         return;
       }
-
-      const action = this.pending ? 'validation' : 'input';
-      for (const field of ['number', 'cvv'] as const) {
-        const error = errors.find(e => e.field === field);
-        events.onFieldState({
-          field,
-          action,
-          valid: !error,
-          hasValue: !error || error.textKey.endsWith('.invalid'),
-        });
-      }
-      if (this.pending) {
-        this.fieldErrors = errors.filter(e => !PRE_VALIDATED.has(e.field));
-      }
+      this.fieldErrors = errors;
     };
 
     instance.onError = error => {
@@ -384,6 +427,22 @@ export class NextPaymentTokenizer {
       });
       events.onToken(token, paymentMethod);
     };
+  }
+
+  /** Whether the field an error names was empty: its length, or what was submitted. */
+  private wasEmpty(error: NextPaymentFieldError): boolean {
+    const field = cardErrorField(error.attribute);
+    switch (field) {
+      case 'number':
+      case 'cvv':
+        return this.lengths[field] === 0;
+      case 'month':
+        return !this.submitted?.month;
+      case 'year':
+        return !this.submitted?.year;
+      default:
+        return error.key === 'errors.blank';
+    }
   }
 
   private settle(events: CardTokenizerEvents, errors: CardError[]): void {

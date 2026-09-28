@@ -29,6 +29,12 @@ export type NextPaymentOutcome = 'tokenize' | 'reject-number';
 export interface NextPaymentOptions {
   outcome?: NextPaymentOutcome;
   /**
+   * Whether the number the shopper types passes the fields' own check. `false` is a
+   * number the form stops before tokenizing; `outcome: 'reject-number'` is one the
+   * fields accepted and NextPayment then refused on submit.
+   */
+  numberValid?: boolean;
+  /**
    * Keep the fields from reporting ready until the spec calls
    * `window.__releaseNextPayment()`, for a spec that has to listen before they are.
    */
@@ -42,7 +48,8 @@ export interface NextPaymentOptions {
  * It answers the way the real script does, which is the part worth testing: the token
  * a card order needs is `tokenResponse.payment_method.token`, and the response also
  * carries a transaction `token` that must not be used; a rejected number arrives as
- * `onValidation` errors and then an `onError` string repeating them.
+ * `onValidation` errors and then an `onError` string repeating them; and each field's
+ * length and validity arrive on `onFieldStateChange`, the way the live demo showed.
  *
  * `window.NextPayment` existing is what stops the SDK fetching the real script, and
  * the route for `payments.29next.com` records a fetch anyway, so a spec can assert the
@@ -58,7 +65,11 @@ export interface NextPaymentStub {
 
 export async function stubNextPayment(
   page: Page,
-  { outcome = 'tokenize', holdReady = false }: NextPaymentOptions = {}
+  {
+    outcome = 'tokenize',
+    holdReady = false,
+    numberValid = true,
+  }: NextPaymentOptions = {}
 ): Promise<NextPaymentStub> {
   const scriptRequests: string[] = [];
   const submits: unknown[] = [];
@@ -71,7 +82,7 @@ export async function stubNextPayment(
   });
 
   await page.addInitScript(
-    ({ outcome, holdReady }) => {
+    ({ outcome, holdReady, numberValid }) => {
       (window as any).NextPayment = class {
         onReady = (): void => {};
         onValidation = (_: unknown): void => {};
@@ -82,9 +93,22 @@ export async function stubNextPayment(
         constructor() {
           const ready = (): void => {
             this.onReady();
-            // Then the shopper types a valid card: the fields are iframes, so a
-            // `fill()` cannot reach them.
-            this.onValidation({ errors: [] });
+            // Then the shopper types a card: the fields are iframes, so a `fill()`
+            // cannot reach them. The payload is the shape the live script sends.
+            for (const field of ['number', 'cvv']) {
+              this.onFieldStateChange({
+                cardType: 'visa',
+                numberLength: 16,
+                validNumber: numberValid,
+                luhnValid: numberValid,
+                cvvLength: 3,
+                validCvv: true,
+                action: 'input',
+                field,
+                focused: true,
+                hovered: false,
+              });
+            }
           };
           if (holdReady) (window as any).__releaseNextPayment = ready;
           else setTimeout(ready, 0);
@@ -106,7 +130,7 @@ export async function stubNextPayment(
                   },
                 ],
               });
-              this.onError('Card number must be between 13 and 19 digits');
+              this.onError('Invalid card number');
               return;
             }
             this.onTokenized({
@@ -124,7 +148,7 @@ export async function stubNextPayment(
         }
       };
     },
-    { outcome, holdReady }
+    { outcome, holdReady, numberValid }
   );
 
   return { scriptRequests, submits };

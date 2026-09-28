@@ -56,6 +56,23 @@ async function mounted(config = {}) {
 
 const CARD = { full_name: 'Ada Lovelace', month: '05', year: '2030' };
 
+/** A field state change as NextPayment sends it, captured from the live demo. */
+function fieldState(overrides: Record<string, unknown> = {}) {
+  return {
+    cardType: 'visa',
+    cvvLength: 3,
+    luhnValid: false,
+    numberLength: 16,
+    validCvv: true,
+    validNumber: false,
+    action: 'mouseover',
+    field: 'cvv',
+    focused: false,
+    hovered: true,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   instances = [];
   window.NextPayment = function (this: FakeInstance, options: unknown) {
@@ -74,7 +91,7 @@ afterEach(() => {
 describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
   it('ends an attempt NextPayment rejects itself, which no onError follows', async () => {
     const { tokenizer, handlers, instance } = await mounted();
-    tokenizer.tokenize(CARD);
+    tokenizer.tokenize({ ...CARD, year: '' });
 
     instance.onValidation({
       errors: [
@@ -98,6 +115,9 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
 
   it('ends a rejected card number with its field errors, not the string that echoes them', async () => {
     const { tokenizer, handlers, instance } = await mounted();
+    instance.onFieldStateChange(
+      fieldState({ action: 'input', field: 'number' })
+    );
     tokenizer.tokenize(CARD);
 
     instance.onValidation({
@@ -111,7 +131,7 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
     });
     expect(handlers.onError).not.toHaveBeenCalled();
 
-    instance.onError('Card number must be between 13 and 19 digits');
+    instance.onError('Invalid card number');
 
     expect(handlers.onError).toHaveBeenCalledTimes(1);
     expect(handlers.onError).toHaveBeenCalledWith([
@@ -120,6 +140,47 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
         textKey: 'payment.card.number.errors.invalid',
         message: 'Card number is invalid',
       },
+    ]);
+  });
+
+  it('names an empty number blank from its length, whatever the message says', async () => {
+    const { tokenizer, handlers, instance } = await mounted();
+    instance.onFieldStateChange(
+      fieldState({ action: 'input', field: 'number', numberLength: 0 })
+    );
+    tokenizer.tokenize(CARD);
+
+    instance.onValidation({
+      errors: [
+        {
+          attribute: 'number',
+          key: 'errors.invalid',
+          message: 'Card number is invalid',
+        },
+      ],
+    });
+    instance.onError('Card number must be between 13 and 19 digits');
+
+    expect(handlers.onError).toHaveBeenCalledWith([
+      expect.objectContaining({ textKey: 'payment.card.number.errors.blank' }),
+    ]);
+  });
+
+  it.each([
+    ['', 'payment.card.expiry_month.errors.blank'],
+    ['13', 'payment.card.expiry_month.errors.invalid'],
+  ])('names a month of %j from what was submitted', async (month, textKey) => {
+    const { tokenizer, handlers, instance } = await mounted();
+    tokenizer.tokenize({ ...CARD, month });
+
+    instance.onValidation({
+      errors: [
+        { attribute: 'month', key: 'errors.invalid', message: 'Expiry month' },
+      ],
+    });
+
+    expect(handlers.onError).toHaveBeenCalledWith([
+      expect.objectContaining({ field: 'month', textKey }),
     ]);
   });
 
@@ -162,31 +223,41 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
 });
 
 describe('NextPaymentTokenizer — the hosted fields between attempts', () => {
-  it('reports each field empty, invalid or valid from a validation outside an attempt', async () => {
+  it('clears an error only on a keystroke, and keeps both fields current on every event', async () => {
+    const { handlers, instance } = await mounted();
+
+    instance.onFieldStateChange(
+      fieldState({ action: 'mouseover', field: 'cvv' })
+    );
+    expect(handlers.onFieldState.mock.calls.map(([s]: unknown[]) => s)).toEqual(
+      [
+        { field: 'number', action: 'validation', hasValue: true, valid: false },
+        { field: 'cvv', action: 'validation', hasValue: true, valid: true },
+      ]
+    );
+
+    handlers.onFieldState.mockClear();
+    instance.onFieldStateChange(
+      fieldState({ action: 'input', field: 'number', validNumber: true })
+    );
+    expect(handlers.onFieldState.mock.calls.map(([s]: unknown[]) => s)).toEqual(
+      [
+        { field: 'number', action: 'input', hasValue: true, valid: true },
+        { field: 'cvv', action: 'validation', hasValue: true, valid: true },
+      ]
+    );
+  });
+
+  it('ignores a validation outside an attempt', async () => {
     const { handlers, instance } = await mounted();
 
     instance.onValidation({
       errors: [
-        {
-          attribute: 'number',
-          key: 'errors.invalid',
-          message: 'Card number is required',
-        },
+        { attribute: 'number', key: 'errors.invalid', message: 'invalid' },
       ],
     });
 
-    expect(handlers.onFieldState).toHaveBeenCalledWith({
-      field: 'number',
-      action: 'input',
-      valid: false,
-      hasValue: false,
-    });
-    expect(handlers.onFieldState).toHaveBeenCalledWith({
-      field: 'cvv',
-      action: 'input',
-      valid: true,
-      hasValue: true,
-    });
+    expect(handlers.onFieldState).not.toHaveBeenCalled();
     expect(handlers.onError).not.toHaveBeenCalled();
   });
 
@@ -200,7 +271,7 @@ describe('NextPaymentTokenizer — the hosted fields between attempts', () => {
     ]);
   });
 
-  it('forwards focus and blur, and nothing else a field state change carries', async () => {
+  it('forwards focus and blur, and ignores an event about neither hosted field', async () => {
     const { handlers, instance } = await mounted();
 
     instance.onFieldStateChange({ field: 'cvv', action: 'focus' });

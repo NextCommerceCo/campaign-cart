@@ -31,14 +31,14 @@ vi.mock('@/core/analytics/index', () => ({
 
 /** The instance the service builds; the service assigns its callbacks onto it. */
 interface FakeNextPayment {
-  onValidation?: (payload: { errors: unknown[] }) => void;
+  onFieldStateChange?: (payload: Record<string, unknown>) => void;
 }
 
 /** Installs a stand-in `window.NextPayment`, and returns the last instance built. */
 function stubNextPayment(): () => FakeNextPayment | undefined {
   const built: FakeNextPayment[] = [];
   window.NextPayment = class implements FakeNextPayment {
-    onValidation?: FakeNextPayment['onValidation'];
+    onFieldStateChange?: FakeNextPayment['onFieldStateChange'];
     setFocus = vi.fn();
     submit = vi.fn();
     destroy = vi.fn();
@@ -106,7 +106,14 @@ describe('CreditCardService teardown', () => {
 
     // The card number and CVV live in NextPayment's iframe, so their validity only
     // ever arrives through this callback.
-    instance()?.onValidation?.({ errors: [] });
+    instance()?.onFieldStateChange?.({
+      action: 'input',
+      field: 'cvv',
+      numberLength: 16,
+      validNumber: true,
+      cvvLength: 3,
+      validCvv: true,
+    });
     fields.month.value = '01';
     fields.year.value = '2030';
     return service;

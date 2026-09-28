@@ -90,10 +90,32 @@ test('a rejected card number ends the submit with the page’s own message, and 
   await expect.poll(() => paymentErrors.count()).toBeGreaterThan(0);
   const [first] = (await paymentErrors.all()) as unknown[];
   expect(JSON.stringify(first)).toContain('Check the card number');
-  expect(JSON.stringify(first)).not.toContain('13 and 19 digits');
+  expect(JSON.stringify(first)).not.toContain('Invalid card number');
 
   // The submit is over: the button takes a second attempt.
   await expect(page.locator('[data-next-checkout-submit]')).toBeEnabled();
+  expect(orders).toEqual([]);
+});
+
+test('a number the fields report invalid is stopped before NextPayment, with the page’s own message', async ({
+  page,
+}) => {
+  const { submits } = await stubCardCheckout(page, {}, { numberValid: false });
+  await addNextConfig(page, {
+    translations: {
+      en: { 'payment.card.number.errors.invalid': 'Check the card number' },
+    },
+  });
+  const orders = await captureOrders(page);
+
+  await bootSdk(page, CARD_CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await expect(page.locator('[data-next-error-for="cc-number"]')).toHaveText(
+    'Check the card number'
+  );
+  expect(submits).toEqual([]);
   expect(orders).toEqual([]);
 });
 
