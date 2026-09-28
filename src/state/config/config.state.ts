@@ -156,17 +156,6 @@ export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
       updates.pageType = pageTypeMeta.getAttribute('content') as PageType;
     }
 
-    // Load Spreedly environment key (fallback - campaign data takes precedence)
-    const spreedlyKeyMeta =
-      document.querySelector('meta[name="next-spreedly-key"]') ||
-      document.querySelector('meta[name="next-payment-env-key"]');
-    if (spreedlyKeyMeta) {
-      const spreedlyKey = spreedlyKeyMeta.getAttribute('content');
-      if (spreedlyKey) {
-        updates.spreedlyEnvironmentKey = spreedlyKey;
-      }
-    }
-
     if (Object.keys(updates).length > 0) {
       set(updates);
     }

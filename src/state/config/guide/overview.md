@@ -65,10 +65,10 @@ mistake here — so the type is not the contract. The per-field notes in the
   overrides the same key in the loader config. Each loader writes only the keys
   it actually finds, and `loadFromWindow` type-checks each one before accepting
   it, so a mistyped value is ignored rather than stored.
-- **`loadFromMeta()` reads six tags only:** `next-api-key`, `next-campaign-id`,
-  `next-debug`, `next-clear-cart`, `next-page-type`, and
-  `next-spreedly-key` / `next-payment-env-key`. Nothing else in the markup is
-  configuration.
+- **`loadFromMeta()` reads five tags only:** `next-api-key`, `next-campaign-id`,
+  `next-debug`, `next-clear-cart` and `next-page-type`. Nothing else in the markup
+  is configuration. The payment environment key is not one of them: it comes with
+  the campaign data (`payment_env_key`).
 - **The card-field block is accepted under three names** —
   `cardInputConfig`, then `spreedly`, then `spreedlyConfig` — and the first one
   present wins. Supplying two means the later ones are ignored. Likewise
