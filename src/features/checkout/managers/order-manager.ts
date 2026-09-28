@@ -302,22 +302,14 @@ export class OrderManager {
 
   public async handleTokenizedPayment(
     token: string,
-    pmData: any,
+    _pmData: any,
     createOrderCallback: () => Promise<any>
   ): Promise<void> {
-    this.logger.debug('handleTokenizedPayment called with token:', token ? `${token.substring(0, 8)}...` : 'none');
-
-
     try {
       // Validate token
       if (!token) {
         throw new Error('Payment token is required');
       }
-      
-      this.logger.debug('Handling tokenized payment', { 
-        token: token.substring(0, 8) + '...', 
-        pmData: pmData ? 'present' : 'missing' 
-      });
       
       this.logger.debug('Calling createOrderCallback...');
 

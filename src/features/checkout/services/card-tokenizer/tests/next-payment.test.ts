@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  CREDENTIALS_TTL_MS,
   NextPaymentTokenizer,
   cssTextToStyle,
   normalizeNextPaymentError,
@@ -44,8 +45,12 @@ function events(): CardTokenizerEvents & {
   };
 }
 
+/** Every tokenizer a test mounts, destroyed after it so its tab listener goes too. */
+const live: NextPaymentTokenizer[] = [];
+
 async function mounted(config = {}) {
   const tokenizer = new NextPaymentTokenizer('env-key', config);
+  live.push(tokenizer);
   const handlers = events();
   await tokenizer.mount(MOUNT, handlers);
   const instance = instances.at(-1);
@@ -73,19 +78,24 @@ function fieldState(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const FakeNextPayment = function (this: FakeInstance, options: unknown) {
+  this.options = options as Record<string, unknown>;
+  this.submit = vi.fn();
+  this.setFocus = vi.fn();
+  this.destroy = vi.fn();
+  instances.push(this);
+} as unknown as typeof window.NextPayment;
+
 beforeEach(() => {
   instances = [];
-  window.NextPayment = function (this: FakeInstance, options: unknown) {
-    this.options = options as Record<string, unknown>;
-    this.submit = vi.fn();
-    this.setFocus = vi.fn();
-    this.destroy = vi.fn();
-    instances.push(this);
-  } as unknown as typeof window.NextPayment;
+  window.NextPayment = FakeNextPayment;
 });
 
 afterEach(() => {
+  live.splice(0).forEach(tokenizer => tokenizer.destroy());
   delete window.NextPayment;
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
@@ -382,5 +392,117 @@ describe('cssTextToStyle', () => {
     expect(cssTextToStyle('color:; : red; width: 100%')).toEqual({
       width: '100%',
     });
+  });
+});
+
+describe('NextPaymentTokenizer — credentials that expire', () => {
+  /** The `<script>` tags a load asked for, kept out of the document so none is fetched. */
+  let requested: HTMLScriptElement[];
+
+  beforeEach(() => {
+    requested = [];
+    vi.spyOn(document.head, 'appendChild').mockImplementation(node => {
+      requested.push(node as HTMLScriptElement);
+      return node;
+    });
+  });
+
+  /** The `<script>` a fresh load appends, answered as the browser would. */
+  function answerScriptLoad(): void {
+    const script = requested.at(-1);
+    if (!script) throw new Error('no script was requested');
+    expect(script.src).toMatch(
+      /^https:\/\/payments\.29next\.com\/js\/v1\/payment\.js/
+    );
+    expect(script.src).toContain('env_key=env-key');
+    window.NextPayment = FakeNextPayment;
+    script.onload?.(new Event('load'));
+  }
+
+  it('rebuilds the fields from a fresh script instead of tokenizing with old credentials', async () => {
+    vi.useFakeTimers();
+    const { tokenizer, handlers, instance } = await mounted();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS + 1);
+
+    tokenizer.tokenize(CARD);
+
+    expect(instance.submit).not.toHaveBeenCalled();
+    expect(handlers.onError).toHaveBeenCalledWith([
+      expect.objectContaining({ textKey: 'payment.errors.session_expired' }),
+    ]);
+    expect(instance.destroy).toHaveBeenCalled();
+    // The old class is gone, or the new script would keep it.
+    expect(window.NextPayment).toBeUndefined();
+
+    answerScriptLoad();
+    await vi.waitFor(() => expect(instances).toHaveLength(2));
+    instances[1]?.onReady();
+    tokenizer.tokenize(CARD);
+    expect(instances[1]?.submit).toHaveBeenCalledWith(CARD);
+  });
+
+  it('asks for the card again when it is tokenized mid-rebuild', async () => {
+    vi.useFakeTimers();
+    const { tokenizer, handlers } = await mounted();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS + 1);
+    tokenizer.tokenize(CARD);
+    handlers.onError.mockClear();
+
+    tokenizer.tokenize(CARD);
+
+    expect(handlers.onError).toHaveBeenCalledWith([
+      expect.objectContaining({ textKey: 'payment.errors.session_expired' }),
+    ]);
+    expect(requested).toHaveLength(1);
+  });
+
+  it('rebuilds stale fields when the shopper comes back to the tab', async () => {
+    vi.useFakeTimers();
+    const { instance } = await mounted();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS + 1);
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(instance.destroy).toHaveBeenCalled();
+    answerScriptLoad();
+    await vi.waitFor(() => expect(instances).toHaveLength(2));
+  });
+
+  it('leaves fresh fields alone when the shopper comes back to the tab', async () => {
+    vi.useFakeTimers();
+    const { instance } = await mounted();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS - 1000);
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(instance.destroy).not.toHaveBeenCalled();
+    expect(requested).toEqual([]);
+  });
+
+  it('stops watching the tab once destroyed', async () => {
+    vi.useFakeTimers();
+    const { tokenizer } = await mounted();
+    tokenizer.destroy();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS + 1);
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(requested).toEqual([]);
+  });
+
+  it('says the card form could not load when the fresh script fails', async () => {
+    vi.useFakeTimers();
+    const { tokenizer, handlers } = await mounted();
+    vi.advanceTimersByTime(CREDENTIALS_TTL_MS + 1);
+    tokenizer.tokenize(CARD);
+    handlers.onError.mockClear();
+
+    requested.at(-1)?.onerror?.(new Event('error'));
+
+    await vi.waitFor(() =>
+      expect(handlers.onError).toHaveBeenCalledWith([
+        expect.objectContaining({ textKey: 'payment.errors.network' }),
+      ])
+    );
   });
 });

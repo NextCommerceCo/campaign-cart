@@ -67,7 +67,9 @@ test("creates the card order with the payment method's token", async ({
   expect(submits).toEqual([
     { full_name: 'Ada Lovelace', month: '12', year: '2030' },
   ]);
-  expect(scriptRequests).toEqual([]);
+  expect(scriptRequests).toEqual([
+    'https://payments.29next.com/js/v1/payment.js?env_key=e2e-env-key',
+  ]);
   expect(errors).toEqual([]);
 });
 
@@ -117,6 +119,54 @@ test('a number the fields report invalid is stopped before NextPayment, with the
   );
   expect(submits).toEqual([]);
   expect(orders).toEqual([]);
+});
+
+test('card fields older than their credentials are rebuilt from a fresh script, and ask for the card again', async ({
+  page,
+}) => {
+  await page.clock.install();
+  const { scriptRequests, submits } = await stubCardCheckout(page);
+  const orders = await captureOrders(page);
+
+  await bootSdk(page, CARD_CHECKOUT);
+  const paymentErrors = await captureEvents(page, 'payment:error');
+  await addOnePackage(page);
+  await page.clock.fastForward('26:00');
+  await submitCard(page);
+
+  await expect.poll(() => paymentErrors.count()).toBeGreaterThan(0);
+  expect(JSON.stringify(await paymentErrors.at(0))).toContain(
+    'Your card details timed out'
+  );
+  await expect.poll(() => scriptRequests.length).toBe(2);
+  expect(submits).toEqual([]);
+
+  // The rebuilt fields take the card, and the order goes out.
+  await page.click('[data-next-checkout-submit]');
+  await expect.poll(() => orders.length).toBe(1);
+  expect(submits).toHaveLength(1);
+});
+
+test('fresh card fields are not rebuilt when the shopper comes back to the tab', async ({
+  page,
+}) => {
+  await page.clock.install();
+  const { scriptRequests } = await stubCardCheckout(page);
+
+  await bootSdk(page, CARD_CHECKOUT);
+  await page.clock.fastForward('10:00');
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange'))
+  );
+  await page.clock.fastForward('20:00');
+
+  // Thirty minutes in, but the tab came back at ten; nothing asked for new fields.
+  expect(scriptRequests).toHaveLength(1);
+
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange'))
+  );
+  await expect.poll(() => scriptRequests.length).toBe(2);
 });
 
 test('announces the card fields ready under the new name and the deprecated one', async ({

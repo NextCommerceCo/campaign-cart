@@ -246,7 +246,7 @@ Elevar's event queue, created and filled the same way as `dataLayer`.
 
 The card-field class from `payments.29next.com/js/v1/payment.js`, which draws the hosted card number and CVV on a checkout page.
 
-> ⚠️ The SDK loads the script itself and skips the load when `window.NextPayment` is already defined. Do not add the script tag to the page as well: the script defines the class once, with the credentials of the first load.
+> ⚠️ The SDK loads the script itself, and loads it again after 25 minutes, when the credentials signed into it expire. Do not add the script tag to the page as well: a page-loaded copy is treated as fresh and is replaced on the first refresh.
 
 <sub>Read in `features/checkout/services/card-tokenizer/next-payment.ts › loadScript`, `features/checkout/services/card-tokenizer/next-payment.ts › NextPaymentTokenizer.create`</sub>
 

@@ -240,11 +240,28 @@ const PRE_VALIDATED: ReadonlySet<CardErrorField | undefined> = new Set([
   'full_name',
 ]);
 
+/**
+ * How long a loaded script's credentials are used before the fields are rebuilt from a
+ * fresh one. nexus signs them when it serves `payment.js`, and Spreedly stops accepting
+ * them 30 minutes to an hour later (`get_iframe_signature` in nexus); 25 minutes stays
+ * under either.
+ */
+export const CREDENTIALS_TTL_MS = 25 * 60 * 1000;
+
 let scriptLoad: Promise<void> | undefined;
 
-/** Once per page: the script defines `window.NextPayment` once and skips a second load. */
-function loadScript(environmentKey: string): Promise<void> {
-  if (window.NextPayment) return Promise.resolve();
+/**
+ * Loads `payment.js` once per page. `fresh` loads it again for new credentials: the
+ * script defines `window.NextPayment` only when it is undefined, so the old class is
+ * deleted first or the new script would keep it.
+ */
+function loadScript(environmentKey: string, fresh = false): Promise<void> {
+  if (fresh) {
+    delete window.NextPayment;
+    scriptLoad = undefined;
+  } else if (window.NextPayment) {
+    return Promise.resolve();
+  }
   scriptLoad ??= new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
     script.src = `${SCRIPT_URL}?env_key=${encodeURIComponent(environmentKey)}`;
@@ -275,6 +292,11 @@ export class NextPaymentTokenizer {
   private lengths: Record<HostedCardField, number> = { number: 0, cvv: 0 };
   /** The cardholder data of the pending attempt. */
   private submitted: CardHolderData | undefined;
+  /** When the script whose credentials the fields use was loaded. */
+  private loadedAt = 0;
+  /** A rebuild from a fresh script is under way. */
+  private refreshing: Promise<void> | undefined;
+  private listeners = new AbortController();
 
   constructor(
     private readonly environmentKey: string,
@@ -295,11 +317,39 @@ export class NextPaymentTokenizer {
     }
 
     await loadScript(this.environmentKey);
+    this.loadedAt = Date.now();
     this.create(mount, events);
+
+    // A shopper back from another tab gets fresh fields before typing into stale ones.
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        if (document.visibilityState === 'visible' && this.stale()) {
+          void this.refresh();
+        }
+      },
+      { signal: this.listeners.signal }
+    );
   }
 
+  /**
+   * Starts a tokenize attempt. Credentials past {@link CREDENTIALS_TTL_MS} would be
+   * refused, so instead the fields are rebuilt and the attempt fails at once, asking
+   * for the card again; so does an attempt made while they are being rebuilt.
+   */
   public tokenize(card: CardHolderData): void {
-    if (!this.instance) return;
+    const events = this.mounted?.[1];
+    if (!events) return;
+    if (this.refreshing !== undefined || !this.instance || this.stale()) {
+      void this.refresh();
+      events.onError([
+        {
+          textKey: 'payment.errors.session_expired',
+          message: 'Your card details timed out. Enter them again.',
+        },
+      ]);
+      return;
+    }
     this.pending = true;
     this.fieldErrors = [];
     this.submitted = { ...card };
@@ -320,8 +370,45 @@ export class NextPaymentTokenizer {
   }
 
   public destroy(): void {
+    this.listeners.abort();
     this.teardown();
     this.mounted = undefined;
+  }
+
+  private stale(): boolean {
+    return Date.now() - this.loadedAt > CREDENTIALS_TTL_MS;
+  }
+
+  /** Rebuilds the fields from a freshly loaded script, which carries new credentials. */
+  private refresh(): Promise<void> {
+    const mounted = this.mounted;
+    if (!mounted) return Promise.resolve();
+    this.refreshing ??= (async () => {
+      this.logger.info(
+        '[NextPayment] Credentials expired, reloading the card fields'
+      );
+      this.teardown();
+      try {
+        await loadScript(this.environmentKey, true);
+        this.loadedAt = Date.now();
+        if (this.mounted === mounted) this.create(...mounted);
+      } catch (error) {
+        this.logger.error(
+          '[NextPayment] Could not reload the card fields',
+          error
+        );
+        mounted[1].onError([
+          {
+            textKey: 'payment.errors.network',
+            message:
+              "Couldn't load the card form. Refresh the page and try again.",
+          },
+        ]);
+      } finally {
+        this.refreshing = undefined;
+      }
+    })();
+    return this.refreshing;
   }
 
   private teardown(): void {
@@ -421,10 +508,6 @@ export class NextPaymentTokenizer {
         events.onError(normalizeNextPaymentError(undefined));
         return;
       }
-      this.logger.info('[NextPayment] Successfully tokenized', {
-        last4: paymentMethod['last_four_digits'],
-        cardType: paymentMethod['card_type'],
-      });
       events.onToken(token, paymentMethod);
     };
   }

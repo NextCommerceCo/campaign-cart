@@ -1260,10 +1260,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       });
 
       this.creditCardService.setOnToken((token, pmData) => {
-        this.logger.info('[Spreedly] Payment token received:', {
-          token,
-          pmData,
-        });
         this.handleTokenizedPayment(token, pmData);
       });
 

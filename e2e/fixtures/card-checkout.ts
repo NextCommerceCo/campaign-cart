@@ -51,13 +51,13 @@ export interface NextPaymentOptions {
  * `onValidation` errors and then an `onError` string repeating them; and each field's
  * length and validity arrive on `onFieldStateChange`, the way the live demo showed.
  *
- * `window.NextPayment` existing is what stops the SDK fetching the real script, and
- * the route for `payments.29next.com` records a fetch anyway, so a spec can assert the
- * live host was never reached. Every `submit()` is handed back in `submits`, which
- * outlives the redirect an order causes.
+ * The SDK loads `payment.js` itself, and the route for `payments.29next.com` answers
+ * with a script that defines the stand-in, so the live host is never reached and every
+ * load is counted in `scriptRequests`. Every `submit()` is handed back in `submits`,
+ * which outlives the redirect an order causes.
  */
 export interface NextPaymentStub {
-  /** Every request for the real script; empty unless the stub failed to install. */
+  /** Every request for `payment.js`: one per load, and one more per refresh. */
   scriptRequests: string[];
   /** The cardholder data of every `submit()`. */
   submits: unknown[];
@@ -76,14 +76,19 @@ export async function stubNextPayment(
   await page.exposeFunction('__recordNextPaymentSubmit', (data: unknown) =>
     submits.push(data)
   );
+  // The SDK loads `payment.js` for real, from this route, so the stand-in class is
+  // defined by the script the way the live one is, and a refresh gets it again.
   await page.route('https://payments.29next.com/**', route => {
     scriptRequests.push(route.request().url());
-    return route.abort();
+    return route.fulfill({
+      contentType: 'application/javascript',
+      body: 'window.NextPayment = window.__NextPaymentStub;',
+    });
   });
 
   await page.addInitScript(
     ({ outcome, holdReady, numberValid }) => {
-      (window as any).NextPayment = class {
+      (window as any).__NextPaymentStub = class {
         onReady = (): void => {};
         onValidation = (_: unknown): void => {};
         onError = (_: unknown): void => {};
