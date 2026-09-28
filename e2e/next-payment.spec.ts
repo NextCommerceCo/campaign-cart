@@ -48,7 +48,8 @@ test.use({ locale: 'en-US' });
 test("creates the card order with the payment method's token", async ({
   page,
 }) => {
-  const { scriptRequests, submits } = await stubCardCheckout(page);
+  const { scriptRequests, submits, submitParams } =
+    await stubCardCheckout(page);
   const orders = await captureOrders(page);
   const errors = collectErrors(page);
 
@@ -71,6 +72,15 @@ test("creates the card order with the payment method's token", async ({
       last_name: 'Lovelace',
       month: '12',
       year: '2030',
+    },
+  ]);
+  expect(submitParams).toEqual([
+    {
+      metadata: {
+        source: 'next-campaign-cart',
+        sdk_version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+        page: expect.stringMatching(/\/e2e\/fixtures\/card-purchase\.html$/),
+      },
     },
   ]);
   expect(scriptRequests).toEqual([

@@ -227,8 +227,26 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
     const { tokenizer, instance } = await mounted();
     tokenizer.tokenize(CARD);
 
-    expect(instance.submit).toHaveBeenCalledWith(CARD);
+    expect(instance.submit).toHaveBeenCalledWith(CARD, expect.anything());
     expect(instance.submit.mock.calls[0]?.[0]).not.toBe(CARD);
+  });
+
+  it('stores which SDK, version and page made the token, without the query string', async () => {
+    window.history.replaceState(null, '', '/checkout?email=ada%40example.test');
+    const { tokenizer, instance } = await mounted();
+    tokenizer.tokenize(CARD);
+
+    const { metadata } = instance.submit.mock.calls[0]?.[1] as {
+      metadata: Record<string, string>;
+    };
+    expect(Object.keys(metadata).sort()).toEqual([
+      'page',
+      'sdk_version',
+      'source',
+    ]);
+    expect(metadata['source']).toBe('next-campaign-cart');
+    expect(metadata['sdk_version']).toMatch(/^\d+\.\d+\.\d+/);
+    expect(metadata['page']).toBe(`${window.location.origin}/checkout`);
   });
 });
 
@@ -438,7 +456,7 @@ describe('NextPaymentTokenizer — credentials that expire', () => {
     await vi.waitFor(() => expect(instances).toHaveLength(2));
     instances[1]?.onReady();
     tokenizer.tokenize(CARD);
-    expect(instances[1]?.submit).toHaveBeenCalledWith(CARD);
+    expect(instances[1]?.submit).toHaveBeenCalledWith(CARD, expect.anything());
   });
 
   it('asks for the card again when it is tokenized mid-rebuild', async () => {

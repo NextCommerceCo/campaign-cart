@@ -79,7 +79,10 @@ interface NextPaymentInstance {
   onTokenized: (result: unknown) => void;
   onFieldStateChange: (payload: NextPaymentFieldState | undefined) => void;
   setFocus(field: HostedCardField): void;
-  submit(formData: CardHolderData): void;
+  submit(
+    formData: CardHolderData,
+    submitParams?: { metadata?: Record<string, string> }
+  ): void;
   destroy(): void;
 }
 
@@ -221,6 +224,19 @@ function paymentMethodOf(result: unknown): CardPaymentMethod | undefined {
     : undefined;
 }
 
+/**
+ * Stored with the payment method, so a card token says what made it: this SDK, its
+ * version, and the page. The page is origin and path only; a query string carries the
+ * shopper's parameters. Spreedly caps a metadata value at 500 characters.
+ */
+function sdkMetadata(): Record<string, string> {
+  return {
+    source: 'next-campaign-cart',
+    sdk_version: __VERSION__,
+    page: `${window.location.origin}${window.location.pathname}`.slice(0, 500),
+  };
+}
+
 const HOSTED_FIELDS = ['number', 'cvv'] as const;
 
 /** One field's value length and validity, from a field state change. */
@@ -353,7 +369,8 @@ export class NextPaymentTokenizer {
     this.pending = true;
     this.fieldErrors = [];
     this.submitted = { ...card };
-    this.instance.submit({ ...card });
+    // Both copies: NextPayment writes to each argument before forwarding it.
+    this.instance.submit({ ...card }, { metadata: sdkMetadata() });
   }
 
   public focus(field: HostedCardField): void {

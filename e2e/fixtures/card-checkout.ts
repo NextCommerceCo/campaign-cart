@@ -61,6 +61,8 @@ export interface NextPaymentStub {
   scriptRequests: string[];
   /** The cardholder data of every `submit()`. */
   submits: unknown[];
+  /** The second argument of every `submit()`: the metadata stored with the token. */
+  submitParams: unknown[];
 }
 
 export async function stubNextPayment(
@@ -73,8 +75,13 @@ export async function stubNextPayment(
 ): Promise<NextPaymentStub> {
   const scriptRequests: string[] = [];
   const submits: unknown[] = [];
-  await page.exposeFunction('__recordNextPaymentSubmit', (data: unknown) =>
-    submits.push(data)
+  const submitParams: unknown[] = [];
+  await page.exposeFunction(
+    '__recordNextPaymentSubmit',
+    (data: unknown, params: unknown) => {
+      submits.push(data);
+      submitParams.push(params);
+    }
   );
   // The SDK loads `payment.js` for real, from this route, so the stand-in class is
   // defined by the script the way the live one is, and a refresh gets it again.
@@ -122,8 +129,8 @@ export async function stubNextPayment(
         setFocus(): void {}
         destroy(): void {}
 
-        submit(formData: unknown): void {
-          (window as any).__recordNextPaymentSubmit(formData);
+        submit(formData: unknown, params: unknown): void {
+          (window as any).__recordNextPaymentSubmit(formData, params);
           setTimeout(() => {
             if (outcome === 'reject-number') {
               this.onValidation({
@@ -156,7 +163,7 @@ export async function stubNextPayment(
     { outcome, holdReady, numberValid }
   );
 
-  return { scriptRequests, submits };
+  return { scriptRequests, submits, submitParams };
 }
 
 /**
