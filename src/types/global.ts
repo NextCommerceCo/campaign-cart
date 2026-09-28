@@ -1676,84 +1676,57 @@ export interface ConfigState {
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
 /**
- * Configuration for the hosted (iFrame-based) credit-card input fields — keyboard
- * type, formatting, labels, styling, and the security tokens required to
- * authenticate the fields. Previously named `SpreedlyConfig`; {@link SpreedlyConfig}
- * remains as an alias.
+ * How the hosted card number and CVV fields look. NextPayment draws them in its own
+ * iframe from `payments.29next.com`, signed for the campaign's payment environment
+ * key, so no card number passes through the page. Previously named `SpreedlyConfig`;
+ * {@link SpreedlyConfig} remains as an alias.
+ *
+ * NextPayment fixes everything else itself: the field type is always `text`, both
+ * fields are always required, and the name and expiry are always checked. Pages that
+ * still set the Spreedly iFrame options (`fieldType`, `nonce`, `fraud`, …) get a debug
+ * line saying they do nothing.
+ *
+ * @example
+ * ```html
+ * <script>
+ *   window.nextConfig = {
+ *     cardInputConfig: {
+ *       placeholders: { number: "1234 1234 1234 1234", cvv: "CVC" },
+ *       styles: { number: "font-size: 16px; color: #12263f" },
+ *     },
+ *   };
+ * </script>
+ * ```
  * @category Checkout
  */
 export interface CardInputConfig {
-  /**
-   * The script that draws the card fields: `'spreedly'` (Spreedly's iFrame, the
-   * default) or `'next-payment'` (NextPayment, signed by 29next). NextPayment applies
-   * `numberFormat`, `labels`, `titles`, `placeholders` and `styles`, and ignores the
-   * rest of this object: it fixes the field type to `text`, and signs the fields itself,
-   * so `nonce`, `timestamp`, `certificateToken` and `signature` are not needed.
-   *
-   * @example
-   * ```html
-   * <script>
-   *   window.nextConfig = {
-   *     cardInputConfig: { provider: 'next-payment' },
-   *   };
-   * </script>
-   * ```
-   */
-  provider?: 'spreedly' | 'next-payment';
-
-  // Field type configuration - controls keyboard display on mobile
-  fieldType?: {
-    number?: 'number' | 'text' | 'tel';
-    cvv?: 'number' | 'text' | 'tel';
-  };
-
-  // Number format configuration
+  /** How the number is grouped as it is typed. Default `prettyFormat`. */
   numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
 
-  // Label configuration for accessibility
+  /** The accessible label of each field. Default: the `payment.card.*.label` text. */
   labels?: {
     number?: string;
     cvv?: string;
   };
 
-  // Title attribute for accessibility
+  /** The `title` of each field. Default: the `payment.card.*.title` text. */
   titles?: {
     number?: string;
     cvv?: string;
   };
 
-  // Placeholder text
+  /** The text shown while a field is empty. Default: the `payment.card.*.placeholder` text. */
   placeholders?: {
     number?: string;
     cvv?: string;
   };
 
-  // CSS styling for iFrame fields
+  /** CSS declarations for the text inside each field, as one string: `"font-size: 16px"`. */
   styles?: {
     number?: string;
     cvv?: string;
     placeholder?: string;
   };
-
-  // Security parameters - REQUIRED for authentication
-  nonce?: string; // Unique per session (e.g., UUID)
-  timestamp?: string; // Epoch time
-  certificateToken?: string; // Spreedly certificate token
-  signature?: string; // Server-generated signature
-
-  // Fraud detection
-  fraud?: boolean | { siteId: string }; // Enable fraud detection or specify BYOC fraud site ID
-
-  // Other options
-  enableAutoComplete?: boolean; // Toggle autocomplete functionality
-  requiredAttributes?: {
-    number?: boolean;
-    cvv?: boolean;
-  };
-
-  // Validation parameters
-  allowBlankName?: boolean; // Skip name validation
-  allowExpiredDate?: boolean; // Allow expired dates
 }
 
 /**

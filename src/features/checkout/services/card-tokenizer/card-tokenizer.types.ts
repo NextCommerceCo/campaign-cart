@@ -1,8 +1,7 @@
 /**
- * The seam between `CreditCardService` and whichever script draws the hosted card
- * fields. The service owns everything on the page (classes, error labels, floating
- * labels, analytics); a tokenizer owns only the provider's script and translates its
- * events into the shapes below, so the service never branches on the provider.
+ * What passes between `CreditCardService` and NextPayment. The service owns everything
+ * on the page (classes, error labels, floating labels, analytics); the tokenizer owns
+ * only the script, and translates its callbacks into the shapes below.
  */
 
 import type { CardTextKey } from './card-texts';
@@ -12,9 +11,6 @@ export type HostedCardField = 'number' | 'cvv';
 
 /** Every field a card error can point at. `undefined` is an error about no one field. */
 export type CardErrorField = HostedCardField | 'month' | 'year' | 'full_name';
-
-/** The script that draws the hosted fields. */
-export type CardTokenizerProvider = 'spreedly' | 'next-payment';
 
 /**
  * What changed in a hosted field. `hasValue` and `valid` are `undefined` when the event
@@ -64,18 +60,4 @@ export interface HostedFieldsMount {
   labels: Record<HostedCardField, string>;
   placeholders: Record<HostedCardField, string>;
   titles: Record<HostedCardField, string>;
-}
-
-export interface CardTokenizer {
-  readonly provider: CardTokenizerProvider;
-  /** Loads the provider's script and mounts the fields. `onReady` fires when they take input. */
-  mount(mount: HostedFieldsMount, events: CardTokenizerEvents): Promise<void>;
-  /** Starts a tokenize attempt; the outcome arrives through `onToken` or `onError`. */
-  tokenize(card: CardHolderData): void;
-  focus(field: HostedCardField): void;
-  /** No-op where the provider cannot change a placeholder after mounting. */
-  setPlaceholder(field: HostedCardField, text: string): void;
-  /** Empties the hosted fields. */
-  reset(): void;
-  destroy(): void;
 }

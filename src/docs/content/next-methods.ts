@@ -1243,7 +1243,7 @@ window.nextReady.push(sdk => {
     direction: 'read',
     summary:
       'The card-field class from `payments.29next.com/js/v1/payment.js`, which draws the ' +
-      "card number and CVV when `cardInputConfig.provider` is `'next-payment'`.",
+      'hosted card number and CVV on a checkout page.',
     caution:
       'The SDK loads the script itself and skips the load when `window.NextPayment` is ' +
       'already defined. Do not add the script tag to the page as well: the script defines ' +

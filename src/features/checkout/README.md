@@ -195,7 +195,7 @@ re-introduce a second assembler: a payload built anywhere else is a payload that
 | `processors/express-checkout-processor.ts` | `ExpressCheckoutProcessor` | Handles express payment flows |
 | `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
 | `services/credit-card-service.ts` | `CreditCardService` | The card fields on the form: classes, error labels, floating labels, `add_payment_info` |
-| `services/card-tokenizer/` | `CardTokenizer` | The provider script that draws the hosted number and CVV and tokenizes them: Spreedly's iFrame (default) or NextPayment, chosen by `cardInputConfig.provider`. Card texts and the provider-error → `payment.*` key mapping live here too |
+| `services/card-tokenizer/` | `NextPaymentTokenizer` | NextPayment, the script that draws the hosted number and CVV and tokenizes them. Card texts and the provider-error → `payment.*` key mapping live here too |
 | `services/ui-service/` | `UIService` | Manages form UI state (errors, loading, payment forms, floating labels). Split — see below |
 | `validation/` | `CheckoutValidator` | Field validation rules. Split — see below |
 | `builders/order-builder.ts` | `OrderBuilder` | Assembles `CreateOrder` payload |

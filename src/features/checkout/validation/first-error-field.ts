@@ -6,8 +6,8 @@
  * page**, which is the one the shopper will read first, then scrolls and focuses it.
  *
  * Card fields are the exception: the number and CVV are rendered inside the payment
- * provider's iframe, so the page cannot focus them. They are handed to Spreedly's own
- * `transferFocus` instead.
+ * provider's iframe, so the page cannot focus them. They are handed to NextPayment's
+ * own `setFocus` instead, through `CreditCardService.focusField`.
  *
  * Extracted verbatim from `CheckoutValidator`. Neither function needs anything from the
  * validator — both reach the DOM through `FieldFinder`.

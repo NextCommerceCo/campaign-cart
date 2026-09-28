@@ -1,17 +1,16 @@
 /**
  * The card fields on the checkout form: their classes, error labels, floating labels and
- * the `add_payment_info` event. The provider script that draws the hosted number and CVV
- * and tokenizes them is behind {@link CardTokenizer} — see `./card-tokenizer`.
+ * the `add_payment_info` event. NextPayment draws the hosted number and CVV and
+ * tokenizes them — see `./card-tokenizer`.
  */
 
 import { createLogger } from '@/core/logger';
 import { FieldFinder } from '../utils/field-finder-utils';
 import {
-  createCardTokenizer,
+  NextPaymentTokenizer,
   translatedCardText,
   type CardError,
   type CardTextKey,
-  type CardTokenizer,
   type HostedCardField,
   type HostedFieldState,
 } from './card-tokenizer';
@@ -50,7 +49,7 @@ export interface CreditCardValidationState {
 export class CreditCardService {
   private logger: Logger;
   private config?: CardInputConfig;
-  private tokenizer: CardTokenizer;
+  private tokenizer: NextPaymentTokenizer;
   private isReady: boolean = false;
   private validationState: CreditCardValidationState;
 
@@ -112,16 +111,14 @@ export class CreditCardService {
     this.config = config;
     this.logger = createLogger('CreditCardService');
     this.validationState = this.initializeValidationState();
-    this.tokenizer = createCardTokenizer(environmentKey, config);
+    this.tokenizer = new NextPaymentTokenizer(environmentKey, config);
 
     if (!environmentKey) {
       this.logger.error('No payment environment key provided');
       return;
     }
 
-    this.logger.debug('CreditCardService created with config:', {
-      provider: this.tokenizer.provider,
-    });
+    this.logger.debug('CreditCardService created');
   }
 
   /**
@@ -539,9 +536,9 @@ export class CreditCardService {
   }
 
   /**
-   * Gives the two containers the ids the provider mounts into, and mounts it. The ids
-   * and `data-spreedly` stay whichever provider draws the fields: page CSS and the
-   * floating labels select them.
+   * Gives the two containers the ids NextPayment mounts into, and mounts it. The
+   * `spreedly-*` ids and `data-spreedly` are the names templates' CSS and the floating
+   * labels already select, so they stay.
    */
   private async mountHostedFields(): Promise<void> {
     if (this.numberField) {

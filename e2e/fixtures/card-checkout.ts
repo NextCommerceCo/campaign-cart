@@ -23,61 +23,12 @@ import {
 /** The checkout fixture both specs boot. */
 export const CARD_CHECKOUT = '/e2e/fixtures/card-purchase.html';
 
-/**
- * A stand-in for the Spreedly tokenizer, installed before `/src/index.ts` runs.
- *
- * A Proxy answers every method the SDK calls — there are fourteen today — so a
- * new one added later is a no-op rather than a `TypeError` that reads like an SDK
- * defect. Only the three that carry the flow are real: `on` records handlers,
- * `init` announces readiness, and `tokenizeCreditCard` hands back a token.
- *
- * `CreditCardService.loadSpreedlyScript` skips fetching the real script when
- * `window.Spreedly` already exists, so the off-site iframe never loads.
- */
-export async function stubSpreedly(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const handlers: Record<string, Function[]> = {};
-    const fire = (name: string, ...args: unknown[]): void => {
-      setTimeout(() => (handlers[name] ?? []).forEach(cb => cb(...args)), 0);
-    };
-    const impl: Record<string, Function> = {
-      on: (event: string, cb: Function) => {
-        (handlers[event] ??= []).push(cb);
-      },
-      init: () => {
-        fire('ready');
-        // Then the shopper types a card. Without these the SDK considers the
-        // number and cvv fields untouched and refuses to submit — the fields are
-        // Spreedly iframes, so a `fill()` cannot reach them.
-        fire('fieldEvent', 'number', 'input', null, {
-          validNumber: true,
-          numberLength: 16,
-          cardType: 'visa',
-          iin: '411111',
-        });
-        fire('fieldEvent', 'cvv', 'input', null, {
-          validCvv: true,
-          cvvLength: 3,
-        });
-      },
-      tokenizeCreditCard: () =>
-        fire('paymentMethod', 'e2e-card-token', {
-          card_type: 'visa',
-          last_four_digits: '1111',
-        }),
-    };
-    (window as any).Spreedly = new Proxy(impl, {
-      get: (target, key: string) => target[key] ?? (() => {}),
-    });
-  });
-}
-
 /** What the NextPayment stand-in does when the form tokenizes a card. */
 export type NextPaymentOutcome = 'tokenize' | 'reject-number';
 
 /**
- * A stand-in for NextPayment, and `cardInputConfig.provider = 'next-payment'` on
- * whatever `window.nextConfig` the fixture sets. Installed before `/src/index.ts` runs.
+ * A stand-in for NextPayment, installed before `/src/index.ts` runs: it is an off-site
+ * iframe that cannot run headless.
  *
  * It answers the way the real script does, which is the part worth testing: the token
  * a card order needs is `tokenResponse.payment_method.token`, and the response also
@@ -88,16 +39,18 @@ export type NextPaymentOutcome = 'tokenize' | 'reject-number';
  * the route for `payments.29next.com` records a fetch anyway, so a spec can assert the
  * live host was never reached. Every `submit()` is handed back in `submits`, which
  * outlives the redirect an order causes.
- *
- * The fixture assigns `window.nextConfig` in an inline script, after this runs, so the
- * provider is added through a setter rather than by assigning the object here. The
- * setter merges each assignment into the last, so a spec's own init script (its
- * `translations`) survives the fixture's.
  */
+export interface NextPaymentStub {
+  /** Every request for the real script; empty unless the stub failed to install. */
+  scriptRequests: string[];
+  /** The cardholder data of every `submit()`. */
+  submits: unknown[];
+}
+
 export async function stubNextPayment(
   page: Page,
   outcome: NextPaymentOutcome = 'tokenize'
-): Promise<{ scriptRequests: string[]; submits: unknown[] }> {
+): Promise<NextPaymentStub> {
   const scriptRequests: string[] = [];
   const submits: unknown[] = [];
   await page.exposeFunction('__recordNextPaymentSubmit', (data: unknown) =>
@@ -109,23 +62,6 @@ export async function stubNextPayment(
   });
 
   await page.addInitScript(outcome => {
-    let config: Record<string, any> = {};
-    Object.defineProperty(window, 'nextConfig', {
-      configurable: true,
-      get: () => config,
-      set: value => {
-        config = {
-          ...config,
-          ...value,
-          cardInputConfig: {
-            ...value?.cardInputConfig,
-            provider: 'next-payment',
-          },
-        };
-      },
-    });
-    (window as any).nextConfig = {};
-
     (window as any).NextPayment = class {
       onReady = (): void => {};
       onValidation = (_: unknown): void => {};
@@ -182,7 +118,8 @@ export async function stubNextPayment(
 
 /**
  * Campaign, cart, tokenizer, country lists and prospect carts — everything
- * except the orders endpoint, which each spec answers its own way.
+ * except the orders endpoint, which each spec answers its own way. `card` is what the
+ * tokenizer does on submit.
  *
  * A non-empty `payment_env_key` is what makes the SDK build its
  * `CreditCardService` at all; `MINIMAL_CAMPAIGN` ships an empty one, and without
@@ -193,14 +130,15 @@ export async function stubNextPayment(
  */
 export async function stubCardCheckout(
   page: Page,
-  address: AddressServiceOptions = {}
-): Promise<void> {
+  address: AddressServiceOptions = {},
+  card: NextPaymentOutcome = 'tokenize'
+): Promise<NextPaymentStub> {
   await stubCampaign(page, {
     ...MINIMAL_CAMPAIGN,
     payment_env_key: 'e2e-env-key',
   });
   await stubCart(page);
-  await stubSpreedly(page);
+  const nextPayment = await stubNextPayment(page, card);
   await stubCountryService(page, address);
   // Filling an email and a phone is what a shopper does, and it makes the SDK
   // create a prospect cart. Unstubbed, those calls go to the live API — which
@@ -215,6 +153,28 @@ export async function stubCardCheckout(
       json: { checkout_url: 'https://example.test/checkout/prospect-1' },
     })
   );
+  return nextPayment;
+}
+
+/**
+ * Adds `config` to the `window.nextConfig` the fixture sets. The fixture assigns it in
+ * an inline script, after any init script, which would replace an object set here; the
+ * setter merges each assignment into the last instead.
+ */
+export async function addNextConfig(
+  page: Page,
+  config: Record<string, unknown>
+): Promise<void> {
+  await page.addInitScript(config => {
+    let merged: Record<string, unknown> = { ...config };
+    Object.defineProperty(window, 'nextConfig', {
+      configurable: true,
+      get: () => merged,
+      set: (value: Record<string, unknown>) => {
+        merged = { ...merged, ...value };
+      },
+    });
+  }, config);
 }
 
 /**

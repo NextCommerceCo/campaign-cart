@@ -3,8 +3,8 @@
  * `payments.29next.com/js/v1/payment.js?env_key=…`. The script arrives with its
  * signed credentials already in it and defines `window.NextPayment` once per page.
  *
- * Its callbacks do not line up with a tokenize attempt the way Spreedly's do, and that
- * is what most of this file is about:
+ * Its callbacks do not line up one-to-one with a tokenize attempt, and that is what
+ * most of this file is about:
  *
  * - `onValidation` reports `month` / `year` / `full_name` from NextPayment's own check
  *   inside `submit()`, and nothing else follows: no `onError`, no `onTokenized`. Those
@@ -26,7 +26,6 @@ import type {
   CardErrorField,
   CardHolderData,
   CardPaymentMethod,
-  CardTokenizer,
   CardTokenizerEvents,
   HostedCardField,
   HostedFieldsMount,
@@ -70,7 +69,10 @@ declare global {
   }
 }
 
-/** The options only Spreedly's iFrame script can apply; NextPayment fixes them itself. */
+/**
+ * Options the SDK once passed to Spreedly's iFrame script. NextPayment fixes each of
+ * them itself, so a page still setting one gets a debug line saying it does nothing.
+ */
 const UNSUPPORTED_OPTIONS = [
   'fieldType',
   'enableAutoComplete',
@@ -84,10 +86,7 @@ const UNSUPPORTED_OPTIONS = [
   'signature',
 ] as const;
 
-/**
- * The same look the Spreedly fields default to, as NextPayment takes it: camelCase
- * properties, not a CSS string.
- */
+/** The card fields' default look. NextPayment takes camelCase properties, not CSS text. */
 const DEFAULT_FIELD_STYLE: Record<string, string> = {
   color: '#212529',
   fontSize: '.925rem',
@@ -231,8 +230,7 @@ function loadScript(environmentKey: string): Promise<void> {
   return scriptLoad;
 }
 
-export class NextPaymentTokenizer implements CardTokenizer {
-  public readonly provider = 'next-payment';
+export class NextPaymentTokenizer {
   private readonly logger = createLogger('CreditCardService');
   private instance: NextPaymentInstance | undefined;
   private ready = false;
@@ -252,8 +250,9 @@ export class NextPaymentTokenizer implements CardTokenizer {
     events: CardTokenizerEvents
   ): Promise<void> {
     this.mounted = [mount, events];
+    const given = (this.config ?? {}) as Record<string, unknown>;
     const ignored = UNSUPPORTED_OPTIONS.filter(
-      option => this.config?.[option] !== undefined
+      option => given[option] !== undefined
     );
     if (ignored.length > 0) {
       this.logger.debug('NextPayment ignores these card options:', ignored);
@@ -274,8 +273,8 @@ export class NextPaymentTokenizer implements CardTokenizer {
     if (this.ready) this.instance?.setFocus(field);
   }
 
-  /** NextPayment sets its placeholders once, at mount. */
-  public setPlaceholder(): void {}
+  /** NextPayment sets its placeholders once, at mount; this keeps the call sites honest. */
+  public setPlaceholder(_field: HostedCardField, _text: string): void {}
 
   public reset(): void {
     if (!this.mounted) return;

@@ -3,15 +3,14 @@ import { TEST_ORDER } from './fixtures/order';
 import { bootSdk, captureEvents } from './fixtures/routes';
 import {
   CARD_CHECKOUT,
+  addNextConfig,
   addOnePackage,
   stubCardCheckout,
-  stubNextPayment,
   submitCard,
 } from './fixtures/card-checkout';
 
 /**
- * The card form with NextPayment drawing the hosted fields
- * (`cardInputConfig.provider = 'next-payment'`) instead of Spreedly's iFrame.
+ * The card form's contract with NextPayment, which draws the hosted number and CVV.
  *
  * Two things only a full submit shows: that the order is created with the payment
  * method's token — NextPayment's response carries a transaction token beside it, and
@@ -19,9 +18,9 @@ import {
  * ends the submit with a message the shopper reads, in the page's words, rather than
  * leaving the form waiting for a token that is never coming.
  *
- * NextPayment is stubbed like Spreedly is in the other card specs (`fixtures/
- * card-checkout.ts`): it is an off-site iframe that cannot run headless. From the
- * token on, the order request is the real SDK's.
+ * NextPayment is stubbed, as in every card spec (`fixtures/card-checkout.ts`): it is
+ * an off-site iframe that cannot run headless. From the token on, the order request is
+ * the real SDK's.
  */
 
 /** Every order the SDK posts, as the orders API receives it. */
@@ -46,14 +45,10 @@ function collectErrors(page: Page): string[] {
 
 test.use({ locale: 'en-US' });
 
-test.beforeEach(async ({ page }) => {
-  await stubCardCheckout(page);
-});
-
 test("creates the card order with the payment method's token", async ({
   page,
 }) => {
-  const { scriptRequests, submits } = await stubNextPayment(page, 'tokenize');
+  const { scriptRequests, submits } = await stubCardCheckout(page);
   const orders = await captureOrders(page);
   const errors = collectErrors(page);
 
@@ -79,13 +74,11 @@ test("creates the card order with the payment method's token", async ({
 test('a rejected card number ends the submit with the page’s own message, and no order', async ({
   page,
 }) => {
-  await stubNextPayment(page, 'reject-number');
-  await page.addInitScript(() => {
-    (window as unknown as { nextConfig: unknown }).nextConfig = {
-      translations: {
-        en: { 'payment.card.number.errors.invalid': 'Check the card number' },
-      },
-    };
+  await stubCardCheckout(page, {}, 'reject-number');
+  await addNextConfig(page, {
+    translations: {
+      en: { 'payment.card.number.errors.invalid': 'Check the card number' },
+    },
   });
   const orders = await captureOrders(page);
 
