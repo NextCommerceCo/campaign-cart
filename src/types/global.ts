@@ -1683,6 +1683,24 @@ export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
  * @category Checkout
  */
 export interface CardInputConfig {
+  /**
+   * The script that draws the card fields: `'spreedly'` (Spreedly's iFrame, the
+   * default) or `'next-payment'` (NextPayment, signed by 29next). NextPayment applies
+   * `numberFormat`, `labels`, `titles`, `placeholders` and `styles`, and ignores the
+   * rest of this object: it fixes the field type to `text`, and signs the fields itself,
+   * so `nonce`, `timestamp`, `certificateToken` and `signature` are not needed.
+   *
+   * @example
+   * ```html
+   * <script>
+   *   window.nextConfig = {
+   *     cardInputConfig: { provider: 'next-payment' },
+   *   };
+   * </script>
+   * ```
+   */
+  provider?: 'spreedly' | 'next-payment';
+
   // Field type configuration - controls keyboard display on mobile
   fieldType?: {
     number?: 'number' | 'text' | 'tel';

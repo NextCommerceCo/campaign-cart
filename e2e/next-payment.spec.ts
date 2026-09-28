@@ -1,0 +1,105 @@
+import { test, expect, type Page } from '@playwright/test';
+import { TEST_ORDER } from './fixtures/order';
+import { bootSdk, captureEvents } from './fixtures/routes';
+import {
+  CARD_CHECKOUT,
+  addOnePackage,
+  stubCardCheckout,
+  stubNextPayment,
+  submitCard,
+} from './fixtures/card-checkout';
+
+/**
+ * The card form with NextPayment drawing the hosted fields
+ * (`cardInputConfig.provider = 'next-payment'`) instead of Spreedly's iFrame.
+ *
+ * Two things only a full submit shows: that the order is created with the payment
+ * method's token — NextPayment's response carries a transaction token beside it, and
+ * posting that one fails every card order at the gateway — and that a rejected card
+ * ends the submit with a message the shopper reads, in the page's words, rather than
+ * leaving the form waiting for a token that is never coming.
+ *
+ * NextPayment is stubbed like Spreedly is in the other card specs (`fixtures/
+ * card-checkout.ts`): it is an off-site iframe that cannot run headless. From the
+ * token on, the order request is the real SDK's.
+ */
+
+/** Every order the SDK posts, as the orders API receives it. */
+async function captureOrders(page: Page): Promise<unknown[]> {
+  const orders: unknown[] = [];
+  await page.route('**/api/v1/orders/**', route => {
+    orders.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ...TEST_ORDER, number: 'E2E-NP-1' } });
+  });
+  return orders;
+}
+
+/** `console.error` and uncaught errors, which the SDK's own catch blocks hide. */
+function collectErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', m => {
+    if (m.type() === 'error') errors.push(m.text());
+  });
+  page.on('pageerror', e => errors.push(String(e)));
+  return errors;
+}
+
+test.use({ locale: 'en-US' });
+
+test.beforeEach(async ({ page }) => {
+  await stubCardCheckout(page);
+});
+
+test("creates the card order with the payment method's token", async ({
+  page,
+}) => {
+  const { scriptRequests, submits } = await stubNextPayment(page, 'tokenize');
+  const orders = await captureOrders(page);
+  const errors = collectErrors(page);
+
+  await bootSdk(page, CARD_CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await expect.poll(() => orders.length).toBe(1);
+  expect(orders[0]).toMatchObject({
+    payment_detail: {
+      payment_method: 'card_token',
+      card_token: 'e2e-payment-method-token',
+    },
+  });
+
+  expect(submits).toEqual([
+    { full_name: 'Ada Lovelace', month: '12', year: '2030' },
+  ]);
+  expect(scriptRequests).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('a rejected card number ends the submit with the page’s own message, and no order', async ({
+  page,
+}) => {
+  await stubNextPayment(page, 'reject-number');
+  await page.addInitScript(() => {
+    (window as unknown as { nextConfig: unknown }).nextConfig = {
+      translations: {
+        en: { 'payment.card.number.errors.invalid': 'Check the card number' },
+      },
+    };
+  });
+  const orders = await captureOrders(page);
+
+  await bootSdk(page, CARD_CHECKOUT);
+  const paymentErrors = await captureEvents(page, 'payment:error');
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await expect.poll(() => paymentErrors.count()).toBeGreaterThan(0);
+  const [first] = (await paymentErrors.all()) as unknown[];
+  expect(JSON.stringify(first)).toContain('Check the card number');
+  expect(JSON.stringify(first)).not.toContain('13 and 19 digits');
+
+  // The submit is over: the button takes a second attempt.
+  await expect(page.locator('[data-next-checkout-submit]')).toBeEnabled();
+  expect(orders).toEqual([]);
+});

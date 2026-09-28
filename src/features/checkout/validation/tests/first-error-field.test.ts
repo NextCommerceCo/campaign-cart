@@ -17,7 +17,6 @@ function buildField(name: string, top: number): HTMLInputElement {
 
 afterEach(() => {
   document.body.innerHTML = '';
-  delete (window as any).Spreedly;
 });
 
 describe('findFirstErrorFieldInDOM', () => {
@@ -82,12 +81,11 @@ describe('focusFirstErrorField', () => {
   });
 
   it('hands the CVV to the payment provider instead of focusing it', () => {
-    const transferFocus = vi.fn();
-    (window as any).Spreedly = { transferFocus };
+    const focusHostedField = vi.fn();
 
-    focusFirstErrorField('cvv');
+    focusFirstErrorField('cvv', focusHostedField);
 
-    expect(transferFocus).toHaveBeenCalledWith('cvv');
+    expect(focusHostedField).toHaveBeenCalledWith('cvv');
   });
 
   /**
@@ -109,15 +107,14 @@ describe('focusFirstErrorField', () => {
    * looks like it did nothing when the pay button was pressed.
    */
   it('DEFECT: cc-number is not in the card list, so the card-number error never focuses', () => {
-    const transferFocus = vi.fn();
-    (window as any).Spreedly = { transferFocus };
+    const focusHostedField = vi.fn();
 
-    focusFirstErrorField('cc-number');
-    expect(transferFocus).not.toHaveBeenCalled();
+    focusFirstErrorField('cc-number', focusHostedField);
+    expect(focusHostedField).not.toHaveBeenCalled();
 
     // The branch it should have reached works when called directly.
-    focusCreditCardErrorField('cc-number');
-    expect(transferFocus).toHaveBeenCalledWith('number');
+    focusCreditCardErrorField('cc-number', focusHostedField);
+    expect(focusHostedField).toHaveBeenCalledWith('number');
   });
 
   it('focuses the expiry dropdowns normally — they are ours, not the iframe’s', () => {

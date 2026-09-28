@@ -194,7 +194,8 @@ re-introduce a second assembler: a payload built anywhere else is a payload that
 |---|---|---|
 | `processors/express-checkout-processor.ts` | `ExpressCheckoutProcessor` | Handles express payment flows |
 | `managers/order-manager.ts` | `OrderManager` | Builds and submits the order API call. Takes an `IApiClient` — see [`api/README.md`](../../api/README.md) |
-| `services/credit-card-service.ts` | `CreditCardService` | Tokenizes card data (Stripe/Braintree) |
+| `services/credit-card-service.ts` | `CreditCardService` | The card fields on the form: classes, error labels, floating labels, `add_payment_info` |
+| `services/card-tokenizer/` | `CardTokenizer` | The provider script that draws the hosted number and CVV and tokenizes them: Spreedly's iFrame (default) or NextPayment, chosen by `cardInputConfig.provider`. Card texts and the provider-error → `payment.*` key mapping live here too |
 | `services/ui-service/` | `UIService` | Manages form UI state (errors, loading, payment forms, floating labels). Split — see below |
 | `validation/` | `CheckoutValidator` | Field validation rules. Split — see below |
 | `builders/order-builder.ts` | `OrderBuilder` | Assembles `CreateOrder` payload |
@@ -242,7 +243,7 @@ folder moved.
 | `validation-patterns.ts` | Whether one value looks like an email, a name or a city — with no knowledge of forms or countries | 0 |
 | `phone-validation.ts` | Whether a phone number can be used, and the E.164 form to store for it. Separate from the patterns above because it has to ask the input's phone field what is valid in the shopper's country | 0 (takes the field) |
 | `field-labels.ts` | The name a shopper sees for a field in a message, including the country's word for "state" and "postcode" | 0 |
-| `first-error-field.ts` | Which of several problems to scroll to (topmost on the page), and handing card fields to Spreedly's own focus | 0 |
+| `first-error-field.ts` | Which of several problems to scroll to (topmost on the page), and handing the hosted card fields to the provider's own focus | 0 |
 | `field-rules.ts` | The per-field rule table and running one rule — the path used while the shopper types | 2 |
 | `billing-address-validation.ts` | The separate billing address, which arrives with API field names and gets "Billing …" messages | 2 |
 | `error-display.ts` | Remembering which fields failed and putting that on the page — clearing an error never marks a field correct | 4 |

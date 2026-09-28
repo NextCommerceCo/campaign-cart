@@ -425,6 +425,50 @@ Express checkout is two containers; the SDK injects the wallet buttons into the 
 </div>
 ```
 
+### Card messages
+
+The card's messages, and the label, placeholder and title inside the hosted number and CVV fields, are read in the form's language under `payment.*` keys: from `translations` first, then the address service's texts. A message neither has is the card provider's own, in English. The label, placeholder and title are applied once, when the hosted fields mount.
+
+Below is an example that rewords the message for a card number the provider rejects, and the security code's placeholder, on a Thai page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "payment.card.number.errors.invalid": "หมายเลขบัตรไม่ถูกต้อง",
+        "payment.card.cvv.placeholder": "รหัส CVV",
+      },
+    },
+  };
+</script>
+```
+
+The number and security code take these keys, after `payment.card.number.` or `payment.card.cvv.`.
+
+| Key | Description |
+|---|---|
+| `label` | The field's accessible label |
+| `placeholder` | The text shown while it is empty |
+| `title` | The field's tooltip |
+| `errors.blank` | Left empty |
+| `errors.invalid` | Not a valid number or code |
+
+The rest of the card has only messages.
+
+| Key | Description |
+|---|---|
+| `payment.card.expiry_month.errors.blank` | No expiry month chosen |
+| `payment.card.expiry_month.errors.invalid` | Not a month |
+| `payment.card.expiry_month.errors.expired` | An expiry in the past |
+| `payment.card.expiry_year.errors.blank` | No expiry year chosen |
+| `payment.card.expiry_year.errors.invalid` | Not a usable year |
+| `payment.card.name.errors.blank` | No name for the card |
+| `payment.errors.generic` | A failure no one field caused |
+| `payment.errors.network` | The provider could not be reached |
+| `payment.errors.session_expired` | The card details timed out |
+
 ## Order preview
 
 The live summary renders the cart from a `<template>` using `{item.*}` tokens, with per-discount rows below it. Condensed from `_includes/cart-summary01.html`:

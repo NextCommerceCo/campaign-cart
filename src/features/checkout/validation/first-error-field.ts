@@ -83,7 +83,10 @@ export function findFirstErrorFieldInDOM(
  * focusFirstErrorField(validation.firstErrorField);
  * ```
  */
-export function focusFirstErrorField(firstErrorField?: string): void {
+export function focusFirstErrorField(
+  firstErrorField?: string,
+  focusHostedField?: (field: 'number' | 'cvv') => void
+): void {
   if (!firstErrorField) return;
 
   const ccFields = [
@@ -95,7 +98,7 @@ export function focusFirstErrorField(firstErrorField?: string): void {
     'exp-year',
   ];
   if (ccFields.includes(firstErrorField)) {
-    focusCreditCardErrorField(firstErrorField);
+    focusCreditCardErrorField(firstErrorField, focusHostedField);
     return;
   }
 
@@ -113,23 +116,24 @@ export function focusFirstErrorField(firstErrorField?: string): void {
 /**
  * Focuses a card field, through the payment provider when the field is not ours to focus.
  *
- * @param fieldName One of the card field names. The number and CVV live in the Spreedly
- * iframe; the expiry dropdowns are ordinary elements on the page.
+ * @param fieldName One of the card field names. The number and CVV live in the
+ * provider's iframe; the expiry dropdowns are ordinary elements on the page.
+ * @param focusHostedField How the provider focuses its own field:
+ * `CreditCardService.focusField`. Without it the number and CVV are left alone.
  *
  * @example
  * ```ts
- * focusCreditCardErrorField('cvv'); // Spreedly.transferFocus('cvv')
+ * focusCreditCardErrorField('cvv', field => creditCardService.focusField(field));
  * ```
  */
-export function focusCreditCardErrorField(fieldName: string): void {
+export function focusCreditCardErrorField(
+  fieldName: string,
+  focusHostedField?: (field: 'number' | 'cvv') => void
+): void {
   if (fieldName === 'cc-number' || fieldName === 'number') {
-    if (typeof window !== 'undefined' && (window as any).Spreedly) {
-      (window as any).Spreedly.transferFocus('number');
-    }
+    focusHostedField?.('number');
   } else if (fieldName === 'cvv') {
-    if (typeof window !== 'undefined' && (window as any).Spreedly) {
-      (window as any).Spreedly.transferFocus('cvv');
-    }
+    focusHostedField?.('cvv');
   } else {
     // For month/year fields, focus normally
     const field = findFormField(fieldName);

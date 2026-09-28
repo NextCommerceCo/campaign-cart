@@ -10,7 +10,7 @@ category: "Core Reference"
      for the prose, or the source under src/core and src/features for what is inventoried, then run
      `UPDATE_DOCS=1 npx vitest run src/tests/docs/nextMethods.test.ts`. -->
 
-Loading the SDK puts 28 names on `window` and reads 3 more that your page sets — 31 in total. Most of them are not part of the API you should build on, and knowing which is which is the point of this page: a name that only exists in debug mode, or that the SDK deletes halfway through boot, will work when you try it in a console and fail in production.
+Loading the SDK puts 28 names on `window` and reads 4 more that your page sets — 32 in total. Most of them are not part of the API you should build on, and knowing which is which is the point of this page: a name that only exists in debug mode, or that the SDK deletes halfway through boot, will work when you try it in a console and fail in production.
 
 Every entry below is read out of the source, so the list cannot fall behind the code. The calls on `window.next` itself are documented separately, in the [JavaScript API](./javascript-api.md).
 
@@ -37,6 +37,7 @@ Every entry below is read out of the source, so the list cannot fall behind the 
 | [`window.nextCampaign`](#windownextcampaign) | read | `core/analytics/providers/next-campaign-adapter.ts › NextCampaignAdapter.sendEvent` and 3 more |
 | [`window.dataLayer`](#windowdatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`, `core/debug/panels/event-timeline/event-timeline-panel.capture.ts › watchDataLayer` |
 | [`window.ElevarDataLayer`](#windowelevardatalayer) | install | `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent` |
+| [`window.NextPayment`](#windownextpayment) | read | `features/checkout/services/card-tokenizer/next-payment.ts › loadScript`, `features/checkout/services/card-tokenizer/next-payment.ts › NextPaymentTokenizer.create` |
 | [`window._nextForcePackageId`](#window_nextforcepackageid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceShippingId`](#window_nextforceshippingid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
 | [`window._nextForceBundleId`](#window_nextforcebundleid) | install | `core/sdk-initializer/sdk-initializer.ts › SDKInitializer.loadConfiguration` |
@@ -240,6 +241,14 @@ Elevar's event queue, created and filled the same way as `dataLayer`.
 > ⚠️ Created even when Elevar is not in use, in which case it stays an empty array.
 
 <sub>Assigned in `core/analytics/providers/gtm-adapter.ts › GTMAdapter.sendEvent`</sub>
+
+### `window.NextPayment`
+
+The card-field class from `payments.29next.com/js/v1/payment.js`, which draws the card number and CVV when `cardInputConfig.provider` is `'next-payment'`.
+
+> ⚠️ The SDK loads the script itself and skips the load when `window.NextPayment` is already defined. Do not add the script tag to the page as well: the script defines the class once, with the credentials of the first load.
+
+<sub>Read in `features/checkout/services/card-tokenizer/next-payment.ts › loadScript`, `features/checkout/services/card-tokenizer/next-payment.ts › NextPaymentTokenizer.create`</sub>
 
 ## Preview and QA overrides
 

@@ -1237,6 +1237,18 @@ window.nextReady.push(sdk => {
     caution:
       'Created even when Elevar is not in use, in which case it stays an empty array.',
   },
+  {
+    name: 'NextPayment',
+    audience: 'third-party',
+    direction: 'read',
+    summary:
+      'The card-field class from `payments.29next.com/js/v1/payment.js`, which draws the ' +
+      "card number and CVV when `cardInputConfig.provider` is `'next-payment'`.",
+    caution:
+      'The SDK loads the script itself and skips the load when `window.NextPayment` is ' +
+      'already defined. Do not add the script tag to the page as well: the script defines ' +
+      'the class once, with the credentials of the first load.',
+  },
 
   // ── qa ──
   {

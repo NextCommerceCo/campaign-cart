@@ -72,6 +72,114 @@ export async function stubSpreedly(page: Page): Promise<void> {
   });
 }
 
+/** What the NextPayment stand-in does when the form tokenizes a card. */
+export type NextPaymentOutcome = 'tokenize' | 'reject-number';
+
+/**
+ * A stand-in for NextPayment, and `cardInputConfig.provider = 'next-payment'` on
+ * whatever `window.nextConfig` the fixture sets. Installed before `/src/index.ts` runs.
+ *
+ * It answers the way the real script does, which is the part worth testing: the token
+ * a card order needs is `tokenResponse.payment_method.token`, and the response also
+ * carries a transaction `token` that must not be used; a rejected number arrives as
+ * `onValidation` errors and then an `onError` string repeating them.
+ *
+ * `window.NextPayment` existing is what stops the SDK fetching the real script, and
+ * the route for `payments.29next.com` records a fetch anyway, so a spec can assert the
+ * live host was never reached. Every `submit()` is handed back in `submits`, which
+ * outlives the redirect an order causes.
+ *
+ * The fixture assigns `window.nextConfig` in an inline script, after this runs, so the
+ * provider is added through a setter rather than by assigning the object here. The
+ * setter merges each assignment into the last, so a spec's own init script (its
+ * `translations`) survives the fixture's.
+ */
+export async function stubNextPayment(
+  page: Page,
+  outcome: NextPaymentOutcome = 'tokenize'
+): Promise<{ scriptRequests: string[]; submits: unknown[] }> {
+  const scriptRequests: string[] = [];
+  const submits: unknown[] = [];
+  await page.exposeFunction('__recordNextPaymentSubmit', (data: unknown) =>
+    submits.push(data)
+  );
+  await page.route('https://payments.29next.com/**', route => {
+    scriptRequests.push(route.request().url());
+    return route.abort();
+  });
+
+  await page.addInitScript(outcome => {
+    let config: Record<string, any> = {};
+    Object.defineProperty(window, 'nextConfig', {
+      configurable: true,
+      get: () => config,
+      set: value => {
+        config = {
+          ...config,
+          ...value,
+          cardInputConfig: {
+            ...value?.cardInputConfig,
+            provider: 'next-payment',
+          },
+        };
+      },
+    });
+    (window as any).nextConfig = {};
+
+    (window as any).NextPayment = class {
+      onReady = (): void => {};
+      onValidation = (_: unknown): void => {};
+      onError = (_: unknown): void => {};
+      onTokenized = (_: unknown): void => {};
+      onFieldStateChange = (_: unknown): void => {};
+
+      constructor() {
+        setTimeout(() => {
+          this.onReady();
+          // Then the shopper types a valid card: the fields are iframes, so a
+          // `fill()` cannot reach them.
+          this.onValidation({ errors: [] });
+        }, 0);
+      }
+
+      setFocus(): void {}
+      destroy(): void {}
+
+      submit(formData: unknown): void {
+        (window as any).__recordNextPaymentSubmit(formData);
+        setTimeout(() => {
+          if (outcome === 'reject-number') {
+            this.onValidation({
+              errors: [
+                {
+                  attribute: 'number',
+                  key: 'errors.invalid',
+                  message: 'Card number is invalid',
+                },
+              ],
+            });
+            this.onError('Card number must be between 13 and 19 digits');
+            return;
+          }
+          this.onTokenized({
+            message: 'Token generated',
+            tokenResponse: {
+              token: 'e2e-transaction-token',
+              payment_method: {
+                token: 'e2e-payment-method-token',
+                last_four_digits: '1111',
+                card_type: 'visa',
+              },
+            },
+          });
+        }, 0);
+      }
+    };
+  }, outcome);
+
+  return { scriptRequests, submits };
+}
+
 /**
  * Campaign, cart, tokenizer, country lists and prospect carts — everything
  * except the orders endpoint, which each spec answers its own way.
