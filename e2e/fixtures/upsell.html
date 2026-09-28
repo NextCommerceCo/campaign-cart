@@ -9,7 +9,6 @@
   <body>
     <h1>Upsell fixture</h1>
 
-    <!-- docs:example A post-purchase offer with an accept button -->
     <!-- An upsell can only be added to an order that is already loaded. The SDK
          loads it from the ?ref_id query parameter the order page is opened with,
          so this page must be reached from a completed order, not visited cold. -->
@@ -20,7 +19,6 @@
       <span data-next-display="package.name">Widget</span>
       <button data-next-upsell-action="add">Add to order</button>
     </div>
-    <!-- /docs:example -->
 
     <!-- Capture init-time EventBus events before the SDK boots. `*:initialized`
          events fire during the DOM scan, which completes before window.next is

@@ -9,13 +9,11 @@
   <body>
     <h1>Express checkout container fixture</h1>
 
-    <!-- docs:example A container the SDK fills with express-payment buttons -->
     <!-- The container injects express-payment buttons into the [buttons] child
          based on the campaign's available_express_payment_methods. -->
     <div data-next-express-checkout="container">
       <div data-next-express-checkout="buttons"></div>
     </div>
-    <!-- /docs:example -->
 
     <!-- express-checkout:initialized fires per button during the DOM scan,
          before window.next exists. Buffer it from the shared EventBus. -->

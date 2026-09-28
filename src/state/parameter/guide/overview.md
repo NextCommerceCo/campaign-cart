@@ -16,7 +16,7 @@ otherwise drop whatever the original link carried. This store holds those values
 so a later page can still read them, and so they can be reattached to outbound
 links. It is also what makes a page's content depend on the link that opened it.
 Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[parameter.state.ts](../parameter.state.ts).
 
 ## Concept
 
@@ -73,7 +73,7 @@ From JavaScript, `next.getParam()` and its siblings read and write the same map.
 - **We chose sessionStorage over localStorage** so a shared browser does not apply
   one visitor's link parameters to the next visitor's session.
 - **We keep this separate from
-  [the attribution store](../../attribution/guide/reference/state-reference.md)**
+  [the attribution store](../../attribution/attribution.state.ts)**
   even though both read the URL: attribution is a fixed set of fields that go to
   the order, while this is an open map that drives page behaviour. Merging them
   would send arbitrary page state to the order API.

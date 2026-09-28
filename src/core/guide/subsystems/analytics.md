@@ -192,7 +192,7 @@ from an absence.
   payload field by field, and which destination sees it under which name.
 - [Analytics providers](../reference/analytics-providers.md) — the per-provider matrix,
   the `dl_` prefix rules, and the full ladder for an event that never arrives.
-- [`useConfigStore`](../../../state/config/guide/reference/state-reference.md) — the
+- [`useConfigStore`](../../../state/config/config.state.ts) — the
   `analytics` block that decides whether any of this runs.
 - [Event bus](./event-bus.md) — the channel features announce on, which is what
   analytics listens to.

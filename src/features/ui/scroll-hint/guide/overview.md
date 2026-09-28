@@ -63,5 +63,5 @@ The cue is your element, styled by you. The feature only toggles a class and kee
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — target, threshold, the active class
-- [Events](./reference/events.md) — `scroll-hint:updated`
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — target, threshold, the active class
+- [Events](../../../../types/global.ts) — `scroll-hint:updated`

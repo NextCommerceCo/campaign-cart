@@ -16,8 +16,8 @@ import type { CoreSubsystem } from '@/docs/content/core-manifest';
  * a baseline that can be frozen.
  *
  * Prose is deliberately not checked for quality, only for the traps a check can see:
- * the forbidden words, and the orphan case that published a phantom feature once before
- * (see the same check for features in `featureReference.test.ts`).
+ * the forbidden words, and the orphan case that published a phantom feature once
+ * before.
  */
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..');

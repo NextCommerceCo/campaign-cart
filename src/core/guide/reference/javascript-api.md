@@ -12,7 +12,7 @@ category: "Core Reference"
 
 Everything a page can ask the SDK to do from JavaScript. The SDK builds one instance of itself during boot and assigns it to `window.next`, so there is nothing to construct and nothing to import — on a page that loads the SDK from the loader script, `next` is the whole entry point.
 
-This page is the scriptable counterpart to the `data-next-*` attributes: anything you can turn on with markup, you can also drive from code here. For the attributes themselves see the [attribute index](../../../../docs/attribute-index.md); for the shape of the objects these calls return, see the SDK reference generated from the source types.
+This page is the scriptable counterpart to the `data-next-*` attributes: anything you can turn on with markup, you can also drive from code here. For the attributes themselves see the [data attributes reference](../../../../docs/guides/reference/data-attributes.md); for the shape of the objects these calls return, see the SDK reference generated from the source types.
 
 > **Wait for boot before your first call.** `window.next` does not exist until the SDK has initialised, so a script that runs earlier will throw on `next.anything`. Push your code onto `window.nextReady` instead — it runs immediately once the SDK is up, and queues if it is not:
 
@@ -840,7 +840,7 @@ Overrides the attribution the SDK collected — the funnel, affiliate, and campa
 next.setAttribution({ funnel: 'summer-quiz-v2', utm_source: 'newsletter' });
 ```
 
-> ⚠️ Overwrites what was captured from the URL. Attribution decides who gets paid for the sale, so setting it from page code is a reporting decision, not a cosmetic one — see the [attribution store reference](../../../state/attribution/guide/reference/state-reference.md).
+> ⚠️ Overwrites what was captured from the URL. Attribution decides who gets paid for the sale, so setting it from page code is a reporting decision, not a cosmetic one — see the [attribution store guide](../../../state/attribution/guide/overview.md).
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.setAttribution`</sub>
 
@@ -1192,7 +1192,7 @@ The object [`next.cart`](#nextcart) returns. `swapPackage`, `calculateTotals` an
 | `applyCoupon(code: string): Promise<{ success: boolean; message: string }>` | Validates and applies a discount code. Resolves with `{ success, message }` rather than throwing. |
 | `removeCoupon(code: string): Promise<void>` | Removes an applied discount code and recalculates. |
 
-These carry the pricing, validation and event logic. Writing to the cart store directly skips all of it — see the [cart store reference](../../../state/cart/guide/reference/state-reference.md).
+These carry the pricing, validation and event logic. Writing to the cart store directly skips all of it — see the [cart store guide](../../../state/cart/guide/overview.md).
 
 ## Cautions
 

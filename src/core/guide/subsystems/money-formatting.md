@@ -115,5 +115,5 @@ when the store must read identically for everyone.
 - [Storage keys](../reference/storage-keys.md) — `next_selected_locale`, what it
   holds and what clearing it costs.
 - The `locale` field, with its validation and precedence notes, in the
-  [config store reference](../../../state/config/guide/reference/state-reference.md).
+  [config store reference](../../../state/config/config.state.ts).
 - [Logging and the debug overlay](./logging-and-debug.md) — the locale picker.

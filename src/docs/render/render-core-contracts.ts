@@ -11,7 +11,7 @@
  * Build-time only — see the note on {@link MetaTagDoc}.
  */
 
-import type { AttributeValue } from '../schema/feature-manifest';
+import type { AttributeValue } from '../schema/doc-types';
 import { META_TAGS, META_TAG_GROUPS, type MetaTagDoc } from '../content/meta-tags';
 import { coreNav } from '../content/nav';
 import {
@@ -368,7 +368,7 @@ export function renderUrlParameters(extracted: ContractUsage[]): string {
         'on it: the values are always strings, and they are only readable after the SDK ' +
         'has processed the URL. ' +
         'Both are covered in the parameter store reference — ' +
-        '[`useParameterStore`](../../../state/parameter/guide/reference/state-reference.md).'
+        '[`useParameterStore`](../../../state/parameter/guide/overview.md).'
     ),
     blocks(
       '## Cautions',

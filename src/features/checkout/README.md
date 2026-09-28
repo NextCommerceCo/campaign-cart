@@ -4,7 +4,7 @@ Handles the checkout form: field collection, validation, payment processing, ord
 
 ## Layout
 
-Each feature is a folder holding its enhancer, its manifest, its `guide/`, and its tests —
+Each feature is a folder holding its enhancer, its `guide/`, and its tests —
 import the folder (`@/features/checkout/checkout-form`), never the inner file. Everything
 below the features is **shared by more than one of them**, which is why it stays at this
 level rather than inside a feature.
@@ -18,9 +18,9 @@ level rather than inside a feature.
 | `express-checkout-container/` | `ExpressCheckoutContainerEnhancer` | `[data-next-express-checkout="container"]` | Container for PayPal / Apple Pay / Google Pay |
 | `prospect-cart/` | `ProspectCartEnhancer` | `form[data-next-checkout]` — but **not via the scanner** | Saves the prospect (email capture) before the order, for abandoned-cart recovery |
 
-`prospect-cart/` is the exception worth knowing: its manifest documents the same
-`form[data-next-checkout]` as the form itself, because that is the markup that brings it to
-life — but `AttributeScanner` never instantiates it. `CheckoutFormEnhancer.initializeProspectCart()`
+`prospect-cart/` is the exception worth knowing: the markup that brings it to life is the
+same `form[data-next-checkout]` as the form itself, but `AttributeScanner` never
+instantiates it. `CheckoutFormEnhancer.initializeProspectCart()`
 constructs it and drives it from the form's email field, so it exists only where an
 enhanced checkout form does. Grepping the scanner for it finds nothing; that is expected,
 not a missing registration.
@@ -265,11 +265,9 @@ a separate billing address; and every card check sits inside `if (creditCardServ
 no `else`, so a form whose Spreedly key never arrived is pronounced valid with the card
 fields empty. See the `DEFECT:` tests in `validation/tests/` for the rest.
 
-**Attributes and errors documented by `checkout-form` are read and thrown in the shared
-folders** — `ui-service` reads `data-next-payment-method`, `order-manager` and
-`credit-card-service` throw four of its documented errors. Its manifest claims them with
-`src/`-relative `extraSource` entries; if you move any of these folders, update that list
-or the attribute and error drift checks stop seeing the code.
+**Some of `checkout-form`'s attributes and errors are read and thrown in the shared
+folders** — `ui-service` reads `data-next-payment-method`, and `order-manager` and
+`credit-card-service` throw four of its errors.
 
 ---
 

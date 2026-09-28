@@ -747,7 +747,7 @@ console.log(next.getMetadata()); // automatic fields only`,
     caution:
       'Overwrites what was captured from the URL. Attribution decides who gets paid for the ' +
       'sale, so setting it from page code is a reporting decision, not a cosmetic one — see ' +
-      'the [attribution store reference](../../../state/attribution/guide/reference/state-reference.md).',
+      'the [attribution store guide](../../../state/attribution/guide/overview.md).',
   },
   {
     name: 'getAttribution',

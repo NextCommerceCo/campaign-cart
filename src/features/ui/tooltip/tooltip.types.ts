@@ -17,7 +17,7 @@ export interface TooltipConfig {
  *
  * Listed individually rather than as a wildcard on purpose: `npm run docs:coverage`
  * scans source for attribute tokens, and a trailing hyphen in prose reads as a
- * real prefix-pattern attribute that no manifest declares — which fails the gate.
+ * real prefix-pattern attribute that no guide documents — which fails the gate.
  */
 export function parseTooltipConfig(element: HTMLElement): TooltipConfig {
   return {

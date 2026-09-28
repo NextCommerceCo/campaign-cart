@@ -102,8 +102,8 @@ export function renderCoreErrors(
   const parts: Array<string | undefined> = [
     header,
     `Every error the SDK's own machinery can raise — ${errors.length} of them — at the ` +
-      'exact message, so a console line can be matched to a cause. Each feature ' +
-      'documents its own throws in its own `guide/reference/errors.md`.',
+      'exact message, so a console line can be matched to a cause. Errors a feature ' +
+      'throws are not listed here.',
     '**Recoverable** means a retry or a corrected input gets past it with no code ' +
       'change. **Fatal** means it happens every time until the markup, code, or ' +
       'configuration changes.',

@@ -13,8 +13,8 @@
  * handed back, because `CheckoutFormEnhancer.destroy()` is what tears down the listeners
  * it may already have registered; returning `undefined` on failure would leak them.
  *
- * It is not registered with `AttributeScanner`. The prospect cart's manifest documents the
- * same `form[data-next-checkout]` as the form itself, but the scanner never instantiates
+ * It is not registered with `AttributeScanner`. Its markup is the same
+ * `form[data-next-checkout]` as the form itself, but the scanner never instantiates
  * it — this module does, which is why it exists only where an enhanced checkout form does.
  *
  * Extracted from `checkout-form.enhancer.ts` verbatim. It needs three things from the form

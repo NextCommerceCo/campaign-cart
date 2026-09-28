@@ -65,6 +65,6 @@ moment with no rows, and an unstyled gap reads as a broken page.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — template sources and state classes
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — template sources and state classes
 - Field names:
-  [order display paths](../../../display/order-display/guide/reference/display-paths.md)
+  [order display paths](../../../../../docs/guides/reference/data-attributes.md)

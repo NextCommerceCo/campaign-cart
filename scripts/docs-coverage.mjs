@@ -5,7 +5,7 @@
  * appears:
  *
  *   1. `data-next-*` attributes  — every attribute the code reads must be
- *      documented in some feature's `guide/reference/attributes.md`.
+ *      named in `docs/guides/`, a feature or store guide, or `docs/sdk-attributes.md`.
  *   2. `EventMap` events         — every event must carry a TSDoc comment, since
  *      the site's events reference is generated from it.
  *   3. Feature guides            — every feature with an enhancer must have a
@@ -63,11 +63,7 @@ const isMarkdown = name => name.endsWith('.md') || name.endsWith('.mdx');
  */
 function scanAttributes() {
   const files = walk(SRC, isSourceTs)
-    .filter(f => !f.includes(`${join(SRC, 'tests')}`))
-    // Manifests are documentation, not code. Counting them makes the metric circular:
-    // declaring an attribute would add it to the set of attributes that need
-    // declaring, so the denominator grew every time a gap was closed.
-    .filter(f => !f.endsWith('.manifest.ts'));
+    .filter(f => !f.includes(`${join(SRC, 'tests')}`));
   const found = new Set();
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
@@ -77,42 +73,16 @@ function scanAttributes() {
 }
 
 /**
- * Every place an attribute can legitimately be documented: the per-feature guides,
- * the state guides, and the two generated repo-level pages — the global index and
- * the SDK-level attributes, which own the attributes no feature does.
+ * Every place an attribute can legitimately be documented: the published guides, the
+ * per-feature and store guides, and the SDK-level attributes page, which owns the
+ * attributes no feature does.
  */
-/**
- * Every attribute name declared in a manifest.
- *
- * The looser corpus below counts an attribute as documented if it appears in *any*
- * markdown under `features/` — which a folder `README.md` can satisfy. That is not
- * enough: the global attribute index and the VS Code editor data are generated from
- * the manifests, so an attribute mentioned only in prose is missing from both while
- * coverage still reads 100%. That happened to `data-next-payment-method`.
- */
-function attributesDeclaredInManifests() {
-  const declared = new Set();
-  for (const file of walk(FEATURES, name => name.endsWith('.manifest.ts'))) {
-    const src = readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/name:\s*'(data-[a-z0-9-]+)'/g)) declared.add(m[1]);
-    // Activation selectors: `activates: '[data-next-foo="bar"]'`
-    for (const m of src.matchAll(/\[(data-[a-z0-9-]+)/g)) declared.add(m[1]);
-  }
-  const sdk = join(SRC, 'docs/content/sdk-attributes.ts');
-  if (existsSync(sdk)) {
-    for (const m of readFileSync(sdk, 'utf8').matchAll(/name:\s*'(data-[a-z0-9-]+)'/g)) {
-      declared.add(m[1]);
-    }
-  }
-  return declared;
-}
-
 function attributesDocumentedInGuides() {
   const files = [
     ...walk(FEATURES, isMarkdown),
     ...walk(join(SRC, 'state'), isMarkdown),
+    ...walk(join(ROOT, 'docs', 'guides'), isMarkdown),
     join(ROOT, 'docs/sdk-attributes.md'),
-    join(ROOT, 'docs/attribute-index.md'),
   ].filter(existsSync);
   return files.map(f => readFileSync(f, 'utf8')).join('\n');
 }
@@ -144,8 +114,7 @@ function scanEvents() {
           if (!Array.isArray(c)) return false;
           // A part is either text or a link. `{@link Foo}` parses to a JSDocLink whose
           // `text` is empty — the symbol sits in `name` — so testing `text` alone scored
-          // a summary written purely as a link as *undocumented*. Same blind spot the
-          // events-guide extractor had (see src/tests/docs/extract-event-docs.ts).
+          // a summary written purely as a link as *undocumented*.
           return c.some(part => {
             const text = (part.text ?? '').trim();
             if (text.length > 0) return true;
@@ -224,7 +193,7 @@ function domActivatedFiles() {
   const registered = registeredEnhancers();
   const enhancerFiles = walk(FEATURES, name => name.endsWith('.enhancer.ts'));
   const others = walk(FEATURES, isSourceTs).filter(
-    f => !f.endsWith('.enhancer.ts') && !f.endsWith('.manifest.ts')
+    f => !f.endsWith('.enhancer.ts')
   );
   return {
     included: [
@@ -244,7 +213,7 @@ function domActivatedFiles() {
 }
 
 /**
- * Every DOM-activated feature, and whether it has a guide and a manifest. The
+ * Every DOM-activated feature, and which guide pages it has. The
  * guide lives either in the enhancer's own folder (`add-to-cart/guide/`) or, for
  * enhancers that still sit flat in a category folder
  * (`features/display/product-display.enhancer.ts`), in a sibling folder named
@@ -262,7 +231,7 @@ function scanFeatures() {
       const dir = dirname(file);
       const name = file.split(/[\\/]/).pop().replace(/\.ts$/, '');
       // `add-to-cart.enhancer` → `add-to-cart`; `package-selector.display` → the same
-      // `package-selector`, whose guide and manifest the display class shares.
+      // `package-selector`, whose guide the display class shares.
       const base = name.split('.')[0];
       const ownFolder = dir.split(/[\\/]/).pop() === base;
       const guideDirs = ownFolder ? [dir] : [dir, join(dir, base)];
@@ -270,152 +239,10 @@ function scanFeatures() {
         id: name.endsWith('.enhancer') ? base : name,
         path: relative(ROOT, file),
         hasGuide: guideDirs.some(d => existsSync(join(d, 'guide/overview.md'))),
-        hasManifest: guideDirs.some(d => existsSync(join(d, `${base}.manifest.ts`))),
-        // A snippet nobody runs is a snippet that can rot. This is true when the
-        // feature's Playwright fixture marks a `docs:example` region, which is
-        // what gets published as its example.
-        hasTestedExample: guideDirs.some(d =>
-          existsSync(join(d, 'guide/reference/tested-example.md'))
-        ),
-        // Generated from the feature's own logger calls, so a console line can be
-        // searched back to the code that printed it.
-        hasLogs: guideDirs.some(d =>
-          existsSync(join(d, 'guide/reference/logs.md'))
-        ),
-        // "Can this fail, and what do I do about it." A feature that throws nothing
-        // still gets a page saying so, so the answer is never "no page, who knows".
-        hasErrors: guideDirs.some(d =>
-          existsSync(join(d, 'guide/reference/errors.md'))
-        ),
-        // What this needs on the page, and what breaks it. Generated from the
-        // manifests, deriving links in both directions.
-        hasRelations: guideDirs.some(d => existsSync(join(d, 'guide/relations.md'))),
-        // Zero to working. Generated from the manifest plus the tested fixture snippet.
-        hasGetStarted: guideDirs.some(d => existsSync(join(d, 'guide/get-started.md'))),
         // When to reach for this feature, and when not to. Hand-written: recognising
         // the right tool for a product situation is not derivable from the code.
         hasUseCases: guideDirs.some(d => existsSync(join(d, 'guide/use-cases.md'))),
-        // A feature turned on from JavaScript (`next.exitIntent({…})`) has no markup to
-        // show, so a markup example is not a gap for it — it is not applicable.
-        needsExample: guideDirs.every(d => {
-          const manifest = join(d, `${base}.manifest.ts`);
-          return existsSync(manifest)
-            ? !/activatedByApi:/.test(readFileSync(manifest, 'utf8'))
-            : true;
-        }),
         hasFolder: ownFolder,
-      };
-    })
-    .sort((a, b) => a.id.localeCompare(b.id));
-}
-
-
-/**
- * Every `data-next-display` namespace, the feature that owns it, and whether that
- * namespace has its own **generated** list of the paths it can show
- * (`guide/reference/display-paths.md`, or `display-paths-{namespace}.md` for a
- * feature that answers more than one).
- *
- * Read from `AttributeScanner`'s display routing rather than from the manifests, so
- * the denominator is every namespace the SDK really answers — a namespace whose
- * manifest forgot `displayNamespace` has to count as a gap, not vanish from the
- * total. That is the documentation half of the same blind spot the exclusion list
- * above names.
- *
- * **One row per namespace, not per feature.** `product-display` answers both `package.`
- * and `campaign.` from one `getPropertyValue`, and the old version of this scan kept
- * one row per *feature*, so a `package.` page alone scored the whole row covered and
- * `campaign.` — routed nowhere, documented nowhere — vanished into a metric reading
- * 8/8. Two namespace literals joined by `||` in the same `AttributeScanner` branch are
- * only counted separately when the feature's own source actually tells them apart (a
- * `startsWith('{ns}.')` or `=== '{ns}'` guard on that literal) — `cart`/`cart-summary`
- * share one branch and one untouched resolver, so they fold into a single `cart` row;
- * `package`/`campaign` share a branch too, but `product-display` guards on `campaign.`
- * explicitly, so they are two rows. That is the same test `extract-display-paths.ts ›
- * claimsNamespace` runs against the resolver, kept as a plain regex here since this
- * script does not carry a TypeScript AST walker.
- *
- * **Generated, not merely present**: the three cart namespaces were hand-written for
- * want of a generator, and a hand-written property table is unchecked by definition.
- * `bundle-selector`'s listed four properties its enhancer has no case for while this
- * metric read 8/8. Counting the "do not edit by hand" marker, and the exact
- * namespace's own opening sentence, is what stops a page quietly reverting to prose
- * or being credited to the wrong namespace.
- */
-function scanDisplayNamespaces() {
-  const file = join(SRC, 'core/attribute-scanner/attribute-scanner.ts');
-  const src = readFileSync(file, 'utf8');
-
-  const owner = new Map();
-  for (const m of src.matchAll(
-    /const \{ (\w+) \} = await import\('@\/features\/([a-z0-9-]+)\/([a-z0-9-]+)'\)/g
-  )) {
-    owner.set(m[1], join(FEATURES, m[2], m[3]));
-  }
-
-  const start = src.indexOf("case 'display':");
-  const block = start === -1 ? '' : src.slice(start).split(/\n\s+case '/)[0];
-
-  const rows = [];
-  // One chunk per branch of the routing chain, so a branch that answers to two
-  // namespace names (`'cart' || 'cart-summary'`) is examined as one unit.
-  for (const chunk of block.split(/\belse\s+if\s*\(/)) {
-    const namespaces = [
-      ...new Set(
-        [...chunk.matchAll(/parsed\.object\s*===\s*'([a-z0-9-]+)'/g)].map(
-          m => m[1]
-        )
-      ),
-    ];
-    const cls = /new\s+(\w+Enhancer)\s*\(/.exec(chunk)?.[1];
-    const dir = cls ? owner.get(cls) : undefined;
-    if (!namespaces.length || !dir) continue;
-
-    const [primary, ...rest] = namespaces;
-    const featureSource = walk(dir, name => name.endsWith('.ts')).map(f =>
-      readFileSync(f, 'utf8')
-    ).join('\n');
-
-    // A namespace the feature's own code never guards on is resolved identically to
-    // `primary` — same resolver, same behaviour, so it is not a separate thing to
-    // document. One that IS guarded on gets its own row.
-    const distinct = rest.filter(ns =>
-      new RegExp(
-        `(===\\s*['"\`]${ns}['"\`])|(startsWith\\(\\s*['"\`]${ns}\\.['"\`])`
-      ).test(featureSource)
-    );
-
-    for (const namespace of [primary, ...distinct]) {
-      rows.push({ dir, namespace });
-    }
-  }
-
-  if (rows.length === 0) {
-    throw new Error(
-      `No display namespaces found in ${relative(ROOT, file)}. The scan reads the ` +
-        "`case 'display':` routing chain — if that changed shape, update " +
-        'scanDisplayNamespaces() rather than letting the denominator collapse.'
-    );
-  }
-
-  return rows
-    .map(({ dir, namespace }) => {
-      const feature = dir.split(/[\\/]/).pop();
-      // The primary namespace's page keeps the plain name; every further one this
-      // feature answers gets its own file, `display-paths-{namespace}.md` — see
-      // `FeatureManifest.additionalDisplayNamespaces`.
-      const bare = join(dir, 'guide/reference/display-paths.md');
-      const named = join(dir, `guide/reference/display-paths-${namespace}.md`);
-      const claims = page =>
-        existsSync(page) &&
-        readFileSync(page, 'utf8').includes('Do not edit by hand') &&
-        readFileSync(page, 'utf8').includes(`the \`${namespace}.\` namespace can show`);
-
-      return {
-        id: `${feature}:${namespace}`,
-        feature,
-        namespace,
-        hasPaths: claims(bare) || claims(named),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -426,11 +253,8 @@ function scanDisplayNamespaces() {
 // ---------------------------------------------------------------------------
 
 /**
- * Every Zustand store under `src/state/`, and whether it has a generated state
- * reference. A store is a `*.state.ts` file, or a folder containing one.
- *
- * Stores were the last layer with no reader-facing docs: features reached 100% while
- * state sat at one of seven.
+ * Every Zustand store under `src/state/`, and whether it has a guide overview. A
+ * store is a `*.state.ts` file, or a folder containing one.
  */
 function scanStores() {
   const STATE = join(SRC, 'state');
@@ -443,10 +267,6 @@ function scanStores() {
       const home = ownFolder ? dir : join(dir, base);
       return {
         id: base,
-        hasManifest:
-          existsSync(join(dir, `${base}.state-manifest.ts`)) ||
-          existsSync(join(home, `${base}.state-manifest.ts`)),
-        hasReference: existsSync(join(home, 'guide/reference/state-reference.md')),
         // The narrative half: what this store is for, which a generator cannot write.
         hasOverview: existsSync(join(home, 'guide/overview.md')),
       };
@@ -489,15 +309,13 @@ const DOCS_CONTENT = join(SRC, 'docs', 'content');
 /**
  * The files a contract may be *read* in — real SDK code only.
  *
- * Manifests and the `src/docs/` declaration files are documentation, so counting them
- * makes the metric circular: declaring a key would add it to the set of keys needing
- * declaration, and the denominator would grow every time a gap was closed. That
- * happened once already, to the attribute metric (§5m), which is why it is excluded
- * here from the start rather than after the same bug.
+ * The `src/docs/` declaration files are documentation, so counting them makes the
+ * metric circular: declaring a key would add it to the set of keys needing
+ * declaration, and the denominator would grow every time a gap was closed.
  */
 function contractSourceFiles() {
   return walk(SRC, isSourceTs).filter(
-    f => !f.endsWith('.manifest.ts') && !f.includes(join(SRC, 'docs'))
+    f => !f.includes(join(SRC, 'docs'))
   );
 }
 
@@ -696,12 +514,9 @@ function scanNavFrontmatter() {
     ...walk(FEATURES, isMarkdown),
     ...walk(join(SRC, 'state'), isMarkdown),
     ...walk(CORE_GUIDE, isMarkdown),
-    // The two cross-cutting index pages under docs/ — they belong to no feature, store or
-    // subsystem, but they are published from `projectDocuments` like every other page and
-    // carry the same frontmatter, so the gate measures them too.
-    ...['docs/attribute-index.md', 'docs/sdk-attributes.md']
-      .map(f => join(ROOT, f))
-      .filter(existsSync),
+    // The cross-cutting page under docs/ — it belongs to no feature, store or
+    // subsystem, but carries the same frontmatter, so the gate measures it too.
+    join(ROOT, 'docs/sdk-attributes.md'),
     // The hand-written Start Here and Building Pages guides under docs/guides/ — published
     // from `projectDocuments` and carrying the same frontmatter contract.
     ...walk(join(ROOT, 'docs', 'guides'), isMarkdown),
@@ -742,7 +557,7 @@ function scanAbsoluteLinks() {
     ...walk(join(SRC, 'state'), isMarkdown),
     ...walk(CORE_GUIDE, isMarkdown),
     ...walk(SRC, isSourceTs), // TSDoc comments publish as page content too.
-    ...['docs/attribute-index.md', 'docs/sdk-attributes.md', 'docs/site-home.md']
+    ...['docs/sdk-attributes.md', 'docs/site-home.md']
       .map(f => join(ROOT, f))
       .filter(existsSync),
     ...walk(join(ROOT, 'docs', 'guides'), isMarkdown),
@@ -768,36 +583,14 @@ const attributes = scanAttributes();
 const guideCorpus = attributesDocumentedInGuides();
 const undocumentedAttributes = attributes.filter(a => !guideCorpus.includes(a));
 
-const manifestDeclared = attributesDeclaredInManifests();
-const attributesNotInAManifest = attributes.filter(a => !manifestDeclared.has(a));
-
 const events = scanEvents();
 const undescribedEvents = events.filter(e => !e.described).map(e => e.name);
 
 const features = scanFeatures();
-const displayNamespaces = scanDisplayNamespaces();
-const displayNamespacesWithoutPaths = displayNamespaces
-  .filter(n => !n.hasPaths)
-  .map(n => n.id);
 const stores = scanStores();
-const storesWithoutReference = stores.filter(t => !t.hasReference).map(t => t.id);
 const storesWithoutOverview = stores.filter(t => !t.hasOverview).map(t => t.id);
 const featuresWithoutGuide = features.filter(f => !f.hasGuide).map(f => f.id);
-const featuresWithoutManifest = features
-  .filter(f => !f.hasManifest)
-  .map(f => f.id);
-// Only features that are turned on by markup can have a markup example.
-const examplesApply = features.filter(f => f.needsExample);
-const featuresWithoutLogs = features.filter(f => !f.hasLogs).map(f => f.id);
-const featuresWithoutErrors = features.filter(f => !f.hasErrors).map(f => f.id);
-const featuresWithoutRelations = features.filter(f => !f.hasRelations).map(f => f.id);
-const featuresWithoutGetStarted = features
-  .filter(f => !f.hasGetStarted)
-  .map(f => f.id);
 const featuresWithoutUseCases = features.filter(f => !f.hasUseCases).map(f => f.id);
-const featuresWithoutTestedExample = examplesApply
-  .filter(f => !f.hasTestedExample)
-  .map(f => f.id);
 
 const coreSubsystems = scanCoreSubsystems();
 const coreSubsystemsWithoutOverview = coreSubsystems
@@ -892,16 +685,7 @@ const current = {
   undocumentedAttributes,
   undescribedEvents,
   featuresWithoutGuide,
-  featuresWithoutManifest,
-  featuresWithoutTestedExample,
-  featuresWithoutLogs,
-  featuresWithoutErrors,
-  featuresWithoutRelations,
-  featuresWithoutGetStarted,
   featuresWithoutUseCases,
-  displayNamespacesWithoutPaths,
-  attributesNotInAManifest,
-  storesWithoutReference,
   storesWithoutOverview,
   coreSubsystemsWithoutOverview,
   coreReferencePagesMissing,
@@ -921,15 +705,7 @@ if (UPDATE) {
       attributes: `${attributes.length - undocumentedAttributes.length}/${attributes.length}`,
       events: `${events.length - undescribedEvents.length}/${events.length}`,
       guides: `${features.length - featuresWithoutGuide.length}/${features.length}`,
-      manifests: `${features.length - featuresWithoutManifest.length}/${features.length}`,
-      testedExamples: `${examplesApply.length - featuresWithoutTestedExample.length}/${examplesApply.length}`,
-      logs: `${features.length - featuresWithoutLogs.length}/${features.length}`,
-      errors: `${features.length - featuresWithoutErrors.length}/${features.length}`,
-      relations: `${features.length - featuresWithoutRelations.length}/${features.length}`,
-      getStarted: `${features.length - featuresWithoutGetStarted.length}/${features.length}`,
       useCases: `${features.length - featuresWithoutUseCases.length}/${features.length}`,
-      displayPaths: `${displayNamespaces.length - displayNamespacesWithoutPaths.length}/${displayNamespaces.length}`,
-      stores: `${stores.length - storesWithoutReference.length}/${stores.length}`,
       storeOverviews: `${stores.length - storesWithoutOverview.length}/${stores.length}`,
       coreSubsystemOverviews: `${coreSubsystems.length - coreSubsystemsWithoutOverview.length}/${coreSubsystems.length}`,
       coreReferencePages: `${coreReferencePages.length - coreReferencePagesMissing.length}/${coreReferencePages.length}`,
@@ -952,17 +728,10 @@ const baseline = existsSync(BASELINE_PATH)
 const KINDS = [
   {
     key: 'undocumentedAttributes',
-    label: 'data-next-* attributes documented in a feature guide',
+    label: 'data-next-* attributes documented in a guide',
     have: attributes.length - undocumentedAttributes.length,
     total: attributes.length,
-    fix: 'add it to the feature\'s guide/reference/attributes.md',
-  },
-  {
-    key: 'attributesNotInAManifest',
-    label: 'data-next-* attributes declared in a manifest (drives the index + editor data)',
-    have: attributes.length - attributesNotInAManifest.length,
-    total: attributes.length,
-    fix: 'add it to the feature\'s *.manifest.ts (attributes or readsElsewhere), then run npm run docs:reference',
+    fix: 'add it to docs/guides/reference/data-attributes.md',
   },
   {
     key: 'undescribedEvents',
@@ -979,64 +748,11 @@ const KINDS = [
     fix: 'scaffold the guide/ set per .claude/rules/guide.md',
   },
   {
-    key: 'featuresWithoutManifest',
-    label: 'features with a generated reference (*.manifest.ts)',
-    have: features.length - featuresWithoutManifest.length,
-    total: features.length,
-    fix: 'write <feature>.manifest.ts, then run npm run docs:reference',
-  },
-  {
-    key: 'featuresWithoutLogs',
-    label: 'features with a reference/logs.md',
-    have: features.length - featuresWithoutLogs.length,
-    total: features.length,
-    fix: 'run npm run docs:reference — it is generated from the feature\'s logger calls',
-  },
-  {
-    key: 'featuresWithoutErrors',
-    label: 'features with a reference/errors.md',
-    have: features.length - featuresWithoutErrors.length,
-    total: features.length,
-    fix: 'declare errors[] in the manifest, then run npm run docs:reference',
-  },
-  {
-    key: 'featuresWithoutRelations',
-    label: 'features with a relations.md',
-    have: features.length - featuresWithoutRelations.length,
-    total: features.length,
-    fix: 'declare dependsOn / pairsWith / requires in the manifest, then run npm run docs:reference',
-  },
-  {
-    key: 'featuresWithoutGetStarted',
-    label: 'features with a get-started.md',
-    have: features.length - featuresWithoutGetStarted.length,
-    total: features.length,
-    fix: 'run npm run docs:reference — it is generated from the manifest and the fixture',
-  },
-  {
     key: 'featuresWithoutUseCases',
     label: 'features with a use-cases.md',
     have: features.length - featuresWithoutUseCases.length,
     total: features.length,
     fix: 'write guide/use-cases.md per .claude/rules/guide.md — 2+ scenarios with effort signals, and a "When NOT to use this"',
-  },
-  {
-    key: 'displayNamespacesWithoutPaths',
-    label: 'data-next-display namespaces with a generated reference/display-paths.md',
-    have: displayNamespaces.length - displayNamespacesWithoutPaths.length,
-    total: displayNamespaces.length,
-    fix:
-      'set displayNamespace on the owning feature\'s manifest, then run npm run ' +
-      'docs:reference — the paths come from PROPERTY_MAPPINGS or from the enhancer\'s ' +
-      'own getPropertyValue, whichever answers the namespace, and an enhancer-answered ' +
-      'one also needs displayPaths for the prose',
-  },
-  {
-    key: 'storesWithoutReference',
-    label: 'stores with a generated state reference',
-    have: stores.length - storesWithoutReference.length,
-    total: stores.length,
-    fix: 'write <store>.state-manifest.ts, then run npm run docs:reference',
   },
   {
     key: 'storesWithoutOverview',
@@ -1086,15 +802,6 @@ const KINDS = [
     have: storageKeys.length - storageKeysWithoutDocs.length,
     total: storageKeys.length,
     fix: 'add it to src/docs/content/storage-keys.ts with its TTL and what clearing it costs the visitor, then regenerate',
-  },
-  {
-    key: 'featuresWithoutTestedExample',
-    label: 'markup features whose published example is one Playwright runs',
-    have: examplesApply.length - featuresWithoutTestedExample.length,
-    total: examplesApply.length,
-    fix:
-      'wrap the useful part of e2e/fixtures/<feature>.html in ' +
-      '<!-- docs:example Title --> … <!-- /docs:example -->, then run npm run docs:reference',
   },
   {
     key: 'pagesWithoutNavTitle',

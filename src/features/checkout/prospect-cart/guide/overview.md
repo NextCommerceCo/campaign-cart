@@ -68,6 +68,6 @@ need to make.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — triggers, field overrides, JSON config
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — triggers, field overrides, JSON config
 - The form that starts it:
   [checkout-form](../../checkout-form/guide/overview.md)

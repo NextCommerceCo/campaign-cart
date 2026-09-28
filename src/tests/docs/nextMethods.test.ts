@@ -26,8 +26,7 @@ import {
  * Regenerate:
  *   UPDATE_DOCS=1 npx vitest run src/tests/docs/nextMethods.test.ts
  *
- * The `core` equivalent of `featureReference.test.ts` / `stateReference.test.ts`, and a
- * test rather than a script for the same reason: the declarations load through Vite, so
+ * A test rather than a script because the declarations load through Vite, so
  * TypeScript and `@/` resolve with no build step.
  *
  * What this is actually guarding against, in order of how much it cost last time:

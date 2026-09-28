@@ -124,6 +124,6 @@ After the SDK initializes you should see:
 ## Next steps
 
 - Explore common product scenarios: [use-cases.md](./use-cases.md)
-- Configure all available attributes: [reference/attributes.md](./reference/attributes.md)
-- See all events emitted: [reference/events.md](./reference/events.md)
+- Configure all available attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
+- See all events emitted: [`EventMap`](../../../../types/global.ts)
 - Understand how this enhancer relates to others: [relations.md](./relations.md)

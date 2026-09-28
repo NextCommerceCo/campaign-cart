@@ -145,7 +145,7 @@ as a counter sends traffic-volume writes to the cart API, and it fires only when
 contact fields are valid — so it undercounts arrivals by design.
 
 **Use instead:** the checkout form's own events —
-[`checkout-form` events](../../../checkout/checkout-form/guide/reference/events.md)
+[`checkout-form` events](../../../../types/global.ts)
 has `checkout:started` for a submit attempt. For a *paid* order, count
 [`order:completed`](../../../../state/order/guide/reference/events.md), which fires
 on the page the shopper lands on afterwards; nothing is emitted when the order is

@@ -56,8 +56,7 @@ file. The folder is what makes the code and the docs that describe it one unit:
 state/order/
 ├── index.ts                    # barrel — re-exports only, NO logic
 ├── order.state.ts              # the store: create() + middleware + state/actions
-├── order.state-manifest.ts     # what the generated state reference is built from
-└── guide/                      # overview + reference/state-reference.md
+└── guide/                      # overview
 ```
 
 Callers import the **folder** (`@/state/order`), never the inner file. Before

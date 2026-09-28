@@ -118,7 +118,6 @@ markup and stays open until the visitor closes it.
 
 ## Next steps
 
-- [reference/attributes.md](./reference/attributes.md) — placement, delay,
+- [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) — placement, delay,
   sizing, and the styling hook
-- [relations.md](./relations.md) — what has to be on the page
 - [glossary.md](./glossary.md) — the terms used here

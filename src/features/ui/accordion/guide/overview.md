@@ -75,5 +75,5 @@ already uses for an expanded state.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — the four parts and the options
-- [Events](./reference/events.md) — `accordion:toggled`, `:opened`, `:closed`
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — the four parts and the options
+- [Events](../../../../types/global.ts) — `accordion:toggled`, `:opened`, `:closed`

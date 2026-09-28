@@ -67,4 +67,4 @@ an attribute so the arrow can point the correct way.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — placement, delay, sizing, styling hooks
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — placement, delay, sizing, styling hooks

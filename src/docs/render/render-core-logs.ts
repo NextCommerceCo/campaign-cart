@@ -12,7 +12,7 @@
  */
 
 import type { CoreConsoleLog, CoreLogSource } from '../content/core-logs';
-import type { LogEntry } from './render-feature-reference';
+import type { LogEntry } from '../schema/doc-types';
 import { coreNav } from '../content/nav';
 
 /** One message, with the prose attached when the level requires it. */
@@ -314,8 +314,8 @@ export function renderCoreLogs(
       'beside the message; expand that entry in the console, because the message alone ' +
       'will not tell you which element, package, or event was involved.',
     'This page covers `src/core`: boot, DOM scanning, the shared base class, location ' +
-      'and currency, attribution, analytics, and the debug tools. Each feature ' +
-      'documents its own messages in its own `guide/reference/logs.md`.',
+      'and currency, attribution, analytics, and the debug tools. Messages a ' +
+      'feature logs are not listed here.',
     PRODUCTION,
     blocks(
       '## Healthy boot',

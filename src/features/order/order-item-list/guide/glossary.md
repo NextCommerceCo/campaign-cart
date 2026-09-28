@@ -26,7 +26,7 @@ that reason: it is the average paid per unit, not the list price.
 One purchased row of a completed order: a product, the quantity bought, and what
 was actually charged for it after discounts. It is the post-payment counterpart of
 a cart line, and its field names are its own — see
-[order display paths](../../../display/order-display/guide/reference/display-paths.md).
+[order display paths](../../../../../docs/guides/reference/data-attributes.md).
 This feature renders exactly one row per order line, in the order the API returns
 them.
 
@@ -57,7 +57,7 @@ The single row of markup you author with `{item.*}` tokens, stamped out once per
 order line. It can be supplied four ways — `data-item-template-id`,
 `data-item-template-selector`, `data-item-template`, or the container's own content
 — resolved in that order, with a built-in default when none is given. Full rules in
-[reference/attributes.md](./reference/attributes.md).
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

@@ -60,4 +60,6 @@ Three things make the mechanism work:
 - Does not write or mutate any state — it is display only.
 - Requires a resolvable package id; without an explicit id or an ancestor context it renders nothing.
 - Reflects the campaign data as loaded; it does not itself fetch packages.
-- The full path list lives in [reference/display-paths.md](./reference/display-paths.md), generated from the SDK's own routing table; this guide covers the mechanism, not every path.
+- Display paths are listed in the
+  [data attributes reference](../../../../../docs/guides/reference/data-attributes.md);
+  this guide covers the mechanism, not every path.

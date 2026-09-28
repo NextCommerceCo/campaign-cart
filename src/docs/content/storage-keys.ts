@@ -8,17 +8,16 @@
  * appears in the code and not here, and a row here whose key no longer exists. So
  * this file only carries what no scanner can know.
  *
- * Which store an entry belongs to is a link, not a copy: the seven stores already
- * document their own persistence in their `guide/reference/state-reference.md`, and
- * per `.claude/rules/documentation.md` §4 one fact lives in one place.
+ * Which store an entry belongs to is a link to that store's `guide/overview.md`,
+ * not a copy of what the store says about itself.
  *
- * Build-time only, like every other manifest here: nothing under `src/` may import it.
+ * Build-time only, like every other file here: nothing under `src/` may import it.
  */
 
 /** Which of the two browser stores an entry lives in. */
 export type StorageArea = 'sessionStorage' | 'localStorage';
 
-/** The seven documented stores, by the `id` in their `*.state-manifest.ts`. */
+/** The seven documented stores, by store id. */
 export type StoreId =
   | 'attribution'
   | 'campaign'

@@ -387,7 +387,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
     meaning:
       'A feature caught an error inside itself and reported it under its own prefix, naming the operation that failed. It also emits `error:occurred`. The feature stays alive but that operation did not complete.',
     action:
-      'Read the operation name and the message. Which feature it is comes from the log prefix, and the matching `guide/reference/errors.md` covers the messages that feature raises.',
+      'Read the operation name and the message. Which feature it is comes from the log prefix.',
   },
 
   // ── base/dom-observer.ts ───────────────────────────────────────────────────

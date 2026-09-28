@@ -126,9 +126,8 @@ want a scrolling list, or leave the page to scroll and drop the hint.
 
 ## Next steps
 
-- [reference/attributes.md](./reference/attributes.md) — target, threshold, and
+- [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) — target, threshold, and
   the active class
-- [reference/events.md](./reference/events.md) — the `scroll-hint:updated`
+- [`EventMap`](../../../../types/global.ts) — the `scroll-hint:updated`
   payload used above
-- [relations.md](./relations.md) — what it is normally paired with
 - [glossary.md](./glossary.md) — the terms used here

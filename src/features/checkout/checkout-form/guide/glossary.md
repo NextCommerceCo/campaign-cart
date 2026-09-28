@@ -23,7 +23,7 @@ The value of `data-next-checkout-field` — `email`, `fname`, `postal`, and the 
 It is what maps an input to a place on the order, so the names are a fixed
 vocabulary rather than free text. An unrecognised name is not part of the order and
 reads as empty however much the visitor typed into it. The full set is in
-[reference/attributes.md](./reference/attributes.md).
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 
@@ -97,8 +97,7 @@ See
 The order's reference from the API. It is what the post-order redirect is built
 from, so a success response without one leaves the visitor stranded even though the
 order may exist. Treat `Invalid order response: missing ref_id` as "check the API
-before telling the visitor it failed" — see
-[reference/errors.md](./reference/errors.md).
+before telling the visitor it failed".
 
 ---
 

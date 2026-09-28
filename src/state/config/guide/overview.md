@@ -16,7 +16,7 @@ country and currency the SDK detected for this visitor. It is the answer to "wha
 is this page allowed to do, and in what currency" — assembled at boot from the
 page's own markup and loader script, then topped up by geo detection and the
 campaign response. Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[config.state.ts](../config.state.ts).
 
 ## Concept
 
@@ -57,7 +57,7 @@ shopper's currency follows them through the funnel.
 declared with tidy defaults and read nowhere outside the debug panel. Setting one
 looks like configuration and does nothing, which is the most expensive kind of
 mistake here — so the type is not the contract. The per-field notes in the
-[state reference](./reference/state-reference.md) say which fields are live.
+[state reference](../config.state.ts) say which fields are live.
 
 ## Business logic
 
@@ -88,7 +88,7 @@ mistake here — so the type is not the contract. The per-field notes in the
 - **`apiKey` is the campaign identity.** Requests authenticate with it alone, and
   it participates in cache validity — change the key and the cached campaign is
   treated as a different store's and refetched. See
-  [the campaign store](../../campaign/guide/reference/state-reference.md).
+  [the campaign store](../../campaign/campaign.state.ts).
 - **`pageType` is reported to analytics as `page_type`**, so it decides which
   funnel step a page shows up as.
 - **`clearCartOnInit` empties the cart during boot** on every load of a page

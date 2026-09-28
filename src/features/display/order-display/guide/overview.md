@@ -74,7 +74,7 @@ a receipt page needs no configuration beyond the bindings themselves.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — loading and error states
-- [Display Paths](./reference/display-paths.md) — every `order.*` value
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — loading and error states
+- [Display Paths](../../../../../docs/guides/reference/data-attributes.md) — every `order.*` value
 - Shared modifiers:
-  [display-core](../../display-core/guide/reference/attributes.md)
+  [display-core](../../../../../docs/guides/reference/data-attributes.md)

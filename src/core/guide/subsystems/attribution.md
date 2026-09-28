@@ -69,7 +69,7 @@ calls the API deliberately. The step order is in the
 
 The record itself lives in the attribution store, persisted to sessionStorage. Its
 field-by-field schema, its example payload, and what reaches the order API are in the
-[attribution store reference](../../../state/attribution/guide/reference/state-reference.md)
+[attribution store reference](../../../state/attribution/attribution.state.ts)
 — this page does not repeat them. The parameters it reads are listed in
 [URL parameters](../reference/url-parameters.md) and the tags it reads in
 [meta tags](../reference/meta-tags.md).

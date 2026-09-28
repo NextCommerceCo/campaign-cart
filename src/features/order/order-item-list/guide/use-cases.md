@@ -29,7 +29,7 @@ and the container falls back to its empty state — by default the text
 real cause is a link that dropped the parameter. Keep `ref_id` on every link into
 this page, and word `data-empty-template` as a load failure with a support
 route, not as an empty basket. Style `order-error` the same way; see
-[reference/attributes.md](./reference/attributes.md).
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 
@@ -63,7 +63,7 @@ here. A token that exists on a cart line but not on an order line renders as an
 empty string — no leftover `{token}`, no console warning — so you get
 correctly-shaped rows with blank fields and nothing telling you why. Look every
 field up in
-[order display paths](../../../display/order-display/guide/reference/display-paths.md)
+[order display paths](../../../../../docs/guides/reference/data-attributes.md)
 before reusing a cart template.
 
 ---

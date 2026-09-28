@@ -14,7 +14,7 @@ The name a checkout input is given with `data-next-checkout-field` — `email`,
 `fname`, `postal`, and the rest. A review slot names the same value, so there is one
 vocabulary for both and a slot can be matched to its input by reading the markup.
 The full set lives with the form that owns it:
-[checkout-form attributes](../../../checkout/checkout-form/guide/reference/attributes.md).
+[checkout-form attributes](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

@@ -26,7 +26,7 @@ The one piece of markup you author to show an applied code — a chip or row wit
 the code and a remove control. Marked `data-template`, it is hidden and cloned
 once per applied code, so you design a single card and never write markup per
 code. Its structure is in
-[reference/attributes.md](./reference/attributes.md).
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

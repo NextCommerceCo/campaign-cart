@@ -302,9 +302,8 @@ function resolveName(
  * Every source file that could read a meta tag or a query parameter, keyed by its path
  * under `src/`.
  *
- * Tests, manifests, and `docs/` are excluded because they *quote* these names in prose
- * — `package-toggle.manifest.ts` mentions `meta[name="next-upsell-accept-url"]` in a
- * default value, and this very page's declaration file names every tag it documents.
+ * Tests and `docs/` are excluded because they *quote* these names in prose — this
+ * very page's declaration file names every tag it documents.
  * A quote is not a read, and counting one would make the drift check circular.
  */
 export function coreContractSources(): Array<[string, string]> {
@@ -322,7 +321,6 @@ export function coreContractSources(): Array<[string, string]> {
     .filter(([name]) => {
       if (name.endsWith('.d.ts') || /\.(test|spec)\.ts$/.test(name))
         return false;
-      if (name.includes('.manifest.ts')) return false;
       return !/(^|\/)(tests?|docs)\//.test(name);
     })
     .sort(([a], [b]) => a.localeCompare(b));

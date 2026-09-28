@@ -23,7 +23,7 @@ on changes, so a "free shipping unlocked" banner appears the moment the cart
 crosses the threshold and disappears if the visitor removes an item.
 
 Conditions read from the same namespaced paths as
-[`data-next-display`](../../display-core/guide/reference/attributes.md). That
+[`data-next-display`](../../../../../docs/guides/reference/data-attributes.md). That
 symmetry is deliberate: anything you can *show*, you can *test*. If
 `data-next-display="cart.total"` renders a number, `data-next-show="cart.total >
 100"` tests it.
@@ -76,6 +76,6 @@ not a modifier and its inverse. Use whichever reads better —
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — condition syntax and scoping
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — condition syntax and scoping
 - The paths you can test:
-  [display-core](../../display-core/guide/reference/attributes.md)
+  [display-core](../../../../../docs/guides/reference/data-attributes.md)

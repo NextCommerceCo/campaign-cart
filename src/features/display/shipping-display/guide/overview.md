@@ -60,7 +60,7 @@ a shipping total disagrees with the summary.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — scoping, and a worked options list
-- [Display Paths](./reference/display-paths.md) — every `shipping.*` value
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — scoping, and a worked options list
+- [Display Paths](../../../../../docs/guides/reference/data-attributes.md) — every `shipping.*` value
 - Shared modifiers:
-  [display-core](../../display-core/guide/reference/attributes.md)
+  [display-core](../../../../../docs/guides/reference/data-attributes.md)

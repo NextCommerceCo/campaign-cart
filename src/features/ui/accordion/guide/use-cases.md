@@ -138,8 +138,7 @@ render the page. No SDK feature persists accordion state.
 
 ## Next steps
 
-- [reference/attributes.md](./reference/attributes.md) — every attribute and its
+- [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) — every attribute and its
   default
-- [reference/events.md](./reference/events.md) — the payloads used above
-- [relations.md](./relations.md) — what has to be on the page
+- [`EventMap`](../../../../types/global.ts) — the payloads used above
 - [glossary.md](./glossary.md) — the terms used here

@@ -41,14 +41,14 @@ is about the storage code — they are about *who wrote the entry*.
 - Five stores persist themselves through Zustand's `persist` middleware, one key each.
   Their reference pages carry a **Survives** column that says, field by field, what comes
   back after a reload — that is where a field's shape and meaning live, not here:
-  [cart](../../../state/cart/guide/reference/state-reference.md),
-  [checkout](../../../state/checkout/guide/reference/state-reference.md),
-  [order](../../../state/order/guide/reference/state-reference.md),
-  [attribution](../../../state/attribution/guide/reference/state-reference.md),
-  [parameter](../../../state/parameter/guide/reference/state-reference.md).
-- The [campaign](../../../state/campaign/guide/reference/state-reference.md) store does
+  [cart](../../../state/cart/cart.state.ts),
+  [checkout](../../../state/checkout/checkout.state.ts),
+  [order](../../../state/order/order.state.ts),
+  [attribution](../../../state/attribution/attribution.state.ts),
+  [parameter](../../../state/parameter/parameter.state.ts).
+- The [campaign](../../../state/campaign/campaign.state.ts) store does
   **not** use `persist`. It writes its own cache entry per currency, by hand.
-- The [config](../../../state/config/guide/reference/state-reference.md) store persists
+- The [config](../../../state/config/config.state.ts) store persists
   nothing at all; it mirrors the resolved currency into a key of its own.
 - Everything else — roughly forty more keys — is written by core services with direct
   `sessionStorage.setItem` calls: the attribution collector, analytics, the country
@@ -139,8 +139,7 @@ tab with a very large cart. Fix: reproduce with storage disabled in devtools and
 **Renaming a key is a destructive change to live traffic.** A visitor mid-funnel is keyed
 by the old name, so a rename reads as an empty cart with no error anywhere — and the cart
 key, `next-cart-state`, is the one whose loss a shopper definitely notices. Fix: add a
-new key and migrate on read; never rename in place. `src/state/cart/cart.state-manifest.ts`
-records the same rule next to the code.
+new key and migrate on read; never rename in place.
 
 **Clearing is narrower than it looks.** `?reset=true` (and the `clearAllStorage()` behind
 it) sweeps keys that start `next-` or `_next`. Every key spelled with an **underscore**

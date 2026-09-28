@@ -68,6 +68,6 @@ id appears when the clock hits zero.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — duration, persistence, format, expired
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — duration, persistence, format, expired
   elements
-- [Events](./reference/events.md) — `timer:expired`
+- [Events](../../../../types/global.ts) — `timer:expired`

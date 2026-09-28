@@ -1,15 +1,14 @@
 /**
  * Attributes that belong to the SDK itself rather than to any one feature.
  *
- * Every other attribute in the docs is owned by a feature manifest. These are not:
- * they are read or written by the boot sequence, the shared base class, the
+ * They are read or written by the boot sequence, the shared base class, the
  * attribution collector, or the DOM observer — so no feature is their rightful
  * home, and before this list they were documented nowhere.
  *
- * Build-time only, like the manifests: nothing under `src/` may import this.
+ * Build-time only: nothing under `src/` may import this.
  */
 
-import type { AttributeDoc } from '../schema/feature-manifest';
+import type { AttributeDoc } from '../schema/doc-types';
 
 /** One SDK-level attribute, with the subsystem that owns it. */
 export interface SdkAttributeDoc extends AttributeDoc {

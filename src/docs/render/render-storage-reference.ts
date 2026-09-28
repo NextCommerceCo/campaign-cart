@@ -77,9 +77,9 @@ const RELATION: Record<NonNullable<StorageKeyDoc['storeRelation']>, string> = {
     'The store writes this alongside its own persist key, so the value is a single bare value rather than a store snapshot.',
 };
 
-/** Store guides live at `state/<id>/guide/reference/state-reference.md`. */
+/** Store guides live at `state/<id>/guide/overview.md`. */
 function storeLink(store: StoreId): string {
-  return `[\`${store}\`](../../../state/${store}/guide/reference/state-reference.md)`;
+  return `[\`${store}\`](../../../state/${store}/guide/overview.md)`;
 }
 
 function keyCell(

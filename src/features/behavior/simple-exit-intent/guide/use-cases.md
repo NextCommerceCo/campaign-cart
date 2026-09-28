@@ -190,8 +190,6 @@ offer the visitor accepts when they are ready.
 
 ## Next steps
 
-- [get-started.md](./get-started.md) — the call, with every option
-- [reference/events.md](./reference/events.md) — all five events and their
+- [`EventMap`](../../../../types/global.ts) — all five events and their
   payloads
-- [reference/logs.md](./reference/logs.md) — the exact lines quoted above
 - [glossary.md](./glossary.md) — the terms used here

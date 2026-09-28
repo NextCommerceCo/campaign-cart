@@ -16,7 +16,7 @@ cart badge, order summary, and checkout submission on a campaign page reads from
 this one place, which is why it survives a page change inside the funnel — a
 shopper who picks a bundle on the landing page arrives at checkout with the same
 cart. Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[cart.state.ts](../cart.state.ts).
 
 ## Concept
 
@@ -127,7 +127,7 @@ recalculated on rehydration instead of being restored.
   string that throws on `.plus()`, and would be stale anyway.
 - We keep the authoritative coupon list on the checkout store and mirror it here
   because coupons are submitted with the order, so checkout owns them. See
-  [the checkout store](../../checkout/guide/reference/state-reference.md).
+  [the checkout store](../../checkout/checkout.state.ts).
 
 ## Limitations
 

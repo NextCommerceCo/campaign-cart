@@ -25,9 +25,8 @@ import {
  * Regenerate:
  *   npm run storage:manifest    (also the first step of `npm run build`)
  *
- * The core equivalent of `stateReference.test.ts`, and a test rather than a script for
- * the same reason: the manifest loads through Vite, so TypeScript and `@/` resolve
- * with no extra build step.
+ * A test rather than a script because the manifest loads through Vite, so TypeScript
+ * and `@/` resolve with no extra build step.
  *
  * The check that matters runs **both directions**. A key added to the code without a
  * row here fails, so a new storage entry cannot stay undocumented. A row here whose
@@ -190,18 +189,13 @@ describe('storage key reference', () => {
     ).toEqual([]);
   });
 
-  it('links only to store references that exist', () => {
+  it('links only to store guides that exist', () => {
     const broken = STORAGE_KEYS_DOC.filter(d => d.store)
-      .filter(
-        d =>
-          !existsSync(
-            join(SRC, `state/${d.store}/guide/reference/state-reference.md`)
-          )
-      )
+      .filter(d => !existsSync(join(SRC, `state/${d.store}/guide/overview.md`)))
       .map(d => `${d.key} → ${d.store}`);
     expect(
       broken,
-      'the store this key names has no generated state reference to link to'
+      'the store this key names has no guide overview to link to'
     ).toEqual([]);
   });
 

@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { preserveQueryParams, NON_PROPAGATING_PARAMS } from '@/core/url-utils';
+import { preserveQueryParams } from '@/core/url-utils';
 import { useParameterStore } from '@/state/parameter';
 import { URL_PARAMETERS } from '@/docs/content/url-parameters';
-import parameterStateManifest from '@/state/parameter/parameter.state-manifest';
 
 /**
  * `preserveQueryParams(url)` defaults to `'all'` and every in-site navigation the
@@ -88,19 +87,6 @@ describe('preserveQueryParams', () => {
       fromUrl: false,
       fromStore: false,
     });
-  });
-
-  it('lists the same names the parameter store documents to page authors', () => {
-    // The caution renders into `state/parameter/guide/`: second home, same list.
-    const caution = parameterStateManifest.cautions?.find(c =>
-      c.includes('never copied forward')
-    );
-    const named = [
-      ...(caution ?? '').matchAll(/`([A-Za-z_]+)`(?=[,\s—-]*(?:`|which))/g),
-    ]
-      .map(m => m[1])
-      .filter(n => n !== undefined);
-    expect(named).toEqual([...NON_PROPAGATING_PARAMS]);
   });
 
   it('carries ref_id, which the upsell chain has no other source for', () => {

@@ -29,7 +29,7 @@ The visitor types a bad code, sees the input clear, and gets no explanation — 
 page looks like it accepted the code. Add the messages element anywhere on the
 page (it is found document-wide) and style
 `coupon-message--success` / `--error` / `--info`; see
-[reference/attributes.md](./reference/attributes.md).
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 
@@ -51,9 +51,8 @@ whenever the applied codes change, including changes made from JavaScript.
 `[pb-checkout="coupon-card"]` element **inside** the
 `data-next-coupon="display"` area. Put it elsewhere, or name the card something
 else, and no card ever renders — the visitor sees the success message but no chip,
-and the only clue is the debug log `No display area or template found for coupons`
-(see [reference/logs.md](./reference/logs.md)). Match the structure in
-[reference/attributes.md](./reference/attributes.md), and turn on `?debug=true`
+and the only clue is the debug log `No display area or template found for coupons`. Match the structure in
+[data attributes reference](../../../../../docs/guides/reference/data-attributes.md), and turn on `?debug=true`
 when a chip is missing.
 
 ---
@@ -122,8 +121,7 @@ to an empty cart changes no total.
 **Why not:** A code listed in `data-next-bundle-vouchers` is applied and removed
 automatically as bundles are selected. Applying the same code by hand as well
 leaves the voucher in an unpredictable state — the two owners disagree about
-whether it should be on the cart. This is a real conflict, not a preference; see
-[relations.md](./relations.md).
+whether it should be on the cart. This is a real conflict, not a preference.
 
 **Use instead:** [`bundle-selector`](../../../cart/bundle-selector/guide/overview.md)
 — it owns bundle-scoped vouchers end to end, applying and removing them with the

@@ -81,12 +81,12 @@ shown as a pack total without a second binding.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — every modifier, and the namespace routing
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — every modifier, and the namespace routing
   table
-- Paths per namespace: [cart](../../../cart/cart-summary/guide/reference/display-paths.md),
-  [package](../../product-display/guide/reference/display-paths.md),
-  [selection](../../selection-display/guide/reference/display-paths.md),
-  [order](../../order-display/guide/reference/display-paths.md),
-  [shipping](../../shipping-display/guide/reference/display-paths.md)
+- Paths per namespace: [cart](../../../../../docs/guides/reference/data-attributes.md),
+  [package](../../../../../docs/guides/reference/data-attributes.md),
+  [selection](../../../../../docs/guides/reference/data-attributes.md),
+  [order](../../../../../docs/guides/reference/data-attributes.md),
+  [shipping](../../../../../docs/guides/reference/data-attributes.md)
 - Testing a value instead of showing it:
   [conditional-display](../../conditional-display/guide/overview.md)

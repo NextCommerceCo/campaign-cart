@@ -77,7 +77,7 @@ Then:
 
 ## Next steps
 
-- Every path this feature can display: [reference/display-paths.md](./reference/display-paths.md)
+- Every path this feature can display: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
 - Every property you can display: [reference/object-attributes.md](./reference/object-attributes.md)
-- All config attributes: [reference/attributes.md](./reference/attributes.md)
+- All config attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
 - What can go wrong: [reference/errors.md](./reference/errors.md)

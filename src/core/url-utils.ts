@@ -11,7 +11,7 @@ import { useParameterStore } from '@/state/parameter';
  * for it), and this filters propagation only — capture still stores them, which is
  * what `data-next-show="param.payment_failed"` reads. Issue #90.
  */
-export const NON_PROPAGATING_PARAMS: readonly string[] = [
+const NON_PROPAGATING_PARAMS: readonly string[] = [
   'payment_failed',
   'payment_method',
   'forcePackageId',

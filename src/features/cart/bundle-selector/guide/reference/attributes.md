@@ -547,7 +547,7 @@ Use `data-next-display="bundle.{selectorId}.{property}"` on any element in the d
 ```
 
 Every path the namespace resolves, with its default format, is listed in
-[display-paths.md](./display-paths.md).
+[data attributes reference](../../../../../../docs/guides/reference/data-attributes.md).
 
 The names `compare`, `savings`, `savingsPercentage` and `hasSavings` belong to
 `data-next-bundle-display` below and are **not** part of this namespace — a

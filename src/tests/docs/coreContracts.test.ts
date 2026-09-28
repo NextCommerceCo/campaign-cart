@@ -26,8 +26,7 @@ import {
  * Regenerate:
  *   UPDATE_DOCS=1 npm run docs:reference
  *
- * The core equivalent of `featureReference.test.ts` and `stateReference.test.ts`, and a
- * test rather than a script for the same reason: the declarations load through Vite, so
+ * A test rather than a script because the declarations load through Vite, so
  * TypeScript and `@/` resolve with no extra build step.
  *
  * Both directions are checked on both contracts, because both failure modes have already

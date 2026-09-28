@@ -2,7 +2,7 @@
  * Every URL query parameter the SDK acts on, and what adding it to a link does.
  *
  * These are the switches nobody can find. They are not in the HTML, so grepping a page
- * never turns them up; they are not owned by a feature, so no manifest documents them.
+ * never turns them up; they are not owned by a feature, so no feature page documents them.
  * The result is that `?ignore=true` quietly stops a session from being tracked, and
  * `?test=true` puts a live checkout into a mode that posts a fake card to the real order
  * API — both undocumented until this page.
@@ -14,10 +14,10 @@
  * do — is hand-written, because that is what a reader actually needs and no extractor
  * can infer it.
  *
- * Build-time only, like the manifests: nothing under `src/` may import this.
+ * Build-time only: nothing under `src/` may import this.
  */
 
-import type { AttributeDoc } from '../schema/feature-manifest';
+import type { AttributeDoc } from '../schema/doc-types';
 
 /** Whether the SDK reads the parameter, writes it, or both. */
 export type ParamDirection =

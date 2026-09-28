@@ -5,9 +5,7 @@
   ],
   "exclude": [
     "**/*.test.ts",
-    "**/tests/**",
-    "**/*.state-manifest.ts",
-    "**/*.manifest.ts"
+    "**/tests/**"
   ],
   "tsconfig": "tsconfig.json",
   "name": "Campaign Cart SDK",

@@ -27,8 +27,7 @@ never inputs you own — the SDK inserts hosted payment fields for them.
 the attribute on a wrapper `<div>` throws
 `CheckoutFormEnhancer must be applied to a form element`, and the symptom on the
 page is a checkout that looks correct but where the button does nothing. Fix it by
-moving the attribute onto the `<form>` element itself. See
-[reference/errors.md](./reference/errors.md).
+moving the attribute onto the `<form>` element itself.
 
 ---
 
@@ -140,7 +139,7 @@ shopper away before you have their address.
 ```
 
 The full list is `affirm`, `bancontact`, `giropay`, `ideal`, `klarna`, `link`,
-`sepa_debit`, `sofort`, `swish`, `twint`; see [reference/attributes.md](./reference/attributes.md) for all
+`sepa_debit`, `sofort`, `swish`, `twint`; see [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) for all
 of them.
 
 A name that is not on that list is sent to the API as written rather than
