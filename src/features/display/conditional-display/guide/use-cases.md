@@ -33,7 +33,7 @@ two messages swap themselves. No code listens to the cart:
 is left visible**. The symptom is a banner that never goes away rather than one
 that never appears — so a stuck message means checking the console, not the CSS.
 Stay inside the supported operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `!`, `&&`,
-`||`) listed in [reference/attributes.md](./reference/attributes.md).
+`||`) listed in [data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

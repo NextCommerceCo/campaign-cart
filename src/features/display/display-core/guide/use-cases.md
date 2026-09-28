@@ -27,7 +27,7 @@ change. Repeating the binding costs nothing — there is no wiring to duplicate:
 **Watch out for:** An unrecognised namespace is **silent**. No feature claims the
 element, nothing throws, and the element keeps whatever text you authored. So a
 binding that never updates usually means a typo in the first segment — check it
-against the namespace table in [reference/attributes.md](./reference/attributes.md).
+against the namespace table in [data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

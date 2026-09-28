@@ -203,7 +203,7 @@ Add to any page URL:
 
 ## Any other parameter is still captured
 
-Every query parameter on the URL — not only the ones listed here — is copied into the parameter store at boot and forwarded onto links the SDK builds, so a flag you invent survives the whole funnel. That is how a condition like `data-next-show="param.seen == '1'"` works. Two things to know before relying on it: the values are always strings, and they are only readable after the SDK has processed the URL. Both are covered in the parameter store reference — [`useParameterStore`](../../../state/parameter/guide/reference/state-reference.md).
+Every query parameter on the URL — not only the ones listed here — is copied into the parameter store at boot and forwarded onto links the SDK builds, so a flag you invent survives the whole funnel. That is how a condition like `data-next-show="param.seen == '1'"` works. Two things to know before relying on it: the values are always strings, and they are only readable after the SDK has processed the URL. Both are covered in the parameter store reference — [`useParameterStore`](../../../state/parameter/guide/overview.md).
 
 ## Cautions
 

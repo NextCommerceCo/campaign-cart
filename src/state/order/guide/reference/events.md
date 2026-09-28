@@ -18,7 +18,7 @@ order.
 
 Fires on a fresh fetch only. Reloading the page inside the store's 15-minute window
 is served from its cache and emits nothing — see
-[state-reference.md](./state-reference.md) for that window.
+[order.state.ts](../../order.state.ts) for that window.
 
 **Payload:** the full {@link index.Order} as the API returned it — `number`, `ref_id`,
 `lines`, totals, addresses, `order_status_url`.

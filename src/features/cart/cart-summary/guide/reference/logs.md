@@ -38,4 +38,4 @@ After init, the enhancer re-renders silently on every cart change. No further lo
 
 **Meaning:** The element keeps the placeholder text it was authored with. A summary row showing `{subtotal}` literally, or a stale hard-coded price, is this log.
 
-**Action:** Check the path against [display-paths.md](./display-paths.md). Because the summary re-renders on every cart change, a misspelled token repeats this warning on each update — treat a repeating line as one bad token, not many.
+**Action:** Check the path against [data attributes reference](../../../../../../docs/guides/reference/data-attributes.md). Because the summary re-renders on every cart change, a misspelled token repeats this warning on each update — treat a repeating line as one bad token, not many.

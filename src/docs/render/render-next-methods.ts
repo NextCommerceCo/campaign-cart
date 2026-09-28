@@ -110,7 +110,7 @@ export function renderJavaScriptApi(input: JavaScriptApiInput): string {
       'script, `next` is the whole entry point.',
     'This page is the scriptable counterpart to the `data-next-*` attributes: anything ' +
       'you can turn on with markup, you can also drive from code here. For the attributes ' +
-      'themselves see the [attribute index](../../../../docs/attribute-index.md); for the ' +
+      'themselves see the [data attributes reference](../../../../docs/guides/reference/data-attributes.md); for the ' +
       'shape of the objects these calls return, see the SDK reference generated from the ' +
       'source types.',
     blocks(
@@ -194,7 +194,7 @@ window.nextReady.push(sdk => {
       }),
     ].join('\n'),
     'These carry the pricing, validation and event logic. Writing to the cart store ' +
-      'directly skips all of it — see the [cart store reference](../../../state/cart/guide/reference/state-reference.md).'
+      'directly skips all of it — see the [cart store guide](../../../state/cart/guide/overview.md).'
   );
 
   // ── Cautions ──────────────────────────────────────────────────────────────

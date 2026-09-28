@@ -1,4 +1,4 @@
-import { ErrorDoc } from '../schema/feature-manifest';
+import { ErrorDoc } from '../schema/doc-types';
 export interface CoreErrorDoc extends ErrorDoc {
     owner: string;
     file: string;

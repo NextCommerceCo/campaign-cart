@@ -74,7 +74,7 @@ discarded and a fresh one can be created.
 How much intent counts as enough to record a prospect, set with `data-trigger-on`.
 This is the feature's one real decision: an early trigger (`formStart`) catches more
 visitors including accidental ones, a late one (`emailAndPhone`) records fewer,
-better leads. See [reference/attributes.md](./reference/attributes.md) for the full
+better leads. See [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) for the full
 set.
 
 ---

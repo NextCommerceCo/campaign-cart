@@ -73,6 +73,6 @@ and closes.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — the options, the template hooks, and the
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — the options, the template hooks, and the
   event guide
-- [Events](./reference/events.md) — all five, and which one means "accepted"
+- [Events](../../../../types/global.ts) — all five, and which one means "accepted"

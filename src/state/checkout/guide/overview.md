@@ -17,7 +17,7 @@ instead of being scraped out of the DOM at submit time, and so a shopper who
 reloads the page — or comes back from a payment redirect — does not have to type
 their address again. It is also the authoritative home of applied coupons for the
 whole SDK. Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[checkout.state.ts](../checkout.state.ts).
 
 ## Concept
 
@@ -84,7 +84,7 @@ checkout always sends the shopper back through the hosted card fields.
   trims the code, refuses it with `Coupon already applied` if it is already in
   `vouchers`, appends it, and then recalculates cart totals against the API. The
   cart store's `vouchers` is a mirror refreshed on each recalculation — see
-  [the cart store](../../cart/guide/reference/state-reference.md).
+  [the cart store](../../cart/cart.state.ts).
 - **Removal is case- and whitespace-insensitive, like storage.** `removeVoucher`
   normalises both the code it is given and each stored code with the same
   `toUpperCase().trim()` `applyCoupon` uses, so `removeVoucher('save10')` removes

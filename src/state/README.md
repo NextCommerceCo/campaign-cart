@@ -16,9 +16,9 @@ truth for runtime data.
 | `useAttributionStore` | `attribution/` | UTM & referral tracking |
 | `useParameterStore` | `parameter/` | URL parameters |
 
-Every store is a `<domain>/` folder holding `<domain>.state.ts`, its
-`<domain>.state-manifest.ts`, its `guide/`, and an `index.ts` barrel — so the
-code and the docs that describe it sit together. Import a store through the
+Every store is a `<domain>/` folder holding `<domain>.state.ts`, its `guide/`,
+and an `index.ts` barrel — so the code and the docs that describe it sit
+together. Import a store through the
 folder (`@/state/order`), never through its inner file.
 
 The barrel and the inner `<domain>.state.ts` must resolve to **one** store

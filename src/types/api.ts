@@ -226,8 +226,7 @@ export interface Order {
    * null, rather than naming a method the shopper did not use.
    *
    * `data-next-display="order.paymentMethod"` renders this through a friendlier
-   * label for the common methods — see the order-display guide's
-   * [display paths](../features/display/order-display/guide/reference/display-paths.md).
+   * label for the common methods.
    *
    * Two of {@link PaymentMethod}'s values only ever arrive here and can never be
    * sent: `external`, a payment taken outside the platform, and `saved_card`, a

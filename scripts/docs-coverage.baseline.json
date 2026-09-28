@@ -1,18 +1,10 @@
 {
   "$comment": "Frozen documentation gaps (a ratchet). New gaps fail `npm run docs:coverage`; entries here are tolerated until closed. Regenerate: npm run docs:coverage:update",
   "generated": {
-    "attributes": "141/145",
+    "attributes": "131/146",
     "events": "74/74",
     "guides": "33/33",
-    "manifests": "31/33",
-    "testedExamples": "30/32",
-    "logs": "31/33",
-    "errors": "31/33",
-    "relations": "31/33",
-    "getStarted": "31/33",
     "useCases": "33/33",
-    "displayPaths": "9/9",
-    "stores": "7/7",
     "storeOverviews": "7/7",
     "coreSubsystemOverviews": "12/12",
     "coreReferencePages": "10/10",
@@ -23,49 +15,25 @@
   },
   "headingsInLibraryVoice": [],
   "undocumentedAttributes": [
+    "data-next-active",
     "data-next-address-api",
-    "data-next-address-field",
-    "data-next-address-row",
-    "data-next-address-state"
+    "data-next-bump",
+    "data-next-bump-section",
+    "data-next-button-text",
+    "data-next-cart-selector",
+    "data-next-debug",
+    "data-next-error-for",
+    "data-next-exclude-property",
+    "data-next-phone-country",
+    "data-next-property-container",
+    "data-next-upsell-action-for",
+    "data-next-upsell-item",
+    "data-next-upsell-quantity-toggle",
+    "data-next-upsell-section"
   ],
   "undescribedEvents": [],
   "featuresWithoutGuide": [],
-  "featuresWithoutManifest": [
-    "address-form",
-    "i18n"
-  ],
-  "featuresWithoutTestedExample": [
-    "address-form",
-    "i18n"
-  ],
-  "featuresWithoutLogs": [
-    "address-form",
-    "i18n"
-  ],
-  "featuresWithoutErrors": [
-    "address-form",
-    "i18n"
-  ],
-  "featuresWithoutRelations": [
-    "address-form",
-    "i18n"
-  ],
-  "featuresWithoutGetStarted": [
-    "address-form",
-    "i18n"
-  ],
   "featuresWithoutUseCases": [],
-  "displayNamespacesWithoutPaths": [],
-  "attributesNotInAManifest": [
-    "data-next-address",
-    "data-next-address-api",
-    "data-next-address-field",
-    "data-next-address-lang",
-    "data-next-address-row",
-    "data-next-address-state",
-    "data-next-i18n"
-  ],
-  "storesWithoutReference": [],
   "storesWithoutOverview": [],
   "coreSubsystemsWithoutOverview": [],
   "coreReferencePagesMissing": [],

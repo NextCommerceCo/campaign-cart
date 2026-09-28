@@ -168,7 +168,7 @@ If a card is pre-selected and auto-add fires, the cart action is logged by `cart
 
 **Meaning:** The element keeps its authored placeholder text, so the card shows a stale or literal value rather than a price.
 
-**Action:** Check the spelling against the display-field list in [attributes.md](./attributes.md).
+**Action:** Check the spelling against the display-field list in [data attributes reference](../../../../../../docs/guides/reference/data-attributes.md).
 
 ---
 

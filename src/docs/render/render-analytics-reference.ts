@@ -300,7 +300,7 @@ export function renderAnalyticsEvents(
     '## See also',
     [
       '- [Analytics providers](./analytics-providers.md) — what each destination does with these events, and what to do when one receives nothing.',
-      '- [`useConfigStore`](../../../state/config/guide/reference/state-reference.md) — the `analytics` block that decides whether any of this runs.',
+      '- [`useConfigStore`](../../../state/config/guide/overview.md) — the `analytics` block that decides whether any of this runs.',
     ].join('\n')
   );
 
@@ -430,7 +430,7 @@ export function renderAnalyticsProviders(
     '## See also',
     [
       '- [Analytics events](./analytics-events.md) — every event, its payload, and which destination sees it under which name.',
-      '- [`useConfigStore`](../../../state/config/guide/reference/state-reference.md) — the `analytics` block, including the per-provider settings.',
+      '- [`useConfigStore`](../../../state/config/guide/overview.md) — the `analytics` block, including the per-provider settings.',
     ].join('\n')
   );
 

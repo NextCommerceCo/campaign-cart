@@ -6,12 +6,12 @@ category: "Attributes"
 
 # SDK-level Attributes
 
-<!-- Generated from the feature manifests. Do not edit by hand:
-     edit the feature's *.manifest.ts, then run `npm run docs:reference`. -->
+<!-- Generated from src/docs/content/sdk-attributes.ts. Do not edit by hand:
+     edit that file, then run `npm run docs:reference`. -->
 
 Attributes owned by the SDK itself rather than by any feature — the boot sequence, the shared action base, attribution, and the DOM observer. Looking up a feature will never find these, which is why they have their own page.
 
-For the feature-owned attributes, and every one of these in a single table, see [All Attributes](./attribute-index.md).
+For the feature-owned attributes, see [Data Attributes](./guides/reference/data-attributes.md).
 
 ## `data-next-sdk-loading`
 

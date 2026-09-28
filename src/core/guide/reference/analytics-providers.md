@@ -305,4 +305,4 @@ Read it from the debug overlay — **Analytics & Events** panel. The strip along
 ## See also
 
 - [Analytics events](./analytics-events.md) — every event, its payload, and which destination sees it under which name.
-- [`useConfigStore`](../../../state/config/guide/reference/state-reference.md) — the `analytics` block, including the per-provider settings.
+- [`useConfigStore`](../../../state/config/guide/overview.md) — the `analytics` block, including the per-provider settings.

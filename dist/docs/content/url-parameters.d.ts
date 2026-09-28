@@ -1,4 +1,4 @@
-import { AttributeDoc } from '../schema/feature-manifest';
+import { AttributeDoc } from '../schema/doc-types';
 export type ParamDirection = 'read' | 'read+written' | 'written';
 export interface UrlParameterDoc extends AttributeDoc {
     owner: string;

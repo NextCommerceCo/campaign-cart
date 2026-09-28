@@ -203,8 +203,7 @@ Decide per store by asking **who uses it?**
 A store is a **state container**: state fields + sync setters only. Async /
 business logic lives in the **feature** (event-driven, coordinated via EventBus),
 not in the store — keep `state/` thin. **Every store is a `state/<domain>/`
-folder** holding `<domain>.state.ts`, its `<domain>.state-manifest.ts`, its
-`guide/`, and an `index.ts` barrel — import the folder (`@/state/order`), never
+folder** holding `<domain>.state.ts`, its `guide/`, and an `index.ts` barrel — import the folder (`@/state/order`), never
 the inner file. Inside it, **one file for the store is still the default**: do
 not pre-split into items/ui/api slices; add a `<sub>.slice.ts` only when the
 store grows (~300 lines), by real sub-domain.

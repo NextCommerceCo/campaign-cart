@@ -69,8 +69,8 @@ non-Apple devices.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — the two elements, and the generated
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — the two elements, and the generated
   button attributes
-- [Events](./reference/events.md) — `express-checkout:initialized`
+- [Events](../../../../types/global.ts) — `express-checkout:initialized`
 - Related: [checkout-form](../../checkout-form/guide/overview.md) for the standard
   path

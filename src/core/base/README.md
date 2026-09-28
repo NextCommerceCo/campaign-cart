@@ -31,9 +31,7 @@ four base classes not sitting beside its siblings.
 
 **Author-facing docs for `data-next-display` did not move** — they stay with the feature,
 at [`features/display/display-core/guide/`](../../features/display/display-core/guide/),
-because a page author looks for the attribute, not for the class. The manifest claims
-these files via `extraSource: ['src/core/base/…']` so the attribute checks still see the
-code that reads them.
+because a page author looks for the attribute, not for the class.
 
 ---
 

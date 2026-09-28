@@ -47,8 +47,8 @@ re-render safety, …) and the per-feature / per-store authoring rules.
 **End-to-end tests** live in the **`sdk-e2e` skill** (`.claude/skills/sdk-e2e/`) —
 invoke it when adding or changing anything under `e2e/`, when a change touches what
 renders in the browser, or when deciding whether a behaviour belongs in Vitest or
-Playwright. It carries the fixture/stub harness API, the fixture→published-example
-contract, and the "prove it can fail" discipline. Its policy half — when a spec is
+Playwright. It carries the fixture/stub harness API and the "prove it can fail"
+discipline. Its policy half — when a spec is
 *required* — is [.claude/rules/e2e.md](.claude/rules/e2e.md).
 
 **Documentation** lives in the **`sdk-docs` skill** (`.claude/skills/sdk-docs/`)

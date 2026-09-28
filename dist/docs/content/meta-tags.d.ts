@@ -1,4 +1,4 @@
-import { AttributeDoc } from '../schema/feature-manifest';
+import { AttributeDoc } from '../schema/doc-types';
 export type MetaTagStatus = 'active' | 'legacy' | 'inert';
 export interface MetaTagDoc extends AttributeDoc {
     owner: string;

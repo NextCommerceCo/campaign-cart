@@ -116,20 +116,19 @@ blocks broke this repeatedly; running the formatter is not optional.
 
 Pull the words from the source and cite `file:line`:
 
-- feature manifests — `src/features/**/*.manifest.ts`
+- the enhancer that reads the attribute — `src/features/**/*.enhancer.ts`
 - type unions — `src/core/base/display-types.ts` and friends
-- state manifests — `src/state/**/*.state-manifest.ts`
+- the store — `src/state/**/*.state.ts`
 
-This is not ceremony. Sourcing descriptions from the manifests during one pass over
+This is not ceremony. Sourcing descriptions from the source during one pass over
 one page found three published errors:
 
 - `data-next-format` was documented as accepting `address` and `phone`. The union at
   `src/core/base/display-types.ts:32` contains neither, and four real values were missing.
-- `data-next-coupon` was documented with 1 of the 5 values in `coupon.manifest.ts`.
+- `data-next-coupon` was documented with 1 of its 5 values.
 - Five display modifiers (`data-hide-if-zero`, `data-multiply-by`, …) were undocumented.
 
-For example **values**, prefer `e2e/fixtures/*.html`, and prefer
-`src/features/**/guide/reference/tested-example.md` above that — those are the blocks
+For example **values**, prefer `e2e/fixtures/*.html` — those are the blocks
 Playwright actually runs.
 
 ## 7. Say what the thing is
@@ -220,7 +219,7 @@ section; `driven by query parameters the SDK captures at boot` does not.
 - [ ] Every attribute in a table appears in an `html` example on the page.
 - [ ] Every example is headed `Example` and preceded by a "Below is an example that…" sentence.
 - [ ] Every `html` block went through prettier; no line over 80 chars; void elements not self-closed.
-- [ ] Every description traces to a manifest, type, or fixture — cited `file:line`.
+- [ ] Every description traces to source, a type, or a fixture — cited `file:line`.
 - [ ] The file being edited is in `typedoc.json` `projectDocuments`.
 - [ ] No heading contains a pronoun or is a question.
 - [ ] Section names are the conventional ones, not invented.

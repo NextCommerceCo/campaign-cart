@@ -1,5 +1,5 @@
 import { CoreConsoleLog, CoreLogSource } from '../content/core-logs';
-import { LogEntry } from './render-feature-reference';
+import { LogEntry } from '../schema/doc-types';
 export interface CoreLogRow extends LogEntry {
     meaning?: string;
     action?: string;

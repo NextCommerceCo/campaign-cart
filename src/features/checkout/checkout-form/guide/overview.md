@@ -91,7 +91,7 @@ the two can never drift apart.
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them
   to the API's names, so the two vocabularies never have to be reconciled by
   hand. A card is named `credit` here — the full list is in
-  [the attribute reference](./reference/attributes.md).
+  [the attribute reference](../../../../../docs/guides/reference/data-attributes.md).
 - **The card is chosen before the shopper does anything.** A page that has not
   been touched yet opens its `credit` section, marks it `next-selected` and
   checks its radio, because a card is what the checkout store starts on. On a
@@ -218,9 +218,9 @@ the two can never drift apart.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — field names, payment methods,
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — field names, payment methods,
   structural components
-- [Events](./reference/events.md) — the full sequence, and which one to track a
+- [Events](../../../../types/global.ts) — the full sequence, and which one to track a
   purchase on
 - Related: [prospect-cart](../../prospect-cart/guide/overview.md) captures the
   visitor as a lead before they finish;

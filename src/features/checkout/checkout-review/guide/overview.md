@@ -58,6 +58,6 @@ than none — it shows the visitor something they are not about to buy.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — slots, formats, fallbacks
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — slots, formats, fallbacks
 - Field names:
-  [checkout-form](../../checkout-form/guide/reference/attributes.md)
+  [checkout-form](../../../../../docs/guides/reference/data-attributes.md)

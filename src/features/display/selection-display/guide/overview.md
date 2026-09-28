@@ -71,7 +71,7 @@ elsewhere on the page — a sticky summary bar, say — has to name it.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — scoping and the namespace comparison
-- [Display Paths](./reference/display-paths.md) — every `selection.*` value
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — scoping and the namespace comparison
+- [Display Paths](../../../../../docs/guides/reference/data-attributes.md) — every `selection.*` value
 - Shared modifiers:
-  [display-core](../../display-core/guide/reference/attributes.md)
+  [display-core](../../../../../docs/guides/reference/data-attributes.md)

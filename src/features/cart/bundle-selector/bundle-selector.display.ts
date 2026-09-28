@@ -11,7 +11,6 @@ import { BundleSelectorEnhancer } from './bundle-selector.enhancer';
  * table rather than off the resolver, so it taught four `bundle.` paths that render
  * nothing. A format for a property nothing
  * resolves is not harmless dead code: it reads as proof the property exists.
- * `src/tests/docs/featureReference.test.ts` now fails on one.
  *
  * None of these formats currently reach the DOM: `parseDisplayAttributes` below calls
  * `super` — which is what computes the format — *before* it narrows `this.property`

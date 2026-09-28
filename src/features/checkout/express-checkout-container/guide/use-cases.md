@@ -56,8 +56,7 @@ them fail rather than being hidden. The feature disables every button and adds t
 `next-cart-empty` class while the cart is empty — style that class as visibly
 disabled, or a visitor taps a live-looking button and nothing happens. Reaching the
 order call with an empty cart produces
-`Cannot create express order with empty cart`; see
-[reference/errors.md](./reference/errors.md).
+`Cannot create express order with empty cart`.
 
 ---
 
@@ -107,7 +106,7 @@ provider also has branding rules the injected buttons already follow.
 **Use instead:** the container itself, with an empty
 `data-next-express-checkout="buttons"` child. Style the generated buttons through
 the `data-next-express-checkout="{method}"` attribute the feature sets on each one —
-see [reference/attributes.md](./reference/attributes.md).
+see [data attributes reference](../../../../../docs/guides/reference/data-attributes.md).
 
 ### Taking an order that needs details the wallet does not collect
 

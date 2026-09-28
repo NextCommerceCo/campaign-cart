@@ -1,4 +1,4 @@
-import { AttributeDoc } from '../schema/feature-manifest';
+import { AttributeDoc } from '../schema/doc-types';
 export interface SdkAttributeDoc extends AttributeDoc {
     owner: string;
     setBySdk?: boolean;

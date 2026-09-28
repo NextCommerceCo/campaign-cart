@@ -31,10 +31,8 @@ import { anchorOf, fileOf } from '@/docs/extract/source-anchor';
  * Regenerate:
  *   UPDATE_DOCS=1 npm run docs:reference
  *
- * The `src/core` equivalent of `featureReference.test.ts` (per-feature) and
- * `stateReference.test.ts` (per-store), and a test rather than a script for the same
- * reason: the declarations load through Vite, so TypeScript and `@/` resolve with no
- * extra build step.
+ * A test rather than a script because the declarations load through Vite, so
+ * TypeScript and `@/` resolve with no extra build step.
  *
  * What it enforces, beyond "the file matches":
  *

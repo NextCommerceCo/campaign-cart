@@ -56,5 +56,5 @@ If the element remains empty and no log appears, the SDK has not scanned attribu
 ## Next steps
 
 - Explore the full token reference: [reference/object-attributes.md](./reference/object-attributes.md)
-- Configure attributes: [reference/attributes.md](./reference/attributes.md)
+- Configure attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
 - See use cases: [use-cases.md](./use-cases.md)

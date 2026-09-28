@@ -12,10 +12,10 @@
  * cannot supply — whether a value is required, what happens when it is wrong, and which
  * of two spellings is the current one.
  *
- * Build-time only, like the manifests: nothing under `src/` may import this.
+ * Build-time only: nothing under `src/` may import this.
  */
 
-import type { AttributeDoc } from '../schema/feature-manifest';
+import type { AttributeDoc } from '../schema/doc-types';
 
 /**
  * How much of the documented behaviour a tag actually has.

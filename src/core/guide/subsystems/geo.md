@@ -128,7 +128,7 @@ then accepts whatever the API answers with, corrects the stored currency, and an
 the substitution as a `currency:fallback` event. Symptom: the page shows a currency nobody
 asked for. Fix: format money from the campaign's own `currency` field rather than the
 configured one, and subscribe to `currency:fallback` if the page should say something —
-see the [campaign store reference](../../../state/campaign/guide/reference/state-reference.md)
+see the [campaign store reference](../../../state/campaign/campaign.state.ts)
 and [the event bus](./event-bus.md).
 
 **The shipping-country list has a fixed priority, and the campaign always wins.** The
@@ -211,7 +211,7 @@ see [logging and the debug overlay](./logging-and-debug.md).
 - **Does not validate that a detected currency is one the campaign sells in.** That
   mismatch is resolved later, by the campaign store, as a `currency:fallback`.
 - **Does not offer a public API.** There is no `next.getCountry()` or `next.setCurrency()`.
-  The resolved values are readable on the [config store](../../../state/config/guide/reference/state-reference.md)
+  The resolved values are readable on the [config store](../../../state/config/config.state.ts)
   (`selectedCurrency`, `detectedCountry`, `detectedCurrency`, `locationData`), and
   changeable only through `?country=` / `?currency=` or the debug overlay's selectors.
 - **Does not own the address form.** Everything visible — the dropdowns, the labels, the

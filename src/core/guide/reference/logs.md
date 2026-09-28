@@ -14,7 +14,7 @@ Every message the SDK's own machinery can print — 505 of them, across 62 conso
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
-This page covers `src/core`: boot, DOM scanning, the shared base class, location and currency, attribution, analytics, and the debug tools. Each feature documents its own messages in its own `guide/reference/logs.md`.
+This page covers `src/core`: boot, DOM scanning, the shared base class, location and currency, attribution, analytics, and the debug tools. Messages a feature logs are not listed here.
 
 ## What prints in production
 
@@ -938,7 +938,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 **Meaning:** A feature caught an error inside itself and reported it under its own prefix, naming the operation that failed. It also emits `error:occurred`. The feature stays alive but that operation did not complete.
 
-**Action:** Read the operation name and the message. Which feature it is comes from the log prefix, and the matching `guide/reference/errors.md` covers the messages that feature raises.
+**Action:** Read the operation name and the message. Which feature it is comes from the log prefix.
 
 ## `[DOMObserver]`
 

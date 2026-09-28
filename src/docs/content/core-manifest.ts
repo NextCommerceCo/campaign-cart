@@ -2,13 +2,10 @@
  * The typed contract of a **core subsystem** — one author-facing part of the SDK's
  * engine, and the pages that document it.
  *
- * Core needed a third manifest kind because neither of the existing two fits it.
- * A {@link ./feature-manifest.FeatureManifest} describes something an author turns on
- * with a `data-next-*` attribute; a {@link ./state-manifest.StateManifest} describes a
- * store's schema. Core is neither: nobody activates the boot sequence and it has no
- * fields. What it has is **contracts** — what boots in what order, what it reads off
- * the document, what it writes to storage, what it prints to the console, and which
- * switches an author can flip.
+ * Nobody activates the boot sequence and it has no fields. What core has is
+ * **contracts** — what boots in what order, what it reads off the document, what it
+ * writes to storage, what it prints to the console, and which switches an author can
+ * flip.
  *
  * That distinction is why calling core "internal" is only half true: the *classes* are
  * internal and free to move, the *behaviour* is depended on by every campaign page. An
@@ -19,7 +16,7 @@
  * subsystem. Keeping the prose out of here is deliberate: a single shared TypeScript
  * literal is the one shape that cannot be written by several people at once.
  *
- * **Build-time only.** Nothing under `src/` may import a manifest — they carry
+ * **Build-time only.** Nothing under `src/` may import this — it carries
  * documentation, and a runtime import would ship every description in the bundle that
  * loads on customer landing pages.
  */

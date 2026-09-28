@@ -18,10 +18,9 @@ import { fileOf } from '@/docs/extract/source-anchor';
  * Regenerate:
  *   UPDATE_DOCS=1 npm run docs:reference
  *
- * Same shape as `featureReference.test.ts` and `stateReference.test.ts`: the page is a
- * render of extracted facts plus prose that has to cover them, and the assertions
- * below are the ones a reader would be hurt by if they stopped holding. Boot order is
- * the sharpest case — a page that documents the wrong order tells an author it is safe
+ * The page is a render of extracted facts plus prose that has to cover them, and
+ * the assertions below are the ones a reader would be hurt by if they stopped
+ * holding. Boot order is the sharpest case — a page that documents the wrong order tells an author it is safe
  * to read the cart before it has been restored.
  */
 

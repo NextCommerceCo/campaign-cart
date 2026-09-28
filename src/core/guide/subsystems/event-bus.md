@@ -66,14 +66,11 @@ is the answer to "which channel carries this".
   `express-checkout:started`, `express-checkout:failed`,
   `express-checkout:completed`, `express-checkout:redirect-missing`,
   `address:location-fields-shown`, `offer:selected`, `offer:applied`.
-- **How to check before you rely on an event.** Every feature declares the events it
-  emits in its manifest, and `src/tests/docs/featureReference.test.ts` fails if a
-  declared event is not emitted in that feature's source; the engine declares its own
-  the same way in `src/core/docs/core-subsystems.ts`, checked by
-  `src/tests/docs/coreSubsystems.test.ts`. So the generated
-  `guide/reference/events.md` pages are the live list: **an event that appears on no
-  feature's events page and in no subsystem's `emits` is emitted by nothing.** The
-  `@deprecated` tag on the `EventMap` entry is the same answer, one file earlier.
+- **How to check before you rely on an event.** The engine declares the events it
+  emits in `src/docs/content/core-subsystems.ts`, checked by
+  `src/tests/docs/coreSubsystems.test.ts`. For a feature's events, search its folder
+  for the `emit(` call: nothing generates a per-feature list. The `@deprecated` tag on
+  the `EventMap` entry marks an event that is kept only for old pages.
 - **You cannot subscribe before boot finishes, so events emitted during boot are
   unobservable from the page.** `window.next` is published at boot step 12, and the bus
   has no replay — so `currency:fallback` and `sdk:url-parameters-processed`, both

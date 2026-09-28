@@ -30,9 +30,8 @@ import { extractAnalytics } from '@/docs/extract/extract-analytics-events';
  * Regenerate:
  *   UPDATE_DOCS=1 npm run docs:reference
  *
- * The analytics equivalent of `featureReference.test.ts` / `stateReference.test.ts`,
- * and the same reason it is a test rather than a script: the docs modules load
- * through Vite, so TypeScript and `@/` resolve with no extra build step.
+ * A test rather than a script because the docs modules load through Vite, so
+ * TypeScript and `@/` resolve with no extra build step.
  *
  * The drift checks run in **both** directions on purpose. Forward: a new event,
  * field, or provider must be documented before it can ship. Reverse: a removed

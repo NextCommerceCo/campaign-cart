@@ -26,9 +26,8 @@ An author does not browse class pages. Boot order, meta tags, storage TTLs and
 the rest stay in `src/core/guide/`, even though the classes behind them now
 publish. Putting author-facing explanation in a TSDoc comment hides it.
 
-Excluded: `**/*.test.ts`, `**/tests/**`, `**/*.manifest.ts`,
-`**/*.state-manifest.ts`, plus `excludePrivate` / `excludeInternal` /
-`excludeExternals`.
+Excluded: `**/*.test.ts`, `**/tests/**`, plus `excludePrivate` /
+`excludeInternal` / `excludeExternals`.
 
 `src/features/**` is **not** an entry point — features are documented through
 their `guide/` folders, which are pulled in as `projectDocuments`.
@@ -123,9 +122,8 @@ Never commit a rendered image.
   member a reader needs first, first.
 - **`gitRevision: "main"`** — every "Defined in" source link points at `main`. A
   symbol only on your branch links to a path that 404s until merge.
-- **`projectDocuments`** pulls in `src/features/**/guide/**`, `src/state/**/guide/**`,
-  `src/core/guide/**`, plus `docs/attribute-index.md` and `docs/sdk-attributes.md`.
-  A guide file outside those globs is simply not published.
+- **Guides** reach the site through `scripts/docs-stage.mjs`, which copies
+  `docs/guides/**` only. A guide file anywhere else is not published.
 - **`readme: docs/site-home.md`** is the landing page — not the repo README.
 - **`typedoc-plugin-llms-txt`** emits `docs/site/llms.txt` on every build, so the
   site is machine-readable for agents. Nothing to maintain by hand.

@@ -73,7 +73,7 @@ writing any JavaScript to render them.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — the markup contract, generated from
-  the feature manifest
-- [Events](./reference/events.md) — `coupon:applied`, `coupon:removed`,
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — the
+  markup contract
+- [Events](../../../../types/global.ts) — `coupon:applied`, `coupon:removed`,
   `coupon:validation-failed`

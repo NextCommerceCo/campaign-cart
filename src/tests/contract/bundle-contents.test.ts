@@ -5,11 +5,9 @@ import { resolve, join, relative } from 'node:path';
 /**
  * Production-bundle contract.
  *
- * `src/docs/` is ~11k lines of build-time documentation machinery — the manifest
- * schemas, the declaration/prose content, and the renderers and extractors that
- * turn them into the guides. Every enhancer and store ships a `*.manifest.ts` next
- * to its code (a deliberate decision: colocation is what keeps the docs from
- * drifting), and those manifests carry long prose strings and import the schema.
+ * `src/docs/` is build-time documentation machinery — the declaration/prose
+ * content, and the renderers and extractors that turn it into the core reference
+ * pages. It carries long prose strings.
  *
  * None of it may reach a customer page. Tree-shaking removes all of it, but nothing
  * asserted that, so the guarantee was one stray runtime import away from silently
@@ -53,14 +51,11 @@ const CHUNKS = join(DIST, 'chunks');
 
 /**
  * Strings that exist only in the documentation layer. Each is a real substring of
- * a manifest, a docs renderer, or generated prose — never of runtime logic.
+ * `src/docs/` content or a docs renderer — never of runtime logic.
  */
 const DOCS_ONLY_MARKERS = [
-  'defineFeature', // the manifest factory every feature manifest calls
-  'defineStore', // the state-manifest equivalent
+  'defineCoreSubsystem', // the core subsystem inventory factory
   'CORE_CONSOLE_LOGS', // core log reference registry
-  'Collapses a section behind', // accordion manifest summary prose
-  'single source of truth', // recurring phrasing in the docs machinery
 ] as const;
 
 /** Build output only — `loader.js` is copied from `public/`, not emitted. */

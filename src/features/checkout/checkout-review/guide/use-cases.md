@@ -37,7 +37,7 @@ want here rather than echoing eight inputs one by one.
 `data-next-checkout-field` on the form renders its fallback forever. The symptom is
 one review row stuck on its placeholder while the rest update — which reads as a
 data problem rather than a spelling one. Check the name against
-[checkout-form's field names](../../../checkout/checkout-form/guide/reference/attributes.md),
+[checkout-form's field names](../../../../../docs/guides/reference/data-attributes.md),
 and give every slot a `data-next-fallback` so an unfilled row is a sentence rather
 than a gap in the layout.
 

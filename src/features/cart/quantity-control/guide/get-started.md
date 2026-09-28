@@ -65,5 +65,5 @@ After setup, you should see:
 ## Next steps
 
 - Explore use cases: [use-cases.md](./use-cases.md)
-- Configure all attributes: [reference/attributes.md](./reference/attributes.md)
-- See what events are emitted: [reference/events.md](./reference/events.md)
+- Configure all attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
+- See what events are emitted: [`EventMap`](../../../../types/global.ts)

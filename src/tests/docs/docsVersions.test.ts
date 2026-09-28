@@ -17,8 +17,7 @@ import { dirname, join, resolve } from 'node:path';
  * `docs/site/versions.json` is the directory the in-page version switcher reads, and it
  * is **generated** — `scripts/docs-versions.mjs` derives it from the repository's release
  * tags plus `package.json`'s `version`. This test is what stops it from becoming
- * hand-kept, the same way `stateReference.test.ts` stops the state reference pages from
- * being hand-edited.
+ * hand-kept.
  *
  * Regenerate:
  *   npm run docs:versions

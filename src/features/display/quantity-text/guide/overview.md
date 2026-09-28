@@ -57,7 +57,7 @@ name the selector.
 - Does not pluralise. "1 bottles" is what you get unless you handle the wording
   yourself.
 - Does not format the number — no grouping or currency. Use
-  [`data-next-display`](../../display-core/guide/reference/attributes.md) for a
+  [`data-next-display`](../../../../../docs/guides/reference/data-attributes.md) for a
   formatted value.
 - Supports only the quantity tokens — `{qty}`, arithmetic on it (`{qty*3}`), and
   `{singular|plural}`. No other fields, and no access to prices or names.
@@ -65,5 +65,5 @@ name the selector.
 
 ## Reference
 
-- [Attributes](./reference/attributes.md) — the template and how the subject is
+- [Attributes](../../../../../docs/guides/reference/data-attributes.md) — the template and how the subject is
   resolved

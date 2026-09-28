@@ -754,4 +754,4 @@ One line of the offer, in GA4 item shape. The SDK builds these from the campaign
 ## See also
 
 - [Analytics providers](./analytics-providers.md) — what each destination does with these events, and what to do when one receives nothing.
-- [`useConfigStore`](../../../state/config/guide/reference/state-reference.md) — the `analytics` block that decides whether any of this runs.
+- [`useConfigStore`](../../../state/config/guide/overview.md) — the `analytics` block that decides whether any of this runs.

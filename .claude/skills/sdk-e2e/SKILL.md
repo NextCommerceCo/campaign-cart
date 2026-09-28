@@ -7,8 +7,7 @@ description: >-
   past the unit suite, when a change touches what renders in the browser
   (enhancer DOM wiring, attributes, formatting, the debug overlay), or when
   deciding whether a behaviour belongs in Vitest or Playwright. Carries the
-  fixture/stub harness API, the fixture→published-example contract that
-  docs:coverage gates, the "prove it can fail" discipline, and the traps that have
+  fixture/stub harness API, the "prove it can fail" discipline, and the traps that have
   actually produced green-but-meaningless specs in this repo. Pairs with
   .claude/rules/e2e.md (policy) and .claude/rules/testing.md (unit conventions).
 ---
@@ -31,7 +30,7 @@ How to write a Playwright spec for this SDK that is worth the seconds it costs.
 | Does a real `navigator.*` / browser API feed it? | **E2E** |
 | Does clicking this actually repaint? | **E2E** |
 | Does it work in WebKit's ICU as well as Chromium's? | **E2E** |
-| Is the published markup example still correct? | **E2E** (see §3) |
+| Is a `docs/guides/` markup example still correct? | **E2E** (see §3) |
 
 `.claude/rules/testing.md` owns the Vitest side. Two standing entries there point
 here: *"enhancer DOM wiring — covered by E2E"* and *"a test that needs real pixel
@@ -91,32 +90,13 @@ all retry. For anything the harness cannot express, `expect.poll(...)`. There is
 exactly one legitimate `waitForTimeout`: proving something **has not** happened,
 and even then prefer asserting the stable end state.
 
-## 3. The fixture is the published example — this is the surprising one
+## 3. The fixture is the example source
 
-A fixture is not private test scaffolding. Wrapping part of it in a marker:
-
-```html
-<!-- docs:example Add a fixed package to the cart -->
-<button data-next-action="add-to-cart" data-next-package-id="1">Buy</button>
-<!-- /docs:example -->
-```
-
-lifts that markup into the feature's `guide/reference/tested-example.md` via
-[`src/docs/extract/extract-fixture-example.ts`](../../../src/docs/extract/extract-fixture-example.ts),
-and `npm run docs:coverage` gates it — *"markup features whose published example
-is one Playwright runs"*, currently **100%**. The point is that a snippet nobody
-runs is a snippet that rots.
-
-Consequences:
-
-- **Editing a marked region edits the docs.** Re-run `npm run docs:reference` and
-  commit the regenerated page in the same change.
-- **A new DOM-activated feature needs a fixture**, or the gate drops below 100%.
-- **Markup inside the marker must be exemplary**, not minimal-to-pass: it is what
-  an integrator copies. Real values, no placeholder cruft.
-- **A fixture with no matching feature folder takes no marker.** Config-level specs
-  (`locale.html`) are measured, not published — say so in an HTML comment so the
-  next person does not "fix" the omission.
+A fixture is the markup Playwright runs, so it is where a `docs/guides/` example
+should be copied from: a snippet nobody runs is a snippet that rots. Nothing
+extracts fixtures into the docs any more, so the copy is by hand, and the markup in
+a fixture should be exemplary rather than minimal-to-pass. Real values, no
+placeholder cruft.
 
 ## 4. Prove the test can fail
 

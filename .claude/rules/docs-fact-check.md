@@ -17,8 +17,8 @@ Born from the PR #82 review (2026-08-12): a full docs rewrite shipped with ~20 f
 
 Every "the SDK does X when Y" needs the deciding `file:line` in the SDK source, read in the same session. Template markup and template comments are **not** evidence — apollo's own `shipping-address-form.html` comment says the location fields gate on country selection; the SDK actually reveals them when `address1` gets a value ([location-field-visibility.ts](../../src/features/checkout/checkout-form/location-field-visibility.ts)).
 
-- An attribute row must name the feature's real activating/config attribute, confirmed in its `*.manifest.ts` and enhancer. `data-next-toggle` is a DOM-observer watch entry, not a control ([sdk-attributes.ts](../../src/docs/content/sdk-attributes.ts)) — PR #82 documented it as one because it appears in template markup.
-- Enumerate the full value set from the manifest. `data-next-selection-mode` is `swap | select`; documenting only `swap` shipped.
+- An attribute row must name the feature's real activating/config attribute, confirmed in its enhancer and `AttributeScanner`. `data-next-toggle` is a DOM-observer watch entry, not a control ([sdk-attributes.ts](../../src/docs/content/sdk-attributes.ts)) — PR #82 documented it as one because it appears in template markup.
+- Enumerate the full value set from the code that reads it. `data-next-selection-mode` is `swap | select`; documenting only `swap` shipped.
 - Say what an attribute value *is*, not a paraphrase. `data-next-package-sync` takes package id(s) and syncs quantity to the sum of those lines — "in step with the main package" shipped instead.
 - Split SDK work from template work explicitly. `data-next-await` hiding is template CSS (`next-core.css` keyed on `next-display-ready`); the SDK only adds the class. Attributing template behavior to the SDK shipped twice.
 
@@ -33,7 +33,7 @@ Every "the SDK does X when Y" needs the deciding `file:line` in the SDK source, 
 
 ## 6. Check open bugs before teaching a pattern
 
-- Before documenting a getter or field, check open GitHub issues and the state manifests' cautions. `getCartData().cartLines` is always `[]` (issue #36, [cart.state-manifest.ts](../../src/state/cart/cart.state-manifest.ts)) — the doc must name the bug and the working alternative, never teach gating on the broken field.
+- Before documenting a getter or field, check open GitHub issues. `getCartData().cartLines` is always `[]` (issue #36) — the doc must name the bug and the working alternative, never teach gating on the broken field.
 
 ## 7. Analytics: "auto" means a traced caller, nothing less
 
@@ -54,7 +54,7 @@ Every "the SDK does X when Y" needs the deciding `file:line` in the SDK source, 
 ## 10. Deprecated surfaces: demote, never teach
 
 - Published guides (`docs/guides/**`) never document a deprecated surface — no syntax, no examples, no table rows. The only allowed mention is a caution telling the reader not to copy it, placed where they will meet it in template markup.
-- Contributor inventories stay truthful while the code ships the surface (the coverage gates require the entry), but the entry must carry machine-readable status: `status: 'legacy'` + `supersededBy` in [meta-tags.ts](../../src/docs/content/meta-tags.ts), `@deprecated` on TSDoc symbols, `status: 'deprecated'` on feature manifests. Prose like "legacy spelling" with no flag is not enough.
+- Contributor inventories stay truthful while the code ships the surface (the coverage gates require the entry), but the entry must carry machine-readable status: `status: 'legacy'` + `supersededBy` in [meta-tags.ts](../../src/docs/content/meta-tags.ts), `@deprecated` on TSDoc symbols. Prose like "legacy spelling" with no flag is not enough.
 - A new fallback read shipped without its deprecation marker in the same change is a review blocker.
 - Docs stop naming a deprecated surface the day its code is deleted — deletion is the only way the entries disappear, and the gates then enforce removal instead of presence.
 

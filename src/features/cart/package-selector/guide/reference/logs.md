@@ -118,4 +118,4 @@ Prices fetch asynchronously after init, so there are no additional logs for succ
 
 **Meaning:** The element keeps its authored placeholder, which is why a card can show `{price}` or a stale value.
 
-**Action:** Check the spelling against the field list in [attributes.md](./attributes.md). It fires once per card, so one bad slot in a shared template warns for every card.
+**Action:** Check the spelling against the field list in [data attributes reference](../../../../../../docs/guides/reference/data-attributes.md). It fires once per card, so one bad slot in a shared template warns for every card.

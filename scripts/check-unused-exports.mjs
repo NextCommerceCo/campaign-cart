@@ -38,10 +38,8 @@
  *
  * Deliberately out of scope, each for a reason a false-positive audit surfaced:
  *
- * - **`export default`** — this codebase's default exports are all
- *   `defineFeature(...)` / `defineStore(...)` manifest objects consumed
- *   structurally by `src/docs/**` and `src/tests/**`, a different dead-code
- *   shape than "nothing imports this name." Not checked here.
+ * - **`export default`** — the only one in `src/` is `config.ts`'s, consumed
+ *   structurally rather than by name. Not checked here.
  * - **Types, interfaces, and enums** (`export type`, `export interface`,
  *   `export enum`) — the task this gate exists for explicitly calls out
  *   "types re-exported through a barrel purely so consumers can name them" as

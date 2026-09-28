@@ -16,7 +16,7 @@ parameters off the landing URL — `utm_source`, `utm_campaign`, `affiliate`,
 API when the order is created. Without it an order arrives with no source, which
 means no commission for the partner who sent it and no way to tell which ad paid
 for itself. Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[attribution.state.ts](../attribution.state.ts).
 
 ## Concept
 
@@ -115,7 +115,7 @@ in there as a key-value bag, including whatever `os-tracking-tag` or
   identifiers (`fbclid`, `gclid`, `everflow_transaction_id`) that identify a
   click and therefore a person. Anyone deciding what to send to a third-party
   analytics provider needs to read
-  [reference/state-reference.md](./reference/state-reference.md) first.
+  [attribution.state.ts](../attribution.state.ts) first.
 - **It does not attribute per order line.** Attribution is per session, so a
   post-purchase upsell added twenty minutes later carries the same source as the
   original order.
@@ -125,4 +125,4 @@ in there as a key-value bag, including whatever `os-tracking-tag` or
 - **It does not survive a domain change.** sessionStorage is per origin, so a
   funnel that moves the visitor to a different domain loses attribution unless the
   parameters are carried in the link — which is what
-  [the parameter store](../../parameter/guide/reference/state-reference.md) does.
+  [the parameter store](../../parameter/parameter.state.ts) does.

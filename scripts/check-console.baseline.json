@@ -1,6 +1,6 @@
 {
   "$comment": "Frozen raw `console.*` occurrences (scripts/check-console.mjs). A ratchet: new occurrences fail `npm run check:console`; entries here are tolerated until fixed. Regenerate: npm run check:console:update. Fingerprint is (file, method, call prefix) — no line numbers, so formatting cannot churn it. `notes` records why a group of entries is frozen rather than fixed; keep it in sync by hand.",
-  "count": 100,
+  "count": 99,
   "errors": [
     "src/config.ts :: console.log :: console.log('[Config] Hot update received'); window.location.reload();",
     "src/core/attribute-scanner/attribute-scanner.performance.ts :: console.group :: console.group('🚀 Enhancement Performance Report'); // Convert to arra",
@@ -37,7 +37,6 @@
     "src/core/sdk-initializer/sdk-initializer.debug-utils.ts :: console.table :: console.table(packageData); console.groupEnd(); },",
     "src/core/test-mode.ts :: console.log :: console.log('🎮 Konami Code activated!'); this.isTestMode = true;",
     "src/core/test-mode.ts :: console.log :: console.log(`Filled test card data: ${testCard.name}`); } ",
-    "src/features/behavior/simple-exit-intent/simple-exit-intent.manifest.ts :: console.log :: action: () => console.log('offer accepted'), maxTriggers: 1, disableOn",
     "src/features/display/display-core/display-debug-panel.ts :: console.log :: <button onclick=\"console.log(${JSON.stringify(info)})\" style=\" backgro",
     "src/features/display/display-core/display-debug-panel.ts :: console.log :: console.log('[DisplayDebugPanel] Initialized. Press Ctrl+Shift+D to to",
     "src/features/display/display-core/display-debug-panel.ts :: console.log :: console.log(`Total display elements: ${elements.length}`); } }",
@@ -119,7 +118,6 @@
     "src/core/debug/debug-style-loader.ts": "Debug stylesheet loading, debug mode only.",
     "src/core/test-mode.ts": "2 lines a developer sees after triggering test mode by hand (the Konami code, filling a test card).",
     "src/config.ts": "`[Config] Hot update received` — inside an `import.meta.hot` block, which the production build strips.",
-    "src/features/display/index.ts": "Behind `process.env.NODE_ENV === 'development'`, so the production build strips it.",
-    "src/features/behavior/simple-exit-intent/simple-exit-intent.manifest.ts": "Inside the manifest's published example markup for `action`. Documentation, not a code path."
+    "src/features/display/index.ts": "Behind `process.env.NODE_ENV === 'development'`, so the production build strips it."
   }
 }

@@ -55,5 +55,5 @@ After page load you should see in the browser console:
 ## Next steps
 
 - Explore use cases: [use-cases.md](./use-cases.md)
-- Configure attributes: [reference/attributes.md](./reference/attributes.md)
-- See what events it emits: [reference/events.md](./reference/events.md)
+- Configure attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
+- See what events it emits: [`EventMap`](../../../../types/global.ts)

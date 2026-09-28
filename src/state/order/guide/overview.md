@@ -16,7 +16,7 @@ upsell page adds a line to that same order without asking for card details
 again. It also keeps the record of which offers this visitor has already seen and
 accepted, which is what stops a funnel re-offering something after a
 back-button. Field-by-field detail lives in
-[reference/state-reference.md](./reference/state-reference.md).
+[order.state.ts](../order.state.ts).
 
 ## Concept
 

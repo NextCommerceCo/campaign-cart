@@ -89,5 +89,5 @@ For selector-linked mode, the button should be disabled on load if no card is pr
 ## Next steps
 
 - Explore use cases: [use-cases.md](./use-cases.md)
-- Configure all attributes: [reference/attributes.md](./reference/attributes.md)
-- See what events it emits: [reference/events.md](./reference/events.md)
+- Configure all attributes: [data attributes reference](../../../../../docs/guides/reference/data-attributes.md)
+- See what events it emits: [`EventMap`](../../../../types/global.ts)
