@@ -1449,12 +1449,12 @@ export interface ConfigState {
   storeName?: string;
 
   /**
-   * The key that authorises the hosted credit-card fields.
+   * The key that authorises the hosted credit-card fields: the campaign's
+   * `payment_env_key`, and nothing else. The page cannot set it, so a config copied
+   * from another store's page cannot mount that store's card fields.
    *
-   * `undefined` means the card fields cannot start, so card payment is unavailable
-   * and only express or pay-later methods work. Once the campaign loads its own
-   * `payment_env_key` overwrites whatever was set here, so check the campaign
-   * response before the page markup when the card fields use an unexpected key.
+   * `undefined` until the campaign loads, and after it when the campaign has no key;
+   * then the card fields cannot start, and only express or pay-later methods work.
    */
   spreedlyEnvironmentKey?: string | undefined;
 

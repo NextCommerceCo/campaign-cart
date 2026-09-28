@@ -193,10 +193,6 @@ export const configStore = create<ConfigState & ConfigActions>((set, get) => ({
       updates.pageType = windowConfig.pageType as PageType;
     }
 
-    if (typeof windowConfig.spreedlyEnvironmentKey === 'string') {
-      updates.spreedlyEnvironmentKey = windowConfig.spreedlyEnvironmentKey;
-    }
-
     if (windowConfig.payment && typeof windowConfig.payment === 'object') {
       updates.paymentConfig = windowConfig.payment as PaymentConfig;
     }
