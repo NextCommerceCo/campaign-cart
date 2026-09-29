@@ -1,14 +1,6 @@
+import { HostedCardField, CardHolderData } from './card-tokenizer';
 import { CardInputConfig } from '../../../types/global';
-declare global {
-    interface Window {
-        Spreedly: any;
-    }
-}
-export interface CreditCardData {
-    full_name: string;
-    month: string;
-    year: string;
-}
+export type CreditCardData = CardHolderData;
 export interface CreditCardValidationState {
     number: {
         isValid: boolean;
@@ -33,8 +25,8 @@ export interface CreditCardValidationState {
 }
 export declare class CreditCardService {
     private logger;
-    private environmentKey;
     private config?;
+    private tokenizer;
     private isReady;
     private validationState;
     private onReadyCallback?;
@@ -74,20 +66,17 @@ export declare class CreditCardService {
     setOnToken(callback: (token: string, pmData: any) => void): void;
     setFloatingLabelCallbacks(onFocus: (fieldName: 'number' | 'cvv') => void, onBlur: (fieldName: 'number' | 'cvv', hasValue: boolean) => void, onInput: (fieldName: 'number' | 'cvv', hasValue: boolean) => void): void;
     get ready(): boolean;
-    focusField(field: 'number' | 'cvv'): void;
+    focusField(field: HostedCardField): void;
     private initializeValidationState;
     private findCreditCardFields;
-    private loadSpreedlyScript;
-    private setupSpreedly;
-    private addFocusStyles;
+    private mountHostedFields;
+    private handleTokenizeErrors;
     private setupFieldClickHandlers;
-    private setupSpreedlyEventListeners;
-    private applySpreedlyConfig;
-    private handleSpreedlyFieldEvent;
+    private handleFieldState;
     private checkAndTrackPaymentInfo;
     private handleFieldFocus;
     private handleFieldBlur;
-    private showSpreedlyErrors;
+    private showTokenizeErrors;
     private setCreditCardFieldValid;
     private setCreditCardFieldError;
     private clearCreditCardFieldError;
