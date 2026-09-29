@@ -186,6 +186,8 @@ export async function stubCardCheckout(
   await stubCampaign(page, {
     ...MINIMAL_CAMPAIGN,
     payment_env_key: 'e2e-env-key',
+    // The API sends the campaign's id; `Campaign` does not type it.
+    ...{ id: 7 },
   });
   await stubCart(page);
   const nextPayment = await stubNextPayment(page, card);

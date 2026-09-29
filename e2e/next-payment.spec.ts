@@ -79,6 +79,7 @@ test("creates the card order with the payment method's token", async ({
       metadata: {
         source: 'next-campaign-cart',
         sdk_version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+        campaign_id: '7',
         page: expect.stringMatching(/\/e2e\/fixtures\/card-purchase\.html$/),
       },
     },

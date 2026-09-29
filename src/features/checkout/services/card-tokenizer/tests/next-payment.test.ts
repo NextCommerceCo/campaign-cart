@@ -10,6 +10,8 @@ import type {
   CardTokenizerEvents,
   HostedFieldsMount,
 } from '../card-tokenizer.types';
+import { useCampaignStore } from '@/state/campaign';
+import type { Campaign } from '@/types/campaign';
 
 /** What the page script gets back from `new NextPayment(…)`, with its setters recorded. */
 interface FakeInstance {
@@ -93,6 +95,7 @@ beforeEach(() => {
 
 afterEach(() => {
   live.splice(0).forEach(tokenizer => tokenizer.destroy());
+  useCampaignStore.setState({ data: null });
   delete window.NextPayment;
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -247,6 +250,17 @@ describe('NextPaymentTokenizer — the outcome of a tokenize attempt', () => {
     expect(metadata['source']).toBe('next-campaign-cart');
     expect(metadata['sdk_version']).toMatch(/^\d+\.\d+\.\d+/);
     expect(metadata['page']).toBe(`${window.location.origin}/checkout`);
+  });
+
+  it('stores the campaign id when the campaign response carries one', async () => {
+    useCampaignStore.setState({ data: { id: 42 } as unknown as Campaign });
+    const { tokenizer, instance } = await mounted();
+    tokenizer.tokenize(CARD);
+
+    const { metadata } = instance.submit.mock.calls[0]?.[1] as {
+      metadata: Record<string, string>;
+    };
+    expect(metadata['campaign_id']).toBe('42');
   });
 });
 

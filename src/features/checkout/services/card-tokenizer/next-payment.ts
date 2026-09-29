@@ -21,6 +21,7 @@
  */
 
 import { createLogger } from '@/core/logger';
+import { useCampaignStore } from '@/state/campaign';
 import type { CardInputConfig } from '@/types/global';
 
 import { cardErrorField, cardErrorKey } from './card-texts';
@@ -226,13 +227,22 @@ function paymentMethodOf(result: unknown): CardPaymentMethod | undefined {
 
 /**
  * Stored with the payment method, so a card token says what made it: this SDK, its
- * version, and the page. The page is origin and path only; a query string carries the
- * shopper's parameters. Spreedly caps a metadata value at 500 characters.
+ * version, the campaign and the page. The page is origin and path only; a query string
+ * carries the shopper's parameters. Spreedly caps a metadata value at 500 characters.
+ *
+ * `campaign_id` is the `id` of the campaign response, which is stored whole but not
+ * typed on `Campaign`; it is left out when the response has none.
  */
 function sdkMetadata(): Record<string, string> {
+  const campaignId = (
+    useCampaignStore.getState().data as { id?: unknown } | null
+  )?.id;
   return {
     source: 'next-campaign-cart',
     sdk_version: __VERSION__,
+    ...((typeof campaignId === 'number' || typeof campaignId === 'string') && {
+      campaign_id: String(campaignId),
+    }),
     page: `${window.location.origin}${window.location.pathname}`.slice(0, 500),
   };
 }
