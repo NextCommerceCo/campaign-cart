@@ -42,7 +42,7 @@ provider does not supply is not on the order. Rendered by
 The card number and CVV inputs. They are inserted by the SDK and belong to the
 payment provider, not to your page, so a raw card number never passes through your
 markup, your handlers, or SDK code. This is what keeps a campaign page out of scope
-for handling card data. Their readiness is announced by `checkout:spreedly-ready`.
+for handling card data. Their readiness is announced by `checkout:payment-ready`.
 
 ---
 
@@ -103,10 +103,12 @@ before telling the visitor it failed".
 
 ## Spreedly
 
-The payment service that supplies the
-[hosted payment fields](#hosted-payment-fields) and performs
-[tokenization](#tokenization). It appears in this guide mainly as the name in
-`checkout:spreedly-ready`, the event that says the card fields will accept input.
+The payment service behind the
+[hosted payment fields](#hosted-payment-fields) and
+[tokenization](#tokenization). The SDK reaches it through NextPayment
+(`payments.29next.com/js/v1/payment.js`). Its name survives in
+`checkout:spreedly-ready`, the deprecated name of `checkout:payment-ready`, and in
+the `spreedly-number` / `spreedly-cvv` ids the card containers are given.
 
 ---
 

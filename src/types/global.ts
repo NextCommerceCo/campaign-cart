@@ -130,7 +130,22 @@ export interface EventMap {
     /** The form element that was initialized. */
     form: HTMLFormElement;
   };
-  /** The Spreedly card iframe is ready to accept card details. */
+  /**
+   * The hosted card number and CVV fields are ready to accept card details.
+   *
+   * @example
+   * ```js
+   * next.on('checkout:payment-ready', () => {
+   *   document.querySelector('[data-next-checkout-submit]').disabled = false;
+   * });
+   * ```
+   */
+  'checkout:payment-ready': {};
+  /**
+   * The same moment as `checkout:payment-ready`, under its old name.
+   *
+   * @deprecated Listen for `checkout:payment-ready`. Both still fire, this one second.
+   */
   'checkout:spreedly-ready': {};
   /**
    * An express checkout flow started.
@@ -1434,12 +1449,12 @@ export interface ConfigState {
   storeName?: string;
 
   /**
-   * The key that authorises the hosted credit-card fields.
+   * The key that authorises the hosted credit-card fields: the campaign's
+   * `payment_env_key`, and nothing else. The page cannot set it, so a config copied
+   * from another store's page cannot mount that store's card fields.
    *
-   * `undefined` means the card fields cannot start, so card payment is unavailable
-   * and only express or pay-later methods work. Once the campaign loads its own
-   * `payment_env_key` overwrites whatever was set here, so check the campaign
-   * response before the page markup when the card fields use an unexpected key.
+   * `undefined` until the campaign loads, and after it when the campaign has no key;
+   * then the card fields cannot start, and only express or pay-later methods work.
    */
   spreedlyEnvironmentKey?: string | undefined;
 
@@ -1676,66 +1691,57 @@ export interface ConfigState {
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
 /**
- * Configuration for the hosted (iFrame-based) credit-card input fields — keyboard
- * type, formatting, labels, styling, and the security tokens required to
- * authenticate the fields. Previously named `SpreedlyConfig`; {@link SpreedlyConfig}
- * remains as an alias.
+ * How the hosted card number and CVV fields look. NextPayment draws them in its own
+ * iframe from `payments.29next.com`, signed for the campaign's payment environment
+ * key, so no card number passes through the page. Previously named `SpreedlyConfig`;
+ * {@link SpreedlyConfig} remains as an alias.
+ *
+ * NextPayment fixes everything else itself: the field type is always `text`, both
+ * fields are always required, and the name and expiry are always checked. Pages that
+ * still set the Spreedly iFrame options (`fieldType`, `nonce`, `fraud`, …) get a debug
+ * line saying they do nothing.
+ *
+ * @example
+ * ```html
+ * <script>
+ *   window.nextConfig = {
+ *     cardInputConfig: {
+ *       placeholders: { number: "1234 1234 1234 1234", cvv: "CVC" },
+ *       styles: { number: "font-size: 16px; color: #12263f" },
+ *     },
+ *   };
+ * </script>
+ * ```
  * @category Checkout
  */
 export interface CardInputConfig {
-  // Field type configuration - controls keyboard display on mobile
-  fieldType?: {
-    number?: 'number' | 'text' | 'tel';
-    cvv?: 'number' | 'text' | 'tel';
-  };
-
-  // Number format configuration
+  /** How the number is grouped as it is typed. Default `prettyFormat`. */
   numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
 
-  // Label configuration for accessibility
+  /** The accessible label of each field. Default: the `payment.card.*.label` text. */
   labels?: {
     number?: string;
     cvv?: string;
   };
 
-  // Title attribute for accessibility
+  /** The `title` of each field. Default: the `payment.card.*.title` text. */
   titles?: {
     number?: string;
     cvv?: string;
   };
 
-  // Placeholder text
+  /** The text shown while a field is empty. Default: the `payment.card.*.placeholder` text. */
   placeholders?: {
     number?: string;
     cvv?: string;
   };
 
-  // CSS styling for iFrame fields
+  /** CSS declarations for the text inside each field, as one string: `"font-size: 16px"`. */
   styles?: {
     number?: string;
     cvv?: string;
     placeholder?: string;
   };
-
-  // Security parameters - REQUIRED for authentication
-  nonce?: string; // Unique per session (e.g., UUID)
-  timestamp?: string; // Epoch time
-  certificateToken?: string; // Spreedly certificate token
-  signature?: string; // Server-generated signature
-
-  // Fraud detection
-  fraud?: boolean | { siteId: string }; // Enable fraud detection or specify BYOC fraud site ID
-
-  // Other options
-  enableAutoComplete?: boolean; // Toggle autocomplete functionality
-  requiredAttributes?: {
-    number?: boolean;
-    cvv?: boolean;
-  };
-
-  // Validation parameters
-  allowBlankName?: boolean; // Skip name validation
-  allowExpiredDate?: boolean; // Allow expired dates
 }
 
 /**

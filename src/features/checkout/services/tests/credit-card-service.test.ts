@@ -13,8 +13,8 @@ import { CreditCardService } from '../credit-card-service';
  * effect — it fires the `add_payment_info` analytics event and checks nothing about
  * whether the service is still alive.
  *
- * Nothing here touches tokenization or the Spreedly bridge; `window.Spreedly` is stubbed
- * only far enough for `initialize()` to reach the two methods that register listeners.
+ * Nothing here touches tokenization; `window.NextPayment` is stubbed only far enough for
+ * `initialize()` to reach the two methods that register listeners.
  */
 
 const analytics = vi.hoisted(() => ({ track: vi.fn() }));
@@ -29,19 +29,24 @@ vi.mock('@/core/analytics/index', () => ({
   },
 }));
 
-/** Captures the callbacks the service registers, so a test can fire one. */
-type SpreedlyHandlers = Record<string, (...args: unknown[]) => void>;
+/** The instance the service builds; the service assigns its callbacks onto it. */
+interface FakeNextPayment {
+  onFieldStateChange?: (payload: Record<string, unknown>) => void;
+}
 
-function stubSpreedly(): SpreedlyHandlers {
-  const handlers: SpreedlyHandlers = {};
-  (window as unknown as { Spreedly: unknown }).Spreedly = {
-    on: (event: string, cb: (...args: unknown[]) => void) => {
-      handlers[event] = cb;
-    },
-    init: vi.fn(),
-    transferFocus: vi.fn(),
-  };
-  return handlers;
+/** Installs a stand-in `window.NextPayment`, and returns the last instance built. */
+function stubNextPayment(): () => FakeNextPayment | undefined {
+  const built: FakeNextPayment[] = [];
+  window.NextPayment = class implements FakeNextPayment {
+    onFieldStateChange?: FakeNextPayment['onFieldStateChange'];
+    setFocus = vi.fn();
+    submit = vi.fn();
+    destroy = vi.fn();
+    constructor() {
+      built.push(this);
+    }
+  } as unknown as typeof window.NextPayment;
+  return () => built.at(-1);
 }
 
 /** The four elements the service binds to, plus the two wrappers it also binds. */
@@ -84,24 +89,31 @@ function mountFields(): Fields {
 describe('CreditCardService teardown', () => {
   beforeEach(() => {
     analytics.track.mockClear();
-    stubSpreedly();
+    stubNextPayment();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = '';
-    delete (window as unknown as { Spreedly?: unknown }).Spreedly;
+    delete window.NextPayment;
   });
 
   /** A live service with both hosted fields reported valid and an expiry date chosen. */
   async function readyService(fields: Fields): Promise<CreditCardService> {
-    const handlers = stubSpreedly();
+    const instance = stubNextPayment();
     const service = new CreditCardService('test-env-key');
     await service.initialize();
 
-    // The card number and CVV live in a Spreedly iframe, so their validity only ever
-    // arrives through this callback.
-    handlers.validation?.({ validNumber: true, validCvv: true });
+    // The card number and CVV live in NextPayment's iframe, so their validity only
+    // ever arrives through this callback.
+    instance()?.onFieldStateChange?.({
+      action: 'input',
+      field: 'cvv',
+      numberLength: 16,
+      validNumber: true,
+      cvvLength: 3,
+      validCvv: true,
+    });
     fields.month.value = '01';
     fields.year.value = '2030';
     return service;

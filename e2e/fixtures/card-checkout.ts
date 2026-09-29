@@ -23,58 +23,153 @@ import {
 /** The checkout fixture both specs boot. */
 export const CARD_CHECKOUT = '/e2e/fixtures/card-purchase.html';
 
+/** What the NextPayment stand-in does when the form tokenizes a card. */
+export type NextPaymentOutcome = 'tokenize' | 'reject-number';
+
+export interface NextPaymentOptions {
+  outcome?: NextPaymentOutcome;
+  /**
+   * Whether the number the shopper types passes the fields' own check. `false` is a
+   * number the form stops before tokenizing; `outcome: 'reject-number'` is one the
+   * fields accepted and NextPayment then refused on submit.
+   */
+  numberValid?: boolean;
+  /**
+   * Keep the fields from reporting ready until the spec calls
+   * `window.__releaseNextPayment()`, for a spec that has to listen before they are.
+   */
+  holdReady?: boolean;
+}
+
 /**
- * A stand-in for the Spreedly tokenizer, installed before `/src/index.ts` runs.
+ * A stand-in for NextPayment, installed before `/src/index.ts` runs: it is an off-site
+ * iframe that cannot run headless.
  *
- * A Proxy answers every method the SDK calls — there are fourteen today — so a
- * new one added later is a no-op rather than a `TypeError` that reads like an SDK
- * defect. Only the three that carry the flow are real: `on` records handlers,
- * `init` announces readiness, and `tokenizeCreditCard` hands back a token.
+ * It answers the way the real script does, which is the part worth testing: the token
+ * a card order needs is `tokenResponse.payment_method.token`, and the response also
+ * carries a transaction `token` that must not be used; a rejected number arrives as
+ * `onValidation` errors and then an `onError` string repeating them; and each field's
+ * length and validity arrive on `onFieldStateChange`, the way the live demo showed.
  *
- * `CreditCardService.loadSpreedlyScript` skips fetching the real script when
- * `window.Spreedly` already exists, so the off-site iframe never loads.
+ * The SDK loads `payment.js` itself, and the route for `payments.29next.com` answers
+ * with a script that defines the stand-in, so the live host is never reached and every
+ * load is counted in `scriptRequests`. Every `submit()` is handed back in `submits`,
+ * which outlives the redirect an order causes.
  */
-export async function stubSpreedly(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const handlers: Record<string, Function[]> = {};
-    const fire = (name: string, ...args: unknown[]): void => {
-      setTimeout(() => (handlers[name] ?? []).forEach(cb => cb(...args)), 0);
-    };
-    const impl: Record<string, Function> = {
-      on: (event: string, cb: Function) => {
-        (handlers[event] ??= []).push(cb);
-      },
-      init: () => {
-        fire('ready');
-        // Then the shopper types a card. Without these the SDK considers the
-        // number and cvv fields untouched and refuses to submit — the fields are
-        // Spreedly iframes, so a `fill()` cannot reach them.
-        fire('fieldEvent', 'number', 'input', null, {
-          validNumber: true,
-          numberLength: 16,
-          cardType: 'visa',
-          iin: '411111',
-        });
-        fire('fieldEvent', 'cvv', 'input', null, {
-          validCvv: true,
-          cvvLength: 3,
-        });
-      },
-      tokenizeCreditCard: () =>
-        fire('paymentMethod', 'e2e-card-token', {
-          card_type: 'visa',
-          last_four_digits: '1111',
-        }),
-    };
-    (window as any).Spreedly = new Proxy(impl, {
-      get: (target, key: string) => target[key] ?? (() => {}),
+export interface NextPaymentStub {
+  /** Every request for `payment.js`: one per load, and one more per refresh. */
+  scriptRequests: string[];
+  /** The cardholder data of every `submit()`. */
+  submits: unknown[];
+  /** The second argument of every `submit()`: the metadata stored with the token. */
+  submitParams: unknown[];
+}
+
+export async function stubNextPayment(
+  page: Page,
+  {
+    outcome = 'tokenize',
+    holdReady = false,
+    numberValid = true,
+  }: NextPaymentOptions = {}
+): Promise<NextPaymentStub> {
+  const scriptRequests: string[] = [];
+  const submits: unknown[] = [];
+  const submitParams: unknown[] = [];
+  await page.exposeFunction(
+    '__recordNextPaymentSubmit',
+    (data: unknown, params: unknown) => {
+      submits.push(data);
+      submitParams.push(params);
+    }
+  );
+  // The SDK loads `payment.js` for real, from this route, so the stand-in class is
+  // defined by the script the way the live one is, and a refresh gets it again.
+  await page.route('https://payments.29next.com/**', route => {
+    scriptRequests.push(route.request().url());
+    return route.fulfill({
+      contentType: 'application/javascript',
+      body: 'window.NextPayment = window.__NextPaymentStub;',
     });
   });
+
+  await page.addInitScript(
+    ({ outcome, holdReady, numberValid }) => {
+      (window as any).__NextPaymentStub = class {
+        onReady = (): void => {};
+        onValidation = (_: unknown): void => {};
+        onError = (_: unknown): void => {};
+        onTokenized = (_: unknown): void => {};
+        onFieldStateChange = (_: unknown): void => {};
+
+        constructor() {
+          const ready = (): void => {
+            this.onReady();
+            // Then the shopper types a card: the fields are iframes, so a `fill()`
+            // cannot reach them. The payload is the shape the live script sends.
+            for (const field of ['number', 'cvv']) {
+              this.onFieldStateChange({
+                cardType: 'visa',
+                numberLength: 16,
+                validNumber: numberValid,
+                luhnValid: numberValid,
+                cvvLength: 3,
+                validCvv: true,
+                action: 'input',
+                field,
+                focused: true,
+                hovered: false,
+              });
+            }
+          };
+          if (holdReady) (window as any).__releaseNextPayment = ready;
+          else setTimeout(ready, 0);
+        }
+
+        setFocus(): void {}
+        destroy(): void {}
+
+        submit(formData: unknown, params: unknown): void {
+          (window as any).__recordNextPaymentSubmit(formData, params);
+          setTimeout(() => {
+            if (outcome === 'reject-number') {
+              this.onValidation({
+                errors: [
+                  {
+                    attribute: 'number',
+                    key: 'errors.invalid',
+                    message: 'Card number is invalid',
+                  },
+                ],
+              });
+              this.onError('Invalid card number');
+              return;
+            }
+            this.onTokenized({
+              message: 'Token generated',
+              tokenResponse: {
+                token: 'e2e-transaction-token',
+                payment_method: {
+                  token: 'e2e-payment-method-token',
+                  last_four_digits: '1111',
+                  card_type: 'visa',
+                },
+              },
+            });
+          }, 0);
+        }
+      };
+    },
+    { outcome, holdReady, numberValid }
+  );
+
+  return { scriptRequests, submits, submitParams };
 }
 
 /**
  * Campaign, cart, tokenizer, country lists and prospect carts — everything
- * except the orders endpoint, which each spec answers its own way.
+ * except the orders endpoint, which each spec answers its own way. `card` is how the
+ * tokenizer behaves.
  *
  * A non-empty `payment_env_key` is what makes the SDK build its
  * `CreditCardService` at all; `MINIMAL_CAMPAIGN` ships an empty one, and without
@@ -85,14 +180,17 @@ export async function stubSpreedly(page: Page): Promise<void> {
  */
 export async function stubCardCheckout(
   page: Page,
-  address: AddressServiceOptions = {}
-): Promise<void> {
+  address: AddressServiceOptions = {},
+  card: NextPaymentOptions = {}
+): Promise<NextPaymentStub> {
   await stubCampaign(page, {
     ...MINIMAL_CAMPAIGN,
     payment_env_key: 'e2e-env-key',
+    // The API sends the campaign's id; `Campaign` does not type it.
+    ...{ id: 7 },
   });
   await stubCart(page);
-  await stubSpreedly(page);
+  const nextPayment = await stubNextPayment(page, card);
   await stubCountryService(page, address);
   // Filling an email and a phone is what a shopper does, and it makes the SDK
   // create a prospect cart. Unstubbed, those calls go to the live API — which
@@ -107,6 +205,28 @@ export async function stubCardCheckout(
       json: { checkout_url: 'https://example.test/checkout/prospect-1' },
     })
   );
+  return nextPayment;
+}
+
+/**
+ * Adds `config` to the `window.nextConfig` the fixture sets. The fixture assigns it in
+ * an inline script, after any init script, which would replace an object set here; the
+ * setter merges each assignment into the last instead.
+ */
+export async function addNextConfig(
+  page: Page,
+  config: Record<string, unknown>
+): Promise<void> {
+  await page.addInitScript(config => {
+    let merged: Record<string, unknown> = { ...config };
+    Object.defineProperty(window, 'nextConfig', {
+      configurable: true,
+      get: () => merged,
+      set: (value: Record<string, unknown>) => {
+        merged = { ...merged, ...value };
+      },
+    });
+  }, config);
 }
 
 /**

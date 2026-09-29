@@ -36,7 +36,7 @@ import {
  * order POST.
  *
  * The rules served are the service's own, written out in `fixtures/routes.ts`. The
- * Spreedly tokenizer is the shared card harness's stand-in, which is what lets the form
+ * NextPayment tokenizer is the shared card harness's stand-in, which is what lets the form
  * submit at all. Anything no stub answers is aborted and fails the test — see
  * {@link blockLiveNetwork}.
  */
@@ -239,11 +239,16 @@ test('a US number fills the US mask as it is typed, and is stored in E.164', asy
  * should write; `phone`, the SDK's older name, stays accepted (the fixture writes that).
  * A page on the new name gets the same flag, mask and E.164 value, stored under `phone`.
  */
-test('a page writing phone_number gets the same phone field', async ({ page }) => {
+test('a page writing phone_number gets the same phone field', async ({
+  page,
+}) => {
   await page.route(`**${CHECKOUT}`, async route => {
     const response = await route.fetch();
     const body = (await response.text())
-      .replace('data-next-checkout-field="phone"', 'data-next-checkout-field="phone_number"')
+      .replace(
+        'data-next-checkout-field="phone"',
+        'data-next-checkout-field="phone_number"'
+      )
       .replace('name="phone"', 'name="phone_number"');
     await route.fulfill({ response, body });
   });
@@ -251,7 +256,10 @@ test('a page writing phone_number gets the same phone field', async ({ page }) =
   await bootSdk(page, CHECKOUT);
 
   const input = page.locator('[data-next-checkout-field="phone_number"]');
-  await expect(page.locator(FLAG)).toHaveAttribute('src', /\/v1\/flags\/us\.svg$/);
+  await expect(page.locator(FLAG)).toHaveAttribute(
+    'src',
+    /\/v1\/flags\/us\.svg$/
+  );
   await input.pressSequentially('4155552671');
   await expect(input).toHaveValue('(415) 555-2671');
   await expect.poll(() => storedPhone(page)).toBe('+14155552671');

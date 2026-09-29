@@ -160,33 +160,6 @@ export const META_TAGS: MetaTagDoc[] = [
     notes:
       'It runs on **every** load of the page, including a refresh and a back-navigation — a visitor who adds items and refreshes loses them. Only put it on entry pages, never on a cart, checkout, or upsell page. Only the exact string `true` enables it.',
   },
-  {
-    name: 'next-spreedly-key',
-    group: 'Booting the SDK',
-    owner: 'Config store → card fields',
-    status: 'active',
-    type: 'string',
-    default: 'the key that comes with the campaign data',
-    example: '<meta name="next-spreedly-key" content="{ENVIRONMENT_KEY}">',
-    description:
-      'The payment environment key used to mount the hosted credit-card fields. A fallback: the campaign response normally carries the right key, and that takes precedence.',
-    notes:
-      'Because campaign data wins, setting this tag does not let you point a page at a different payment environment for testing — it only fills a gap when the campaign has no key. A wrong value here shows up as card fields that never appear.',
-  },
-  {
-    name: 'next-payment-env-key',
-    group: 'Booting the SDK',
-    owner: 'Config store → card fields',
-    status: 'legacy',
-    supersededBy: 'next-spreedly-key',
-    type: 'string',
-    example: '<meta name="next-payment-env-key" content="{ENVIRONMENT_KEY}">',
-    description:
-      'The same payment environment key under an older name. Read only when `next-spreedly-key` is absent.',
-    notes:
-      'Setting both is not an error but the other tag always wins, so a page with both is a page where editing this one appears to do nothing.',
-  },
-
   // ── Debugging ────────────────────────────────────────────────────────────────
   {
     name: 'next-debug',

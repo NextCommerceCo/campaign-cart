@@ -290,7 +290,9 @@ export class CheckoutValidator {
   // ============================================================================
 
   public focusFirstErrorField(firstErrorField?: string): void {
-    focusFirstErrorField(firstErrorField);
+    focusFirstErrorField(firstErrorField, field =>
+      this.creditCardService?.focusField(field)
+    );
   }
 
   // ============================================================================

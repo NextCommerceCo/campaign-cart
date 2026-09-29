@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.4.40",
+  "sdkVersion": "0.4.41",
   "supportedSdkVersions": {
     "min": "0.4.38",
     "max": "0.4.38"
@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "4fe56f3b0fd35333292340590a89b14abcc0b5779aaef1951ca5b2c00cd62203",
+    "inputSha256": "df80deb451937d5ad310ad90db5a580b2933ec595655def1c3360679f687100e",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -128,7 +128,7 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "2933be4249e87160c2c8b08cc4ef80f54de290082ddb5fcae6f48088b570839d"
+        "sha256": "e40d5abdbf769b3f458e87d065637819147d8c525bcad3572da7fe85864fee64"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",

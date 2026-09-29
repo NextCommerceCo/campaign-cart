@@ -613,7 +613,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.applySelectedCountry(country, this.countries);
     try {
-      await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+      await this.loadProvincesForSelectedCountry(
+        country,
+        country,
+        storedProvince
+      );
     } catch (error) {
       this.logger.error('Failed to refill the province options:', error);
     }
@@ -1233,6 +1237,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
+        this.emit('checkout:payment-ready', {});
         this.emit('checkout:spreedly-ready', {});
         this.logger.debug('[Spreedly] Credit card service ready');
 
@@ -1255,10 +1260,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       });
 
       this.creditCardService.setOnToken((token, pmData) => {
-        this.logger.info('[Spreedly] Payment token received:', {
-          token,
-          pmData,
-        });
         this.handleTokenizedPayment(token, pmData);
       });
 
@@ -1887,9 +1888,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // span?.setAttribute('payment.type', 'credit_card');
 
         if (this.creditCardService?.ready) {
+          const firstName = String(checkoutStore.formData.fname ?? '').trim();
+          const lastName = String(checkoutStore.formData.lname ?? '').trim();
           const cardData: CreditCardData = {
-            full_name:
-              `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
+            full_name: `${firstName} ${lastName}`.trim(),
+            ...(firstName && { first_name: firstName }),
+            ...(lastName && { last_name: lastName }),
             month:
               checkoutStore.formData['cc-month'] ||
               checkoutStore.formData['exp-month'] ||

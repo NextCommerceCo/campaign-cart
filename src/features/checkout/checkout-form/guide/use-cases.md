@@ -106,7 +106,7 @@ the tab order while PayPal is chosen — and stamps `data-next-payment-state`
 loading. Enabling the pay button before then produces
 `Credit card service is not ready` on a slow connection, and the visitor sees a
 form that refuses to submit for no visible reason. Gate the button on
-`checkout:spreedly-ready`, and disable it while a submit is in flight — repeated
+`checkout:payment-ready`, and disable it while a submit is in flight — repeated
 bursts are what produce `Too many requests. Please wait a moment and try again.`
 
 ---

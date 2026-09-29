@@ -32,7 +32,7 @@ import {
  * URL the browser actually ended up at. happy-dom has one document and does not
  * navigate.
  *
- * Nothing here needs Spreedly: a redirect method collects no card, so the SDK
+ * Nothing here needs NextPayment: a redirect method collects no card, so the SDK
  * never builds its tokenizer (MINIMAL_CAMPAIGN ships an empty `payment_env_key`,
  * which is what decides that).
  */

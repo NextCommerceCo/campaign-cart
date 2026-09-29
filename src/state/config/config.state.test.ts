@@ -75,7 +75,10 @@ describe('config store — translations', () => {
   it('keeps each language’s texts, by a lower-cased language key', () => {
     setWindowConfig({
       translations: {
-        'TH-th': { 'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร', bad: 3 },
+        'TH-th': {
+          'fields.line2.errors.blank': 'กรุณาระบุห้องหรืออาคาร',
+          bad: 3,
+        },
       },
     });
     useConfigStore.getState().loadFromWindow();
@@ -87,7 +90,9 @@ describe('config store — translations', () => {
   it('reads nested texts as i18next does, one dotted key each', () => {
     setWindowConfig({
       translations: {
-        th: { fields: { line2: { errors: { blank: 'กรุณาระบุห้องหรืออาคาร' } } } },
+        th: {
+          fields: { line2: { errors: { blank: 'กรุณาระบุห้องหรืออาคาร' } } },
+        },
       },
     });
     useConfigStore.getState().loadFromWindow();
@@ -100,5 +105,24 @@ describe('config store — translations', () => {
     setWindowConfig({ translations: ['fields.line2.errors.blank'] });
     useConfigStore.getState().loadFromWindow();
     expect(useConfigStore.getState().translations).toBeUndefined();
+  });
+});
+
+describe('config store — payment environment key', () => {
+  afterEach(() => {
+    useConfigStore.setState({ spreedlyEnvironmentKey: undefined });
+    document.head.innerHTML = '';
+  });
+
+  it('takes no key from the page, only from the campaign', () => {
+    setWindowConfig({ spreedlyEnvironmentKey: 'copied-from-another-store' });
+    document.head.innerHTML =
+      '<meta name="next-spreedly-key" content="copied-from-another-store">' +
+      '<meta name="next-payment-env-key" content="copied-from-another-store">';
+
+    useConfigStore.getState().loadFromWindow();
+    useConfigStore.getState().loadFromMeta();
+
+    expect(useConfigStore.getState().spreedlyEnvironmentKey).toBeUndefined();
   });
 });

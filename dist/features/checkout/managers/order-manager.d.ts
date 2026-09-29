@@ -10,7 +10,6 @@ export declare class OrderManager {
     createExpressOrder(cartItems: any[], paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'link'): Promise<any>;
     createTestOrder(cartItems: any[]): Promise<any>;
     handleOrderRedirect(order: any): void;
-    handleTokenizedPayment(token: string, pmData: any, createOrderCallback: () => Promise<any>): Promise<void>;
     getOrderStatus(refId: string): Promise<any>;
 }
 //# sourceMappingURL=order-manager.d.ts.map
