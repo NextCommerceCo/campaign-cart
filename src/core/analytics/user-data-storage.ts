@@ -273,8 +273,9 @@ class UserDataStorage {
     let hasUpdates = false;
     fieldMappings.forEach(({ selector, key }) => {
       const element = document.querySelector(selector) as HTMLInputElement;
-      if (element && element.value && element.value !== this.userData[key]) {
-        updates[key] = element.value;
+      const value = element ? fieldValue(element, key) : '';
+      if (value && value !== this.userData[key]) {
+        updates[key] = value;
         hasUpdates = true;
       }
     });
@@ -284,6 +285,18 @@ class UserDataStorage {
       logger.debug('Updated user data from form fields:', updates);
     }
   }
+}
+
+/**
+ * What a field is worth to a tag: its value, except a phone the checkout's phone field
+ * shows, which is sent in the E.164 it vouches for (`data-next-phone-e164`) or not at all.
+ * The box holds the national form, `(415) 555-2671`, which no tag can match to a person.
+ */
+function fieldValue(element: HTMLInputElement, key: string): string {
+  if (key === 'phone' && element.classList.contains('next-phone-input')) {
+    return element.getAttribute('data-next-phone-e164') ?? '';
+  }
+  return element.value;
 }
 
 // Export singleton instance

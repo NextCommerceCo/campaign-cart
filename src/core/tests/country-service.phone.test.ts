@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  countryOfNumber,
   formatPhone,
   isPlausiblePhone,
   toE164,
+  type CallingCodes,
   type PhoneRules,
 } from '@/core/country-service/country-service.phone';
 
@@ -146,5 +148,113 @@ describe('toE164', () => {
     expect(toE164('011 15-2345-6789', AR)).toBe('');
     expect(toE164('', US)).toBe('');
     expect(toE164('0812345678')).toBe('');
+  });
+});
+
+// What the service sends once it serves libphonenumber's reading facts: i18n-rules
+// `src/rules/{ag,br,by,ru,rw,th,us}.json`, the facts only. Each expected E.164 is
+// `phonenumbers.parse`'s for the same input.
+const READ: Record<string, PhoneRules> = {
+  AG: {
+    calling_code: '1',
+    national_prefix: '1',
+    national_prefix_for_parsing: '([457]\\d{6})$|1',
+    national_prefix_transform_rule: '268$1',
+    national_number_pattern: '(?:268|[58]\\d\\d|900)\\d{7}',
+  },
+  BR: {
+    calling_code: '55',
+    national_prefix: '0',
+    national_prefix_for_parsing:
+      '(?:0|90)(?:(1[245]|2[1-35]|31|4[13]|[56]5|99)(\\d{10,11}))?',
+    national_prefix_transform_rule: '$2',
+    national_number_pattern:
+      '[1-467]\\d{9,10}|55[0-46-9]\\d{8}|[34]\\d{7}|55\\d{7,8}|(?:5[0-46-9]|[89]\\d)\\d{7,9}',
+  },
+  BY: {
+    calling_code: '375',
+    national_prefix: '80',
+    national_prefix_for_parsing: '0|80?',
+    national_number_pattern:
+      '(?:[12]\\d|33|44|902)\\d{7}|8(?:0[0-79]\\d{5,7}|[1-7]\\d{9})|8(?:1[0-489]|[5-79]\\d)\\d{7}|8[1-79]\\d{6,7}|8[0-79]\\d{5}|8\\d{5}',
+  },
+  RU: {
+    calling_code: '7',
+    national_prefix: '8',
+    national_number_pattern: '8\\d{13}|[347-9]\\d{9}',
+  },
+  RW: {
+    calling_code: '250',
+    national_prefix: '0',
+    national_number_pattern: '(?:06|[27]\\d\\d|[89]00)\\d{6}',
+  },
+  TH: {
+    calling_code: '66',
+    national_prefix: '0',
+    national_number_pattern: '(?:001800|[2-57]|[689]\\d)\\d{7}|1\\d{7,9}',
+  },
+  US: {
+    calling_code: '1',
+    national_prefix: '1',
+    national_number_pattern: '[2-9]\\d{9}|3\\d{6}',
+  },
+};
+
+describe('toE164, with the facts libphonenumber reads a number with', () => {
+  it.each([
+    ['TH', '081 234 5678', '+66812345678'],
+    ['US', '1 415 555 2671', '+14155552671'],
+    ['AG', '464 1234', '+12684641234'],
+    ['BR', '(11) 96123-4567', '+5511961234567'],
+    ['BR', '0 15 11 96123-4567', '+5511961234567'],
+    ['BY', '8 029 491-19-11', '+375294911911'],
+    ['BY', '8 801 123 4567', '+3758011234567'],
+    ['RU', '8 800 123-45-67', '+78001234567'],
+    ['RW', '250 123 456', '+250250123456'],
+    ['TH', '66812345678', '+66812345678'],
+  ])('reads %s %s as %s', (country, typed, e164) => {
+    expect(toE164(typed, READ[country])).toBe(e164);
+  });
+
+  it('gives no E.164 for digits that are not yet a number of the country', () => {
+    expect(toE164('081 23', READ['TH'])).toBe('');
+    expect(toE164('415 555', READ['US'])).toBe('');
+  });
+
+  it("checks a number typed with + against its own country's numbers", () => {
+    expect(toE164('+66 81 234 5678', READ['TH'])).toBe('+66812345678');
+    expect(toE164('+66 81 23', READ['TH'])).toBe('');
+    // Another country's code is not this rule's to check.
+    expect(toE164('+44 7400 123456', READ['TH'])).toBe('+447400123456');
+  });
+});
+
+describe('countryOfNumber', () => {
+  const CODES: CallingCodes = {
+    '1': [
+      { country: 'US', pattern: '(?:212|415)\\d{7}' },
+      { country: 'AG', leading_digits: '268' },
+      { country: 'CA', pattern: '506\\d{7}' },
+    ],
+    '66': [{ country: 'TH' }],
+    '44': [{ country: 'GB' }],
+  };
+
+  it.each([
+    ['+66 81 234 5678', 'TH'],
+    ['0066 81 234 5678', 'TH'],
+    ['+1 268 464 1234', 'AG'],
+    ['+1 506 234 5678', 'CA'],
+    ['+1 415 555 2671', 'US'],
+    // Claimed by none of the three, so the code's first country's.
+    ['+1 800 234 5678', 'US'],
+  ])('names %s as %s', (typed, country) => {
+    expect(countryOfNumber(typed, CODES)).toBe(country);
+  });
+
+  it('names no country for a number typed nationally, or a code none has', () => {
+    expect(countryOfNumber('081 234 5678', CODES)).toBeUndefined();
+    expect(countryOfNumber('+999 123', CODES)).toBeUndefined();
+    expect(countryOfNumber('+', CODES)).toBeUndefined();
   });
 });

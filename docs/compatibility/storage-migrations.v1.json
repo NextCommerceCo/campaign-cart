@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "4fe56f3b0fd35333292340590a89b14abcc0b5779aaef1951ca5b2c00cd62203",
+    "inputSha256": "d7ba9521d8e7ca1466557c66c6426d499bed60f99248114974001ee44795a3d0",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -44,7 +44,7 @@
       },
       {
         "path": "src/core/analytics/user-data-storage.ts",
-        "sha256": "9d1e0bb40dbf016477c6294a077f5a17b7f9a768d1218dea09b61a31e5f67ed5"
+        "sha256": "a7df8e6fbb290ce6c45c6bb6d175cac5151f81a3fb1c5111eaa2314d5424a6b8"
       },
       {
         "path": "src/core/attribution/attribution-collector.ts",
@@ -52,7 +52,7 @@
       },
       {
         "path": "src/core/country-service/country-service.ts",
-        "sha256": "ccfa8fde043bd65e05c6e6ee29a9ca1756f35b9da562b3c0bb2803a1c6a11529"
+        "sha256": "ea76a93694beda5d2876854c70d1233004c8c2120830e54e0c3f101ffe4e2004"
       },
       {
         "path": "src/core/currency-formatter.ts",
@@ -128,7 +128,7 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "2933be4249e87160c2c8b08cc4ef80f54de290082ddb5fcae6f48088b570839d"
+        "sha256": "0cb0bd5da44bfd1dbe1d1f9542a82870e663493d5d46ed8bc35ab6cdcac0e6f5"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",

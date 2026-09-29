@@ -421,6 +421,38 @@ The SDK finds inputs by `data-next-checkout-field`, not by their `name` attribut
 
 The address fields are built by the [address block](#address-block) under these names; writing them yourself is deprecated. `cc-number` and `cvv` are not inputs you write either: leave them as empty `<div>`s and the SDK mounts hosted card fields into them, so no card number passes through your page.
 
+### Phone number
+
+The phone input keeps the number in the country's national form, `(415) 555-2671`, and the SDK writes two attributes on it for page code to read. The country is the address country, unless the shopper typed the number with `+` or `00`: then it is the country the calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
+
+| Attribute | Description |
+|---|---|
+| `data-next-phone-country` | The country the number is read as |
+| `data-next-phone-e164` | The number in E.164, once complete |
+
+`data-next-phone-e164` is on the input only while the number is a complete, valid one for its country, and it follows every keystroke. A number still being typed has none, so a tag that reads it never gets part of a number.
+
+### Example
+
+Below is an example of the phone input after a shopper in a US checkout types a Thai mobile number, and a script that reads the number the way a marketing tag would.
+
+```html
+<input
+  data-next-checkout-field="phone_number"
+  type="tel"
+  data-next-phone-country="TH"
+  data-next-phone-e164="+66812345678"
+>
+<script>
+  const phone = document.querySelector(
+    '[data-next-checkout-field="phone_number"]'
+  );
+  const e164 = phone.dataset.nextPhoneE164; // "+66812345678", or undefined
+</script>
+```
+
+The same number is what `dl_user_data` sends as `customer_phone`.
+
 ### Managed containers
 
 Values `data-next-component` accepts.

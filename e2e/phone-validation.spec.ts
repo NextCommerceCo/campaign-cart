@@ -22,8 +22,11 @@ import {
  * - **the shopper sees the mask, the order gets E.164.** `(415) 555-2671` in the field,
  *   `+14155552671` in the checkout store and the order. A number typed with `+` is kept
  *   as typed, and a country whose rule has no calling code is sent as typed.
- * - **the flag is the address country's.** It follows the country select, then the
- *   detected country, and a `+44` typed into it does not move it.
+ * - **the flag is the number's country.** It follows the country select, then the
+ *   detected country, until the shopper types a number with `+`: then it is the country
+ *   the calling code belongs to, `+66 81…` in a US form showing Thailand's.
+ * - **a page can read the number in E.164.** `data-next-phone-e164` is on the input
+ *   while the number is complete, and off it while it is still being typed.
  * - **the rule's verdict reaches the shopper.** A number it refuses is shown on the field
  *   and blocks the submit. A service that sends no rules gets a plain field and a
  *   checkout that still goes through.
@@ -239,11 +242,16 @@ test('a US number fills the US mask as it is typed, and is stored in E.164', asy
  * should write; `phone`, the SDK's older name, stays accepted (the fixture writes that).
  * A page on the new name gets the same flag, mask and E.164 value, stored under `phone`.
  */
-test('a page writing phone_number gets the same phone field', async ({ page }) => {
+test('a page writing phone_number gets the same phone field', async ({
+  page,
+}) => {
   await page.route(`**${CHECKOUT}`, async route => {
     const response = await route.fetch();
     const body = (await response.text())
-      .replace('data-next-checkout-field="phone"', 'data-next-checkout-field="phone_number"')
+      .replace(
+        'data-next-checkout-field="phone"',
+        'data-next-checkout-field="phone_number"'
+      )
       .replace('name="phone"', 'name="phone_number"');
     await route.fulfill({ response, body });
   });
@@ -251,7 +259,10 @@ test('a page writing phone_number gets the same phone field', async ({ page }) =
   await bootSdk(page, CHECKOUT);
 
   const input = page.locator('[data-next-checkout-field="phone_number"]');
-  await expect(page.locator(FLAG)).toHaveAttribute('src', /\/v1\/flags\/us\.svg$/);
+  await expect(page.locator(FLAG)).toHaveAttribute(
+    'src',
+    /\/v1\/flags\/us\.svg$/
+  );
   await input.pressSequentially('4155552671');
   await expect(input).toHaveValue('(415) 555-2671');
   await expect.poll(() => storedPhone(page)).toBe('+14155552671');
@@ -322,7 +333,7 @@ test('a number dialled with 00 is read as +', async ({ page }) => {
  * a number pasted without its `+`. Adding `+66` again would send `+6666812345678`, a
  * number that is not the shopper's, so the SDK leaves it for the order API to convert.
  */
-test('Thai digits that already start with 66 are sent as typed', async ({
+test('Thai digits typed with their calling code and no + go out in E.164', async ({
   page,
 }) => {
   await stubCardCheckout(page, { country: 'TH' });
@@ -339,11 +350,14 @@ test('Thai digits that already start with 66 are sent as typed', async ({
   await expect(input).toHaveValue('668 123 4567');
   await input.pressSequentially('8');
   await expect(input).toHaveValue('66812345678');
-  await expect.poll(() => storedPhone(page)).toBe('66812345678');
+  // Read the way libphonenumber reads it: 66812345678 is no Thai number, 812345678
+  // after the calling code is, so the shopper typed the code without its +.
+  await expect.poll(() => storedPhone(page)).toBe('+66812345678');
+  await expect(input).toHaveAttribute('data-next-phone-e164', '+66812345678');
 
   await submitCard(page, '66812345678', { country: 'TH', province: '10' });
   const body = await placedOrder(page, posts);
-  expect(body.shipping_address.phone_number).toBe('66812345678');
+  expect(body.shipping_address.phone_number).toBe('+66812345678');
 });
 
 /**
@@ -351,7 +365,7 @@ test('Thai digits that already start with 66 are sent as typed', async ({
  * the calling code's, and a number with another country's code only has to be the
  * length of an E.164 number, so it is kept as typed and goes through.
  */
-test('a +44 number in a US field keeps the US flag and goes out as typed', async ({
+test('a Thai number typed with + in a US form shows the Thai flag and goes out in E.164', async ({
   page,
 }) => {
   await stubCardCheckout(page);
@@ -362,15 +376,57 @@ test('a +44 number in a US field keeps the US flag and goes out as typed', async
   await expectCountry(page, 'US');
 
   const input = page.locator(PHONE);
-  await input.pressSequentially('+44 7400 123456');
+  await input.pressSequentially('+66 81 234 5678');
 
-  await expect(input).toHaveValue('+447400123456');
-  await expect.poll(() => storedPhone(page)).toBe('+447400123456');
-  await expectCountry(page, 'US');
+  await expectCountry(page, 'TH');
+  await expect(input).toHaveValue('+66812345678');
+  await expect(input).toHaveAttribute('data-next-phone-e164', '+66812345678');
+  // The address is still American: only the phone reads as Thai.
+  await expect(
+    page.locator('[data-next-checkout-field="country"]')
+  ).toHaveValue('US');
 
-  await submitCard(page, '+44 7400 123456');
+  await submitCard(page, '+66 81 234 5678');
   const body = await placedOrder(page, posts);
-  expect(body.shipping_address.phone_number).toBe('+447400123456');
+  expect(body.shipping_address.phone_number).toBe('+66812345678');
+});
+
+test('deleting the + puts the address country back on the phone', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('+44');
+  await expectCountry(page, 'GB');
+
+  await input.fill('');
+  await input.pressSequentially('4155552671');
+
+  await expectCountry(page, 'US');
+  await expect(input).toHaveAttribute('data-next-phone-e164', '+14155552671');
+});
+
+test('the E.164 attribute appears only once the number is complete', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('41555');
+  await expect(input).toHaveValue('(415) 55');
+  await expect(input).not.toHaveAttribute('data-next-phone-e164');
+
+  await input.pressSequentially('52671');
+  await expect(input).toHaveValue('(415) 555-2671');
+  await expect(input).toHaveAttribute('data-next-phone-e164', '+14155552671');
+
+  await input.press('Backspace');
+  await expect(input).not.toHaveAttribute('data-next-phone-e164');
 });
 
 test('choosing another shipping country moves the flag and the rule to it', async ({
