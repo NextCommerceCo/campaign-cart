@@ -47,6 +47,10 @@ export interface UserPropertiesSchema {
   visitor_type?: string;
   customer_id?: string;
   customer_email?: string;
+  /**
+   * Phone number in E.164, such as `+14155552671`. Absent while the number is incomplete
+   * or cannot be read as E.164.
+   */
   customer_phone?: string;
   customer_first_name?: string;
   customer_last_name?: string;

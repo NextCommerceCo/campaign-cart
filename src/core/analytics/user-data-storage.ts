@@ -6,6 +6,7 @@
 import { createLogger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
 import { checkoutFieldSelector } from '@/utils/checkout-field-names';
+import { isE164 } from '@/core/country-service/country-service.phone';
 
 const logger = createLogger('UserDataStorage');
 
@@ -109,6 +110,9 @@ class UserDataStorage {
         }
       }
 
+      // A cookie written before campaign-cart#108 can hold the national form, for a year.
+      if (!isE164(this.userData.phone)) delete this.userData.phone;
+
       // Generate visitor ID if not exists
       if (!this.userData.visitorId) {
         let visitorId = localStorage.getItem(scopedKey('visitor_id'));
@@ -185,13 +189,15 @@ class UserDataStorage {
         delete this.userData[key];
       }
     });
+    // Every tag gets `customer_phone` from here, and only E.164 can be matched to a person.
+    if (!isE164(this.userData.phone)) delete this.userData.phone;
 
     // Save to storage
     this.saveUserData();
 
     // Log significant changes
     if (data.email && data.email !== previousEmail) {
-      logger.info('User email updated:', data.email);
+      logger.info('User email updated');
     }
   }
 
@@ -282,15 +288,15 @@ class UserDataStorage {
 
     if (hasUpdates) {
       this.updateUserData(updates);
-      logger.debug('Updated user data from form fields:', updates);
+      logger.debug('Updated user data from form fields:', Object.keys(updates));
     }
   }
 }
 
 /**
  * What a field is worth to a tag: its value, except a phone the checkout's phone field
- * shows, which is sent in the E.164 it vouches for (`data-next-phone-e164`) or not at all.
- * The box holds the national form, `(415) 555-2671`, which no tag can match to a person.
+ * shows, which is the E.164 it vouches for (`data-next-phone-e164`). The box holds the
+ * national form, `(415) 555-2671`, which `updateUserData` would drop.
  */
 function fieldValue(element: HTMLInputElement, key: string): string {
   if (key === 'phone' && element.classList.contains('next-phone-input')) {

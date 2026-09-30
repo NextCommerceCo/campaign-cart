@@ -57,6 +57,18 @@ export type CallingCodes = Readonly<
 const MIN_INTERNATIONAL_DIGITS = 8;
 const MAX_INTERNATIONAL_DIGITS = 15;
 
+const E164 = new RegExp(
+  `^\\+[1-9]\\d{${MIN_INTERNATIONAL_DIGITS - 1},${MAX_INTERNATIONAL_DIGITS - 1}}$`
+);
+
+/**
+ * Whether `text` is a phone number in E.164, the only form a tag can match to a person:
+ * `+14155552671`, never `(415) 555-2671` or `4155552671`.
+ */
+export function isE164(text: string | null | undefined): text is string {
+  return typeof text === 'string' && E164.test(text);
+}
+
 /** Compiled once per source: the check and the mask run on every keystroke. */
 const compiled = new Map<string, RegExp>();
 

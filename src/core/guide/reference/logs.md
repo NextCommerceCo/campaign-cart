@@ -10,7 +10,7 @@ category: "Core Reference"
      src/docs/content/core-logs.ts. Do not edit by hand: change the log line in the
      code or the note in core-logs.ts, then run `npm run docs:reference`. -->
 
-Every message the SDK's own machinery can print — 505 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
+Every message the SDK's own machinery can print — 504 of them, across 62 console prefixes plus 13 lines that bypass the logger entirely. Search a line from your console here to find what produced it, what it means, and what to do about it.
 
 Messages are listed at the wording the code uses. A `{name}` inside one is a value filled in at runtime, so search for the text on either side of it. **Extra context** means the call passes a second argument — an object or an error logged beside the message; expand that entry in the console, because the message alone will not tell you which element, package, or event was involved.
 
@@ -135,7 +135,7 @@ Console lines are prefixed with the part of the SDK that produced them. Find the
 - **`[MetaTagController]`** Fires `view_item` / `view_item_list` and scroll-depth events from `<meta>` tags, including reading the package id out of a URL parameter and waiting for a time, an element, or a scroll threshold. Prints 8 warn, 10 info, 13 debug.
 - **`[PendingEventsHandler]`** Holds events that were raised as the page was navigating away, and replays them on the next page so a redirect does not lose a purchase. Prints 4 error, 2 warn, 2 info, 6 debug.
 - **`[PurchaseTracking]`** Decides whether an order may be reported as a purchase yet — an order still awaiting payment at a gateway may not — and remembers the orders already reported so one order produces one `dl_purchase`. Prints 7 warn.
-- **`[UserDataTracker]`** Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. Prints 1 info, 17 debug.
+- **`[UserDataTracker]`** Fires `dl_user_data` first on every page and again when the visitor is identified or the route changes. Prints 1 info, 16 debug.
 - **`[ViewItemListTracker]`** Detects the products present on a page and fires `view_item` / `view_item_list` for them without any meta tags. Prints 1 warn, 1 info, 18 debug.
 - **`[ListAttributionTracker]`** Remembers which list a product was clicked from so the next page’s events can say where the visitor came from within the site. Prints 3 error, 7 debug.
 
@@ -1651,7 +1651,7 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `User email updated:` | `analytics/user-data-storage.ts › UserDataStorage.updateUserData` | yes |
+| `User email updated` | `analytics/user-data-storage.ts › UserDataStorage.updateUserData` | — |
 | `User data cleared` | `analytics/user-data-storage.ts › UserDataStorage.clearUserData` | — |
 
 ### Debug
@@ -2298,7 +2298,6 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 | `No user data to track` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | — |
 | `Tracked user data:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.trackUserData` | yes |
 | `Cart store not available or error accessing:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.collectUserData` | yes |
-| `Error getting checkout data:` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.collectUserData` | yes |
 | `Route changed, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
 | `SDK route invalidated, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |
 | `User logged in, tracking user data` | `analytics/tracking/user-data-tracker.ts › UserDataTracker.setupListeners` | — |

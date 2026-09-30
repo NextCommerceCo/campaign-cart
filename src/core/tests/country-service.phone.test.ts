@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countryOfNumber,
   formatPhone,
+  isE164,
   isPlausiblePhone,
   toE164,
   type CallingCodes,
@@ -256,5 +257,34 @@ describe('countryOfNumber', () => {
     expect(countryOfNumber('081 234 5678', CODES)).toBeUndefined();
     expect(countryOfNumber('+999 123', CODES)).toBeUndefined();
     expect(countryOfNumber('+', CODES)).toBeUndefined();
+  });
+});
+
+describe('isE164 accepts only + and 8 to 15 digits, the first not 0', () => {
+  it.each([
+    '+14155552671',
+    '+66812345678',
+    '+447700900123',
+    '+12345678',
+    '+123456789012345',
+  ])('accepts %s', number => expect(isE164(number)).toBe(true));
+
+  it.each([
+    '(415) 555-2671',
+    '4155552671',
+    '14155552671',
+    '+1 415 555 2671',
+    '+1-415-555-2671',
+    '+04155552671',
+    '+1234567',
+    '+1234567890123456',
+    '+',
+    '',
+    ' +14155552671',
+  ])('refuses %j', number => expect(isE164(number)).toBe(false));
+
+  it('refuses a missing value', () => {
+    expect(isE164(undefined)).toBe(false);
+    expect(isE164(null)).toBe(false);
   });
 });

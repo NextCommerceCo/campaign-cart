@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "d7ba9521d8e7ca1466557c66c6426d499bed60f99248114974001ee44795a3d0",
+    "inputSha256": "18aaf057a46c468afea2bc5ba0cd076b32403bbd10d60339446ea965b0a458a2",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -16,7 +16,7 @@
       },
       {
         "path": "src/core/analytics/events/event-builder.context.ts",
-        "sha256": "b9b234eb0c1208f705c4e8237cf3273655059ea32d70ff4adeb45a498067cdd3"
+        "sha256": "29eb67e46792c126d786df472d9f98266221dd78f505f9354251e7b5b7bb5fe8"
       },
       {
         "path": "src/core/analytics/events/list-attribution-storage.ts",
@@ -44,7 +44,7 @@
       },
       {
         "path": "src/core/analytics/user-data-storage.ts",
-        "sha256": "a7df8e6fbb290ce6c45c6bb6d175cac5151f81a3fb1c5111eaa2314d5424a6b8"
+        "sha256": "1d8bf8d886797ca2216db109e4d71df974f705cf88c2e99d065dfe3f41fc588e"
       },
       {
         "path": "src/core/attribution/attribution-collector.ts",
