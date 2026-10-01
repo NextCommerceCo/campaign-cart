@@ -397,6 +397,43 @@ describe('the phone field, and the country', () => {
     expect(field.isValidNumber()).toBe(true);
   });
 
+  /**
+   * Typing goes through the mask first, which already rewrites `001 66…` to `+66…`; a value
+   * autofill or a prefill writes is read as it stands, so this is where the prefix decides.
+   */
+  it("reads a number written in, dialled abroad, by the address country's prefix", async () => {
+    // A service that sends each country's prefix: Thailand's is 00[1-9], the US's 011.
+    const dialling: Record<string, PhoneRules> = {
+      US: { ...US, international_prefix: '011' },
+      TH: { ...TH, international_prefix: '00[1-9]' },
+      GB: { ...GB, international_prefix: '00' },
+    };
+    const loadPhoneRules = (code: string) => Promise.resolve(dialling[code]);
+    const writeIn = (input: HTMLInputElement, value: string) => {
+      input.value = value;
+      input.dispatchEvent(new Event('change'));
+    };
+
+    const thai = phoneInput();
+    const fromThailand = await shippingField(thai, {
+      detectedCountryCode: 'TH',
+      loadPhoneRules,
+    });
+    writeIn(thai, '001 66 81 234 5678');
+    await vi.waitFor(() =>
+      expect(thai.getAttribute('data-next-phone-e164')).toBe('+66812345678')
+    );
+    expect(thai.getAttribute('data-next-phone-country')).toBe('TH');
+
+    const american = phoneInput();
+    await shippingField(american, { loadPhoneRules });
+    writeIn(american, '011 44 7400 123456');
+    await vi.waitFor(() =>
+      expect(american.getAttribute('data-next-phone-country')).toBe('GB')
+    );
+    expect(fromThailand.field.getNumber()).toBe('+66812345678');
+  });
+
   it('goes back to the address country when the + is deleted', async () => {
     const input = phoneInput();
     const { field } = await shippingField(input);

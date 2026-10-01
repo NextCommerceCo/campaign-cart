@@ -5,6 +5,7 @@ import {
   formatPhone,
   isE164,
   isPlausiblePhone,
+  isTypedAbroad,
   toE164,
   type CallingCodes,
   type PhoneRules,
@@ -85,8 +86,8 @@ describe('formatPhone', () => {
     expect(formatPhone('+1 212-555-0123', US)).toBe('+12125550123');
   });
 
-  it('reads a leading 00 as +', () => {
-    expect(formatPhone('0066 81 234 5678', TH)).toBe('+66812345678');
+  it('shows a number dialled with 00 as its digits, not as a +', () => {
+    expect(formatPhone('0066 81 234 5678', TH)).toBe('0066812345678');
   });
 
   it('shows digits the mask has no room for as typed', () => {
@@ -153,11 +154,13 @@ describe('toE164', () => {
 });
 
 // What the service sends once it serves libphonenumber's reading facts: i18n-rules
-// `src/rules/{ag,br,by,ru,rw,th,us}.json`, the facts only. Each expected E.164 is
-// `phonenumbers.parse`'s for the same input.
+// `src/rules/{ag,br,by,gb,ru,rw,th,us}.json`, the facts only. Each expected E.164 is
+// `phonenumbers.parse`'s for the same input, most of them from i18n-rules
+// `test/fixtures/phone-parsing.json`.
 const READ: Record<string, PhoneRules> = {
   AG: {
     calling_code: '1',
+    international_prefix: '011',
     national_prefix: '1',
     national_prefix_for_parsing: '([457]\\d{6})$|1',
     national_prefix_transform_rule: '268$1',
@@ -179,6 +182,13 @@ const READ: Record<string, PhoneRules> = {
     national_number_pattern:
       '(?:[12]\\d|33|44|902)\\d{7}|8(?:0[0-79]\\d{5,7}|[1-7]\\d{9})|8(?:1[0-489]|[5-79]\\d)\\d{7}|8[1-79]\\d{6,7}|8[0-79]\\d{5}|8\\d{5}',
   },
+  GB: {
+    calling_code: '44',
+    international_prefix: '00',
+    national_prefix: '0',
+    national_prefix_for_parsing: '0|180020',
+    national_number_pattern: '[1-357-9]\\d{9}|[18]\\d{8}|8\\d{6}',
+  },
   RU: {
     calling_code: '7',
     national_prefix: '8',
@@ -191,11 +201,13 @@ const READ: Record<string, PhoneRules> = {
   },
   TH: {
     calling_code: '66',
+    international_prefix: '00[1-9]',
     national_prefix: '0',
     national_number_pattern: '(?:001800|[2-57]|[689]\\d)\\d{7}|1\\d{7,9}',
   },
   US: {
     calling_code: '1',
+    international_prefix: '011',
     national_prefix: '1',
     national_number_pattern: '[2-9]\\d{9}|3\\d{6}',
   },
@@ -228,6 +240,58 @@ describe('toE164, with the facts libphonenumber reads a number with', () => {
     // Another country's code is not this rule's to check.
     expect(toE164('+44 7400 123456', READ['TH'])).toBe('+447400123456');
   });
+
+  it.each([
+    ['TH', '001 66 812345678', '+66812345678'],
+    ['US', '011 1 2015550123', '+12015550123'],
+    ['GB', '00 44 7400123456', '+447400123456'],
+    ['US', '011 44 7400 123456', '+447400123456'],
+  ])(
+    "reads %s %s, dialled with the country's prefix, as %s",
+    (country, typed, e164) => {
+      expect(toE164(typed, READ[country])).toBe(e164);
+    }
+  );
+
+  it('reads 00 as + in every country, the way a number is written in a form', () => {
+    // phonenumbers.parse reads 0066… in Thailand as its carrier prefix 006 and a code 68,
+    // +6812345678; the shopper meant +66, as they would anywhere else.
+    expect(toE164('0066 81 234 5678', READ['TH'])).toBe('+66812345678');
+    expect(toE164('0044 7400 123456', READ['TH'])).toBe('+447400123456');
+    // 00 is no US prefix, but a shopper writing it still means +.
+    expect(toE164('0044 7400 123456', READ['US'])).toBe('+447400123456');
+    expect(
+      countryOfNumber(
+        '0066 81 234 5678',
+        { '66': [{ country: 'TH' }] },
+        READ['TH']
+      )
+    ).toBe('TH');
+  });
+
+  it('reads no calling code after the prefix when a 0 follows it', () => {
+    expect(isTypedAbroad('011 0123', READ['US'])).toBe(false);
+  });
+
+  it.each([
+    ['GB', '+44 (0) 7400123456', '+447400123456'],
+    ['TH', '+66 (0) 812345678', '+66812345678'],
+    ['TH', '+66 81 234 5678', '+66812345678'],
+  ])(
+    'drops the national prefix kept after the code: %s %s',
+    (country, typed, e164) => {
+      expect(toE164(typed, READ[country])).toBe(e164);
+    }
+  );
+
+  it('reads digits from other keyboards as the ASCII ones', () => {
+    expect(toE164('๐๘๑ ๒๓๔ ๕๖๗๘', READ['TH'])).toBe('+66812345678');
+    expect(toE164('０８１２３４５６７８', READ['TH'])).toBe('+66812345678');
+    expect(toE164('＋６６ ８１ ２３４ ５６７８', READ['TH'])).toBe(
+      '+66812345678'
+    );
+    expect(formatPhone('๐๘๑๒๓๔๕๖๗๘', TH)).toBe('081 234 5678');
+  });
 });
 
 describe('countryOfNumber', () => {
@@ -251,6 +315,14 @@ describe('countryOfNumber', () => {
     ['+1 800 234 5678', 'US'],
   ])('names %s as %s', (typed, country) => {
     expect(countryOfNumber(typed, CODES)).toBe(country);
+  });
+
+  it('reads a number dialled abroad by the prefix of the country it is typed in', () => {
+    expect(countryOfNumber('001 66 81 234 5678', CODES, READ['TH'])).toBe('TH');
+    expect(countryOfNumber('011 44 7400 123456', CODES, READ['US'])).toBe('GB');
+    expect(
+      countryOfNumber('011 44 7400 123456', CODES, READ['GB'])
+    ).toBeUndefined();
   });
 
   it('names no country for a number typed nationally, or a code none has', () => {

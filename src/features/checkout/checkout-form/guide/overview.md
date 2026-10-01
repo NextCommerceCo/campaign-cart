@@ -66,8 +66,11 @@ the two can never drift apart.
   always sent as typed, for the API to convert.
 - **The phone input says which country it reads the number as, and the number in
   E.164 once it is complete.** `data-next-phone-country` is the address country,
-  unless the number was typed with `+` or `00`: then it is the country that
-  calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
+  unless the number was typed with `+` or dialled abroad, with `00` or the
+  country's own prefix (`011` in the US, `001` in Thailand): then it is the
+  country that calling code belongs to, so `+66 81 234 5678` in a US form shows
+  the Thai flag. A number dialled abroad keeps the digits the shopper typed,
+  since which prefix it was is only known once the code after it is in.
   `data-next-phone-e164` is present only while the number is complete and valid
   for that country, and follows every keystroke, so page code never reads part of
   a number (`phone-input.ts`). `customer_phone` in analytics is the same E.164

@@ -27,11 +27,14 @@ export interface PhoneRules {
   /** A real number in national form. */
   example?: string;
   /**
-   * libphonenumber's facts for reading a national number, from the address-rules service:
-   * the prefix as a regex where it is not one literal (`0|80?` in Belarus), what it is
-   * rewritten to where it is not dropped (`268$1` in Antigua, whose local seven digits lack
-   * the area code), and every valid national number. See {@link toE164}.
+   * libphonenumber's facts for reading a typed number, from the address-rules service:
+   * what is dialled before a calling code to call abroad (`00[1-9]` in Thailand, `011` in
+   * the US), the national prefix as a regex where it is not one literal (`0|80?` in
+   * Belarus), what it is rewritten to where it is not dropped (`268$1` in Antigua, whose
+   * local seven digits lack the area code), and every valid national number. See
+   * {@link toE164}.
    */
+  international_prefix?: string;
   national_prefix_for_parsing?: string;
   national_prefix_transform_rule?: string;
   national_number_pattern?: string;
@@ -88,19 +91,61 @@ function maskFor(digits: string, rules?: PhoneRules): string | undefined {
   )?.mask;
 }
 
+/**
+ * The zero of each run of decimal digits a keyboard may type besides ASCII: full-width (a
+ * Japanese or Chinese IME), Arabic-Indic, Eastern Arabic-Indic, Devanagari, Bengali, Thai,
+ * Lao, Myanmar and Khmer. Each run is ten code points, zero first.
+ */
+const DIGIT_ZEROS = [
+  0xff10, 0x0660, 0x06f0, 0x0966, 0x09e6, 0x0e50, 0x0ed0, 0x1040, 0x17e0,
+];
+
+/** `๐๘๑` → `081`, `＋６６` → `+66`: what is typed, in the digits and `+` the rules read. */
+function normalized(text: string): string {
+  return text.replace(/[\p{Nd}\uFF0B]/gu, char => {
+    if (char === '\uFF0B') return '+';
+    const code = char.codePointAt(0) ?? 0;
+    const zero = DIGIT_ZEROS.find(start => code >= start && code <= start + 9);
+    return zero === undefined ? char : String(code - zero);
+  });
+}
+
 function digitsOf(text: string): string {
-  return text.replace(/\D/g, '');
+  return normalized(text).replace(/\D/g, '');
 }
 
 /**
- * The digits after the calling code's `+`, or `null` for a number typed nationally. `00` is
- * how most countries dial abroad, so `0066 81…` is read as `+66 81…`.
+ * The digits after the calling code's `+`, or `null` for a number typed nationally.
+ *
+ * `00` stands for `+` wherever the number is typed, because that is how shoppers write a
+ * number in a form: `0066 81…` and `0044 7400…` in Thailand are `+66…` and `+44…`. A
+ * country's own `international_prefix` is read too, as libphonenumber reads it (a calling
+ * code follows unless the next digit is `0`):
+ *
+ * - one that does not start with `00` is the only way to dial abroad there: `011 44…` in
+ *   the US is `+44…`;
+ * - a longer one that does, a carrier's in Thailand (`001` to `009`), is read only before
+ *   the country's own calling code: `001 66 81…` is `+66 81…`. Read before any code, it
+ *   would make `0066 81…` the `+68` libphonenumber reads.
  */
-function internationalDigits(text: string): string | null {
-  const typed = text.trimStart();
-  if (typed.startsWith('+')) return digitsOf(typed);
-  if (typed.startsWith('00')) return digitsOf(typed).slice(2);
-  return null;
+function internationalDigits(text: string, rules?: PhoneRules): string | null {
+  const typed = normalized(text).trimStart();
+  const digits = digitsOf(typed);
+  if (typed.startsWith('+')) return digits;
+  const prefix = rules?.international_prefix;
+  const dialled = prefix ? regex(`^(?:${prefix})`).exec(digits) : null;
+  if (dialled && digits[dialled[0].length] !== '0') {
+    const rest = digits.slice(dialled[0].length);
+    if (!digits.startsWith('00')) return rest;
+    const own = rules?.calling_code;
+    if (dialled[0].length > 2 && own && rest.startsWith(own)) return rest;
+  }
+  return digits.startsWith('00') ? digits.slice(2) : null;
+}
+
+/** Whether the number was typed with `+`, or dialled abroad from the country of `rules`. */
+export function isTypedAbroad(text: string, rules?: PhoneRules): boolean {
+  return internationalDigits(text, rules) !== null;
 }
 
 function masked(digits: string, mask: string): string | null {
@@ -121,12 +166,20 @@ function masked(digits: string, mask: string): string | null {
  * so `41555` in the US shows as `(415) 55`. Digits the mask has no room for, or a country
  * with no mask, show as typed. Until the digits reach a mask's `start`, the default is used.
  *
+ * A number dialled abroad shows its digits as typed, not as a `+`: which prefix it was
+ * dialled with is only known once the code after it is typed (`001` in Thailand may begin
+ * `001 66…` or `00 1…`), and a `+` written in early would fix the wrong one.
+ *
  * A national prefix the mask does not hold (the US mask has no `1`) is shown before it:
  * `1 (415) 555-2671`.
  */
 export function formatPhone(text: string, rules?: PhoneRules): string {
-  const international = internationalDigits(text);
-  if (international !== null) return `+${international}`;
+  const international = internationalDigits(text, rules);
+  if (international !== null) {
+    return normalized(text).trimStart().startsWith('+')
+      ? `+${international}`
+      : digitsOf(text);
+  }
   const digits = digitsOf(text);
   if (!rules?.masks?.length || !digits) return digits;
 
@@ -157,7 +210,7 @@ export function isPlausiblePhone(text: string, rules: PhoneRules): boolean {
   // A country with no rule of its own has no pattern, and its number is not checked.
   if (rules.pattern === undefined) return true;
   const pattern = regex(rules.pattern);
-  const digits = internationalDigits(text);
+  const digits = internationalDigits(text, rules);
   if (digits === null) return pattern.test(digitsOf(text));
   if (rules.calling_code && digits.startsWith(rules.calling_code)) {
     return pattern.test(digits.slice(rules.calling_code.length));
@@ -209,8 +262,9 @@ function withoutNationalPrefix(rules: PhoneRules, digits: string): string {
  * the calling code are taken as typed with it and no `+` when only that way are they a
  * number; otherwise the national prefix is dropped or rewritten, and the rest must be a
  * valid national number. `081 234 5678` in Thailand is `+66812345678`, `464 1234` in
- * Antigua `+12684641234`. A number typed with `+` or `00` keeps its own code, and is
- * checked when that code is this country's.
+ * Antigua `+12684641234`. A number typed with `+`, or dialled abroad, keeps its own code;
+ * when that code is this country's, the national prefix after it is dropped as above
+ * (`+44 (0) 7400 123456` is `+447400123456`) and the rest is checked.
  *
  * A rule without `national_number_pattern` comes from a service that predates it, and is
  * read as it always was: one leading `national_prefix` dropped, and digits that begin with
@@ -218,14 +272,17 @@ function withoutNationalPrefix(rules: PhoneRules, digits: string): string {
  * without its `+`. A rule with no calling code (Argentina) is always sent as typed.
  */
 export function toE164(text: string, rules?: PhoneRules): string {
-  const international = internationalDigits(text);
+  const international = internationalDigits(text, rules);
   if (international !== null) {
     if (!international) return '';
     const own = rules?.calling_code;
     if (rules && own && international.startsWith(own)) {
-      return isNationalNumber(rules, international.slice(own.length))
-        ? `+${international}`
-        : '';
+      const rest = international.slice(own.length);
+      const national =
+        rules.national_number_pattern === undefined
+          ? rest
+          : withoutNationalPrefix(rules, rest);
+      return isNationalNumber(rules, national) ? `+${own}${national}` : '';
     }
     return `+${international}`;
   }
@@ -252,15 +309,16 @@ export function toE164(text: string, rules?: PhoneRules): string {
 }
 
 /**
- * The country a number typed with `+` or `00` is in, the way libphonenumber finds it:
- * `+1 268 464 1234` is Antigua, `+66 81…` Thailand. `undefined` for a number typed
- * nationally, or a code no country has.
+ * The country a number typed with `+`, or dialled abroad from the country of `home`, is
+ * in, the way libphonenumber finds it: `+1 268 464 1234` is Antigua, `+66 81…` Thailand.
+ * `undefined` for a number typed nationally, or a code no country has.
  */
 export function countryOfNumber(
   text: string,
-  codes: CallingCodes
+  codes: CallingCodes,
+  home?: PhoneRules
 ): string | undefined {
-  const digits = internationalDigits(text);
+  const digits = internationalDigits(text, home);
   if (!digits) return undefined;
   for (const length of [1, 2, 3]) {
     const countries = codes[digits.slice(0, length)];

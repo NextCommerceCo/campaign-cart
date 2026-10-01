@@ -120,13 +120,14 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 /**
  * The phone rule each country's file carries on the address-rules service, served at
  * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
- * `src/rules/{us,th,gb,ar}.json`), with `national_number_pattern`, the libphonenumber
- * fact the SDK reads E.164 with; Argentina's has no `calling_code` because its mobiles
+ * `src/rules/{us,th,gb,ar}.json`), with `international_prefix` and
+ * `national_number_pattern`, the libphonenumber facts the SDK reads E.164 with; Argentina's has no `calling_code` because its mobiles
  * keep a `15` only the order API's conversion removes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {
   US: {
     calling_code: '1',
+    international_prefix: '011',
     national_prefix: '1',
     masks: [{ mask: '(###) ###-####' }],
     pattern: '^[0-9]{10,11}$',
@@ -135,6 +136,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
   },
   TH: {
     calling_code: '66',
+    international_prefix: '00[1-9]',
     national_prefix: '0',
     masks: [
       { start: '02', mask: '## ### ####' },
@@ -148,6 +150,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
   },
   GB: {
     calling_code: '44',
+    international_prefix: '00',
     national_prefix: '0',
     masks: [{ mask: '##### ######' }],
     pattern: '^[0-9]{7,11}$',

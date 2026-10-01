@@ -17,8 +17,8 @@
  * - the input gets `next-phone-input`, `data-next-phone-country="{ISO code}"` and an
  *   inline `padding-right` that keeps its text clear of the flag, and its parent gets
  *   `next-phone-field`. The country is the address country's, or, for a number typed
- *   with `+` or `00`, the one its calling code names: `+66 81…` in a US form is `TH`, and
- *   the flag, the mask and the check follow it;
+ *   with `+` or dialled abroad, the one its calling code names: `+66 81…` in a US form
+ *   is `TH`, and the flag, the mask and the check follow it;
  * - the input gets `data-next-phone-e164="+14155552671"` while its number is one the field
  *   can vouch for, and loses it while the number is incomplete or unchecked;
  * - the flag's `top` and `right` are set inline from the input's own box, so it stays
@@ -31,6 +31,7 @@ import {
   flagUrl,
   formatPhone,
   isPlausiblePhone,
+  isTypedAbroad,
   toE164,
   type CallingCodes,
   type PhoneRules,
@@ -95,9 +96,6 @@ interface PhoneFieldOptions {
 
 /** Where the field puts the E.164 number a page can read, while it can vouch for it. */
 const E164_ATTRIBUTE = 'data-next-phone-e164';
-
-/** A number typed with its own calling code, whose country is then the code's. */
-const INTERNATIONAL = /^\s*(?:\+|00)/;
 
 /** One field per input, whichever form built it. */
 const phoneFields = new WeakMap<HTMLInputElement, PhoneField>();
@@ -186,6 +184,12 @@ export class PhoneField implements PhoneNumberSource {
   private callingCodes: CallingCodes | undefined;
   private callingCodesRequested = false;
   private rules: PhoneRules | undefined;
+  /**
+   * The address country's rules, kept while {@link rules} follows a number's country: a
+   * number is dialled abroad with the prefix of the country it is typed in, not the one
+   * it names (`001 66…` in Thailand, `011 66…` in the US).
+   */
+  private homeRules: PhoneRules | undefined;
   /** Settles when the rules for {@link country} have loaded, or turned out not to exist. */
   private loading: Promise<void> = Promise.resolve();
   /** Counts loads, so a slow answer for a country left behind is dropped. */
@@ -334,18 +338,19 @@ export class PhoneField implements PhoneNumberSource {
   }
 
   /**
-   * Follows the country a number typed with `+` or `00` names, and goes back to the
-   * address country when the `+` goes. The calling codes load the first time one is typed.
+   * Follows the country a number typed with `+` or dialled abroad names, and goes back to
+   * the address country when the `+` goes. The calling codes load the first time one is
+   * typed.
    */
   private detect(): void {
     const typed = this.input.value;
     let country: string | undefined;
-    if (INTERNATIONAL.test(typed)) {
+    if (isTypedAbroad(typed, this.homeRules)) {
       if (!this.callingCodes) {
         this.requestCallingCodes();
         return;
       }
-      country = countryOfNumber(typed, this.callingCodes);
+      country = countryOfNumber(typed, this.callingCodes, this.homeRules);
     }
     if (country === this.numberCountry) return;
     this.numberCountry = country;
@@ -418,6 +423,7 @@ export class PhoneField implements PhoneNumberSource {
       .then(rules => {
         if (load !== this.loads || this.listeners.signal.aborted) return;
         this.rules = rules;
+        if (this.numberCountry === undefined) this.homeRules = rules;
         this.render();
         this.publish();
       });

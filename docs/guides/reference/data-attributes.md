@@ -423,7 +423,7 @@ The address fields are built by the [address block](#address-block) under these 
 
 ### Phone number
 
-The phone input keeps the number in the country's national form, `(415) 555-2671`, and the SDK writes two attributes on it for page code to read. The country is the address country, unless the shopper typed the number with `+` or `00`: then it is the country the calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
+The phone input keeps the number in the country's national form, `(415) 555-2671`, and the SDK writes two attributes on it for page code to read. The country is the address country, unless the shopper typed the number with `+` or dialled it abroad, with `00` or the country's own prefix (`011` in the US, `001` in Thailand): then it is the country the calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
 
 | Attribute | Description |
 |---|---|
