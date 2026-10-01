@@ -713,7 +713,7 @@ Who the shopper is, as far as this page knows. Almost everything here is empty u
 - **`visitor_type`** `string`. Whether the shopper is signed in. `guest` on every campaign page — the SDK has no account concept, so this is effectively a constant.
 - **`customer_id`** `string`. The store's identifier for a known customer. Present only after an order exists.
 - **`customer_email`** `string`. Email the shopper typed into checkout. The value ad platforms match on, so its absence is why a conversion may go unattributed.
-- **`customer_phone`** `string`. Phone number from checkout, unformatted as entered.
+- **`customer_phone`** `string`. Phone number from checkout in E.164 (`+14155552671`). Absent while the number is incomplete or cannot be read as E.164.
 - **`customer_first_name`** `string`. Given name from the billing details.
 - **`customer_last_name`** `string`. Family name from the billing details.
 - **`customer_address_city`** `string`. City from the billing address.

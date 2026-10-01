@@ -613,7 +613,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     this.applySelectedCountry(country, this.countries);
     try {
-      await this.loadProvincesForSelectedCountry(country, country, storedProvince);
+      await this.loadProvincesForSelectedCountry(
+        country,
+        country,
+        storedProvince
+      );
     } catch (error) {
       this.logger.error('Failed to refill the province options:', error);
     }
@@ -1187,6 +1191,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       phoneInputs: this.phoneInputs,
       detectedCountryCode: this.detectedCountryCode,
       loadPhoneRules: country => this.loadPhoneRules(country),
+      loadCallingCodes: () => this.countryService.loadCallingCodes(),
       updateFormData: data => this.updateFormData(data),
       logger: this.logger,
     };

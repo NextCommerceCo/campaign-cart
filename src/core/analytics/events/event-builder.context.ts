@@ -13,6 +13,7 @@ import { useCheckoutStore } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
 import { createLogger } from '@/core/logger';
 import { getCookie } from '@/utils/cookies';
+import { isE164 } from '@/core/country-service/country-service.phone';
 
 const logger = createLogger('EventBuilder');
 
@@ -47,7 +48,10 @@ export function getUserProperties(): UserProperties {
         userProperties.customer_province_code = billing.province;
         userProperties.customer_zip = billing.postal; // No address_ prefix
         userProperties.customer_country = billing.country; // No address_ prefix
-        userProperties.customer_phone = billing.phone;
+        // Sent as typed when the phone rules did not load in time; no tag can match that.
+        if (isE164(billing.phone)) {
+          userProperties.customer_phone = billing.phone;
+        }
 
         // Add address lines for Elevar
         userProperties.customer_address_1 = billing.address1 || '';

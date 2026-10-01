@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "4fe56f3b0fd35333292340590a89b14abcc0b5779aaef1951ca5b2c00cd62203",
+    "inputSha256": "18aaf057a46c468afea2bc5ba0cd076b32403bbd10d60339446ea965b0a458a2",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -16,7 +16,7 @@
       },
       {
         "path": "src/core/analytics/events/event-builder.context.ts",
-        "sha256": "b9b234eb0c1208f705c4e8237cf3273655059ea32d70ff4adeb45a498067cdd3"
+        "sha256": "29eb67e46792c126d786df472d9f98266221dd78f505f9354251e7b5b7bb5fe8"
       },
       {
         "path": "src/core/analytics/events/list-attribution-storage.ts",
@@ -44,7 +44,7 @@
       },
       {
         "path": "src/core/analytics/user-data-storage.ts",
-        "sha256": "9d1e0bb40dbf016477c6294a077f5a17b7f9a768d1218dea09b61a31e5f67ed5"
+        "sha256": "1d8bf8d886797ca2216db109e4d71df974f705cf88c2e99d065dfe3f41fc588e"
       },
       {
         "path": "src/core/attribution/attribution-collector.ts",
@@ -52,7 +52,7 @@
       },
       {
         "path": "src/core/country-service/country-service.ts",
-        "sha256": "ccfa8fde043bd65e05c6e6ee29a9ca1756f35b9da562b3c0bb2803a1c6a11529"
+        "sha256": "ea76a93694beda5d2876854c70d1233004c8c2120830e54e0c3f101ffe4e2004"
       },
       {
         "path": "src/core/currency-formatter.ts",
@@ -128,7 +128,7 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "2933be4249e87160c2c8b08cc4ef80f54de290082ddb5fcae6f48088b570839d"
+        "sha256": "0cb0bd5da44bfd1dbe1d1f9542a82870e663493d5d46ed8bc35ab6cdcac0e6f5"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",

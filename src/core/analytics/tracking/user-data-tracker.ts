@@ -130,11 +130,9 @@ export class UserDataTracker {
    * Collect user data from stores
    */
   private collectUserData(): UserData {
-    // Get user data from our storage utility (includes cookie data)
-    const userData: UserData = userDataStorage.getUserData();
-    
-    // Update from form fields if on checkout page
+    // Form fields first, so this event carries what the shopper has typed by now.
     userDataStorage.updateFromFormFields();
+    const userData: UserData = userDataStorage.getUserData();
 
     // Get cart data from cart store
     try {
@@ -155,50 +153,7 @@ export class UserDataTracker {
       logger.debug('Cart store not available or error accessing:', error);
     }
 
-    // Get checkout data if in checkout flow
-    try {
-      const checkoutData = this.getCheckoutData();
-      if (checkoutData) {
-        Object.assign(userData, checkoutData);
-      }
-    } catch (error) {
-      logger.debug('Error getting checkout data:', error);
-    }
-
     return userData;
-  }
-
-  /**
-   * Get checkout data from form fields if available
-   */
-  private getCheckoutData(): Partial<UserData> | null {
-    if (typeof document === 'undefined') {
-      return null;
-    }
-
-    const checkoutData: Partial<UserData> = {};
-
-    // Common checkout field selectors
-    const fieldMappings = [
-      { selector: '[name="email"], #email, [type="email"]', key: 'email' },
-      { selector: '[name="phone"], #phone, [type="tel"]', key: 'phone' },
-      { selector: '[name="first_name"], [name="firstName"], #first-name', key: 'firstName' },
-      { selector: '[name="last_name"], [name="lastName"], #last-name', key: 'lastName' },
-      { selector: '[name="address"], [name="address1"], #address', key: 'address' },
-      { selector: '[name="city"], #city', key: 'city' },
-      { selector: '[name="state"], [name="province"], #state', key: 'state' },
-      { selector: '[name="zip"], [name="postal_code"], #zip', key: 'postalCode' },
-      { selector: '[name="country"], #country', key: 'country' }
-    ];
-
-    fieldMappings.forEach(({ selector, key }) => {
-      const element = document.querySelector(selector) as HTMLInputElement;
-      if (element && element.value) {
-        checkoutData[key] = element.value;
-      }
-    });
-
-    return Object.keys(checkoutData).length > 0 ? checkoutData : null;
   }
 
   /**

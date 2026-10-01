@@ -128,21 +128,20 @@ describe('normalizePhone', () => {
 
 describe('a widget whose field is empty', () => {
   /**
-   * `getNumber()` answers `''` for an empty field just as it does while the rules load,
-   * but the verdict that comes with it is `false`, not `null` — a judgement on a
-   * number that is not there. A phone restored from an earlier visit is judged before the
-   * field is populated, and taking that `false` would refuse a number that is fine.
+   * A phone restored from an earlier visit is judged before the field is populated. The
+   * field has no number to judge, and says `null` rather than `false`: a `false` about a
+   * number that is not there would refuse one that is fine.
    */
   const emptyField: PhoneNumberSource = {
     getNumber: () => '',
-    isValidNumber: () => false,
+    isValidNumber: () => null,
   };
 
-  it('does not take its verdict', () => {
+  it('does not refuse the number it was not shown', () => {
     const check = checkPhone('+14155552671', emptyField);
 
     expect(check.verdict).toBe('unknown');
-    expect(check.reason).toBe('no-instance');
+    expect(check.reason).toBe('rule-not-loaded');
     expect(check.value).toBe('+14155552671');
     expect(check.isE164).toBe(true);
   });

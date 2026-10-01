@@ -34,7 +34,10 @@ import type {
   State,
 } from '@/core/country-service/country-service';
 import { flattenTexts } from '@/core/flatten-texts';
-import type { PhoneRules } from '@/core/country-service/country-service.phone';
+import type {
+  CallingCodes,
+  PhoneRules,
+} from '@/core/country-service/country-service.phone';
 
 const NEXT_ADDRESS_BASE_URL = 'https://i18n-rules.nextcommerce.com';
 
@@ -87,6 +90,9 @@ export interface RulesField {
     masks?: string[] | PhoneRules['masks'];
     calling_code?: string;
     national_prefix?: string;
+    national_prefix_for_parsing?: string;
+    national_prefix_transform_rule?: string;
+    national_number_pattern?: string;
   };
 }
 
@@ -157,9 +163,13 @@ export function toCountryConfig(
     postcodeMaxLength: postcode?.input.max_length ?? Number.MAX_SAFE_INTEGER,
     postcodeExample: postcodeFormat?.example ?? null,
     postcodeFormat: (postcodeFormat?.masks as string[] | undefined) ?? null,
-    // Only a rule with a pattern checks a number; a country with no file of its own sends
-    // just the calling code and an example.
-    ...(phone?.pattern ? { phone: phone as PhoneRules } : {}),
+    // A rule with a pattern checks a number. A country with no file of its own has none,
+    // but its facts still read one into E.164 once the service sends
+    // `national_number_pattern`; before that they were a calling code and an example, and
+    // too little to build a number from.
+    ...(phone?.pattern || phone?.national_number_pattern
+      ? { phone: phone as PhoneRules }
+      : {}),
     ...(rules.address.fixed && Object.keys(rules.address.fixed).length > 0
       ? { fixed: rules.address.fixed }
       : {}),
@@ -236,6 +246,20 @@ async function fetchMessages(
         `${baseUrl}/v1/locales/${encodeURIComponent(lang)}`
       )
     );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Every calling code's countries (`GET /v1/calling-codes`), or `undefined` when the
+ * service could not answer: a number typed with `+` then keeps the address country's flag.
+ */
+export async function fetchCallingCodes(
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<CallingCodes | undefined> {
+  try {
+    return await getJson<CallingCodes>(`${baseUrl}/v1/calling-codes`);
   } catch {
     return undefined;
   }

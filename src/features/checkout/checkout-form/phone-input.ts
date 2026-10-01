@@ -16,17 +16,23 @@
  *   still reaches the label;
  * - the input gets `next-phone-input`, `data-next-phone-country="{ISO code}"` and an
  *   inline `padding-right` that keeps its text clear of the flag, and its parent gets
- *   `next-phone-field`;
+ *   `next-phone-field`. The country is the address country's, or, for a number typed
+ *   with `+` or `00`, the one its calling code names: `+66 81…` in a US form is `TH`, and
+ *   the flag, the mask and the check follow it;
+ * - the input gets `data-next-phone-e164="+14155552671"` while its number is one the field
+ *   can vouch for, and loses it while the number is incomplete or unchecked;
  * - the flag's `top` and `right` are set inline from the input's own box, so it stays
  *   inside the input whatever else the parent holds;
  * - `destroy()` takes all of that back off.
  */
 
 import {
+  countryOfNumber,
   flagUrl,
   formatPhone,
   isPlausiblePhone,
   toE164,
+  type CallingCodes,
   type PhoneRules,
 } from '@/core/country-service';
 import type { Logger } from '@/core/logger';
@@ -62,6 +68,8 @@ export interface PhoneInputContext {
   detectedCountryCode: string;
   /** A country's phone rules, or `undefined` when it has none. */
   loadPhoneRules: (countryCode: string) => Promise<PhoneRules | undefined>;
+  /** Every calling code's countries, or `undefined` when they could not be had. */
+  loadCallingCodes: () => Promise<CallingCodes | undefined>;
   /**
    * Writes the resolved international number back to the checkout form state.
    *
@@ -80,9 +88,16 @@ interface PhoneFieldOptions {
   /** The address country `<select>` the field follows, when the form has one. */
   countryField?: HTMLSelectElement | undefined;
   loadRules: (countryCode: string) => Promise<PhoneRules | undefined>;
+  loadCallingCodes: () => Promise<CallingCodes | undefined>;
   /** Receives what to store for the number after every edit. */
   onNumber: (value: string) => void;
 }
+
+/** Where the field puts the E.164 number a page can read, while it can vouch for it. */
+const E164_ATTRIBUTE = 'data-next-phone-e164';
+
+/** A number typed with its own calling code, whose country is then the code's. */
+const INTERNATIONAL = /^\s*(?:\+|00)/;
 
 /** One field per input, whichever form built it. */
 const phoneFields = new WeakMap<HTMLInputElement, PhoneField>();
@@ -166,6 +181,10 @@ export class PhoneField implements PhoneNumberSource {
 
   /** The country the field is showing and formatting for; `''` when none is known. */
   private country = '';
+  /** The country a number typed with `+` names, which wins over the address country. */
+  private numberCountry: string | undefined;
+  private callingCodes: CallingCodes | undefined;
+  private callingCodesRequested = false;
   private rules: PhoneRules | undefined;
   /** Settles when the rules for {@link country} have loaded, or turned out not to exist. */
   private loading: Promise<void> = Promise.resolve();
@@ -220,6 +239,10 @@ export class PhoneField implements PhoneNumberSource {
       capture: true,
       signal: this.listeners.signal,
     });
+    // A value written by the form's own prefill or autofill announces itself with `change`.
+    input.addEventListener('change', () => this.update(), {
+      signal: this.listeners.signal,
+    });
     options.countryField?.addEventListener('change', () => this.follow(), {
       signal: this.listeners.signal,
     });
@@ -237,9 +260,15 @@ export class PhoneField implements PhoneNumberSource {
     return typed.isE164 ? typed.value : '';
   }
 
-  /** Whether the number could be one for its country; `null` until the rules are there. */
+  /**
+   * Whether the number could be one for its country; `null` when there is nothing to
+   * judge: an empty field, rules still loading, or a country whose rules have no pattern.
+   */
   isValidNumber(): boolean | null {
-    return this.rules ? isPlausiblePhone(this.input.value, this.rules) : null;
+    if (!this.input.value.trim() || this.rules?.pattern === undefined) {
+      return null;
+    }
+    return isPlausiblePhone(this.input.value, this.rules);
   }
 
   /** Settles once the rules for the country the field shows are in, or known absent. */
@@ -259,6 +288,7 @@ export class PhoneField implements PhoneNumberSource {
       element.classList.remove(name);
     }
     this.input.removeAttribute('data-next-phone-country');
+    this.input.removeAttribute(E164_ATTRIBUTE);
     if (this.placeholder === null) this.input.removeAttribute('placeholder');
     else this.input.placeholder = this.placeholder;
     if (phoneFields.get(this.input) === this) phoneFields.delete(this.input);
@@ -292,19 +322,80 @@ export class PhoneField implements PhoneNumberSource {
     const forward =
       event instanceof InputEvent && event.inputType.endsWith('Forward');
     this.render(forward);
+    this.detect();
     this.options.onNumber(normalizePhone(this.input.value, this));
+    this.publish();
   }
 
-  /** Points the field at the address country, or the fallback while that has none. */
+  /** A value that changed without typing: the country it names, and what a page reads. */
+  private update(): void {
+    this.detect();
+    this.publish();
+  }
+
+  /**
+   * Follows the country a number typed with `+` or `00` names, and goes back to the
+   * address country when the `+` goes. The calling codes load the first time one is typed.
+   */
+  private detect(): void {
+    const typed = this.input.value;
+    let country: string | undefined;
+    if (INTERNATIONAL.test(typed)) {
+      if (!this.callingCodes) {
+        this.requestCallingCodes();
+        return;
+      }
+      country = countryOfNumber(typed, this.callingCodes);
+    }
+    if (country === this.numberCountry) return;
+    this.numberCountry = country;
+    this.follow();
+  }
+
+  private requestCallingCodes(): void {
+    if (this.callingCodesRequested) return;
+    this.callingCodesRequested = true;
+    void this.options.loadCallingCodes().then(codes => {
+      if (this.listeners.signal.aborted) return;
+      this.callingCodes = codes;
+      if (codes) this.detect();
+      else this.callingCodesRequested = false;
+    });
+  }
+
+  /**
+   * `data-next-phone-e164` while the number is in E.164 by the rules of the country it is
+   * in: checked against the country's `national_number_pattern` where the service sends
+   * one, else by the field's own check. A number with another country's code whose rules
+   * have not loaded is not vouched for, and neither is one still being typed.
+   */
+  private publish(): void {
+    const number = this.getNumber();
+    const code = this.rules?.calling_code;
+    const vouched =
+      number !== '' &&
+      code !== undefined &&
+      number.startsWith(`+${code}`) &&
+      (this.rules?.national_number_pattern !== undefined ||
+        this.isValidNumber() === true);
+    if (vouched) this.input.setAttribute(E164_ATTRIBUTE, number);
+    else this.input.removeAttribute(E164_ATTRIBUTE);
+  }
+
+  /**
+   * Points the field at the country its number names, else the address country, else the
+   * fallback while that has none.
+   */
   private follow(): void {
     const selected = this.options.countryField?.value;
     // `''` is a select with nothing chosen yet, which falls back like a missing one.
     const country = (
-      selected ? selected : this.options.fallbackCountry
+      this.numberCountry ?? (selected ? selected : this.options.fallbackCountry)
     ).toUpperCase();
     if (country === this.country) return;
     this.country = country;
     this.rules = undefined;
+    this.publish();
 
     if (country) {
       this.flag.src = flagUrl(country);
@@ -328,6 +419,7 @@ export class PhoneField implements PhoneNumberSource {
         if (load !== this.loads || this.listeners.signal.aborted) return;
         this.rules = rules;
         this.render();
+        this.publish();
       });
   }
 
@@ -410,6 +502,7 @@ function initializePhoneInput(
         countryField:
           countryField instanceof HTMLSelectElement ? countryField : undefined,
         loadRules: ctx.loadPhoneRules,
+        loadCallingCodes: ctx.loadCallingCodes,
         onNumber: value => storeNumber(ctx, type, value),
       })
     );

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { PhoneRules } from '@/core/country-service';
+import type { CallingCodes, PhoneRules } from '@/core/country-service';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -41,6 +41,13 @@ const GB: PhoneRules = {
   example: '07400 123456',
 };
 const RULES: Record<string, PhoneRules> = { US, TH, GB };
+
+/** Enough of `GET /v1/calling-codes` for the three countries above. */
+const CODES: CallingCodes = {
+  '1': [{ country: 'US' }],
+  '44': [{ country: 'GB' }],
+  '66': [{ country: 'TH' }],
+};
 
 function makeLogger(): { logger: Logger; errorSpy: ReturnType<typeof vi.fn> } {
   const errorSpy = vi.fn();
@@ -89,6 +96,7 @@ function makeCtx(
     phoneInputs: new Map(),
     detectedCountryCode: 'US',
     loadPhoneRules: code => Promise.resolve(RULES[code]),
+    loadCallingCodes: () => Promise.resolve(CODES),
     updateFormData: vi.fn(),
     logger: makeLogger().logger,
     ...overrides,
@@ -372,16 +380,49 @@ describe('the phone field, and the country', () => {
   });
 
   /** Typing `+44` in a US store no longer moves the flag: it follows the address. */
-  it('keeps the address country for a number typed with +', async () => {
+  it('follows the country a number typed with + is in, whatever the address country', async () => {
     const input = phoneInput();
     const { field } = await shippingField(input);
 
-    type(input, '+44 7400 123456');
+    type(input, '+66 81 234 5678');
 
-    expect(input.value).toBe('+447400123456');
+    await vi.waitFor(() =>
+      expect(input.getAttribute('data-next-phone-country')).toBe('TH')
+    );
+    await field.whenReady();
+    expect(input.previousElementSibling?.getAttribute('src')).toMatch(
+      /\/th\.svg$/
+    );
+    expect(field.getNumber()).toBe('+66812345678');
+    expect(field.isValidNumber()).toBe(true);
+  });
+
+  it('goes back to the address country when the + is deleted', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input);
+    type(input, '+44');
+    await vi.waitFor(() =>
+      expect(input.getAttribute('data-next-phone-country')).toBe('GB')
+    );
+
+    input.value = '';
+    type(input, '4155552671');
+    await field.whenReady();
+
+    expect(input.getAttribute('data-next-phone-country')).toBe('US');
+  });
+
+  it('keeps the address country while the calling codes cannot be had', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input, {
+      loadCallingCodes: () => Promise.resolve(undefined),
+    });
+
+    type(input, '+44 7400 123456');
+    await field.whenReady();
+
     expect(input.getAttribute('data-next-phone-country')).toBe('US');
     expect(field.getNumber()).toBe('+447400123456');
-    expect(field.isValidNumber()).toBe(true);
   });
 
   it('keeps a number typed with + as typed when the address country changes', async () => {
@@ -784,5 +825,92 @@ describe('awaitPhoneRules', () => {
 
   it('is satisfied immediately when the page has no phone field', async () => {
     await expect(awaitPhoneRules(new Map())).resolves.toBe(true);
+  });
+});
+
+describe('the E.164 number a page reads off the field', () => {
+  const E164 = 'data-next-phone-e164';
+
+  it('carries a complete number in E.164, and the box keeps what the shopper reads', async () => {
+    const input = phoneInput();
+    await shippingField(input);
+
+    type(input, '4155552671');
+
+    expect(input.value).toBe('(415) 555-2671');
+    expect(input.getAttribute(E164)).toBe('+14155552671');
+  });
+
+  it('carries nothing while the number is still being typed', async () => {
+    const input = phoneInput();
+    await shippingField(input);
+
+    type(input, '41555');
+
+    expect(input.hasAttribute(E164)).toBe(false);
+  });
+
+  it('drops the number once it stops being a complete one', async () => {
+    const input = phoneInput();
+    await shippingField(input);
+    type(input, '4155552671');
+
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.value = input.value.slice(0, -1);
+    input.dispatchEvent(new Event('input'));
+
+    expect(input.hasAttribute(E164)).toBe(false);
+  });
+
+  it("carries a number typed with + in its own country's E.164", async () => {
+    const input = phoneInput();
+    await shippingField(input);
+
+    type(input, '+66 81 234 5678');
+
+    await vi.waitFor(() =>
+      expect(input.getAttribute(E164)).toBe('+66812345678')
+    );
+  });
+
+  it('vouches for no + number whose country it cannot check', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input, {
+      loadCallingCodes: () => Promise.resolve(undefined),
+    });
+
+    type(input, '+66 81 234 5678');
+    await field.whenReady();
+
+    expect(input.hasAttribute(E164)).toBe(false);
+  });
+
+  it('reads a value written without typing, which announces itself with change', async () => {
+    const input = phoneInput();
+    await shippingField(input);
+
+    input.value = '4155552671';
+    input.dispatchEvent(new Event('change'));
+
+    expect(input.getAttribute(E164)).toBe('+14155552671');
+  });
+
+  it('takes the number off the input when the field is destroyed', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input);
+    type(input, '4155552671');
+
+    field.destroy();
+
+    expect(input.hasAttribute(E164)).toBe(false);
+  });
+});
+
+describe('the verdict on an empty field', () => {
+  it('is none, so a phone restored before the field is filled is not refused', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input);
+
+    expect(field.isValidNumber()).toBeNull();
   });
 });
