@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-08-26
+> Last reviewed: 2026-10-01
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -62,7 +62,16 @@ the two can never drift apart.
   address, the billing address and the customer record. Submitting waits, briefly,
   for the phone library to finish loading so there is a number to convert; if it
   never arrives the national number is sent for the API to convert, and the SDK
-  logs that it did so.
+  logs that it did so. A country whose rule has no calling code (Argentina) is
+  always sent as typed, for the API to convert.
+- **The phone input says which country it reads the number as, and the number in
+  E.164 once it is complete.** `data-next-phone-country` is the address country,
+  unless the number was typed with `+` or `00`: then it is the country that
+  calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
+  `data-next-phone-e164` is present only while the number is complete and valid
+  for that country, and follows every keystroke, so page code never reads part of
+  a number (`phone-input.ts`). `customer_phone` in analytics is the same E.164
+  value, or absent.
 - **A postcode is rewritten into the shape its country writes it in, while the
   shopper is still typing.** Each country's rules arrive with its data from the
   countries service: a format pattern, a validation pattern, and a minimum and

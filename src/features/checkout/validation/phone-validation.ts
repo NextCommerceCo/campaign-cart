@@ -35,7 +35,10 @@ import { checkoutFieldSelector } from '@/utils/checkout-field-names';
 export interface PhoneNumberSource {
   /** E.164 for what is in the field now, or `''` when there is none to give. */
   getNumber?(): string;
-  /** Whether the number could be one for its country. `null` until the rules load. */
+  /**
+   * Whether the number could be one for its country. `null` when there is nothing to judge:
+   * an empty field, rules still loading, or a country whose rules have no pattern.
+   */
   isValidNumber?(): boolean | null;
 }
 
@@ -48,7 +51,10 @@ export type PhoneReason =
   /** The country's phone rule decided it. */
   | 'rule'
   | 'digit-count'
-  /** The phone field is there, and has no rule to check with. */
+  /**
+   * The phone field is there, and gives no verdict: its rules are loading, its country has
+   * no pattern, or its field is still empty.
+   */
   | 'rule-not-loaded'
   /** No widget to ask — none on the page, or the one there is shows another number. */
   | 'no-instance';
@@ -146,31 +152,26 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
 }
 
 /**
- * The widget, when it is in a position to answer at all.
+ * The widget, when it is in a position to answer at all: whenever neither of its answers
+ * throws.
  *
- * It is whenever its field holds anything. `getNumber()` answers for a number too short to
- * be valid — `+1415555267` for nine US digits — and that is the case whose verdict matters
- * most, so the test is "holds something", not "holds a valid number".
- *
- * An empty field answers `''`, and its `isValidNumber()` is `false` about a number that is
- * not there. The only usable answer left there is `null`: the rules not having loaded,
- * which is not a rejection. A country whose rule has no calling code (Argentina) also
- * answers `''` with a verdict, so its numbers fall through to the digit count.
+ * Its verdict is what decides, not whether `getNumber()` found a number: that answers
+ * `''` for a number too short to be one, which is the case whose verdict matters most.
+ * The widget says `null` itself where it has nothing to judge (an empty field, rules
+ * still loading, a country with no pattern), and the digit count decides instead.
  */
 function usableWidget(
   source?: PhoneNumberSource
 ): PhoneNumberSource | undefined {
   if (!source) return undefined;
-
-  let shown: string | undefined;
   try {
-    shown = source.getNumber?.();
+    source.getNumber?.();
   } catch {
     return undefined;
   }
-  if (shown) return source;
-
-  return verdictOf(source) == null ? source : undefined;
+  return verdictOf(source) === undefined && source.isValidNumber
+    ? undefined
+    : source;
 }
 
 /**

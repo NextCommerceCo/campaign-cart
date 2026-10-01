@@ -363,7 +363,8 @@ export const ANALYTICS_SHARED_SHAPES: Record<
         "The store's identifier for a known customer. Present only after an order exists.",
       customer_email:
         'Email the shopper typed into checkout. The value ad platforms match on, so its absence is why a conversion may go unattributed.',
-      customer_phone: 'Phone number from checkout, unformatted as entered.',
+      customer_phone:
+        'Phone number from checkout in E.164 (`+14155552671`). Absent while the number is incomplete or cannot be read as E.164.',
       customer_first_name: 'Given name from the billing details.',
       customer_last_name: 'Family name from the billing details.',
       customer_address_city: 'City from the billing address.',

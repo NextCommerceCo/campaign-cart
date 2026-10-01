@@ -6,6 +6,7 @@
 import { createLogger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
 import { checkoutFieldSelector } from '@/utils/checkout-field-names';
+import { isE164 } from '@/core/country-service/country-service.phone';
 
 const logger = createLogger('UserDataStorage');
 
@@ -109,6 +110,9 @@ class UserDataStorage {
         }
       }
 
+      // A cookie written before campaign-cart#108 can hold the national form, for a year.
+      if (!isE164(this.userData.phone)) delete this.userData.phone;
+
       // Generate visitor ID if not exists
       if (!this.userData.visitorId) {
         let visitorId = localStorage.getItem(scopedKey('visitor_id'));
@@ -185,13 +189,15 @@ class UserDataStorage {
         delete this.userData[key];
       }
     });
+    // Every tag gets `customer_phone` from here, and only E.164 can be matched to a person.
+    if (!isE164(this.userData.phone)) delete this.userData.phone;
 
     // Save to storage
     this.saveUserData();
 
     // Log significant changes
     if (data.email && data.email !== previousEmail) {
-      logger.info('User email updated:', data.email);
+      logger.info('User email updated');
     }
   }
 
@@ -273,17 +279,30 @@ class UserDataStorage {
     let hasUpdates = false;
     fieldMappings.forEach(({ selector, key }) => {
       const element = document.querySelector(selector) as HTMLInputElement;
-      if (element && element.value && element.value !== this.userData[key]) {
-        updates[key] = element.value;
+      const value = element ? fieldValue(element, key) : '';
+      if (value && value !== this.userData[key]) {
+        updates[key] = value;
         hasUpdates = true;
       }
     });
 
     if (hasUpdates) {
       this.updateUserData(updates);
-      logger.debug('Updated user data from form fields:', updates);
+      logger.debug('Updated user data from form fields:', Object.keys(updates));
     }
   }
+}
+
+/**
+ * What a field is worth to a tag: its value, except a phone the checkout's phone field
+ * shows, which is the E.164 it vouches for (`data-next-phone-e164`). The box holds the
+ * national form, `(415) 555-2671`, which `updateUserData` would drop.
+ */
+function fieldValue(element: HTMLInputElement, key: string): string {
+  if (key === 'phone' && element.classList.contains('next-phone-input')) {
+    return element.getAttribute('data-next-phone-e164') ?? '';
+  }
+  return element.value;
 }
 
 // Export singleton instance

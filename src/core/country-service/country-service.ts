@@ -7,7 +7,10 @@ import type {
   CountryRules,
   FixedValues,
 } from '@/core/country-service/country-service.next-address';
-import type { PhoneRules } from '@/core/country-service/country-service.phone';
+import type {
+  CallingCodes,
+  PhoneRules,
+} from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
@@ -16,6 +19,7 @@ import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
 import {
+  fetchCallingCodes,
   fetchCountryStates,
   fetchLocationData,
   fetchTexts,
@@ -123,6 +127,7 @@ export class CountryService {
   /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
   private texts = new Map<string, Readonly<Record<string, string>>>();
   private textRequests = new Map<string, Promise<void>>();
+  private callingCodes: Promise<CallingCodes | undefined> | undefined;
   private fieldErrors = new Map<
     string,
     Readonly<Record<string, Readonly<Record<string, string>>>>
@@ -206,6 +211,18 @@ export class CountryService {
    */
   public getTexts(lang: string): Readonly<Record<string, string>> | undefined {
     return this.texts.get(baseLang(lang));
+  }
+
+  /**
+   * Every calling code's countries, fetched once however many phone fields ask, and asked
+   * for again after a failed fetch.
+   */
+  public loadCallingCodes(): Promise<CallingCodes | undefined> {
+    this.callingCodes ??= fetchCallingCodes().then(codes => {
+      if (!codes) this.callingCodes = undefined;
+      return codes;
+    });
+    return this.callingCodes;
   }
 
   /**

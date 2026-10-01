@@ -15,7 +15,10 @@ import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
-import type { PhoneRules } from '../../src/core/country-service/country-service.phone';
+import type {
+  CallingCodes,
+  PhoneRules,
+} from '../../src/core/country-service/country-service.phone';
 import { RICH_CAMPAIGN } from './campaign';
 import { TEST_ORDER } from './order';
 
@@ -117,7 +120,8 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 /**
  * The phone rule each country's file carries on the address-rules service, served at
  * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
- * `src/rules/{us,th,gb,ar}.json`); Argentina's has no `calling_code` because its mobiles
+ * `src/rules/{us,th,gb,ar}.json`), with `national_number_pattern`, the libphonenumber
+ * fact the SDK reads E.164 with; Argentina's has no `calling_code` because its mobiles
  * keep a `15` only the order API's conversion removes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {
@@ -127,6 +131,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     masks: [{ mask: '(###) ###-####' }],
     pattern: '^[0-9]{10,11}$',
     example: '(201) 555-0123',
+    national_number_pattern: '[2-9]\\d{9}|3\\d{6}',
   },
   TH: {
     calling_code: '66',
@@ -139,6 +144,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     ],
     pattern: '^[0-9]{8,14}$',
     example: '081 234 5678',
+    national_number_pattern: '(?:001800|[2-57]|[689]\\d)\\d{7}|1\\d{7,9}',
   },
   GB: {
     calling_code: '44',
@@ -146,6 +152,7 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     masks: [{ mask: '##### ######' }],
     pattern: '^[0-9]{7,11}$',
     example: '07400 123456',
+    national_number_pattern: '[1-357-9]\\d{9}|[18]\\d{8}|8\\d{6}',
   },
   AR: {
     national_prefix: '0',
@@ -153,6 +160,17 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     pattern: '^[0-9]{10,13}$',
     example: '011 15-2345-6789',
   },
+};
+
+/**
+ * `GET /v1/calling-codes` for the countries {@link PHONE_RULES} has, as the service lists
+ * them. A spec needs no more: a `+` number with another code keeps the address country.
+ */
+const CALLING_CODES: CallingCodes = {
+  '1': [{ country: 'US' }],
+  '44': [{ country: 'GB' }],
+  '54': [{ country: 'AR' }],
+  '66': [{ country: 'TH' }],
 };
 
 /**
@@ -258,6 +276,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
+ * | `/v1/calling-codes` | {@link CALLING_CODES} |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -295,6 +314,9 @@ export async function routeAddressService(
     }
     if (pathname === '/v1/countries') {
       return route.fulfill({ json: answers.countries });
+    }
+    if (pathname === '/v1/calling-codes') {
+      return route.fulfill({ json: CALLING_CODES });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
     if (country) {
@@ -352,9 +374,14 @@ export async function stubCountryService(
           type: 'select',
           options: 'states',
         }),
-        postcode: ruleField('ZIP Code', 'postal-code', { type: 'text' }, {
-          format: { example: '10001' },
-        }),
+        postcode: ruleField(
+          'ZIP Code',
+          'postal-code',
+          { type: 'text' },
+          {
+            format: { example: '10001' },
+          }
+        ),
         ...(phone
           ? {
               phone_number: ruleField(
