@@ -11,7 +11,6 @@ export declare class UserDataTracker {
     initialize(): void;
     trackUserData(): void;
     private collectUserData;
-    private getCheckoutData;
     private setupListeners;
     forceTrack(): void;
     reset(): void;

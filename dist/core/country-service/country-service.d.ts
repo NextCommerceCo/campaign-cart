@@ -1,5 +1,5 @@
 import { CountryRules, FixedValues } from './country-service.next-address';
-import { PhoneRules } from './country-service.phone';
+import { CallingCodes, PhoneRules } from './country-service.phone';
 import { AddressConfig } from '../../types/global';
 export interface CountryConfig {
     stateLabel: string;
@@ -56,6 +56,7 @@ export declare class CountryService {
     private messagesLang;
     private texts;
     private textRequests;
+    private callingCodes;
     private fieldErrors;
     private lastFieldErrors;
     private fieldLabelIds;
@@ -74,6 +75,7 @@ export declare class CountryService {
     getCampaignShippingCountries(): string[] | null;
     getMessagesLang(): string | undefined;
     getTexts(lang: string): Readonly<Record<string, string>> | undefined;
+    loadCallingCodes(): Promise<CallingCodes | undefined>;
     loadTexts(lang: string): Promise<void>;
     getFieldErrors(country?: string): Readonly<Record<string, Readonly<Record<string, string>>>>;
     getFieldLabelIds(country?: string): Readonly<Record<string, string>>;

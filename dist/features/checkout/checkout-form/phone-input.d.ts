@@ -1,4 +1,4 @@
-import { PhoneRules } from '../../../core/country-service';
+import { CallingCodes, PhoneRules } from '../../../core/country-service';
 import { Logger } from '../../../core/logger';
 import { PhoneNumberSource } from '../validation/phone-validation';
 export type PhoneFieldType = 'shipping' | 'billing';
@@ -8,6 +8,7 @@ export interface PhoneInputContext {
     phoneInputs: Map<string, PhoneField>;
     detectedCountryCode: string;
     loadPhoneRules: (countryCode: string) => Promise<PhoneRules | undefined>;
+    loadCallingCodes: () => Promise<CallingCodes | undefined>;
     updateFormData: (data: Record<string, string>) => void;
     logger: Logger;
 }
@@ -15,6 +16,7 @@ interface PhoneFieldOptions {
     fallbackCountry: string;
     countryField?: HTMLSelectElement | undefined;
     loadRules: (countryCode: string) => Promise<PhoneRules | undefined>;
+    loadCallingCodes: () => Promise<CallingCodes | undefined>;
     onNumber: (value: string) => void;
 }
 export declare function phoneFieldFor(input: HTMLInputElement): PhoneField | undefined;
@@ -28,6 +30,9 @@ export declare class PhoneField implements PhoneNumberSource {
     private readonly addedClasses;
     private readonly listeners;
     private country;
+    private numberCountry;
+    private callingCodes;
+    private callingCodesRequested;
     private rules;
     private loading;
     private loads;
@@ -39,6 +44,10 @@ export declare class PhoneField implements PhoneNumberSource {
     private placeFlag;
     private addClass;
     private handleInput;
+    private update;
+    private detect;
+    private requestCallingCodes;
+    private publish;
     private follow;
     private render;
 }

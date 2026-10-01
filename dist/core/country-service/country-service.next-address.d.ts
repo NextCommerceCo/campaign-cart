@@ -1,5 +1,5 @@
 import { CountryConfig, CountryStatesData, LocationData, State } from './country-service';
-import { PhoneRules } from './country-service.phone';
+import { CallingCodes, PhoneRules } from './country-service.phone';
 export declare function flagUrl(countryCode: string, baseUrl?: string): string;
 export interface RulesField {
     label_id?: string;
@@ -23,6 +23,9 @@ export interface RulesField {
         masks?: string[] | PhoneRules['masks'];
         calling_code?: string;
         national_prefix?: string;
+        national_prefix_for_parsing?: string;
+        national_prefix_transform_rule?: string;
+        national_number_pattern?: string;
     };
 }
 export type FixedValues = Partial<Record<'city' | 'state' | 'postcode', string>>;
@@ -39,6 +42,7 @@ export interface CountryRules {
 }
 export declare function toCountryConfig(rules: CountryRules, currencyCode?: string | null): CountryConfig;
 export declare function readCountryRules(body: unknown, url: string): CountryRules;
+export declare function fetchCallingCodes(baseUrl?: string): Promise<CallingCodes | undefined>;
 export declare function fetchTexts(lang: string, baseUrl?: string): Promise<{
     texts: Record<string, string>;
     lang: string;
