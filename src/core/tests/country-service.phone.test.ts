@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  callingCodesOf,
   countryOfNumber,
   formatPhone,
   isE164,
@@ -263,7 +264,7 @@ describe('toE164, with the facts libphonenumber reads a number with', () => {
     expect(
       countryOfNumber(
         '0066 81 234 5678',
-        { '66': [{ country: 'TH' }] },
+        { '66': [{ code: 'TH', calling_code: '66' }] },
         READ['TH']
       )
     ).toBe('TH');
@@ -295,23 +296,25 @@ describe('toE164, with the facts libphonenumber reads a number with', () => {
 });
 
 describe('countryOfNumber', () => {
-  const CODES: CallingCodes = {
-    '1': [
-      { country: 'US', pattern: '(?:212|415)\\d{7}' },
-      { country: 'AG', leading_digits: '268' },
-      { country: 'CA', pattern: '506\\d{7}' },
-    ],
-    '66': [{ country: 'TH' }],
-    '44': [{ country: 'GB' }],
-  };
+  // As `GET /v1/phone-numbers` lists them, by code: the US is +1's main country, and
+  // Antigua is told apart by how its numbers start.
+  const CODES: CallingCodes = callingCodesOf([
+    { code: 'AG', calling_code: '1', leading_digits: '268' },
+    { code: 'AR', national_prefix: '0' },
+    { code: 'CA', calling_code: '1' },
+    { code: 'GB', calling_code: '44' },
+    { code: 'TH', calling_code: '66' },
+    { code: 'US', calling_code: '1', main_country_for_code: true },
+  ]);
 
   it.each([
     ['+66 81 234 5678', 'TH'],
     ['0066 81 234 5678', 'TH'],
     ['+1 268 464 1234', 'AG'],
-    ['+1 506 234 5678', 'CA'],
     ['+1 415 555 2671', 'US'],
-    // Claimed by none of the three, so the code's first country's.
+    // Canada is told apart from the US by no start of its own, so it reads as +1's main
+    // country: the flag differs, the E.164 does not.
+    ['+1 506 234 5678', 'US'],
     ['+1 800 234 5678', 'US'],
   ])('names %s as %s', (typed, country) => {
     expect(countryOfNumber(typed, CODES)).toBe(country);
@@ -323,6 +326,15 @@ describe('countryOfNumber', () => {
     expect(
       countryOfNumber('011 44 7400 123456', CODES, READ['GB'])
     ).toBeUndefined();
+  });
+
+  it('groups no country whose rules have no calling code', () => {
+    expect(
+      Object.values(CODES)
+        .flat()
+        .map(country => country.code)
+    ).not.toContain('AR');
+    expect(countryOfNumber('+54 9 11 2345 6789', CODES)).toBeUndefined();
   });
 
   it('names no country for a number typed nationally, or a code none has', () => {

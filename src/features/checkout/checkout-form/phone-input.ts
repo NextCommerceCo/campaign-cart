@@ -416,9 +416,12 @@ export class PhoneField implements PhoneNumberSource {
       this.loading = Promise.resolve();
       return;
     }
-    // A failed lookup is logged by the country service, and means the same as no rules.
+    // A number's country was named from the phone-numbers list, which holds its rules
+    // already. A failed lookup is logged by the country service, and means no rules.
+    const listed =
+      this.numberCountry === undefined ? undefined : this.listedRules(country);
     this.loading = Promise.resolve()
-      .then(() => this.options.loadRules(country))
+      .then(() => listed ?? this.options.loadRules(country))
       .catch(() => undefined)
       .then(rules => {
         if (load !== this.loads || this.listeners.signal.aborted) return;
@@ -427,6 +430,15 @@ export class PhoneField implements PhoneNumberSource {
         this.render();
         this.publish();
       });
+  }
+
+  /** A country's rules from the phone-numbers list, once it has loaded. */
+  private listedRules(country: string): PhoneRules | undefined {
+    for (const countries of Object.values(this.callingCodes ?? {})) {
+      const found = countries.find(rules => rules.code === country);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   /** Writes the number in its country's mask; a field with no rules is left as typed. */

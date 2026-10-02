@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { CallingCodes, PhoneRules } from '@/core/country-service';
+import {
+  callingCodesOf,
+  type CallingCodes,
+  type PhoneRules,
+} from '@/core/country-service';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -42,12 +46,10 @@ const GB: PhoneRules = {
 };
 const RULES: Record<string, PhoneRules> = { US, TH, GB };
 
-/** Enough of `calling_codes` in `GET /v1/phone-numbers` for the three countries above. */
-const CODES: CallingCodes = {
-  '1': [{ country: 'US' }],
-  '44': [{ country: 'GB' }],
-  '66': [{ country: 'TH' }],
-};
+/** `GET /v1/phone-numbers` for the three countries above, grouped by calling code. */
+const CODES: CallingCodes = callingCodesOf(
+  Object.entries(RULES).map(([code, rules]) => ({ code, ...rules }))
+);
 
 function makeLogger(): { logger: Logger; errorSpy: ReturnType<typeof vi.fn> } {
   const errorSpy = vi.fn();
@@ -409,6 +411,12 @@ describe('the phone field, and the country', () => {
       GB: { ...GB, international_prefix: '00' },
     };
     const loadPhoneRules = (code: string) => Promise.resolve(dialling[code]);
+    const loadCallingCodes = () =>
+      Promise.resolve(
+        callingCodesOf(
+          Object.entries(dialling).map(([code, rules]) => ({ code, ...rules }))
+        )
+      );
     const writeIn = (input: HTMLInputElement, value: string) => {
       input.value = value;
       input.dispatchEvent(new Event('change'));
@@ -418,6 +426,7 @@ describe('the phone field, and the country', () => {
     const fromThailand = await shippingField(thai, {
       detectedCountryCode: 'TH',
       loadPhoneRules,
+      loadCallingCodes,
     });
     writeIn(thai, '001 66 81 234 5678');
     await vi.waitFor(() =>
@@ -426,12 +435,29 @@ describe('the phone field, and the country', () => {
     expect(thai.getAttribute('data-next-phone-country')).toBe('TH');
 
     const american = phoneInput();
-    await shippingField(american, { loadPhoneRules });
+    await shippingField(american, { loadPhoneRules, loadCallingCodes });
     writeIn(american, '011 44 7400 123456');
     await vi.waitFor(() =>
       expect(american.getAttribute('data-next-phone-country')).toBe('GB')
     );
     expect(fromThailand.field.getNumber()).toBe('+66812345678');
+  });
+
+  it("reads a + number by its country's rules from the phone-numbers list, asking for no more", async () => {
+    const loadPhoneRules = vi.fn((code: string) =>
+      Promise.resolve(RULES[code])
+    );
+    const input = phoneInput();
+    const { field } = await shippingField(input, { loadPhoneRules });
+
+    type(input, '+44 7400 123456');
+    await vi.waitFor(() =>
+      expect(input.getAttribute('data-next-phone-country')).toBe('GB')
+    );
+    await field.whenReady();
+
+    expect(field.getNumber()).toBe('+447400123456');
+    expect(loadPhoneRules.mock.calls.map(([code]) => code)).toEqual(['US']);
   });
 
   it('goes back to the address country when the + is deleted', async () => {

@@ -7,9 +7,10 @@ import type {
   CountryRules,
   FixedValues,
 } from '@/core/country-service/country-service.next-address';
-import type {
-  CallingCodes,
-  PhoneRules,
+import {
+  callingCodesOf,
+  type CallingCodes,
+  type PhoneRules,
 } from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { EventBus } from '@/core/events';
@@ -19,7 +20,7 @@ import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
 import {
-  fetchCallingCodes,
+  fetchPhoneNumbers,
   fetchCountryStates,
   fetchLocationData,
   fetchTexts,
@@ -214,13 +215,13 @@ export class CountryService {
   }
 
   /**
-   * Every calling code's countries, fetched once however many phone fields ask, and asked
-   * for again after a failed fetch.
+   * Every country's phone rules, by calling code, fetched once however many phone fields
+   * ask, and asked for again after a failed fetch.
    */
   public loadCallingCodes(): Promise<CallingCodes | undefined> {
-    this.callingCodes ??= fetchCallingCodes().then(codes => {
-      if (!codes) this.callingCodes = undefined;
-      return codes;
+    this.callingCodes ??= fetchPhoneNumbers().then(countries => {
+      if (!countries) this.callingCodes = undefined;
+      return countries && callingCodesOf(countries);
     });
     return this.callingCodes;
   }

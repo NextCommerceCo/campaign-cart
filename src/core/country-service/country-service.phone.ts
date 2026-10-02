@@ -38,23 +38,39 @@ export interface PhoneRules {
   national_prefix_for_parsing?: string;
   national_prefix_transform_rule?: string;
   national_number_pattern?: string;
+  /**
+   * On a country that shares its calling code, what names it for a number typed with `+`:
+   * the start of the national number, as a regex (`268` in Antigua, which shares 1 with
+   * the US), and on the one country a number nothing else claims belongs to, `true`.
+   */
+  leading_digits?: string;
+  main_country_for_code?: true;
 }
+
+/** One country's rules, as `GET /v1/phone-numbers` lists them: the rules and the ISO code. */
+export interface CountryPhoneRules extends PhoneRules {
+  code: string;
+}
+
+/** The countries of each calling code without its `+`: `{ "66": [TH's rules] }`. */
+export type CallingCodes = Readonly<
+  Record<string, readonly CountryPhoneRules[]>
+>;
 
 /**
- * One country of a calling code, as `calling_codes` in `GET /v1/phone-numbers` lists it. Where a code has
- * several, each is told apart by the start of the national number or by the pattern of
- * every number it has, tried in order; a number none of them claims is the first one's.
+ * The listed countries grouped by calling code, in the order listed. A country whose rules
+ * have no calling code (Argentina, whose number is sent as typed) is in no group.
  */
-export interface CallingCodeCountry {
-  country: string;
-  leading_digits?: string;
-  pattern?: string;
+export function callingCodesOf(
+  countries: readonly CountryPhoneRules[]
+): CallingCodes {
+  const codes: Record<string, CountryPhoneRules[]> = {};
+  for (const country of countries) {
+    if (!country.calling_code) continue;
+    (codes[country.calling_code] ??= []).push(country);
+  }
+  return codes;
 }
-
-/** Every calling code without its `+`, and its countries: `{ "66": [{ "country": "TH" }] }`. */
-export type CallingCodes = Readonly<
-  Record<string, readonly CallingCodeCountry[]>
->;
 
 /** E.164's bounds, for a number typed with its own `+` code. */
 const MIN_INTERNATIONAL_DIGITS = 8;
@@ -310,8 +326,10 @@ export function toE164(text: string, rules?: PhoneRules): string {
 
 /**
  * The country a number typed with `+`, or dialled abroad from the country of `home`, is
- * in, the way libphonenumber finds it: `+1 268 464 1234` is Antigua, `+66 81…` Thailand.
- * `undefined` for a number typed nationally, or a code no country has.
+ * in: of its calling code's countries, the one whose `leading_digits` match the start of
+ * the national number, else the code's main country. `+1 268 464 1234` is Antigua,
+ * `+1 415 555 2671` the US, `+66 81…` Thailand. `undefined` for a number typed nationally,
+ * or a code no country has.
  */
 export function countryOfNumber(
   text: string,
@@ -324,13 +342,15 @@ export function countryOfNumber(
     const countries = codes[digits.slice(0, length)];
     if (!countries) continue;
     const national = digits.slice(length);
-    const found = countries.find(entry =>
-      entry.leading_digits !== undefined
-        ? regex(`^(?:${entry.leading_digits})`).test(national)
-        : entry.pattern !== undefined &&
-          regex(`^(?:${entry.pattern})$`).test(national)
-    );
-    return (found ?? countries[0])?.country;
+    const found =
+      countries.find(
+        country =>
+          country.leading_digits !== undefined &&
+          regex(`^(?:${country.leading_digits})`).test(national)
+      ) ??
+      countries.find(country => country.main_country_for_code) ??
+      countries[0];
+    return found?.code;
   }
   return undefined;
 }

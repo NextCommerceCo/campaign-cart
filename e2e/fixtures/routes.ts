@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
 import type {
-  CallingCodes,
+  CountryPhoneRules,
   PhoneRules,
 } from '../../src/core/country-service/country-service.phone';
 import { RICH_CAMPAIGN } from './campaign';
@@ -166,15 +166,13 @@ const PHONE_RULES: Record<string, PhoneRules> = {
 };
 
 /**
- * `calling_codes` in `GET /v1/phone-numbers` for the countries {@link PHONE_RULES} has,
- * as the service lists them. A spec needs no more: a `+` number with another code keeps the address country.
+ * `GET /v1/phone-numbers` for the countries {@link PHONE_RULES} has: each one's rules and
+ * code, sorted by code, as the service lists them. A spec needs no more: a `+` number with
+ * another code keeps the address country.
  */
-const CALLING_CODES: CallingCodes = {
-  '1': [{ country: 'US' }],
-  '44': [{ country: 'GB' }],
-  '54': [{ country: 'AR' }],
-  '66': [{ country: 'TH' }],
-};
+const PHONE_NUMBERS: CountryPhoneRules[] = Object.entries(PHONE_RULES)
+  .map(([code, rules]) => ({ code, ...rules }))
+  .sort((a, b) => a.code.localeCompare(b.code));
 
 /**
  * The countries `/v1/countries` lists, in its order (by English name), each with the one
@@ -279,7 +277,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
- * | `/v1/phone-numbers` | `calling_codes`: {@link CALLING_CODES} |
+ * | `/v1/phone-numbers` | {@link PHONE_NUMBERS} |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -319,7 +317,7 @@ export async function routeAddressService(
       return route.fulfill({ json: answers.countries });
     }
     if (pathname === '/v1/phone-numbers') {
-      return route.fulfill({ json: { calling_codes: CALLING_CODES } });
+      return route.fulfill({ json: PHONE_NUMBERS });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
     if (country) {

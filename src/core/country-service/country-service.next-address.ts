@@ -35,7 +35,7 @@ import type {
 } from '@/core/country-service/country-service';
 import { flattenTexts } from '@/core/flatten-texts';
 import type {
-  CallingCodes,
+  CountryPhoneRules,
   PhoneRules,
 } from '@/core/country-service/country-service.phone';
 
@@ -252,18 +252,15 @@ async function fetchMessages(
 }
 
 /**
- * Every calling code's countries (`calling_codes` in `GET /v1/phone-numbers`), or
- * `undefined` when the service could not answer: a number typed with `+` then keeps the
- * address country's flag.
+ * Every country's phone rules (`GET /v1/phone-numbers`), or `undefined` when the service
+ * could not answer: a number typed with `+` then keeps the address country's flag.
  */
-export async function fetchCallingCodes(
+export async function fetchPhoneNumbers(
   baseUrl: string = NEXT_ADDRESS_BASE_URL
-): Promise<CallingCodes | undefined> {
+): Promise<CountryPhoneRules[] | undefined> {
   try {
-    const body = await getJson<{ calling_codes?: CallingCodes }>(
-      `${baseUrl}/v1/phone-numbers`
-    );
-    return body.calling_codes;
+    const body = await getJson<unknown>(`${baseUrl}/v1/phone-numbers`);
+    return Array.isArray(body) ? (body as CountryPhoneRules[]) : undefined;
   } catch {
     return undefined;
   }

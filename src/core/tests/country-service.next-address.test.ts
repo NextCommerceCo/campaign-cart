@@ -10,7 +10,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import {
-  fetchCallingCodes,
+  fetchPhoneNumbers,
   fetchCountryStates,
   fetchLocationData,
   flagUrl,
@@ -396,7 +396,7 @@ describe('fetchCountryStates', () => {
   });
 });
 
-describe('fetchCallingCodes', () => {
+describe('fetchPhoneNumbers', () => {
   const respond = (body: unknown) =>
     vi.stubGlobal(
       'fetch',
@@ -408,27 +408,29 @@ describe('fetchCallingCodes', () => {
       })
     );
 
-  it('reads calling_codes from the phone-numbers route', async () => {
-    const codes = { '66': [{ country: 'TH' }] };
-    respond({ calling_codes: codes });
+  it("reads every country's phone rules from the phone-numbers route", async () => {
+    const countries = [
+      { code: 'TH', calling_code: '66', national_prefix: '0' },
+    ];
+    respond(countries);
 
-    await expect(fetchCallingCodes('https://addr.test')).resolves.toEqual(
-      codes
+    await expect(fetchPhoneNumbers('https://addr.test')).resolves.toEqual(
+      countries
     );
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
       'https://addr.test/v1/phone-numbers'
     );
   });
 
-  it('has none from a body without them, or a service that cannot answer', async () => {
-    respond({ '66': [{ country: 'TH' }] });
+  it('has none from a body that is not a list, or a service that cannot answer', async () => {
+    respond({ calling_codes: { '66': [{ country: 'TH' }] } });
     await expect(
-      fetchCallingCodes('https://addr.test')
+      fetchPhoneNumbers('https://addr.test')
     ).resolves.toBeUndefined();
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
     await expect(
-      fetchCallingCodes('https://addr.test')
+      fetchPhoneNumbers('https://addr.test')
     ).resolves.toBeUndefined();
   });
 });
