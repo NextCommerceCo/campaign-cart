@@ -247,11 +247,31 @@ const PHONE_READINGS: Record<string, PhoneNumberResult> = {
   },
 };
 
+/**
+ * The example the service's English `invalid` message shows, by address country; with
+ * none, it shows a number written from abroad.
+ */
+const PHONE_EXAMPLES: Record<string, string> = {
+  AR: '011 15-2345-6789',
+  GB: '07400 123456',
+  TH: '081 234 5678',
+  US: '(201) 555-0123',
+};
+
 /** `POST /v1/validate`'s answer for one field, from {@link PHONE_READINGS}. */
 function readField(name: string, value: string, country = ''): unknown {
   if (name !== 'phone_number') return { valid: null };
   const read = PHONE_READINGS[`${country}|${value.replace(/[^\d+]/g, '')}`];
-  return read ?? { valid: false, error: 'invalid' };
+  const example = PHONE_EXAMPLES[country] ?? '+1 201 555 0123';
+  return (
+    read ?? {
+      valid: false,
+      error: {
+        code: 'invalid',
+        message: `Enter a valid phone number, like ${example}`,
+      },
+    }
+  );
 }
 
 /**
@@ -408,8 +428,11 @@ export async function routeAddressService(
         ])
       );
       return route.fulfill({
-        json: { fields },
-        headers: { 'cache-control': 'private, no-store' },
+        json: { lang: 'en', fields },
+        headers: {
+          'cache-control': 'private, no-store',
+          'content-language': 'en',
+        },
       });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
