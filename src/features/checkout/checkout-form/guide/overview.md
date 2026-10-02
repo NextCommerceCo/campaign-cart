@@ -59,22 +59,21 @@ the two can never drift apart.
   server's call, so `0000000000` reaches it and is answered there.
 - **The order carries E.164.** What the shopper types nationally
   (`(415) 555-2671`) is stored and sent as `+14155552671`, on the shipping
-  address, the billing address and the customer record. Submitting waits, briefly,
-  for the phone library to finish loading so there is a number to convert; if it
-  never arrives the national number is sent for the API to convert, and the SDK
-  logs that it did so. A country whose rule has no calling code (Argentina) is
-  always sent as typed, for the API to convert.
+  address, the billing address and the customer record. The E.164 number is what
+  the address-rules service reads the phone as (`POST /v1/validate`, with
+  libphonenumber), asked when the shopper pauses typing, leaves the field, or a
+  value is written in. Submitting waits up to two seconds for that answer, and a
+  prospect cart up to 800 ms; without it the number is sent as typed, for the API
+  to convert, and nothing is refused for it.
 - **The phone input says which country it reads the number as, and the number in
-  E.164 once it is complete.** `data-next-phone-country` is the address country,
-  unless the number was typed with `+` or dialled abroad, with `00` or the
-  country's own prefix (`011` in the US, `001` in Thailand): then it is the
-  country that calling code belongs to, so `+66 81 234 5678` in a US form shows
-  the Thai flag. A number dialled abroad keeps the digits the shopper typed,
-  since which prefix it was is only known once the code after it is in.
-  `data-next-phone-e164` is present only while the number is complete and valid
-  for that country, and follows every keystroke, so page code never reads part of
-  a number (`phone-input.ts`). `customer_phone` in analytics is the same E.164
-  value, or absent.
+  E.164 once it is read.** `data-next-phone-country` is the address country,
+  unless the service has read the number as another country's: `+66 81 234 5678`
+  in a US form shows the Thai flag. A number dialled with `00` keeps the digits
+  the shopper typed. `data-next-phone-e164` is present only once the service has
+  read the number as a valid one, and is taken off on the next keystroke, so page
+  code never reads part of a number, or a number the box no longer shows
+  (`phone-input.ts`). `customer_phone` in analytics is the same E.164 value, or
+  absent.
 - **A postcode is rewritten into the shape its country writes it in, while the
   shopper is still typing.** Each country's rules arrive with its data from the
   countries service: a format pattern, a validation pattern, and a minimum and

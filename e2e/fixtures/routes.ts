@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
 import type {
-  CountryPhoneRules,
+  PhoneNumberResult,
   PhoneRules,
 } from '../../src/core/country-service/country-service.phone';
 import { RICH_CAMPAIGN } from './campaign';
@@ -120,23 +120,20 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 /**
  * The phone rule each country's file carries on the address-rules service, served at
  * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
- * `src/rules/{us,th,gb,ar}.json`), with `international_prefix` and
- * `national_number_pattern`, the libphonenumber facts the SDK reads E.164 with; Argentina's has no `calling_code` because its mobiles
- * keep a `15` only the order API's conversion removes.
+ * `src/rules/{us,th,gb,ar}.json`): a mask, a loose pattern and an example. Argentina's
+ * has no `calling_code` because its mobiles keep a `15` only libphonenumber's conversion
+ * removes, which the service makes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {
   US: {
     calling_code: '1',
-    international_prefix: '011',
     national_prefix: '1',
     masks: [{ mask: '(###) ###-####' }],
     pattern: '^[0-9]{10,11}$',
     example: '(201) 555-0123',
-    national_number_pattern: '[2-9]\\d{9}|3\\d{6}',
   },
   TH: {
     calling_code: '66',
-    international_prefix: '00[1-9]',
     national_prefix: '0',
     masks: [
       { start: '02', mask: '## ### ####' },
@@ -146,16 +143,13 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     ],
     pattern: '^[0-9]{8,14}$',
     example: '081 234 5678',
-    national_number_pattern: '(?:001800|[2-57]|[689]\\d)\\d{7}|1\\d{7,9}',
   },
   GB: {
     calling_code: '44',
-    international_prefix: '00',
     national_prefix: '0',
     masks: [{ mask: '##### ######' }],
     pattern: '^[0-9]{7,11}$',
     example: '07400 123456',
-    national_number_pattern: '[1-357-9]\\d{9}|[18]\\d{8}|8\\d{6}',
   },
   AR: {
     national_prefix: '0',
@@ -166,13 +160,29 @@ const PHONE_RULES: Record<string, PhoneRules> = {
 };
 
 /**
- * `GET /v1/phone-numbers` for the countries {@link PHONE_RULES} has: each one's rules and
- * code, sorted by code, as the service lists them. A spec needs no more: a `+` number with
- * another code keeps the address country.
+ * What the address-rules service's `POST /v1/validate` answered, from libphonenumber, for
+ * the phone numbers the specs type, keyed by the address country and the digits and `+`
+ * typed. Anything else is read as not valid, as an unassigned number is.
  */
-const PHONE_NUMBERS: CountryPhoneRules[] = Object.entries(PHONE_RULES)
-  .map(([code, rules]) => ({ code, ...rules }))
-  .sort((a, b) => a.code.localeCompare(b.code));
+const PHONE_READINGS: Record<string, PhoneNumberResult> = {
+  'US|4155552671': { valid: true, value: '+14155552671', country: 'US' },
+  'US|14155552671': { valid: true, value: '+14155552671', country: 'US' },
+  'US|+66812345678': { valid: true, value: '+66812345678', country: 'TH' },
+  'US|+447400123456': { valid: true, value: '+447400123456', country: 'GB' },
+  'TH|0812345678': { valid: true, value: '+66812345678', country: 'TH' },
+  'TH|020176091': { valid: true, value: '+6620176091', country: 'TH' },
+  'TH|00166812345678': { valid: true, value: '+66812345678', country: 'TH' },
+  'TH|0066812345678': { valid: true, value: '+66812345678', country: 'TH' },
+  'TH|66812345678': { valid: true, value: '+66812345678', country: 'TH' },
+  'AR|0111523456789': { valid: true, value: '+5491123456789', country: 'AR' },
+};
+
+/** `POST /v1/validate`'s answer for one field, from {@link PHONE_READINGS}. */
+function readField(name: string, value: string, country = ''): unknown {
+  if (name !== 'phone_number') return { valid: null };
+  const read = PHONE_READINGS[`${country}|${value.replace(/[^\d+]/g, '')}`];
+  return read ?? { valid: false, error: 'invalid' };
+}
 
 /**
  * The countries `/v1/countries` lists, in its order (by English name), each with the one
@@ -277,7 +287,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
- * | `/v1/phone-numbers` | {@link PHONE_NUMBERS} |
+ * | `POST /v1/validate` | each field read from {@link PHONE_READINGS} |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -316,8 +326,21 @@ export async function routeAddressService(
     if (pathname === '/v1/countries') {
       return route.fulfill({ json: answers.countries });
     }
-    if (pathname === '/v1/phone-numbers') {
-      return route.fulfill({ json: PHONE_NUMBERS });
+    if (pathname === '/v1/validate' && route.request().method() === 'POST') {
+      const body = (route.request().postDataJSON() ?? {}) as {
+        country?: string;
+        fields?: Record<string, string>;
+      };
+      const fields = Object.fromEntries(
+        Object.entries(body.fields ?? {}).map(([name, value]) => [
+          name,
+          readField(name, value, body.country),
+        ])
+      );
+      return route.fulfill({
+        json: { fields },
+        headers: { 'cache-control': 'private, no-store' },
+      });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
     if (country) {

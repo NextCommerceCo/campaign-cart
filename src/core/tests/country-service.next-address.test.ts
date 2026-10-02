@@ -10,7 +10,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import {
-  fetchPhoneNumbers,
+  fetchPhoneNumber,
   fetchCountryStates,
   fetchLocationData,
   flagUrl,
@@ -396,41 +396,59 @@ describe('fetchCountryStates', () => {
   });
 });
 
-describe('fetchPhoneNumbers', () => {
-  const respond = (body: unknown) =>
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: async () => body,
-      })
-    );
+describe('fetchPhoneNumber', () => {
+  const respond = (body: unknown, ok = true) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok,
+      status: ok ? 200 : 500,
+      statusText: ok ? 'OK' : 'Error',
+      json: async () => body,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
 
-  it("reads every country's phone rules from the phone-numbers route", async () => {
-    const countries = [
-      { code: 'TH', calling_code: '66', national_prefix: '0' },
-    ];
-    respond(countries);
+  it('posts the number in the body, never the URL, and reads the answer', async () => {
+    const fetchMock = respond({
+      fields: {
+        phone_number: { valid: true, value: '+447400123456', country: 'GB' },
+      },
+    });
 
-    await expect(fetchPhoneNumbers('https://addr.test')).resolves.toEqual(
-      countries
-    );
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
-      'https://addr.test/v1/phone-numbers'
-    );
+    await expect(
+      fetchPhoneNumber('011 44 7400 123456', 'US', 'https://addr.test')
+    ).resolves.toEqual({ valid: true, value: '+447400123456', country: 'GB' });
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('https://addr.test/v1/validate');
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      country: 'US',
+      fields: { phone_number: '011 44 7400 123456' },
+    });
   });
 
-  it('has none from a body that is not a list, or a service that cannot answer', async () => {
-    respond({ calling_codes: { '66': [{ country: 'TH' }] } });
+  it('reads a number the service finds not valid as one with no value', async () => {
+    respond({ fields: { phone_number: { valid: false, error: 'invalid' } } });
     await expect(
-      fetchPhoneNumbers('https://addr.test')
+      fetchPhoneNumber('051 234 5678', 'TH', 'https://addr.test')
+    ).resolves.toEqual({ valid: false });
+  });
+
+  it('has nothing from a service that fails, answers another shape, or cannot be reached', async () => {
+    respond({}, false);
+    await expect(
+      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
+    ).resolves.toBeUndefined();
+
+    respond({ fields: { phone_number: { valid: null } } });
+    await expect(
+      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
     ).resolves.toBeUndefined();
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
     await expect(
-      fetchPhoneNumbers('https://addr.test')
+      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
     ).resolves.toBeUndefined();
   });
 });

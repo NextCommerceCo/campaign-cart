@@ -7,10 +7,9 @@ import type {
   CountryRules,
   FixedValues,
 } from '@/core/country-service/country-service.next-address';
-import {
-  callingCodesOf,
-  type CallingCodes,
-  type PhoneRules,
+import type {
+  PhoneNumberResult,
+  PhoneRules,
 } from '@/core/country-service/country-service.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { EventBus } from '@/core/events';
@@ -20,7 +19,7 @@ import type { AddressConfig } from '@/types/global';
 import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
 import {
-  fetchPhoneNumbers,
+  fetchPhoneNumber,
   fetchCountryStates,
   fetchLocationData,
   fetchTexts,
@@ -128,7 +127,11 @@ export class CountryService {
   /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
   private texts = new Map<string, Readonly<Record<string, string>>>();
   private textRequests = new Map<string, Promise<void>>();
-  private callingCodes: Promise<CallingCodes | undefined> | undefined;
+  /** Phone numbers read by the service this page, by country and number. */
+  private phoneNumbers = new Map<
+    string,
+    Promise<PhoneNumberResult | undefined>
+  >();
   private fieldErrors = new Map<
     string,
     Readonly<Record<string, Readonly<Record<string, string>>>>
@@ -215,15 +218,24 @@ export class CountryService {
   }
 
   /**
-   * Every country's phone rules, by calling code, fetched once however many phone fields
-   * ask, and asked for again after a failed fetch.
+   * What the service reads a phone number as, typed for an address in `country`, asked
+   * once per number and country however many fields and checks ask; a failed answer is
+   * asked for again. `undefined` when the service could not answer.
    */
-  public loadCallingCodes(): Promise<CallingCodes | undefined> {
-    this.callingCodes ??= fetchPhoneNumbers().then(countries => {
-      if (!countries) this.callingCodes = undefined;
-      return countries && callingCodesOf(countries);
-    });
-    return this.callingCodes;
+  public readPhoneNumber(
+    number: string,
+    country: string
+  ): Promise<PhoneNumberResult | undefined> {
+    const key = `${country}|${number}`;
+    let read = this.phoneNumbers.get(key);
+    if (!read) {
+      read = fetchPhoneNumber(number, country).then(result => {
+        if (!result) this.phoneNumbers.delete(key);
+        return result;
+      });
+      this.phoneNumbers.set(key, read);
+    }
+    return read;
   }
 
   /**

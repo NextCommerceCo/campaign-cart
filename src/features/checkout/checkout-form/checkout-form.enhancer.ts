@@ -1191,7 +1191,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       phoneInputs: this.phoneInputs,
       detectedCountryCode: this.detectedCountryCode,
       loadPhoneRules: country => this.loadPhoneRules(country),
-      loadCallingCodes: () => this.countryService.loadCallingCodes(),
+      readPhoneNumber: (number, country) =>
+        this.countryService.readPhoneNumber(number, country),
       updateFormData: data => this.updateFormData(data),
       logger: this.logger,
     };

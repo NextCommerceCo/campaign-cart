@@ -13,6 +13,7 @@ import type { PhoneNumberSource } from '../../validation/phone-validation';
 const phoneFields = vi.hoisted(() => new WeakMap<Element, PhoneNumberSource>());
 vi.mock('../../checkout-form/phone-input', () => ({
   phoneFieldFor: (input: Element) => phoneFields.get(input),
+  awaitPhoneRules: () => Promise.resolve(true),
 }));
 
 vi.mock('@/state/cart', () => ({
@@ -529,9 +530,7 @@ describe('ProspectCartEnhancer', () => {
       setFieldValues(container, { phone: '+15551234567', fname: 'Jane', lname: 'Doe' });
 
       enhancer.checkAndCreateCart();
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(createCartMock).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(createCartMock).toHaveBeenCalledTimes(1));
     });
 
     it('blocks cart creation when an optional phone is partially typed (emailEntry trigger)', async () => {
@@ -586,9 +585,7 @@ describe('ProspectCartEnhancer', () => {
       // Now provide phone too
       setFieldValues(container, { phone: '+15551234567' });
       enhancer.checkAndCreateCart();
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(createCartMock).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(createCartMock).toHaveBeenCalledTimes(1));
     });
 
     it('does not create cart twice once hasTriggered is set', async () => {

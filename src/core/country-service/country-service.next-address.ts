@@ -35,7 +35,7 @@ import type {
 } from '@/core/country-service/country-service';
 import { flattenTexts } from '@/core/flatten-texts';
 import type {
-  CountryPhoneRules,
+  PhoneNumberResult,
   PhoneRules,
 } from '@/core/country-service/country-service.phone';
 
@@ -252,17 +252,53 @@ async function fetchMessages(
 }
 
 /**
- * Every country's phone rules (`GET /v1/phone-numbers`), or `undefined` when the service
- * could not answer: a number typed with `+` then keeps the address country's flag.
+ * How long the SDK waits for the service to read a phone number. Long enough for a slow
+ * mobile connection, short enough that a number it never reads is sent as typed rather
+ * than holding anything up.
  */
-export async function fetchPhoneNumbers(
+const VALIDATE_TIMEOUT_MS = 4000;
+
+/**
+ * What the service reads `number` as, typed for an address in `country`
+ * (`POST /v1/validate`), or `undefined` when it could not answer: the number is then sent
+ * as typed, and the order API reads it.
+ *
+ * `fetch()`, never `navigator.sendBeacon`: a beacon is a `ping` request, which EasyPrivacy
+ * blocks for every third-party host. The number is in the body, never the URL.
+ */
+export async function fetchPhoneNumber(
+  number: string,
+  country: string,
   baseUrl: string = NEXT_ADDRESS_BASE_URL
-): Promise<CountryPhoneRules[] | undefined> {
+): Promise<PhoneNumberResult | undefined> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), VALIDATE_TIMEOUT_MS);
   try {
-    const body = await getJson<unknown>(`${baseUrl}/v1/phone-numbers`);
-    return Array.isArray(body) ? (body as CountryPhoneRules[]) : undefined;
+    const response = await fetch(`${baseUrl}/v1/validate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ country, fields: { phone_number: number } }),
+      signal: abort.signal,
+    });
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as {
+      fields?: {
+        phone_number?: { valid?: unknown; value?: unknown; country?: unknown };
+      };
+    };
+    const result = body.fields?.phone_number;
+    if (typeof result?.valid !== 'boolean') return undefined;
+    return {
+      valid: result.valid,
+      ...(typeof result.value === 'string' ? { value: result.value } : {}),
+      ...(typeof result.country === 'string'
+        ? { country: result.country }
+        : {}),
+    };
   } catch {
     return undefined;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
