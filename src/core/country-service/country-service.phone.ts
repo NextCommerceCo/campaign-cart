@@ -41,6 +41,12 @@ export interface PhoneNumberResult {
   value?: string;
   /** The number's own country, which need not be the address country. */
   country?: string;
+  /** What kind of number it is, where `valid`: `mobile`, `fixed_line`, `toll_free`, … */
+  type?: string;
+  /** How its own country writes it at home, where `valid`: `081 234 5678`. */
+  national?: string;
+  /** How it is written from abroad, where `valid`: `+66 81 234 5678`. */
+  international?: string;
 }
 
 /** E.164's bounds, for a number typed with its own `+` code. */

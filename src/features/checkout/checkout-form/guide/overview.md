@@ -69,7 +69,9 @@ the two can never drift apart.
   E.164 once it is read.** `data-next-phone-country` is the address country,
   unless the service has read the number as another country's: `+66 81 234 5678`
   in a US form shows the Thai flag. A number dialled with `00` keeps the digits
-  the shopper typed. `data-next-phone-e164` is present only once the service has
+  the shopper typed while they type; once they leave the field it is shown as
+  the service writes it, at home for the address country (`081 234 5678`) and
+  from abroad otherwise (`+44 7400 123456`). `data-next-phone-e164` is present only once the service has
   read the number as a valid one, and is taken off on the next keystroke, so page
   code never reads part of a number, or a number the box no longer shows
   (`phone-input.ts`). `customer_phone` in analytics is the same E.164 value, or

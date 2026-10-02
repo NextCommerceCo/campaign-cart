@@ -282,18 +282,19 @@ export async function fetchPhoneNumber(
     });
     if (!response.ok) return undefined;
     const body = (await response.json()) as {
-      fields?: {
-        phone_number?: { valid?: unknown; value?: unknown; country?: unknown };
-      };
+      fields?: { phone_number?: Record<string, unknown> };
     };
     const result = body.fields?.phone_number;
     if (typeof result?.valid !== 'boolean') return undefined;
+    const text = (key: keyof PhoneNumberResult) =>
+      typeof result[key] === 'string' ? { [key]: result[key] } : {};
     return {
       valid: result.valid,
-      ...(typeof result.value === 'string' ? { value: result.value } : {}),
-      ...(typeof result.country === 'string'
-        ? { country: result.country }
-        : {}),
+      ...text('value'),
+      ...text('country'),
+      ...text('type'),
+      ...text('national'),
+      ...text('international'),
     };
   } catch {
     return undefined;

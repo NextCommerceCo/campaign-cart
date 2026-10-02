@@ -258,9 +258,11 @@ export class PhoneField implements PhoneNumberSource {
     input.addEventListener('change', () => this.update(), {
       signal: this.listeners.signal,
     });
-    input.addEventListener('blur', () => void this.readNow(), {
-      signal: this.listeners.signal,
-    });
+    input.addEventListener(
+      'blur',
+      () => void this.readNow().then(() => this.showWritten()),
+      { signal: this.listeners.signal }
+    );
     options.countryField?.addEventListener('change', () => this.follow(), {
       signal: this.listeners.signal,
     });
@@ -409,9 +411,28 @@ export class PhoneField implements PhoneNumberSource {
         if (this.listeners.signal.aborted || this.read?.key !== key) return;
         this.read = { key, result };
         this.settle();
+        this.showWritten();
       });
     this.reading = reading;
     return reading;
+  }
+
+  /**
+   * Once the shopper has left the field, the number as the service writes it: at home for
+   * a number from the address country (`081 234 5678`), from abroad otherwise
+   * (`+44 7400 123456`). This is what gives a country with no mask a written number too.
+   * The reading moves with the text, since it is the same number.
+   */
+  private showWritten(): void {
+    if (document.activeElement === this.input) return;
+    const result = this.current();
+    if (!result?.valid) return;
+    const written =
+      result.country === this.country ? result.national : result.international;
+    if (!written || written === this.input.value) return;
+    this.input.value = written;
+    this.read = { key: this.key(), result };
+    this.settle();
   }
 
   /**

@@ -428,6 +428,31 @@ describe('fetchPhoneNumber', () => {
     });
   });
 
+  it('reads what kind of number it is, and how it is written', async () => {
+    respond({
+      fields: {
+        phone_number: {
+          valid: true,
+          value: '+66812345678',
+          country: 'TH',
+          type: 'mobile',
+          national: '081 234 5678',
+          international: '+66 81 234 5678',
+        },
+      },
+    });
+    await expect(
+      fetchPhoneNumber('0812345678', 'TH', 'https://addr.test')
+    ).resolves.toEqual({
+      valid: true,
+      value: '+66812345678',
+      country: 'TH',
+      type: 'mobile',
+      national: '081 234 5678',
+      international: '+66 81 234 5678',
+    });
+  });
+
   it('reads a number the service finds not valid as one with no value', async () => {
     respond({ fields: { phone_number: { valid: false, error: 'invalid' } } });
     await expect(
