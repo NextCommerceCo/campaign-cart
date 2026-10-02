@@ -42,7 +42,7 @@ const GB: PhoneRules = {
 };
 const RULES: Record<string, PhoneRules> = { US, TH, GB };
 
-/** Enough of `GET /v1/calling-codes` for the three countries above. */
+/** Enough of `calling_codes` in `GET /v1/phone-numbers` for the three countries above. */
 const CODES: CallingCodes = {
   '1': [{ country: 'US' }],
   '44': [{ country: 'GB' }],

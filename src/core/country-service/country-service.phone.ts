@@ -41,7 +41,7 @@ export interface PhoneRules {
 }
 
 /**
- * One country of a calling code, as `GET /v1/calling-codes` lists it. Where a code has
+ * One country of a calling code, as `calling_codes` in `GET /v1/phone-numbers` lists it. Where a code has
  * several, each is told apart by the start of the national number or by the pattern of
  * every number it has, tried in order; a number none of them claims is the first one's.
  */

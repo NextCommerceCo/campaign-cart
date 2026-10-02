@@ -252,14 +252,18 @@ async function fetchMessages(
 }
 
 /**
- * Every calling code's countries (`GET /v1/calling-codes`), or `undefined` when the
- * service could not answer: a number typed with `+` then keeps the address country's flag.
+ * Every calling code's countries (`calling_codes` in `GET /v1/phone-numbers`), or
+ * `undefined` when the service could not answer: a number typed with `+` then keeps the
+ * address country's flag.
  */
 export async function fetchCallingCodes(
   baseUrl: string = NEXT_ADDRESS_BASE_URL
 ): Promise<CallingCodes | undefined> {
   try {
-    return await getJson<CallingCodes>(`${baseUrl}/v1/calling-codes`);
+    const body = await getJson<{ calling_codes?: CallingCodes }>(
+      `${baseUrl}/v1/phone-numbers`
+    );
+    return body.calling_codes;
   } catch {
     return undefined;
   }

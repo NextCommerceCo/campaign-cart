@@ -166,8 +166,8 @@ const PHONE_RULES: Record<string, PhoneRules> = {
 };
 
 /**
- * `GET /v1/calling-codes` for the countries {@link PHONE_RULES} has, as the service lists
- * them. A spec needs no more: a `+` number with another code keeps the address country.
+ * `calling_codes` in `GET /v1/phone-numbers` for the countries {@link PHONE_RULES} has,
+ * as the service lists them. A spec needs no more: a `+` number with another code keeps the address country.
  */
 const CALLING_CODES: CallingCodes = {
   '1': [{ country: 'US' }],
@@ -279,7 +279,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
- * | `/v1/calling-codes` | {@link CALLING_CODES} |
+ * | `/v1/phone-numbers` | `calling_codes`: {@link CALLING_CODES} |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -318,8 +318,8 @@ export async function routeAddressService(
     if (pathname === '/v1/countries') {
       return route.fulfill({ json: answers.countries });
     }
-    if (pathname === '/v1/calling-codes') {
-      return route.fulfill({ json: CALLING_CODES });
+    if (pathname === '/v1/phone-numbers') {
+      return route.fulfill({ json: { calling_codes: CALLING_CODES } });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
     if (country) {
