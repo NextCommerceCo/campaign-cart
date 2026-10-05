@@ -467,9 +467,9 @@ The rest of the card has only messages.
 | `payment.card.expiry_year.errors.blank` | No expiry year chosen |
 | `payment.card.expiry_year.errors.invalid` | Not a usable year |
 | `payment.card.name.errors.blank` | No name for the card |
+| `payment.card.errors.network` | The provider could not be reached |
+| `payment.card.errors.session_expired` | The card details timed out |
 | `payment.errors.generic` | A failure no one field caused |
-| `payment.errors.network` | The provider could not be reached |
-| `payment.errors.session_expired` | The card details timed out |
 
 ## Order preview
 

@@ -31,10 +31,10 @@ const ENGLISH = {
   'payment.card.expiry_year.errors.blank': 'Select an expiry year',
   'payment.card.expiry_year.errors.invalid': 'Select a valid expiry year',
   'payment.card.name.errors.blank': 'Enter the name on the card',
-  'payment.errors.network':
+  'payment.card.errors.network':
     "Couldn't load the card form. Refresh the page and try again.",
   'payment.errors.generic': "Your card couldn't be processed. Try again.",
-  'payment.errors.session_expired':
+  'payment.card.errors.session_expired':
     'Your card details timed out. Enter them again.',
   'payment.errors.throttled': 'Wait a moment before trying again.',
 } as const;

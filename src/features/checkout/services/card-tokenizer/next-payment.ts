@@ -200,7 +200,7 @@ export function normalizeNextPaymentError(error: unknown): CardError[] {
         {
           textKey:
             reason !== undefined
-              ? 'payment.errors.session_expired'
+              ? 'payment.card.errors.session_expired'
               : 'payment.errors.generic',
           message,
         },
@@ -370,7 +370,7 @@ export class NextPaymentTokenizer {
       void this.refresh();
       events.onError([
         {
-          textKey: 'payment.errors.session_expired',
+          textKey: 'payment.card.errors.session_expired',
           message: 'Your card details timed out. Enter them again.',
         },
       ]);
@@ -426,7 +426,7 @@ export class NextPaymentTokenizer {
         );
         mounted[1].onError([
           {
-            textKey: 'payment.errors.network',
+            textKey: 'payment.card.errors.network',
             message:
               "Couldn't load the card form. Refresh the page and try again.",
           },

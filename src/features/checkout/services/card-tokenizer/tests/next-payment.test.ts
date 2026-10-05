@@ -309,7 +309,10 @@ describe('NextPaymentTokenizer — the hosted fields between attempts', () => {
     instance.onError({ message: 'CVV expired', reason: 'ttl' });
 
     expect(handlers.onError).toHaveBeenCalledWith([
-      { textKey: 'payment.errors.session_expired', message: 'CVV expired' },
+      {
+        textKey: 'payment.card.errors.session_expired',
+        message: 'CVV expired',
+      },
     ]);
   });
 
@@ -362,7 +365,7 @@ describe('normalizeNextPaymentError', () => {
     [
       'a { message, reason }',
       { message: 'timed out', reason: 'cvv_ttl' },
-      'payment.errors.session_expired',
+      'payment.card.errors.session_expired',
       'timed out',
     ],
     [
@@ -460,7 +463,9 @@ describe('NextPaymentTokenizer — credentials that expire', () => {
 
     expect(instance.submit).not.toHaveBeenCalled();
     expect(handlers.onError).toHaveBeenCalledWith([
-      expect.objectContaining({ textKey: 'payment.errors.session_expired' }),
+      expect.objectContaining({
+        textKey: 'payment.card.errors.session_expired',
+      }),
     ]);
     expect(instance.destroy).toHaveBeenCalled();
     // The old class is gone, or the new script would keep it.
@@ -483,7 +488,9 @@ describe('NextPaymentTokenizer — credentials that expire', () => {
     tokenizer.tokenize(CARD);
 
     expect(handlers.onError).toHaveBeenCalledWith([
-      expect.objectContaining({ textKey: 'payment.errors.session_expired' }),
+      expect.objectContaining({
+        textKey: 'payment.card.errors.session_expired',
+      }),
     ]);
     expect(requested).toHaveLength(1);
   });
@@ -533,7 +540,7 @@ describe('NextPaymentTokenizer — credentials that expire', () => {
 
     await vi.waitFor(() =>
       expect(handlers.onError).toHaveBeenCalledWith([
-        expect.objectContaining({ textKey: 'payment.errors.network' }),
+        expect.objectContaining({ textKey: 'payment.card.errors.network' }),
       ])
     );
   });
