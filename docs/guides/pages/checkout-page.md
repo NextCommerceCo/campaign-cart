@@ -483,10 +483,11 @@ When the orders API declines a payment, the SDK shows a sentence for the decline
 | Source | Description |
 |---|---|
 | `payment.errors.<code>` | The code's sentence, page first |
+| Your `payment.errors.generic` | Your own fallback, when you set one |
 | `payment_details` | The orders API's own wording |
-| `payment.errors.generic` | When there is neither |
+| `payment.errors.generic` | The service's fallback |
 
-The SDK takes the first one it has, in that order. The orders API's wording is shown for a code the service has no sentence for yet, and when the service's texts could not be loaded. It is the payment gateway's English, so a page in another language that wants every decline in its own words sets `payment.errors.generic` and the codes it cares about.
+The SDK takes the first one it has, in that order. Without a fallback of your own, a code the service has no sentence for yet, or a decline while the service's texts could not be loaded, shows the orders API's wording, which is the payment gateway's English. Setting `payment.errors.generic` in `translations` puts your sentence in its place, so the shopper never reads the gateway's wording, including the reason it gives for a card reported lost or stolen. It also replaces the card form's own generic failure, which uses the same key.
 
 Below is an example that rewords the card number decline and the generic one, on a German page.
 

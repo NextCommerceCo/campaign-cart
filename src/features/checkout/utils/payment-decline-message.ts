@@ -8,9 +8,16 @@
  * again.` So the shopper sees, in order:
  *
  * 1. `payment.errors.<code>` in the form's language, the page's `translations` first;
- * 2. `payment_details`, for a code the service has no sentence for yet, or when its texts
+ * 2. the page's own `payment.errors.generic`, where it wrote one;
+ * 3. `payment_details`, for a code the service has no sentence for yet, or when its texts
  *    could not be loaded;
- * 3. `payment.errors.generic`, and its English wording when even that is not loaded.
+ * 4. the service's `payment.errors.generic`, and its English wording when even that is
+ *    not loaded.
+ *
+ * A page that writes its own generic sentence wants its own words, so that sentence goes
+ * ahead of the gateway's English. It also means a code whose reason is not passed on
+ * (`3009`, a decline for fraud) never reaches the shopper as the gateway words it, even
+ * while the service's texts cannot be loaded.
  *
  * The card form, the order manager and express checkout all use this one function, so a
  * decline reads the same however the shopper paid.
@@ -19,6 +26,7 @@
 import {
   addressLang,
   CountryService,
+  pageTranslations,
   translatedText,
 } from '@/core/country-service';
 
@@ -105,8 +113,9 @@ export async function paymentDeclineMessage(
       : undefined;
   return (
     (code && translatedText(`payment.errors.${code}`, lang, texts)) ??
+    pageTranslations(lang)['payment.errors.generic'] ??
     details ??
-    translatedText('payment.errors.generic', lang, texts) ??
+    texts?.['payment.errors.generic'] ??
     GENERIC
   );
 }

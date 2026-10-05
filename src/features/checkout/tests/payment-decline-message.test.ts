@@ -62,6 +62,48 @@ describe('paymentDeclineMessage', () => {
     ).toBe('Card number?');
   });
 
+  it('takes the page’s own generic sentence ahead of the gateway’s words', async () => {
+    useConfigStore.setState({
+      translations: { en: { 'payment.errors.generic': 'Payment failed.' } },
+    });
+    expect(
+      await paymentDeclineMessage(
+        { payment_response_code: '9999', payment_details: 'Something new' },
+        'en',
+        service(TEXTS)
+      )
+    ).toBe('Payment failed.');
+    // And while the service's texts cannot be loaded, so its reason never shows.
+    expect(
+      await paymentDeclineMessage(
+        {
+          payment_response_code: '3009',
+          payment_details: 'Fraudulent Transaction',
+        },
+        'en',
+        service(undefined)
+      )
+    ).toBe('Payment failed.');
+  });
+
+  it('still shows the page’s sentence for a code ahead of its generic one', async () => {
+    useConfigStore.setState({
+      translations: {
+        en: {
+          'payment.errors.generic': 'Payment failed.',
+          'payment.errors.3005': 'Card number?',
+        },
+      },
+    });
+    expect(
+      await paymentDeclineMessage(
+        { payment_response_code: '3005' },
+        'en',
+        service(TEXTS)
+      )
+    ).toBe('Card number?');
+  });
+
   it('shows the gateway’s words for a code the service has no sentence for', async () => {
     expect(
       await paymentDeclineMessage(

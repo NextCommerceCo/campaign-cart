@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { blockLiveNetwork, bootSdk } from './fixtures/routes';
 import {
   CARD_CHECKOUT,
+  addNextConfig,
   addOnePackage,
   stubCardCheckout,
   submitCard,
@@ -18,6 +19,8 @@ import {
  *   `Check your card number and try again.`, never `Invalid Card Number`.
  * - **a code with no sentence falls back to the gateway's words**, so a code the service
  *   does not know yet still says something specific.
+ * - **a page's own generic sentence goes ahead of the gateway's words**, for a page that
+ *   would rather the shopper never read the gateway's English.
  *
  * Why not a unit test: `payment-decline-message.test.ts` proves the order of the lookup.
  * What it cannot prove is the wiring: the order POST's 400 reaching the card form, the
@@ -103,6 +106,32 @@ test('a code with no sentence shows the gateway’s words', async ({ page }) => 
   await submitCard(page);
 
   await expect(page.locator(ERROR)).toContainText(
+    'A reason the service has no sentence for'
+  );
+});
+
+test('a page’s own generic sentence goes ahead of the gateway’s words', async ({
+  page,
+}) => {
+  await stubCardCheckout(page, { texts: TEXTS });
+  await addNextConfig(page, {
+    translations: {
+      en: { 'payment.errors.generic': 'Payment failed. Try another card.' },
+    },
+  });
+  await declineOrders(page, {
+    payment_details: 'A reason the service has no sentence for',
+    payment_response_code: '9999',
+  });
+
+  await bootSdk(page, CARD_CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await expect(page.locator(ERROR)).toContainText(
+    'Payment failed. Try another card.'
+  );
+  await expect(page.locator(ERROR)).not.toContainText(
     'A reason the service has no sentence for'
   );
 });
