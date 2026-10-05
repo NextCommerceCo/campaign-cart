@@ -5,7 +5,7 @@ import {
   declineCode,
   isPaymentDecline,
   paymentDeclineMessage,
-} from '../utils/payment-decline-message';
+} from '../payment-decline-message';
 
 const TEXTS = {
   'payment.errors.3005': 'Check your card number and try again.',

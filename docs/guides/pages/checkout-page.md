@@ -478,7 +478,7 @@ The rest of the card has only messages.
 
 ### Declined payments
 
-When the orders API declines a payment, the SDK shows a sentence for the decline code in the method's `*-error-text` slot, in the form's language: a card declined with code `3005` reads `Check your card number and try again.` The sentences come from the address service, at `payment.errors.<code>`, one for every code the orders API sends (`utils/payment-decline-message.ts › paymentDeclineMessage`).
+When the orders API declines a payment, the SDK shows a sentence for the decline code in the method's `*-error-text` slot, in the form's language: a card declined with code `3005` reads `Check your card number and try again.` The sentences come from the address service, at `payment.errors.<code>`, one for every code the orders API sends (`services/payment-decline-message.ts › paymentDeclineMessage`).
 
 | Source | Description |
 |---|---|

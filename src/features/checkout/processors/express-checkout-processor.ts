@@ -11,7 +11,7 @@ import { paymentMethodLabel } from '@/utils/payment-method';
 import {
   isPaymentDecline,
   paymentDeclineMessage,
-} from '../utils/payment-decline-message';
+} from '../services/payment-decline-message';
 import {
   resolvePaymentErrorTarget,
   showPaymentErrorTarget,

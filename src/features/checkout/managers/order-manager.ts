@@ -10,7 +10,7 @@ import {
   isPaymentDecline,
   PaymentDeclinedError,
   paymentDeclineMessage,
-} from '../utils/payment-decline-message';
+} from '../services/payment-decline-message';
 import {
   rememberCheckoutCoupon,
   rememberCheckoutReturnPaths,
