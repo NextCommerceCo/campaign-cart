@@ -18,5 +18,6 @@ export {
 export type {
   CountryRules,
   FixedValues,
+  PostcodeResult,
   RulesField,
 } from './country-service.next-address';

@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
 import type { Campaign } from '../../src/types/campaign';
 import type { CartSummary, Order } from '../../src/types/api';
 import type {
-  CallingCodes,
+  PhoneNumberResult,
   PhoneRules,
 } from '../../src/core/country-service/country-service.phone';
 import { RICH_CAMPAIGN } from './campaign';
@@ -120,9 +120,9 @@ export const ADDRESS_SERVICE_ROUTE = '**/i18n-rules.*/**';
 /**
  * The phone rule each country's file carries on the address-rules service, served at
  * the top level of its spec as `spec.phone`. Copied from those files (i18n-rules
- * `src/rules/{us,th,gb,ar}.json`), with `national_number_pattern`, the libphonenumber
- * fact the SDK reads E.164 with; Argentina's has no `calling_code` because its mobiles
- * keep a `15` only the order API's conversion removes.
+ * `src/rules/{us,th,gb,ar}.json`): a mask, a loose pattern and an example. Argentina's
+ * has no `calling_code` because its mobiles keep a `15` only libphonenumber's conversion
+ * removes, which the service makes.
  */
 const PHONE_RULES: Record<string, PhoneRules> = {
   US: {
@@ -131,7 +131,6 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     masks: [{ mask: '(###) ###-####' }],
     pattern: '^[0-9]{10,11}$',
     example: '(201) 555-0123',
-    national_number_pattern: '[2-9]\\d{9}|3\\d{6}',
   },
   TH: {
     calling_code: '66',
@@ -144,7 +143,6 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     ],
     pattern: '^[0-9]{8,14}$',
     example: '081 234 5678',
-    national_number_pattern: '(?:001800|[2-57]|[689]\\d)\\d{7}|1\\d{7,9}',
   },
   GB: {
     calling_code: '44',
@@ -152,7 +150,6 @@ const PHONE_RULES: Record<string, PhoneRules> = {
     masks: [{ mask: '##### ######' }],
     pattern: '^[0-9]{7,11}$',
     example: '07400 123456',
-    national_number_pattern: '[1-357-9]\\d{9}|[18]\\d{8}|8\\d{6}',
   },
   AR: {
     national_prefix: '0',
@@ -163,15 +160,148 @@ const PHONE_RULES: Record<string, PhoneRules> = {
 };
 
 /**
- * `GET /v1/calling-codes` for the countries {@link PHONE_RULES} has, as the service lists
- * them. A spec needs no more: a `+` number with another code keeps the address country.
+ * What the address-rules service's `POST /v1/validate` answered, from libphonenumber, for
+ * the phone numbers the specs type, keyed by the address country and the digits and `+`
+ * typed. Anything else is read as not valid, as an unassigned number is.
  */
-const CALLING_CODES: CallingCodes = {
-  '1': [{ country: 'US' }],
-  '44': [{ country: 'GB' }],
-  '54': [{ country: 'AR' }],
-  '66': [{ country: 'TH' }],
+const PHONE_READINGS: Record<string, PhoneNumberResult> = {
+  'US|4155552671': {
+    valid: true,
+    value: '+14155552671',
+    country: 'US',
+    type: 'fixed_line_or_mobile',
+    national: '(415) 555-2671',
+    international: '+1 415 555 2671',
+  },
+  'US|14155552671': {
+    valid: true,
+    value: '+14155552671',
+    country: 'US',
+    type: 'fixed_line_or_mobile',
+    national: '(415) 555-2671',
+    international: '+1 415 555 2671',
+  },
+  'US|+66812345678': {
+    valid: true,
+    value: '+66812345678',
+    country: 'TH',
+    type: 'mobile',
+    national: '081 234 5678',
+    international: '+66 81 234 5678',
+  },
+  'US|+447400123456': {
+    valid: true,
+    value: '+447400123456',
+    country: 'GB',
+    type: 'mobile',
+    national: '07400 123456',
+    international: '+44 7400 123456',
+  },
+  'TH|0812345678': {
+    valid: true,
+    value: '+66812345678',
+    country: 'TH',
+    type: 'mobile',
+    national: '081 234 5678',
+    international: '+66 81 234 5678',
+  },
+  'TH|020176091': {
+    valid: true,
+    value: '+6620176091',
+    country: 'TH',
+    type: 'fixed_line',
+    national: '02 017 6091',
+    international: '+66 2 017 6091',
+  },
+  'TH|00166812345678': {
+    valid: true,
+    value: '+66812345678',
+    country: 'TH',
+    type: 'mobile',
+    national: '081 234 5678',
+    international: '+66 81 234 5678',
+  },
+  'TH|0066812345678': {
+    valid: true,
+    value: '+66812345678',
+    country: 'TH',
+    type: 'mobile',
+    national: '081 234 5678',
+    international: '+66 81 234 5678',
+  },
+  'TH|66812345678': {
+    valid: true,
+    value: '+66812345678',
+    country: 'TH',
+    type: 'mobile',
+    national: '081 234 5678',
+    international: '+66 81 234 5678',
+  },
+  'AR|0111523456789': {
+    valid: true,
+    value: '+5491123456789',
+    country: 'AR',
+    type: 'mobile',
+    national: '011 15-2345-6789',
+    international: '+54 9 11 2345 6789',
+  },
 };
+
+/**
+ * The example the service's English `invalid` message shows, by address country; with
+ * none, it shows a number written from abroad.
+ */
+const PHONE_EXAMPLES: Record<string, string> = {
+  AR: '011 15-2345-6789',
+  GB: '07400 123456',
+  TH: '081 234 5678',
+  US: '(201) 555-0123',
+};
+
+/**
+ * What the service answered for the postcodes the specs type, keyed by the address
+ * country, the state sent and the postcode. Anything else is answered `valid: null`, as
+ * for a country it checks nothing in, so a spec that does not care sees no message.
+ */
+const POSTCODE_READINGS: Record<string, unknown> = {
+  'US|NY|94103': {
+    valid: false,
+    error: {
+      code: 'not_in_state',
+      message: 'Enter a valid ZIP Code for New York',
+    },
+    state: 'CA',
+  },
+  'US|NY|10001': { valid: true, value: '10001', state: 'NY' },
+};
+
+/** `POST /v1/validate`'s answer for one field, from the readings above. */
+function readField(
+  name: string,
+  value: string,
+  country = '',
+  fields: Record<string, string> = {}
+): unknown {
+  if (name === 'postcode') {
+    return (
+      POSTCODE_READINGS[`${country}|${fields.state ?? ''}|${value}`] ?? {
+        valid: null,
+      }
+    );
+  }
+  if (name !== 'phone_number') return { valid: null };
+  const read = PHONE_READINGS[`${country}|${value.replace(/[^\d+]/g, '')}`];
+  const example = PHONE_EXAMPLES[country] ?? '+1 201 555 0123';
+  return (
+    read ?? {
+      valid: false,
+      error: {
+        code: 'invalid',
+        message: `Enter a valid phone number, like ${example}`,
+      },
+    }
+  );
+}
 
 /**
  * The countries `/v1/countries` lists, in its order (by English name), each with the one
@@ -276,7 +406,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
- * | `/v1/calling-codes` | {@link CALLING_CODES} |
+ * | `POST /v1/validate` | each field read from {@link PHONE_READINGS} and `POSTCODE_READINGS` |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -315,8 +445,24 @@ export async function routeAddressService(
     if (pathname === '/v1/countries') {
       return route.fulfill({ json: answers.countries });
     }
-    if (pathname === '/v1/calling-codes') {
-      return route.fulfill({ json: CALLING_CODES });
+    if (pathname === '/v1/validate' && route.request().method() === 'POST') {
+      const body = (route.request().postDataJSON() ?? {}) as {
+        country?: string;
+        fields?: Record<string, string>;
+      };
+      const fields = Object.fromEntries(
+        Object.entries(body.fields ?? {}).map(([name, value]) => [
+          name,
+          readField(name, value, body.country, body.fields),
+        ])
+      );
+      return route.fulfill({
+        json: { lang: 'en', fields },
+        headers: {
+          'cache-control': 'private, no-store',
+          'content-language': 'en',
+        },
+      });
     }
     const country = pathname.match(/^\/v1\/countries\/([^/]+)$/)?.[1];
     if (country) {
@@ -346,6 +492,8 @@ export interface AddressServiceOptions {
   country?: string;
   /** `false` answers as a deployment with no phone data does: no `spec.phone` at all. */
   phoneRules?: boolean;
+  /** `/v1/locales/:lang`'s texts, in every language; none by default. */
+  texts?: Record<string, string>;
 }
 
 /**
@@ -362,7 +510,11 @@ export interface AddressServiceOptions {
  */
 export async function stubCountryService(
   page: Page,
-  { country = 'US', phoneRules: withPhone = true }: AddressServiceOptions = {}
+  {
+    country = 'US',
+    phoneRules: withPhone = true,
+    texts,
+  }: AddressServiceOptions = {}
 ): Promise<void> {
   const rulesFor = (code: string) => {
     const phone = withPhone ? PHONE_RULES[code] : undefined;
@@ -398,6 +550,7 @@ export async function stubCountryService(
 
   await routeAddressService(page, {
     detected: country,
+    ...(texts ? { locale: () => texts } : {}),
     countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
     rules: code => ({
       ...rulesFor(code),

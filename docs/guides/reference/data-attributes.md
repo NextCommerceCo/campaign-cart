@@ -423,14 +423,14 @@ The address fields are built by the [address block](#address-block) under these 
 
 ### Phone number
 
-The phone input keeps the number in the country's national form, `(415) 555-2671`, and the SDK writes two attributes on it for page code to read. The country is the address country, unless the shopper typed the number with `+` or `00`: then it is the country the calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
+The phone input keeps the number in the country's national form, `(415) 555-2671`, and the SDK writes two attributes on it for page code to read. The country is the address country, unless the number is another country's: `+66 81 234 5678` in a US form shows the Thai flag.
 
 | Attribute | Description |
 |---|---|
 | `data-next-phone-country` | The country the number is read as |
-| `data-next-phone-e164` | The number in E.164, once complete |
+| `data-next-phone-e164` | The number in E.164, once read |
 
-`data-next-phone-e164` is on the input only while the number is a complete, valid one for its country, and it follows every keystroke. A number still being typed has none, so a tag that reads it never gets part of a number.
+`data-next-phone-e164` is on the input only once the number has been read as a valid one, a moment after the shopper stops typing or leaves the field, and it is taken off on the next keystroke. A number still being typed has none, so a tag that reads it never gets part of a number.
 
 ### Example
 

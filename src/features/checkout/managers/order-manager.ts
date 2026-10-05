@@ -6,6 +6,12 @@ import { OrderBuilder } from '../builders/order-builder';
 import { useCheckoutStore } from '@/state/checkout';
 import { handleOrderRedirect } from '../utils/redirect-handler';
 import {
+  declineCode,
+  isPaymentDecline,
+  PaymentDeclinedError,
+  paymentDeclineMessage,
+} from '../utils/payment-decline-message';
+import {
   rememberCheckoutCoupon,
   rememberCheckoutReturnPaths,
 } from '@/core/analytics/tracking/purchase-tracking';
@@ -135,29 +141,19 @@ export class OrderManager {
       if (error.status === 400 && error.responseData) {
         const responseData = error.responseData;
         
-        // Check for payment errors
-        if (responseData.payment_details || responseData.payment_response_code) {
-          this.logger.debug('Payment error detected:', {
+        if (isPaymentDecline(responseData)) {
+          this.logger.debug('Payment declined:', {
             payment_details: responseData.payment_details,
             payment_response_code: responseData.payment_response_code
           });
-          
-          // Emit payment error event with details
+          const message = await paymentDeclineMessage(responseData);
+          const code = declineCode(responseData);
           this.emitCallback('payment:error', {
-            message: responseData.payment_details || 'Payment failed',
-            code: responseData.payment_response_code,
+            message,
+            ...(code ? { code } : {}),
             details: responseData
           });
-          
-          // Create a user-friendly error message
-          let errorMessage = 'Payment failed: ';
-          if (responseData.payment_details) {
-            errorMessage += responseData.payment_details;
-          } else {
-            errorMessage += 'Please check your payment information and try again.';
-          }
-          
-          throw new Error(errorMessage);
+          throw new PaymentDeclinedError(message, code);
         }
       }
       

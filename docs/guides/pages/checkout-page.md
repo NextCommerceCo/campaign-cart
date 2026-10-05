@@ -214,6 +214,7 @@ The key is `fields.<field>.errors.<error>`. One key covers the field in every co
 | `invalid` | Wrong format, or not in the list |
 | `invalid_characters` | A name with digits or symbols |
 | `contains_emoji` | A field holding an emoji |
+| `not_in_state` | A postcode its state does not use |
 
 The fields are named as the address service names them.
 
@@ -226,6 +227,8 @@ The fields are named as the address service names them.
 | `country` | The country select |
 
 In a language the address service does not have, a message you do not give is shown in English, as a whole sentence.
+
+`not_in_state` is the one message `translations` does not change. Once a postcode matches its country's format, the SDK asks the address service whether the chosen state uses it, when the shopper leaves the postcode or picks a state, and shows the answer under the postcode as the service writes it, with the state named: `Enter a valid ZIP Code for New York` for `94103`, a San Francisco ZIP Code. The message does not stop the order. A few real addresses sit across a state line from their postcode, so the shopper is asked to look again, and the order goes out with what they typed.
 
 ### Styling
 
@@ -470,6 +473,36 @@ The rest of the card has only messages.
 | `payment.card.errors.network` | The provider could not be reached |
 | `payment.card.errors.session_expired` | The card details timed out |
 | `payment.errors.generic` | A failure no one field caused |
+
+### Declined payments
+
+When the orders API declines a payment, the SDK shows a sentence for the decline code in the method's `*-error-text` slot, in the form's language: a card declined with code `3005` reads `Check your card number and try again.` The sentences come from the address service, at `payment.errors.<code>`, one for every code the orders API sends (`utils/payment-decline-message.ts › paymentDeclineMessage`).
+
+| Source | Description |
+|---|---|
+| `payment.errors.<code>` | The code's sentence, page first |
+| `payment_details` | The orders API's own wording |
+| `payment.errors.generic` | When there is neither |
+
+The SDK takes the first one it has, in that order. The orders API's wording is shown for a code the service has no sentence for yet, and when the service's texts could not be loaded. It is the payment gateway's English, so a page in another language that wants every decline in its own words sets `payment.errors.generic` and the codes it cares about.
+
+Below is an example that rewords the card number decline and the generic one, on a German page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "de-DE",
+    translations: {
+      de: {
+        "payment.errors.3005": "Kartennummer prüfen und erneut versuchen.",
+        "payment.errors.generic": "Zahlung fehlgeschlagen.",
+      },
+    },
+  };
+</script>
+```
+
+The `payment:error` event carries the same sentence as `message`, and the code as `code`.
 
 ## Order preview
 

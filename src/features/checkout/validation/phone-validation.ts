@@ -7,7 +7,8 @@
  *
  * Checked in this order, first answer wins:
  *
- * 1. `isValidNumber()` — the phone field's verdict: `isPlausiblePhone` against its
+ * 1. `isValidNumber()` — the phone field's verdict: the address-rules service's reading
+ *    of the number where it has read one as valid, else `isPlausiblePhone` against its
  *    country's phone rules.
  * 2. Digit count, {@link MIN_PHONE_DIGITS}..{@link MAX_PHONE_DIGITS} — `unknown`, never `valid`.
  *
@@ -24,6 +25,7 @@
  * server-side rejection we can see.
  */
 
+import { asciiDigits } from '@/core/country-service';
 import { checkoutFieldSelector } from '@/utils/checkout-field-names';
 
 /**
@@ -82,9 +84,12 @@ const MIN_PHONE_DIGITS = 4;
 /** E.164's own ceiling. */
 const MAX_PHONE_DIGITS = 15;
 
-/** Digits only, so `(415) 555-2671` and `+1 415-555-2671` compare the same. */
+/**
+ * Digits only, so `(415) 555-2671` and `+1 415-555-2671` compare the same, and Thai or
+ * full-width digits count as digits.
+ */
 function digitsOf(value: string): string {
-  return value.replace(/\D/g, '');
+  return asciiDigits(value).replace(/\D/g, '');
 }
 
 /**
@@ -147,7 +152,7 @@ function readE164(value: string, widget?: PhoneNumberSource): string | null {
   const fromWidget = e164FromWidget(widget);
   if (fromWidget) return fromWidget;
 
-  const compact = value.replace(/[\s\-().]/g, '');
+  const compact = asciiDigits(value).replace(/[\s\-().]/g, '');
   return isE164Shaped(compact) ? compact : null;
 }
 

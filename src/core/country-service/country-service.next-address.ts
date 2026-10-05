@@ -5,8 +5,8 @@
  * built on top of them — the localStorage cache, the campaign/config country filtering,
  * the postcode formatter — is unchanged: this module only fetches and translates.
  *
- * The API is public, `GET`-only and unauthenticated; see `docs/http-api.md` in the
- * next-address repo. Four routes carry everything this SDK asks for:
+ * The API is public and unauthenticated; see `docs/guides/reference/routes.md` in the
+ * i18n-rules repo. Five routes carry everything this SDK asks for:
  *
  * | Route | Answers |
  * |---|---|
@@ -14,6 +14,10 @@
  * | `GET /v1/countries` | the country list |
  * | `GET /v1/countries/:country?include=states` | one country's rules and states |
  * | `GET /v1/locales/:lang` | the message templates, in one language |
+ * | `POST /v1/validate?lang=` | what a typed phone number or postcode is, as the shopper leaves it |
+ *
+ * The last is the one the shopper's typing reaches, so it is a `POST` that is never
+ * cached, and nothing waits on it longer than {@link VALIDATE_TIMEOUT_MS}.
  *
  * Only the first depends on the visitor, so the first three of `LocationData`'s requests
  * go out together and two of them come from the edge cache. `geo` carries the visitor's
@@ -35,7 +39,7 @@ import type {
 } from '@/core/country-service/country-service';
 import { flattenTexts } from '@/core/flatten-texts';
 import type {
-  CallingCodes,
+  PhoneNumberResult,
   PhoneRules,
 } from '@/core/country-service/country-service.phone';
 
@@ -252,17 +256,132 @@ async function fetchMessages(
 }
 
 /**
- * Every calling code's countries (`GET /v1/calling-codes`), or `undefined` when the
- * service could not answer: a number typed with `+` then keeps the address country's flag.
+ * How long the SDK waits for the service to check a field. Long enough for a slow mobile
+ * connection, short enough that a value it never checks goes on as typed rather than
+ * holding anything up.
  */
-export async function fetchCallingCodes(
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
-): Promise<CallingCodes | undefined> {
+const VALIDATE_TIMEOUT_MS = 4000;
+
+/**
+ * What the service says about a postcode (`postcode` in `POST /v1/validate`'s answer):
+ * whether its country uses it, and the state sent beside it does.
+ */
+export interface PostcodeResult {
+  /** `null` where the service checks nothing: a country with no postcode pattern. */
+  valid: boolean | null;
+  /** The postcode as its country writes it, where `valid`. */
+  value?: string;
+  /** Why it does not pass, with the sentence to show, in the language asked for. */
+  error?: { code: string; message: string };
+  /** The state the postcode is in, as the form submits it, where one state's start like it. */
+  state?: string;
+}
+
+/**
+ * The service's answer for each field sent (`POST /v1/validate`), with its messages in
+ * `lang`, or `undefined` when it could not answer. The caller then goes on without it.
+ *
+ * `fetch()`, never `navigator.sendBeacon`: a beacon is a `ping` request, which EasyPrivacy
+ * blocks for every third-party host. The values are in the body, never the URL.
+ */
+async function postValidate(
+  fields: Record<string, string>,
+  country: string,
+  lang: string,
+  baseUrl: string
+): Promise<Record<string, Record<string, unknown>> | undefined> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), VALIDATE_TIMEOUT_MS);
   try {
-    return await getJson<CallingCodes>(`${baseUrl}/v1/calling-codes`);
+    const response = await fetch(
+      `${baseUrl}/v1/validate?lang=${encodeURIComponent(lang)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ country, fields }),
+        signal: abort.signal,
+      }
+    );
+    if (!response.ok) return undefined;
+    const body = (await response.json()) as {
+      fields?: Record<string, Record<string, unknown>>;
+    };
+    return body.fields;
   } catch {
     return undefined;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** The string keys of `result` among `keys`, the rest dropped. */
+function strings<K extends string>(
+  result: Record<string, unknown>,
+  keys: readonly K[]
+): Partial<Record<K, string>> {
+  return Object.fromEntries(
+    keys
+      .filter(key => typeof result[key] === 'string')
+      .map(key => [key, result[key]])
+  ) as Partial<Record<K, string>>;
+}
+
+/** `{ code, message }` when both are strings, else nothing. */
+function errorOf(
+  result: Record<string, unknown>
+): { error: { code: string; message: string } } | object {
+  const error = result.error as Record<string, unknown> | undefined;
+  return typeof error?.code === 'string' && typeof error.message === 'string'
+    ? { error: { code: error.code, message: error.message } }
+    : {};
+}
+
+/**
+ * What the service reads `number` as, typed for an address in `country`, or `undefined`
+ * when it could not answer: the number is then sent as typed, and the order API reads it.
+ */
+export async function fetchPhoneNumber(
+  number: string,
+  country: string,
+  lang: string = DEFAULT_LANG,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<PhoneNumberResult | undefined> {
+  const result = (
+    await postValidate({ phone_number: number }, country, lang, baseUrl)
+  )?.phone_number;
+  if (typeof result?.valid !== 'boolean') return undefined;
+  return {
+    valid: result.valid,
+    ...strings(result, [
+      'value',
+      'country',
+      'type',
+      'national',
+      'international',
+    ]),
+  };
+}
+
+/**
+ * What the service says about `postcode` for an address in `country`, checked against
+ * `state` where one is given, or `undefined` when it could not answer.
+ */
+export async function fetchPostcode(
+  postcode: string,
+  country: string,
+  state: string | undefined,
+  lang: string = DEFAULT_LANG,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<PostcodeResult | undefined> {
+  const fields = { postcode, ...(state ? { state } : {}) };
+  const result = (await postValidate(fields, country, lang, baseUrl))?.postcode;
+  if (typeof result?.valid !== 'boolean' && result?.valid !== null)
+    return undefined;
+  return {
+    valid: result.valid as boolean | null,
+    ...strings(result, ['value', 'state']),
+    ...errorOf(result),
+  };
 }
 
 /**
