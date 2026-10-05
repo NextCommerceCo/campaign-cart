@@ -492,6 +492,8 @@ export interface AddressServiceOptions {
   country?: string;
   /** `false` answers as a deployment with no phone data does: no `spec.phone` at all. */
   phoneRules?: boolean;
+  /** `/v1/locales/:lang`'s texts, in every language; none by default. */
+  texts?: Record<string, string>;
 }
 
 /**
@@ -508,7 +510,11 @@ export interface AddressServiceOptions {
  */
 export async function stubCountryService(
   page: Page,
-  { country = 'US', phoneRules: withPhone = true }: AddressServiceOptions = {}
+  {
+    country = 'US',
+    phoneRules: withPhone = true,
+    texts,
+  }: AddressServiceOptions = {}
 ): Promise<void> {
   const rulesFor = (code: string) => {
     const phone = withPhone ? PHONE_RULES[code] : undefined;
@@ -544,6 +550,7 @@ export async function stubCountryService(
 
   await routeAddressService(page, {
     detected: country,
+    ...(texts ? { locale: () => texts } : {}),
     countries: COUNTRIES.map(({ code, name }) => ({ code, name })),
     rules: code => ({
       ...rulesFor(code),

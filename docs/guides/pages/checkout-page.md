@@ -428,6 +428,36 @@ Express checkout is two containers; the SDK injects the wallet buttons into the 
 </div>
 ```
 
+### Declined payments
+
+When the orders API declines a payment, the SDK shows a sentence for the decline code in the method's `*-error-text` slot, in the form's language: a card declined with code `3005` reads `Check your card number and try again.` The sentences come from the address service, at `payment.errors.<code>`, one for every code the orders API sends (`utils/payment-decline-message.ts › paymentDeclineMessage`).
+
+| Source | Description |
+|---|---|
+| `payment.errors.<code>` | The code's sentence, page first |
+| `payment_details` | The orders API's own wording |
+| `payment.errors.generic` | When there is neither |
+
+The SDK takes the first one it has, in that order. The orders API's wording is shown for a code the service has no sentence for yet, and when the service's texts could not be loaded. It is the payment gateway's English, so a page in another language that wants every decline in its own words sets `payment.errors.generic` and the codes it cares about.
+
+Below is an example that rewords the card number decline and the generic one, on a German page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "de-DE",
+    translations: {
+      de: {
+        "payment.errors.3005": "Kartennummer prüfen und erneut versuchen.",
+        "payment.errors.generic": "Zahlung fehlgeschlagen.",
+      },
+    },
+  };
+</script>
+```
+
+The `payment:error` event carries the same sentence as `message`, and the code as `code`.
+
 ## Order preview
 
 The live summary renders the cart from a `<template>` using `{item.*}` tokens, with per-discount rows below it. Condensed from `_includes/cart-summary01.html`:

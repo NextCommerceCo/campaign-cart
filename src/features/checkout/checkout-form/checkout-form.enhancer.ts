@@ -90,6 +90,12 @@ import {
   type PostalCodeFormatContext,
 } from './postal-code-format';
 import {
+  declineCode,
+  isPaymentDecline,
+  PaymentDeclinedError,
+  paymentDeclineMessage,
+} from '../utils/payment-decline-message';
+import {
   affectsPostcodeState,
   checkPostcodeState,
   type PostcodeStateContext,
@@ -1467,34 +1473,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           throw new Error(responseData.message);
         }
 
-        // Check for payment-specific errors
-        if (
-          responseData.payment_details ||
-          responseData.payment_response_code
-        ) {
-          this.logger.warn('Payment error detected:', {
+        if (isPaymentDecline(responseData)) {
+          this.logger.warn('Payment declined:', {
             payment_details: responseData.payment_details,
             payment_response_code: responseData.payment_response_code,
           });
-
-          // Tracking removed - implement custom analytics in the future if needed
-
-          // Display payment error in the UI
-          this.displayPaymentError(
-            responseData.payment_details ||
-              'Payment failed. Please check your payment information.'
-          );
-
-          // Create a user-friendly error message
-          let errorMessage = 'Payment failed: ';
-          if (responseData.payment_details) {
-            errorMessage += responseData.payment_details;
-          } else {
-            errorMessage +=
-              'Please check your payment information and try again.';
-          }
-
-          throw new Error(errorMessage);
+          const message = await paymentDeclineMessage(responseData);
+          this.displayPaymentError(message);
+          throw new PaymentDeclinedError(message, declineCode(responseData));
         }
 
         // Check for validation errors
@@ -2060,9 +2046,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.error('Failed to process tokenized payment:', error);
       const checkoutStore = useCheckoutStore.getState();
 
-      // Check if error has payment details
-      if (error.message && error.message.includes('Payment failed:')) {
-        // The error message already contains payment details from createOrder
+      // A decline already carries the sentence `createOrder` showed the shopper.
+      if (error instanceof PaymentDeclinedError) {
         checkoutStore.setError('general', error.message);
       } else {
         checkoutStore.setError(
