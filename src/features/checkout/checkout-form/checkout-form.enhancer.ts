@@ -90,6 +90,11 @@ import {
   type PostalCodeFormatContext,
 } from './postal-code-format';
 import {
+  affectsPostcodeState,
+  checkPostcodeState,
+  type PostcodeStateContext,
+} from './postcode-state-check';
+import {
   routeBillingField,
   type BillingFieldRoutingContext,
 } from './billing-field-routing';
@@ -1089,6 +1094,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+  private postcodeState?: PostcodeStateContext;
+
+  /**
+   * What `postcode-state-check.ts` needs from this form: one object for the form's life,
+   * because the module remembers each field's last question against it.
+   */
+  private postcodeStateContext(): PostcodeStateContext {
+    this.postcodeState ??= {
+      readPostcode: (postcode, country, state) =>
+        this.countryService.readPostcode(postcode, country, state),
+      getField: name => this.getFieldByName(name) ?? undefined,
+      passesPattern: (postcode, country) => {
+        const config = this.countryConfigs.get(country);
+        return (
+          !config ||
+          this.countryService.validatePostalCode(postcode, country, config)
+        );
+      },
+      showError: (name, message) => this.validator.showError(name, message),
+      clearError: name => this.validator.clearError(name),
+    };
+    return this.postcodeState;
+  }
+
   /** The two things `field-validation-display.ts` needs from this form. */
   private fieldValidationContext(): FieldValidationContext {
     return {
@@ -2084,6 +2113,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       fieldName,
       target.value
     );
+
+    // After the display, so a postcode its state does not use keeps the message the
+    // blur's tick would otherwise replace.
+    if (
+      (event.type === 'blur' || event.type === 'change') &&
+      affectsPostcodeState(fieldName)
+    ) {
+      void checkPostcodeState(this.postcodeStateContext(), fieldName);
+    }
   }
 
   // ============================================================================

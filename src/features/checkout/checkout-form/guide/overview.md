@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-10-01
+> Last reviewed: 2026-10-05
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -99,6 +99,18 @@ the two can never drift apart.
   rearranged, because a partial value does not satisfy the country's rule yet,
   and it is reshaped once it is complete. And the SDK never submits a postcode
   that its own validation would then refuse.
+- **A postcode its state does not use is pointed out, never refused.** Once the
+  postcode passes its country's pattern and a state is chosen, leaving the
+  postcode or picking a state asks the address service (`POST /v1/validate`,
+  with the address language as `?lang=`) whether the state uses it. A
+  `not_in_state` answer is put under the postcode in the service's words, with
+  the state named, through `showError`, which does not record it as a failure,
+  and it goes when the postcode or state changes to one that matches
+  (`postcode-state-check.ts › checkPostcodeState`). A submit clears every
+  message and checks the postcode by its pattern alone, so the order goes out:
+  some real addresses sit across a state line from their postcode. An answer
+  about a postcode the shopper has since changed is dropped, and no answer shows
+  nothing.
 - Payment methods are declared in markup with short names, written with
   underscores like everywhere else the SDK names one (`credit`, `paypal`,
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them

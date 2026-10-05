@@ -6,6 +6,7 @@
 import type {
   CountryRules,
   FixedValues,
+  PostcodeResult,
 } from '@/core/country-service/country-service.next-address';
 import type {
   PhoneNumberResult,
@@ -20,6 +21,7 @@ import * as postalCodeMethods from '@/core/country-service/country-service.posta
 import * as filteringMethods from '@/core/country-service/country-service.filtering';
 import {
   fetchPhoneNumber,
+  fetchPostcode,
   fetchCountryStates,
   fetchLocationData,
   fetchTexts,
@@ -119,6 +121,26 @@ export function addressLang(pageLang?: string): string {
   );
 }
 
+/**
+ * `ask()`'s answer under `key`, asked once however many callers want it; an answer of
+ * `undefined` (the service could not say) is forgotten, so the next caller asks again.
+ */
+function askOnce<T>(
+  answers: Map<string, Promise<T | undefined>>,
+  key: string,
+  ask: () => Promise<T | undefined>
+): Promise<T | undefined> {
+  let answer = answers.get(key);
+  if (!answer) {
+    answer = ask().then(result => {
+      if (!result) answers.delete(key);
+      return result;
+    });
+    answers.set(key, answer);
+  }
+  return answer;
+}
+
 export class CountryService {
   private static instance: CountryService;
   private cachePrefix = 'next_country_';
@@ -127,11 +149,13 @@ export class CountryService {
   /** The service's texts by language, for `data-next-i18n`; see {@link getTexts}. */
   private texts = new Map<string, Readonly<Record<string, string>>>();
   private textRequests = new Map<string, Promise<void>>();
-  /** Phone numbers read by the service this page, by country and number. */
+  /** Phone numbers read by the service this page, by language, country and number. */
   private phoneNumbers = new Map<
     string,
     Promise<PhoneNumberResult | undefined>
   >();
+  /** Postcodes checked by the service this page, by language, country, state and postcode. */
+  private postcodes = new Map<string, Promise<PostcodeResult | undefined>>();
   private fieldErrors = new Map<
     string,
     Readonly<Record<string, Readonly<Record<string, string>>>>
@@ -226,16 +250,29 @@ export class CountryService {
     number: string,
     country: string
   ): Promise<PhoneNumberResult | undefined> {
-    const key = `${country}|${number}`;
-    let read = this.phoneNumbers.get(key);
-    if (!read) {
-      read = fetchPhoneNumber(number, country).then(result => {
-        if (!result) this.phoneNumbers.delete(key);
-        return result;
-      });
-      this.phoneNumbers.set(key, read);
-    }
-    return read;
+    const lang = addressLang();
+    return askOnce(this.phoneNumbers, `${lang}|${country}|${number}`, () =>
+      fetchPhoneNumber(number, country, lang)
+    );
+  }
+
+  /**
+   * What the service says about a postcode for an address in `country`, checked against
+   * `state` where one is given, with its message in the address language. Asked once per
+   * postcode, country and state; a failed answer is asked for again. `undefined` when the
+   * service could not answer.
+   */
+  public readPostcode(
+    postcode: string,
+    country: string,
+    state?: string
+  ): Promise<PostcodeResult | undefined> {
+    const lang = addressLang();
+    return askOnce(
+      this.postcodes,
+      `${lang}|${country}|${state ?? ''}|${postcode}`,
+      () => fetchPostcode(postcode, country, state, lang)
+    );
   }
 
   /**

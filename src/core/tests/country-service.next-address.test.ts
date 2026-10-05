@@ -11,6 +11,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import {
   fetchPhoneNumber,
+  fetchPostcode,
   fetchCountryStates,
   fetchLocationData,
   flagUrl,
@@ -416,11 +417,11 @@ describe('fetchPhoneNumber', () => {
     });
 
     await expect(
-      fetchPhoneNumber('011 44 7400 123456', 'US', 'https://addr.test')
+      fetchPhoneNumber('011 44 7400 123456', 'US', 'th', 'https://addr.test')
     ).resolves.toEqual({ valid: true, value: '+447400123456', country: 'GB' });
 
     const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(url).toBe('https://addr.test/v1/validate');
+    expect(url).toBe('https://addr.test/v1/validate?lang=th');
     expect(init).toMatchObject({ method: 'POST' });
     expect(JSON.parse(String(init?.body))).toEqual({
       country: 'US',
@@ -442,7 +443,7 @@ describe('fetchPhoneNumber', () => {
       },
     });
     await expect(
-      fetchPhoneNumber('0812345678', 'TH', 'https://addr.test')
+      fetchPhoneNumber('0812345678', 'TH', 'en', 'https://addr.test')
     ).resolves.toEqual({
       valid: true,
       value: '+66812345678',
@@ -454,26 +455,125 @@ describe('fetchPhoneNumber', () => {
   });
 
   it('reads a number the service finds not valid as one with no value', async () => {
-    respond({ fields: { phone_number: { valid: false, error: 'invalid' } } });
+    respond({
+      fields: {
+        phone_number: {
+          valid: false,
+          error: {
+            code: 'invalid',
+            message: 'Enter a valid phone number, like 081 234 5678',
+          },
+        },
+      },
+    });
     await expect(
-      fetchPhoneNumber('051 234 5678', 'TH', 'https://addr.test')
+      fetchPhoneNumber('051 234 5678', 'TH', 'en', 'https://addr.test')
     ).resolves.toEqual({ valid: false });
   });
 
   it('has nothing from a service that fails, answers another shape, or cannot be reached', async () => {
     respond({}, false);
     await expect(
-      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
+      fetchPhoneNumber('081 234 5678', 'TH', 'en', 'https://addr.test')
     ).resolves.toBeUndefined();
 
     respond({ fields: { phone_number: { valid: null } } });
     await expect(
-      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
+      fetchPhoneNumber('081 234 5678', 'TH', 'en', 'https://addr.test')
     ).resolves.toBeUndefined();
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
     await expect(
-      fetchPhoneNumber('081 234 5678', 'TH', 'https://addr.test')
+      fetchPhoneNumber('081 234 5678', 'TH', 'en', 'https://addr.test')
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('fetchPostcode', () => {
+  const respond = (body: unknown, ok = true) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok,
+      status: ok ? 200 : 500,
+      json: async () => body,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  it('posts the postcode and the state in the body, in the language asked for', async () => {
+    const fetchMock = respond({
+      lang: 'en',
+      fields: {
+        postcode: {
+          valid: false,
+          error: {
+            code: 'not_in_state',
+            message: 'Enter a valid ZIP Code for California',
+          },
+          state: 'NY',
+        },
+        state: { valid: null },
+      },
+    });
+
+    await expect(
+      fetchPostcode('10001', 'US', 'CA', 'en', 'https://addr.test')
+    ).resolves.toEqual({
+      valid: false,
+      error: {
+        code: 'not_in_state',
+        message: 'Enter a valid ZIP Code for California',
+      },
+      state: 'NY',
+    });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('https://addr.test/v1/validate?lang=en');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      country: 'US',
+      fields: { postcode: '10001', state: 'CA' },
+    });
+  });
+
+  it('sends no state where none is chosen, and reads a postcode that passes', async () => {
+    const fetchMock = respond({
+      fields: { postcode: { valid: true, value: '94103-1234', state: 'CA' } },
+    });
+    await expect(
+      fetchPostcode('941031234', 'US', undefined, 'en', 'https://addr.test')
+    ).resolves.toEqual({ valid: true, value: '94103-1234', state: 'CA' });
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(JSON.parse(String(init?.body)).fields).toEqual({
+      postcode: '941031234',
+    });
+  });
+
+  it('reads a country the service checks nothing in as valid: null', async () => {
+    respond({ fields: { postcode: { valid: null } } });
+    await expect(
+      fetchPostcode('44600', 'NP', undefined, 'en', 'https://addr.test')
+    ).resolves.toEqual({ valid: null });
+  });
+
+  it('has nothing from a service that fails, answers another shape, or cannot be reached', async () => {
+    respond({}, false);
+    await expect(
+      fetchPostcode('10001', 'US', 'CA', 'en', 'https://addr.test')
+    ).resolves.toBeUndefined();
+
+    // The shape before error became { code, message }: no message to show.
+    respond({ fields: { postcode: { valid: false, error: 'not_in_state' } } });
+    await expect(
+      fetchPostcode('10001', 'US', 'CA', 'en', 'https://addr.test')
+    ).resolves.toEqual({ valid: false });
+
+    respond({ fields: {} });
+    await expect(
+      fetchPostcode('10001', 'US', 'CA', 'en', 'https://addr.test')
+    ).resolves.toBeUndefined();
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+    await expect(
+      fetchPostcode('10001', 'US', 'CA', 'en', 'https://addr.test')
     ).resolves.toBeUndefined();
   });
 });

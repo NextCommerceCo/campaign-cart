@@ -13,6 +13,8 @@
 - **The debug locale picker offers every language the address service has**, adding Danish, Finnish, Norwegian and Thai.
 - **The phone input carries the full number again, as `data-next-phone-e164`.** Page code and marketing tags read `+14155552671` from the input once the number is complete and valid, and the attribute is absent while it is still being typed, so a tag never gets part of a number. `data-next-phone-country` names the country the number is read as. This replaces `input.iti.getNumber()`, which went with `intl-tel-input`. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108)) See [Phone number](docs/guides/reference/data-attributes.md#phone-number).
 
+- **A postcode its state does not use is pointed out under the field.** Once the postcode matches its country's format, leaving it or picking a state asks `i18n-rules.nextcommerce.com` whether that state uses it, and `Enter a valid ZIP Code for New York` appears under `94103`, in the form's language. The order is not blocked: some real addresses sit across a state line from their postcode. See [Validation messages](docs/guides/pages/checkout-page.md#validation-messages). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+
 ### Changed
 
 - **Country lists, address and phone rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service, and are asked for in the page's language. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.

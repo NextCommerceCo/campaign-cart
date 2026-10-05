@@ -124,14 +124,15 @@ export async function submitCard(
   {
     country = 'US',
     province = 'NY',
-  }: { country?: string; province?: string } = {}
+    postcode = '10001',
+  }: { country?: string; province?: string; postcode?: string } = {}
 ): Promise<void> {
   await page.fill('[data-next-checkout-field="email"]', 'ada@example.test');
   await page.fill('[data-next-checkout-field="fname"]', 'Ada');
   await page.fill('[data-next-checkout-field="lname"]', 'Lovelace');
   await page.fill('[data-next-checkout-field="address1"]', '1 Test Street');
   await page.fill('[data-next-checkout-field="city"]', 'New York');
-  await page.fill('[data-next-checkout-field="postal"]', '10001');
+  await page.fill('[data-next-checkout-field="postal"]', postcode);
   await page.fill('[data-next-checkout-field="phone"]', phone);
   // Blur, because the inline verdict is committed on leaving the field.
   await page.locator('[data-next-checkout-field="phone"]').blur();

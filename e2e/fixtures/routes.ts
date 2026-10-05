@@ -258,8 +258,37 @@ const PHONE_EXAMPLES: Record<string, string> = {
   US: '(201) 555-0123',
 };
 
-/** `POST /v1/validate`'s answer for one field, from {@link PHONE_READINGS}. */
-function readField(name: string, value: string, country = ''): unknown {
+/**
+ * What the service answered for the postcodes the specs type, keyed by the address
+ * country, the state sent and the postcode. Anything else is answered `valid: null`, as
+ * for a country it checks nothing in, so a spec that does not care sees no message.
+ */
+const POSTCODE_READINGS: Record<string, unknown> = {
+  'US|NY|94103': {
+    valid: false,
+    error: {
+      code: 'not_in_state',
+      message: 'Enter a valid ZIP Code for New York',
+    },
+    state: 'CA',
+  },
+  'US|NY|10001': { valid: true, value: '10001', state: 'NY' },
+};
+
+/** `POST /v1/validate`'s answer for one field, from the readings above. */
+function readField(
+  name: string,
+  value: string,
+  country = '',
+  fields: Record<string, string> = {}
+): unknown {
+  if (name === 'postcode') {
+    return (
+      POSTCODE_READINGS[`${country}|${fields.state ?? ''}|${value}`] ?? {
+        valid: null,
+      }
+    );
+  }
   if (name !== 'phone_number') return { valid: null };
   const read = PHONE_READINGS[`${country}|${value.replace(/[^\d+]/g, '')}`];
   const example = PHONE_EXAMPLES[country] ?? '+1 201 555 0123';
@@ -377,7 +406,7 @@ export interface AddressServiceAnswers {
  * | `/v1/countries/:country?include=states` | `rules(country)` |
  * | `/v1/locales/:lang` | `locale(lang)`, or `{}` |
  * | `/v1/flags/:code.svg` | a flag for a listed country, or a `404` |
- * | `POST /v1/validate` | each field read from {@link PHONE_READINGS} |
+ * | `POST /v1/validate` | each field read from {@link PHONE_READINGS} and `POSTCODE_READINGS` |
  *
  * `states` reaches the page only when the request asked for it, as the service does it.
  * Anything else is a `404`, so a route the SDK should not be calling fails loudly.
@@ -424,7 +453,7 @@ export async function routeAddressService(
       const fields = Object.fromEntries(
         Object.entries(body.fields ?? {}).map(([name, value]) => [
           name,
-          readField(name, value, body.country),
+          readField(name, value, body.country, body.fields),
         ])
       );
       return route.fulfill({

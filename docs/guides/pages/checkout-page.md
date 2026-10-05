@@ -214,6 +214,7 @@ The key is `fields.<field>.errors.<error>`. One key covers the field in every co
 | `invalid` | Wrong format, or not in the list |
 | `invalid_characters` | A name with digits or symbols |
 | `contains_emoji` | A field holding an emoji |
+| `not_in_state` | A postcode its state does not use |
 
 The fields are named as the address service names them.
 
@@ -226,6 +227,8 @@ The fields are named as the address service names them.
 | `country` | The country select |
 
 In a language the address service does not have, a message you do not give is shown in English, as a whole sentence.
+
+`not_in_state` is the one message `translations` does not change. Once a postcode matches its country's format, the SDK asks the address service whether the chosen state uses it, when the shopper leaves the postcode or picks a state, and shows the answer under the postcode as the service writes it, with the state named: `Enter a valid ZIP Code for New York` for `94103`, a San Francisco ZIP Code. The message does not stop the order. A few real addresses sit across a state line from their postcode, so the shopper is asked to look again, and the order goes out with what they typed.
 
 ### Styling
 

@@ -252,55 +252,132 @@ async function fetchMessages(
 }
 
 /**
- * How long the SDK waits for the service to read a phone number. Long enough for a slow
- * mobile connection, short enough that a number it never reads is sent as typed rather
- * than holding anything up.
+ * How long the SDK waits for the service to check a field. Long enough for a slow mobile
+ * connection, short enough that a value it never checks goes on as typed rather than
+ * holding anything up.
  */
 const VALIDATE_TIMEOUT_MS = 4000;
 
 /**
- * What the service reads `number` as, typed for an address in `country`
- * (`POST /v1/validate`), or `undefined` when it could not answer: the number is then sent
- * as typed, and the order API reads it.
+ * What the service says about a postcode (`postcode` in `POST /v1/validate`'s answer):
+ * whether its country uses it, and the state sent beside it does.
+ */
+export interface PostcodeResult {
+  /** `null` where the service checks nothing: a country with no postcode pattern. */
+  valid: boolean | null;
+  /** The postcode as its country writes it, where `valid`. */
+  value?: string;
+  /** Why it does not pass, with the sentence to show, in the language asked for. */
+  error?: { code: string; message: string };
+  /** The state the postcode is in, as the form submits it, where one state's start like it. */
+  state?: string;
+}
+
+/**
+ * The service's answer for each field sent (`POST /v1/validate`), with its messages in
+ * `lang`, or `undefined` when it could not answer. The caller then goes on without it.
  *
  * `fetch()`, never `navigator.sendBeacon`: a beacon is a `ping` request, which EasyPrivacy
- * blocks for every third-party host. The number is in the body, never the URL.
+ * blocks for every third-party host. The values are in the body, never the URL.
  */
-export async function fetchPhoneNumber(
-  number: string,
+async function postValidate(
+  fields: Record<string, string>,
   country: string,
-  baseUrl: string = NEXT_ADDRESS_BASE_URL
-): Promise<PhoneNumberResult | undefined> {
+  lang: string,
+  baseUrl: string
+): Promise<Record<string, Record<string, unknown>> | undefined> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), VALIDATE_TIMEOUT_MS);
   try {
-    const response = await fetch(`${baseUrl}/v1/validate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ country, fields: { phone_number: number } }),
-      signal: abort.signal,
-    });
+    const response = await fetch(
+      `${baseUrl}/v1/validate?lang=${encodeURIComponent(lang)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ country, fields }),
+        signal: abort.signal,
+      }
+    );
     if (!response.ok) return undefined;
     const body = (await response.json()) as {
-      fields?: { phone_number?: Record<string, unknown> };
+      fields?: Record<string, Record<string, unknown>>;
     };
-    const result = body.fields?.phone_number;
-    if (typeof result?.valid !== 'boolean') return undefined;
-    const text = (key: keyof PhoneNumberResult) =>
-      typeof result[key] === 'string' ? { [key]: result[key] } : {};
-    return {
-      valid: result.valid,
-      ...text('value'),
-      ...text('country'),
-      ...text('type'),
-      ...text('national'),
-      ...text('international'),
-    };
+    return body.fields;
   } catch {
     return undefined;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The string keys of `result` among `keys`, the rest dropped. */
+function strings<K extends string>(
+  result: Record<string, unknown>,
+  keys: readonly K[]
+): Partial<Record<K, string>> {
+  return Object.fromEntries(
+    keys
+      .filter(key => typeof result[key] === 'string')
+      .map(key => [key, result[key]])
+  ) as Partial<Record<K, string>>;
+}
+
+/** `{ code, message }` when both are strings, else nothing. */
+function errorOf(
+  result: Record<string, unknown>
+): { error: { code: string; message: string } } | object {
+  const error = result.error as Record<string, unknown> | undefined;
+  return typeof error?.code === 'string' && typeof error.message === 'string'
+    ? { error: { code: error.code, message: error.message } }
+    : {};
+}
+
+/**
+ * What the service reads `number` as, typed for an address in `country`, or `undefined`
+ * when it could not answer: the number is then sent as typed, and the order API reads it.
+ */
+export async function fetchPhoneNumber(
+  number: string,
+  country: string,
+  lang: string = DEFAULT_LANG,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<PhoneNumberResult | undefined> {
+  const result = (
+    await postValidate({ phone_number: number }, country, lang, baseUrl)
+  )?.phone_number;
+  if (typeof result?.valid !== 'boolean') return undefined;
+  return {
+    valid: result.valid,
+    ...strings(result, [
+      'value',
+      'country',
+      'type',
+      'national',
+      'international',
+    ]),
+  };
+}
+
+/**
+ * What the service says about `postcode` for an address in `country`, checked against
+ * `state` where one is given, or `undefined` when it could not answer.
+ */
+export async function fetchPostcode(
+  postcode: string,
+  country: string,
+  state: string | undefined,
+  lang: string = DEFAULT_LANG,
+  baseUrl: string = NEXT_ADDRESS_BASE_URL
+): Promise<PostcodeResult | undefined> {
+  const fields = { postcode, ...(state ? { state } : {}) };
+  const result = (await postValidate(fields, country, lang, baseUrl))?.postcode;
+  if (typeof result?.valid !== 'boolean' && result?.valid !== null)
+    return undefined;
+  return {
+    valid: result.valid as boolean | null,
+    ...strings(result, ['value', 'state']),
+    ...errorOf(result),
+  };
 }
 
 /**
