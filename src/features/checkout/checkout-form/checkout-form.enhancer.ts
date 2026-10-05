@@ -44,6 +44,7 @@ import {
 import {
   awaitPhoneRules,
   initializePhoneInputs,
+  showPhoneVerdict,
   type PhoneField,
   type PhoneInputContext,
 } from './phone-input';
@@ -2106,6 +2107,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       affectsPostcodeState(fieldName)
     ) {
       void checkPostcodeState(this.postcodeStateContext(), fieldName);
+    }
+
+    if (
+      (event.type === 'blur' || event.type === 'change') &&
+      (fieldName === 'phone' || fieldName === 'billing-phone') &&
+      target instanceof HTMLInputElement
+    ) {
+      void showPhoneVerdict(
+        {
+          showError: (name, message) => this.validator.showError(name, message),
+          clearError: name => this.validator.clearError(name),
+        },
+        fieldName,
+        target
+      );
     }
   }
 

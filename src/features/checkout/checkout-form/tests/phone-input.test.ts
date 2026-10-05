@@ -8,6 +8,7 @@ import {
   awaitPhoneRules,
   initializePhoneInputs,
   phoneFieldFor,
+  showPhoneVerdict,
   type PhoneField,
   type PhoneInputContext,
 } from '../phone-input';
@@ -569,6 +570,81 @@ describe('the phone field, and the country', () => {
 
     expect(field.getNumber()).toBe('');
     expect(field.isValidNumber()).toBe(true);
+  });
+
+  it('shows the service’s sentence under a number it reads as not valid, once the shopper leaves', async () => {
+    const message = 'Enter a valid phone number, like +66 81 234 5678';
+    const input = phoneInput();
+    await shippingField(input, {
+      readPhoneNumber: () =>
+        Promise.resolve({ valid: false, error: { code: 'invalid', message } }),
+    });
+    const verdict = { showError: vi.fn(), clearError: vi.fn() };
+
+    type(input, '+6683873196');
+    input.blur();
+    await showPhoneVerdict(verdict, 'phone', input);
+
+    expect(verdict.showError).toHaveBeenCalledWith('phone', message);
+  });
+
+  it('takes the sentence away once the number is read as valid, and clears nothing it did not show', async () => {
+    let answer: PhoneNumberResult = {
+      valid: false,
+      error: { code: 'invalid', message: 'Enter a valid phone number' },
+    };
+    const input = phoneInput();
+    await shippingField(input, {
+      readPhoneNumber: () => Promise.resolve(answer),
+    });
+    const verdict = { showError: vi.fn(), clearError: vi.fn() };
+
+    type(input, '4155552671');
+    input.blur();
+    await showPhoneVerdict(verdict, 'phone', input);
+    answer = { valid: true, value: '+14155552671', country: 'US' };
+    type(input, '9');
+    input.blur();
+    await showPhoneVerdict(verdict, 'phone', input);
+    await showPhoneVerdict(verdict, 'phone', input);
+
+    expect(verdict.showError).toHaveBeenCalledTimes(1);
+    expect(verdict.clearError).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a number the loose pattern refuses to its own message', async () => {
+    const input = phoneInput();
+    await shippingField(input, {
+      readPhoneNumber: () =>
+        Promise.resolve({
+          valid: false,
+          error: { code: 'invalid', message: 'Enter a valid phone number' },
+        }),
+    });
+    const verdict = { showError: vi.fn(), clearError: vi.fn() };
+
+    type(input, '41555');
+    input.blur();
+    await showPhoneVerdict(verdict, 'phone', input);
+
+    expect(verdict.showError).not.toHaveBeenCalled();
+  });
+
+  it('shows nothing while the shopper is back in the field', async () => {
+    const input = phoneInput();
+    await shippingField(input, {
+      readPhoneNumber: () =>
+        Promise.resolve({
+          valid: false,
+          error: { code: 'invalid', message: 'Enter a valid phone number' },
+        }),
+    });
+    const verdict = { showError: vi.fn(), clearError: vi.fn() };
+
+    type(input, '4155552671');
+    await showPhoneVerdict(verdict, 'phone', input);
+
+    expect(verdict.showError).not.toHaveBeenCalled();
   });
 
   it('goes back to the address country when the + number goes', async () => {

@@ -65,6 +65,13 @@ the two can never drift apart.
   value is written in. Submitting waits up to two seconds for that answer, and a
   prospect cart up to 800 ms; without it the number is sent as typed, for the API
   to convert, and nothing is refused for it.
+- **A number the service reads as not valid is pointed out, never refused.** Once
+  the shopper leaves the field, its `error.message` is put under it through
+  `showError`, which records no failure, so a submit still judges the number by
+  the loose pattern alone (`phone-input.ts › showPhoneVerdict`). A number the
+  pattern already refuses keeps the pattern's message, an answer for a number
+  since changed or arriving while the shopper is back in the field shows
+  nothing, and the message goes once a number is read as valid.
 - **The phone input says which country it reads the number as, and the number in
   E.164 once it is read.** `data-next-phone-country` is the address country,
   unless the service has read the number as another country's: `+66 81 234 5678`

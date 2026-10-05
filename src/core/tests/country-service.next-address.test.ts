@@ -454,7 +454,7 @@ describe('fetchPhoneNumber', () => {
     });
   });
 
-  it('reads a number the service finds not valid as one with no value', async () => {
+  it('reads a number the service finds not valid as one with no value, and its sentence', async () => {
     respond({
       fields: {
         phone_number: {
@@ -468,7 +468,13 @@ describe('fetchPhoneNumber', () => {
     });
     await expect(
       fetchPhoneNumber('051 234 5678', 'TH', 'en', 'https://addr.test')
-    ).resolves.toEqual({ valid: false });
+    ).resolves.toEqual({
+      valid: false,
+      error: {
+        code: 'invalid',
+        message: 'Enter a valid phone number, like 081 234 5678',
+      },
+    });
   });
 
   it('has nothing from a service that fails, answers another shape, or cannot be reached', async () => {

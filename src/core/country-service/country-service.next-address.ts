@@ -359,6 +359,7 @@ export async function fetchPhoneNumber(
       'national',
       'international',
     ]),
+    ...errorOf(result),
   };
 }
 

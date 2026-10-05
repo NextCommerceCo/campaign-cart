@@ -293,6 +293,20 @@ export class PhoneField implements PhoneNumberSource {
   }
 
   /**
+   * The service's sentence for the number in the field, once it has read it as not valid:
+   * `Enter a valid phone number, like +66 81 234 5678`. `undefined` for a number it reads
+   * as valid or could not read, and for one the loose pattern already refuses, whose own
+   * message stands.
+   */
+  async invalidMessage(): Promise<string | undefined> {
+    await this.readNow();
+    const result = this.current();
+    if (result?.valid !== false || this.isValidNumber() === false)
+      return undefined;
+    return result.error?.message;
+  }
+
+  /**
    * Settles once the rules for the address country are in, or known absent, and the
    * service has answered for the number in the field, or given up. Asks it now when it
    * has not been asked, so a submit straight after typing gets an E.164 number.
@@ -580,6 +594,49 @@ function initializePhoneInput(
     );
   } catch (error) {
     ctx.logger.error(`Failed to initialize ${type} phone field:`, error);
+  }
+}
+
+/** What showing the service's verdict on a number needs from the checkout form. */
+export interface PhoneVerdictContext {
+  /** Puts a message under a field without blocking a submit. */
+  showError: (name: string, message: string) => void;
+  /** Takes the message away again. */
+  clearError: (name: string) => void;
+}
+
+/** The phone inputs showing the service's message, so only that one is cleared. */
+const warnedPhones = new WeakSet<HTMLInputElement>();
+
+/**
+ * Once the shopper has left a phone field, shows the service's sentence under it when it
+ * reads the number as not valid, and takes it away once it reads one as valid.
+ *
+ * Shown, never recorded: a submit judges the number by the loose pattern alone, so a range
+ * libphonenumber has not caught up with never stops an order. An answer about a number the
+ * shopper has since changed, or that arrives while they are back in the field, shows
+ * nothing.
+ *
+ * @example
+ * ```ts
+ * void showPhoneVerdict({ showError, clearError }, 'phone', input);
+ * ```
+ */
+export async function showPhoneVerdict(
+  ctx: PhoneVerdictContext,
+  fieldName: string,
+  input: HTMLInputElement
+): Promise<void> {
+  const field = phoneFieldFor(input);
+  if (!field) return;
+  const typed = input.value;
+  const message = await field.invalidMessage();
+  if (message) {
+    if (input.value !== typed || document.activeElement === input) return;
+    warnedPhones.add(input);
+    ctx.showError(fieldName, message);
+  } else if (warnedPhones.delete(input)) {
+    ctx.clearError(fieldName);
   }
 }
 

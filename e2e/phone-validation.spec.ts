@@ -529,6 +529,28 @@ test('an Argentine number goes out in the E.164 the service converts it to', asy
   expect(body.shipping_address.phone_number).toBe('+5491123456789');
 });
 
+test('a number the service reads as not valid is pointed out, and the order still goes out', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  const posts = await recordOrders(page);
+
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+  await page.fill(PHONE, '+6683873196');
+  await page.locator(PHONE).blur();
+
+  // The service's own sentence, with the example of the country the number was typed for.
+  await expect(page.locator('.next-error-label')).toContainText(
+    'Enter a valid phone number, like +66 81 234 5678'
+  );
+
+  // Pointed out, not refused: the loose pattern takes it, so the order is placed.
+  await submitCard(page, '+6683873196');
+  const body = await placedOrder(page, posts);
+  expect(body.shipping_address.phone_number).toBe('+6683873196');
+});
+
 /** The negative control for every "accepted" test above. */
 test('a number too short for its country is shown as wrong and never sent', async ({
   page,

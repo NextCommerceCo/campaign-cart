@@ -197,6 +197,14 @@ const PHONE_READINGS: Record<string, PhoneNumberResult> = {
     national: '07400 123456',
     international: '+44 7400 123456',
   },
+  // One digit short of a Thai mobile, typed on a US address.
+  'US|+6683873196': {
+    valid: false,
+    error: {
+      code: 'invalid',
+      message: 'Enter a valid phone number, like +66 81 234 5678',
+    },
+  },
   'TH|0812345678': {
     valid: true,
     value: '+66812345678',

@@ -47,6 +47,11 @@ export interface PhoneNumberResult {
   national?: string;
   /** How it is written from abroad, where `valid`: `+66 81 234 5678`. */
   international?: string;
+  /**
+   * Why it is not valid, where it is not: a code, and the sentence to show in the language
+   * asked for, `Enter a valid phone number, like +66 81 234 5678`.
+   */
+  error?: { code: string; message: string };
 }
 
 /** E.164's bounds, for a number typed with its own `+` code. */

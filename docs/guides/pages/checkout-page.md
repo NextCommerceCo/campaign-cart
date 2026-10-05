@@ -150,6 +150,8 @@ The phone works the same way: write a `data-next-checkout-field="phone_number"` 
 
 The SDK requires the first name, last name and email. The phone is optional; a page that writes its own phone input can require it with `required` or `data-next-required="true"`. No field accepts an emoji.
 
+Once the shopper leaves the phone field, the address service reads the number. One it reads as not valid gets the service's sentence under the field, in the form's language: `+6683873196` on a US address shows `Enter a valid phone number, like +66 81 234 5678`. The sentence does not stop the order. The SDK refuses a phone number only when it is clearly too short or too long for its country, so a real number the service does not know yet still goes through.
+
 ### Shipping address
 
 The shipping step is an empty `<div data-next-address="shipping"></div>`, which the SDK turns into the fields the selected country collects, in the order that country writes them.
