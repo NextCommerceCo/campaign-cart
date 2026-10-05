@@ -1,4 +1,4 @@
-import { MessageSource } from '../../../core/country-service';
+import { MessageSource } from '../../../core/i18n-rules';
 export type { MessageSource };
 export type MessageKey = 'blank' | 'invalid' | 'invalid_characters' | 'contains_emoji';
 export declare function fieldMessage(source: MessageSource | undefined, key: MessageKey, field: string, { country, example }?: {

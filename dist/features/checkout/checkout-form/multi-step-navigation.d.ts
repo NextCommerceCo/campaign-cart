@@ -1,4 +1,4 @@
-import { CountryConfig } from '../../../core/country-service';
+import { CountryConfig } from '../../../core/i18n-rules';
 import { Logger } from '../../../core/logger';
 import { LoadingOverlay } from '../../../core/ui/loading-overlay';
 import { CheckoutState } from '../../../state/checkout';

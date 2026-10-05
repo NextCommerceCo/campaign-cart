@@ -1,7 +1,7 @@
-import { CountryConfig } from '../../../core/country-service';
+import { CountryConfig } from '../../../core/i18n-rules';
 import { PhoneNumberSource } from './phone-validation';
 export interface BillingAddressValidationContext {
-    countryService: any;
+    i18nRules: any;
     phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
 export declare function validateBillingAddress(ctx: BillingAddressValidationContext, billingAddress: any, countryConfigs: Map<string, CountryConfig>): {

@@ -16,9 +16,9 @@ declare const ENGLISH: {
     readonly 'payment.card.expiry_year.errors.blank': "Select an expiry year";
     readonly 'payment.card.expiry_year.errors.invalid': "Select a valid expiry year";
     readonly 'payment.card.name.errors.blank': "Enter the name on the card";
-    readonly 'payment.errors.network': "Couldn't load the card form. Refresh the page and try again.";
+    readonly 'payment.card.errors.network': "Couldn't load the card form. Refresh the page and try again.";
     readonly 'payment.errors.generic': "Your card couldn't be processed. Try again.";
-    readonly 'payment.errors.session_expired': "Your card details timed out. Enter them again.";
+    readonly 'payment.card.errors.session_expired': "Your card details timed out. Enter them again.";
     readonly 'payment.errors.throttled': "Wait a moment before trying again.";
 };
 export type CardTextKey = keyof typeof ENGLISH;

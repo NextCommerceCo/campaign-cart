@@ -1,6 +1,6 @@
-import { CountryConfig, CountryService } from '../../../core/country-service';
+import { CountryConfig, I18nRules } from '../../../core/i18n-rules';
 export interface PostalCodeFormatContext {
-    countryService: CountryService;
+    i18nRules: I18nRules;
     countryConfigs: Map<string, CountryConfig>;
 }
 export declare function formatPostalCodeInPlace(ctx: PostalCodeFormatContext, target: HTMLInputElement, countryField: HTMLElement | undefined): void;

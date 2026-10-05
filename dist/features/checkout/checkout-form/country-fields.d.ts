@@ -1,4 +1,4 @@
-import { Country, CountryConfig } from '../../../core/country-service';
+import { Country, CountryConfig } from '../../../core/i18n-rules';
 export interface CountryFieldsContext {
     form: HTMLElement;
     fields: Map<string, HTMLElement>;
