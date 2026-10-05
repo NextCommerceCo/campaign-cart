@@ -9,7 +9,7 @@ import { useConfigStore } from '@/state/config';
 
 type Texts = Readonly<Record<string, string>>;
 
-/** What a lookup needs from `CountryService`. */
+/** What a lookup needs from `I18nRules`. */
 export interface MessageSource {
   getFieldErrors?: (country?: string) => Readonly<Record<string, Texts>>;
   getFieldLabelIds?: (country?: string) => Texts;

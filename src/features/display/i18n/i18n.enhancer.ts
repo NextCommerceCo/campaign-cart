@@ -1,5 +1,5 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { addressLang, CountryService, translatedText } from '@/core/i18n-rules';
+import { addressLang, I18nRules, translatedText } from '@/core/i18n-rules';
 import { parseI18n, type I18nTarget } from '@/utils/i18n-spec';
 
 import {
@@ -53,7 +53,7 @@ export class I18nEnhancer extends BaseEnhancer {
 
   public update(): void {
     const lang = addressLang();
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
     const texts = service.getTexts(lang);
     applyTranslations(this.element, this.targets, this.originals, key =>
       translatedText(key, lang, texts)

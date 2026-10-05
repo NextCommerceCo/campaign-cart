@@ -83,7 +83,7 @@ const JP_SPEC = countryRules(
 const LAYOUT_DELAY_MS = 300;
 
 /**
- * One stub for both callers: the checkout form's `CountryService` and this feature read
+ * One stub for both callers: the checkout form's `I18nRules` and this feature read
  * the same service. The block's own request is the one that does not ask for states,
  * and it is the one held back.
  */

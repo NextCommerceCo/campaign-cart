@@ -320,7 +320,7 @@ describe('formatPostalCode with a list in the config', () => {
 // ─── the built-in config, used when the countries service does not answer ────
 
 describe('the built-in GB config formats without the countries service', () => {
-  // What `CountryService.getDefaultCountryConfig` hands back.
+  // What `I18nRules.getDefaultCountryConfig` hands back.
   const gb = getDefaultCountryConfig('GB');
 
   const cases: [string, string][] = [

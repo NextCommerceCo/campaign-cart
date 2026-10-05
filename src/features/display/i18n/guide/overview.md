@@ -35,7 +35,7 @@ nextConfig.translations[lang][key]  ??  service texts in lang  ??  what the HTML
   `window.nextConfig.locale`, then English.
 - A key is looked up in the page's `translations` for the language (`th-TH`, then `th`),
   then in the address-rules service's texts in that language
-  (`CountryService.getTexts`). A text from another language is never used: a page with
+  (`I18nRules.getTexts`). A text from another language is never used: a page with
   no translation keeps what its HTML says.
 - What each target held before it was translated is read once, at initialisation, and
   written back when a later language has no translation.
@@ -44,7 +44,7 @@ nextConfig.translations[lang][key]  ??  service texts in lang  ??  what the HTML
   markup.
 - An element with child elements keeps them: its text is not replaced, with a warning.
 - The texts for a language chosen after boot are fetched on first use
-  (`CountryService.loadTexts`, one request per language), and every translated element
+  (`I18nRules.loadTexts`, one request per language), and every translated element
   repaints on `address:messages-loaded`.
 
 ## Decisions

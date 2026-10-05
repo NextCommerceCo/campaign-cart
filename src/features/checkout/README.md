@@ -289,7 +289,7 @@ The main enhancer that coordinates the entire checkout flow.
 2. **Validation** — delegates to `CheckoutValidator` on submit and field blur
 3. **Credit card tokenization** — delegates to `CreditCardService`
 4. **Order creation** — delegates to `OrderManager` / `OrderBuilder` → `ApiClient`
-5. **Country/state** — uses `CountryService` to populate state dropdowns
+5. **Country/state** — uses `I18nRules` to populate state dropdowns
 6. **Phone input** — formats and checks the phone fields from each country's phone rules
 7. **Billing address** — toggle for separate billing address (`[data-next-component="different-billing-address"]`)
 8. **Prospect save** — email capture via `ProspectCartEnhancer` before full order

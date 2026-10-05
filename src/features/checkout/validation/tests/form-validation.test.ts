@@ -24,7 +24,7 @@ function createContext(
   overrides: Partial<FormValidationContext> = {}
 ): FormValidationContext {
   return {
-    countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
+    i18nRules: { validatePostalCode: vi.fn().mockReturnValue(true) },
     ...overrides,
   };
 }
@@ -144,7 +144,7 @@ describe('validateForm', () => {
 
     const result = await validateForm(
       createContext({
-        countryService: {
+        i18nRules: {
           validatePostalCode: vi.fn().mockReturnValue(true),
           getFieldErrors: (country?: string) =>
             country === 'GB'
@@ -162,7 +162,7 @@ describe('validateForm', () => {
 
   it('checks the postal code against the country and quotes an example', async () => {
     const ctx = createContext({
-      countryService: { validatePostalCode: vi.fn().mockReturnValue(false) },
+      i18nRules: { validatePostalCode: vi.fn().mockReturnValue(false) },
     });
 
     const result = await validateForm(
@@ -409,7 +409,7 @@ describe('validateForm', () => {
   /**
    * DEFECT (left as found) — `province` is only ever checked for emptiness. There is no
    * format or membership check against the country's state list, even though
-   * `CountryService` holds one.
+   * `I18nRules` holds one.
    *
    * What the shopper sees: a typo'd or invented state is accepted and reaches the order,
    * where the carrier rejects the address after the payment has been taken.

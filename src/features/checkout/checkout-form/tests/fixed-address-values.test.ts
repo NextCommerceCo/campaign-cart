@@ -51,7 +51,7 @@ describe('applyFixedValues', () => {
     const updateFormData = vi.fn((data: Record<string, string>) =>
       useCheckoutStore.getState().updateFormData(data)
     );
-    const countryService = {
+    const i18nRules = {
       getCountryStates: vi.fn(async (country: string) => ({
         countryConfig: { fixed: fixedFor[country] },
         states: [],
@@ -59,7 +59,7 @@ describe('applyFixedValues', () => {
     };
     return {
       ctx: {
-        countryService: countryService as never,
+        i18nRules: i18nRules as never,
         logger: { debug: vi.fn(), warn: vi.fn() } as never,
         updateFormData,
       },

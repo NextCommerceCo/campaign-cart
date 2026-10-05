@@ -51,7 +51,7 @@ priced for where they are, and shipped from where the campaign can ship.
 boot step 2   config read: currencyBehavior, addressConfig, ?country=, ?currency=
                     │
 boot step 3   ┌─────────────────────────────────────────────────────┐
-              │ CountryService.getLocationData()                    │
+              │ I18nRules.getLocationData()                    │
               │   GET next-address…/v1/geo?include=rules,states      │
               │     + /v1/countries + /v1/locales/:lang, together   │
               │   cached 1 hour in localStorage (next_country_*)     │
@@ -159,7 +159,7 @@ a literal), and with no pattern an alphanumeric code is uppercased.
 
 **Country reference data is cached for an hour in localStorage, which outlives your test.**
 Symptom: you switch VPN region, reload, and the page still detects the old country. Fix:
-run `CountryService.getInstance().clearCache()` from the console, or clear the
+run `I18nRules.getInstance().clearCache()` from the console, or clear the
 `next_country_*` keys — reloading alone will not do it for up to an hour. The debug
 overlay's country selector is the intended way to test a country without touching storage;
 see [logging and the debug overlay](./logging-and-debug.md).

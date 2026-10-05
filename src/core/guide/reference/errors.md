@@ -93,9 +93,9 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
 | `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
 | `i18n-rules/i18n-rules.api.ts` | — logs nothing | 2 — `{url} carried no address layout`, `{url} responded {status} {statusText}` |
-| `i18n-rules/i18n-rules.filtering.ts` | `[CountryService]` | nothing |
-| `i18n-rules/i18n-rules.postal-code.ts` | `[CountryService]` | nothing |
-| `i18n-rules/i18n-rules.ts` | `[CountryService]` | nothing |
+| `i18n-rules/i18n-rules.filtering.ts` | `[I18nRules]` | nothing |
+| `i18n-rules/i18n-rules.postal-code.ts` | `[I18nRules]` | nothing |
+| `i18n-rules/i18n-rules.ts` | `[I18nRules]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
 | `next-commerce/next-commerce.analytics.ts` | `[NextCommerce]` | nothing |
 | `next-commerce/next-commerce.attribution.ts` | `[NextCommerce]` | nothing |
@@ -302,9 +302,9 @@ The namespace before the dot decides which part of the SDK answers — see the [
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[CountryService]` |
+| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[I18nRules]` |
 | Cause | The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause. |
-| Caught | Caught by `CountryService` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. |
+| Caught | Caught by `I18nRules` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. |
 
 **Fix:** Open the URL from the message directly and confirm it answers JSON carrying `spec.layout`. Reaching it through a network that rewrites responses is what produces this.
 
@@ -315,9 +315,9 @@ The namespace before the dot decides which part of the SDK answers — see the [
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[CountryService]` |
+| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[I18nRules]` |
 | Cause | The address service answered with a non-OK status while the SDK was asking for the country list or one country’s address rules. The visitor’s network, an extension, or the service being briefly unavailable all produce this. An unknown country code is not a cause: an uncurated country is answered with a generic layout. |
-| Caught | Caught by `CountryService`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one. |
+| Caught | Caught by `I18nRules`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one. |
 
 **Fix:** Nothing to change in the page. If it is not intermittent, check that the address host is reachable from the visitor’s network, then reload — a good answer is cached in localStorage for an hour, so one fixes the session.
 

@@ -7,7 +7,7 @@
  * `CheckoutValidator` and can be tested by calling them.
  *
  * Country-specific checks are deliberately *not* here, because being pure disqualifies
- * them. A postal code lives with `CountryService`; a phone number lives in
+ * them. A postal code lives with `I18nRules`; a phone number lives in
  * [phone-validation.ts](./phone-validation.ts), which asks the input's phone field. It was
  * here once as a regex plus "at least ten digits", and judging a number without knowing
  * its country is what made it wrong.

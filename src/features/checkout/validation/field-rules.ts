@@ -22,7 +22,7 @@ import type { ValidationRule } from './validation.types';
 /** What {@link applyRule} needs from `CheckoutValidator`. */
 export interface FieldRuleContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
-  countryService: any;
+  i18nRules: any;
   /**
    * The live phone field for an address, when the form has one.
    *
@@ -124,11 +124,7 @@ export function applyRule(
       const countryConfig = context.countryConfigs?.get(context.country);
       return (
         !countryConfig ||
-        ctx.countryService.validatePostalCode(
-          value,
-          context.country,
-          countryConfig
-        )
+        ctx.i18nRules.validatePostalCode(value, context.country, countryConfig)
       );
     }
 

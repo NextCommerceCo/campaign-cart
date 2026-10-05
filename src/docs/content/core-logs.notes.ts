@@ -1093,7 +1093,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
     meaning:
       'The debug overlay’s country switcher has no countries to offer and hides itself. Only the debug tool is affected — the page’s own address form is separate.',
     action:
-      'Read the attached error; it is the same country-list fetch that `CountryService` logs about. Fix that and the switcher returns.',
+      'Read the attached error; it is the same country-list fetch that `I18nRules` logs about. Fix that and the switcher returns.',
   },
   {
     level: 'warn',

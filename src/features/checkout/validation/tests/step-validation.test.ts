@@ -25,7 +25,7 @@ function createContext(
   overrides: Partial<FormValidationContext> = {}
 ): FormValidationContext {
   return {
-    countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
+    i18nRules: { validatePostalCode: vi.fn().mockReturnValue(true) },
     // Step 3 asks `validateForm` for the payment check too, where a missing card
     // service is an invalid verdict rather than a silent pass. Steps 1 and 2
     // never reach the card block, so a satisfied service by default lets each test
@@ -99,7 +99,7 @@ describe('validateStep — step 1', () => {
 
     const result = await validateStep(
       createContext({
-        countryService: {
+        i18nRules: {
           validatePostalCode: vi.fn().mockReturnValue(true),
           getFieldErrors: (country?: string) =>
             country === 'GB'

@@ -10,7 +10,7 @@ function createContext(
   overrides: Partial<FieldRuleContext> = {}
 ): FieldRuleContext {
   return {
-    countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
+    i18nRules: { validatePostalCode: vi.fn().mockReturnValue(true) },
     ...overrides,
   };
 }
@@ -97,7 +97,7 @@ describe('createValidationRules', () => {
 
     // The branch works — nothing reaches it.
     const ctx = createContext({
-      countryService: { validatePostalCode: vi.fn().mockReturnValue(false) },
+      i18nRules: { validatePostalCode: vi.fn().mockReturnValue(false) },
     });
     const context = {
       country: 'US',
@@ -126,7 +126,7 @@ describe('applyRule', () => {
 
   it('postal passes when the country is unknown to the config map', () => {
     const validatePostalCode = vi.fn().mockReturnValue(false);
-    const ctx = createContext({ countryService: { validatePostalCode } });
+    const ctx = createContext({ i18nRules: { validatePostalCode } });
     expect(
       applyRule(ctx, { type: 'postal' }, 'ABCDE', {
         country: 'US',

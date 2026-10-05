@@ -141,8 +141,8 @@ function askOnce<T>(
   return answer;
 }
 
-export class CountryService {
-  private static instance: CountryService;
+export class I18nRules {
+  private static instance: I18nRules;
   private cachePrefix = 'next_country_';
   private cacheExpiry = 3600000; // 1 hour in milliseconds
   private messagesLang: string | undefined;
@@ -170,14 +170,14 @@ export class CountryService {
   private campaignShippingCountries: string[] | null = null;
 
   private constructor() {
-    this.logger = new Logger('CountryService');
+    this.logger = new Logger('I18nRules');
   }
 
-  public static getInstance(): CountryService {
-    if (!CountryService.instance) {
-      CountryService.instance = new CountryService();
+  public static getInstance(): I18nRules {
+    if (!I18nRules.instance) {
+      I18nRules.instance = new I18nRules();
     }
-    return CountryService.instance;
+    return I18nRules.instance;
   }
 
   /**

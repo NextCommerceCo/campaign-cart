@@ -1,7 +1,7 @@
 /**
  * The next-address Worker as this SDK's source of country and address rules.
  *
- * Replaces the two `cdn-countries` endpoints `CountryService` used to call. Everything
+ * Replaces the two `cdn-countries` endpoints `I18nRules` used to call. Everything
  * built on top of them — the localStorage cache, the campaign/config country filtering,
  * the postcode formatter — is unchanged: this module only fetches and translates.
  *

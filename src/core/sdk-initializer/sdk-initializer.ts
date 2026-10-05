@@ -15,7 +15,7 @@ import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
 import { storageScopeFellBack } from '@/core/storage-scope';
-import { CountryService } from '@/core/i18n-rules';
+import { I18nRules } from '@/core/i18n-rules';
 import * as urlParamMethods from '@/core/sdk-initializer/sdk-initializer.url-params';
 import * as storageResetMethods from '@/core/sdk-initializer/sdk-initializer.storage-reset';
 import * as debugUtilsMethods from '@/core/sdk-initializer/sdk-initializer.debug-utils';
@@ -240,11 +240,11 @@ export class SDKInitializer {
 
     this.logger.debug('Campaign data loaded');
 
-    // Set campaign shipping countries in CountryService for global use
+    // Set campaign shipping countries in I18nRules for global use
     // This ensures country dropdowns only show countries the campaign ships to
     if (campaignStore.data?.available_shipping_countries) {
-      const countryService = CountryService.getInstance();
-      countryService.setCampaignShippingCountries(
+      const i18nRules = I18nRules.getInstance();
+      i18nRules.setCampaignShippingCountries(
         campaignStore.data.available_shipping_countries
       );
       this.logger.info(

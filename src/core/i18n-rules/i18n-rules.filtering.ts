@@ -1,5 +1,5 @@
 /**
- * `CountryService`'s country/state filtering rules — extracted verbatim from
+ * `I18nRules`'s country/state filtering rules — extracted verbatim from
  * `i18n-rules.ts`. Takes the service's own address config, campaign
  * shipping-country list and logger as parameters rather than owning them.
  */

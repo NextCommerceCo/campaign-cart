@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { CountryService, CountryStatesData } from '@/core/i18n-rules';
+import type { I18nRules, CountryStatesData } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 
@@ -56,12 +56,12 @@ function createCountryStates(
 }
 
 /** A country service that answers instantly with a fixed state list. */
-function createCountryService(
+function createI18nRules(
   states: { code: string; name: string }[] = US_STATES
-): CountryService {
+): I18nRules {
   return {
     getCountryStates: vi.fn(() => Promise.resolve(createCountryStates(states))),
-  } as unknown as CountryService;
+  } as unknown as I18nRules;
 }
 
 /**
@@ -127,7 +127,7 @@ interface BootSteps {
   restoreBillingAddress(): Promise<void>;
   destroy(): void;
   logger: ReturnType<typeof createMockLogger>;
-  countryService: CountryService;
+  i18nRules: I18nRules;
   ui: { updateLabelsForPopulatedData: () => void; destroy: () => void };
   billingFields: Map<string, HTMLElement>;
 }
@@ -136,13 +136,13 @@ const created: BootSteps[] = [];
 
 /**
  * Runs the boot steps that decide what the billing section holds on first paint, in the
- * order `initialize` runs them. `ui` and `countryService` are the two collaborators those
+ * order `initialize` runs them. `ui` and `i18nRules` are the two collaborators those
  * steps reach for; everything else runs for real.
  */
 async function bootBillingSection(form: HTMLFormElement): Promise<BootSteps> {
   const steps = new CheckoutFormEnhancer(form) as unknown as BootSteps;
   steps.logger = createMockLogger();
-  steps.countryService = createCountryService();
+  steps.i18nRules = createI18nRules();
   steps.ui = { updateLabelsForPopulatedData: vi.fn(), destroy: vi.fn() };
   created.push(steps);
 
@@ -266,7 +266,7 @@ function createRestoreCtx(
     logger: logger as unknown as Logger,
     stateFields: {
       stateLoadingPromises: new Map(),
-      countryService: createCountryService(),
+      i18nRules: createI18nRules(),
       logger: logger as unknown as Logger,
       countryFields: {
         form,

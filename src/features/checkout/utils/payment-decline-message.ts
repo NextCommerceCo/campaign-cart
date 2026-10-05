@@ -25,7 +25,7 @@
 
 import {
   addressLang,
-  CountryService,
+  I18nRules,
   pageTranslations,
   translatedText,
 } from '@/core/i18n-rules';
@@ -75,7 +75,7 @@ export function declineCode(answer: PaymentDecline): string | undefined {
 
 /** The service's texts in `lang`, loading them if no element on the page has. */
 async function textsIn(
-  service: CountryService,
+  service: I18nRules,
   lang: string
 ): Promise<Readonly<Record<string, string>> | undefined> {
   const loaded = service.getTexts(lang);
@@ -103,7 +103,7 @@ async function textsIn(
 export async function paymentDeclineMessage(
   answer: PaymentDecline,
   lang: string = addressLang(),
-  service: CountryService = CountryService.getInstance()
+  service: I18nRules = I18nRules.getInstance()
 ): Promise<string> {
   const texts = await textsIn(service, lang);
   const code = declineCode(answer);

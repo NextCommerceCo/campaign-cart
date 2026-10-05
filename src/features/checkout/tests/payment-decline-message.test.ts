@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CountryService } from '@/core/i18n-rules';
+import type { I18nRules } from '@/core/i18n-rules';
 import { useConfigStore } from '@/state/config';
 import {
   declineCode,
@@ -13,11 +13,11 @@ const TEXTS = {
 };
 
 /** A service whose texts in every language are `texts`, or that never loads any. */
-function service(texts?: Record<string, string>): CountryService {
+function service(texts?: Record<string, string>): I18nRules {
   return {
     getTexts: () => texts,
     loadTexts: vi.fn(() => Promise.resolve()),
-  } as unknown as CountryService;
+  } as unknown as I18nRules;
 }
 
 afterEach(() => {
@@ -149,7 +149,7 @@ describe('paymentDeclineMessage', () => {
     const never = {
       getTexts: () => undefined,
       loadTexts: () => new Promise<void>(() => {}),
-    } as unknown as CountryService;
+    } as unknown as I18nRules;
     const answer = paymentDeclineMessage(
       { payment_response_code: '3005', payment_details: 'Invalid Card Number' },
       'en',

@@ -24,12 +24,12 @@ function buildField(name: string): HTMLInputElement {
 function createValidator(names: string[] = ['email']) {
   names.forEach(buildField);
   const logger = createMockLogger();
-  const countryService = { validatePostalCode: vi.fn().mockReturnValue(true) };
+  const i18nRules = { validatePostalCode: vi.fn().mockReturnValue(true) };
   const validator = new CheckoutValidator(
     logger as unknown as Logger,
-    countryService
+    i18nRules
   );
-  return { validator, logger, countryService };
+  return { validator, logger, i18nRules };
 }
 
 afterEach(() => {
@@ -104,8 +104,8 @@ describe('validateField', () => {
   });
 
   it('refuses an emoji in any field, a field with no rules included', () => {
-    const { validator, countryService } = createValidator(['address2']);
-    Object.assign(countryService, {
+    const { validator, i18nRules } = createValidator(['address2']);
+    Object.assign(i18nRules, {
       getFieldErrors: () => ({
         line2: { contains_emoji: 'ที่อยู่บรรทัดที่ 2 ต้องไม่มีอีโมจิ' },
       }),

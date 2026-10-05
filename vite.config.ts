@@ -332,7 +332,7 @@ export default defineConfig({
           // the guarantee.
           //
           // `flatten-texts.ts` imports nothing, so it keeps the chunk a leaf. It is
-          // here because `CountryService` has no rule and lands in `debug`: from
+          // here because `I18nRules` has no rule and lands in `debug`: from
           // `utils` it would add a `debug → utils` edge and close a
           // `utils → state → debug` cycle.
           if (/\/core\/(logger|storage|events|flatten-texts)\.ts$/.test(id)) {

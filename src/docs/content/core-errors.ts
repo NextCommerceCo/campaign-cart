@@ -26,7 +26,7 @@ import type { ErrorDoc } from '../schema/doc-types';
 export interface CoreErrorDoc extends ErrorDoc {
   /**
    * The subsystem that throws it, as the logger prefix a reader sees in the console
-   * — `SDKInitializer`, `CountryService`. Matches a `prefix` in `core-logs.ts` so the
+   * — `SDKInitializer`, `I18nRules`. Matches a `prefix` in `core-logs.ts` so the
    * two pages line up.
    */
   owner: string;
@@ -164,24 +164,24 @@ In almost every case the better answer is to add the feature's \`data-next-*\` a
   // ── Country service ────────────────────────────────────────────────────────
   {
     message: '{url} carried no address layout',
-    owner: 'CountryService',
+    owner: 'I18nRules',
     file: 'i18n-rules/i18n-rules.api.ts',
     kind: 'recoverable',
     cause:
       'The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause.',
     caught:
-      'Caught by `CountryService` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels.',
+      'Caught by `I18nRules` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels.',
     fix: 'Open the URL from the message directly and confirm it answers JSON carrying `spec.layout`. Reaching it through a network that rewrites responses is what produces this.',
   },
   {
     message: '{url} responded {status} {statusText}',
-    owner: 'CountryService',
+    owner: 'I18nRules',
     file: 'i18n-rules/i18n-rules.api.ts',
     kind: 'recoverable',
     cause:
       'The address service answered with a non-OK status while the SDK was asking for the country list or one country’s address rules. The visitor’s network, an extension, or the service being briefly unavailable all produce this. An unknown country code is not a cause: an uncurated country is answered with a generic layout.',
     caught:
-      'Caught by `CountryService`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one.',
+      'Caught by `I18nRules`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one.',
     fix: 'Nothing to change in the page. If it is not intermittent, check that the address host is reachable from the visitor’s network, then reload — a good answer is cached in localStorage for an hour, so one fixes the session.',
   },
 

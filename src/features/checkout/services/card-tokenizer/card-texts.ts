@@ -5,7 +5,7 @@
  * English here — the same order the address form reads its own.
  */
 
-import { addressLang, CountryService, translatedText } from '@/core/i18n-rules';
+import { addressLang, I18nRules, translatedText } from '@/core/i18n-rules';
 
 import type { CardErrorField } from './card-tokenizer.types';
 
@@ -40,7 +40,7 @@ export type CardTextKey = keyof typeof ENGLISH;
 /** `key` in the form's language, or `undefined` for the caller to keep its own text. */
 export function translatedCardText(key: CardTextKey): string | undefined {
   const lang = addressLang();
-  return translatedText(key, lang, CountryService.getInstance().getTexts(lang));
+  return translatedText(key, lang, I18nRules.getInstance().getTexts(lang));
 }
 
 /** `key` in the form's language, else its English. */

@@ -17,8 +17,8 @@ import { stubCampaign, stubCart, stubProspectCart, bootSdk, routeAddressService,
 
 const FIXTURE = '/e2e/fixtures/prospect-cart.html';
 
-/** Stub the country/states CDN the checkout form's CountryService calls. */
-async function stubCountryService(page: Page): Promise<void> {
+/** Stub the country/states CDN the checkout form's I18nRules calls. */
+async function stubI18nRules(page: Page): Promise<void> {
   const rules = countryRules(
     'US',
     [['country'], ['line1'], ['city', 'state', 'postcode']],
@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
   await stubProspectCart(page);
-  await stubCountryService(page);
+  await stubI18nRules(page);
 
   // createCart posts to /carts/ (not /carts/calculate/). Registered after
   // stubCart; the calculate glob does not match this exact path.

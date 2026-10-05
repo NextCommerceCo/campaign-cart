@@ -87,7 +87,7 @@ const DEFAULT_LANG = 'en';
 
 /**
  * States are deliberately not requested: the province dropdown is filled by the checkout
- * form from `CountryService`, and asking here too puts two lists on one page.
+ * form from `I18nRules`, and asking here too puts two lists on one page.
  */
 export async function fetchCountryRules(
   countryCode: string,

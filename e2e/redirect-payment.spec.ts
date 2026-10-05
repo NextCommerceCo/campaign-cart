@@ -11,7 +11,7 @@ import { TEST_ORDER } from './fixtures/order';
 import {
   stubCampaign,
   stubCart,
-  stubCountryService,
+  stubI18nRules,
   bootSdk,
 } from './fixtures/routes';
 
@@ -109,7 +109,7 @@ async function expectReadable(locator: Locator): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  await stubCountryService(page);
+  await stubI18nRules(page);
 });
 
 /**

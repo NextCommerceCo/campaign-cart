@@ -23,7 +23,7 @@ import {
 import { validatePostalCode } from '@/core/i18n-rules/i18n-rules.postal-code';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
-import { CountryService } from '@/core/i18n-rules';
+import { I18nRules } from '@/core/i18n-rules';
 import { useConfigStore } from '@/state/config';
 
 const field = (
@@ -592,7 +592,7 @@ describe('flagUrl', () => {
   });
 });
 
-describe('CountryService language', () => {
+describe('I18nRules language', () => {
   afterEach(() => {
     localStorage.clear();
     useConfigStore.setState({ locale: undefined });
@@ -600,7 +600,7 @@ describe('CountryService language', () => {
 
   it("asks in the page's locale, and keeps English where none is set", async () => {
     const fetchMock = stubService({ country: { ...US, states: [] } });
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
 
     await service.getCountryStates('US');
     useConfigStore.setState({ locale: 'th-TH' });
@@ -613,7 +613,7 @@ describe('CountryService language', () => {
   });
 
   it("keeps each country's field errors, and the last as the default", async () => {
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
     const withBlank = (answer: CountryRules, blank: string): CountryRules => ({
       ...answer,
       fields: {
@@ -640,7 +640,7 @@ describe('CountryService language', () => {
 
   it('refetches rather than serve a cached answer in another language', async () => {
     const fetchMock = stubService({ country: { ...US, states: [] } });
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
 
     await service.getCountryStates('US');
     await service.getCountryStates('US');
@@ -652,7 +652,7 @@ describe('CountryService language', () => {
   });
 });
 
-describe('CountryService texts', () => {
+describe('I18nRules texts', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   const answer = (texts: Record<string, string>, lang: string) => ({
@@ -668,7 +668,7 @@ describe('CountryService texts', () => {
         answer({ 'checkout.contact.title': 'Yhteystiedot' }, 'fi')
       );
     vi.stubGlobal('fetch', fetchMock);
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
     const loaded = vi.fn();
     const off = EventBus.getInstance().on('address:messages-loaded', loaded);
 
@@ -692,7 +692,7 @@ describe('CountryService texts', () => {
           answer({ 'checkout.contact.title': 'Contact' }, 'en')
         )
     );
-    const service = CountryService.getInstance();
+    const service = I18nRules.getInstance();
 
     await service.loadTexts('sv');
 

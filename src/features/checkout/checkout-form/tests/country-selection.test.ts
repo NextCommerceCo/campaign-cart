@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Country, CountryService } from '@/core/i18n-rules';
+import type { Country, I18nRules } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 import {
@@ -41,9 +41,9 @@ function createResolutionCtx(defaultCountry?: string): {
     logger,
     ctx: {
       countries: COUNTRIES,
-      countryService: {
+      i18nRules: {
         getConfig: () => (defaultCountry ? { defaultCountry } : undefined),
-      } as unknown as CountryService,
+      } as unknown as I18nRules,
       logger: logger as unknown as Logger,
     },
   };

@@ -1,5 +1,5 @@
 /**
- * `CountryService`'s postal-code validation, formatting and per-country
+ * `I18nRules`'s postal-code validation, formatting and per-country
  * defaults. Pure country formatting rules; the service itself still owns
  * fetching and caching.
  */

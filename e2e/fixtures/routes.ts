@@ -34,7 +34,7 @@ export async function stubCampaign(
   // visitor is, at boot. Stubbed here, so a spec that never thinks about addresses still
   // never reaches the live service. Only when nothing answers it yet: Playwright answers
   // with the newest route, so this would replace a stub the spec registered first.
-  if (!ADDRESS_STUBBED.has(page)) await stubCountryService(page);
+  if (!ADDRESS_STUBBED.has(page)) await stubI18nRules(page);
 }
 
 /**
@@ -516,7 +516,7 @@ export interface AddressServiceOptions {
  * a country collects; a layout that omits `state` produces a config with no state label
  * however `spec.fields` reads, so it has to name every field the assertions expect.
  */
-export async function stubCountryService(
+export async function stubI18nRules(
   page: Page,
   {
     country = 'US',

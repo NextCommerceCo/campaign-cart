@@ -13,7 +13,7 @@ import {
 import type { Page } from '@playwright/test';
 
 /**
- * CountryService drives the checkout form's country/state dropdowns. It fetches
+ * I18nRules drives the checkout form's country/state dropdowns. It fetches
  * the country list + geo from the countries CDN, filters the list to the
  * campaign's `available_shipping_countries`, and — when a country is picked —
  * fetches and renders that country's states.

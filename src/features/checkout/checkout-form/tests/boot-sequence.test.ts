@@ -60,7 +60,7 @@ interface BootSteps {
   phoneInputs: Map<string, PhoneInstance>;
   fields: Map<string, HTMLElement>;
   detectedCountryCode: string;
-  countryService: unknown;
+  i18nRules: unknown;
   creditCardService?: { initialize: () => Promise<void> };
   boundHandleTestDataFilled?: EventListener;
   boundHandleKonamiActivation?: EventListener;
@@ -245,7 +245,7 @@ describe('initializePhoneInputs', () => {
       Promise.resolve({ valid: true, value: '+447400123456', country: 'GB' })
     );
     steps.fields = new Map([['phone', input]]);
-    steps.countryService = { getCountryStates, readPhoneNumber };
+    steps.i18nRules = { getCountryStates, readPhoneNumber };
     steps.detectedCountryCode = 'GB';
 
     steps.initializePhoneInputs();

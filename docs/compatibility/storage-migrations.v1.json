@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "20dd6479389efefc487ecd8822ca8f1e443383c0ccddc7adeadf88bf7820af0c",
+    "inputSha256": "290b4c9d2790e49f811c146159b9e3eac1105ee3c23741835eb3d287b124fd4f",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -56,7 +56,7 @@
       },
       {
         "path": "src/core/debug/country-selector.ts",
-        "sha256": "4485efe381c50a40248f12f249c96369f901bd4523a5424350d2c05fb4e29b6e"
+        "sha256": "6e3fa82919201738203a058829e1090ec69fea5190a98979bbd5dc273681be7e"
       },
       {
         "path": "src/core/debug/currency-selector.ts",
@@ -88,7 +88,7 @@
       },
       {
         "path": "src/core/i18n-rules/i18n-rules.ts",
-        "sha256": "4a27a7fd70e09fd2a021a423432f39ee00aacffda6077ff53f124b149e2b6520"
+        "sha256": "e37c606aa095284e7c31e3c9900ebeaf3ef1728f0148d05f3cc0ac6d403017f0"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.debug-utils.ts",
@@ -96,11 +96,11 @@
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.location-currency.ts",
-        "sha256": "bd72b150475296813658841410557914226f9d4bd0fc5afb191cbf477dcdfe4c"
+        "sha256": "c411a5fa178d32b860ca6c9ce00c2b76e56dcb2490341a1625f02b0540ac795b"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.ts",
-        "sha256": "6cfbf68c1ec0d39d5e58398169de99cadea609a458a6f7631fe6a723936ab35d"
+        "sha256": "722f1888014d38f47ced76e4e548b5c45e87eeeb4a503812bba5d5fe7a52f581"
       },
       {
         "path": "src/core/storage.ts",
@@ -108,7 +108,7 @@
       },
       {
         "path": "src/docs/content/storage-keys.ts",
-        "sha256": "3d50420967d729dae95e02a7063f5689c1d78c6a523f123b519933ec00350473"
+        "sha256": "ba54a4efbe98ab42f36aecbb51e7f926a83b6d0f4f3a6493ac60479e8d441fb9"
       },
       {
         "path": "src/docs/extract/extract-storage-keys.ts",
@@ -128,11 +128,11 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "d16bc6abc45c82aa8b8447d69ecd6d7f552b28b58411e142f4dd1a13b52ed0e1"
+        "sha256": "eaa1c41d1f947720110aa0d3d5ae9bcfde6c82c5e305193839064aea3d7e7be8"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",
-        "sha256": "46d444f65240a01341e9a4b35d353e65b78bc78c93734a82cacd94d014962ad4"
+        "sha256": "86548a07977bdbb545013c3c7c497fadb42661a6f66380af9523c13b4a6aae2f"
       },
       {
         "path": "src/features/checkout/checkout-form/duplicate-purchase-warning.ts",
@@ -552,8 +552,8 @@
         "call"
       ],
       "where": [
-        "core/i18n-rules/i18n-rules.ts › CountryService.getFromCache",
-        "core/i18n-rules/i18n-rules.ts › CountryService.setCache"
+        "core/i18n-rules/i18n-rules.ts › I18nRules.getFromCache",
+        "core/i18n-rules/i18n-rules.ts › I18nRules.setCache"
       ],
       "migration": null,
       "replacement": null
@@ -570,7 +570,7 @@
         "call"
       ],
       "where": [
-        "core/i18n-rules/i18n-rules.ts › CountryService.clearCountryCache"
+        "core/i18n-rules/i18n-rules.ts › I18nRules.clearCountryCache"
       ],
       "migration": null,
       "replacement": null

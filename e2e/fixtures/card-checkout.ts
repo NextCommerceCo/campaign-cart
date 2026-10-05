@@ -15,7 +15,7 @@ import { MINIMAL_CAMPAIGN } from './campaign';
 import {
   stubCampaign,
   stubCart,
-  stubCountryService,
+  stubI18nRules,
   stubProspectCart,
   type AddressServiceOptions,
 } from './routes';
@@ -175,7 +175,7 @@ export async function stubNextPayment(
  * `CreditCardService` at all; `MINIMAL_CAMPAIGN` ships an empty one, and without
  * it the form refuses to submit with "the payment system is not ready".
  *
- * `address` goes to {@link stubCountryService}: the visitor's country, and whether
+ * `address` goes to {@link stubI18nRules}: the visitor's country, and whether
  * the service sends phone rules.
  */
 export async function stubCardCheckout(
@@ -191,7 +191,7 @@ export async function stubCardCheckout(
   });
   await stubCart(page);
   const nextPayment = await stubNextPayment(page, card);
-  await stubCountryService(page, address);
+  await stubI18nRules(page, address);
   // Filling an email and a phone is what a shopper does, and it makes the SDK
   // create a prospect cart. Unstubbed, those calls go to the live API — which
   // `.claude/rules/e2e.md` §4 forbids and which WebKit reports as console

@@ -18,7 +18,7 @@
 
 import type {
   CountryConfig,
-  CountryService,
+  I18nRules,
   CountryStatesData,
 } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
@@ -59,7 +59,7 @@ export interface StateFieldsContext {
    * settling so a later change refetches rather than serving a stale list forever.
    */
   stateLoadingPromises: Map<string, Promise<CountryStatesData>>;
-  countryService: CountryService;
+  i18nRules: I18nRules;
   logger: Logger;
   /** Passed through to the label helpers, which relabel the neighbouring fields. */
   countryFields: CountryFieldsContext;
@@ -105,7 +105,7 @@ function loadCountryStates(
     return pending;
   }
 
-  const request = ctx.countryService.getCountryStates(country);
+  const request = ctx.i18nRules.getCountryStates(country);
   ctx.stateLoadingPromises.set(country, request);
 
   // Cache housekeeping, deliberately **not** `.finally()`. `request.finally(fn)` returns a
