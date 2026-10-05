@@ -1,5 +1,5 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import { useCheckoutStore } from '@/state/checkout';
+import { type CheckoutState, useCheckoutStore } from '@/state/checkout';
 import {
   addressLang,
   type CountryRules,
@@ -30,16 +30,16 @@ export class AddressFormEnhancer extends BaseEnhancer {
     this.validateElement();
     this.readConfiguration();
 
-    const country =
-      useCheckoutStore.getState().formData.country || FALLBACK_COUNTRY;
-    await this.renderCountry(country);
+    await this.renderCountry(
+      this.countryIn(useCheckoutStore.getState()) ?? FALLBACK_COUNTRY
+    );
 
     // Compared against what was last *asked for*, not what is on screen. Going back to
     // the country already rendered, while a different one is still in flight, is a real
     // change of mind: judged against the screen it reads as "no change", the render never
     // starts, and the in-flight layout lands last and wins.
     this.subscribe(useCheckoutStore, state => {
-      const next = state.formData.country;
+      const next = this.countryIn(state);
       if (next && next !== this.requestedCountry) void this.renderCountry(next);
     });
 
@@ -58,9 +58,27 @@ export class AddressFormEnhancer extends BaseEnhancer {
   private readonly handleLocaleChange = (): void => this.update();
 
   public update(): void {
-    const country =
-      useCheckoutStore.getState().formData.country || FALLBACK_COUNTRY;
-    void this.renderCountry(country);
+    void this.renderCountry(
+      this.countryIn(useCheckoutStore.getState()) ?? FALLBACK_COUNTRY
+    );
+  }
+
+  /**
+   * The country whose layout this block shows: a billing block's own country while the
+   * shopper has chosen a separate billing address, and the shipping country otherwise.
+   * Unticking "same as shipping" seeds the billing country from the shipping one, so the
+   * two only part when the shopper picks another; and a billing country left in the store
+   * by an earlier order is ignored while the choice is "same as shipping".
+   */
+  private countryIn(state: CheckoutState): string | undefined {
+    const billing =
+      this.form === 'billing' && !state.sameAsShipping
+        ? state.billingAddress?.country
+        : undefined;
+    if (billing) return billing;
+    // An empty string is no country: it is what a select with nothing chosen holds.
+    const shipping: unknown = state.formData.country;
+    return typeof shipping === 'string' && shipping ? shipping : undefined;
   }
 
   private readConfiguration(): void {

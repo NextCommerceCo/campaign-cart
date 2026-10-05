@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- **A `data-next-address="billing"` block is laid out for the billing country.** It followed the shipping country, so choosing another billing country left the old country's fields on screen, and changing the shipping country re-laid the billing block for a country it was not in. A billing country chosen on an earlier load now opens in its own layout too. ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110))
 - **A returning visitor's billing address comes back into a `data-next-address="billing"` block every time.** When the block finished building its fields while the checkout form was still starting up, the address stayed in the session and the fields stayed empty, on roughly one load in five.
 - **Thai and full-width digits typed into the phone field are written as ASCII digits, in the order typed.** They were dropped. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
 

@@ -632,6 +632,108 @@ test('a returning visitor sees the billing address they already gave', async ({
 });
 
 /**
+ * A billing block shows the layout of the billing country, not the shipping one
+ * ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110)). It used to read the
+ * shipping country alone, so choosing another billing country changed nothing, and
+ * changing the shipping country re-laid the billing block for a country it was not in.
+ */
+const US_BILLING = [
+  'billing-country',
+  'billing-fname',
+  'billing-lname',
+  'billing-address1',
+  'billing-city',
+  'billing-province',
+  'billing-postal',
+  'billing-phone',
+];
+const JP_BILLING = [
+  'billing-country',
+  'billing-lname',
+  'billing-fname',
+  'billing-postal',
+  'billing-province',
+  'billing-city',
+  'billing-address1',
+  'billing-phone',
+];
+
+/** The fields a block holds, in order. */
+function blockOrder(page: Page, block: 'shipping' | 'billing') {
+  return () =>
+    page
+      .locator(`[data-next-address="${block}"] [data-next-checkout-field]`)
+      .evaluateAll(els =>
+        els.map(el => el.getAttribute('data-next-checkout-field'))
+      );
+}
+
+/** A visitor who chose a separate billing address in `country` on an earlier load. */
+async function storedBillingCountry(page: Page, country: string): Promise<void> {
+  await page.addInitScript(
+    ({ key, country }) => {
+      sessionStorage.setItem(
+        key,
+        JSON.stringify({
+          state: {
+            sameAsShipping: false,
+            billingAddress: { address1: '14 Billing Way', country },
+          },
+          version: 0,
+        })
+      );
+    },
+    { key: CHECKOUT_KEY, country }
+  );
+}
+
+test('a billing block takes the layout of the billing country chosen', async ({
+  page,
+}) => {
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(US_BILLING);
+
+  await page.selectOption(FIELD('billing-country'), 'JP');
+
+  await expect.poll(blockOrder(page, 'billing')).toEqual(JP_BILLING);
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('JP');
+  // The shipping block is the shipping country's, and stays it.
+  await expect
+    .poll(blockOrder(page, 'shipping'))
+    .toEqual(['country', 'fname', 'lname', 'address1', 'city', 'province', 'postal', 'phone']);
+});
+
+test('a billing block keeps its own country when the shipping country changes', async ({
+  page,
+}) => {
+  await storedBillingCountry(page, 'US');
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(US_BILLING);
+
+  await page.selectOption(FIELD('country'), 'JP');
+  await expect
+    .poll(blockOrder(page, 'shipping'))
+    .toEqual(['country', 'lname', 'fname', 'postal', 'province', 'city', 'address1', 'phone']);
+
+  // Well after the JP layout has landed for the shipping block.
+  await page.waitForTimeout(1000);
+  expect(await blockOrder(page, 'billing')()).toEqual(US_BILLING);
+});
+
+test('a returning visitor’s billing block opens in the billing country they chose', async ({
+  page,
+}) => {
+  await storedBillingCountry(page, 'JP');
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+
+  await expect.poll(blockOrder(page, 'billing')).toEqual(JP_BILLING);
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('JP');
+  await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
+    '14 Billing Way'
+  );
+});
+
+/**
  * A billing address is a whole address, so its block builds the names and the phone too,
  * under their `billing-` names: the shipping block's are the shipping address's.
  */
