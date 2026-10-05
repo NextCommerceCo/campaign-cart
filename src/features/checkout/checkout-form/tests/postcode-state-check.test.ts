@@ -4,7 +4,7 @@ import {
   checkPostcodeState,
   type PostcodeStateContext,
 } from '../postcode-state-check';
-import type { PostcodeResult } from '@/core/country-service';
+import type { PostcodeResult } from '@/core/i18n-rules';
 
 const NOT_IN_STATE: PostcodeResult = {
   valid: false,

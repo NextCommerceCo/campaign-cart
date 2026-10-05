@@ -15,14 +15,14 @@
  * validator ({@link FormValidationContext}).
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 
 import type {
   CreditCardData,
   CreditCardService,
 } from '../services/credit-card-service';
 
-import { asksForPostcode } from '@/core/country-service';
+import { asksForPostcode } from '@/core/i18n-rules';
 
 import { validateBillingAddress } from './billing-address-validation';
 import { findFirstErrorFieldInDOM } from './first-error-field';

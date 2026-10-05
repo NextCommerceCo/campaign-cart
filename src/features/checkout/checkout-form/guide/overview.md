@@ -77,7 +77,7 @@ the two can never drift apart.
   unless the service has read the number as another country's: `+66 81 234 5678`
   in a US form shows the Thai flag. A number typed with `+` or dialled with `00`
   stays as it was written, spaces and hyphens included, since no mask fits
-  another country's number (`country-service.phone.ts › asWritten`); once they
+  another country's number (`i18n-rules.phone.ts › asWritten`); once they
   leave the field it is shown as
   the service writes it, at home for the address country (`081 234 5678`) and
   from abroad otherwise (`+44 7400 123456`). `data-next-phone-e164` is present only once the service has
@@ -103,7 +103,7 @@ the two can never drift apart.
   single one, and each is tried in turn. It keeps a candidate only if that
   country's own validation pattern accepts it; otherwise the value the shopper
   typed stands, uppercased when it contains letters
-  (`core/country-service/country-service.postal-code.ts › formatPostalCode`).
+  (`core/i18n-rules/i18n-rules.postal-code.ts › formatPostalCode`).
   Two things follow from that. A half-typed postcode is left alone rather than
   rearranged, because a partial value does not satisfy the country's rule yet,
   and it is reshaped once it is complete. And the SDK never submits a postcode

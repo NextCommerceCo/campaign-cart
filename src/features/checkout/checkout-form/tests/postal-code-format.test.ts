@@ -3,7 +3,7 @@ import {
   formatPostalCodeInPlace,
   type PostalCodeFormatContext,
 } from '../postal-code-format';
-import type { CountryConfig, CountryService } from '@/core/country-service';
+import type { CountryConfig, CountryService } from '@/core/i18n-rules';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

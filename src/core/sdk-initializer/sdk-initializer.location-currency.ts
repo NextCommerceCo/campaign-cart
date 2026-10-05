@@ -14,7 +14,7 @@
 import type { Logger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
 import { useConfigStore } from '@/state/config';
-import { CountryService, Country, LocationData } from '@/core/country-service';
+import { CountryService, Country, LocationData } from '@/core/i18n-rules';
 
 /**
  * Detects the visitor's country and picks the display currency, before

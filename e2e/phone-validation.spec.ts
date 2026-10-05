@@ -32,7 +32,7 @@ import {
  *   checkout that still goes through.
  *
  * Why not a unit test: `formatPhone`, `isPlausiblePhone` and `toE164` are pure and
- * `country-service.phone.test.ts` proves them. What it cannot prove is the wiring — the
+ * `i18n-rules.phone.test.ts` proves them. What it cannot prove is the wiring — the
  * rule travelling from the service response into a live field, the field rewritten under
  * the shopper's keystrokes one at a time, the flag fetched and laid out inside the field
  * (happy-dom neither loads images nor does layout), and the number that leaves in the

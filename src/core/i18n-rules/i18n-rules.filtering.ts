@@ -1,12 +1,12 @@
 /**
  * `CountryService`'s country/state filtering rules — extracted verbatim from
- * `country-service.ts`. Takes the service's own address config, campaign
+ * `i18n-rules.ts`. Takes the service's own address config, campaign
  * shipping-country list and logger as parameters rather than owning them.
  */
 
 import type { Logger } from '@/core/logger';
 import type { AddressConfig } from '@/types/global';
-import type { LocationData, State } from '@/core/country-service';
+import type { LocationData, State } from '@/core/i18n-rules';
 
 export interface FilterCtx {
   campaignShippingCountries: string[] | null;

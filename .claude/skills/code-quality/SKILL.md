@@ -98,7 +98,7 @@ re-deriving the finding.
 
 | Signature | Why it is a defect | Repo example |
 |---|---|---|
-| Comment assigns distinct meanings to values the code treats identically | The next reader trusts the comment; the divergence is invisible | `country-service.postal-code.ts` — `N`/`X`/`#`/`9`/`A` documented as different, all five accept any character |
+| Comment assigns distinct meanings to values the code treats identically | The next reader trusts the comment; the divergence is invisible | `i18n-rules.postal-code.ts` — `N`/`X`/`#`/`9`/`A` documented as different, all five accept any character |
 | Comment names data that does not exist | Same, one step worse: it is checkable and nobody checked | The same file's `"XXX XXX" for Canadian postal codes`; the CDN sends `ANA NAN` |
 | "Append what is left over" tail on a formatter | Emits a value longer than the target's own max length and reads as success | `formatPostalCode`'s trailing branch produced a 12-character value for an 8-character country |
 | Fail-open (`return true`) that a later caller leans on | Fine where it was written, load-bearing once something gates on it | `validatePostalCode`'s invalid-regex branch |
@@ -144,7 +144,7 @@ says the function's own name back (`Format postal code based on country
 configuration`). Trim instead of deleting when a long comment carries context the
 code cannot express: keep the one sentence, drop the rest.
 
-**Before and after, from the postcode fix.** `country-service.postal-code.ts`
+**Before and after, from the postcode fix.** `i18n-rules.postal-code.ts`
 carried a dozen line comments narrating each step, and a restating TSDoc summary on
 each of its two exported functions. Out of the code the fix reworked, what came
 through is the module header, a one-line note on an internal helper, and three

@@ -19,11 +19,11 @@ import {
   toCountryConfig,
   type CountryRules,
   type RulesField,
-} from '@/core/country-service/country-service.next-address';
-import { validatePostalCode } from '@/core/country-service/country-service.postal-code';
+} from '@/core/i18n-rules/i18n-rules.api';
+import { validatePostalCode } from '@/core/i18n-rules/i18n-rules.postal-code';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
-import { CountryService } from '@/core/country-service';
+import { CountryService } from '@/core/i18n-rules';
 import { useConfigStore } from '@/state/config';
 
 const field = (

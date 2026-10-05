@@ -10,7 +10,7 @@ import type {
   CountryService,
   CountryStatesData,
   State,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import type { CountryFieldsContext } from '../country-fields';
 

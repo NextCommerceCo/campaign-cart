@@ -165,7 +165,7 @@ In almost every case the better answer is to add the feature's \`data-next-*\` a
   {
     message: '{url} carried no address layout',
     owner: 'CountryService',
-    file: 'country-service/country-service.next-address.ts',
+    file: 'i18n-rules/i18n-rules.api.ts',
     kind: 'recoverable',
     cause:
       'The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause.',
@@ -176,7 +176,7 @@ In almost every case the better answer is to add the feature's \`data-next-*\` a
   {
     message: '{url} responded {status} {statusText}',
     owner: 'CountryService',
-    file: 'country-service/country-service.next-address.ts',
+    file: 'i18n-rules/i18n-rules.api.ts',
     kind: 'recoverable',
     cause:
       'The address service answered with a non-OK status while the SDK was asking for the country list or one country’s address rules. The visitor’s network, an extension, or the service being briefly unavailable all produce this. An unknown country code is not a cause: an uncurated country is answered with a generic layout.',

@@ -2,7 +2,7 @@ import {
   readCountryRules,
   type CountryRules,
   type RulesField,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 
 const text = (
   label: string,

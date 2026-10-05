@@ -3,8 +3,8 @@ import {
   formatPostalCode,
   getDefaultCountryConfig,
   validatePostalCode,
-} from '@/core/country-service/country-service.postal-code';
-import type { CountryConfig } from '@/core/country-service';
+} from '@/core/i18n-rules/i18n-rules.postal-code';
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 /**

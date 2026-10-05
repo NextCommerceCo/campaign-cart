@@ -7,9 +7,9 @@ import { useConfigStore } from '@/state/config';
 import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
-import { CountryService } from '@/core/country-service';
+import { CountryService } from '@/core/i18n-rules';
 import { Logger } from '@/core/logger';
-import type { Country } from '@/core/country-service';
+import type { Country } from '@/core/i18n-rules';
 
 export class CountrySelector {
   private static instance: CountrySelector;

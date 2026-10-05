@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 
 import type { FormValidationResult } from '../../validation/validation.types';

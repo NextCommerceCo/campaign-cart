@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Country, CountryService } from '@/core/country-service';
+import type { Country, CountryService } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 import {

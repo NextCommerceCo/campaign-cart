@@ -34,7 +34,7 @@ never imports `SDKInitializer` and depends entirely on what it does.
 | `logger.ts` | `Logger` / `createLogger` — leveled logging used across every layer |
 | `events.ts` | `EventBus` — the type-safe SDK event bus (`EventMap`) |
 | `storage.ts` | `StorageManager` / `sessionStorageManager` — persistence helper backing the stores' `persist` |
-| `country-service/` | Loads and caches country/state geographic data for checkout, debug, and init |
+| `i18n-rules/` | The client for the i18n-rules service: country list, address and phone rules, states, the visitor's location, texts, and `POST /v1/validate`, cached for checkout, debug, and init |
 | `url-utils.ts` | `preserveQueryParams` / `navigateWithParams` — carries tracking parameters across navigations, and `isDebugMode` / `isDebuggerMode`. Reads **and writes** `parameter.state`, which is why it is not a `utils/` helper |
 | `currency-formatter.ts` | `CurrencyFormatter` + the `formatCurrency` / `formatNumber` / `formatPercentage` / `getCurrencySymbol` helpers. Falls back to the campaign's currency and the visitor's locale when a caller does not name one, so it reads `campaign.state` and `config.state` |
 | `test-mode.ts` | Detects and manages SDK test mode |

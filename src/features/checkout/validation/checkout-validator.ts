@@ -21,7 +21,7 @@
  * still resolves here, so the split is invisible to callers.
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 import type { CreditCardService } from '../services/credit-card-service';

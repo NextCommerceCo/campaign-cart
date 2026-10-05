@@ -18,7 +18,7 @@ import type { CartSummary, Order } from '../../src/types/api';
 import type {
   PhoneNumberResult,
   PhoneRules,
-} from '../../src/core/country-service/country-service.phone';
+} from '../../src/core/i18n-rules/i18n-rules.phone';
 import { RICH_CAMPAIGN } from './campaign';
 import { TEST_ORDER } from './order';
 
@@ -111,7 +111,7 @@ export async function stubProspectCart(page: Page): Promise<void> {
 /**
  * Every request to the address-rules service, on either host it has been served from
  * (`i18n-rules.nextcommerce.com`, `i18n-rules.kasemsanm-dev.workers.dev`). The SDK's
- * base URLs live in `country-service.next-address.ts` and `address-form.api.ts`; if
+ * base URLs live in `i18n-rules.api.ts` and `address-form.api.ts`; if
  * either moves to a host this does not match, every spec below silently calls the live
  * service instead of its stub.
  */

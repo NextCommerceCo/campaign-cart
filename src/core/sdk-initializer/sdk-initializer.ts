@@ -15,7 +15,7 @@ import { EventBus } from '@/core/events';
 import { getApiClient } from '@/client';
 import { CART_STORAGE_KEY } from '@/core/storage';
 import { storageScopeFellBack } from '@/core/storage-scope';
-import { CountryService } from '@/core/country-service';
+import { CountryService } from '@/core/i18n-rules';
 import * as urlParamMethods from '@/core/sdk-initializer/sdk-initializer.url-params';
 import * as storageResetMethods from '@/core/sdk-initializer/sdk-initializer.storage-reset';
 import * as debugUtilsMethods from '@/core/sdk-initializer/sdk-initializer.debug-utils';

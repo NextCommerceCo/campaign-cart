@@ -17,7 +17,7 @@
  *
  * **The bar is deliberately loose, because the order API validates the number.** The field
  * only refuses what is clearly not a phone number: national digits outside the country's
- * loose pattern (`core/country-service/country-service.phone.ts › isPlausiblePhone`), or a
+ * loose pattern (`core/i18n-rules/i18n-rules.phone.ts › isPlausiblePhone`), or a
  * number typed with another country's `+` code outside E.164's 8 to 15 digits. It asks
  * nothing about number types or whether a number is in service, so `0000000000` passes in
  * the US and is sent. The two ways of being wrong do not cost the same: refusing a real
@@ -25,7 +25,7 @@
  * server-side rejection we can see.
  */
 
-import { asciiDigits } from '@/core/country-service';
+import { asciiDigits } from '@/core/i18n-rules';
 import { checkoutFieldSelector } from '@/utils/checkout-field-names';
 
 /**

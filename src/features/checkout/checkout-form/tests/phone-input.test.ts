@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { PhoneNumberResult, PhoneRules } from '@/core/country-service';
+import type { PhoneNumberResult, PhoneRules } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -14,7 +14,7 @@ import {
 } from '../phone-input';
 
 // Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
-// as `src/core/tests/country-service.phone.test.ts` does.
+// as `src/core/tests/i18n-rules.phone.test.ts` does.
 const US: PhoneRules = {
   calling_code: '1',
   national_prefix: '1',

@@ -20,7 +20,7 @@
  * billing sections each owning their own dropdown pair.
  */
 
-import type { Country, CountryService } from '@/core/country-service';
+import type { Country, CountryService } from '@/core/i18n-rules';
 import { scopedKey } from '@/core/storage';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';

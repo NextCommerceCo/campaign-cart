@@ -426,7 +426,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The unparsed condition is attached: check it against the conditional-display grammar. Unbalanced quotes and a comparison operator with no right-hand side are the common mistakes.',
   },
 
-  // ── country-service.ts ─────────────────────────────────────────────────────
+  // ── i18n-rules.ts ─────────────────────────────────────────────────────
   {
     level: 'error',
     message: 'Failed to fetch location data:',

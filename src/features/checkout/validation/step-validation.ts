@@ -12,7 +12,7 @@
  * its own, the fourth (`creditCardService`) is what step 3 passes through.
  */
 
-import { asksForPostcode, type CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
 import type { FormValidationContext } from './form-validation';
 import { validateForm } from './form-validation';

@@ -6,7 +6,7 @@ import {
   isE164,
   isPlausiblePhone,
   type PhoneRules,
-} from '@/core/country-service/country-service.phone';
+} from '@/core/i18n-rules/i18n-rules.phone';
 
 // Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
 // where each is held to libphonenumber's example numbers for the country.

@@ -3,7 +3,7 @@
  * country's mask as the shopper types and read back as the E.164 number the order needs.
  *
  * The rules are the address-rules service's, per country (`CountryConfig.phone`, see
- * `core/country-service`): a mask and a loose pattern. The check is loose on purpose,
+ * `core/i18n-rules`): a mask and a loose pattern. The check is loose on purpose,
  * because the order API validates the number. The E.164 number is the service's too: the
  * field asks it to read the number (`POST /v1/validate`) when the shopper pauses, leaves
  * the field, or a value is written in, and waits for nothing else. Until it answers, or if
@@ -34,7 +34,7 @@ import {
   isPlausiblePhone,
   type PhoneNumberResult,
   type PhoneRules,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 

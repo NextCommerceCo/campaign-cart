@@ -25,7 +25,7 @@ data-next-i18n="checkout.pay;[title]checkout.pay.hint"
         ▼  parseI18n (utils/i18n-spec.ts)
 [{ attribute: null, key: 'checkout.pay' }, { attribute: 'title', key: 'checkout.pay.hint' }]
         │
-        ▼  translatedText (core/country-service/country-service.translations.ts)
+        ▼  translatedText (core/i18n-rules/i18n-rules.translations.ts)
 nextConfig.translations[lang][key]  ??  service texts in lang  ??  what the HTML said
 ```
 

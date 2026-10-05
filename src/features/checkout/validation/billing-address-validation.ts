@@ -10,7 +10,7 @@
  * from the validator ({@link BillingAddressValidationContext}).
  */
 
-import { asksForPostcode, type CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';

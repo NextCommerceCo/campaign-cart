@@ -5,7 +5,7 @@
  * chosen, and taken back out when the shopper moves to a country that fixes nothing.
  */
 
-import type { CountryService, FixedValues } from '@/core/country-service';
+import type { CountryService, FixedValues } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 

@@ -15,7 +15,7 @@ import {
   type Country,
   type CountryConfig,
   type PhoneRules,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
 import {

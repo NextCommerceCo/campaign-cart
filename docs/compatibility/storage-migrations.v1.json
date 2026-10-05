@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "90f002ead203348905b4c099f50531a664ca30ac8c5c8144c9373d855a0dfa38",
+    "inputSha256": "20dd6479389efefc487ecd8822ca8f1e443383c0ccddc7adeadf88bf7820af0c",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -16,7 +16,7 @@
       },
       {
         "path": "src/core/analytics/events/event-builder.context.ts",
-        "sha256": "29eb67e46792c126d786df472d9f98266221dd78f505f9354251e7b5b7bb5fe8"
+        "sha256": "05fea4d87127cf98e39f252497518cf7e8f90cab8e06b1e9ab065e2288026d8e"
       },
       {
         "path": "src/core/analytics/events/list-attribution-storage.ts",
@@ -44,15 +44,11 @@
       },
       {
         "path": "src/core/analytics/user-data-storage.ts",
-        "sha256": "1d8bf8d886797ca2216db109e4d71df974f705cf88c2e99d065dfe3f41fc588e"
+        "sha256": "989a0ae1ae16fde47b59c449f7701514de88f367835f101df75d8c36a9c3bf5c"
       },
       {
         "path": "src/core/attribution/attribution-collector.ts",
         "sha256": "48a7bf913792758c7f9e2129fd385e3d0cc5e7d4ae46a9bfecbf9ec9d4063a9c"
-      },
-      {
-        "path": "src/core/country-service/country-service.ts",
-        "sha256": "097288317824e8bbc85a36acc4b0a313d9b15549a9c1b745c17d777e97e2e92c"
       },
       {
         "path": "src/core/currency-formatter.ts",
@@ -60,7 +56,7 @@
       },
       {
         "path": "src/core/debug/country-selector.ts",
-        "sha256": "00303d0df69405c65182977edacf8eaaa1ad301b68dc2a8092f297897aae7b76"
+        "sha256": "4485efe381c50a40248f12f249c96369f901bd4523a5424350d2c05fb4e29b6e"
       },
       {
         "path": "src/core/debug/currency-selector.ts",
@@ -91,16 +87,20 @@
         "sha256": "2b570fda0f377f3303ddf9648844c98f029addb8e4ee2a3919c7948ff99a5025"
       },
       {
+        "path": "src/core/i18n-rules/i18n-rules.ts",
+        "sha256": "4a27a7fd70e09fd2a021a423432f39ee00aacffda6077ff53f124b149e2b6520"
+      },
+      {
         "path": "src/core/sdk-initializer/sdk-initializer.debug-utils.ts",
         "sha256": "3804a2e5d605d85811d858e642a8b0f4215ca9796cce1aff75c2bd13101b50ac"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.location-currency.ts",
-        "sha256": "ff19d42f4076e7c082b5a3378f99b20955dc262f0f2a3bbdfbba78148a104f73"
+        "sha256": "bd72b150475296813658841410557914226f9d4bd0fc5afb191cbf477dcdfe4c"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.ts",
-        "sha256": "794672f2e1fbcf50b54d84dece75e9856fa5296f0b252e29672f11e31c5848c4"
+        "sha256": "6cfbf68c1ec0d39d5e58398169de99cadea609a458a6f7631fe6a723936ab35d"
       },
       {
         "path": "src/core/storage.ts",
@@ -108,11 +108,11 @@
       },
       {
         "path": "src/docs/content/storage-keys.ts",
-        "sha256": "30ae584c1b78a6c323207a06436c6ffcb7d94cc7e63a662ed673cba1921fbe6a"
+        "sha256": "3d50420967d729dae95e02a7063f5689c1d78c6a523f123b519933ec00350473"
       },
       {
         "path": "src/docs/extract/extract-storage-keys.ts",
-        "sha256": "9b2459d84a8b0cd481e19c94e604a26c7028257c3ee66953c58bc89dc20654fe"
+        "sha256": "c72d06f0d910ac41592d1a10e1a1f56e051a30bce30edb827b513b59c59b80ba"
       },
       {
         "path": "src/docs/extract/source-anchor.ts",
@@ -128,11 +128,11 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "01ec3800af3f68b71533fa6c871e17f38a4453a5a14856fc4f7042d8b4bb68db"
+        "sha256": "d16bc6abc45c82aa8b8447d69ecd6d7f552b28b58411e142f4dd1a13b52ed0e1"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",
-        "sha256": "bc0270385be7fd607e225cb93444027a8ff85ff47af69e781dddd2ece0927d7f"
+        "sha256": "46d444f65240a01341e9a4b35d353e65b78bc78c93734a82cacd94d014962ad4"
       },
       {
         "path": "src/features/checkout/checkout-form/duplicate-purchase-warning.ts",
@@ -552,8 +552,8 @@
         "call"
       ],
       "where": [
-        "core/country-service/country-service.ts › CountryService.getFromCache",
-        "core/country-service/country-service.ts › CountryService.setCache"
+        "core/i18n-rules/i18n-rules.ts › CountryService.getFromCache",
+        "core/i18n-rules/i18n-rules.ts › CountryService.setCache"
       ],
       "migration": null,
       "replacement": null
@@ -570,7 +570,7 @@
         "call"
       ],
       "where": [
-        "core/country-service/country-service.ts › CountryService.clearCountryCache"
+        "core/i18n-rules/i18n-rules.ts › CountryService.clearCountryCache"
       ],
       "migration": null,
       "replacement": null

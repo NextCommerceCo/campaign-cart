@@ -7,26 +7,26 @@ import type {
   CountryRules,
   FixedValues,
   PostcodeResult,
-} from '@/core/country-service/country-service.next-address';
+} from '@/core/i18n-rules/i18n-rules.api';
 import type {
   PhoneNumberResult,
   PhoneRules,
-} from '@/core/country-service/country-service.phone';
+} from '@/core/i18n-rules/i18n-rules.phone';
 import { getSelectedLocale } from '@/core/currency-formatter';
 import { EventBus } from '@/core/events';
 import { Logger } from '@/core/logger';
 import { useConfigStore } from '@/state/config';
 import type { AddressConfig } from '@/types/global';
-import * as postalCodeMethods from '@/core/country-service/country-service.postal-code';
-import * as filteringMethods from '@/core/country-service/country-service.filtering';
+import * as postalCodeMethods from '@/core/i18n-rules/i18n-rules.postal-code';
+import * as filteringMethods from '@/core/i18n-rules/i18n-rules.filtering';
 import {
   fetchPhoneNumber,
   fetchPostcode,
   fetchCountryStates,
   fetchLocationData,
   fetchTexts,
-} from '@/core/country-service/country-service.next-address';
-import { baseLang } from '@/core/country-service/country-service.translations';
+} from '@/core/i18n-rules/i18n-rules.api';
+import { baseLang } from '@/core/i18n-rules/i18n-rules.translations';
 
 export interface CountryConfig {
   stateLabel: string;
@@ -602,7 +602,7 @@ export class CountryService {
   /**
    * Apply country filtering based on configuration and campaign settings.
    * Rules and priority order are documented on `applyCountryFiltering` in
-   * `country-service.filtering.ts`.
+   * `i18n-rules.filtering.ts`.
    */
   private async applyCountryFiltering(
     data: LocationData

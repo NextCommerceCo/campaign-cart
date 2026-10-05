@@ -36,12 +36,12 @@ import type {
   CountryStatesData,
   LocationData,
   State,
-} from '@/core/country-service/country-service';
+} from '@/core/i18n-rules/i18n-rules';
 import { flattenTexts } from '@/core/flatten-texts';
 import type {
   PhoneNumberResult,
   PhoneRules,
-} from '@/core/country-service/country-service.phone';
+} from '@/core/i18n-rules/i18n-rules.phone';
 
 const NEXT_ADDRESS_BASE_URL = 'https://i18n-rules.nextcommerce.com';
 
@@ -183,7 +183,7 @@ export function toCountryConfig(
 }
 
 /**
- * The three empty fields are read from nowhere: `country-service.filtering.ts` already
+ * The three empty fields are read from nowhere: `i18n-rules.filtering.ts` already
  * writes `''` for `phonecode` on every country it builds itself, and currency is read
  * through `LocationData.detectedCountryConfig`, never from a row of this list.
  */

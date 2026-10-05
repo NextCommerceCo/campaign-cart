@@ -940,7 +940,7 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
   },
   {
     name: '`cacheExpiry` (CountryService)',
-    file: 'core/country-service/country-service.ts',
+    file: 'core/i18n-rules/i18n-rules.ts',
     evidence: 'private cacheExpiry = 3600000',
     window: '1 hour',
     governs:

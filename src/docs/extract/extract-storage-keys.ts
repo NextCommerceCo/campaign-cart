@@ -210,7 +210,7 @@ function classMember(
 
 /**
  * Resolves an identifier the way the language does: nearest scope outward. Getting
- * this right matters — `country-service.ts` declares `cacheKey` four times with four
+ * this right matters — `i18n-rules.ts` declares `cacheKey` four times with four
  * different values, and a flat per-file map would report whichever it saw last.
  *
  * A function parameter resolves to {@link OPAQUE}: the name exists, its value does
@@ -421,7 +421,7 @@ function resolveName(
 /**
  * The store a call site writes to.
  *
- * `country-service.ts` picks its store at runtime — `const storage = useLocalStorage
+ * `i18n-rules.ts` picks its store at runtime — `const storage = useLocalStorage
  * ? localStorage : sessionStorage` — and then calls `storage.getItem(…)`. Following
  * that one indirection is what keeps `next_country_*` from vanishing from the page.
  */

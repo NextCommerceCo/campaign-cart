@@ -5,7 +5,7 @@
  */
 
 import type { Logger } from '@/core/logger';
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 
 /**
  * Placeholder characters in a CDN `postcodeFormat`. All five accept any

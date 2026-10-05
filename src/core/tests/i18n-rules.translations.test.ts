@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { translatedText } from '@/core/country-service';
+import { translatedText } from '@/core/i18n-rules';
 import { useConfigStore } from '@/state/config';
 
 afterEach(() => useConfigStore.setState({ translations: undefined }));

@@ -20,7 +20,7 @@ import type {
   CountryConfig,
   CountryService,
   CountryStatesData,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 import {

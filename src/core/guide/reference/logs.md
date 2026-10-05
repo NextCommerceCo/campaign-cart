@@ -1147,7 +1147,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 Validates and formats a postal code against a country’s rules, and holds the built-in per-country defaults used when the CDN has none for a country.
 
-Logged from `country-service/country-service.postal-code.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.
+Logged from `i18n-rules/i18n-rules.postal-code.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `i18n-rules.ts` and passes it in as a parameter, so every line here prints under `[CountryService]`.
 
 ### Error
 
@@ -1155,7 +1155,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Invalid postal code regex:`
 
-`country-service/country-service.postal-code.ts › validatePostalCode` · extra context attached
+`i18n-rules/i18n-rules.postal-code.ts › validatePostalCode` · extra context attached
 
 **Meaning:** The postal-code pattern configured for a country is not a valid regular expression, so validation was skipped and any postal code is accepted. Orders can be placed with an address the carrier will reject.
 
@@ -1165,7 +1165,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 Filters the country and state lists to what the campaign actually ships to, and picks a fallback country when the visitor’s detected one is not on that list.
 
-Logged from `country-service/country-service.filtering.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `country-service.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.
+Logged from `i18n-rules/i18n-rules.filtering.ts`. A free function, not a class with its own logger. `CountryService` builds one `Logger('CountryService')` in `i18n-rules.ts` and passes it in through a `{ campaignShippingCountries, config, logger }` context, so every line here prints under `[CountryService]`.
 
 ### Warn
 
@@ -1173,7 +1173,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `⚠️ Using deprecated showCountries config. Please use campaign API instead.`
 
-`country-service/country-service.filtering.ts › applyCountryFiltering`
+`i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering`
 
 **Meaning:** The country list is being filtered by the `showCountries` setting in configuration. That setting is deprecated: the campaign’s `available_shipping_countries` is the intended source, and it is ignored while `showCountries` is set.
 
@@ -1181,7 +1181,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `⚠️ No countries available in filtered list. Using config defaultCountry: {defaultCountry}`
 
-`country-service/country-service.filtering.ts › applyCountryFiltering`
+`i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering`
 
 **Meaning:** Filtering left no countries at all, so the configured default is used on its own. The visitor sees a country dropdown with one entry, whatever their real location.
 
@@ -1193,19 +1193,19 @@ Normal progress. Read these as the play-by-play of what the SDK decided: which c
 
 | Message | Source | Extra context |
 |---|---|---|
-| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `country-service/country-service.filtering.ts › applyCountryFiltering` | yes |
-| `Using custom countries list from addressConfig.countries` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
-| `Filtering countries based on addressConfig.showCountries (legacy):` | `country-service/country-service.filtering.ts › applyCountryFiltering` | yes |
-| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
-| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
-| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
-| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `country-service/country-service.filtering.ts › applyCountryFiltering` | — |
+| `✅ Filtering countries based on campaign API (available_shipping_countries):` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | yes |
+| `Using custom countries list from addressConfig.countries` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | — |
+| `Filtering countries based on addressConfig.showCountries (legacy):` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | yes |
+| `✅ Detected country ({detectedCountryCode}) not available for shipping. Using fallback: United States (US)` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | — |
+| `✅ Detected country ({detectedCountryCode}) not available and US not in list. Using first available country: {fallbackCountryCode}` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | — |
+| `Preserving detected currency: {currencyCode} from detected location: {detectedCountryCode}` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | — |
+| `✅ Using detected country: {detectedCountryCode} (available for shipping)` | `i18n-rules/i18n-rules.filtering.ts › applyCountryFiltering` | — |
 
 ## `[CountryService]`
 
 Detects the visitor’s country, fetches and caches the country and state lists for the address form, and delegates postal-code rules and shipping-country filtering to its sibling modules.
 
-Logged from `country-service/country-service.ts`.
+Logged from `i18n-rules/i18n-rules.ts`.
 
 ### Error
 
@@ -1213,7 +1213,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to fetch location data:`
 
-`country-service/country-service.ts › CountryService.getLocationData` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.getLocationData` · extra context attached
 
 **Meaning:** The location request failed and the built-in fallback is in use: the configured country list and the United States as the detected country. Prices and shipping options are for that fallback, not for the visitor.
 
@@ -1221,7 +1221,7 @@ Something did not work. Each of these means a visitor saw the wrong thing, or a 
 
 #### `Failed to fetch states for {countryCode}:`
 
-`country-service/country-service.ts › CountryService.getCountryStates` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.getCountryStates` · extra context attached
 
 **Meaning:** The state list for that country could not be loaded, so the state field renders with no options. In countries where a state is required, the visitor cannot complete the address.
 
@@ -1233,7 +1233,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to clear cache:`
 
-`country-service/country-service.ts › CountryService.clearCache` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.clearCache` · extra context attached
 
 **Meaning:** Clearing the cached country and state data failed, so stale lists may still be served this session.
 
@@ -1241,7 +1241,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to clear cache for country {countryCode}:`
 
-`country-service/country-service.ts › CountryService.clearCountryCache` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.clearCountryCache` · extra context attached
 
 **Meaning:** The cached states for one country could not be removed, so the old list may still be shown.
 
@@ -1249,7 +1249,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to read from cache:`
 
-`country-service/country-service.ts › CountryService.getFromCache` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.getFromCache` · extra context attached
 
 **Meaning:** A cached entry could not be read, so the data is fetched from the API instead. Correct behaviour, one request slower.
 
@@ -1257,7 +1257,7 @@ The SDK carried on, but something in the markup, the configuration, or the campa
 
 #### `Failed to write to cache:`
 
-`country-service/country-service.ts › CountryService.setCache` · extra context attached
+`i18n-rules/i18n-rules.ts › CountryService.setCache` · extra context attached
 
 **Meaning:** A response could not be cached, so the next page will fetch it again. Nothing is wrong with the data.
 
@@ -1269,12 +1269,12 @@ The detail behind the info lines. Expected in bulk, and only visible with debug 
 
 | Message | Source | Extra context |
 |---|---|---|
-| `Address configuration updated:` | `country-service/country-service.ts › CountryService.setConfig` | yes |
-| `Campaign shipping countries updated:` | `country-service/country-service.ts › CountryService.setCampaignShippingCountries` | yes |
-| `Location data fetched` | `country-service/country-service.ts › CountryService.getLocationData` | yes |
-| `States data fetched for {countryCode}` | `country-service/country-service.ts › CountryService.getCountryStates` | yes |
-| `Country service cache cleared ({length} session + {length} local entries)` | `country-service/country-service.ts › CountryService.clearCache` | — |
-| `Cache cleared for country: {countryCode}` | `country-service/country-service.ts › CountryService.clearCountryCache` | — |
+| `Address configuration updated:` | `i18n-rules/i18n-rules.ts › CountryService.setConfig` | yes |
+| `Campaign shipping countries updated:` | `i18n-rules/i18n-rules.ts › CountryService.setCampaignShippingCountries` | yes |
+| `Location data fetched` | `i18n-rules/i18n-rules.ts › CountryService.getLocationData` | yes |
+| `States data fetched for {countryCode}` | `i18n-rules/i18n-rules.ts › CountryService.getCountryStates` | yes |
+| `Country service cache cleared ({length} session + {length} local entries)` | `i18n-rules/i18n-rules.ts › CountryService.clearCache` | — |
+| `Cache cleared for country: {countryCode}` | `i18n-rules/i18n-rules.ts › CountryService.clearCountryCache` | — |
 
 ## `[AttributionCollector]`
 

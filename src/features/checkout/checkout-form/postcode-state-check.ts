@@ -14,7 +14,7 @@
  * the shopper has since changed shows nothing.
  */
 
-import type { PostcodeResult } from '@/core/country-service';
+import type { PostcodeResult } from '@/core/i18n-rules';
 
 /** What this module needs from the checkout form. */
 export interface PostcodeStateContext {

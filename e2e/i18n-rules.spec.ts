@@ -37,7 +37,7 @@ import type { Page } from '@playwright/test';
  * test is deterministic, through `routeAddressService` in `fixtures/routes.ts`.
  */
 
-const FIXTURE = '/e2e/fixtures/country-service.html';
+const FIXTURE = '/e2e/fixtures/i18n-rules.html';
 
 const COUNTRY = '[data-next-checkout-field="country"]';
 const PROVINCE = '[data-next-checkout-field="province"]';

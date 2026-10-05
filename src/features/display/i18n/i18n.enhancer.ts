@@ -1,9 +1,5 @@
 import { BaseEnhancer } from '@/core/base/base-enhancer';
-import {
-  addressLang,
-  CountryService,
-  translatedText,
-} from '@/core/country-service';
+import { addressLang, CountryService, translatedText } from '@/core/i18n-rules';
 import { parseI18n, type I18nTarget } from '@/utils/i18n-spec';
 
 import {

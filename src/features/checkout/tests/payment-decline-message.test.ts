@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CountryService } from '@/core/country-service';
+import type { CountryService } from '@/core/i18n-rules';
 import { useConfigStore } from '@/state/config';
 import {
   declineCode,

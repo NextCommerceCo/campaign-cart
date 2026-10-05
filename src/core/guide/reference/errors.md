@@ -32,8 +32,8 @@ Fatal first, since those recur for every visitor until something changes.
 | `Either packageId or items array must be provided` | Fatal | `next-commerce/next-commerce.upsells.ts` |
 | `No test cards available` | Fatal | `test-mode.ts` |
 | `{name}: data-next-display attribute is required` | Fatal | `base/base-display-enhancer.ts` |
-| `{url} carried no address layout` | Recoverable | `country-service/country-service.next-address.ts` |
-| `{url} responded {status} {statusText}` | Recoverable | `country-service/country-service.next-address.ts` |
+| `{url} carried no address layout` | Recoverable | `i18n-rules/i18n-rules.api.ts` |
+| `{url} responded {status} {statusText}` | Recoverable | `i18n-rules/i18n-rules.api.ts` |
 | `Order does not support post-purchase upsells or is currently processing.` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `Failed to add upsell - no updated order returned` | Recoverable | `next-commerce/next-commerce.upsells.ts` |
 | `HTTP {status}: {statusText}` | Recoverable | `analytics/providers/custom-adapter.ts` |
@@ -86,16 +86,16 @@ Every part of `src/core`, and whether it raises anything of its own. "Nothing" i
 | `base/display-error-boundary.ts` | `[DisplayErrorBoundary]` | nothing |
 | `base/display-value-validator.ts` | `[DisplayValueValidator]` | nothing |
 | `base/dom-observer.ts` | `[DOMObserver]` | nothing |
-| `country-service/country-service.filtering.ts` | `[CountryService]` | nothing |
-| `country-service/country-service.next-address.ts` | — logs nothing | 2 — `{url} carried no address layout`, `{url} responded {status} {statusText}` |
-| `country-service/country-service.postal-code.ts` | `[CountryService]` | nothing |
-| `country-service/country-service.ts` | `[CountryService]` | nothing |
 | `debug/country-selector.ts` | `[CountrySelector]` | nothing |
 | `debug/currency-selector.ts` | `[CurrencySelector]` | nothing |
 | `debug/debug-module.ts` | `[DebugModule]` | nothing |
 | `debug/debug-overlay/debug-overlay.ts` | `[DebugOverlay]` | nothing |
 | `debug/locale-selector.ts` | `[LocaleSelector]` | nothing |
 | `debug/upsell-selector.ts` | `[UpsellSelector]` | nothing |
+| `i18n-rules/i18n-rules.api.ts` | — logs nothing | 2 — `{url} carried no address layout`, `{url} responded {status} {statusText}` |
+| `i18n-rules/i18n-rules.filtering.ts` | `[CountryService]` | nothing |
+| `i18n-rules/i18n-rules.postal-code.ts` | `[CountryService]` | nothing |
+| `i18n-rules/i18n-rules.ts` | `[CountryService]` | nothing |
 | `monitoring/error-handler.ts` | `[ErrorHandler]` | nothing |
 | `next-commerce/next-commerce.analytics.ts` | `[NextCommerce]` | nothing |
 | `next-commerce/next-commerce.attribution.ts` | `[NextCommerce]` | nothing |
@@ -302,7 +302,7 @@ The namespace before the dot decides which part of the SDK answers — see the [
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `country-service/country-service.next-address.ts` — logs under `[CountryService]` |
+| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[CountryService]` |
 | Cause | The address service answered, but the body had no list of address rows in it. A proxy or a captive portal returning an HTML page in place of the JSON is the realistic cause. |
 | Caught | Caught by `CountryService` like any other failed lookup: it logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with the built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. |
 
@@ -315,7 +315,7 @@ The namespace before the dot decides which part of the SDK answers — see the [
 | | |
 |---|---|
 | Type | Recoverable |
-| Thrown by | `country-service/country-service.next-address.ts` — logs under `[CountryService]` |
+| Thrown by | `i18n-rules/i18n-rules.api.ts` — logs under `[CountryService]` |
 | Cause | The address service answered with a non-OK status while the SDK was asking for the country list or one country’s address rules. The visitor’s network, an extension, or the service being briefly unavailable all produce this. An unknown country code is not a cause: an uncurated country is answered with a generic layout. |
 | Caught | Caught by `CountryService`, which logs `Failed to fetch location data:` or `Failed to fetch states for {countryCode}:` and continues with its built-in fallback — the country list from configuration, United States as the country, and an empty state list with default labels. Checkout still works; the country dropdown is shorter than it should be, and a visitor in a country that requires a state cannot pick one. |
 

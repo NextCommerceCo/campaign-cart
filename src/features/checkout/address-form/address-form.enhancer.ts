@@ -4,7 +4,7 @@ import {
   addressLang,
   type CountryRules,
   pageTranslations,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 
 import { builtInRules, fetchCountryRules } from './address-form.api';
 import { readRenderedValues, renderLayout } from './address-form.renderer';

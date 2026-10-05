@@ -28,7 +28,7 @@ import {
   CountryService,
   pageTranslations,
   translatedText,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 
 /** What a declined order answers, as far as the message needs it. */
 export interface PaymentDecline {

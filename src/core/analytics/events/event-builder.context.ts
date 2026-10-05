@@ -13,7 +13,7 @@ import { useCheckoutStore } from '@/state/checkout';
 import { useConfigStore } from '@/state/config';
 import { createLogger } from '@/core/logger';
 import { getCookie } from '@/utils/cookies';
-import { isE164 } from '@/core/country-service/country-service.phone';
+import { isE164 } from '@/core/i18n-rules/i18n-rules.phone';
 
 const logger = createLogger('EventBuilder');
 

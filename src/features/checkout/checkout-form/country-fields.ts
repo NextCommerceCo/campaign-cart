@@ -15,7 +15,7 @@
  * in-flight request map — and stays in the enhancer for now.
  */
 
-import type { Country, CountryConfig } from '@/core/country-service';
+import type { Country, CountryConfig } from '@/core/i18n-rules';
 
 import { BILLING_CONTAINER_SELECTOR as BILLING_CONTAINER } from '../constants/selectors';
 

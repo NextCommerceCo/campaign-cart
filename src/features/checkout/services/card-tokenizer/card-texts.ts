@@ -5,11 +5,7 @@
  * English here — the same order the address form reads its own.
  */
 
-import {
-  addressLang,
-  CountryService,
-  translatedText,
-} from '@/core/country-service';
+import { addressLang, CountryService, translatedText } from '@/core/i18n-rules';
 
 import type { CardErrorField } from './card-tokenizer.types';
 
