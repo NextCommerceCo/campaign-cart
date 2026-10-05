@@ -75,8 +75,10 @@ the two can never drift apart.
 - **The phone input says which country it reads the number as, and the number in
   E.164 once it is read.** `data-next-phone-country` is the address country,
   unless the service has read the number as another country's: `+66 81 234 5678`
-  in a US form shows the Thai flag. A number dialled with `00` keeps the digits
-  the shopper typed while they type; once they leave the field it is shown as
+  in a US form shows the Thai flag. A number typed with `+` or dialled with `00`
+  stays as it was written, spaces and hyphens included, since no mask fits
+  another country's number (`country-service.phone.ts › asWritten`); once they
+  leave the field it is shown as
   the service writes it, at home for the address country (`081 234 5678`) and
   from abroad otherwise (`+44 7400 123456`). `data-next-phone-e164` is present only once the service has
   read the number as a valid one, and is taken off on the next keystroke, so page

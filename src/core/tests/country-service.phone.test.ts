@@ -61,12 +61,24 @@ describe('formatPhone', () => {
     expect(formatPhone('0812345678', TH)).toBe('081 234 5678');
   });
 
-  it('leaves a number typed with + as + and its digits', () => {
-    expect(formatPhone('+1 212-555-0123', US)).toBe('+12125550123');
+  it('leaves a number typed with + as it was written', () => {
+    expect(formatPhone('+1 212-555-0123', US)).toBe('+1 212-555-0123');
+    expect(formatPhone('+12125550123', US)).toBe('+12125550123');
   });
 
-  it('shows a number dialled with 00 as its digits, not as a +', () => {
-    expect(formatPhone('0066 81 234 5678', TH)).toBe('0066812345678');
+  it('keeps the spacing the service wrote a number in, so going back in moves nothing', () => {
+    expect(formatPhone('+66 83 873 1960', US)).toBe('+66 83 873 1960');
+    expect(formatPhone('+66 83 873 19605', US)).toBe('+66 83 873 19605');
+  });
+
+  it('drops what is not part of a number, and a + anywhere but first', () => {
+    expect(formatPhone('  +66  81x 234+5678', US)).toBe('+66 81 2345678');
+    expect(formatPhone('+(415) 555-2671', US)).toBe('+415 555-2671');
+  });
+
+  it('shows a number dialled with 00 as it was written, not as a +', () => {
+    expect(formatPhone('0066 81 234 5678', TH)).toBe('0066 81 234 5678');
+    expect(formatPhone('0066812345678', TH)).toBe('0066812345678');
   });
 
   it('shows Thai and full-width digits as ASCII ones in the mask', () => {

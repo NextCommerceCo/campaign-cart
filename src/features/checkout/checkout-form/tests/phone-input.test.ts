@@ -447,7 +447,7 @@ describe('the phone field, and the country', () => {
       readPhoneNumber: reads,
     });
     type(thai, '001 66 81 234 5678');
-    expect(thai.value).toBe('00166812345678');
+    expect(thai.value).toBe('001 66 81 234 5678');
     await fromThailand.field.whenReady();
     expect(thai.getAttribute('data-next-phone-e164')).toBe('+66812345678');
     expect(thai.getAttribute('data-next-phone-country')).toBe('TH');
@@ -707,6 +707,32 @@ describe('the phone field, and the country', () => {
     expect(input.value).toBe('+4');
   });
 
+  it('keeps the spacing the service wrote when the shopper goes back in and types', async () => {
+    const input = phoneInput();
+    const { field } = await shippingField(input, {
+      readPhoneNumber: number =>
+        Promise.resolve(
+          number.replace(/\D/g, '') === '66812345678'
+            ? {
+                valid: true,
+                value: '+66812345678',
+                country: 'TH',
+                international: '+66 81 234 5678',
+              }
+            : { valid: false }
+        ),
+    });
+
+    type(input, '+66812345678');
+    input.blur();
+    await field.whenReady();
+    expect(input.value).toBe('+66 81 234 5678');
+
+    caretAt(input, input.value.length);
+    type(input, '9');
+    expect(input.value).toBe('+66 81 234 56789');
+  });
+
   it('keeps the caret after a + typed in front of a number', async () => {
     const input = phoneInput();
     await shippingField(input);
@@ -714,11 +740,11 @@ describe('the phone field, and the country', () => {
 
     caretAt(input, 0);
     type(input, '+');
-    expect(input.value).toBe('+4155552671');
+    expect(input.value).toBe('+415 555-2671');
     expect(input.selectionStart).toBe(1);
 
     type(input, '1');
-    expect(input.value).toBe('+14155552671');
+    expect(input.value).toBe('+1415 555-2671');
     expect(input.selectionStart).toBe(2);
   });
 });

@@ -139,8 +139,24 @@ function masked(digits: string, mask: string): string | null {
 }
 
 /**
- * What the field shows: `+` and the digits for a number typed with a `+`, the digits as
- * typed for one dialled with `00`, otherwise the digits in the country's mask for how the
+ * A number typed with `+` or dialled with `00`, as it was written: its digits, the `+`
+ * before them, and the spaces and hyphens between them, anything else dropped. Brackets
+ * go too: they come from a national mask, `(415) 555-2671`, and are no part of a number
+ * written from abroad, so a `+` typed in front gives `+415 555-2671`. No mask fits a number of another country, so the shopper's spacing stands, and
+ * so does the service's once it has written the number (`+66 83 873 1960`): stripping it
+ * on the next keystroke would make the text jump every time the shopper goes back in.
+ */
+function asWritten(text: string): string {
+  const kept = asciiDigits(text)
+    .replace(/[^\d+\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trimStart();
+  return kept.charAt(0) + kept.slice(1).replace(/\+/g, '');
+}
+
+/**
+ * What the field shows: a number typed with a `+` or dialled with `00` as it was written
+ * ({@link asWritten}), otherwise the digits in the country's mask for how the
  * number starts — cut after the last digit typed, so `41555` in the US shows as
  * `(415) 55`. Digits the mask has no room for, or a country with no mask, show as typed.
  * Until the digits reach a mask's `start`, the default is used.
@@ -151,8 +167,8 @@ function masked(digits: string, mask: string): string | null {
 export function formatPhone(text: string, rules?: PhoneRules): string {
   const digits = digitsOf(text);
   const start = startOf(text);
-  if (start === '+') return `+${digits}`;
-  if (start === '00' || !rules?.masks?.length || !digits) return digits;
+  if (start === '+' || start === '00') return asWritten(text);
+  if (!rules?.masks?.length || !digits) return digits;
 
   const prefix = rules.national_prefix;
   const maskHoldsPrefix =

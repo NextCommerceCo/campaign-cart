@@ -329,14 +329,15 @@ test('a Thai number dialled through a carrier prefix stays Thai', async ({
   const input = page.locator(PHONE);
   await input.pressSequentially('001 66 81 234 5678');
 
-  await expect(input).toHaveValue('00166812345678');
+  await expect(input).toHaveValue('001 66 81 234 5678');
   await expect(input).toHaveAttribute('data-next-phone-country', 'TH');
   await expect.poll(() => storedPhone(page)).toBe('+66812345678');
 });
 
 /**
  * `00` is how most countries dial abroad, so it is the shopper's `+`. The field keeps the
- * digits typed: which prefix it was is only known once the code after it is in.
+ * number as typed, spaces included: which prefix it was is only known once the code after
+ * it is in.
  */
 test('a number dialled with 00 is read as +', async ({ page }) => {
   await stubCardCheckout(page, { country: 'TH' });
@@ -346,7 +347,7 @@ test('a number dialled with 00 is read as +', async ({ page }) => {
   const input = page.locator(PHONE);
   await input.pressSequentially('0066 81 234 5678');
 
-  await expect(input).toHaveValue('0066812345678');
+  await expect(input).toHaveValue('0066 81 234 5678');
   await expect.poll(() => storedPhone(page)).toBe('+66812345678');
 });
 
@@ -401,7 +402,8 @@ test('a Thai number typed with + in a US form shows the Thai flag and goes out i
   await input.pressSequentially('+66 81 234 5678');
 
   await expectCountry(page, 'TH');
-  await expect(input).toHaveValue('+66812345678');
+  // As typed: no mask fits another country's number, so its spacing is the shopper's.
+  await expect(input).toHaveValue('+66 81 234 5678');
   await expect(input).toHaveAttribute('data-next-phone-e164', '+66812345678');
   // The address is still American: only the phone reads as Thai.
   await expect(
@@ -527,6 +529,30 @@ test('an Argentine number goes out in the E.164 the service converts it to', asy
   const body = await placedOrder(page, posts);
 
   expect(body.shipping_address.phone_number).toBe('+5491123456789');
+});
+
+/**
+ * The written form stays put. Leaving the field writes the number as the service does,
+ * `+66 81 234 5678`; going back in and typing used to strip that spacing on the first
+ * keystroke and put it back on leaving, so the text jumped every time.
+ */
+test('a number written from abroad keeps its spacing when the shopper goes back in', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  await bootSdk(page, CHECKOUT);
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('+66812345678');
+  await input.blur();
+  await expect(input).toHaveValue('+66 81 234 5678');
+
+  await input.click();
+  await input.press('End');
+  await input.press('Backspace');
+  await expect(input).toHaveValue('+66 81 234 567');
+  await input.press('8');
+  await expect(input).toHaveValue('+66 81 234 5678');
 });
 
 test('a number the service reads as not valid is pointed out, and the order still goes out', async ({
