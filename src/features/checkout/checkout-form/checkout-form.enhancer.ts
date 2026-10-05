@@ -567,6 +567,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       );
       void this.reapplyToRenderedFields();
     });
+    // A block can finish rendering while this form is still booting: after the boot scan
+    // missed its fields, and before this listened for its announcement. It then said so
+    // to nobody, and a returning visitor's billing address stayed in the store.
+    if (
+      this.element.querySelector('[data-next-address-state="ready"]') !== null
+    ) {
+      void this.reapplyToRenderedFields();
+    }
   }
 
   /**

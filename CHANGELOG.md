@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- **A returning visitor's billing address comes back into a `data-next-address="billing"` block every time.** When the block finished building its fields while the checkout form was still starting up, the address stayed in the session and the fields stayed empty, on roughly one load in five.
 - **Thai and full-width digits typed into the phone field are written as ASCII digits, in the order typed.** They were dropped. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
 
 - **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
