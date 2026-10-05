@@ -5,8 +5,8 @@
  * built on top of them — the localStorage cache, the campaign/config country filtering,
  * the postcode formatter — is unchanged: this module only fetches and translates.
  *
- * The API is public, `GET`-only and unauthenticated; see `docs/http-api.md` in the
- * next-address repo. Four routes carry everything this SDK asks for:
+ * The API is public and unauthenticated; see `docs/guides/reference/routes.md` in the
+ * i18n-rules repo. Five routes carry everything this SDK asks for:
  *
  * | Route | Answers |
  * |---|---|
@@ -14,6 +14,10 @@
  * | `GET /v1/countries` | the country list |
  * | `GET /v1/countries/:country?include=states` | one country's rules and states |
  * | `GET /v1/locales/:lang` | the message templates, in one language |
+ * | `POST /v1/validate?lang=` | what a typed phone number or postcode is, as the shopper leaves it |
+ *
+ * The last is the one the shopper's typing reaches, so it is a `POST` that is never
+ * cached, and nothing waits on it longer than {@link VALIDATE_TIMEOUT_MS}.
  *
  * Only the first depends on the visitor, so the first three of `LocationData`'s requests
  * go out together and two of them come from the edge cache. `geo` carries the visitor's
