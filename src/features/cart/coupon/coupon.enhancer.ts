@@ -10,6 +10,7 @@
 
 import { BaseActionEnhancer } from '@/core/base/base-action-enhancer';
 import { useCartStore, cartOperations } from '@/state/cart';
+import { couponTexts } from '@/state/cart/coupon-texts';
 
 export class CouponEnhancer extends BaseActionEnhancer {
   private input: HTMLInputElement | null = null;
@@ -231,7 +232,9 @@ export class CouponEnhancer extends BaseActionEnhancer {
     // Emit standard event
     this.eventBus.emit('coupon:removed', { code });
 
-    this.showMessage(`Coupon ${code} removed`, 'info');
+    void couponTexts(code).then(texts =>
+      this.showMessage(texts('coupon.removed'), 'info')
+    );
   }
 
   private showMessage(

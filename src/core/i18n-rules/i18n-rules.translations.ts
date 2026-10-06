@@ -9,6 +9,12 @@ import { useConfigStore } from '@/state/config';
 
 type Texts = Readonly<Record<string, string>>;
 
+/** What waiting for the service's texts needs from `I18nRules`. */
+export interface TextSource {
+  getTexts: (lang: string) => Texts | undefined;
+  loadTexts: (lang: string) => Promise<void>;
+}
+
 /** What a lookup needs from `I18nRules`. */
 export interface MessageSource {
   getFieldErrors?: (country?: string) => Readonly<Record<string, Texts>>;
@@ -52,4 +58,38 @@ export function translatedText(
   serviceTexts?: Texts
 ): string | undefined {
   return pageTranslations(lang)[key] ?? serviceTexts?.[key];
+}
+
+/**
+ * The service's texts in `lang`, loading them if no element on the page has, but waiting
+ * no longer than `waitMs`: the shopper is waiting on the sentence, and past that the
+ * caller shows its own.
+ */
+export async function textsWithin(
+  source: TextSource,
+  lang: string,
+  waitMs: number
+): Promise<Texts | undefined> {
+  const loaded = source.getTexts(lang);
+  if (loaded) return loaded;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    source.loadTexts(lang),
+    new Promise<void>(resolve => {
+      timer = setTimeout(resolve, waitMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  return source.getTexts(lang);
+}
+
+/** `'Coupon {{code}} applied.'` with `{ code: 'SAVE10' }` → `'Coupon SAVE10 applied.'` */
+export function interpolate(
+  template: string,
+  vars: Readonly<Record<string, string>>
+): string {
+  return template.replace(
+    /\{\{\s*(\w+)\s*\}\}/g,
+    (match, key: string) => vars[key] ?? match
+  );
 }

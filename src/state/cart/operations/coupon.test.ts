@@ -16,6 +16,16 @@ vi.mock('@/state/cart/cart-calculator', async importOriginal => ({
   calculateCart: vi.fn(),
 }));
 
+// The only other request is the address-rules service's texts; refused, the
+// messages are the English fallbacks asserted below.
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 /**
  * Regression coverage: `applyCoupon` normalises the code it stores
  * (`toUpperCase().trim()`), but `removeCoupon` used to pass the raw string
@@ -73,7 +83,7 @@ describe('apply-coupon / remove-coupon round trip', () => {
 
     expect(result).toEqual({
       success: false,
-      message: 'Coupon already applied',
+      message: 'Coupon SAVE10 is already applied.',
     });
     expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
   });
@@ -117,7 +127,7 @@ describe('applyCoupon voucher check against the calculate response', () => {
 
     expect(result).toEqual({
       success: false,
-      message: 'Coupon PRIMAL_5 is not valid for this order',
+      message: "Coupon PRIMAL_5 isn't valid for this order.",
     });
     expect(useCheckoutStore.getState().vouchers).toEqual([]);
   });
@@ -127,7 +137,10 @@ describe('applyCoupon voucher check against the calculate response', () => {
 
     const result = await applyCoupon('save10');
 
-    expect(result.success).toBe(true);
+    expect(result).toEqual({
+      success: true,
+      message: 'Coupon SAVE10 applied.',
+    });
     expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
   });
 
@@ -148,7 +161,7 @@ describe('applyCoupon voucher check against the calculate response', () => {
 
     expect(result).toEqual({
       success: false,
-      message: 'Coupon SAVE10 could not be verified',
+      message: "Couldn't check the coupon. Try again.",
     });
     expect(useCheckoutStore.getState().vouchers).toEqual([]);
   });

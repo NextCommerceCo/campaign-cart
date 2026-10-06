@@ -2,6 +2,7 @@ import {
   calculateCart,
   type CalculateCartResult,
 } from '@/state/cart/cart-calculator';
+import { couponTexts } from '@/state/cart/coupon-texts';
 import { calculateTotals, cartCalculateParams } from './calculate-totals';
 import { logger } from './shared';
 import { useCartStore } from '@/state/cart';
@@ -14,6 +15,7 @@ export async function applyCoupon(
   const checkoutState = useCheckoutStore.getState();
 
   const normalizedCode = normalizeVoucherCode(code);
+  const texts = couponTexts(normalizedCode);
 
   // Compare normalised on both sides, not just the incoming code: a voucher
   // can also reach `vouchers` un-normalised, via bundle-selector's direct
@@ -24,7 +26,10 @@ export async function applyCoupon(
     vouchers.some(v => normalizeVoucherCode(v) === normalizedCode);
 
   if (isApplied(checkoutState.vouchers)) {
-    return { success: false, message: 'Coupon already applied' };
+    return {
+      success: false,
+      message: (await texts)('coupon.errors.already_applied'),
+    };
   }
 
   // The calculate API ignores a voucher it has no offer for without flagging
@@ -42,28 +47,28 @@ export async function applyCoupon(
       logger.error('Failed to verify coupon:', error);
       return {
         success: false,
-        message: `Coupon ${normalizedCode} could not be verified`,
+        message: (await texts)('coupon.errors.network'),
       };
     }
     if (!accepted) {
       return {
         success: false,
-        message: `Coupon ${normalizedCode} is not valid for this order`,
+        message: (await texts)('coupon.errors.invalid'),
       };
     }
     // A second apply of the same code may have resolved during the await.
     if (isApplied(useCheckoutStore.getState().vouchers)) {
-      return { success: false, message: 'Coupon already applied' };
+      return {
+        success: false,
+        message: (await texts)('coupon.errors.already_applied'),
+      };
     }
   }
 
   useCheckoutStore.getState().addVoucher(normalizedCode);
   calculateTotals();
 
-  return {
-    success: true,
-    message: `Coupon ${normalizedCode} applied successfully`,
-  };
+  return { success: true, message: (await texts)('coupon.applied') };
 }
 
 async function voucherAddsDiscount(

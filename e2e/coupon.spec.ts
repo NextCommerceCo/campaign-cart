@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import {
   stubCampaign,
+  stubI18nRules,
   bootSdk,
   captureEvents,
   EMPTY_CART_SUMMARY,
@@ -91,10 +92,34 @@ test('a code the server gives no discount for emits coupon:validation-failed', a
   await page.fill('input[data-next-coupon="input"]', 'primal_5');
   await page.click('[data-next-coupon="apply"]');
 
-  await expect.poll(() => failed.count()).toBeGreaterThan(0);
-  expect((await failed.all()).at(-1).message).toMatch(/not valid/i);
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    "Coupon PRIMAL_5 isn't valid for this order."
+  );
+  expect(await failed.count()).toBe(1);
   expect(await applied.count()).toBe(0);
   expect(await page.evaluate(() => (window as any).next.getCoupons())).toEqual(
     []
+  );
+});
+
+test("shows the address service's coupon text in the page's language", async ({
+  page,
+}) => {
+  await stubI18nRules(page, {
+    texts: {
+      'coupon.errors.invalid': 'คูปอง {{code}} ใช้กับคำสั่งซื้อนี้ไม่ได้',
+    },
+  });
+  await page.addInitScript(() => {
+    (window as any).nextConfig = { locale: 'th-TH' };
+  });
+  await bootSdk(page, FIXTURE);
+  await addToCart(page);
+
+  await page.fill('input[data-next-coupon="input"]', 'primal_5');
+  await page.click('[data-next-coupon="apply"]');
+
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    'คูปอง PRIMAL_5 ใช้กับคำสั่งซื้อนี้ไม่ได้'
   );
 });

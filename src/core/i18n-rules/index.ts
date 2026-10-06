@@ -10,10 +10,13 @@ export { flagUrl, readCountryRules } from './i18n-rules.api';
 export { asksForPostcode } from './i18n-rules.postal-code';
 export {
   baseLang,
+  interpolate,
   pageTranslations,
   sourceIn,
+  textsWithin,
   translatedText,
   type MessageSource,
+  type TextSource,
 } from './i18n-rules.translations';
 export type {
   CountryRules,

@@ -81,7 +81,7 @@ checkout always sends the shopper back through the hosted card fields.
   `paypal` are written to storage as `credit-card`, because the express session
   they belong to is gone after a load.
 - **Coupons live here and nowhere else.** `sdk.applyCoupon(code)` upper-cases and
-  trims the code, refuses it with `Coupon already applied` if it is already in
+  trims the code, refuses it with `coupon.errors.already_applied` if it is already in
   `vouchers`, appends it, and then recalculates cart totals against the API. The
   cart store's `vouchers` is a mirror refreshed on each recalculation — see
   [the cart store](../../cart/cart.state.ts).
