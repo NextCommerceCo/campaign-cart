@@ -10,6 +10,28 @@
     <h1>Exit intent fixture</h1>
     <!-- The overlay/popup is created on document.body by
          window.next.exitIntent(options); there is no activating attribute. -->
+
+    <button data-next-action="add-to-cart" data-next-package-id="1">
+      Add to cart
+    </button>
+
+    <template data-template="coupon-offer">
+      <div class="exit-offer">
+        <p>Wait! Take 5% off.</p>
+        <button
+          data-exit-intent-action="apply-coupon"
+          data-coupon-code="PRIMAL_5"
+        >
+          Apply PRIMAL_5
+        </button>
+        <button
+          data-exit-intent-action="apply-coupon"
+          data-coupon-code="SAVE10"
+        >
+          Apply SAVE10
+        </button>
+      </div>
+    </template>
     <script type="module" src="/src/index.ts"></script>
   </body>
 </html>

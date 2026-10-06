@@ -58,9 +58,19 @@ any state you inspect in the debug panel.
 
 ---
 
+## Unchecked code
+
+A code applied while the cart was empty, so not yet priced against anything. It
+is listed as applied and kept in the checkout store's `uncheckedVouchers` until
+the first calculation with items checks it, on that page or the next, and takes it
+off if it gives no discount.
+
+---
+
 ## Voucher discount
 
 The money a shopper's code took off, as opposed to a discount the campaign applied
 by itself. It is computed against the cart lines when the totals are recalculated,
 which is why a code applied to an empty cart produces no voucher discount even
-though the code is listed as applied.
+though the code is listed as applied: it is an unchecked code until the cart has
+items.

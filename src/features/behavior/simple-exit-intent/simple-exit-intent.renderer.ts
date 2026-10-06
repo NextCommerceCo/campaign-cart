@@ -5,6 +5,7 @@
  * explicit `ExitIntentPopupContext` — no reads off `this`.
  */
 
+import { EventBus } from '@/core/events';
 import type {
   ExitIntentPopupContext,
   ExitIntentPopupElements,
@@ -168,7 +169,20 @@ export function processTemplateActions(
             });
             // Apply the coupon through the cart operations
             const { cartOperations } = await import('@/state/cart');
-            await cartOperations.applyCoupon(couponCode);
+            const result = await cartOperations.applyCoupon(couponCode);
+            // The popup's own copy may already promise the discount, so the
+            // answer goes out on the same events the coupon field sends.
+            if (result.success) {
+              EventBus.getInstance().emit('coupon:applied', {
+                code: couponCode,
+              });
+            } else {
+              ctx.logger.warn('Exit-intent coupon refused:', result.message);
+              EventBus.getInstance().emit('coupon:validation-failed', {
+                code: couponCode,
+                message: result.message,
+              });
+            }
             ctx.hidePopup();
           });
         }

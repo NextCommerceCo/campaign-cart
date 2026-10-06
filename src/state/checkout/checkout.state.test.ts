@@ -115,3 +115,51 @@ describe('checkout store — removeVoucher normalisation', () => {
     expect(useCheckoutStore.getState().vouchers).toEqual(['WELCOME5']);
   });
 });
+
+/**
+ * A code applied on an empty cart cannot be priced, so it is marked unchecked
+ * until the cart has items. The mark has to go wherever the code goes, and it
+ * has to survive a page load: the presell page that took the code is usually
+ * not the checkout page that first prices it.
+ */
+describe('checkout store — unchecked vouchers', () => {
+  beforeEach(() => {
+    useCheckoutStore.getState().reset();
+  });
+
+  it('marks a code added unchecked, and only that code', () => {
+    useCheckoutStore.getState().addVoucher('SAVE10');
+    useCheckoutStore.getState().addVoucher('PRIMAL_5', { unchecked: true });
+
+    expect(useCheckoutStore.getState().uncheckedVouchers).toEqual(['PRIMAL_5']);
+  });
+
+  it('clears the mark, whatever the casing, and keeps the code', () => {
+    useCheckoutStore.getState().addVoucher('PRIMAL_5', { unchecked: true });
+
+    useCheckoutStore.getState().markVoucherChecked(' primal_5 ');
+
+    expect(useCheckoutStore.getState().uncheckedVouchers).toEqual([]);
+    expect(useCheckoutStore.getState().vouchers).toEqual(['PRIMAL_5']);
+  });
+
+  it('drops the mark with the code', () => {
+    useCheckoutStore.getState().addVoucher('PRIMAL_5', { unchecked: true });
+
+    useCheckoutStore.getState().removeVoucher('primal_5');
+
+    expect(useCheckoutStore.getState().uncheckedVouchers).toEqual([]);
+  });
+
+  it('persists the mark', () => {
+    useCheckoutStore.getState().addVoucher('PRIMAL_5', { unchecked: true });
+
+    const persisted = useCheckoutStore.persist
+      .getOptions()
+      .partialize?.(useCheckoutStore.getState()) as {
+      uncheckedVouchers?: string[];
+    };
+
+    expect(persisted.uncheckedVouchers).toEqual(['PRIMAL_5']);
+  });
+});

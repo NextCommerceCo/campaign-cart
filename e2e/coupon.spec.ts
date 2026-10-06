@@ -1,29 +1,52 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, captureEvents } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCartHonouring,
+  stubI18nRules,
+  bootSdk,
+  captureEvents,
+} from './fixtures/routes';
 
 /**
  * CouponEnhancer — applies a voucher code to the checkout store.
  *
- * NOTE on validation: cartOperations.applyCoupon (src/state/cart/operations/
- * apply-coupon.ts) does NOT validate the code against campaign offers/vouchers.
- * It normalizes the code to upper-case and succeeds for any code that is not
- * already applied; re-applying an already-applied code is the only path that
- * returns { success: false }, which the enhancer surfaces as
- * coupon:validation-failed. The tests below assert that actual behavior.
+ * `applyCoupon` (src/state/cart/operations/apply-coupon.ts) accepts a code only
+ * when the calculate response with it carries a discount the response without
+ * it lacks. The live calculate API ignores an unknown voucher without an error
+ * (issue #80), and the stub below behaves the same: only SAVE10 earns a
+ * discount, every other code comes back with `voucher_discounts: []`.
  */
 
 const FIXTURE = '/e2e/fixtures/coupon.html';
 
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
-  await stubCart(page);
+  await stubCartHonouring(page, ['SAVE10']);
 });
+
+/** The checkout store's unchecked codes, as persisted for the next page. */
+function uncheckedVouchers(page: Page): Promise<string[] | undefined> {
+  return page.evaluate(() => {
+    const key = Object.keys(sessionStorage).find(k =>
+      k.startsWith('next-checkout-store')
+    );
+    const saved = key ? JSON.parse(sessionStorage.getItem(key) ?? '{}') : {};
+    return saved.state?.uncheckedVouchers;
+  });
+}
+
+async function addToCart(page: Page): Promise<void> {
+  await page.click('[data-next-action="add-to-cart"]');
+  // An empty cart stores any code unchecked, so wait for the line to land.
+  await expect
+    .poll(() => page.evaluate(() => (window as any).next.getCartCount()))
+    .toBeGreaterThan(0);
+}
 
 test('applying a code emits coupon:applied with the code', async ({ page }) => {
   await bootSdk(page, FIXTURE);
-
-  await page.click('[data-next-action="add-to-cart"]');
+  await addToCart(page);
 
   const applied = await captureEvents(page, 'coupon:applied');
 
@@ -38,8 +61,7 @@ test('re-applying the same code emits coupon:validation-failed', async ({
   page,
 }) => {
   await bootSdk(page, FIXTURE);
-
-  await page.click('[data-next-action="add-to-cart"]');
+  await addToCart(page);
 
   const applied = await captureEvents(page, 'coupon:applied');
   const failed = await captureEvents(page, 'coupon:validation-failed');
@@ -57,4 +79,92 @@ test('re-applying the same code emits coupon:validation-failed', async ({
   const evt = (await failed.all()).at(-1);
   expect(evt.code).toBe('save10');
   expect(evt.message).toMatch(/already applied/i);
+});
+
+test('a code the server gives no discount for emits coupon:validation-failed', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await addToCart(page);
+
+  const applied = await captureEvents(page, 'coupon:applied');
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  await page.fill('input[data-next-coupon="input"]', 'primal_5');
+  await page.click('[data-next-coupon="apply"]');
+
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    "Coupon PRIMAL_5 isn't valid for this order."
+  );
+  expect(await failed.count()).toBe(1);
+  expect(await applied.count()).toBe(0);
+  expect(await page.evaluate(() => (window as any).next.getCoupons())).toEqual(
+    []
+  );
+});
+
+test("shows the address service's coupon text in the page's language", async ({
+  page,
+}) => {
+  await stubI18nRules(page, {
+    texts: {
+      'coupon.errors.invalid': 'คูปอง {{code}} ใช้กับคำสั่งซื้อนี้ไม่ได้',
+    },
+  });
+  await page.addInitScript(() => {
+    (window as any).nextConfig = { locale: 'th-TH' };
+  });
+  await bootSdk(page, FIXTURE);
+  await addToCart(page);
+
+  await page.fill('input[data-next-coupon="input"]', 'primal_5');
+  await page.click('[data-next-coupon="apply"]');
+
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    'คูปอง PRIMAL_5 ใช้กับคำสั่งซื้อนี้ไม่ได้'
+  );
+});
+
+test('a code stored on an empty cart is taken off once the cart prices it as no discount', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  // Nothing to price yet, so the code is stored unchecked.
+  await page.fill('input[data-next-coupon="input"]', 'primal_5');
+  await page.click('[data-next-coupon="apply"]');
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    'Coupon PRIMAL_5 applied.'
+  );
+
+  await addToCart(page);
+
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    "Coupon PRIMAL_5 isn't valid for this order."
+  );
+  expect(await failed.at(0)).toMatchObject({ code: 'PRIMAL_5' });
+  await expect
+    .poll(() => page.evaluate(() => (window as any).next.getCoupons()))
+    .toEqual([]);
+});
+
+test('a code stored on an empty cart stays once the cart prices it as a discount', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  await page.fill('input[data-next-coupon="input"]', 'save10');
+  await page.click('[data-next-coupon="apply"]');
+  await expect.poll(() => uncheckedVouchers(page)).toEqual(['SAVE10']);
+
+  await addToCart(page);
+
+  // Cleared only once the check has run and accepted the code.
+  await expect.poll(() => uncheckedVouchers(page)).toEqual([]);
+  expect(await page.evaluate(() => (window as any).next.getCoupons())).toEqual([
+    'SAVE10',
+  ]);
+  expect(await failed.count()).toBe(0);
 });

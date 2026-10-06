@@ -40,6 +40,11 @@ export interface CheckoutState {
   sameAsShipping: boolean;
   testMode: boolean;
   vouchers: string[];
+  /**
+   * The codes in `vouchers` applied while the cart was empty, so not yet priced against
+   * it. They are checked, and taken off when they give no discount, once it has items.
+   */
+  uncheckedVouchers: string[];
 }
 
 interface CheckoutActions {
@@ -55,7 +60,8 @@ interface CheckoutActions {
   setBillingAddress: (address: CheckoutState['billingAddress']) => void;
   setSameAsShipping: (same: boolean) => void;
   setTestMode: (testMode: boolean) => void;
-  addVoucher: (code: string) => void;
+  addVoucher: (code: string, options?: { unchecked?: boolean }) => void;
+  markVoucherChecked: (code: string) => void;
   removeVoucher: (code: string) => void;
   reset: () => void;
 }
@@ -93,6 +99,7 @@ const initialState: AllFieldsOf<CheckoutState> = {
   sameAsShipping: true,
   testMode: false,
   vouchers: [],
+  uncheckedVouchers: [],
 };
 
 /**
@@ -166,18 +173,30 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
         set({ testMode });
       },
 
-      addVoucher: (code: string) => {
+      addVoucher: (code: string, { unchecked = false } = {}) => {
         set(state => ({
           vouchers: [...state.vouchers, code],
+          uncheckedVouchers: unchecked
+            ? [...state.uncheckedVouchers, code]
+            : state.uncheckedVouchers,
+        }));
+      },
+
+      markVoucherChecked: (code: string) => {
+        const normalizedCode = normalizeVoucherCode(code);
+        set(state => ({
+          uncheckedVouchers: state.uncheckedVouchers.filter(
+            v => normalizeVoucherCode(v) !== normalizedCode
+          ),
         }));
       },
 
       removeVoucher: (code: string) => {
         const normalizedCode = normalizeVoucherCode(code);
+        const keep = (v: string) => normalizeVoucherCode(v) !== normalizedCode;
         set(state => ({
-          vouchers: state.vouchers.filter(
-            v => normalizeVoucherCode(v) !== normalizedCode
-          ),
+          vouchers: state.vouchers.filter(keep),
+          uncheckedVouchers: state.uncheckedVouchers.filter(keep),
         }));
       },
 
@@ -264,6 +283,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           sameAsShipping: state.sameAsShipping,
           paymentMethod, // Every method except the three express ones survives a reload
           vouchers: state.vouchers, // Persist so user-entered coupons survive refresh; bundle vouchers are deduped on re-apply
+          uncheckedVouchers: state.uncheckedVouchers, // A code applied on an empty presell cart is checked on the checkout page
           // Explicitly exclude:
           // - errors (transient validation state)
           // - isProcessing (transient UI state)

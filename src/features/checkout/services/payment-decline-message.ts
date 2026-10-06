@@ -27,6 +27,7 @@ import {
   addressLang,
   I18nRules,
   pageTranslations,
+  textsWithin,
   translatedText,
 } from '@/core/i18n-rules';
 
@@ -73,24 +74,6 @@ export function declineCode(answer: PaymentDecline): string | undefined {
     : undefined;
 }
 
-/** The service's texts in `lang`, loading them if no element on the page has. */
-async function textsIn(
-  service: I18nRules,
-  lang: string
-): Promise<Readonly<Record<string, string>> | undefined> {
-  const loaded = service.getTexts(lang);
-  if (loaded) return loaded;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([
-    service.loadTexts(lang),
-    new Promise<void>(resolve => {
-      timer = setTimeout(resolve, TEXTS_WAIT_MS);
-    }),
-  ]);
-  clearTimeout(timer);
-  return service.getTexts(lang);
-}
-
 /**
  * The sentence to show for a declined order, in the form's language.
  *
@@ -105,7 +88,7 @@ export async function paymentDeclineMessage(
   lang: string = addressLang(),
   service: I18nRules = I18nRules.getInstance()
 ): Promise<string> {
-  const texts = await textsIn(service, lang);
+  const texts = await textsWithin(service, lang, TEXTS_WAIT_MS);
   const code = declineCode(answer);
   const details =
     typeof answer.payment_details === 'string' && answer.payment_details.trim()

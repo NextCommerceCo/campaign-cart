@@ -88,6 +88,12 @@ at all — the symptom is a button that looks right, does nothing, and logs noth
 Give it one of the three values, and use `custom` whenever the accept step is your
 own code.
 
+`apply-coupon` closes the popup whatever the cart says about the code, and the
+popup cannot know the answer when it is drawn, so word its copy as an offer, not
+as a result. The answer arrives as `coupon:applied` or `coupon:validation-failed`
+(`{ code, message }`, with `message` in the page's language), and a coupon field
+on the page shows the refusal in its `messages` element.
+
 Two more things fail quietly here: `template` is the **name** of a template
 element, not HTML, so a missing element logs
 `Exit intent template not found: <template data-template="{templateName}">` and

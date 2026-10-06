@@ -274,11 +274,11 @@ Validates a discount code against the campaign and applies it to the cart if it 
 ```ts
 const { success, message } = await next.applyCoupon('SAVE10');
 if (!success) {
-  showError(message); // e.g. "Coupon already applied"
+  showError(message); // e.g. "Coupon SAVE10 is already applied."
 }
 ```
 
-> ⚠️ It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor.
+> ⚠️ It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor, in the page's language, from the `coupon.*` texts. A code is checked by pricing the cart with it. On an empty cart it reports success and is checked once the cart has items: one that gives no discount is then taken off and `coupon:validation-failed` fires, so listen for that event as well as reading `success`.
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.applyCoupon`</sub>
 

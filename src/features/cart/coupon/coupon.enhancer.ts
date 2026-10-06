@@ -10,6 +10,7 @@
 
 import { BaseActionEnhancer } from '@/core/base/base-action-enhancer';
 import { useCartStore, cartOperations } from '@/state/cart';
+import { couponTexts } from '@/state/cart/coupon-texts';
 
 export class CouponEnhancer extends BaseActionEnhancer {
   private input: HTMLInputElement | null = null;
@@ -85,6 +86,12 @@ export class CouponEnhancer extends BaseActionEnhancer {
       () => this.renderAppliedCoupons()
     );
 
+    // Every refusal shows here, this field's own and those from elsewhere: a code
+    // stored on an empty cart and refused once it has items, or an exit-intent code.
+    this.on('coupon:validation-failed', ({ message }) =>
+      this.showMessage(message, 'error')
+    );
+
     this.logger.info('Coupon enhancer initialized successfully');
   }
 
@@ -146,7 +153,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
 
     await this.executeAction(
       async () => {
-        this.logger.debug('Applying coupon:', code);
+        this.logger.debug('Applying coupon');
 
         const result = await cartOperations.applyCoupon(code);
 
@@ -156,12 +163,11 @@ export class CouponEnhancer extends BaseActionEnhancer {
           }
           this.updateButtonState();
           this.showMessage(result.message, 'success');
-          this.logger.info('Coupon applied successfully:', code);
+          this.logger.info('Coupon applied successfully');
 
           // Emit standard event
           this.eventBus.emit('coupon:applied', { code });
         } else {
-          this.showMessage(result.message, 'error');
           this.logger.warn('Coupon application failed:', result.message);
 
           // Emit standard event
@@ -224,14 +230,16 @@ export class CouponEnhancer extends BaseActionEnhancer {
   }
 
   private removeCoupon(code: string): void {
-    this.logger.debug('Removing coupon:', code);
+    this.logger.debug('Removing coupon');
 
     void cartOperations.removeCoupon(code);
 
     // Emit standard event
     this.eventBus.emit('coupon:removed', { code });
 
-    this.showMessage(`Coupon ${code} removed`, 'info');
+    void couponTexts(code).then(texts =>
+      this.showMessage(texts('coupon.removed'), 'info')
+    );
   }
 
   private showMessage(

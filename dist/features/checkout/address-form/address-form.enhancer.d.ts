@@ -10,6 +10,7 @@ export declare class AddressFormEnhancer extends BaseEnhancer {
     destroy(): void;
     private readonly handleLocaleChange;
     update(): void;
+    private countryIn;
     private readConfiguration;
     private collectedElsewhere;
     private setState;

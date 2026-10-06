@@ -584,6 +584,7 @@ Every text the checkout shows has a default in each language the address service
 | A field's label | `fields.<field>.label` |
 | A field's label when optional | `fields.<field>.label_optional` |
 | A field's message | `fields.<field>.errors.<error>` |
+| A coupon message | `coupon.*`, under [Coupon field](#coupon-field) |
 | The page's own text | Any key the page names |
 
 Any key the defaults list can be copied into `translations` as it is. Where a field has more than one wording, the defaults list each as a variant: `fields.state.province` for the countries that call it a province, `fields.state.county` for those that say county. A variant key changes that wording alone, in the countries that use it, and wins over the plain key there. The plain key, with no variant, changes the field in every country: `fields.state.label` renames the state field wherever the address block builds it. [Validation messages](../pages/checkout-page.md#validation-messages) lists the fields and errors. A field that is not required shows its `label_optional` text, so rename both where the field can be optional.
@@ -699,6 +700,33 @@ The container wraps the input, the apply button, and both output areas.
   <div data-next-coupon="display"></div>
   <div data-next-coupon="messages"></div>
 </div>
+```
+
+The `messages` element shows one sentence after each apply or remove, in the page's language. Each is read from `translations` first, then the address service's texts, then English (`state/cart/coupon-texts.ts › couponTexts`). `{{code}}` is the code, upper-cased. `next.applyCoupon` answers with the same sentences as its `message`.
+
+| Key | Description |
+|---|---|
+| `coupon.applied` | The code gave a discount |
+| `coupon.removed` | The code was taken off |
+| `coupon.errors.already_applied` | The code is already applied |
+| `coupon.errors.invalid` | The code gave this order no discount |
+| `coupon.errors.network` | The code could not be checked |
+
+A code counts when pricing the cart with it gives a discount, or a lower total, that pricing it without does not. So `coupon.errors.invalid` is shown for a code the Campaigns App does not know and for one whose offer this cart does not meet (`state/cart/operations/voucher-check.ts › voucherAddsDiscount`). A code applied to an empty cart is shown `coupon.applied` and checked once the cart has items, on that page or the next. If it gives no discount it is taken off then, and `messages` shows `coupon.errors.invalid` (`voucher-check.ts › recheckUncheckedVouchers`). `messages` shows every refusal on the page, the exit-intent popup's `apply-coupon` button included.
+
+Below is an example that rewords the rejection on a Thai page and leaves the other coupon messages at their defaults.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "coupon.errors.invalid": "ไม่สามารถใช้โค้ด {{code}} กับคำสั่งซื้อนี้",
+      },
+    },
+  };
+</script>
 ```
 
 ## Order bumps

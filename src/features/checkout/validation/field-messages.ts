@@ -12,6 +12,7 @@
 
 import {
   addressLang,
+  interpolate,
   pageTranslations,
   sourceIn,
   type MessageSource,
@@ -61,13 +62,6 @@ const SERVICE_FIELD: Record<string, string> = {
 function serviceFieldName(field: string): string {
   const name = field.replace(/^billing-/, '');
   return SERVICE_FIELD[name] ?? name;
-}
-
-function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(
-    /\{\{\s*(\w+)\s*\}\}/g,
-    (match, key: string) => vars[key] ?? match
-  );
 }
 
 /** The keys a sentence is found under, most specific first: an empty dropdown's too. */
