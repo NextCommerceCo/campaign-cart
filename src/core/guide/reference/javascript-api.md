@@ -278,7 +278,7 @@ if (!success) {
 }
 ```
 
-> ⚠️ It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor.
+> ⚠️ It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor. A code is checked by pricing the cart with it, so call it after the cart has items: on an empty cart any code is stored unchecked and reports success.
 
 <sub>Source: `src/core/next-commerce/next-commerce.ts › NextCommerce.applyCoupon`</sub>
 

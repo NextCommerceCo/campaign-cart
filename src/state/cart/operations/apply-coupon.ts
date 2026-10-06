@@ -1,4 +1,10 @@
-import { calculateTotals } from './calculate-totals';
+import {
+  calculateCart,
+  type CalculateCartResult,
+} from '@/state/cart/cart-calculator';
+import { calculateTotals, cartCalculateParams } from './calculate-totals';
+import { logger } from './shared';
+import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 import { normalizeVoucherCode } from '@/utils/voucher';
 
@@ -14,18 +20,78 @@ export async function applyCoupon(
   // `checkoutStore.addVoucher(code)` calls (bundle-configured codes are not
   // routed through this function). Comparing only `normalizedCode` against
   // raw stored entries would miss that duplicate.
-  const alreadyApplied = checkoutState.vouchers.some(
-    v => normalizeVoucherCode(v) === normalizedCode
-  );
-  if (alreadyApplied) {
+  const isApplied = (vouchers: string[]): boolean =>
+    vouchers.some(v => normalizeVoucherCode(v) === normalizedCode);
+
+  if (isApplied(checkoutState.vouchers)) {
     return { success: false, message: 'Coupon already applied' };
   }
 
-  checkoutState.addVoucher(normalizedCode);
+  // The calculate API ignores a voucher it has no offer for without flagging
+  // it, so the only evidence the code was accepted is a discount that appears
+  // with it and not without it. An empty cart has no lines to price the code
+  // against, so it is stored unchecked and takes effect once items arrive.
+  if (useCartStore.getState().items.length > 0) {
+    let accepted: boolean;
+    try {
+      accepted = await voucherAddsDiscount(
+        checkoutState.vouchers,
+        normalizedCode
+      );
+    } catch (error) {
+      logger.error('Failed to verify coupon:', error);
+      return {
+        success: false,
+        message: `Coupon ${normalizedCode} could not be verified`,
+      };
+    }
+    if (!accepted) {
+      return {
+        success: false,
+        message: `Coupon ${normalizedCode} is not valid for this order`,
+      };
+    }
+    // A second apply of the same code may have resolved during the await.
+    if (isApplied(useCheckoutStore.getState().vouchers)) {
+      return { success: false, message: 'Coupon already applied' };
+    }
+  }
+
+  useCheckoutStore.getState().addVoucher(normalizedCode);
   calculateTotals();
 
   return {
     success: true,
     message: `Coupon ${normalizedCode} applied successfully`,
   };
+}
+
+async function voucherAddsDiscount(
+  applied: string[],
+  code: string
+): Promise<boolean> {
+  const { useCampaignStore } = await import('@/state/campaign');
+  const currency = useCampaignStore.getState().currency ?? null;
+
+  const [without, withCode] = await Promise.all([
+    // No vouchers means no voucher discounts, so skip the request.
+    applied.length > 0
+      ? calculateCart(cartCalculateParams([...applied], currency))
+      : null,
+    calculateCart(cartCalculateParams([...applied, code], currency)),
+  ]);
+
+  const before = discountOfferIds(without);
+  return [...discountOfferIds(withCode)].some(id => !before.has(id));
+}
+
+function discountOfferIds(result: CalculateCartResult | null): Set<number> {
+  const summary = result?.summary;
+  return new Set(
+    [
+      ...(summary?.voucher_discounts ?? []),
+      ...(summary?.offer_discounts ?? []),
+      ...(summary?.shipping_method?.discounts ?? []),
+    ].map(d => d.offer_id)
+  );
 }

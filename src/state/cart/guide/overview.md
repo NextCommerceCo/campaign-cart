@@ -86,7 +86,10 @@ recalculated on rehydration instead of being restored.
   split by quantity ratio. Lines are therefore not positionally aligned with
   `items`; match on `package_id`.
 - **Coupons are borrowed, not owned.** `applyCoupon` upper-cases and trims the
-  code, refuses a duplicate, and writes it to the **checkout** store; each
+  code, refuses a duplicate, prices the cart with and without it and refuses a
+  code that adds no discount (the calculate API ignores an unknown voucher
+  without an error), and writes it to the **checkout** store. On an empty cart
+  there is nothing to price, so the code is stored unchecked; each
   successful recalculation then overwrites `cart.vouchers` from that store. The
   cart copy exists so a page can render applied-coupon chips without reaching
   into checkout.

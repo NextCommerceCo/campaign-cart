@@ -109,8 +109,8 @@ exact match. `next.applyCoupon('save10')` stores `SAVE10`, and a later
 `next.removeCoupon('save10')` matches nothing and removes nothing, with no error
 — the chip stays on screen. Pass the upper-cased code to `removeCoupon`, or read
 the stored spelling back from `next.getCoupons()`. Apply the code after the cart
-has items too: the discount is computed against the cart lines, so a code applied
-to an empty cart changes no total.
+has items too: `applyCoupon` checks a code by pricing the cart with it, so on an
+empty cart it stores any code unchecked and reports success.
 
 ---
 

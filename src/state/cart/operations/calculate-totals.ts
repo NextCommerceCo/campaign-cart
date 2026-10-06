@@ -1,9 +1,31 @@
 import Decimal from 'decimal.js';
 import { useCheckoutStore } from '@/state/checkout';
-import { calculateCart } from '@/state/cart/cart-calculator';
+import {
+  calculateCart,
+  type CalculateCartParams,
+} from '@/state/cart/cart-calculator';
 import { EventBus } from '@/core/events';
 import { useCartStore } from '@/state/cart';
 import { logger, scheduleCalculate } from './shared';
+
+// Shared with `applyCoupon`'s voucher check so the two payloads stay identical
+// and the cart sync after an accepted coupon hits `calculateCart`'s cache.
+export function cartCalculateParams(
+  vouchers: string[],
+  currency: string | null
+): CalculateCartParams {
+  const { items, shippingMethod } = useCartStore.getState();
+  return {
+    lines: items.map(item => ({
+      package_id: item.packageId,
+      quantity: item.quantity,
+      is_upsell: item.is_upsell ?? false,
+    })),
+    vouchers,
+    currency,
+    shippingMethod: shippingMethod?.id ?? 1,
+  };
+}
 
 export function calculateTotals(): void {
   useCartStore.setState({ isCalculating: true });
@@ -32,14 +54,10 @@ export function calculateTotals(): void {
           shippingMethod,
           summary,
         } = await calculateCart({
-          lines: state.items.map(item => ({
-            package_id: item.packageId,
-            quantity: item.quantity,
-            is_upsell: item.is_upsell ?? false,
-          })),
-          vouchers: [...checkoutState.vouchers],
-          currency: campaignState.currency ?? null,
-          shippingMethod: state.shippingMethod?.id ?? 1,
+          ...cartCalculateParams(
+            [...checkoutState.vouchers],
+            campaignState.currency ?? null
+          ),
           signal,
         });
 

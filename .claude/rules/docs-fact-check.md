@@ -29,7 +29,7 @@ Every "the SDK does X when Y" needs the deciding `file:line` in the SDK source, 
 
 ## 5. Success/failure semantics: read the operation, don't assume
 
-- Every claimed failure path must name its return branch in the operation source. `applyCoupon` was documented as failing on invalid codes; the only `success: false` branch is "already applied" — unknown codes succeed and discount nothing ([apply-coupon.ts](../../src/state/cart/operations/apply-coupon.ts)).
+- Every claimed failure path must name its return branch in the operation source. `applyCoupon` was once documented as failing on invalid codes when the only `success: false` branch was "already applied"; it now also rejects a code the calculate response gives no discount for, but stores any code unchecked on an empty cart ([apply-coupon.ts](../../src/state/cart/operations/apply-coupon.ts)).
 
 ## 6. Check open bugs before teaching a pattern
 

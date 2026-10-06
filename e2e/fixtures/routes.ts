@@ -48,7 +48,7 @@ export async function stubCampaign(
  * green, because nothing here asserts on `console.error`. See the `sdk-e2e` skill
  * §4b.
  */
-const EMPTY_CART_SUMMARY: CartSummary = {
+export const EMPTY_CART_SUMMARY: CartSummary = {
   lines: [],
   // A complete method, not `{}`. The calculator guards with
   // `if (response.shipping_method)`, and an empty object passes that guard and

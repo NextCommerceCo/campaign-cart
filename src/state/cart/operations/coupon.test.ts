@@ -1,8 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useCheckoutStore } from '@/state/checkout';
 import { useCartStore } from '@/state/cart';
+import {
+  calculateCart,
+  type CalculateCartParams,
+  type CalculateCartResult,
+} from '@/state/cart/cart-calculator';
+import type { CartItem } from '@/types/global';
+import type { CartSummary, Discount } from '@/types/api';
 import { applyCoupon } from './apply-coupon';
 import { removeCoupon } from './remove-coupon';
+
+vi.mock('@/state/cart/cart-calculator', async importOriginal => ({
+  ...(await importOriginal<object>()),
+  calculateCart: vi.fn(),
+}));
 
 /**
  * Regression coverage: `applyCoupon` normalises the code it stores
@@ -63,6 +75,91 @@ describe('apply-coupon / remove-coupon round trip', () => {
       success: false,
       message: 'Coupon already applied',
     });
+    expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
+  });
+});
+
+describe('applyCoupon voucher check against the calculate response', () => {
+  const SAVE10: Discount = { offer_id: 7, amount: '8.10', name: 'Save 10%' };
+
+  // `vouchers -> voucher_discounts`, the only part of the response the check reads.
+  const respondWith = (discountsFor: (vouchers: string[]) => Discount[]) =>
+    vi.mocked(calculateCart).mockImplementation(
+      async (params: CalculateCartParams) =>
+        ({
+          vouchers: params.vouchers ?? [],
+          summary: {
+            voucher_discounts: discountsFor(params.vouchers ?? []),
+            offer_discounts: [],
+            shipping_method: { discounts: [] },
+          } as unknown as CartSummary,
+        }) as CalculateCartResult
+    );
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(calculateCart).mockReset();
+    useCheckoutStore.getState().reset();
+    useCartStore.getState().reset();
+    useCartStore.setState({
+      items: [{ id: 1, packageId: 3, quantity: 1, price: 81 } as CartItem],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('rejects a code the server ignores and does not store it', async () => {
+    respondWith(() => []);
+
+    const result = await applyCoupon('primal_5');
+
+    expect(result).toEqual({
+      success: false,
+      message: 'Coupon PRIMAL_5 is not valid for this order',
+    });
+    expect(useCheckoutStore.getState().vouchers).toEqual([]);
+  });
+
+  it('accepts a code that adds a voucher discount', async () => {
+    respondWith(v => (v.includes('SAVE10') ? [SAVE10] : []));
+
+    const result = await applyCoupon('save10');
+
+    expect(result.success).toBe(true);
+    expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
+  });
+
+  it('rejects a second code that adds nothing beyond the applied one', async () => {
+    useCheckoutStore.getState().addVoucher('SAVE10');
+    respondWith(v => (v.includes('SAVE10') ? [SAVE10] : []));
+
+    const result = await applyCoupon('BOGUS');
+
+    expect(result.success).toBe(false);
+    expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
+  });
+
+  it('does not store the code when the check cannot reach the API', async () => {
+    vi.mocked(calculateCart).mockRejectedValue(new Error('offline'));
+
+    const result = await applyCoupon('save10');
+
+    expect(result).toEqual({
+      success: false,
+      message: 'Coupon SAVE10 could not be verified',
+    });
+    expect(useCheckoutStore.getState().vouchers).toEqual([]);
+  });
+
+  it('stores the code unchecked on an empty cart', async () => {
+    useCartStore.setState({ items: [] });
+
+    const result = await applyCoupon('save10');
+
+    expect(result.success).toBe(true);
+    expect(calculateCart).not.toHaveBeenCalled();
     expect(useCheckoutStore.getState().vouchers).toEqual(['SAVE10']);
   });
 });
