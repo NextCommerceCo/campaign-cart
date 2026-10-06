@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { RulesField } from '@/core/country-service';
+import type { RulesField } from '@/core/i18n-rules';
 
 import {
   readRenderedValues,

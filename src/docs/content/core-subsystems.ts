@@ -94,7 +94,7 @@ export const CORE_SUBSYSTEMS: CoreSubsystem[] = [
     title: 'Country, state, and currency',
     summary:
       'Works out which country the visitor is in, which currency to price in, and which state or province list the checkout should offer.',
-    sources: ['core/country-service/country-service.ts'],
+    sources: ['core/i18n-rules/i18n-rules.ts'],
     howAuthorsReachIt: ['configured', 'observed'],
     reference: ['storage-keys', 'url-parameters'],
     cautions: [

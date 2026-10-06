@@ -14,7 +14,7 @@
 import type { Logger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
 import { useConfigStore } from '@/state/config';
-import { CountryService, Country, LocationData } from '@/core/country-service';
+import { I18nRules, Country, LocationData } from '@/core/i18n-rules';
 
 /**
  * Detects the visitor's country and picks the display currency, before
@@ -56,9 +56,9 @@ export async function initializeLocationAndCurrency(ctx: {
     ctx.logger.info('Initializing location and currency detection...');
 
     // Initialize country service early
-    const countryService = CountryService.getInstance();
+    const i18nRules = I18nRules.getInstance();
     if (configStore.addressConfig) {
-      countryService.setConfig(configStore.addressConfig);
+      i18nRules.setConfig(configStore.addressConfig);
     }
 
     // Check for country override in URL or session
@@ -80,7 +80,7 @@ export async function initializeLocationAndCurrency(ctx: {
       );
 
       try {
-        const data = await countryService.getCountryStates(
+        const data = await i18nRules.getCountryStates(
           forcedCountry.toUpperCase()
         );
 
@@ -110,7 +110,7 @@ export async function initializeLocationAndCurrency(ctx: {
     // If no forced country or fetch failed, use normal detection
     if (!locationData) {
       // Fetch location data with timeout to prevent blocking
-      const locationDataPromise = countryService.getLocationData();
+      const locationDataPromise = i18nRules.getLocationData();
       const timeoutPromise = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error('Location detection timeout')), 3000)
       );
@@ -147,7 +147,7 @@ export async function initializeLocationAndCurrency(ctx: {
     } else if (locationData && !locationData.countries?.length) {
       // If we have forced country data but no countries list, fetch just the countries
       try {
-        const countriesData = await countryService.getLocationData();
+        const countriesData = await i18nRules.getLocationData();
         locationData.countries = countriesData.countries || [];
       } catch (error) {
         ctx.logger.warn('Failed to fetch countries list:', error);

@@ -1,0 +1,30 @@
+import { CardErrorField } from './card-tokenizer.types';
+declare const ENGLISH: {
+    readonly 'payment.card.number.label': "Card number";
+    readonly 'payment.card.number.placeholder': "Card Number";
+    readonly 'payment.card.number.title': "Enter your card number";
+    readonly 'payment.card.number.errors.blank': "Enter a card number";
+    readonly 'payment.card.number.errors.invalid': "Enter a valid card number";
+    readonly 'payment.card.cvv.label': "Security code";
+    readonly 'payment.card.cvv.placeholder': "CVV *";
+    readonly 'payment.card.cvv.title': "Enter your card's security code";
+    readonly 'payment.card.cvv.errors.blank': "Enter the security code";
+    readonly 'payment.card.cvv.errors.invalid': "Enter a valid security code";
+    readonly 'payment.card.expiry_month.errors.blank': "Select an expiry month";
+    readonly 'payment.card.expiry_month.errors.invalid': "Select a valid expiry month";
+    readonly 'payment.card.expiry_month.errors.expired': "This card has expired. Check the expiry date";
+    readonly 'payment.card.expiry_year.errors.blank': "Select an expiry year";
+    readonly 'payment.card.expiry_year.errors.invalid': "Select a valid expiry year";
+    readonly 'payment.card.name.errors.blank': "Enter the name on the card";
+    readonly 'payment.card.errors.network': "Couldn't load the card form. Refresh the page and try again.";
+    readonly 'payment.errors.generic': "Your card couldn't be processed. Try again.";
+    readonly 'payment.card.errors.session_expired': "Your card details timed out. Enter them again.";
+    readonly 'payment.errors.throttled': "Wait a moment before trying again.";
+};
+export type CardTextKey = keyof typeof ENGLISH;
+export declare function translatedCardText(key: CardTextKey): string | undefined;
+export declare function cardText(key: CardTextKey): string;
+export declare function cardErrorKey(field: CardErrorField | undefined, providerKey: string | undefined, empty: boolean): CardTextKey;
+export declare function cardErrorField(attribute: unknown): CardErrorField | undefined;
+export {};
+//# sourceMappingURL=card-texts.d.ts.map

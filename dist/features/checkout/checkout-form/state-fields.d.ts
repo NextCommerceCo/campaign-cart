@@ -1,9 +1,9 @@
-import { CountryConfig, CountryService, CountryStatesData } from '../../../core/country-service';
+import { CountryConfig, I18nRules, CountryStatesData } from '../../../core/i18n-rules';
 import { Logger } from '../../../core/logger';
 import { CountryFieldsContext } from './country-fields';
 export interface StateFieldsContext {
     stateLoadingPromises: Map<string, Promise<CountryStatesData>>;
-    countryService: CountryService;
+    i18nRules: I18nRules;
     logger: Logger;
     countryFields: CountryFieldsContext;
 }

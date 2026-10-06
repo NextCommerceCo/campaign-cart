@@ -18,7 +18,7 @@ import { CHECKOUT_KEY } from './fixtures/storage-keys';
  * on blur and on submit. `checkout:form-initialized` fires during the DOM scan
  * before window.next exists, so the fixture buffers it from the shared EventBus.
  *
- * The form's CountryService fetches country/state data from an external CDN;
+ * The form's I18nRules fetches country/state data from an external CDN;
  * we stub it so the form initializes deterministically offline.
  */
 
@@ -46,8 +46,8 @@ async function configure(page: Page, config: object): Promise<void> {
   }, config);
 }
 
-/** Stub the country/states CDN the checkout form's CountryService calls. */
-async function stubCountryService(page: Page): Promise<void> {
+/** Stub the country/states CDN the checkout form's I18nRules calls. */
+async function stubI18nRules(page: Page): Promise<void> {
   const answerIn = (lang: string) => (lang.startsWith('th') ? THAI : ENGLISH);
   await routeAddressService(page, {
     countries: [
@@ -82,7 +82,7 @@ async function stubCountryService(page: Page): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  await stubCountryService(page);
+  await stubI18nRules(page);
 });
 
 test('emits checkout:form-initialized {form} on boot', async ({ page }) => {

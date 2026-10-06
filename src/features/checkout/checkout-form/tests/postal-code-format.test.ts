@@ -3,7 +3,7 @@ import {
   formatPostalCodeInPlace,
   type PostalCodeFormatContext,
 } from '../postal-code-format';
-import type { CountryConfig, CountryService } from '@/core/country-service';
+import type { CountryConfig, I18nRules } from '@/core/i18n-rules';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,9 +22,9 @@ function createCtx(
     options.format ? options.format(value) : value
   );
   const ctx: PostalCodeFormatContext = {
-    countryService: {
+    i18nRules: {
       formatPostalCode: formatSpy,
-    } as unknown as CountryService,
+    } as unknown as I18nRules,
     countryConfigs: new Map(options.configs ?? [['CA', CA_CONFIG]]),
   };
   return { ctx, formatSpy };

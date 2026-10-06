@@ -167,7 +167,7 @@ listing is in [storage keys](../reference/storage-keys.md).
   import is dynamic (`core/sdk-initializer/sdk-initializer.ts › SDKInitializer.initializeDebugMode`), so no
   overlay code runs and no panel is built without debug mode. The bytes still arrive: the
   `debug` chunk (`vite.config.ts › manualChunks`) also holds shared runtime modules —
-  `core/currency-formatter.ts` and `core/country-service/country-service.ts` among them — so other chunks
+  `core/currency-formatter.ts` and `core/i18n-rules/i18n-rules.ts` among them — so other chunks
   import it *statically*, and it is reachable from `/index.js` without any dynamic import.
   A shopper on the module bundle fetches it: 281 kB, 56 kB gzipped.
   **Trap:** reading "dynamic import" as "not shipped" when budgeting a page's weight.

@@ -426,7 +426,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
       'The unparsed condition is attached: check it against the conditional-display grammar. Unbalanced quotes and a comparison operator with no right-hand side are the common mistakes.',
   },
 
-  // ── country-service.ts ─────────────────────────────────────────────────────
+  // ── i18n-rules.ts ─────────────────────────────────────────────────────
   {
     level: 'error',
     message: 'Failed to fetch location data:',
@@ -1093,7 +1093,7 @@ export const CORE_LOG_NOTES: CoreLogNote[] = [
     meaning:
       'The debug overlay’s country switcher has no countries to offer and hides itself. Only the debug tool is affected — the page’s own address form is separate.',
     action:
-      'Read the attached error; it is the same country-list fetch that `CountryService` logs about. Fix that and the switcher returns.',
+      'Read the attached error; it is the same country-list fetch that `I18nRules` logs about. Fix that and the switcher returns.',
   },
   {
     level: 'warn',

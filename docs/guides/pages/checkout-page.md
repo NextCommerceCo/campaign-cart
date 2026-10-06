@@ -150,6 +150,8 @@ The phone works the same way: write a `data-next-checkout-field="phone_number"` 
 
 The SDK requires the first name, last name and email. The phone is optional; a page that writes its own phone input can require it with `required` or `data-next-required="true"`. No field accepts an emoji.
 
+Once the shopper leaves the phone field, the address service reads the number. One it reads as not valid gets the service's sentence under the field, in the form's language: `+6683873196` on a US address shows `Enter a valid phone number, like +66 81 234 5678`. The sentence does not stop the order. The SDK refuses a phone number only when it is clearly too short or too long for its country, so a real number the service does not know yet still goes through.
+
 ### Shipping address
 
 The shipping step is an empty `<div data-next-address="shipping"></div>`, which the SDK turns into the fields the selected country collects, in the order that country writes them.
@@ -171,7 +173,7 @@ If the fields cannot be loaded, the block shows a generic English address form i
 
 ### Billing address
 
-A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
+A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on, laid out for the billing country: choosing another country in the block's own country select rebuilds it for that country, and changing the shipping country leaves it alone. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
 
 Below is an example of a billing section that closes when the shopper ticks the box.
 
@@ -214,6 +216,7 @@ The key is `fields.<field>.errors.<error>`. One key covers the field in every co
 | `invalid` | Wrong format, or not in the list |
 | `invalid_characters` | A name with digits or symbols |
 | `contains_emoji` | A field holding an emoji |
+| `not_in_state` | A postcode its state does not use |
 
 The fields are named as the address service names them.
 
@@ -226,6 +229,8 @@ The fields are named as the address service names them.
 | `country` | The country select |
 
 In a language the address service does not have, a message you do not give is shown in English, as a whole sentence.
+
+`not_in_state` is the one message `translations` does not change. Once a postcode matches its country's format, the SDK asks the address service whether the chosen state uses it, when the shopper leaves the postcode or picks a state, and shows the answer under the postcode as the service writes it, with the state named: `Enter a valid ZIP Code for New York` for `94103`, a San Francisco ZIP Code. The message does not stop the order. A few real addresses sit across a state line from their postcode, so the shopper is asked to look again, and the order goes out with what they typed.
 
 ### Styling
 
@@ -412,6 +417,8 @@ Payment methods are declared as radio sections. The card fields are the delibera
 
 The starter templates ship the same pair for `paypal`, `klarna`, `apple-pay`, and `google-pay`: each `data-next-payment-method` section with a matching `data-next-payment-form` and its own `*-error` / `*-error-text` slots.
 
+The card fields expire 25 minutes after they load. A shopper who returns to the tab after that gets new, empty fields; one who presses pay with expired fields sees `Your card details timed out. Enter them again.` and enters the card again. The page does not reload.
+
 The card is the only method that collects anything on your page. Every other method the SDK accepts, including iDEAL, Bancontact, SEPA Direct Debit, TWINT, Swish, Affirm and Link, is approved on the provider's own page: add the radio with the method's name and leave its `data-next-payment-form` empty. Submitting validates the form and captures the shopper's details as usual, creates the order, then sends the shopper to the address the orders API returns. [Payment methods](../reference/data-attributes.md#payment-methods) lists every value.
 
 Express checkout is two containers; the SDK injects the wallet buttons into the second, in the order configured by `paymentConfig.expressCheckout` in your `config.js`:
@@ -424,6 +431,81 @@ Express checkout is two containers; the SDK injects the wallet buttons into the 
   <div data-next-express-checkout="buttons"></div>
 </div>
 ```
+
+### Card messages
+
+The card's messages, and the label, placeholder and title inside the hosted number and CVV fields, are read in the form's language under `payment.*` keys: from `translations` first, then the address service's texts. A message neither has is the card provider's own, in English. The label, placeholder and title are applied once, when the hosted fields mount.
+
+Below is an example that rewords the message for a card number the provider rejects, and the security code's placeholder, on a Thai page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "th-TH",
+    translations: {
+      th: {
+        "payment.card.number.errors.invalid": "หมายเลขบัตรไม่ถูกต้อง",
+        "payment.card.cvv.placeholder": "รหัส CVV",
+      },
+    },
+  };
+</script>
+```
+
+The number and security code take these keys, after `payment.card.number.` or `payment.card.cvv.`.
+
+| Key | Description |
+|---|---|
+| `label` | The field's accessible label |
+| `placeholder` | The text shown while it is empty |
+| `title` | The field's tooltip |
+| `errors.blank` | Left empty |
+| `errors.invalid` | Not a valid number or code |
+
+The rest of the card has only messages.
+
+| Key | Description |
+|---|---|
+| `payment.card.expiry_month.errors.blank` | No expiry month chosen |
+| `payment.card.expiry_month.errors.invalid` | Not a month |
+| `payment.card.expiry_month.errors.expired` | An expiry in the past |
+| `payment.card.expiry_year.errors.blank` | No expiry year chosen |
+| `payment.card.expiry_year.errors.invalid` | Not a usable year |
+| `payment.card.name.errors.blank` | No name for the card |
+| `payment.card.errors.network` | The provider could not be reached |
+| `payment.card.errors.session_expired` | The card details timed out |
+| `payment.errors.generic` | A failure no one field caused |
+
+### Declined payments
+
+When the orders API declines a payment, the SDK shows a sentence for the decline code in the method's `*-error-text` slot, in the form's language: a card declined with code `3005` reads `Check your card number and try again.` The sentences come from the address service, at `payment.errors.<code>`, one for every code the orders API sends (`services/payment-decline-message.ts › paymentDeclineMessage`).
+
+| Source | Description |
+|---|---|
+| `payment.errors.<code>` | The code's sentence, page first |
+| Your `payment.errors.generic` | Your own fallback, when you set one |
+| `payment_details` | The orders API's own wording |
+| `payment.errors.generic` | The service's fallback |
+
+The SDK takes the first one it has, in that order. Without a fallback of your own, a code the service has no sentence for yet, or a decline while the service's texts could not be loaded, shows the orders API's wording, which is the payment gateway's English. Setting `payment.errors.generic` in `translations` puts your sentence in its place, so the shopper never reads the gateway's wording, including the reason it gives for a card reported lost or stolen. It also replaces the card form's own generic failure, which uses the same key.
+
+Below is an example that rewords the card number decline and the generic one, on a German page.
+
+```html
+<script>
+  window.nextConfig = {
+    locale: "de-DE",
+    translations: {
+      de: {
+        "payment.errors.3005": "Kartennummer prüfen und erneut versuchen.",
+        "payment.errors.generic": "Zahlung fehlgeschlagen.",
+      },
+    },
+  };
+</script>
+```
+
+The `payment:error` event carries the same sentence as `message`, and the code as `code`.
 
 ## Order preview
 

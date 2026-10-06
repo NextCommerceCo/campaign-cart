@@ -6,6 +6,12 @@ import { OrderBuilder } from '../builders/order-builder';
 import { useCheckoutStore } from '@/state/checkout';
 import { handleOrderRedirect } from '../utils/redirect-handler';
 import {
+  declineCode,
+  isPaymentDecline,
+  PaymentDeclinedError,
+  paymentDeclineMessage,
+} from '../services/payment-decline-message';
+import {
   rememberCheckoutCoupon,
   rememberCheckoutReturnPaths,
 } from '@/core/analytics/tracking/purchase-tracking';
@@ -135,29 +141,19 @@ export class OrderManager {
       if (error.status === 400 && error.responseData) {
         const responseData = error.responseData;
         
-        // Check for payment errors
-        if (responseData.payment_details || responseData.payment_response_code) {
-          this.logger.debug('Payment error detected:', {
+        if (isPaymentDecline(responseData)) {
+          this.logger.debug('Payment declined:', {
             payment_details: responseData.payment_details,
             payment_response_code: responseData.payment_response_code
           });
-          
-          // Emit payment error event with details
+          const message = await paymentDeclineMessage(responseData);
+          const code = declineCode(responseData);
           this.emitCallback('payment:error', {
-            message: responseData.payment_details || 'Payment failed',
-            code: responseData.payment_response_code,
+            message,
+            ...(code ? { code } : {}),
             details: responseData
           });
-          
-          // Create a user-friendly error message
-          let errorMessage = 'Payment failed: ';
-          if (responseData.payment_details) {
-            errorMessage += responseData.payment_details;
-          } else {
-            errorMessage += 'Please check your payment information and try again.';
-          }
-          
-          throw new Error(errorMessage);
+          throw new PaymentDeclinedError(message, code);
         }
       }
       
@@ -297,49 +293,6 @@ export class OrderManager {
     } catch (error) {
       this.logger.error('Error handling order redirect:', error);
       this.emitCallback('order:redirect-missing', { order });
-    }
-  }
-
-  public async handleTokenizedPayment(
-    token: string,
-    pmData: any,
-    createOrderCallback: () => Promise<any>
-  ): Promise<void> {
-    this.logger.debug('handleTokenizedPayment called with token:', token ? `${token.substring(0, 8)}...` : 'none');
-
-
-    try {
-      // Validate token
-      if (!token) {
-        throw new Error('Payment token is required');
-      }
-      
-      this.logger.debug('Handling tokenized payment', { 
-        token: token.substring(0, 8) + '...', 
-        pmData: pmData ? 'present' : 'missing' 
-      });
-      
-      this.logger.debug('Calling createOrderCallback...');
-
-      // Continue with order creation now that we have the payment token
-      const order = await createOrderCallback();
-
-      this.logger.debug('Order created via callback:', {
-        ref_id: order.ref_id,
-        number: order.number
-      });
-
-      // No event for a *created* order: `order:completed` belongs to the page the
-      // shopper lands on next, where the order is fetched back paid. A card payment
-      // needing 3-D Secure gets here unpaid, which is issue #71.
-
-      // Handle redirect based on response format
-      this.logger.debug('Handling order redirect...');
-      this.handleOrderRedirect(order);
-
-    } catch (error) {
-      this.logger.error('Failed to process tokenized payment:', error);
-      throw error;
     }
   }
 

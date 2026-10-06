@@ -1,9 +1,9 @@
-import { Country, CountryService } from '../../../core/country-service';
+import { Country, I18nRules } from '../../../core/i18n-rules';
 import { Logger } from '../../../core/logger';
 import { ShippingStateFieldsContext, StateFieldsContext } from './state-fields';
 export interface CountryResolutionContext {
     countries: Country[];
-    countryService: CountryService;
+    i18nRules: I18nRules;
     logger: Logger;
 }
 export interface CountryApplicationContext {

@@ -76,8 +76,8 @@
         <option value="NY">New York</option>
       </select>
 
-      <!-- CreditCardService turns the number and cvv inputs into Spreedly iframe
-           hosts. The spec injects a stand-in `window.Spreedly` before boot, so the
+      <!-- CreditCardService mounts NextPayment's hosted number and cvv fields into
+           these. The spec injects a stand-in `window.NextPayment` before boot, so the
            real script is never fetched. -->
       <div data-next-checkout-field="cc-number" id="cc-number"></div>
       <div data-next-checkout-field="cvv" id="cvv"></div>
@@ -87,6 +87,10 @@
       <select data-next-checkout-field="cc-year" name="cc-year">
         <option value="2030">2030</option>
       </select>
+      <!-- Where a declined card is explained, as the starter templates write it. -->
+      <div data-next-component="credit-error">
+        <div data-next-component="credit-error-text"></div>
+      </div>
 
       <button type="submit" data-next-checkout-submit>Complete order</button>
     </form>

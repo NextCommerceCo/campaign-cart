@@ -15,7 +15,7 @@ import {
   pageTranslations,
   sourceIn,
   type MessageSource,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 
 import { formatFieldName } from './field-labels';
 import { hasEmoji } from './validation-patterns';

@@ -21,7 +21,7 @@
  * still resolves here, so the split is invisible to callers.
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 import type { CreditCardService } from '../services/credit-card-service';
@@ -72,7 +72,7 @@ const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
 
 export class CheckoutValidator {
   private logger: Logger;
-  private countryService: any;
+  private i18nRules: any;
   private errorManager: ErrorDisplayManager;
   private creditCardService?: CreditCardService;
   private phoneSource?: (
@@ -85,9 +85,9 @@ export class CheckoutValidator {
   // Error storage
   private errors: Map<string, string> = new Map();
 
-  constructor(logger: Logger, countryService: any) {
+  constructor(logger: Logger, i18nRules: any) {
     this.logger = logger;
-    this.countryService = countryService;
+    this.i18nRules = i18nRules;
     this.errorManager = new ErrorDisplayManager();
     this.rules = createValidationRules();
   }
@@ -127,7 +127,7 @@ export class CheckoutValidator {
    */
   private formContext(): FormValidationContext {
     return {
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
       }),
@@ -163,7 +163,7 @@ export class CheckoutValidator {
   ): ValidationResult {
     const rules = this.rules.get(name) || [];
     if (hasEmoji(value)) {
-      const emoji = fieldMessage(this.countryService, 'contains_emoji', name);
+      const emoji = fieldMessage(this.i18nRules, 'contains_emoji', name);
       this.setError(name, emoji);
       return { isValid: false, message: emoji };
     }
@@ -171,7 +171,7 @@ export class CheckoutValidator {
     let message: string | undefined;
 
     const ruleContext = {
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
       }),
@@ -182,7 +182,7 @@ export class CheckoutValidator {
       if (!applyRule(ruleContext, rule, value, context)) {
         message =
           (rule.type === 'custom' ? rule.message : undefined) ??
-          fieldMessage(this.countryService, RULE_MESSAGE[rule.type], name);
+          fieldMessage(this.i18nRules, RULE_MESSAGE[rule.type], name);
         this.setError(name, message);
         isValid = false;
         break;
@@ -290,7 +290,9 @@ export class CheckoutValidator {
   // ============================================================================
 
   public focusFirstErrorField(firstErrorField?: string): void {
-    focusFirstErrorField(firstErrorField);
+    focusFirstErrorField(firstErrorField, field =>
+      this.creditCardService?.focusField(field)
+    );
   }
 
   // ============================================================================

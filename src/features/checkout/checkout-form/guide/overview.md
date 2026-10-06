@@ -7,7 +7,7 @@ category: "Checkout Form"
 # Checkout Form
 
 > Category: `checkout`
-> Last reviewed: 2026-10-01
+> Last reviewed: 2026-10-05
 > Owner: Campaigns
 
 Turns a plain HTML form into a working checkout. You write the markup and name each
@@ -59,19 +59,32 @@ the two can never drift apart.
   server's call, so `0000000000` reaches it and is answered there.
 - **The order carries E.164.** What the shopper types nationally
   (`(415) 555-2671`) is stored and sent as `+14155552671`, on the shipping
-  address, the billing address and the customer record. Submitting waits, briefly,
-  for the phone library to finish loading so there is a number to convert; if it
-  never arrives the national number is sent for the API to convert, and the SDK
-  logs that it did so. A country whose rule has no calling code (Argentina) is
-  always sent as typed, for the API to convert.
+  address, the billing address and the customer record. The E.164 number is what
+  the address-rules service reads the phone as (`POST /v1/validate`, with
+  libphonenumber), asked when the shopper pauses typing, leaves the field, or a
+  value is written in. Submitting waits up to two seconds for that answer, and a
+  prospect cart up to 800 ms; without it the number is sent as typed, for the API
+  to convert, and nothing is refused for it.
+- **A number the service reads as not valid is pointed out, never refused.** Once
+  the shopper leaves the field, its `error.message` is put under it through
+  `showError`, which records no failure, so a submit still judges the number by
+  the loose pattern alone (`phone-input.ts › showPhoneVerdict`). A number the
+  pattern already refuses keeps the pattern's message, an answer for a number
+  since changed or arriving while the shopper is back in the field shows
+  nothing, and the message goes once a number is read as valid.
 - **The phone input says which country it reads the number as, and the number in
-  E.164 once it is complete.** `data-next-phone-country` is the address country,
-  unless the number was typed with `+` or `00`: then it is the country that
-  calling code belongs to, so `+66 81 234 5678` in a US form shows the Thai flag.
-  `data-next-phone-e164` is present only while the number is complete and valid
-  for that country, and follows every keystroke, so page code never reads part of
-  a number (`phone-input.ts`). `customer_phone` in analytics is the same E.164
-  value, or absent.
+  E.164 once it is read.** `data-next-phone-country` is the address country,
+  unless the service has read the number as another country's: `+66 81 234 5678`
+  in a US form shows the Thai flag. A number typed with `+` or dialled with `00`
+  stays as it was written, spaces and hyphens included, since no mask fits
+  another country's number (`i18n-rules.phone.ts › asWritten`); once they
+  leave the field it is shown as
+  the service writes it, at home for the address country (`081 234 5678`) and
+  from abroad otherwise (`+44 7400 123456`). `data-next-phone-e164` is present only once the service has
+  read the number as a valid one, and is taken off on the next keystroke, so page
+  code never reads part of a number, or a number the box no longer shows
+  (`phone-input.ts`). `customer_phone` in analytics is the same E.164 value, or
+  absent.
 - **A postcode is rewritten into the shape its country writes it in, while the
   shopper is still typing.** Each country's rules arrive with its data from the
   countries service: a format pattern, a validation pattern, and a minimum and
@@ -90,11 +103,23 @@ the two can never drift apart.
   single one, and each is tried in turn. It keeps a candidate only if that
   country's own validation pattern accepts it; otherwise the value the shopper
   typed stands, uppercased when it contains letters
-  (`core/country-service/country-service.postal-code.ts › formatPostalCode`).
+  (`core/i18n-rules/i18n-rules.postal-code.ts › formatPostalCode`).
   Two things follow from that. A half-typed postcode is left alone rather than
   rearranged, because a partial value does not satisfy the country's rule yet,
   and it is reshaped once it is complete. And the SDK never submits a postcode
   that its own validation would then refuse.
+- **A postcode its state does not use is pointed out, never refused.** Once the
+  postcode passes its country's pattern and a state is chosen, leaving the
+  postcode or picking a state asks the address service (`POST /v1/validate`,
+  with the address language as `?lang=`) whether the state uses it. A
+  `not_in_state` answer is put under the postcode in the service's words, with
+  the state named, through `showError`, which does not record it as a failure,
+  and it goes when the postcode or state changes to one that matches
+  (`postcode-state-check.ts › checkPostcodeState`). A submit clears every
+  message and checks the postcode by its pattern alone, so the order goes out:
+  some real addresses sit across a state line from their postcode. An answer
+  about a postcode the shopper has since changed is dropped, and no answer shows
+  nothing.
 - Payment methods are declared in markup with short names, written with
   underscores like everywhere else the SDK names one (`credit`, `paypal`,
   `apple_pay`, …); `-` is accepted and case is ignored. The SDK translates them

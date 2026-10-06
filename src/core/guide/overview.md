@@ -127,7 +127,7 @@ Rules the engine enforces regardless of what your page asks for:
 ## Limitations
 
 - **No class or method-level reference for internals.** `SDKInitializer`,
-  `AttributeScanner`, and `CountryService` are documented by behaviour, not API surface.
+  `AttributeScanner`, and `I18nRules` are documented by behaviour, not API surface.
   If you need to change them, read the source.
 - **No control over boot order.** The sequence is fixed; there is no hook to insert a step
   or to re-order one.

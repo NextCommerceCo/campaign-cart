@@ -1,0 +1,162 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  asciiDigits,
+  formatPhone,
+  isE164,
+  isPlausiblePhone,
+  type PhoneRules,
+} from '@/core/i18n-rules/i18n-rules.phone';
+
+// Copied from the address-rules service's country files (i18n-rules `src/rules/*.json`),
+// where each is held to libphonenumber's example numbers for the country.
+const US: PhoneRules = {
+  calling_code: '1',
+  national_prefix: '1',
+  masks: [{ mask: '(###) ###-####' }],
+  pattern: '^[0-9]{10,11}$',
+  example: '(201) 555-0123',
+};
+const TH: PhoneRules = {
+  calling_code: '66',
+  national_prefix: '0',
+  masks: [
+    { start: '02', mask: '## ### ####' },
+    { start: '0[3-57]', mask: '### ### ###' },
+    { start: '1', mask: '#### ### ###' },
+    { mask: '### ### ####' },
+  ],
+  pattern: '^[0-9]{8,14}$',
+  example: '081 234 5678',
+};
+describe('formatPhone', () => {
+  it('fills the mask as the number is typed, and stops at the last digit', () => {
+    expect(formatPhone('415', US)).toBe('(415');
+    expect(formatPhone('41555', US)).toBe('(415) 55');
+    expect(formatPhone('4155552671', US)).toBe('(415) 555-2671');
+  });
+
+  it('reads the digits out of text it already formatted', () => {
+    expect(formatPhone('(415) 555-267', US)).toBe('(415) 555-267');
+    expect(formatPhone('(415) 555-2671', US)).toBe('(415) 555-2671');
+  });
+
+  it('shows a national prefix the mask has no place for before it', () => {
+    expect(formatPhone('14155552671', US)).toBe('1 (415) 555-2671');
+  });
+
+  it('picks the mask by how the number starts', () => {
+    expect(formatPhone('020176091', TH)).toBe('02 017 6091');
+    expect(formatPhone('0831234567', TH)).toBe('083 123 4567');
+    expect(formatPhone('053123456', TH)).toBe('053 123 456');
+    expect(formatPhone('1800123456', TH)).toBe('1800 123 456');
+  });
+
+  it('uses the default mask until the digits reach a start', () => {
+    expect(formatPhone('0', TH)).toBe('0');
+    expect(formatPhone('0201', TH)).toBe('02 01');
+  });
+
+  it('keeps a prefix the mask already holds inside it', () => {
+    expect(formatPhone('0812345678', TH)).toBe('081 234 5678');
+  });
+
+  it('leaves a number typed with + as it was written', () => {
+    expect(formatPhone('+1 212-555-0123', US)).toBe('+1 212-555-0123');
+    expect(formatPhone('+12125550123', US)).toBe('+12125550123');
+  });
+
+  it('keeps the spacing the service wrote a number in, so going back in moves nothing', () => {
+    expect(formatPhone('+66 83 873 1960', US)).toBe('+66 83 873 1960');
+    expect(formatPhone('+66 83 873 19605', US)).toBe('+66 83 873 19605');
+  });
+
+  it('drops what is not part of a number, and a + anywhere but first', () => {
+    expect(formatPhone('  +66  81x 234+5678', US)).toBe('+66 81 2345678');
+    expect(formatPhone('+(415) 555-2671', US)).toBe('+415 555-2671');
+  });
+
+  it('shows a number dialled with 00 as it was written, not as a +', () => {
+    expect(formatPhone('0066 81 234 5678', TH)).toBe('0066 81 234 5678');
+    expect(formatPhone('0066812345678', TH)).toBe('0066812345678');
+  });
+
+  it('shows Thai and full-width digits as ASCII ones in the mask', () => {
+    expect(formatPhone('๐๘๑๒๓๔๕๖๗๘', TH)).toBe('081 234 5678');
+    expect(formatPhone('＋６６８１２３４５６７８', TH)).toBe('+66812345678');
+  });
+
+  it('shows digits the mask has no room for as typed', () => {
+    expect(formatPhone('415555267199', US)).toBe('415555267199');
+  });
+
+  it('shows the digits as typed without a rule or a mask', () => {
+    expect(formatPhone('0812345678')).toBe('0812345678');
+    expect(formatPhone('0812345678', { pattern: '^[0-9]{8,14}$' })).toBe(
+      '0812345678'
+    );
+  });
+});
+
+describe('isPlausiblePhone', () => {
+  it('checks a national number against the pattern', () => {
+    expect(isPlausiblePhone('(415) 555-2671', US)).toBe(true);
+    expect(isPlausiblePhone('415 555', US)).toBe(false);
+  });
+
+  it("checks a + number with the country's own code without that code", () => {
+    expect(isPlausiblePhone('+66 81 234 5678', TH)).toBe(true);
+    expect(isPlausiblePhone('+66 81', TH)).toBe(false);
+  });
+
+  it('reads a leading 00 as + when checking', () => {
+    expect(isPlausiblePhone('0066 81 234 5678', TH)).toBe(true);
+    expect(isPlausiblePhone('0044 7400 123456', TH)).toBe(true);
+  });
+
+  it('only asks a + number with another code to be the length of E.164', () => {
+    expect(isPlausiblePhone('+44 7400 123456', US)).toBe(true);
+    expect(isPlausiblePhone('+44 74', US)).toBe(false);
+  });
+});
+
+describe('asciiDigits', () => {
+  it('writes Thai and full-width digits, and a full-width +, as ASCII', () => {
+    expect(asciiDigits('๐๘๑ ๒๓๔ ๕๖๗๘')).toBe('081 234 5678');
+    expect(asciiDigits('＋６６ ８１')).toBe('+66 81');
+  });
+
+  it('keeps every other character, and the length, as they were', () => {
+    expect(asciiDigits('(415) 555-2671')).toBe('(415) 555-2671');
+    expect(asciiDigits('๐๘๑').length).toBe(3);
+  });
+});
+
+describe('isE164 accepts only + and 8 to 15 digits, the first not 0', () => {
+  it.each([
+    '+14155552671',
+    '+66812345678',
+    '+447700900123',
+    '+12345678',
+    '+123456789012345',
+  ])('accepts %s', number => expect(isE164(number)).toBe(true));
+
+  it.each([
+    '(415) 555-2671',
+    '4155552671',
+    '14155552671',
+    '+1 415 555 2671',
+    '+1-415-555-2671',
+    '+04155552671',
+    '+1234567',
+    '+1234567890123456',
+    '+',
+    '',
+    ' +14155552671',
+  ])('refuses %j', number => expect(isE164(number)).toBe(false));
+
+  it('refuses a missing value', () => {
+    expect(isE164(undefined)).toBe(false);
+    expect(isE164(null)).toBe(false);
+  });
+});

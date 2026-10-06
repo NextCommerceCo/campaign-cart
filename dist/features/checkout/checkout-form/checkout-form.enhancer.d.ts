@@ -2,7 +2,7 @@ import { BaseEnhancer } from '../../../core/base/base-enhancer';
 export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private form;
     private apiClient;
-    private countryService;
+    private i18nRules;
     private creditCardService?;
     private validator;
     private stateLoadingPromises;
@@ -74,7 +74,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private fieldLookupContext;
     private scanAllFields;
     private initializeAddressManagement;
-    private configureCountryService;
+    private configureI18nRules;
     private createAddressAutocomplete;
     private applySelectedCountry;
     private loadProvincesForSelectedCountry;
@@ -87,6 +87,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private showBillingLocationFields;
     private prospectCartContext;
     private initializeProspectCart;
+    private postcodeState?;
+    private postcodeStateContext;
     private fieldValidationContext;
     private autofillDetectionContext;
     private stateFieldsContext;

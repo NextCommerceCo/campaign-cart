@@ -9,8 +9,6 @@ export declare class ExpressCheckoutProcessor {
     private orderManager;
     constructor(logger: Logger, showLoadingCallback: () => void, hideLoadingCallback: (immediate?: boolean) => void, emitCallback: (event: string, data: any) => void, orderManager: OrderManager);
     handleExpressCheckout(method: string, cartItems: CartItem[], isCartEmpty: boolean, _resetCart: () => void): Promise<void>;
-    private displayPayPalError;
-    private displayExpressPaymentError;
     private displayGeneralPaymentError;
 }
 //# sourceMappingURL=express-checkout-processor.d.ts.map

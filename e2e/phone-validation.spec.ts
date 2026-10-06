@@ -32,14 +32,14 @@ import {
  *   checkout that still goes through.
  *
  * Why not a unit test: `formatPhone`, `isPlausiblePhone` and `toE164` are pure and
- * `country-service.phone.test.ts` proves them. What it cannot prove is the wiring — the
+ * `i18n-rules.phone.test.ts` proves them. What it cannot prove is the wiring — the
  * rule travelling from the service response into a live field, the field rewritten under
  * the shopper's keystrokes one at a time, the flag fetched and laid out inside the field
  * (happy-dom neither loads images nor does layout), and the number that leaves in the
  * order POST.
  *
  * The rules served are the service's own, written out in `fixtures/routes.ts`. The
- * Spreedly tokenizer is the shared card harness's stand-in, which is what lets the form
+ * NextPayment tokenizer is the shared card harness's stand-in, which is what lets the form
  * submit at all. Anything no stub answers is aborted and fails the test — see
  * {@link blockLiveNetwork}.
  */
@@ -315,7 +315,30 @@ test('a Bangkok landline is grouped differently from a mobile', async ({
   await expect.poll(() => storedPhone(page)).toBe('+6620176091');
 });
 
-/** `00` is how most countries dial abroad, so it is the shopper's `+`. */
+/**
+ * Thailand dials abroad through a carrier's prefix, `001` to `009`. Read as `00` and a `+`,
+ * `001 66 81…` would be a +1 number; it is a Thai one.
+ */
+test('a Thai number dialled through a carrier prefix stays Thai', async ({
+  page,
+}) => {
+  await stubCardCheckout(page, { country: 'TH' });
+  await bootSdk(page, CHECKOUT);
+  await expectCountry(page, 'TH');
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('001 66 81 234 5678');
+
+  await expect(input).toHaveValue('001 66 81 234 5678');
+  await expect(input).toHaveAttribute('data-next-phone-country', 'TH');
+  await expect.poll(() => storedPhone(page)).toBe('+66812345678');
+});
+
+/**
+ * `00` is how most countries dial abroad, so it is the shopper's `+`. The field keeps the
+ * number as typed, spaces included: which prefix it was is only known once the code after
+ * it is in.
+ */
 test('a number dialled with 00 is read as +', async ({ page }) => {
   await stubCardCheckout(page, { country: 'TH' });
   await bootSdk(page, CHECKOUT);
@@ -324,7 +347,7 @@ test('a number dialled with 00 is read as +', async ({ page }) => {
   const input = page.locator(PHONE);
   await input.pressSequentially('0066 81 234 5678');
 
-  await expect(input).toHaveValue('+66812345678');
+  await expect(input).toHaveValue('0066 81 234 5678');
   await expect.poll(() => storedPhone(page)).toBe('+66812345678');
 });
 
@@ -379,7 +402,8 @@ test('a Thai number typed with + in a US form shows the Thai flag and goes out i
   await input.pressSequentially('+66 81 234 5678');
 
   await expectCountry(page, 'TH');
-  await expect(input).toHaveValue('+66812345678');
+  // As typed: no mask fits another country's number, so its spacing is the shopper's.
+  await expect(input).toHaveValue('+66 81 234 5678');
   await expect(input).toHaveAttribute('data-next-phone-e164', '+66812345678');
   // The address is still American: only the phone reads as Thai.
   await expect(
@@ -391,7 +415,7 @@ test('a Thai number typed with + in a US form shows the Thai flag and goes out i
   expect(body.shipping_address.phone_number).toBe('+66812345678');
 });
 
-test('deleting the + puts the address country back on the phone', async ({
+test('deleting the + number puts the address country back on the phone', async ({
   page,
 }) => {
   await stubCardCheckout(page);
@@ -399,7 +423,7 @@ test('deleting the + puts the address country back on the phone', async ({
   await addOnePackage(page);
 
   const input = page.locator(PHONE);
-  await input.pressSequentially('+44');
+  await input.pressSequentially('+44 7400 123456');
   await expectCountry(page, 'GB');
 
   await input.fill('');
@@ -480,10 +504,11 @@ test('with no phone rule the field is left plain and the order still goes out', 
 });
 
 /**
- * Argentina's rule has no calling code: an Argentine mobile keeps a `15` that only the
- * order API's conversion removes, so the SDK must not assemble a `+54` number itself.
+ * Argentina's rule has no calling code: an Argentine mobile keeps a `15` that only
+ * libphonenumber's conversion removes. The service makes it, so the SDK never assembles a
+ * `+54` number itself and the order still gets E.164.
  */
-test('an Argentine number is sent as typed, not converted to E.164', async ({
+test('an Argentine number goes out in the E.164 the service converts it to', async ({
   page,
 }) => {
   await stubCardCheckout(page, { country: 'AR' });
@@ -503,9 +528,53 @@ test('an Argentine number is sent as typed, not converted to E.164', async ({
   });
   const body = await placedOrder(page, posts);
 
-  const sent = body.shipping_address.phone_number;
-  expect(sent).not.toMatch(/^\+/);
-  expect(sent.replace(/\D/g, '')).toBe('0111523456789');
+  expect(body.shipping_address.phone_number).toBe('+5491123456789');
+});
+
+/**
+ * The written form stays put. Leaving the field writes the number as the service does,
+ * `+66 81 234 5678`; going back in and typing used to strip that spacing on the first
+ * keystroke and put it back on leaving, so the text jumped every time.
+ */
+test('a number written from abroad keeps its spacing when the shopper goes back in', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  await bootSdk(page, CHECKOUT);
+
+  const input = page.locator(PHONE);
+  await input.pressSequentially('+66812345678');
+  await input.blur();
+  await expect(input).toHaveValue('+66 81 234 5678');
+
+  await input.click();
+  await input.press('End');
+  await input.press('Backspace');
+  await expect(input).toHaveValue('+66 81 234 567');
+  await input.press('8');
+  await expect(input).toHaveValue('+66 81 234 5678');
+});
+
+test('a number the service reads as not valid is pointed out, and the order still goes out', async ({
+  page,
+}) => {
+  await stubCardCheckout(page);
+  const posts = await recordOrders(page);
+
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+  await page.fill(PHONE, '+6683873196');
+  await page.locator(PHONE).blur();
+
+  // The service's own sentence, with the example of the country the number was typed for.
+  await expect(page.locator('.next-error-label')).toContainText(
+    'Enter a valid phone number, like +66 81 234 5678'
+  );
+
+  // Pointed out, not refused: the loose pattern takes it, so the order is placed.
+  await submitCard(page, '+6683873196');
+  const body = await placedOrder(page, posts);
+  expect(body.shipping_address.phone_number).toBe('+6683873196');
 });
 
 /** The negative control for every "accepted" test above. */

@@ -7,9 +7,9 @@ import { useConfigStore } from '@/state/config';
 import { scopedKey } from '@/core/storage';
 import { useCampaignStore } from '@/state/campaign';
 import { cartOperations } from '@/state/cart';
-import { CountryService } from '@/core/country-service';
+import { I18nRules } from '@/core/i18n-rules';
 import { Logger } from '@/core/logger';
-import type { Country } from '@/core/country-service';
+import type { Country } from '@/core/i18n-rules';
 
 export class CountrySelector {
   private static instance: CountrySelector;
@@ -49,8 +49,8 @@ export class CountrySelector {
 
   private async loadCountries(): Promise<void> {
     try {
-      const countryService = CountryService.getInstance();
-      const locationData = await countryService.getLocationData();
+      const i18nRules = I18nRules.getInstance();
+      const locationData = await i18nRules.getLocationData();
       this.countries = locationData.countries || [];
       this.logger.debug(`Loaded ${this.countries.length} countries`);
     } catch (error) {
@@ -370,7 +370,7 @@ export class CountrySelector {
 
       const configStore = useConfigStore.getState();
       const campaignStore = useCampaignStore.getState();
-      const countryService = CountryService.getInstance();
+      const i18nRules = I18nRules.getInstance();
 
       // Store the old country
       const oldCountry =
@@ -391,8 +391,8 @@ export class CountrySelector {
       }
 
       // Fetch country configuration
-      const countryConfig = await countryService.getCountryConfig(newCountry);
-      const countryStates = await countryService.getCountryStates(newCountry);
+      const countryConfig = await i18nRules.getCountryConfig(newCountry);
+      const countryStates = await i18nRules.getCountryStates(newCountry);
 
       // Update config store with new country data
       configStore.updateConfig({

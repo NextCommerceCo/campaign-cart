@@ -710,7 +710,7 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     examples: ['next_country_location_data', 'next_country_states_US'],
     group: 'reference-data',
     ttl: '1 hour',
-    ttlMechanism: '`cacheExpiry` (CountryService)',
+    ttlMechanism: '`cacheExpiry` (I18nRules)',
     holds:
       'Responses from the countries service: the full country list with the detected country (`location_data`), and per country its states plus its address rules — state label, postcode label and length limits. Each entry records the language it was fetched in, and one in another language is refetched.',
     clearing:
@@ -721,9 +721,9 @@ export const STORAGE_KEYS_DOC: StorageKeyDoc[] = [
     examples: ['next_country_states_US', 'next_country_states_GB'],
     group: 'reference-data',
     ttl: '1 hour',
-    ttlMechanism: '`cacheExpiry` (CountryService)',
+    ttlMechanism: '`cacheExpiry` (I18nRules)',
     holds:
-      'The same per-country entries as the row above. It is listed separately because `CountryService.clearCountryCache(countryCode)` names this shape explicitly when dropping one country.',
+      'The same per-country entries as the row above. It is listed separately because `I18nRules.clearCountryCache(countryCode)` names this shape explicitly when dropping one country.',
     clearing: "That one country's states and address rules are refetched.",
   },
 
@@ -939,8 +939,8 @@ export const EXPIRY_MECHANISMS: ExpiryMechanism[] = [
       '`next-price-{hash}`. The expiry is stored inside each entry as `expiresAt`, so entries written before a change keep the old window.',
   },
   {
-    name: '`cacheExpiry` (CountryService)',
-    file: 'core/country-service/country-service.ts',
+    name: '`cacheExpiry` (I18nRules)',
+    file: 'core/i18n-rules/i18n-rules.ts',
     evidence: 'private cacheExpiry = 3600000',
     window: '1 hour',
     governs:

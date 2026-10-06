@@ -1,9 +1,9 @@
-import { CountryConfig } from '../../../core/country-service';
+import { CountryConfig } from '../../../core/i18n-rules';
 import { CreditCardService } from '../services/credit-card-service';
 import { PhoneNumberSource } from './phone-validation';
 import { FormValidationResult } from './validation.types';
 export interface FormValidationContext {
-    countryService: any;
+    i18nRules: any;
     phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
     creditCardService?: CreditCardService;
 }

@@ -21,7 +21,7 @@
  * their handling of an unreadable step number fixed.
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { LoadingOverlay } from '@/core/ui/loading-overlay';

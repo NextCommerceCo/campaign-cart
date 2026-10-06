@@ -16,6 +16,7 @@ import {
 } from './field-discovery';
 import { isValidEmail, isValidName, isValidPhone } from './validation';
 import { setupTriggers } from './triggers';
+import { awaitPhoneRules, phoneFieldFor } from '../checkout-form/phone-input';
 import {
   createProspectCart,
   updateProspectCart,
@@ -33,6 +34,9 @@ import type {
 } from './prospect-cart.types';
 
 export type { ProspectCartConfig, ProspectCart };
+
+/** How long a prospect cart waits for the phone to be read before going without. */
+const PHONE_READ_WAIT_MS = 800;
 
 export class ProspectCartEnhancer extends BaseEnhancer {
   private config: ProspectCartConfig = {
@@ -185,11 +189,24 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   private async createProspectCart(): Promise<void> {
+    await this.phoneNumberRead();
     return createProspectCart(this.makeCartCreationContext());
   }
 
   private async updateProspectCart(): Promise<void> {
+    await this.phoneNumberRead();
     return updateProspectCart(this.makeCartCreationContext());
+  }
+
+  /**
+   * Waits, briefly, for the address-rules service to read the phone, so the cart carries
+   * the number in E.164 rather than as typed. A slow or missing answer leaves it as typed.
+   */
+  private async phoneNumberRead(): Promise<void> {
+    const field = this.phoneField && phoneFieldFor(this.phoneField);
+    if (field) {
+      await awaitPhoneRules(new Map([['phone', field]]), PHONE_READ_WAIT_MS);
+    }
   }
 
   private collectUtmData(): Record<string, string> {

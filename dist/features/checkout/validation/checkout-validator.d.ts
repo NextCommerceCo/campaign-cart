@@ -1,4 +1,4 @@
-import { CountryConfig } from '../../../core/country-service';
+import { CountryConfig } from '../../../core/i18n-rules';
 import { Logger } from '../../../core/logger';
 import { CreditCardService } from '../services/credit-card-service';
 import { PhoneNumberSource } from './phone-validation';
@@ -7,13 +7,13 @@ export { VALIDATION_PATTERNS } from './validation-patterns';
 export type { FormValidationResult, ValidationResult, ValidationRule, } from './validation.types';
 export declare class CheckoutValidator {
     private logger;
-    private countryService;
+    private i18nRules;
     private errorManager;
     private creditCardService?;
     private phoneSource?;
     private rules;
     private errors;
-    constructor(logger: Logger, countryService: any);
+    constructor(logger: Logger, i18nRules: any);
     setCreditCardService(creditCardService: CreditCardService): void;
     setPhoneSource(resolve: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined): void;
     private formContext;

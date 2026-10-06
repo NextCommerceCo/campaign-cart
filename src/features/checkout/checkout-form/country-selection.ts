@@ -20,7 +20,7 @@
  * billing sections each owning their own dropdown pair.
  */
 
-import type { Country, CountryService } from '@/core/country-service';
+import type { Country, I18nRules } from '@/core/i18n-rules';
 import { scopedKey } from '@/core/storage';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
@@ -37,7 +37,7 @@ export interface CountryResolutionContext {
   /** Countries the campaign can ship to. A candidate absent from this list is rejected. */
   countries: Country[];
   /** Read for one thing: the configured default country, which is reported in the log. */
-  countryService: CountryService;
+  i18nRules: I18nRules;
   logger: Logger;
 }
 
@@ -71,7 +71,7 @@ export interface CountryApplicationContext {
  * @example
  * ```ts
  * const code = resolveShippingCountry(
- *   { countries, countryService, logger },
+ *   { countries, i18nRules, logger },
  *   locationData.detectedCountryCode,
  *   checkoutStore.formData.country
  * );
@@ -86,7 +86,7 @@ export function resolveShippingCountry(
   // NOTE: This only affects the shipping country dropdown, NOT currency
   let selectedCountryCode = detectedCountryCode;
 
-  const countryConfig = ctx.countryService.getConfig();
+  const countryConfig = ctx.i18nRules.getConfig();
 
   ctx.logger.info(
     'Shipping country selection priority check (does not affect currency):',

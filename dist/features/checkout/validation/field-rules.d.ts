@@ -1,7 +1,7 @@
 import { PhoneNumberSource } from './phone-validation';
 import { ValidationRule } from './validation.types';
 export interface FieldRuleContext {
-    countryService: any;
+    i18nRules: any;
     phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
     fieldName?: string;
 }

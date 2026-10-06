@@ -15,14 +15,14 @@
  * validator ({@link FormValidationContext}).
  */
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 
 import type {
   CreditCardData,
   CreditCardService,
 } from '../services/credit-card-service';
 
-import { asksForPostcode } from '@/core/country-service';
+import { asksForPostcode } from '@/core/i18n-rules';
 
 import { validateBillingAddress } from './billing-address-validation';
 import { findFirstErrorFieldInDOM } from './first-error-field';
@@ -38,7 +38,7 @@ import type { FormValidationResult } from './validation.types';
 /** What form and step validation need from `CheckoutValidator`. */
 export interface FormValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)`. */
-  countryService: any;
+  i18nRules: any;
   /**
    * The live phone field for an address, when the form has one.
    *
@@ -104,7 +104,7 @@ export async function validateForm(
   // Validate each required field
   requiredFields.forEach(field => {
     if (!formData[field] || formData[field].trim() === '') {
-      errors[field] = fieldMessage(ctx.countryService, 'blank', field, {
+      errors[field] = fieldMessage(ctx.i18nRules, 'blank', field, {
         country: formData.country,
       });
       isValid = false;
@@ -113,26 +113,18 @@ export async function validateForm(
 
   // Name validation
   if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname = fieldMessage(
-      ctx.countryService,
-      'invalid_characters',
-      'fname'
-    );
+    errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
     isValid = false;
   }
 
   if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname = fieldMessage(
-      ctx.countryService,
-      'invalid_characters',
-      'lname'
-    );
+    errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
     isValid = false;
   }
 
   // City validation
   if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = fieldMessage(ctx.countryService, 'invalid', 'city', {
+    errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
       country: formData.country,
     });
     isValid = false;
@@ -140,7 +132,7 @@ export async function validateForm(
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {
-    errors.email = fieldMessage(ctx.countryService, 'invalid', 'email');
+    errors.email = fieldMessage(ctx.i18nRules, 'invalid', 'email');
     isValid = false;
   }
 
@@ -148,7 +140,7 @@ export async function validateForm(
     formData.phone &&
     !isValidPhone(formData.phone, ctx.phoneSource?.('shipping'))
   ) {
-    errors.phone = fieldMessage(ctx.countryService, 'invalid', 'phone');
+    errors.phone = fieldMessage(ctx.i18nRules, 'invalid', 'phone');
     isValid = false;
   }
 
@@ -157,14 +149,14 @@ export async function validateForm(
     const countryConfig = countryConfigs.get(formData.country);
     if (
       countryConfig &&
-      !ctx.countryService.validatePostalCode(
+      !ctx.i18nRules.validatePostalCode(
         formData.postal,
         formData.country,
         countryConfig
       )
     ) {
       errors.postal = postalMessage(
-        ctx.countryService,
+        ctx.i18nRules,
         'postal',
         formData.country,
         countryConfig
@@ -174,11 +166,7 @@ export async function validateForm(
   }
 
   // Last, so an emoji's message replaces the name or email one that says less.
-  const emojiProblems = emojiErrors(
-    ctx.countryService,
-    formData,
-    formData.country
-  );
+  const emojiProblems = emojiErrors(ctx.i18nRules, formData, formData.country);
   Object.assign(errors, emojiProblems);
   if (Object.keys(emojiProblems).length) isValid = false;
 

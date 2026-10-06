@@ -11,7 +11,7 @@ import { TEST_ORDER } from './fixtures/order';
 import {
   stubCampaign,
   stubCart,
-  stubCountryService,
+  stubI18nRules,
   bootSdk,
 } from './fixtures/routes';
 
@@ -32,7 +32,7 @@ import {
  * URL the browser actually ended up at. happy-dom has one document and does not
  * navigate.
  *
- * Nothing here needs Spreedly: a redirect method collects no card, so the SDK
+ * Nothing here needs NextPayment: a redirect method collects no card, so the SDK
  * never builds its tokenizer (MINIMAL_CAMPAIGN ships an empty `payment_env_key`,
  * which is what decides that).
  */
@@ -109,7 +109,7 @@ async function expectReadable(locator: Locator): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
   await stubCart(page);
-  await stubCountryService(page);
+  await stubI18nRules(page);
 });
 
 /**

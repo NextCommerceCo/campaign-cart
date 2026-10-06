@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CountryConfig } from '@/core/country-service';
+import type { CountryConfig } from '@/core/i18n-rules';
 
 import {
   validateBillingAddress,
@@ -27,7 +27,7 @@ function createContext(
   overrides: Partial<BillingAddressValidationContext> = {}
 ): BillingAddressValidationContext {
   return {
-    countryService: { validatePostalCode: vi.fn().mockReturnValue(true) },
+    i18nRules: { validatePostalCode: vi.fn().mockReturnValue(true) },
     ...overrides,
   };
 }
@@ -95,7 +95,7 @@ describe('validateBillingAddress', () => {
 
   it('checks the postal code against the country and quotes an example', () => {
     const ctx = createContext({
-      countryService: { validatePostalCode: vi.fn().mockReturnValue(false) },
+      i18nRules: { validatePostalCode: vi.fn().mockReturnValue(false) },
     });
 
     const result = validateBillingAddress(ctx, completeAddress, configs);

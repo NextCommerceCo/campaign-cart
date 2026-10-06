@@ -89,7 +89,7 @@ function bootBillingSection(form: HTMLFormElement): BootSteps {
 async function validateStepThree(): Promise<Record<string, string>> {
   const { billingAddress, sameAsShipping } = useCheckoutStore.getState();
   const ctx = {
-    countryService: { validatePostalCode: () => true },
+    i18nRules: { validatePostalCode: () => true },
   } as unknown as FormValidationContext;
 
   const result = await validateStep(

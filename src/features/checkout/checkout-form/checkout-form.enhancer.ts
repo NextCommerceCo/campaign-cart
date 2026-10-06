@@ -11,11 +11,11 @@ import { useCampaignStore, type CampaignState } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import type { IApiClient } from '@/api/client.types';
 import {
-  CountryService,
+  I18nRules,
   type Country,
   type CountryConfig,
   type PhoneRules,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import { preserveQueryParams } from '@/core/url-utils';
 import type { CartState } from '@/types/global';
 import {
@@ -44,6 +44,7 @@ import {
 import {
   awaitPhoneRules,
   initializePhoneInputs,
+  showPhoneVerdict,
   type PhoneField,
   type PhoneInputContext,
 } from './phone-input';
@@ -89,6 +90,17 @@ import {
   formatPostalCodeInPlace,
   type PostalCodeFormatContext,
 } from './postal-code-format';
+import {
+  declineCode,
+  isPaymentDecline,
+  PaymentDeclinedError,
+  paymentDeclineMessage,
+} from '../services/payment-decline-message';
+import {
+  affectsPostcodeState,
+  checkPostcodeState,
+  type PostcodeStateContext,
+} from './postcode-state-check';
 import {
   routeBillingField,
   type BillingFieldRoutingContext,
@@ -185,7 +197,7 @@ type CheckoutStoreSnapshot = ReturnType<typeof useCheckoutStore.getState>;
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
   private apiClient!: IApiClient;
-  private countryService!: CountryService;
+  private i18nRules!: I18nRules;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
   private stateLoadingPromises: Map<string, Promise<any>> = new Map();
@@ -405,7 +417,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private initializeApiDependencies(config: CheckoutFormConfig): void {
     this.apiClient = getApiClient(config.apiKey);
-    this.countryService = CountryService.getInstance();
+    this.i18nRules = I18nRules.getInstance();
   }
 
   /** Re-initializes attribution so the order carries this page's data, not the previous page's. */
@@ -431,7 +443,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private initializeValidator(): void {
-    this.validator = new CheckoutValidator(this.logger, this.countryService);
+    this.validator = new CheckoutValidator(this.logger, this.i18nRules);
   }
 
   private cloneBillingFormFromShipping(): void {
@@ -555,6 +567,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       );
       void this.reapplyToRenderedFields();
     });
+    // A block can finish rendering while this form is still booting: after the boot scan
+    // missed its fields, and before this listened for its announcement. It then said so
+    // to nobody, and a returning visitor's billing address stayed in the store.
+    if (
+      this.element.querySelector('[data-next-address-state="ready"]') !== null
+    ) {
+      void this.reapplyToRenderedFields();
+    }
   }
 
   /**
@@ -819,13 +839,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     try {
       this.addClass('next-loading-countries');
 
-      this.configureCountryService(config);
+      this.configureI18nRules(config);
 
       // Built before the country list is fetched, but initialized after — it holds the
       // field maps by reference, so only its `initialize` call depends on the timing.
       const autocompleteOptions = this.createAddressAutocomplete(config);
 
-      const locationData = await this.countryService.getLocationData();
+      const locationData = await this.i18nRules.getLocationData();
       this.countries = locationData.countries;
 
       const checkoutStore = useCheckoutStore.getState();
@@ -866,9 +886,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * The campaign API wins over `addressConfig.showCountries`: a merchant who cannot ship
    * somewhere must not be able to re-offer it from page config.
    */
-  private configureCountryService(config: any): void {
+  private configureI18nRules(config: any): void {
     if (config.addressConfig) {
-      this.countryService.setConfig(config.addressConfig);
+      this.i18nRules.setConfig(config.addressConfig);
     }
 
     // IMPORTANT: Set campaign shipping countries from campaign API
@@ -879,7 +899,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         'Setting campaign shipping countries:',
         campaignState.data.available_shipping_countries
       );
-      this.countryService.setCampaignShippingCountries(
+      this.i18nRules.setCampaignShippingCountries(
         campaignState.data.available_shipping_countries
       );
     } else {
@@ -993,7 +1013,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryResolutionContext(): CountryResolutionContext {
     return {
       countries: this.countries,
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       logger: this.logger,
     };
   }
@@ -1089,6 +1109,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // PHONE INPUT MANAGEMENT
   // ============================================================================
 
+  private postcodeState?: PostcodeStateContext;
+
+  /**
+   * What `postcode-state-check.ts` needs from this form: one object for the form's life,
+   * because the module remembers each field's last question against it.
+   */
+  private postcodeStateContext(): PostcodeStateContext {
+    this.postcodeState ??= {
+      readPostcode: (postcode, country, state) =>
+        this.i18nRules.readPostcode(postcode, country, state),
+      getField: name => this.getFieldByName(name) ?? undefined,
+      passesPattern: (postcode, country) => {
+        const config = this.countryConfigs.get(country);
+        return (
+          !config ||
+          this.i18nRules.validatePostalCode(postcode, country, config)
+        );
+      },
+      showError: (name, message) => this.validator.showError(name, message),
+      clearError: name => this.validator.clearError(name),
+    };
+    return this.postcodeState;
+  }
+
   /** The two things `field-validation-display.ts` needs from this form. */
   private fieldValidationContext(): FieldValidationContext {
     return {
@@ -1111,7 +1155,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private stateFieldsContext(): StateFieldsContext {
     return {
       stateLoadingPromises: this.stateLoadingPromises,
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       logger: this.logger,
       countryFields: this.countryFieldsContext(),
     };
@@ -1191,7 +1235,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       phoneInputs: this.phoneInputs,
       detectedCountryCode: this.detectedCountryCode,
       loadPhoneRules: country => this.loadPhoneRules(country),
-      loadCallingCodes: () => this.countryService.loadCallingCodes(),
+      readPhoneNumber: (number, country) =>
+        this.i18nRules.readPhoneNumber(number, country),
       updateFormData: data => this.updateFormData(data),
       logger: this.logger,
     };
@@ -1205,8 +1250,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async loadPhoneRules(
     country: string
   ): Promise<PhoneRules | undefined> {
-    const { countryConfig } =
-      await this.countryService.getCountryStates(country);
+    const { countryConfig } = await this.i18nRules.getCountryStates(country);
     return countryConfig.phone;
   }
 
@@ -1238,6 +1282,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
+        this.emit('checkout:payment-ready', {});
         this.emit('checkout:spreedly-ready', {});
         this.logger.debug('[Spreedly] Credit card service ready');
 
@@ -1260,10 +1305,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       });
 
       this.creditCardService.setOnToken((token, pmData) => {
-        this.logger.info('[Spreedly] Payment token received:', {
-          token,
-          pmData,
-        });
         this.handleTokenizedPayment(token, pmData);
       });
 
@@ -1437,34 +1478,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           throw new Error(responseData.message);
         }
 
-        // Check for payment-specific errors
-        if (
-          responseData.payment_details ||
-          responseData.payment_response_code
-        ) {
-          this.logger.warn('Payment error detected:', {
+        if (isPaymentDecline(responseData)) {
+          this.logger.warn('Payment declined:', {
             payment_details: responseData.payment_details,
             payment_response_code: responseData.payment_response_code,
           });
-
-          // Tracking removed - implement custom analytics in the future if needed
-
-          // Display payment error in the UI
-          this.displayPaymentError(
-            responseData.payment_details ||
-              'Payment failed. Please check your payment information.'
-          );
-
-          // Create a user-friendly error message
-          let errorMessage = 'Payment failed: ';
-          if (responseData.payment_details) {
-            errorMessage += responseData.payment_details;
-          } else {
-            errorMessage +=
-              'Please check your payment information and try again.';
-          }
-
-          throw new Error(errorMessage);
+          const message = await paymentDeclineMessage(responseData);
+          this.displayPaymentError(message);
+          throw new PaymentDeclinedError(message, declineCode(responseData));
         }
 
         // Check for validation errors
@@ -1892,9 +1913,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // span?.setAttribute('payment.type', 'credit_card');
 
         if (this.creditCardService?.ready) {
+          const firstName = String(checkoutStore.formData.fname ?? '').trim();
+          const lastName = String(checkoutStore.formData.lname ?? '').trim();
           const cardData: CreditCardData = {
-            full_name:
-              `${checkoutStore.formData.fname || ''} ${checkoutStore.formData.lname || ''}`.trim(),
+            full_name: `${firstName} ${lastName}`.trim(),
+            ...(firstName && { first_name: firstName }),
+            ...(lastName && { last_name: lastName }),
             month:
               checkoutStore.formData['cc-month'] ||
               checkoutStore.formData['exp-month'] ||
@@ -2030,9 +2054,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.error('Failed to process tokenized payment:', error);
       const checkoutStore = useCheckoutStore.getState();
 
-      // Check if error has payment details
-      if (error.message && error.message.includes('Payment failed:')) {
-        // The error message already contains payment details from createOrder
+      // A decline already carries the sentence `createOrder` showed the shopper.
+      if (error instanceof PaymentDeclinedError) {
         checkoutStore.setError('general', error.message);
       } else {
         checkoutStore.setError(
@@ -2083,6 +2106,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       fieldName,
       target.value
     );
+
+    // After the display, so a postcode its state does not use keeps the message the
+    // blur's tick would otherwise replace.
+    if (
+      (event.type === 'blur' || event.type === 'change') &&
+      affectsPostcodeState(fieldName)
+    ) {
+      void checkPostcodeState(this.postcodeStateContext(), fieldName);
+    }
+
+    if (
+      (event.type === 'blur' || event.type === 'change') &&
+      (fieldName === 'phone' || fieldName === 'billing-phone') &&
+      target instanceof HTMLInputElement
+    ) {
+      void showPhoneVerdict(
+        {
+          showError: (name, message) => this.validator.showError(name, message),
+          clearError: name => this.validator.clearError(name),
+        },
+        fieldName,
+        target
+      );
+    }
   }
 
   // ============================================================================
@@ -2092,7 +2139,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   /** The two things `postal-code-format.ts` needs from this form. */
   private postalCodeFormatContext(): PostalCodeFormatContext {
     return {
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       countryConfigs: this.countryConfigs,
     };
   }
@@ -2516,7 +2563,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     state: ReturnType<typeof useCheckoutStore.getState>
   ): void {
     const ctx = {
-      countryService: this.countryService,
+      i18nRules: this.i18nRules,
       logger: this.logger,
       updateFormData: (data: Record<string, string>) =>
         this.updateFormData(data),

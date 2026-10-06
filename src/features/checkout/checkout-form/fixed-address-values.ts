@@ -5,7 +5,7 @@
  * chosen, and taken back out when the shopper moves to a country that fixes nothing.
  */
 
-import type { CountryService, FixedValues } from '@/core/country-service';
+import type { I18nRules, FixedValues } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -47,7 +47,7 @@ export function fixedValuesPatch(
 
 /** What {@link applyFixedValues} needs from the checkout form. */
 export interface FixedValuesContext {
-  countryService: CountryService;
+  i18nRules: I18nRules;
   logger: Logger;
   updateFormData: (data: Record<string, string>) => void;
 }
@@ -73,8 +73,8 @@ export async function applyFixedValues(
   let values: FixedValues | undefined;
   if (country) {
     try {
-      values = (await ctx.countryService.getCountryStates(country))
-        .countryConfig.fixed;
+      values = (await ctx.i18nRules.getCountryStates(country)).countryConfig
+        .fixed;
     } catch (error) {
       ctx.logger.warn(
         `Could not read the fixed address values of ${country}`,

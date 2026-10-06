@@ -6,7 +6,7 @@
 import { createLogger } from '@/core/logger';
 import { scopedKey } from '@/core/storage';
 import { checkoutFieldSelector } from '@/utils/checkout-field-names';
-import { isE164 } from '@/core/country-service/country-service.phone';
+import { isE164 } from '@/core/i18n-rules/i18n-rules.phone';
 
 const logger = createLogger('UserDataStorage');
 

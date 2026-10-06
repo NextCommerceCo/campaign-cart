@@ -3,10 +3,11 @@
  * country's mask as the shopper types and read back as the E.164 number the order needs.
  *
  * The rules are the address-rules service's, per country (`CountryConfig.phone`, see
- * `core/country-service`): a mask, a loose pattern, and what E.164 needs. The check is
- * loose on purpose, because the order API validates the number. The rules load
- * asynchronously, and a country may have none; until a field has rules it is a plain
- * input that reports "cannot tell yet" rather than a verdict.
+ * `core/i18n-rules`): a mask and a loose pattern. The check is loose on purpose,
+ * because the order API validates the number. The E.164 number is the service's too: the
+ * field asks it to read the number (`POST /v1/validate`) when the shopper pauses, leaves
+ * the field, or a value is written in, and waits for nothing else. Until it answers, or if
+ * it never does, there is no E.164 and the number is sent as typed.
  *
  * DOM contract, which the e2e specs and the published checkout guide rely on:
  *
@@ -16,25 +17,24 @@
  *   still reaches the label;
  * - the input gets `next-phone-input`, `data-next-phone-country="{ISO code}"` and an
  *   inline `padding-right` that keeps its text clear of the flag, and its parent gets
- *   `next-phone-field`. The country is the address country's, or, for a number typed
- *   with `+` or `00`, the one its calling code names: `+66 81…` in a US form is `TH`, and
- *   the flag, the mask and the check follow it;
- * - the input gets `data-next-phone-e164="+14155552671"` while its number is one the field
- *   can vouch for, and loses it while the number is incomplete or unchecked;
+ *   `next-phone-field`. The country is the address country's, or, once the service has
+ *   read a number with another country's code, that country's: `+66 81…` in a US form
+ *   is `TH`, and the flag follows it;
+ * - the input gets `data-next-phone-e164="+14155552671"` once the service has read the
+ *   number as a valid one, and loses it while the number changes or is not valid;
  * - the flag's `top` and `right` are set inline from the input's own box, so it stays
  *   inside the input whatever else the parent holds;
  * - `destroy()` takes all of that back off.
  */
 
 import {
-  countryOfNumber,
+  asciiDigits,
   flagUrl,
   formatPhone,
   isPlausiblePhone,
-  toE164,
-  type CallingCodes,
+  type PhoneNumberResult,
   type PhoneRules,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -68,8 +68,14 @@ export interface PhoneInputContext {
   detectedCountryCode: string;
   /** A country's phone rules, or `undefined` when it has none. */
   loadPhoneRules: (countryCode: string) => Promise<PhoneRules | undefined>;
-  /** Every calling code's countries, or `undefined` when they could not be had. */
-  loadCallingCodes: () => Promise<CallingCodes | undefined>;
+  /**
+   * What the address-rules service reads a number as, typed for an address in `country`,
+   * or `undefined` when it could not answer.
+   */
+  readPhoneNumber: (
+    number: string,
+    country: string
+  ) => Promise<PhoneNumberResult | undefined>;
   /**
    * Writes the resolved international number back to the checkout form state.
    *
@@ -88,16 +94,19 @@ interface PhoneFieldOptions {
   /** The address country `<select>` the field follows, when the form has one. */
   countryField?: HTMLSelectElement | undefined;
   loadRules: (countryCode: string) => Promise<PhoneRules | undefined>;
-  loadCallingCodes: () => Promise<CallingCodes | undefined>;
-  /** Receives what to store for the number after every edit. */
+  readNumber: (
+    number: string,
+    country: string
+  ) => Promise<PhoneNumberResult | undefined>;
+  /** Receives what to store for the number after every edit, and once it is read. */
   onNumber: (value: string) => void;
 }
 
 /** Where the field puts the E.164 number a page can read, while it can vouch for it. */
 const E164_ATTRIBUTE = 'data-next-phone-e164';
 
-/** A number typed with its own calling code, whose country is then the code's. */
-const INTERNATIONAL = /^\s*(?:\+|00)/;
+/** How long the field waits after the last keystroke before asking for the number. */
+const READ_PAUSE_MS = 400;
 
 /** One field per input, whichever form built it. */
 const phoneFields = new WeakMap<HTMLInputElement, PhoneField>();
@@ -161,13 +170,15 @@ function caretOffset(text: string, count: number, forward: boolean): number {
  * Shows the number in its country's mask as it is typed, reading the digits back out of
  * the text each time; a mask holds no digits of its own, so none is ever typed twice. The
  * country is the address country `<select>`'s, or the detected one while that has no
- * value. A number typed with `+` is shown as `+` and its digits, and the flag stays on
- * the address country.
+ * value. A number typed with `+` is shown as `+` and its digits, one dialled with `00` as
+ * the digits typed. Digits from a Thai or full-width keyboard are written back as ASCII
+ * ones as they are typed.
+ *
+ * The E.164 number is what the service read the number as, for the text in the field now
+ * and the address country now; any edit drops it until the service answers again.
  *
  * Implements {@link PhoneNumberSource}, so every phone check in the SDK asks it the same
- * way. Both answers read the input as it is now, however its text got there, so a value
- * written by autofill or by the form's own prefill is judged without waiting for an
- * `input` event.
+ * way.
  */
 export class PhoneField implements PhoneNumberSource {
   private readonly flag: HTMLImageElement;
@@ -179,17 +190,21 @@ export class PhoneField implements PhoneNumberSource {
   private readonly addedClasses: Array<[Element, string]> = [];
   private readonly listeners = new AbortController();
 
-  /** The country the field is showing and formatting for; `''` when none is known. */
+  /** The address country the field formats and checks for; `''` when none is known. */
   private country = '';
-  /** The country a number typed with `+` names, which wins over the address country. */
-  private numberCountry: string | undefined;
-  private callingCodes: CallingCodes | undefined;
-  private callingCodesRequested = false;
   private rules: PhoneRules | undefined;
   /** Settles when the rules for {@link country} have loaded, or turned out not to exist. */
   private loading: Promise<void> = Promise.resolve();
   /** Counts loads, so a slow answer for a country left behind is dropped. */
   private loads = 0;
+
+  /** What the service read, and for which text and country. */
+  private read:
+    | { key: string; result: PhoneNumberResult | undefined }
+    | undefined;
+  /** Settles when the service has answered for the text being asked about. */
+  private reading: Promise<void> | undefined;
+  private pause: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly input: HTMLInputElement,
@@ -243,6 +258,11 @@ export class PhoneField implements PhoneNumberSource {
     input.addEventListener('change', () => this.update(), {
       signal: this.listeners.signal,
     });
+    input.addEventListener(
+      'blur',
+      () => void this.readNow().then(() => this.showWritten()),
+      { signal: this.listeners.signal }
+    );
     options.countryField?.addEventListener('change', () => this.follow(), {
       signal: this.listeners.signal,
     });
@@ -251,33 +271,54 @@ export class PhoneField implements PhoneNumberSource {
     phoneFields.set(input, this);
   }
 
-  /** E.164 for the number in the field, or `''` when there is none to give. */
+  /** E.164 for the number in the field, or `''` until the service has read it as valid. */
   getNumber(): string {
-    const text = this.input.value;
-    if (this.rules) return toE164(text, this.rules);
-    // Nothing to convert with, so E.164 only when the shopper wrote it that way.
-    const typed = checkPhone(text);
-    return typed.isE164 ? typed.value : '';
+    const result = this.current();
+    return result?.valid && result.value ? result.value : '';
   }
 
   /**
-   * Whether the number could be one for its country; `null` when there is nothing to
-   * judge: an empty field, rules still loading, or a country whose rules have no pattern.
+   * Whether the number could be one for its country: `true` once the service has read it
+   * as valid, else the country's loose pattern. `null` when there is nothing to judge: an
+   * empty field, rules still loading, or a country whose rules have no pattern.
+   *
+   * A number the service reads as not valid is still judged by the loose pattern alone, so
+   * a range libphonenumber has not caught up with never stops a shopper.
    */
   isValidNumber(): boolean | null {
-    if (!this.input.value.trim() || this.rules?.pattern === undefined) {
-      return null;
-    }
+    if (!this.input.value.trim()) return null;
+    if (this.current()?.valid) return true;
+    if (this.rules?.pattern === undefined) return null;
     return isPlausiblePhone(this.input.value, this.rules);
   }
 
-  /** Settles once the rules for the country the field shows are in, or known absent. */
-  whenReady(): Promise<void> {
-    return this.loading;
+  /**
+   * The service's sentence for the number in the field, once it has read it as not valid:
+   * `Enter a valid phone number, like +66 81 234 5678`. `undefined` for a number it reads
+   * as valid or could not read, and for one the loose pattern already refuses, whose own
+   * message stands.
+   */
+  async invalidMessage(): Promise<string | undefined> {
+    await this.readNow();
+    const result = this.current();
+    if (result?.valid !== false || this.isValidNumber() === false)
+      return undefined;
+    return result.error?.message;
+  }
+
+  /**
+   * Settles once the rules for the address country are in, or known absent, and the
+   * service has answered for the number in the field, or given up. Asks it now when it
+   * has not been asked, so a submit straight after typing gets an E.164 number.
+   */
+  async whenReady(): Promise<void> {
+    await this.loading;
+    await this.readNow();
   }
 
   destroy(): void {
     this.listeners.abort();
+    clearTimeout(this.pause);
     this.layout?.disconnect();
     this.flag.remove();
     const [padding, priority] = this.padding;
@@ -318,85 +359,109 @@ export class PhoneField implements PhoneNumberSource {
     this.addedClasses.push([element, name]);
   }
 
+  /** What the service is asked about: the digits and `+` typed, and the address country. */
+  private key(): string {
+    const typed = asciiDigits(this.input.value).replace(/[^\d+]/g, '');
+    return `${this.country}|${typed}`;
+  }
+
+  /** The service's answer for the field as it is now, if it has given one. */
+  private current(): PhoneNumberResult | undefined {
+    return this.read?.key === this.key() ? this.read.result : undefined;
+  }
+
   private handleInput(event: Event): void {
     const forward =
       event instanceof InputEvent && event.inputType.endsWith('Forward');
+    this.writeAsciiDigits();
     this.render(forward);
-    this.detect();
+    this.settle();
+    clearTimeout(this.pause);
+    this.pause = setTimeout(() => void this.readNow(), READ_PAUSE_MS);
+  }
+
+  /** A value written without typing: formatted, stored, and read straight away. */
+  private update(): void {
+    this.writeAsciiDigits();
+    this.render();
+    this.settle();
+    void this.readNow();
+  }
+
+  /** Thai or full-width digits in the input, as ASCII ones, the caret where it was. */
+  private writeAsciiDigits(): void {
+    const typed = this.input.value;
+    const ascii = asciiDigits(typed);
+    if (ascii === typed) return;
+    const caret = this.input.selectionStart;
+    this.input.value = ascii;
+    if (caret !== null && document.activeElement === this.input) {
+      this.input.setSelectionRange(caret, caret);
+    }
+  }
+
+  /** What a page and the form read off the field, for the text in it now. */
+  private settle(): void {
     this.options.onNumber(normalizePhone(this.input.value, this));
     this.publish();
   }
 
-  /** A value that changed without typing: the country it names, and what a page reads. */
-  private update(): void {
-    this.detect();
-    this.publish();
-  }
-
   /**
-   * Follows the country a number typed with `+` or `00` names, and goes back to the
-   * address country when the `+` goes. The calling codes load the first time one is typed.
+   * Asks the service to read the number in the field, unless it has already answered or
+   * is answering for this text and country. Settles when it has.
    */
-  private detect(): void {
-    const typed = this.input.value;
-    let country: string | undefined;
-    if (INTERNATIONAL.test(typed)) {
-      if (!this.callingCodes) {
-        this.requestCallingCodes();
-        return;
-      }
-      country = countryOfNumber(typed, this.callingCodes);
-    }
-    if (country === this.numberCountry) return;
-    this.numberCountry = country;
-    this.follow();
-  }
+  private readNow(): Promise<void> {
+    clearTimeout(this.pause);
+    const key = this.key();
+    const number = this.input.value.trim();
+    if (!number || !this.country) return Promise.resolve();
+    if (this.read?.key === key) return this.reading ?? Promise.resolve();
 
-  private requestCallingCodes(): void {
-    if (this.callingCodesRequested) return;
-    this.callingCodesRequested = true;
-    void this.options.loadCallingCodes().then(codes => {
-      if (this.listeners.signal.aborted) return;
-      this.callingCodes = codes;
-      if (codes) this.detect();
-      else this.callingCodesRequested = false;
-    });
+    this.read = { key, result: undefined };
+    const reading = this.options
+      .readNumber(number, this.country)
+      .catch(() => undefined)
+      .then(result => {
+        if (this.listeners.signal.aborted || this.read?.key !== key) return;
+        this.read = { key, result };
+        this.settle();
+        this.showWritten();
+      });
+    this.reading = reading;
+    return reading;
   }
 
   /**
-   * `data-next-phone-e164` while the number is in E.164 by the rules of the country it is
-   * in: checked against the country's `national_number_pattern` where the service sends
-   * one, else by the field's own check. A number with another country's code whose rules
-   * have not loaded is not vouched for, and neither is one still being typed.
+   * Once the shopper has left the field, the number as the service writes it: at home for
+   * a number from the address country (`081 234 5678`), from abroad otherwise
+   * (`+44 7400 123456`). This is what gives a country with no mask a written number too.
+   * The reading moves with the text, since it is the same number.
+   */
+  private showWritten(): void {
+    if (document.activeElement === this.input) return;
+    const result = this.current();
+    if (!result?.valid) return;
+    const written =
+      result.country === this.country ? result.national : result.international;
+    if (!written || written === this.input.value) return;
+    this.input.value = written;
+    this.read = { key: this.key(), result };
+    this.settle();
+  }
+
+  /**
+   * `data-next-phone-e164` and the flag, from what the service read the number as: its
+   * E.164 and its country while it is valid, nothing and the address country otherwise.
    */
   private publish(): void {
+    const result = this.current();
     const number = this.getNumber();
-    const code = this.rules?.calling_code;
-    const vouched =
-      number !== '' &&
-      code !== undefined &&
-      number.startsWith(`+${code}`) &&
-      (this.rules?.national_number_pattern !== undefined ||
-        this.isValidNumber() === true);
-    if (vouched) this.input.setAttribute(E164_ATTRIBUTE, number);
+    if (number) this.input.setAttribute(E164_ATTRIBUTE, number);
     else this.input.removeAttribute(E164_ATTRIBUTE);
+    this.showCountry((result?.valid && result.country) || this.country);
   }
 
-  /**
-   * Points the field at the country its number names, else the address country, else the
-   * fallback while that has none.
-   */
-  private follow(): void {
-    const selected = this.options.countryField?.value;
-    // `''` is a select with nothing chosen yet, which falls back like a missing one.
-    const country = (
-      this.numberCountry ?? (selected ? selected : this.options.fallbackCountry)
-    ).toUpperCase();
-    if (country === this.country) return;
-    this.country = country;
-    this.rules = undefined;
-    this.publish();
-
+  private showCountry(country: string): void {
     if (country) {
       this.flag.src = flagUrl(country);
       this.flag.hidden = false;
@@ -404,6 +469,26 @@ export class PhoneField implements PhoneNumberSource {
     } else {
       this.flag.hidden = true;
       this.input.removeAttribute('data-next-phone-country');
+    }
+  }
+
+  /** Points the field at the address country, else the fallback while that has none. */
+  private follow(): void {
+    const selected = this.options.countryField?.value;
+    // `''` is a select with nothing chosen yet, which falls back like a missing one.
+    const country = (
+      selected ? selected : this.options.fallbackCountry
+    ).toUpperCase();
+    if (country === this.country) return;
+    this.country = country;
+    this.rules = undefined;
+    // An empty field writes nothing: a phone restored into the store before the form
+    // fills its input must survive the field starting up.
+    if (this.input.value.trim()) {
+      this.settle();
+      void this.readNow();
+    } else {
+      this.publish();
     }
 
     const load = ++this.loads;
@@ -419,7 +504,8 @@ export class PhoneField implements PhoneNumberSource {
         if (load !== this.loads || this.listeners.signal.aborted) return;
         this.rules = rules;
         this.render();
-        this.publish();
+        if (this.input.value.trim()) this.settle();
+        else this.publish();
       });
   }
 
@@ -502,7 +588,7 @@ function initializePhoneInput(
         countryField:
           countryField instanceof HTMLSelectElement ? countryField : undefined,
         loadRules: ctx.loadPhoneRules,
-        loadCallingCodes: ctx.loadCallingCodes,
+        readNumber: ctx.readPhoneNumber,
         onNumber: value => storeNumber(ctx, type, value),
       })
     );
@@ -511,8 +597,52 @@ function initializePhoneInput(
   }
 }
 
+/** What showing the service's verdict on a number needs from the checkout form. */
+export interface PhoneVerdictContext {
+  /** Puts a message under a field without blocking a submit. */
+  showError: (name: string, message: string) => void;
+  /** Takes the message away again. */
+  clearError: (name: string) => void;
+}
+
+/** The phone inputs showing the service's message, so only that one is cleared. */
+const warnedPhones = new WeakSet<HTMLInputElement>();
+
 /**
- * How long a caller waits for the phone rules before going ahead anyway.
+ * Once the shopper has left a phone field, shows the service's sentence under it when it
+ * reads the number as not valid, and takes it away once it reads one as valid.
+ *
+ * Shown, never recorded: a submit judges the number by the loose pattern alone, so a range
+ * libphonenumber has not caught up with never stops an order. An answer about a number the
+ * shopper has since changed, or that arrives while they are back in the field, shows
+ * nothing.
+ *
+ * @example
+ * ```ts
+ * void showPhoneVerdict({ showError, clearError }, 'phone', input);
+ * ```
+ */
+export async function showPhoneVerdict(
+  ctx: PhoneVerdictContext,
+  fieldName: string,
+  input: HTMLInputElement
+): Promise<void> {
+  const field = phoneFieldFor(input);
+  if (!field) return;
+  const typed = input.value;
+  const message = await field.invalidMessage();
+  if (message) {
+    if (input.value !== typed || document.activeElement === input) return;
+    warnedPhones.add(input);
+    ctx.showError(fieldName, message);
+  } else if (warnedPhones.delete(input)) {
+    ctx.clearError(fieldName);
+  }
+}
+
+/**
+ * How long a caller waits for the phone rules and the service's reading before going ahead
+ * anyway.
  *
  * Long enough for the address-rules service on any connection that can also reach the
  * orders API, short enough not to hold a shopper whose network dropped it. Normally
@@ -521,14 +651,16 @@ function initializePhoneInput(
 const RULES_WAIT_MS = 2000;
 
 /**
- * Waits for every phone field's rules to load, and reports whether they all settled.
+ * Waits for every phone field's rules to load and its number to be read, and reports
+ * whether they all settled.
  *
- * Without rules `getNumber()` answers only for a number typed with `+` and
- * `isValidNumber()` answers `null`, both quietly, so a submit that races the lookup skips
- * the check. This turns that race into a wait.
+ * Until then `getNumber()` answers `''` and `isValidNumber()` judges by the loose pattern
+ * alone, both quietly, so a submit that races them sends the number as typed. This turns
+ * that race into a wait.
  *
- * Resolves `true` when every field is settled — including a country that has no rules —
- * and when the page has no phone field at all: both mean "nothing here is still loading".
+ * Resolves `true` when every field is settled — including a country that has no rules and
+ * a number the service could not read — and when the page has no phone field at all: both
+ * mean "nothing here is still loading".
  * Only `false` needs handling, and it means the wait ran out rather than that anything
  * failed — the caller carries on and the number is handled as {@link checkPhone}'s
  * `unknown`, which never blocks a shopper for a problem that is ours.

@@ -6,7 +6,7 @@ import {
   updateBillingFormLabels,
   type CountryFieldsContext,
 } from '../country-fields';
-import type { Country, CountryConfig } from '@/core/country-service';
+import type { Country, CountryConfig } from '@/core/i18n-rules';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

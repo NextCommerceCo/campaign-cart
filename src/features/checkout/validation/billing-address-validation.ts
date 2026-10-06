@@ -10,7 +10,7 @@
  * from the validator ({@link BillingAddressValidationContext}).
  */
 
-import { asksForPostcode, type CountryConfig } from '@/core/country-service';
+import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
@@ -19,7 +19,7 @@ import { isValidName } from './validation-patterns';
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
   /** Provides `validatePostalCode(value, countryCode, config)` and the message wording. */
-  countryService: any;
+  i18nRules: any;
   /** Set by the form once its phone fields exist, so the number is checked per country. */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
 }
@@ -67,7 +67,7 @@ export function validateBillingAddress(
   if (asksForPostcode(countryConfig)) requiredBillingFields.push('postal');
 
   const country = billingAddress?.country;
-  const source = ctx.countryService;
+  const source = ctx.i18nRules;
 
   requiredBillingFields.forEach(field => {
     const value = billingAddress?.[field];
@@ -99,7 +99,7 @@ export function validateBillingAddress(
     const countryConfig = countryConfigs.get(billingAddress.country);
     if (
       countryConfig &&
-      !ctx.countryService.validatePostalCode(
+      !ctx.i18nRules.validatePostalCode(
         billingAddress.postal,
         billingAddress.country,
         countryConfig

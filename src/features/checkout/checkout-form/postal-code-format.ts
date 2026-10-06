@@ -14,12 +14,12 @@
  * the parameter.
  */
 
-import type { CountryConfig, CountryService } from '@/core/country-service';
+import type { CountryConfig, I18nRules } from '@/core/i18n-rules';
 
 /** The two things this module needs from the checkout form. */
 export interface PostalCodeFormatContext {
   /** Owns the per-country formatting rule. */
-  countryService: CountryService;
+  i18nRules: I18nRules;
   /** Per-country config cache, filled as each country's data resolves. */
   countryConfigs: Map<string, CountryConfig>;
 }
@@ -35,7 +35,7 @@ export interface PostalCodeFormatContext {
  * @example
  * ```ts
  * formatPostalCodeInPlace(
- *   { countryService, countryConfigs },
+ *   { i18nRules, countryConfigs },
  *   postalInput,
  *   fields.get('country')
  * );
@@ -53,10 +53,7 @@ export function formatPostalCodeInPlace(
   const countryConfig = ctx.countryConfigs.get(countryCode);
   if (!countryConfig) return;
 
-  const formatted = ctx.countryService.formatPostalCode(
-    target.value,
-    countryConfig
-  );
+  const formatted = ctx.i18nRules.formatPostalCode(target.value, countryConfig);
   if (formatted === target.value) return;
 
   const cursorPos = target.selectionStart ?? 0;

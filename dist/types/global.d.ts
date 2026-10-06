@@ -29,6 +29,7 @@ export interface EventMap {
     'checkout:form-initialized': {
         form: HTMLFormElement;
     };
+    'checkout:payment-ready': {};
     'checkout:spreedly-ready': {};
     'checkout:express-started': {
         method: 'paypal' | 'apple_pay' | 'google_pay';
@@ -561,10 +562,6 @@ export interface ConfigState {
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 export interface CardInputConfig {
-    fieldType?: {
-        number?: 'number' | 'text' | 'tel';
-        cvv?: 'number' | 'text' | 'tel';
-    };
     numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
     labels?: {
         number?: string;
@@ -583,20 +580,6 @@ export interface CardInputConfig {
         cvv?: string;
         placeholder?: string;
     };
-    nonce?: string;
-    timestamp?: string;
-    certificateToken?: string;
-    signature?: string;
-    fraud?: boolean | {
-        siteId: string;
-    };
-    enableAutoComplete?: boolean;
-    requiredAttributes?: {
-        number?: boolean;
-        cvv?: boolean;
-    };
-    allowBlankName?: boolean;
-    allowExpiredDate?: boolean;
 }
 export type SpreedlyConfig = CardInputConfig;
 export interface PaymentConfig {

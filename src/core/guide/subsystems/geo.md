@@ -51,7 +51,7 @@ priced for where they are, and shipped from where the campaign can ship.
 boot step 2   config read: currencyBehavior, addressConfig, ?country=, ?currency=
                     │
 boot step 3   ┌─────────────────────────────────────────────────────┐
-              │ CountryService.getLocationData()                    │
+              │ I18nRules.getLocationData()                    │
               │   GET next-address…/v1/geo?include=rules,states      │
               │     + /v1/countries + /v1/locales/:lang, together   │
               │   cached 1 hour in localStorage (next_country_*)     │
@@ -141,7 +141,7 @@ works but is deprecated and logs a warning.
 `PR`, `VI` and the `UM-…` codes — before any configuration is consulted, and
 `addressConfig.dontShowStates` removes more on top. There is no option that puts one back.
 Symptom: a Puerto Rico order that cannot be entered through the form. Fix: none within
-this subsystem; the list is hard-coded in `core/country-service/country-service.ts`.
+this subsystem; the list is hard-coded in `core/i18n-rules/i18n-rules.ts`.
 
 **A country with no states and no state requirement hides the field.** When the service
 reports `stateRequired: false` and returns an empty state list, the checkout form removes
@@ -159,7 +159,7 @@ a literal), and with no pattern an alphanumeric code is uppercased.
 
 **Country reference data is cached for an hour in localStorage, which outlives your test.**
 Symptom: you switch VPN region, reload, and the page still detects the old country. Fix:
-run `CountryService.getInstance().clearCache()` from the console, or clear the
+run `I18nRules.getInstance().clearCache()` from the console, or clear the
 `next_country_*` keys — reloading alone will not do it for up to an hour. The debug
 overlay's country selector is the intended way to test a country without touching storage;
 see [logging and the debug overlay](./logging-and-debug.md).

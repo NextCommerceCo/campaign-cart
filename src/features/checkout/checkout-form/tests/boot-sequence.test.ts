@@ -60,7 +60,7 @@ interface BootSteps {
   phoneInputs: Map<string, PhoneInstance>;
   fields: Map<string, HTMLElement>;
   detectedCountryCode: string;
-  countryService: unknown;
+  i18nRules: unknown;
   creditCardService?: { initialize: () => Promise<void> };
   boundHandleTestDataFilled?: EventListener;
   boundHandleKonamiActivation?: EventListener;
@@ -223,7 +223,7 @@ describe('setupPhoneValidation', () => {
 
 describe('initializePhoneInputs', () => {
   /** Not `getCountryConfig`, which answers the detected country with the visitor's own. */
-  it('formats and stores the number by the rules getCountryStates gives', async () => {
+  it('formats the number by the rules getCountryStates gives, and stores what the service reads', async () => {
     const { steps, form } = createEnhancer();
     const input = document.createElement('input');
     form.appendChild(input);
@@ -241,8 +241,11 @@ describe('initializePhoneInputs', () => {
         states: [],
       })
     );
+    const readPhoneNumber = vi.fn(() =>
+      Promise.resolve({ valid: true, value: '+447400123456', country: 'GB' })
+    );
     steps.fields = new Map([['phone', input]]);
-    steps.countryService = { getCountryStates };
+    steps.i18nRules = { getCountryStates, readPhoneNumber };
     steps.detectedCountryCode = 'GB';
 
     steps.initializePhoneInputs();
@@ -252,6 +255,11 @@ describe('initializePhoneInputs', () => {
 
     expect(getCountryStates).toHaveBeenCalledWith('GB');
     expect(input.value).toBe('07400 123456');
+    // Typed nationally, so nothing is in E.164 until the service has read it.
+    expect(useCheckoutStore.getState().formData.phone).toBe('07400 123456');
+
+    await steps.phoneInputs.get('shipping')?.whenReady?.();
+    expect(readPhoneNumber).toHaveBeenCalledWith('07400 123456', 'GB');
     expect(useCheckoutStore.getState().formData.phone).toBe('+447400123456');
   });
 });

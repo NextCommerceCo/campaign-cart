@@ -27,7 +27,7 @@ import {
  * fetch, and a real overlay element in a real layout — happy-dom does no layout,
  * so `toBeVisible` there means nothing.
  *
- * The card harness — the Spreedly stand-in, the country stubs, the form filling
+ * The card harness — the NextPayment stand-in, the country stubs, the form filling
  * — is [`fixtures/card-checkout.ts`](./fixtures/card-checkout.ts), shared with
  * `card-purchase.spec.ts`.
  */

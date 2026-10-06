@@ -9,7 +9,7 @@ category: "Core Reference"
 <!-- Generated from the core contract lists. Do not edit by hand:
      edit src/docs/content/meta-tags.ts, then run `npm run docs:reference`. -->
 
-The SDK reads **28 `<meta>` tags** from the page's `<head>`. Attributes configure one element; these configure the whole page — the API key it boots with, which funnel step the page is, where checkout sends the visitor, which analytics events fire. Add them to the `<head>`, above the SDK loader script.
+The SDK reads **26 `<meta>` tags** from the page's `<head>`. Attributes configure one element; these configure the whole page — the API key it boots with, which funnel step the page is, where checkout sends the visitor, which analytics events fire. Add them to the `<head>`, above the SDK loader script.
 
 The shortest page that works:
 
@@ -21,7 +21,7 @@ The shortest page that works:
 </head>
 ```
 
-Everything else on this page is optional. Two of the 28 are marked 🚫: the code parses them and then ignores them, so they are documented here to stop you relying on them.
+Everything else on this page is optional. Two of the 26 are marked 🚫: the code parses them and then ignores them, so they are documented here to stop you relying on them.
 
 ## How to read the tables
 
@@ -44,8 +44,6 @@ The code that reads each tag is listed at the end, under [where these are read](
 | `next-page-type` | `product` \| `cart` \| `checkout` \| `upsell` \| `receipt` | product | Declares which funnel step this page is, so analytics events land on the right step and the post-purchase upsell tracking knows it is on an upsell page.<br>⚠️ On an upsell page this is what triggers the upsell page-view event — leave it off and the funnel shows purchases with no upsell views before them. It can also come from `window.nextConfig.pageType`; the tag wins over it. Anything outside the five values is passed through unvalidated and shows up in reports verbatim. |
 | `next-page-name` | `string` | the document `<title>`, then the page type | A human-readable page name for RudderStack page and track calls, when the document title is not what you want reported.<br>⚠️ Only the RudderStack provider reads it. With GA4 or Facebook alone, setting it changes nothing. |
 | `next-clear-cart` | `'true' \| 'false'` | false | Empties the cart every time this page loads, once the stored cart has finished rehydrating. Use it on the first page of a funnel so a visitor who comes back does not start with items from a previous visit.<br>⚠️ It runs on **every** load of the page, including a refresh and a back-navigation — a visitor who adds items and refreshes loses them. Only put it on entry pages, never on a cart, checkout, or upsell page. Only the exact string `true` enables it. |
-| `next-spreedly-key` | `string` | the key that comes with the campaign data | The payment environment key used to mount the hosted credit-card fields. A fallback: the campaign response normally carries the right key, and that takes precedence.<br>⚠️ Because campaign data wins, setting this tag does not let you point a page at a different payment environment for testing — it only fills a gap when the campaign has no key. A wrong value here shows up as card fields that never appear. |
-| `next-payment-env-key` ↩︎ | `string` | not set | The same payment environment key under an older name. Read only when `next-spreedly-key` is absent. Use `next-spreedly-key` instead.<br>⚠️ Setting both is not an error but the other tag always wins, so a page with both is a page where editing this one appears to do nothing. |
 
 **`next-page-type` values**
 
@@ -65,10 +63,9 @@ Copy-paste, then replace the `{TOKENS}`:
 <meta name="next-page-type" content="checkout">
 <meta name="next-page-name" content="Summer Bundle — Offer">
 <meta name="next-clear-cart" content="true">
-<meta name="next-spreedly-key" content="{ENVIRONMENT_KEY}">
 ```
 
-Left out on purpose: `next-campaign-id` (not implemented), `next-payment-env-key` (older spelling of `next-spreedly-key`). Pasting these either duplicates a setting the newer tag already covers, or configures nothing.
+Left out on purpose: `next-campaign-id` (not implemented). Pasting these either duplicates a setting the newer tag already covers, or configures nothing.
 
 ## Debugging
 
@@ -181,8 +178,6 @@ Every tag above, with the code that reads it. This table is generated from the s
 | `next-next-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
 | `next-page-name` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts` |
 | `next-page-type` | `getPageMetadata` — `core/analytics/providers/rudderstack-context.ts`<br>`UpsellSelector.checkIfUpsellPage` — `core/debug/upsell-selector.ts`<br>`trackUpsellPageView` — `features/order/upsell/upsell.handlers.ts`<br>…and 1 more |
-| `next-payment-env-key` | `loadFromMeta` — `state/config/config.state.ts` |
-| `next-spreedly-key` | `loadFromMeta` — `state/config/config.state.ts` |
 | `next-storage-scope` | `declaredScope` — `core/storage-scope.ts` |
 | `next-success-url` | `CheckoutFormEnhancer.getNextPageUrlFromMeta` — `features/checkout/checkout-form/checkout-form.enhancer.ts`<br>*top level of the file* — `features/checkout/constants/selectors.ts`<br>`getNextPageUrlFromMeta` — `features/checkout/utils/meta-tag-utils.ts`<br>…and 2 more |
 | `next-upsell-accept-url` | `resolveNextUrl` — `features/cart/package-toggle/package-toggle.handlers.ts`<br>`handleActionClick` — `features/order/upsell/upsell.handlers.ts`<br>`acceptBundleUpsell` — `features/cart/accept-upsell/accept-upsell.handlers.ts`<br>…and 1 more |

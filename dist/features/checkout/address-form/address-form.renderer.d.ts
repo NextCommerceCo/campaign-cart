@@ -1,4 +1,4 @@
-import { RulesField } from '../../../core/country-service';
+import { RulesField } from '../../../core/i18n-rules';
 export interface AddressRenderContext {
     form: 'shipping' | 'billing';
     values?: Record<string, string>;

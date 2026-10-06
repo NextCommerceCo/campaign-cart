@@ -9,6 +9,10 @@ import type { CartItem } from '@/types/global';
 import { nextAnalytics, EcommerceEvents } from '@/core/analytics/index';
 import { paymentMethodLabel } from '@/utils/payment-method';
 import {
+  isPaymentDecline,
+  paymentDeclineMessage,
+} from '../services/payment-decline-message';
+import {
   resolvePaymentErrorTarget,
   showPaymentErrorTarget,
 } from '../utils/payment-error-container';
@@ -97,15 +101,13 @@ export class ExpressCheckoutProcessor {
       if (error.responseData) {
         const responseData = error.responseData;
 
-        // Handle PayPal-specific errors
-        if (method === 'paypal' && responseData.payment_details) {
-          this.displayPayPalError(responseData.payment_details);
-        }
-        // Every other express method — Apple Pay, Google Pay, Link, and whatever
-        // is added next. It used to name the two it knew and would have called a
-        // Link failure a Google Pay one.
-        else if (responseData.payment_details) {
-          this.displayExpressPaymentError(method, responseData.payment_details);
+        // Every express method, PayPal included. The sentence already says what
+        // to do next, in the form's language, so nothing is added to it.
+        if (isPaymentDecline(responseData)) {
+          this.displayGeneralPaymentError(
+            await paymentDeclineMessage(responseData),
+            method
+          );
         }
       }
 
@@ -119,28 +121,6 @@ export class ExpressCheckoutProcessor {
       // Hide immediately on error, with delay on success
       this.hideLoadingCallback(hasError);
     }
-  }
-
-  /**
-   * PayPal is the one method whose message is worded for it: the shopper is
-   * standing in front of a PayPal button, not a form, so "try a different
-   * payment method" is the only useful next step.
-   */
-  private displayPayPalError(errorMessage: string): void {
-    this.displayGeneralPaymentError(
-      errorMessage + ' Please try a different payment method.',
-      'paypal'
-    );
-  }
-
-  private displayExpressPaymentError(
-    method: string,
-    errorMessage: string
-  ): void {
-    this.displayGeneralPaymentError(
-      `${paymentMethodLabel(method)} error: ${errorMessage}. Please try a different payment method.`,
-      method
-    );
   }
 
   /**

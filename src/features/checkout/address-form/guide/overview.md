@@ -7,7 +7,7 @@ category: "Address Form"
 # Address Form
 
 > Category: `checkout`
-> Last reviewed: 2026-09-26
+> Last reviewed: 2026-10-06
 > Owner: checkout
 
 An address form hard-coded as `address1 / city / state / zip` is correct in the United
@@ -46,6 +46,14 @@ checkout store country ──► GET /v1/countries/{country}
 
 - The country comes from the checkout store. Before the form has resolved one, the block
   opens on `US` so the page is never empty while a layout is in flight.
+- A billing block follows the billing country (`billingAddress.country`) while the shopper
+  has chosen a separate billing address, and the shipping country otherwise
+  (`address-form.enhancer.ts › AddressFormEnhancer.countryIn`). Unticking "same as
+  shipping" seeds the billing country from the shipping one, so the two blocks part only
+  when the shopper picks another billing country; a billing country an earlier order left
+  in the store is ignored while the choice is "same as shipping". It used to follow the
+  shipping country alone, so another billing country changed nothing and a new shipping
+  country re-laid the billing block ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110)).
 - The block builds the country's address rows (`address.layout` in the service's rules):
   the whole address, the name and phone included, because a billing address is one. A
   field the surrounding form already collects elsewhere is not built again: the page's

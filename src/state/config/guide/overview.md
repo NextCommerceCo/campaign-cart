@@ -35,7 +35,7 @@ loadFromWindow()           window.nextConfig — credentials, page type, payment
       │                    analytics, UTM
       ▼
 loadFromMeta()             <meta name="next-*"> — API key, campaign id, debug,
-      │                    clear-cart, page type, card-field key   ← meta WINS
+      │                    clear-cart, page type                   ← meta WINS
       ▼
 URL parameters             ?debugger=true forces debug: true
       │
@@ -43,7 +43,8 @@ URL parameters             ?debugger=true forces debug: true
 geo detection              detectedCountry / detectedCurrency / detectedIp /
       │                    locationData — only when currencyBehavior is 'auto'
       ▼
-campaign response          payment_env_key overwrites spreedlyEnvironmentKey
+campaign response          payment_env_key is the only source of
+                           spreedlyEnvironmentKey
 ```
 
 The consequence is that every page of a funnel must declare its own
@@ -65,10 +66,10 @@ mistake here — so the type is not the contract. The per-field notes in the
   overrides the same key in the loader config. Each loader writes only the keys
   it actually finds, and `loadFromWindow` type-checks each one before accepting
   it, so a mistyped value is ignored rather than stored.
-- **`loadFromMeta()` reads six tags only:** `next-api-key`, `next-campaign-id`,
-  `next-debug`, `next-clear-cart`, `next-page-type`, and
-  `next-spreedly-key` / `next-payment-env-key`. Nothing else in the markup is
-  configuration.
+- **`loadFromMeta()` reads five tags only:** `next-api-key`, `next-campaign-id`,
+  `next-debug`, `next-clear-cart` and `next-page-type`. Nothing else in the markup
+  is configuration. The payment environment key is not one of them: it comes with
+  the campaign data (`payment_env_key`).
 - **The card-field block is accepted under three names** —
   `cardInputConfig`, then `spreedly`, then `spreedlyConfig` — and the first one
   present wins. Supplying two means the later ones are ignored. Likewise
@@ -111,10 +112,10 @@ mistake here — so the type is not the contract. The per-field notes in the
 - We mirror only `selectedCurrency` into sessionStorage rather than persisting the
   whole store, because currency is the one value here that is the shopper's
   choice rather than the page's declaration.
-- We let the campaign response overwrite the card-field key rather than treating
-  the meta tag as authoritative, because the key belongs to the campaign's
-  payment gateway — a stale tag left on a page would otherwise break card entry
-  after a gateway change.
+- We take the card-field key from the campaign response only, with no meta tag or
+  `window.nextConfig` fallback, because the key belongs to the campaign's payment
+  gateway. Page config gets copied between stores' pages, and a key copied that
+  way mounts card fields for another store, or none at all.
 
 ## Limitations
 

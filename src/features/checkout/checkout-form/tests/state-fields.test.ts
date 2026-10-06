@@ -7,10 +7,10 @@ import {
 } from '../state-fields';
 import type {
   CountryConfig,
-  CountryService,
+  I18nRules,
   CountryStatesData,
   State,
-} from '@/core/country-service';
+} from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 import type { CountryFieldsContext } from '../country-fields';
 
@@ -60,21 +60,21 @@ function createStatesData(
 }
 
 // Returns the spy alongside the fake so a test can assert on the spy
-// directly instead of reading it back through `ctx.countryService` — that
-// value is typed as the real `CountryService` class, and referencing one of
+// directly instead of reading it back through `ctx.i18nRules` — that
+// value is typed as the real `I18nRules` class, and referencing one of
 // its methods off a class-typed value trips `@typescript-eslint/unbound-method`
 // even though the runtime value is an unbound-safe `vi.fn()`. Mirrors
 // `phone-input.test.ts`'s `makeLogger()`.
-function createFakeCountryService(
+function createFakeI18nRules(
   impl: (country: string) => Promise<CountryStatesData> = () =>
     Promise.resolve(createStatesData())
 ): {
-  service: CountryService;
+  service: I18nRules;
   getCountryStates: ReturnType<typeof vi.fn>;
 } {
   const getCountryStates = vi.fn(impl);
   return {
-    service: { getCountryStates } as unknown as CountryService,
+    service: { getCountryStates } as unknown as I18nRules,
     getCountryStates,
   };
 }
@@ -93,7 +93,7 @@ function createShippingCtx(
 ): ShippingStateFieldsContext {
   return {
     stateLoadingPromises: new Map(),
-    countryService: createFakeCountryService().service,
+    i18nRules: createFakeI18nRules().service,
     logger: createMockLogger() as unknown as Logger,
     countryFields: createCountryFieldsCtx(),
     countryConfigs: new Map(),
@@ -109,7 +109,7 @@ function createBillingCtx(
 ): StateFieldsContext {
   return {
     stateLoadingPromises: new Map(),
-    countryService: createFakeCountryService().service,
+    i18nRules: createFakeI18nRules().service,
     logger: createMockLogger() as unknown as Logger,
     countryFields: createCountryFieldsCtx(),
     ...overrides,
@@ -134,8 +134,8 @@ function createFieldWithContainer(): {
 describe('updateStateOptions', () => {
   it('shows "Select Country First" and stays disabled when no country is chosen, without calling the service', async () => {
     const { field } = createFieldWithContainer();
-    const { service, getCountryStates } = createFakeCountryService();
-    const ctx = createShippingCtx({ countryService: service });
+    const { service, getCountryStates } = createFakeI18nRules();
+    const ctx = createShippingCtx({ i18nRules: service });
 
     await updateStateOptions(ctx, '', field);
 
@@ -147,8 +147,8 @@ describe('updateStateOptions', () => {
 
   it('treats a whitespace-only country the same as an empty one', async () => {
     const { field } = createFieldWithContainer();
-    const { service, getCountryStates } = createFakeCountryService();
-    const ctx = createShippingCtx({ countryService: service });
+    const { service, getCountryStates } = createFakeI18nRules();
+    const ctx = createShippingCtx({ i18nRules: service });
 
     await updateStateOptions(ctx, '   ', field);
 
@@ -160,7 +160,7 @@ describe('updateStateOptions', () => {
     const { field, container } = createFieldWithContainer();
     field.setAttribute('required', 'required');
     const ctx = createShippingCtx({
-      countryService: createFakeCountryService(() =>
+      i18nRules: createFakeI18nRules(() =>
         Promise.resolve(
           createStatesData({
             countryConfig: createCountryConfig({ stateRequired: false }),
@@ -187,7 +187,7 @@ describe('updateStateOptions', () => {
     field.setAttribute('data-next-checkout-field', 'province');
     form.append(email, field);
     const ctx = createShippingCtx({
-      countryService: createFakeCountryService(() =>
+      i18nRules: createFakeI18nRules(() =>
         Promise.resolve(
           createStatesData({
             countryConfig: createCountryConfig({ stateRequired: false }),
@@ -207,7 +207,7 @@ describe('updateStateOptions', () => {
     const { field, container } = createFieldWithContainer();
     container.style.display = 'none'; // simulating a prior state-less country (e.g. GB)
     const ctx = createShippingCtx({
-      countryService: createFakeCountryService(() =>
+      i18nRules: createFakeI18nRules(() =>
         Promise.resolve(
           createStatesData({
             countryConfig: createCountryConfig({
@@ -281,7 +281,7 @@ describe('updateStateOptions', () => {
     const originalHTML = field.innerHTML;
     const mockLogger = createMockLogger();
     const ctx = createShippingCtx({
-      countryService: createFakeCountryService(() =>
+      i18nRules: createFakeI18nRules(() =>
         Promise.reject(new Error('network down'))
       ).service,
       logger: mockLogger as unknown as Logger,
@@ -306,19 +306,18 @@ describe('updateStateOptions', () => {
 describe('shared in-flight requests', () => {
   it('fetches once when shipping and billing resolve the same country concurrently', async () => {
     const stateLoadingPromises = new Map<string, Promise<CountryStatesData>>();
-    const { service: countryService, getCountryStates } =
-      createFakeCountryService();
+    const { service: i18nRules, getCountryStates } = createFakeI18nRules();
     const mockLogger = createMockLogger();
     const countryFields = createCountryFieldsCtx();
     const shippingCtx = createShippingCtx({
       stateLoadingPromises,
-      countryService,
+      i18nRules,
       logger: mockLogger as unknown as Logger,
       countryFields,
     });
     const billingCtx = createBillingCtx({
       stateLoadingPromises,
-      countryService,
+      i18nRules,
       logger: mockLogger as unknown as Logger,
       countryFields,
     });
@@ -352,7 +351,7 @@ describe('updateBillingStateOptions', () => {
   it('does not hide the container for a state-less country, unlike the shipping path', async () => {
     const { field, container } = createFieldWithContainer();
     const ctx = createBillingCtx({
-      countryService: createFakeCountryService(() =>
+      i18nRules: createFakeI18nRules(() =>
         Promise.resolve(
           createStatesData({
             countryConfig: createCountryConfig({ stateRequired: false }),

@@ -1,4 +1,4 @@
-import type { RulesField } from '@/core/country-service';
+import type { RulesField } from '@/core/i18n-rules';
 
 /** `line3` is null: the orders API carries address1 and address2 and has no third. */
 const SDK_FIELD_NAMES: Record<string, string | null> = {

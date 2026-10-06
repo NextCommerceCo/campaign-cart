@@ -26,7 +26,7 @@ import {
  * exactly once. That needs a real form submit, a real navigation, and a second
  * SDK boot. happy-dom has one document and no history.
  *
- * Spreedly is stubbed rather than loaded: it is an off-site iframe tokenizer that
+ * NextPayment is stubbed rather than loaded: it is an off-site iframe tokenizer that
  * cannot run headless. That stub, the form-filling and the rest of the card
  * harness live in [`fixtures/card-checkout.ts`](./fixtures/card-checkout.ts),
  * shared with `checkout-overlay.spec.ts`. Everything after the token — order
