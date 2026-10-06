@@ -268,11 +268,10 @@ const PRE_VALIDATED: ReadonlySet<CardErrorField | undefined> = new Set([
 
 /**
  * How long a loaded script's credentials are used before the fields are rebuilt from a
- * fresh one. nexus signs them when it serves `payment.js`, and Spreedly stops accepting
- * them 30 minutes to an hour later (`get_iframe_signature` in nexus); 25 minutes stays
- * under either.
+ * fresh one. nexus signs them when it serves `payment.js` (`get_iframe_signature` in
+ * nexus), and Spreedly accepts them for an hour after that.
  */
-export const CREDENTIALS_TTL_MS = 25 * 60 * 1000;
+export const CREDENTIALS_TTL_MS = 60 * 60 * 1000;
 
 let scriptLoad: Promise<void> | undefined;
 

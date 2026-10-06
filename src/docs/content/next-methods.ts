@@ -1249,7 +1249,7 @@ window.nextReady.push(sdk => {
       'The card-field class from `payments.29next.com/js/v1/payment.js`, which draws the ' +
       'hosted card number and CVV on a checkout page.',
     caution:
-      'The SDK loads the script itself, and loads it again after 25 minutes, when the ' +
+      'The SDK loads the script itself, and loads it again after an hour, when the ' +
       'credentials signed into it expire. Do not add the script tag to the page as well: ' +
       'a page-loaded copy is treated as fresh and is replaced on the first refresh.',
   },
