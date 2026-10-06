@@ -401,7 +401,7 @@ if (!success) {
 }
 ```
 
-> **Watch out:** It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor, in the page's language, from the `coupon.*` texts. A code is checked by pricing the cart with it, so call it after the cart has items: on an empty cart any code is stored unchecked and reports success.
+> **Watch out:** It resolves with `success: false` instead of throwing, so a bare `await` looks like it worked. Always read `success`, and show `message` — it is written for the visitor, in the page's language, from the `coupon.*` texts. A code is checked by pricing the cart with it. On an empty cart it reports success and is checked once the cart has items: one that gives no discount is then taken off and `coupon:validation-failed` fires, so listen for that event as well as reading `success`.
 
 ### next.removeCoupon
 

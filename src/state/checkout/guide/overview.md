@@ -85,6 +85,11 @@ checkout always sends the shopper back through the hosted card fields.
   `vouchers`, appends it, and then recalculates cart totals against the API. The
   cart store's `vouchers` is a mirror refreshed on each recalculation — see
   [the cart store](../../cart/cart.state.ts).
+- **A code applied to an empty cart is marked unchecked.** `uncheckedVouchers`
+  holds the codes in `vouchers` that were never priced against a cart, and is
+  persisted with them, so a code taken on a presell page is checked on the
+  checkout page. `markVoucherChecked` clears the mark; `removeVoucher` clears it
+  with the code.
 - **Removal is case- and whitespace-insensitive, like storage.** `removeVoucher`
   normalises both the code it is given and each stored code with the same
   `toUpperCase().trim()` `applyCoupon` uses, so `removeVoucher('save10')` removes

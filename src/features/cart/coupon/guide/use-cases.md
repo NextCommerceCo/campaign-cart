@@ -108,9 +108,10 @@ window.nextReady.push(async () => {
 exact match. `next.applyCoupon('save10')` stores `SAVE10`, and a later
 `next.removeCoupon('save10')` matches nothing and removes nothing, with no error
 — the chip stays on screen. Pass the upper-cased code to `removeCoupon`, or read
-the stored spelling back from `next.getCoupons()`. Apply the code after the cart
-has items too: `applyCoupon` checks a code by pricing the cart with it, so on an
-empty cart it stores any code unchecked and reports success.
+the stored spelling back from `next.getCoupons()`. A code applied to an empty cart
+reports success and is checked only once the cart has items, when a refusal
+arrives as `coupon:validation-failed`, so apply it after the cart has items where
+you can.
 
 ---
 

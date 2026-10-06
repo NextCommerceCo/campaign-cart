@@ -7,6 +7,7 @@ import {
 import { EventBus } from '@/core/events';
 import { useCartStore } from '@/state/cart';
 import { logger, scheduleCalculate } from './shared';
+import { recheckUncheckedVouchers } from './voucher-check';
 
 // Shared with `applyCoupon`'s voucher check so the two payloads stay identical
 // and the cart sync after an accepted coupon hits `calculateCart`'s cache.
@@ -223,6 +224,12 @@ export function calculateTotals(): void {
           isCalculating: false,
         });
         EventBus.getInstance().emit('cart:updated', useCartStore.getState());
+        if (
+          updatedItems.length > 0 &&
+          useCheckoutStore.getState().uncheckedVouchers.length > 0
+        ) {
+          void recheckUncheckedVouchers();
+        }
       } catch (error) {
         if (signal.aborted) return;
         logger.error('Failed to sync cart with API:', error);

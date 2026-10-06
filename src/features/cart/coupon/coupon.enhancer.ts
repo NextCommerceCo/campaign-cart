@@ -86,6 +86,12 @@ export class CouponEnhancer extends BaseActionEnhancer {
       () => this.renderAppliedCoupons()
     );
 
+    // Every refusal shows here, this field's own and those from elsewhere: a code
+    // stored on an empty cart and refused once it has items, or an exit-intent code.
+    this.on('coupon:validation-failed', ({ message }) =>
+      this.showMessage(message, 'error')
+    );
+
     this.logger.info('Coupon enhancer initialized successfully');
   }
 
@@ -162,7 +168,6 @@ export class CouponEnhancer extends BaseActionEnhancer {
           // Emit standard event
           this.eventBus.emit('coupon:applied', { code });
         } else {
-          this.showMessage(result.message, 'error');
           this.logger.warn('Coupon application failed:', result.message);
 
           // Emit standard event

@@ -1,10 +1,7 @@
-import {
-  calculateCart,
-  type CalculateCartResult,
-} from '@/state/cart/cart-calculator';
 import { couponTexts } from '@/state/cart/coupon-texts';
-import { calculateTotals, cartCalculateParams } from './calculate-totals';
+import { calculateTotals } from './calculate-totals';
 import { logger } from './shared';
+import { voucherAddsDiscount } from './voucher-check';
 import { useCartStore } from '@/state/cart';
 import { useCheckoutStore } from '@/state/checkout';
 import { normalizeVoucherCode } from '@/utils/voucher';
@@ -32,11 +29,10 @@ export async function applyCoupon(
     };
   }
 
-  // The calculate API ignores a voucher it has no offer for without flagging
-  // it, so the only evidence the code was accepted is a discount that appears
-  // with it and not without it. An empty cart has no lines to price the code
-  // against, so it is stored unchecked and takes effect once items arrive.
-  if (useCartStore.getState().items.length > 0) {
+  // An empty cart has no lines to price the code against, so it is stored
+  // unchecked, and `recheckUncheckedVouchers` checks it once items arrive.
+  const unchecked = useCartStore.getState().items.length === 0;
+  if (!unchecked) {
     let accepted: boolean;
     try {
       accepted = await voucherAddsDiscount(
@@ -65,38 +61,8 @@ export async function applyCoupon(
     }
   }
 
-  useCheckoutStore.getState().addVoucher(normalizedCode);
+  useCheckoutStore.getState().addVoucher(normalizedCode, { unchecked });
   calculateTotals();
 
   return { success: true, message: (await texts)('coupon.applied') };
-}
-
-async function voucherAddsDiscount(
-  applied: string[],
-  code: string
-): Promise<boolean> {
-  const { useCampaignStore } = await import('@/state/campaign');
-  const currency = useCampaignStore.getState().currency ?? null;
-
-  const [without, withCode] = await Promise.all([
-    // No vouchers means no voucher discounts, so skip the request.
-    applied.length > 0
-      ? calculateCart(cartCalculateParams([...applied], currency))
-      : null,
-    calculateCart(cartCalculateParams([...applied, code], currency)),
-  ]);
-
-  const before = discountOfferIds(without);
-  return [...discountOfferIds(withCode)].some(id => !before.has(id));
-}
-
-function discountOfferIds(result: CalculateCartResult | null): Set<number> {
-  const summary = result?.summary;
-  return new Set(
-    [
-      ...(summary?.voucher_discounts ?? []),
-      ...(summary?.offer_discounts ?? []),
-      ...(summary?.shipping_method?.discounts ?? []),
-    ].map(d => d.offer_id)
-  );
 }

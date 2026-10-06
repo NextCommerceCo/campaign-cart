@@ -48,7 +48,7 @@ export async function stubCampaign(
  * green, because nothing here asserts on `console.error`. See the `sdk-e2e` skill
  * §4b.
  */
-export const EMPTY_CART_SUMMARY: CartSummary = {
+const EMPTY_CART_SUMMARY: CartSummary = {
   lines: [],
   // A complete method, not `{}`. The calculator guards with
   // `if (response.shipping_method)`, and an empty object passes that guard and
@@ -84,6 +84,28 @@ export async function stubCart(
   await page.route('**/api/v1/carts/calculate/**', route =>
     route.fulfill({ json: summary })
   );
+}
+
+/**
+ * Stub `POST /api/v1/carts/calculate/` as the live API treats vouchers: a code in
+ * `honoured` earns a voucher discount, and any other code is ignored without an
+ * error, so the answer is the same as without it (issue #80).
+ */
+export async function stubCartHonouring(
+  page: Page,
+  honoured: string[]
+): Promise<void> {
+  await page.route('**/api/v1/carts/calculate/**', route => {
+    const vouchers: string[] = route.request().postDataJSON()?.vouchers ?? [];
+    route.fulfill({
+      json: {
+        ...EMPTY_CART_SUMMARY,
+        voucher_discounts: vouchers
+          .filter(code => honoured.includes(code))
+          .map((name, i) => ({ offer_id: 100 + i, amount: '1.00', name })),
+      },
+    });
+  });
 }
 
 /**

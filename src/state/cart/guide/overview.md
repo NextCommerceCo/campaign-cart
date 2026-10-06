@@ -89,7 +89,10 @@ recalculated on rehydration instead of being restored.
   code, refuses a duplicate, prices the cart with and without it and refuses a
   code that adds no discount (the calculate API ignores an unknown voucher
   without an error), and writes it to the **checkout** store. On an empty cart
-  there is nothing to price, so the code is stored unchecked; each
+  there is nothing to price, so the code is stored and marked unchecked, and the
+  first recalculation with items checks it and takes it off if it gives no
+  discount
+  (`state/cart/operations/voucher-check.ts › recheckUncheckedVouchers`). Each
   successful recalculation then overwrites `cart.vouchers` from that store. The
   cart copy exists so a page can render applied-coupon chips without reaching
   into checkout.

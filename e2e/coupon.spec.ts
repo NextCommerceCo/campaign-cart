@@ -2,10 +2,10 @@ import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import {
   stubCampaign,
+  stubCartHonouring,
   stubI18nRules,
   bootSdk,
   captureEvents,
-  EMPTY_CART_SUMMARY,
 } from './fixtures/routes';
 
 /**
@@ -22,18 +22,19 @@ const FIXTURE = '/e2e/fixtures/coupon.html';
 
 test.beforeEach(async ({ page }) => {
   await stubCampaign(page, MINIMAL_CAMPAIGN);
-  await page.route('**/api/v1/carts/calculate/**', route => {
-    const vouchers: string[] = route.request().postDataJSON()?.vouchers ?? [];
-    route.fulfill({
-      json: {
-        ...EMPTY_CART_SUMMARY,
-        voucher_discounts: vouchers.includes('SAVE10')
-          ? [{ offer_id: 7, amount: '1.00', name: 'Save 10%' }]
-          : [],
-      },
-    });
-  });
+  await stubCartHonouring(page, ['SAVE10']);
 });
+
+/** The checkout store's unchecked codes, as persisted for the next page. */
+function uncheckedVouchers(page: Page): Promise<string[] | undefined> {
+  return page.evaluate(() => {
+    const key = Object.keys(sessionStorage).find(k =>
+      k.startsWith('next-checkout-store')
+    );
+    const saved = key ? JSON.parse(sessionStorage.getItem(key) ?? '{}') : {};
+    return saved.state?.uncheckedVouchers;
+  });
+}
 
 async function addToCart(page: Page): Promise<void> {
   await page.click('[data-next-action="add-to-cart"]');
@@ -122,4 +123,48 @@ test("shows the address service's coupon text in the page's language", async ({
   await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
     'คูปอง PRIMAL_5 ใช้กับคำสั่งซื้อนี้ไม่ได้'
   );
+});
+
+test('a code stored on an empty cart is taken off once the cart prices it as no discount', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  // Nothing to price yet, so the code is stored unchecked.
+  await page.fill('input[data-next-coupon="input"]', 'primal_5');
+  await page.click('[data-next-coupon="apply"]');
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    'Coupon PRIMAL_5 applied.'
+  );
+
+  await addToCart(page);
+
+  await expect(page.locator('[data-next-coupon="messages"]')).toHaveText(
+    "Coupon PRIMAL_5 isn't valid for this order."
+  );
+  expect(await failed.at(0)).toMatchObject({ code: 'PRIMAL_5' });
+  await expect
+    .poll(() => page.evaluate(() => (window as any).next.getCoupons()))
+    .toEqual([]);
+});
+
+test('a code stored on an empty cart stays once the cart prices it as a discount', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  await page.fill('input[data-next-coupon="input"]', 'save10');
+  await page.click('[data-next-coupon="apply"]');
+  await expect.poll(() => uncheckedVouchers(page)).toEqual(['SAVE10']);
+
+  await addToCart(page);
+
+  // Cleared only once the check has run and accepted the code.
+  await expect.poll(() => uncheckedVouchers(page)).toEqual([]);
+  expect(await page.evaluate(() => (window as any).next.getCoupons())).toEqual([
+    'SAVE10',
+  ]);
+  expect(await failed.count()).toBe(0);
 });

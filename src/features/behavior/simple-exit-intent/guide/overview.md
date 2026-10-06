@@ -7,7 +7,7 @@ category: "Simple Exit Intent"
 # Exit Intent
 
 > Category: `behavior`
-> Last reviewed: 2026-07-30
+> Last reviewed: 2026-10-06
 > Owner: Campaigns
 
 Shows one last offer when the visitor looks like they are leaving — pointer heading
@@ -29,7 +29,7 @@ irritation.
 
 Your template opts into the accept action by putting `data-exit-intent-action` on a
 button. The feature runs your callback, applies a coupon code if the button names one,
-and closes.
+reports the answer on `coupon:applied` or `coupon:validation-failed`, and closes.
 
 ## Business logic
 

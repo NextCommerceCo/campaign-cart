@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
-import { stubCampaign, stubCart, bootSdk, captureEvents } from './fixtures/routes';
+import {
+  stubCampaign,
+  stubCart,
+  stubCartHonouring,
+  bootSdk,
+  captureEvents,
+} from './fixtures/routes';
 
 /**
  * E2E for the ExitIntentEnhancer (behavior/, "simple-exit-intent").
@@ -96,4 +102,61 @@ test('clicking the close button emits exit-intent:closed and removes the overlay
     page.locator('.exit-intent-overlay[data-exit-intent="overlay"]')
   ).toHaveCount(0);
   await expect(page.locator('.exit-intent-popup')).toHaveCount(0);
+});
+
+/**
+ * The popup's own copy may already promise the discount, so its coupon button
+ * reports the answer on the coupon field's events. The calculate stub honours
+ * SAVE10 and ignores PRIMAL_5, as the live API ignores a code with no offer.
+ */
+async function showCouponOffer(page: import('@playwright/test').Page) {
+  await stubCartHonouring(page, ['SAVE10']);
+  await bootSdk(page, FIXTURE);
+  await page.click('[data-next-action="add-to-cart"]');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).next.getCartCount()))
+    .toBeGreaterThan(0);
+  await page.evaluate(() =>
+    (window as any).next.exitIntent({
+      template: 'coupon-offer',
+      useSessionStorage: false,
+      disableOnMobile: true,
+    })
+  );
+  await triggerExitIntent(page);
+  await expect(page.locator('.exit-intent-popup')).toHaveCount(1);
+}
+
+test('a coupon the cart gives no discount for emits coupon:validation-failed', async ({
+  page,
+}) => {
+  await showCouponOffer(page);
+  const applied = await captureEvents(page, 'coupon:applied');
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  await page.getByRole('button', { name: 'Apply PRIMAL_5' }).click();
+
+  await expect.poll(() => failed.count()).toBe(1);
+  expect(await failed.at(0)).toEqual({
+    code: 'PRIMAL_5',
+    message: "Coupon PRIMAL_5 isn't valid for this order.",
+  });
+  expect(await applied.count()).toBe(0);
+  expect(await page.evaluate(() => (window as any).next.getCoupons())).toEqual(
+    []
+  );
+});
+
+test('a coupon the cart gives a discount for emits coupon:applied', async ({
+  page,
+}) => {
+  await showCouponOffer(page);
+  const applied = await captureEvents(page, 'coupon:applied');
+  const failed = await captureEvents(page, 'coupon:validation-failed');
+
+  await page.getByRole('button', { name: 'Apply SAVE10' }).click();
+
+  await expect.poll(() => applied.count()).toBe(1);
+  expect(await applied.at(0)).toEqual({ code: 'SAVE10' });
+  expect(await failed.count()).toBe(0);
 });

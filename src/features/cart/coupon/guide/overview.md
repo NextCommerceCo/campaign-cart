@@ -37,17 +37,23 @@ writing any JavaScript to render them.
 
 - A code is applied through the cart's coupon operation, so the cart's totals,
   discount lines, and any dependent display update on their own afterwards.
-- A code is accepted only when pricing the cart with it gives a discount that
-  pricing it without does not. The calculate API ignores a code it has no offer
-  for without an error, so this comparison is the only sign it was refused
-  (`state/cart/operations/apply-coupon.ts › applyCoupon`). A refused code, or one
-  that could not be checked, is never stored.
-- On an empty cart there is nothing to price, so any code is stored unchecked and
-  reported as applied.
+- A code is accepted only when pricing the cart with it gives a discount, or a
+  lower total, that pricing it without does not. The calculate API ignores a code
+  it has no offer for without an error, so this comparison is the only sign it was
+  refused (`state/cart/operations/voucher-check.ts › voucherAddsDiscount`). A
+  refused code, or one that could not be checked, is never stored.
+- On an empty cart there is nothing to price, so the code is stored as an
+  [unchecked code](./glossary.md#unchecked-code) and reported as applied. The
+  first calculation with items checks it, on that page or the next, and takes it
+  off with `coupon:validation-failed` if it gives no discount
+  (`voucher-check.ts › recheckUncheckedVouchers`).
 - Applying is blocked while a previous attempt is still in flight — the apply
   button gets `next-disabled` — so a visitor cannot double-submit a code.
 - Removal is immediate and does not ask for confirmation.
 - Messages are transient: each one removes itself after 5 seconds.
+- Every `coupon:validation-failed` on the page is shown, not only this field's
+  own: the exit-intent popup's refusals and an unchecked code refused later land
+  here too.
 - Messages are in the page's language. Each is read by its `coupon.*` key from
   the page's `translations`, then the address service's texts, then English
   (`state/cart/coupon-texts.ts › couponTexts`).
@@ -75,8 +81,9 @@ writing any JavaScript to render them.
 - Does not validate the code format locally. Every attempt is a round trip, so a
   typo costs a request, and up to two when a code is already on the cart: one
   priced with the new code and one without.
-- Does not check a code applied to an empty cart. It is reported as applied and
-  only takes effect, or not, once items are added.
+- Does not tell the visitor at once that a code applied to an empty cart is
+  refused. It is reported as applied, and the refusal comes with the first
+  calculation that has items.
 - Does not support more than one coupon area on a page. The display and message
   elements are looked up document-wide as a fallback, so two areas can fight over
   the same targets.

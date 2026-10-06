@@ -254,7 +254,8 @@ export interface EventMap {
   'config:updated': ConfigState;
   /**
    * A discount code was accepted and applied to the cart. The payload carries the
-   * full coupon when the SDK has it, and only the code when it does not.
+   * full coupon when the SDK has it, and only the code when it does not. Sent by the
+   * coupon field and by the exit-intent popup's `apply-coupon` button.
    *
    * @example
    * ```json
@@ -268,13 +269,17 @@ export interface EventMap {
     code: string;
   };
   /**
-   * A discount code was rejected — unknown, expired, or not valid for this cart.
+   * A discount code was refused: pricing the cart with it gave no discount, it was
+   * already applied, or it could not be checked. Sent by the coupon field, by the
+   * exit-intent popup's `apply-coupon` button, and by the SDK when a code applied to
+   * an empty cart gives no discount once the cart has items, after it takes the code
+   * off.
    *
    * @example
    * ```json
    * {
    *   "code": "SAVE10",
-   *   "message": "This code has expired."
+   *   "message": "Coupon SAVE10 isn't valid for this order."
    * }
    * ```
    */

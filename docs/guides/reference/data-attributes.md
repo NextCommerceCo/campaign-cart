@@ -712,7 +712,7 @@ The `messages` element shows one sentence after each apply or remove, in the pag
 | `coupon.errors.invalid` | The code gave this order no discount |
 | `coupon.errors.network` | The code could not be checked |
 
-A code is checked by pricing the cart with it and without it, so `coupon.errors.invalid` is shown for a code the Campaigns App does not know and for one whose offer this cart does not meet (`state/cart/operations/apply-coupon.ts › applyCoupon`). On an empty cart there is nothing to price, and any code is shown `coupon.applied`.
+A code counts when pricing the cart with it gives a discount, or a lower total, that pricing it without does not. So `coupon.errors.invalid` is shown for a code the Campaigns App does not know and for one whose offer this cart does not meet (`state/cart/operations/voucher-check.ts › voucherAddsDiscount`). A code applied to an empty cart is shown `coupon.applied` and checked once the cart has items, on that page or the next. If it gives no discount it is taken off then, and `messages` shows `coupon.errors.invalid` (`voucher-check.ts › recheckUncheckedVouchers`). `messages` shows every refusal on the page, the exit-intent popup's `apply-coupon` button included.
 
 Below is an example that rewords the rejection on a Thai page and leaves the other coupon messages at their defaults.
 
