@@ -153,7 +153,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
 
     await this.executeAction(
       async () => {
-        this.logger.debug('Applying coupon:', code);
+        this.logger.debug('Applying coupon');
 
         const result = await cartOperations.applyCoupon(code);
 
@@ -163,7 +163,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
           }
           this.updateButtonState();
           this.showMessage(result.message, 'success');
-          this.logger.info('Coupon applied successfully:', code);
+          this.logger.info('Coupon applied successfully');
 
           // Emit standard event
           this.eventBus.emit('coupon:applied', { code });
@@ -230,7 +230,7 @@ export class CouponEnhancer extends BaseActionEnhancer {
   }
 
   private removeCoupon(code: string): void {
-    this.logger.debug('Removing coupon:', code);
+    this.logger.debug('Removing coupon');
 
     void cartOperations.removeCoupon(code);
 
