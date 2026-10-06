@@ -26,6 +26,7 @@ export interface CheckoutState {
     sameAsShipping: boolean;
     testMode: boolean;
     vouchers: string[];
+    uncheckedVouchers: string[];
 }
 interface CheckoutActions {
     setStep: (step: number) => void;
@@ -40,7 +41,10 @@ interface CheckoutActions {
     setBillingAddress: (address: CheckoutState['billingAddress']) => void;
     setSameAsShipping: (same: boolean) => void;
     setTestMode: (testMode: boolean) => void;
-    addVoucher: (code: string) => void;
+    addVoucher: (code: string, options?: {
+        unchecked?: boolean;
+    }) => void;
+    markVoucherChecked: (code: string) => void;
     removeVoucher: (code: string) => void;
     reset: () => void;
 }
