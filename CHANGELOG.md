@@ -1,6 +1,66 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.41] — 2026-10-06 — New Card Fields, Checked Coupons, and Phone Numbers in E.164
+
+The card number and CVV are now drawn by 29next's own payment fields instead of Spreedly's iFrame. A coupon code is shown as applied only when it actually takes money off. The phone number is read by the address service, so the order always gets it in E.164. Card, decline and coupon messages follow the page's language. Read Before you upgrade first if your page sets a Content-Security-Policy, sets the payment key itself, listens for `checkout:spreedly-ready`, or reads a coupon's `message`.
+
+### Before you upgrade
+
+- **Allow `payments.29next.com` in your Content-Security-Policy.** The card fields' script and iframe now come from there instead of Spreedly. A page whose policy leaves it out of `script-src` and `frame-src` shows no card fields.
+- **The payment key comes from the campaign only.** The card fields use the campaign's `payment_env_key`. The `next-spreedly-key` and `next-payment-env-key` meta tags and `window.nextConfig.spreedlyEnvironmentKey` are no longer read, so they can be removed. If the card fields do not appear, check that the campaign has a payment key.
+- **Listen for `checkout:payment-ready` instead of `checkout:spreedly-ready`.** Both still fire when the card fields are ready, but the old name is deprecated.
+- **Spreedly-only `cardInputConfig` options do nothing now.** `fieldType`, `enableAutoComplete`, `requiredAttributes`, `allowBlankName`, `allowExpiredDate`, `fraud`, `nonce`, `timestamp`, `certificateToken` and `signature` are ignored, with a debug line saying so. `numberFormat`, `labels`, `titles`, `placeholders` and `styles` still apply.
+- **After `next.applyCoupon`, check `success`, not the wording of `message`.** The coupon messages changed: `Coupon already applied` is now `Coupon SAVE10 is already applied.`, `Coupon SAVE10 applied successfully` is now `Coupon SAVE10 applied.`, and both follow the page's language.
+
+### Card payments
+
+- **The card number and CVV are drawn by 29next's payment fields, from `payments.29next.com`, instead of Spreedly's iFrame.** Your markup stays the same: `cc-number` and `cvv` are still empty `<div>`s, and the SDK mounts the fields into them. See [Payment](docs/guides/pages/checkout-page.md#payment).
+- **The card's labels, placeholders and messages follow the page's language.** They come from the `payment.card.*` texts of `i18n-rules.nextcommerce.com`, and a page can reword any of them in `translations`. See [Card messages](docs/guides/pages/checkout-page.md#card-messages).
+- **Card fields left open for an hour are replaced with fresh ones, without reloading the page.** The payment provider accepts the fields' credentials for an hour. After that, a shopper who comes back to the tab gets new, empty fields, and one who presses pay sees `Your card details timed out. Enter them again.` The new fields are loaded from a new address, so the browser cannot hand back the expired ones from its cache.
+- **A declined payment is explained by its decline code, in the page's language.** Code `3005` now reads `Check your card number and try again.` instead of the gateway's `Invalid Card Number`, for card, PayPal and express checkout alike. The sentences come from `payment.errors.<code>`. For a code with no sentence, the page's own `payment.errors.generic` is shown when it sets one, and otherwise the orders API's wording. Express checkout no longer adds `Please try a different payment method.` in English. See [Declined payments](docs/guides/pages/checkout-page.md#declined-payments). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+- **The cardholder's first and last name are sent separately, as well as together.** The provider used to split the full name itself, and stored a one-word name with the first name `Not Provided`.
+- **Each card token records where it came from.** Its metadata holds `source` (`next-campaign-cart`), `sdk_version`, `campaign_id`, and `page`, which is the page's address without its query string.
+
+### Coupons
+
+- **A coupon code that takes nothing off is refused instead of shown as applied.** The Campaigns API ignores a code it has no offer for, without an error. Such a code used to stay on the cart, `cart.hasCoupon()` went true, and the coupon field said it was applied while the total stayed at full price. Now `next.applyCoupon` resolves with `success: false`, `coupon:validation-failed` fires, and the code is not kept. A code counts when it gives a discount or lowers the total, shipping included. See [Coupon field](docs/guides/reference/data-attributes.md#coupon-field). ([#80](https://github.com/NextCommerceCo/campaign-cart/issues/80))
+- **A code entered while the cart is empty is checked once the cart has items**, on that page or the next one. If it takes nothing off, it is removed and `coupon:validation-failed` fires.
+- **The exit-intent popup's coupon button reports its result** on `coupon:applied` and `coupon:validation-failed`, the same events the coupon field sends. The coupon field's `messages` element shows every refusal on the page, including these.
+- **Coupon messages follow the page's language.** They come from the `coupon.*` texts of `i18n-rules.nextcommerce.com` (`coupon.applied`, `coupon.removed`, `coupon.errors.*`), and a page can reword any of them in `translations`.
+
+### Phone number
+
+- **The phone input carries the full number as `data-next-phone-e164`.** Page code and marketing tags read `+14155552671` from the input once the number is complete and valid. The attribute is absent while the number is still being typed, so a tag never gets part of one. `data-next-phone-country` names the country the number belongs to. This replaces `input.iti.getNumber()`, which went away with `intl-tel-input` in 0.4.39. See [Phone number](docs/guides/reference/data-attributes.md#phone-number). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+- **The number the order gets is read by `i18n-rules.nextcommerce.com` with libphonenumber.** A number dialled from abroad (`011 44 7400 123456` in the US), one written with `(0)` after its code, one typed in Thai or full-width digits, and an Argentine mobile with its `15` all reach the order in E.164. Fixes to how numbers are read now ship with the service, without a new SDK. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+- **A number with another country's code shows that country's flag.** `+66 81 234 5678` in a US form shows the Thai flag and is sent as `+66812345678`.
+- **When the shopper leaves the field, the number is shown the way its country writes it**: `081 234 5678` for a Thai number on a Thai address, `+44 7400 123456` for a British one.
+- **A number typed with `+` or `00` keeps the spacing the shopper typed**, so the text no longer jumps around while they edit it. It is still sent in E.164.
+- **A number the service reads as not valid is pointed out under the field, without blocking the order**: `+6683873196` on a US address shows `Enter a valid phone number, like +66 81 234 5678`. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+- **Submitting waits at most two seconds for the number to be read**, and a prospect cart at most 800 ms. A number not read in time is sent as typed, for the orders API to check.
+- **`phone_number` is accepted as the phone's `data-next-checkout-field` name**, the name the orders API and the address service use. `phone` keeps working.
+- **Thai and full-width digits typed into the field are kept**, written as ASCII digits in the order typed. They used to be dropped. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+
+### Addresses
+
+- **A postcode the chosen state does not use is pointed out under the field, without blocking the order.** `Enter a valid ZIP Code for New York` appears under `94103`, in the form's language. The order still goes through, because some real addresses sit across a state line from their postcode. See [Validation messages](docs/guides/pages/checkout-page.md#validation-messages). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+- **The billing address block is laid out for the billing country.** It followed the shipping country, so choosing another billing country left the old country's fields on screen. ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110))
+- **A returning visitor's billing address comes back every time.** On roughly one load in five, the address stayed in the session while the billing fields stayed empty.
+
+### Analytics
+
+- **`customer_phone` in `user_properties` is always E.164, or left out.** It used to be the number as typed, so a tag that read it early, such as Triple Whale on `dl_user_data`, could get `4155552671` and later `+14155552671` for the same shopper. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
+
+---
+
+## [0.4.40] — 2026-09-28 — CDN Re-publish
+
+No source changes. Rebuilt to correct the copy on the CDN; `0.4.39` and `0.4.40` are the same SDK.
+
+---
+
+## [0.4.39] — 2026-09-27 — Address Fields for Each Country, and a Checkout in the Page's Language
+
+The checkout's countries, address rules and phone rules now come from the address service, `i18n-rules.nextcommerce.com`. A new address block builds the fields each country collects, and labels and validation messages follow the page's language. A page that sets a Content-Security-Policy must allow the service, as the first Changed entry describes.
 
 ### New
 
@@ -11,27 +71,14 @@
 - **`translations` accepts nested i18next JSON** as well as dotted keys, so a language file exported from a translation tool can be pasted in as it is.
 - **`first_name` and `last_name` are accepted as `data-next-checkout-field` names**, the names the orders API and the address service use. `fname` and `lname` keep working everywhere, including `requiredFields` for express checkout and `data-next-checkout-review`.
 - **The debug locale picker offers every language the address service has**, adding Danish, Finnish, Norwegian and Thai.
-- **The phone input carries the full number again, as `data-next-phone-e164`.** Page code and marketing tags read `+14155552671` from the input once the number is complete and valid, and the attribute is absent while it is still being typed, so a tag never gets part of a number. `data-next-phone-country` names the country the number is read as. This replaces `input.iti.getNumber()`, which went with `intl-tel-input`. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108)) See [Phone number](docs/guides/reference/data-attributes.md#phone-number).
-
-- **A postcode its state does not use is pointed out under the field.** Once the postcode matches its country's format, leaving it or picking a state asks `i18n-rules.nextcommerce.com` whether that state uses it, and `Enter a valid ZIP Code for New York` appears under `94103`, in the form's language. The order is not blocked: some real addresses sit across a state line from their postcode. See [Validation messages](docs/guides/pages/checkout-page.md#validation-messages). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
 
 ### Changed
 
-- **A declined payment is explained in the form's language, by its code.** A card the orders API declines with `payment_response_code` `3005` now reads `Check your card number and try again.` instead of the gateway's `Invalid Card Number`, for every decline code, card, PayPal and express checkout alike. The sentences come from `i18n-rules.nextcommerce.com` at `payment.errors.<code>`, and a page can reword any of them in `translations`. A code with no sentence shows the page's own `payment.errors.generic` when it sets one, and otherwise the orders API's own wording. Express checkout no longer adds `Please try a different payment method.` in English after it. See [Declined payments](docs/guides/pages/checkout-page.md#declined-payments). ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
 - **Country lists, address and phone rules, states, and the visitor's detected country and currency now come from `i18n-rules.nextcommerce.com`**, replacing the previous countries service, and are asked for in the page's language. A page that sets a Content-Security-Policy must allow it in `connect-src`, or those requests are blocked.
 - **The phone field no longer uses `intl-tel-input`.** The SDK writes the number in the country's format as the shopper types (`(415) 555-2671` in the US), picking the mask by how the number starts, and sends it as E.164 (`+14155552671`). Its own check is loose, and the order API validates the number. The flag is an image from `i18n-rules.nextcommerce.com`, stacked above the input, so a page that sets a Content-Security-Policy must also allow that host in `img-src`, or the flag does not show. See [Contact information](docs/guides/pages/checkout-page.md#contact-information).
-- **The E.164 number comes from `i18n-rules.nextcommerce.com`, which reads the phone with libphonenumber.** The field asks it (`POST /v1/validate`) when the shopper pauses typing, leaves the field, or a value is written in by autofill, and the attribute, the store and the order get the number it reads. So a number dialled abroad (`011 44 7400 123456` in the US, `001 66 81 234 5678` in Thailand), one written with `(0)` after its code, one typed in Thai or full-width digits, and an Argentine mobile with its `15` all go out in E.164. Fixes to how a number is read now ship with the service, without a new SDK. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
-- **A number with another country's code takes that country's flag once the service has read it.** `+66 81 234 5678` in a US form shows the Thai flag and is sent as `+66812345678`.
-- **Once the shopper leaves the phone field, the number is shown as its country writes it**: `081 234 5678` for a Thai number on a Thai address, `+44 7400 123456` for a British one. Countries whose rules have no mask get a written number this way too.
-- **Submitting waits, at most two seconds, for the service to read the phone**, and a prospect cart waits at most 800 ms. A number it never reads is sent as typed, for the order API to read, and nothing is refused for it: the field's own check stays the loose pattern.
-- **A phone number the service reads as not valid is pointed out under the field** once the shopper leaves it, in the service's words and the form's language: `+6683873196` on a US address shows `Enter a valid phone number, like +66 81 234 5678`. The order is not blocked, since a range libphonenumber has not caught up with would otherwise stop a real customer. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
-- **A number typed with `+` or dialled with `00` stays as it was written**, spaces included, instead of being rewritten to bare digits as the shopper types. Once the field writes it as the service does (`+66 81 234 5678`), going back in and editing keeps that spacing, so the text no longer jumps between the two. It is still sent in E.164.
-- **`customer_phone` in `user_properties` is E.164 or absent.** It was the number as typed, so a tag reading it early, such as Triple Whale on `dl_user_data`, could get `4155552671` and later `+14155552671` for the same shopper. A number that is incomplete, or cannot be read as E.164, is now left out. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
 - **Enter in a checkout field moves to the next field instead of submitting the order.** The submit button is the only way to place it, and the keyboard labels its Enter key to match.
 - **No checkout field accepts an emoji**, with the service's message for it.
 - **Address fields no longer show a hint underneath.** A stylesheet rule for `.next-address-hint` no longer matches anything.
-- **The card fields are rebuilt an hour after they load, not 25 minutes.** An hour is how long the payment provider accepts the credentials signed into them, so a shopper who takes between 25 minutes and an hour over the card form no longer finds new, empty fields or sees `Your card details timed out. Enter them again.` When they are rebuilt, `payment.js` is now asked for under a URL the browser has not fetched before, so the new fields carry newly signed credentials instead of a cached copy of the expired ones, without reloading the page. See [Payment](docs/guides/pages/checkout-page.md#payment).
-- **Coupon messages are in the page's language, from `i18n-rules.nextcommerce.com` at `coupon.*`.** The coupon field's `messages` element and the `message` `next.applyCoupon` answers with read `coupon.applied`, `coupon.removed` and `coupon.errors.*` from the page's `translations` first, then the address service, then English, with `{{code}}` filled in. The English wording changed with it: `Coupon already applied` is now `Coupon SAVE10 is already applied.`, and `Coupon SAVE10 applied successfully` is now `Coupon SAVE10 applied.`, so page code that compares `message` to a fixed string should read `success` instead. See [Coupon field](docs/guides/reference/data-attributes.md#coupon-field). ([#80](https://github.com/NextCommerceCo/campaign-cart/issues/80))
 
 ### Deprecated
 
@@ -43,11 +90,6 @@
 
 ### Fixed
 
-- **A coupon code the Campaigns API ignores is turned down instead of shown as applied.** The calculate API answers a code with no matching offer with full-price totals and no error, so the code stayed on the cart, `cart.hasCoupon()` went true, and the coupon field said it was applied while every total stayed at full price. The SDK now prices the cart with the code and without it: a code that adds no discount and does not lower the total resolves `next.applyCoupon` with `success: false`, fires `coupon:validation-failed`, and is not kept, and neither is a code that could not be checked. A code applied while the cart is empty is checked once the cart has items, on that page or the next, and taken off with `coupon:validation-failed` if it gives no discount. The exit-intent popup's `apply-coupon` button now reports its answer on `coupon:applied` and `coupon:validation-failed` as well, and the coupon field's `messages` element shows every refusal, those two included. See [Coupon field](docs/guides/reference/data-attributes.md#coupon-field). ([#80](https://github.com/NextCommerceCo/campaign-cart/issues/80))
-- **A `data-next-address="billing"` block is laid out for the billing country.** It followed the shipping country, so choosing another billing country left the old country's fields on screen, and changing the shipping country re-laid the billing block for a country it was not in. A billing country chosen on an earlier load now opens in its own layout too. ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110))
-- **A returning visitor's billing address comes back into a `data-next-address="billing"` block every time.** When the block finished building its fields while the checkout form was still starting up, the address stayed in the session and the fields stayed empty, on roughly one load in five.
-- **Thai and full-width digits typed into the phone field are written as ASCII digits, in the order typed.** They were dropped. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
-
 - **A checkout form taken down while a decline is still being drawn no longer touches the page after it is gone.** The payment-error banner waits a moment before it writes and ten seconds before it hides, and neither timer was cancelled when the form was destroyed. On a page that removes the form mid-decline the late write ran against elements that were no longer there; in the test suite it was the intermittent `document is not defined` that turned a green `Build` run red.
 - **A phone input marked `required` is enforced without `name="phone"`.** The SDK found every checkout field by `data-next-checkout-field` except this one, which it looked up by `name`, so a required phone without that attribute was never required and the order went through with no number. On a page with another form's `name="phone"` input, that input decided the rule instead.
 - **Guide links from before 0.4.38 work again.** The twelve pages whose addresses changed in 0.4.38 now redirect to their new locations, so old bookmarks and search results no longer end on a 404.
@@ -57,6 +99,8 @@
 - **The checkout guide has one Contact and address section**, in the order a shopper fills the form: contact information, shipping address, billing address, validation messages and styling, with a new screenshot. It shows how the contact step can ask for the name, and no longer shows address inputs written by hand.
 - **`AddressConfig` says when each setting applies.** `defaultCountry`, `countries` and `showCountries` are read only when the campaign has no shipping countries (or, for `defaultCountry`, an empty list), so none of them picks the country a form opens on. US territories stay out of the state list whatever `dontShowStates` says. `enableAutocomplete` is documented for the first time.
 - **Corrected in the checkout guide:** the state list comes from the selected country, not the campaign, and the phone example uses `autocomplete="tel"`.
+
+---
 
 ## [0.4.38] — 2026-08-27 — Address and Phone Fields, and Two Silent Failures
 
