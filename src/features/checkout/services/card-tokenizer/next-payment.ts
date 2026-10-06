@@ -289,7 +289,10 @@ function loadScript(environmentKey: string, fresh = false): Promise<void> {
   }
   scriptLoad ??= new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `${SCRIPT_URL}?env_key=${encodeURIComponent(environmentKey)}`;
+    // nexus signs new credentials into every response, but the browser may answer a
+    // URL it has already fetched from cache, with the expired ones still in it.
+    const reload = fresh ? `&reload=${Date.now()}` : '';
+    script.src = `${SCRIPT_URL}?env_key=${encodeURIComponent(environmentKey)}${reload}`;
     script.async = true;
     script.onload = () =>
       window.NextPayment

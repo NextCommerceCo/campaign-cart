@@ -470,6 +470,10 @@ describe('NextPaymentTokenizer — credentials that expire', () => {
     expect(instance.destroy).toHaveBeenCalled();
     // The old class is gone, or the new script would keep it.
     expect(window.NextPayment).toBeUndefined();
+    // Not the first load's URL, which the browser may answer from its cache.
+    expect(requested.at(-1)?.src).not.toBe(
+      'https://payments.29next.com/js/v1/payment.js?env_key=env-key'
+    );
 
     answerScriptLoad();
     await vi.waitFor(() => expect(instances).toHaveLength(2));

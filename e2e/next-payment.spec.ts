@@ -148,7 +148,7 @@ test('card fields older than their credentials are rebuilt from a fresh script, 
   await bootSdk(page, CARD_CHECKOUT);
   const paymentErrors = await captureEvents(page, 'payment:error');
   await addOnePackage(page);
-  await page.clock.fastForward('26:00');
+  await page.clock.fastForward('01:01:00');
   await submitCard(page);
 
   await expect.poll(() => paymentErrors.count()).toBeGreaterThan(0);
@@ -156,6 +156,9 @@ test('card fields older than their credentials are rebuilt from a fresh script, 
     'Your card details timed out'
   );
   await expect.poll(() => scriptRequests.length).toBe(2);
+  // A URL of its own, or the browser could answer it with the expired script.
+  expect(scriptRequests[1]).not.toBe(scriptRequests[0]);
+  expect(scriptRequests[1]).toContain('env_key=e2e-env-key');
   expect(submits).toEqual([]);
 
   // The rebuilt fields take the card, and the order goes out.
@@ -175,9 +178,9 @@ test('fresh card fields are not rebuilt when the shopper comes back to the tab',
   await page.evaluate(() =>
     document.dispatchEvent(new Event('visibilitychange'))
   );
-  await page.clock.fastForward('20:00');
+  await page.clock.fastForward('55:00');
 
-  // Thirty minutes in, but the tab came back at ten; nothing asked for new fields.
+  // Sixty-five minutes in, but the tab came back at ten; nothing asked for new fields.
   expect(scriptRequests).toHaveLength(1);
 
   await page.evaluate(() =>
