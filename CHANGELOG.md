@@ -30,6 +30,7 @@
 - **Enter in a checkout field moves to the next field instead of submitting the order.** The submit button is the only way to place it, and the keyboard labels its Enter key to match.
 - **No checkout field accepts an emoji**, with the service's message for it.
 - **Address fields no longer show a hint underneath.** A stylesheet rule for `.next-address-hint` no longer matches anything.
+- **Coupon messages are in the page's language, from `i18n-rules.nextcommerce.com` at `coupon.*`.** The coupon field's `messages` element and the `message` `next.applyCoupon` answers with read `coupon.applied`, `coupon.removed` and `coupon.errors.*` from the page's `translations` first, then the address service, then English, with `{{code}}` filled in. The English wording changed with it: `Coupon already applied` is now `Coupon SAVE10 is already applied.`, and `Coupon SAVE10 applied successfully` is now `Coupon SAVE10 applied.`, so page code that compares `message` to a fixed string should read `success` instead. See [Coupon field](docs/guides/reference/data-attributes.md#coupon-field). ([#80](https://github.com/NextCommerceCo/campaign-cart/issues/80))
 
 ### Deprecated
 
@@ -41,6 +42,7 @@
 
 ### Fixed
 
+- **A coupon code the Campaigns API ignores is turned down instead of shown as applied.** The calculate API answers a code with no matching offer with full-price totals and no error, so the code stayed on the cart, `cart.hasCoupon()` went true, and the coupon field said it was applied while every total stayed at full price. The SDK now prices the cart with the code and without it: a code that adds no discount resolves `next.applyCoupon` with `success: false`, fires `coupon:validation-failed`, and is not kept, and neither is a code that could not be checked. On an empty cart there is nothing to price, so a code applied before any item is still kept unchecked. See [Coupon field](docs/guides/reference/data-attributes.md#coupon-field). ([#80](https://github.com/NextCommerceCo/campaign-cart/issues/80))
 - **A `data-next-address="billing"` block is laid out for the billing country.** It followed the shipping country, so choosing another billing country left the old country's fields on screen, and changing the shipping country re-laid the billing block for a country it was not in. A billing country chosen on an earlier load now opens in its own layout too. ([#110](https://github.com/NextCommerceCo/campaign-cart/issues/110))
 - **A returning visitor's billing address comes back into a `data-next-address="billing"` block every time.** When the block finished building its fields while the checkout form was still starting up, the address stayed in the session and the fields stayed empty, on roughly one load in five.
 - **Thai and full-width digits typed into the phone field are written as ASCII digits, in the order typed.** They were dropped. ([#108](https://github.com/NextCommerceCo/campaign-cart/issues/108))
