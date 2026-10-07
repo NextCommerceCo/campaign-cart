@@ -3,8 +3,8 @@ import {
   updateStateOptions,
   updateBillingStateOptions,
   loadCountryConfig,
+  type BillingStateFieldsContext,
   type ShippingStateFieldsContext,
-  type StateFieldsContext,
 } from '../state-fields';
 import type {
   CountryConfig,
@@ -106,14 +106,15 @@ function createShippingCtx(
 }
 
 function createBillingCtx(
-  overrides: Partial<StateFieldsContext> = {}
-): StateFieldsContext {
+  overrides: Partial<BillingStateFieldsContext> = {}
+): BillingStateFieldsContext {
   return {
     stateLoadingPromises: new Map(),
     i18nRules: createFakeI18nRules().service,
     logger: createMockLogger() as unknown as Logger,
     countryFields: createCountryFieldsCtx(),
     countryConfigs: new Map(),
+    setBillingProvince: vi.fn(),
     ...overrides,
   };
 }
@@ -376,6 +377,61 @@ describe('updateBillingStateOptions', () => {
     await updateBillingStateOptions(ctx, 'CA', field, 'QC');
 
     expect(field.value).toBe('QC');
+  });
+
+  /**
+   * Nothing else writes the billing province when its list is rebuilt: a new country kept
+   * the old country's province, and a pre-selected one showed while submit called it missing.
+   */
+  it('writes the province it shows to the billing address, pre-selected or not', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      'CA',
+      field,
+      'QC'
+    );
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      'CA',
+      field,
+      'ZZ'
+    );
+
+    expect(setBillingProvince.mock.calls).toEqual([['QC'], ['']]);
+  });
+
+  it('clears the billing province when the country is cleared', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      '',
+      field
+    );
+
+    expect(setBillingProvince).toHaveBeenCalledWith('');
+  });
+
+  it('leaves the billing province alone when the list cannot load', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({
+        setBillingProvince,
+        i18nRules: createFakeI18nRules(() =>
+          Promise.reject(new Error('offline'))
+        ).service,
+      }),
+      'CA',
+      field
+    );
+
+    expect(setBillingProvince).not.toHaveBeenCalled();
   });
 
   it('touches neither form data nor validation errors, unlike the shipping path', async () => {

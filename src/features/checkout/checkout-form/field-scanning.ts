@@ -102,6 +102,19 @@ export interface FieldLookupContext {
 }
 
 /**
+ * Forgets the fields no longer in the document, before a re-scan adds the ones that are.
+ *
+ * `data-next-address` rebuilds its fields per country, and a country with no state field
+ * leaves nothing to overwrite the old entry: the form kept routing to, restoring into and
+ * validating a detached province dropdown.
+ */
+export function dropDetachedFields(fields: Map<string, HTMLElement>): void {
+  for (const [name, element] of fields) {
+    if (!element.isConnected) fields.delete(name);
+  }
+}
+
+/**
  * Finds every checkout field, payment button and expiry dropdown, and returns the submit
  * button if the form has one.
  *
@@ -131,6 +144,8 @@ export function scanAllFields(
   ctx: FieldScanContext
 ): SubmitControl | undefined {
   let submitButtonFound: SubmitControl | undefined;
+
+  dropDetachedFields(ctx.fields);
 
   // Scan checkout fields
   FIELD_SELECTORS.forEach(selector => {

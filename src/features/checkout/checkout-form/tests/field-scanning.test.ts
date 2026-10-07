@@ -70,14 +70,26 @@ describe('scanAllFields: which inputs become order data', () => {
     expect(ctx.fields.has('coupon')).toBe(false);
   });
 
-  it('does not clear entries a previous scan made, so a re-scan only adds', () => {
+  it('keeps an entry a previous scan made while its element is still on the page', () => {
     const { ctx } = createCtx('<input data-next-checkout-field="email" />');
-    const stale = document.createElement('input');
-    ctx.fields.set('phone', stale);
+    const kept = document.createElement('input');
+    document.body.appendChild(kept);
+    ctx.fields.set('phone', kept);
 
     scanAllFields(ctx);
 
-    expect(ctx.fields.get('phone')).toBe(stale);
+    expect(ctx.fields.get('phone')).toBe(kept);
+  });
+
+  /** A `data-next-address` rebuild for a country with no state field left the old one. */
+  it('drops an entry whose element has left the page', () => {
+    const { ctx } = createCtx('<input data-next-checkout-field="email" />');
+    ctx.fields.set('province', document.createElement('select'));
+
+    scanAllFields(ctx);
+
+    expect(ctx.fields.has('province')).toBe(false);
+    expect(ctx.fields.has('email')).toBe(true);
   });
 
   it('only looks inside the form, so a stray field elsewhere on the page is not collected', () => {

@@ -29,7 +29,7 @@ import {
 import {
   loadCountryConfig,
   updateBillingStateOptions,
-  type StateFieldsContext,
+  type BillingStateFieldsContext,
 } from './state-fields';
 
 /**
@@ -58,7 +58,7 @@ export interface BillingFieldRoutingContext {
   /** Passed through for the billing postcode. */
   postalCodeFormat: PostalCodeFormatContext;
   /** Passed through to refill the billing province dropdown. */
-  stateFields: StateFieldsContext;
+  stateFields: BillingStateFieldsContext;
 }
 
 /** The shape the checkout store's billing-address setter takes. */

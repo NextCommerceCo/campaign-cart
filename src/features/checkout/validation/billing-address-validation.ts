@@ -12,7 +12,11 @@
 
 import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
-import { isValidPhone, type PhoneNumberSource } from './phone-validation';
+import {
+  isPhoneMarkedRequired,
+  isValidPhone,
+  type PhoneNumberSource,
+} from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
 import { isValidCity, isValidName } from './validation-patterns';
 
@@ -65,6 +69,7 @@ export function validateBillingAddress(
   }
 
   if (asksForPostcode(countryConfig)) requiredBillingFields.push('postal');
+  if (isPhoneMarkedRequired('billing')) requiredBillingFields.push('phone');
 
   const country = billingAddress?.country;
   const source = ctx.i18nRules;

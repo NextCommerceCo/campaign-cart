@@ -275,18 +275,24 @@ export function normalizePhone(
 }
 
 /**
- * Whether the page marks the phone as required, with `required` or
+ * Whether the page marks an address's phone as required, with `required` or
  * `data-next-required="true"` on its input.
  *
  * The input is found by `data-next-checkout-field`, like every other checkout field.
  * `name="phone"` was once the only lookup and stays as the fallback, so a page that relied
  * on it keeps working; preferring the SDK attribute also stops another form's phone input
  * on the same page from deciding the rule.
+ *
+ * @param type Which address: the billing phone is `billing-phone`, and a required one was
+ *   once never enforced because only the shipping field was looked at.
  */
-export function isPhoneMarkedRequired(): boolean {
+export function isPhoneMarkedRequired(
+  type: 'shipping' | 'billing' = 'shipping'
+): boolean {
+  const name = type === 'billing' ? 'billing-phone' : 'phone';
   const field =
-    document.querySelector(checkoutFieldSelector('phone')) ??
-    document.querySelector('[name="phone"]');
+    document.querySelector(checkoutFieldSelector(name)) ??
+    document.querySelector(`[name="${name}"]`);
   return (
     field instanceof HTMLElement &&
     (field.hasAttribute('required') || field.dataset.nextRequired === 'true')

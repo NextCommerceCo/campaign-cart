@@ -71,6 +71,15 @@ export interface StateFieldsContext {
   countryConfigs: Map<string, CountryConfig>;
 }
 
+/** What the billing path additionally needs. */
+export interface BillingStateFieldsContext extends StateFieldsContext {
+  /**
+   * Writes the province the billing field now shows into the stored billing address,
+   * which is what validation reads and the order is built from.
+   */
+  setBillingProvince: (province: string) => void;
+}
+
 /** What the shipping path additionally needs. */
 export interface ShippingStateFieldsContext extends StateFieldsContext {
   /**
@@ -311,20 +320,25 @@ export async function updateStateOptions(
  *
  * Simpler than the shipping path in two ways that are deliberate, not oversights: it does
  * **not** hide the container for state-less countries, and it does **not** touch form data
- * or validation errors — billing province is read off the field at submit time rather than
- * mirrored into the store as it changes.
+ * or validation errors.
  *
- * @param shippingProvince Pre-selects the same region as the shipping address, for the
- *   common case where the two differ only in street.
+ * Whatever the field ends up showing is written to the stored billing address, an empty
+ * prompt included. Nothing else writes it when the list is rebuilt, so a new country used
+ * to keep the old country's province (`GB` with state `CA`), and a pre-selected province
+ * showed on screen while submit reported it missing.
+ *
+ * @param province Pre-selected when the new list has it: the shipping province, for the
+ *   common case where the two differ only in street, or the stored one on restore.
  */
 export async function updateBillingStateOptions(
-  ctx: StateFieldsContext,
+  ctx: BillingStateFieldsContext,
   country: string,
   billingProvinceField: HTMLSelectElement,
-  shippingProvince?: string
+  province?: string
 ): Promise<void> {
   if (!country || country.trim() === '') {
     setPlaceholderOnly(billingProvinceField, 'Select Country First');
+    ctx.setBillingProvince('');
     return;
   }
 
@@ -342,9 +356,10 @@ export async function updateBillingStateOptions(
     updateBillingFormLabels(ctx.countryFields, countryData.countryConfig);
     renderStates(billingProvinceField, countryData);
 
-    if (shippingProvince) {
-      billingProvinceField.value = shippingProvince;
+    if (province) {
+      billingProvinceField.value = province;
     }
+    ctx.setBillingProvince(billingProvinceField.value);
   } catch (error) {
     ctx.logger.error('Failed to load billing states:', error);
     billingProvinceField.innerHTML = originalHTML;

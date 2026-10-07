@@ -23,6 +23,7 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
+import { checkoutFieldLabel } from '../validation/field-labels';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -71,6 +72,7 @@ import {
 import {
   loadCountryConfig,
   updateStateOptions,
+  type BillingStateFieldsContext,
   type ShippingStateFieldsContext,
   type StateFieldsContext,
 } from './state-fields';
@@ -106,6 +108,7 @@ import {
 } from './postcode-state-check';
 import {
   routeBillingField,
+  routeBillingFieldValue,
   type BillingFieldRoutingContext,
 } from './billing-field-routing';
 import { readFieldValue } from './field-value';
@@ -657,6 +660,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (this.billingFields.size > 0) {
       populateBillingCountryDropdown(this.countryFieldsContext());
+      this.syncBillingCountryField();
+    }
+  }
+
+  /**
+   * Makes the billing country dropdown show the stored billing country, or the shipping one
+   * when none is stored, as the billing toggle does.
+   *
+   * A dropdown with no empty first option (every one `data-next-address` builds) shows its
+   * first country once filled, a country the store never heard of: a shopper who left it
+   * alone got "Country is required" under a filled-in dropdown. The `change` is what stores
+   * a chosen country and loads its provinces.
+   */
+  private syncBillingCountryField(): void {
+    const field = this.billingFields.get('billing-country');
+    if (!(field instanceof HTMLSelectElement)) return;
+
+    const { billingAddress, formData } = useCheckoutStore.getState();
+    const stored = billingAddress?.country ?? '';
+    const shipping: unknown = formData.country;
+    const fallback = typeof shipping === 'string' ? shipping : '';
+    const wanted = stored === '' ? fallback : stored;
+    if (!wanted || ![...field.options].some(o => o.value === wanted)) return;
+
+    field.value = wanted;
+    if (stored !== wanted) {
+      field.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
@@ -882,6 +912,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       if (this.billingFields.size > 0) {
         populateBillingCountryDropdown(this.countryFieldsContext());
+        this.syncBillingCountryField();
       }
 
       // Initialize address autocomplete
@@ -1039,7 +1070,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingFields: this.billingFields,
       updateFormData: data => this.updateFormData(data),
       shippingStateFields: this.shippingStateFieldsContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 
@@ -1175,6 +1206,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     };
   }
 
+  /** The billing path additionally writes the province it shows to the billing address. */
+  private billingStateFieldsContext(): BillingStateFieldsContext {
+    return {
+      ...this.stateFieldsContext(),
+      setBillingProvince: province => {
+        const checkoutStore = useCheckoutStore.getState();
+        if ((checkoutStore.billingAddress?.province ?? '') === province) return;
+        routeBillingFieldValue('billing-province', province, checkoutStore);
+      },
+    };
+  }
+
   /**
    * The shipping path additionally writes form data, clears the province error, and
    * tracks the selected country's config — eight things, the largest context in this
@@ -1220,7 +1263,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private billingAddressRestoreContext(): BillingAddressRestoreContext {
     return {
       ...this.billingFormSetupContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 
@@ -1869,36 +1912,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // For express payments with validation, show a detailed error message
         if (isExpressPayment && requireExpressValidation) {
           const errorFields = Object.keys(validation.errors || {});
-          // const errorCount = errorFields.length;
 
-          // Create a human-readable list of field names
-          const fieldNameMap: Record<string, string> = {
-            email: 'Email',
-            fname: 'First Name',
-            lname: 'Last Name',
-            phone: 'Phone',
-            address1: 'Address',
-            city: 'City',
-            province: 'State/Province',
-            postal: 'ZIP/Postal Code',
-            country: 'Country',
-            'cc-month': 'Expiration Month',
-            'cc-year': 'Expiration Year',
-            'exp-month': 'Expiration Month',
-            'exp-year': 'Expiration Year',
-            'billing-fname': 'Billing First Name',
-            'billing-lname': 'Billing Last Name',
-            'billing-address1': 'Billing Address',
-            'billing-city': 'Billing City',
-            'billing-province': 'Billing State/Province',
-            'billing-postal': 'Billing ZIP/Postal Code',
-            'billing-country': 'Billing Country',
-          };
-
-          const requiredFields = errorFields
-            .map(field => fieldNameMap[field] || field)
+          // `general` is a message of its own, not a field to name.
+          const fieldList = errorFields
+            .filter(field => field !== 'general')
+            .map(field => checkoutFieldLabel(field))
             .join(', ');
-          const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
+          const generalMessage = `Please check the following fields: ${fieldList}`;
           checkoutStore.setError('general', generalMessage);
 
           // Also show payment error to make it more visible
@@ -2204,7 +2224,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return {
       billingFields: this.billingFields,
       postalCodeFormat: this.postalCodeFormatContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 

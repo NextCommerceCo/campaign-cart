@@ -29,7 +29,7 @@ describe('validateExpressFields', () => {
       ['first_name', 'last_name']
     );
 
-    expect(result.errors).toEqual({ lname: 'Last Name is required' });
+    expect(result.errors).toEqual({ lname: 'Last name is required' });
     expect(result.firstErrorField).toBe('lname');
   });
 

@@ -157,6 +157,41 @@ describe('validateBillingAddress', () => {
     ).toThrow(TypeError);
   });
 
+  describe('the billing phone', () => {
+    function phoneField(name: string, required: boolean): void {
+      const input = document.createElement('input');
+      input.setAttribute('data-next-checkout-field', name);
+      input.required = required;
+      document.body.appendChild(input);
+    }
+
+    /** Only the shipping phone was looked at, so a blank required billing one went out. */
+    it('is required when its own field is marked required', () => {
+      phoneField('billing-phone', true);
+
+      const result = validateBillingAddress(
+        createContext(),
+        { ...completeAddress, phone: '' },
+        configs
+      );
+
+      expect(Object.keys(result.errors)).toEqual(['phone']);
+    });
+
+    it('is not required by a required shipping phone', () => {
+      phoneField('phone', true);
+      phoneField('billing-phone', false);
+
+      expect(
+        validateBillingAddress(
+          createContext(),
+          { ...completeAddress, phone: '' },
+          configs
+        ).isValid
+      ).toBe(true);
+    });
+  });
+
   /** A billing city of `12345` used to reach the order while the shipping one was refused. */
   it('checks the city format like the shipping city', () => {
     const result = validateBillingAddress(

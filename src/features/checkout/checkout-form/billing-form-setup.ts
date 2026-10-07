@@ -32,9 +32,10 @@ import {
   SHIPPING_FORM_SELECTOR,
 } from '../constants/selectors';
 
+import { dropDetachedFields } from './field-scanning';
 import {
   updateBillingStateOptions,
-  type StateFieldsContext,
+  type BillingStateFieldsContext,
 } from './state-fields';
 import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
 
@@ -69,6 +70,7 @@ export interface BillingFormSetupContext {
  * rather than inside it.
  */
 export function scanBillingFields(ctx: BillingFormSetupContext): void {
+  dropDetachedFields(ctx.billingFields);
   const billingSelectors = [
     '[os-checkout-field^="billing-"]',
     '[data-next-checkout-field^="billing-"]',
@@ -355,7 +357,7 @@ export interface BillingAddressRestoreContext extends BillingFormSetupContext {
    * is empty until some country fills it, and nothing at boot does — so the stored
    * province has nowhere to land unless this step loads the list first.
    */
-  stateFields: StateFieldsContext;
+  stateFields: BillingStateFieldsContext;
 }
 
 /**

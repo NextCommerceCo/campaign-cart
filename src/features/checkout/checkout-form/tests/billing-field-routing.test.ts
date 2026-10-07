@@ -7,7 +7,7 @@ import {
 import { loadCountryConfig, updateBillingStateOptions } from '../state-fields';
 import { formatPostalCodeInPlace } from '../postal-code-format';
 import { phoneFieldFor, type PhoneField } from '../phone-input';
-import type { StateFieldsContext } from '../state-fields';
+import type { BillingStateFieldsContext } from '../state-fields';
 import type { PostalCodeFormatContext } from '../postal-code-format';
 import { useCheckoutStore } from '@/state/checkout';
 
@@ -37,7 +37,7 @@ function createCtx(
   return {
     billingFields,
     postalCodeFormat: {} as PostalCodeFormatContext,
-    stateFields: {} as StateFieldsContext,
+    stateFields: {} as BillingStateFieldsContext,
   };
 }
 

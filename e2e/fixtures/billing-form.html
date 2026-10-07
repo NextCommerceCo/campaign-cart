@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="next-api-key" content="test-e2e-key" />
+    <title>E2E — Billing form cloned from shipping</title>
+  </head>
+  <body>
+    <h1>Billing form cloned from shipping</h1>
+
+    <!-- A hand-written shipping form the SDK clones into the billing container: each
+         row it copies is a data-next-component="shipping-field-row", and the city,
+         state and postcode sit in a data-next-component="location" box. -->
+    <form data-next-checkout>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="text"
+          id="email"
+          name="email"
+          data-next-checkout-field="email"
+        />
+      </div>
+
+      <div data-next-component="shipping-form">
+        <div class="form-group" data-next-component="shipping-field-row">
+          <label for="fname">First name</label>
+          <input
+            type="text"
+            id="fname"
+            name="fname"
+            data-next-checkout-field="fname"
+          />
+        </div>
+        <div class="form-group" data-next-component="shipping-field-row">
+          <label for="lname">Last name</label>
+          <input
+            type="text"
+            id="lname"
+            name="lname"
+            data-next-checkout-field="lname"
+          />
+        </div>
+        <div class="form-group" data-next-component="shipping-field-row">
+          <label for="country">Country</label>
+          <select
+            id="country"
+            name="country"
+            data-next-checkout-field="country"
+          ></select>
+        </div>
+        <div class="form-group" data-next-component="shipping-field-row">
+          <label for="address1">Address</label>
+          <input
+            type="text"
+            id="address1"
+            name="address1"
+            data-next-checkout-field="address1"
+          />
+        </div>
+        <div data-next-component="location">
+          <div class="form-group" data-next-component="shipping-field-row">
+            <label for="city">City</label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              data-next-checkout-field="city"
+            />
+          </div>
+          <div class="form-group" data-next-component="shipping-field-row">
+            <label for="province">State</label>
+            <select
+              id="province"
+              name="province"
+              data-next-checkout-field="province"
+            ></select>
+          </div>
+          <div class="form-group" data-next-component="shipping-field-row">
+            <label for="postal">ZIP Code</label>
+            <input
+              type="text"
+              id="postal"
+              name="postal"
+              data-next-checkout-field="postal"
+            />
+          </div>
+        </div>
+      </div>
+
+      <label>
+        <input type="checkbox" name="use_shipping_address" checked />
+        Use shipping address as billing address
+      </label>
+      <div data-next-component="different-billing-address">
+        <div data-next-component="billing-form"></div>
+      </div>
+
+      <button type="submit">Place order</button>
+    </form>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

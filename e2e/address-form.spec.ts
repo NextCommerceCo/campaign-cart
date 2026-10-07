@@ -885,6 +885,98 @@ test('a billing postcode right for its country is not refused', async ({
   );
 });
 
+/** The billing address as the checkout store last persisted it. */
+function storedBillingAddress(page: Page) {
+  return () =>
+    page.evaluate(key => {
+      const raw = sessionStorage.getItem(key);
+      const state = raw
+        ? (
+            JSON.parse(raw) as {
+              state?: { billingAddress?: Record<string, string> };
+            }
+          ).state
+        : undefined;
+      return state?.billingAddress ?? null;
+    }, CHECKOUT_KEY);
+}
+
+/** A new billing country used to keep the old country's province (`GB` with state `NY`). */
+test('a new billing country drops the province of the old one', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, 'SW1A 2AA');
+  await page.selectOption(FIELD('billing-country'), 'US');
+  await page.selectOption(FIELD('billing-province'), 'NY');
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'US',
+    province: 'NY',
+  });
+
+  await page.selectOption(FIELD('billing-country'), 'GB');
+
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.province)
+    .toBeUndefined();
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'GB',
+  });
+});
+
+/**
+ * A billing country dropdown the block builds has no empty first option, so once filled
+ * it showed its first country while the store held none: "Country is required" under a
+ * filled-in dropdown, for a shopper who never touched it.
+ */
+test('a billing country dropdown shows the country the store holds', async ({
+  page,
+}) => {
+  await routeAddressService(page, {
+    countries: [
+      { code: 'CA', name: 'Canada' },
+      { code: 'US', name: 'United States' },
+    ],
+    rules: () => ({ ...US_SPEC, states: [{ code: 'NY', name: 'New York' }] }),
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect(page.locator(FIELD('country'))).toHaveValue('US');
+
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('US');
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'US',
+  });
+});
+
+/** Only the shipping phone was looked at, so a blank billing phone the page requires went out. */
+test('a billing phone the country requires is refused when left blank', async ({
+  page,
+}) => {
+  const phoneRequired = {
+    ...US_SPEC,
+    fields: {
+      ...(US_SPEC.fields as Record<string, unknown>),
+      phone_number: ruleField('Phone number', 'tel', { type: 'tel' }),
+    },
+    states: [{ code: 'NY', name: 'New York' }],
+  };
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () => phoneRequired,
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await page.uncheck('input[name="use_shipping_address"]');
+  await expect(page.locator(FIELD('billing-phone'))).toHaveAttribute(
+    'required',
+    ''
+  );
+
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-phone'))).toHaveClass(
+    /next-error-field/
+  );
+});
+
 /** The `lang` of every layout request the block makes, in order. */
 function recordLayoutLangs(page: Page): string[] {
   const langs: string[] = [];
