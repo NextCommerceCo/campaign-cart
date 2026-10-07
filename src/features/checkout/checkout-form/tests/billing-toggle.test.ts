@@ -36,6 +36,7 @@ function context(
       logger,
     },
     billingFields: new Map<string, HTMLElement>(),
+    forgetBillingVerdicts: vi.fn(),
     logger,
     ...overrides,
   } as never;
@@ -87,6 +88,25 @@ describe('handleBillingAddressToggle', () => {
     );
     expect(animation.expandBillingForm).not.toHaveBeenCalled();
     expect(useCheckoutStore.getState().sameAsShipping).toBe(true);
+  });
+
+  /**
+   * Ticked, nothing in the billing section is checked or sent, so a message left in it is
+   * one the shopper cannot act on, and it would be back, unasked, on unticking.
+   */
+  it('takes the billing verdicts away when ticked, and only then', () => {
+    billingSection();
+    const forgetBillingVerdicts = vi.fn();
+    const ctx = context({ forgetBillingVerdicts });
+
+    handleBillingAddressToggle(ctx, toggleEvent(false));
+    vi.advanceTimersByTime(10);
+    expect(forgetBillingVerdicts).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
+    handleBillingAddressToggle(ctx, toggleEvent(true));
+    vi.advanceTimersByTime(10);
+    expect(forgetBillingVerdicts).toHaveBeenCalledTimes(1);
   });
 
   it('expands the section and seeds the billing country from shipping', () => {

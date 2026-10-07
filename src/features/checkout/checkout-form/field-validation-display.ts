@@ -130,6 +130,27 @@ function markValid(field: HTMLElement): void {
   clearErrorLabels(field);
 }
 
+/**
+ * Takes a field back to how it looked before it was judged: no message, no error and no
+ * tick, its value left alone.
+ *
+ * @example
+ * ```ts
+ * resetFieldDisplay(ctx, 'billing-postal'); // the billing section was just ticked away
+ * ```
+ */
+export function resetFieldDisplay(
+  ctx: FieldValidationContext,
+  fieldName: string
+): void {
+  const field = ctx.getFieldByName(fieldName);
+  if (!field) return;
+
+  field.classList.remove('has-error', 'next-error-field', 'no-error');
+  field.closest(FIELD_WRAPPER)?.classList.remove('addErrorIcon', 'addTick');
+  clearErrorLabels(field);
+}
+
 /** True when the field holds nothing a validator could judge. */
 function isEmptyValue(value: string): boolean {
   return !value || value.trim() === '';

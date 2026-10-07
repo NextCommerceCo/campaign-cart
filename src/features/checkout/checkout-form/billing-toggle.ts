@@ -60,6 +60,12 @@ function hasTypedBillingAddress(
 /** What this module needs from the checkout form. */
 export interface BillingToggleContext {
   /**
+   * Takes every verdict off the billing fields and keeps their values. Ticked, nothing in
+   * the section is checked or sent, so nothing in it is the shopper's to fix; unticked again
+   * it comes back as typed, judged only when a field is left or the form submitted.
+   */
+  forgetBillingVerdicts: () => void;
+  /**
    * True while an expand/collapse is running — the same ref `billing-animation.ts` holds,
    * so the guard here and the animation there read one flag rather than two copies.
    */
@@ -138,6 +144,7 @@ export function handleBillingAddressToggle(
     checkoutStore.setSameAsShipping(target.checked);
 
     if (target.checked) {
+      ctx.forgetBillingVerdicts();
       ctx.logger.info('[Billing] Collapsing form...');
       collapseBillingForm(ctx.animation, billingSection);
     } else {

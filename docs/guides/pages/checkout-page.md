@@ -175,7 +175,7 @@ If the fields cannot be loaded, the block shows a generic English address form i
 
 ### Billing address
 
-A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on, laid out for the billing country: choosing another country in the block's own country select rebuilds it for that country, and changing the shipping country leaves it alone. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
+A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on, laid out for the billing country: choosing another country in the block's own country select rebuilds it for that country, and changing the shipping country leaves it alone. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it. While it is checked, nothing in the section is checked or sent with the order, and its error messages are cleared. What the shopper typed stays, so unchecking it again shows the billing address as it was left.
 
 Below is an example of a billing section that closes when the shopper ticks the box.
 

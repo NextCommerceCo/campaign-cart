@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createPressGate,
+  resetFieldDisplay,
   updateFieldValidationDisplay,
   type FieldValidationContext,
 } from '../field-validation-display';
@@ -415,5 +416,24 @@ describe('createPressGate', () => {
     button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
     expect(pressGate.wait()).toBeInstanceOf(Promise);
+  });
+});
+
+describe('resetFieldDisplay', () => {
+  it('takes the message, the error and the tick away, and leaves the value', () => {
+    const { field, wrapper } = makeFieldInFormGroup();
+    field.value = '92503';
+    field.classList.add('has-error', 'next-error-field', 'no-error');
+    wrapper.classList.add('addErrorIcon', 'addTick');
+    const label = document.createElement('div');
+    label.className = 'next-error-label';
+    wrapper.appendChild(label);
+
+    resetFieldDisplay(createCtx(field), 'billing-postal');
+
+    expect(field.className).toBe('');
+    expect(wrapper.classList.contains('addErrorIcon')).toBe(false);
+    expect(wrapper.querySelector('.next-error-label')).toBeNull();
+    expect(field.value).toBe('92503');
   });
 });

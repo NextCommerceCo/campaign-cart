@@ -410,3 +410,44 @@ test.describe('a shopper moving an address to another country', () => {
     await expect(page.locator(FIELD('country'))).not.toHaveValue('CA');
   });
 });
+
+/**
+ * Ticked, the billing section is ignored: nothing in it is checked or sent. Its messages
+ * stayed, though, and came back on unticking before the shopper had done anything, under
+ * values they had not touched since. What they typed is kept; only the verdicts go.
+ */
+test('ticking the billing section away drops its messages and keeps what was typed', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await setSameAsShipping(page, false);
+  await page.fill(FIELD('billing-fname'), 'Gwen');
+  await page.fill(FIELD('billing-address1'), '9292 Magnolia Ave');
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('billing-lname'))).toHaveClass(
+    /next-error-field/
+  );
+
+  await setSameAsShipping(page, true);
+  await setSameAsShipping(page, false);
+
+  await expect(page.locator(FIELD('billing-fname'))).toHaveValue('Gwen');
+  await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
+    '9292 Magnolia Ave'
+  );
+  // The shipping fields are empty here, and keep their own messages.
+  await expect(
+    page.locator(
+      '[data-next-component="different-billing-address"] .next-error-label'
+    )
+  ).toHaveCount(0);
+  await expect(page.locator(FIELD('billing-lname'))).not.toHaveClass(
+    /next-error-field/
+  );
+
+  // Judged again on the next submit, which is the shopper's own doing.
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('billing-lname'))).toHaveClass(
+    /next-error-field/
+  );
+});

@@ -89,6 +89,7 @@ import {
 } from './fixed-address-values';
 import {
   createPressGate,
+  resetFieldDisplay,
   updateFieldValidationDisplay,
   type PressGate,
   type FieldValidationContext,
@@ -2255,14 +2256,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       ) {
         field.value = '';
       }
-      useCheckoutStore.getState().clearError(fieldName);
-      this.validator.clearError(fieldName);
-      updateFieldValidationDisplay(
-        this.fieldValidationContext(),
-        'blur',
-        fieldName,
-        ''
-      );
+      this.forgetVerdict(fieldName);
     }
 
     if (!prefix) {
@@ -2276,6 +2270,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         ...emptied,
       });
     }
+  }
+
+  /** Drops a field's verdict everywhere it is kept: the store, the validator, the page. */
+  private forgetVerdict(fieldName: string): void {
+    useCheckoutStore.getState().clearError(fieldName);
+    this.validator.clearError(fieldName);
+    resetFieldDisplay(this.fieldValidationContext(), fieldName);
   }
 
   /** The two things `showPhoneVerdict` needs from this form. */
@@ -2545,6 +2546,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       debounceTimer: this.billingAnimationDebounceTimer,
       animation: this.billingAnimationContext(),
       billingFields: this.billingFields,
+      forgetBillingVerdicts: () => {
+        for (const name of this.billingFields.keys()) this.forgetVerdict(name);
+      },
       logger: this.logger,
     };
   }
