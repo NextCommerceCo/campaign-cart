@@ -46,6 +46,17 @@ function provinceRowOf(provinceField: HTMLElement): HTMLElement {
   return alone ? row : provinceField;
 }
 
+/**
+ * The country each province field was last asked to show. Countries answer in any order,
+ * and a slow one used to land last: Canadian provinces under a dropdown reading United
+ * States, a stale province stored with them.
+ */
+const requestedCountry = new WeakMap<HTMLSelectElement, string>();
+
+function isLatestRequest(field: HTMLSelectElement, country: string): boolean {
+  return requestedCountry.get(field) === country;
+}
+
 /** Milliseconds an in-flight request stays cached after settling. */
 const PROMISE_CLEANUP_MS = 100;
 
@@ -226,6 +237,7 @@ export async function updateStateOptions(
   country: string,
   provinceField: HTMLSelectElement
 ): Promise<void> {
+  requestedCountry.set(provinceField, country);
   if (!country || country.trim() === '') {
     setPlaceholderOnly(provinceField, 'Select Country First');
     return;
@@ -243,6 +255,7 @@ export async function updateStateOptions(
     const countryData = await loadCountryStates(ctx, country, () => {
       ctx.logger.debug(`Reusing existing state loading promise for ${country}`);
     });
+    if (!isLatestRequest(provinceField, country)) return;
 
     ctx.currentCountryConfig.value = countryData.countryConfig;
 
@@ -308,10 +321,11 @@ export async function updateStateOptions(
       );
     }
   } catch (error) {
+    if (!isLatestRequest(provinceField, country)) return;
     ctx.logger.error('Failed to load states:', error);
     provinceField.innerHTML = originalHTML;
   } finally {
-    provinceField.disabled = false;
+    if (isLatestRequest(provinceField, country)) provinceField.disabled = false;
   }
 }
 
@@ -336,6 +350,7 @@ export async function updateBillingStateOptions(
   billingProvinceField: HTMLSelectElement,
   province?: string
 ): Promise<void> {
+  requestedCountry.set(billingProvinceField, country);
   if (!country || country.trim() === '') {
     setPlaceholderOnly(billingProvinceField, 'Select Country First');
     ctx.setBillingProvince('');
@@ -352,6 +367,7 @@ export async function updateBillingStateOptions(
         `Reusing existing state loading promise for ${country} (billing)`
       );
     });
+    if (!isLatestRequest(billingProvinceField, country)) return;
 
     updateBillingFormLabels(ctx.countryFields, countryData.countryConfig);
     renderStates(billingProvinceField, countryData);
@@ -361,9 +377,12 @@ export async function updateBillingStateOptions(
     }
     ctx.setBillingProvince(billingProvinceField.value);
   } catch (error) {
+    if (!isLatestRequest(billingProvinceField, country)) return;
     ctx.logger.error('Failed to load billing states:', error);
     billingProvinceField.innerHTML = originalHTML;
   } finally {
-    billingProvinceField.disabled = false;
+    if (isLatestRequest(billingProvinceField, country)) {
+      billingProvinceField.disabled = false;
+    }
   }
 }

@@ -206,3 +206,39 @@ test('a billing address typed, closed and reopened is the one submit reads', asy
   }
 });
 
+/**
+ * Countries answer in any order. A slow one used to land last and win: the provinces of a
+ * country the shopper had already moved off, under a dropdown naming the new one.
+ */
+test('the province list is the country chosen last, whichever answer arrives last', async ({
+  page,
+}) => {
+  await routeAddressService(page, {
+    countries: [
+      { code: 'CA', name: 'Canada' },
+      { code: 'US', name: 'United States' },
+    ],
+    rules: async code => {
+      if (code === 'CA') {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        return { ...US_RULES, states: [{ code: 'ON', name: 'Ontario' }] };
+      }
+      return { ...US_RULES, states: [{ code: 'NY', name: 'New York' }] };
+    },
+  });
+  await bootSdk(page, FIXTURE);
+  await page.fill(FIELD('address1'), '1 Main St');
+
+  await page.selectOption(FIELD('country'), 'CA');
+  await page.selectOption(FIELD('country'), 'US');
+  // Well after the Canadian answer has arrived.
+  await page.waitForTimeout(1500);
+
+  await expect(page.locator(FIELD('country'))).toHaveValue('US');
+  await expect(
+    page.locator(`${FIELD('province')} option[value="NY"]`)
+  ).toHaveCount(1);
+  await expect(
+    page.locator(`${FIELD('province')} option[value="ON"]`)
+  ).toHaveCount(0);
+});

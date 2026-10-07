@@ -501,3 +501,61 @@ describe('countryConfigs', () => {
     expect(ctx.countryConfigs.has('GB')).toBe(false);
   });
 });
+
+// ─── answers arriving out of order ──────────────────────────────────────────
+
+/** Countries answer in any order; a slow one used to land last and win. */
+describe('a country answer that arrives after a newer request', () => {
+  function deferredRules() {
+    const pending = new Map<string, (data: CountryStatesData) => void>();
+    const { service } = createFakeI18nRules(
+      country =>
+        new Promise<CountryStatesData>(resolve => pending.set(country, resolve))
+    );
+    return {
+      service,
+      answer: (country: string, data: CountryStatesData) =>
+        pending.get(country)?.(data),
+    };
+  }
+  const canada = createStatesData({
+    states: [{ code: 'ON', name: 'Ontario' }],
+  });
+  const us = createStatesData({
+    states: [{ code: 'NY', name: 'New York' }],
+  });
+
+  it('is dropped by the shipping list, which keeps the newer country', async () => {
+    const { service, answer } = deferredRules();
+    const ctx = createShippingCtx({ i18nRules: service });
+    const { field } = createFieldWithContainer();
+
+    const first = updateStateOptions(ctx, 'CA', field);
+    const second = updateStateOptions(ctx, 'US', field);
+    answer('US', us);
+    await second;
+    answer('CA', canada);
+    await first;
+
+    expect([...field.options].map(o => o.value)).toContain('NY');
+    expect([...field.options].map(o => o.value)).not.toContain('ON');
+    expect(field.disabled).toBe(false);
+  });
+
+  it('is dropped by the billing list, which stores nothing for it', async () => {
+    const { service, answer } = deferredRules();
+    const setBillingProvince = vi.fn();
+    const ctx = createBillingCtx({ i18nRules: service, setBillingProvince });
+    const { field } = createFieldWithContainer();
+
+    const first = updateBillingStateOptions(ctx, 'CA', field);
+    const second = updateBillingStateOptions(ctx, 'US', field, 'NY');
+    answer('US', us);
+    await second;
+    answer('CA', canada);
+    await first;
+
+    expect(field.value).toBe('NY');
+    expect(setBillingProvince.mock.calls).toEqual([['NY']]);
+  });
+});
