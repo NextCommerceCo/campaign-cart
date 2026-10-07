@@ -610,3 +610,32 @@ test('a real phone is accepted and sent in E.164', async ({ page }) => {
   expect(body.shipping_address.phone_number).toBe('+14155552671');
   expect(body.user.phone_number).toBe('+14155552671');
 });
+
+/**
+ * A message under the phone names the country it was judged for, with that country's
+ * example. Moving the address to a country the number is right for left it there, under a
+ * number with the new country's flag and mask: the field was never judged again.
+ */
+test('a phone marked wrong for one country is judged again when the address moves', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await stubCardCheckout(page, { country: 'TH' });
+  await bootSdk(page, CHECKOUT);
+  await expectCountry(page, 'TH');
+  // For its first 30 s the autofill poll dispatches a `change` on any field whose value
+  // moved while it was not focused, and the new country's mask moves this one: that
+  // judged it again by accident. A shopper who changes country later gets no such help.
+  await page.waitForTimeout(31_000);
+
+  const input = page.locator(PHONE);
+  await input.fill('4155552671');
+  await input.blur();
+  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(1);
+
+  await page.selectOption('[data-next-checkout-field="country"]', 'US');
+  await expectCountry(page, 'US');
+
+  await expect(page.locator(`${PHONE}.next-error-field`)).toHaveCount(0);
+  await expect(input).toHaveValue('(415) 555-2671');
+});

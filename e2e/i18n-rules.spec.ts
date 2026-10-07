@@ -310,6 +310,33 @@ test.describe('postcode formatting', () => {
     await expect(postal).toHaveValue('SW1 1AA');
   });
 
+  /**
+   * The message under a postcode was written for the country it was judged in. Moving the
+   * address left it there even where the postcode is right for the new country, until the
+   * shopper happened to leave the field again.
+   */
+  test('a postcode marked wrong is judged again for the country the address moves to', async ({
+    page,
+  }) => {
+    await bootSdk(page, FIXTURE);
+    await chooseCountry(page, 'GB', 'Postcode');
+    const postal = page.locator(POSTAL);
+    await postal.fill('12345');
+    await postal.blur();
+    await expect(postal).toHaveClass(/next-error-field/);
+
+    // Still wrong in Canada, now in Canada's words.
+    await chooseCountry(page, 'CA', 'Postal Code');
+    await expect(postal).toHaveClass(/next-error-field/);
+    await expect(
+      page.locator('.form-group', { has: postal }).locator('.next-error-label')
+    ).toContainText('K1A 0B1');
+
+    // The US checks no pattern here, so nothing is wrong with it.
+    await chooseCountry(page, 'US', 'ZIP Code');
+    await expect(postal).not.toHaveClass(/next-error-field/);
+  });
+
   test('a formatted GB postcode passes the form validation', async ({
     page,
   }) => {

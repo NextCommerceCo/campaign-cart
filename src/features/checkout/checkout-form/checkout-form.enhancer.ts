@@ -47,7 +47,9 @@ import {
   initializePhoneInputs,
   showPhoneVerdict,
   type PhoneField,
+  type PhoneFieldType,
   type PhoneInputContext,
+  type PhoneVerdictContext,
 } from './phone-input';
 import { normalizeStoredPhones } from './phone-normalization';
 import { validateExpressFields } from './express-field-validation';
@@ -1301,6 +1303,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       readPhoneNumber: (number, country) =>
         this.i18nRules.readPhoneNumber(number, country),
       updateFormData: data => this.updateFormData(data),
+      onCountryRead: (type, input) => this.judgePhoneAgain(type, input),
       logger: this.logger,
     };
   }
@@ -2188,6 +2191,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       target.value
     );
 
+    // After routing, which has loaded the new country's rules into `countryConfigs`.
+    if (fieldName === 'country' || fieldName === 'billing-country') {
+      this.judgeAgainIfMarked(
+        fieldName === 'country' ? 'postal' : 'billing-postal'
+      );
+    }
+
     // After the display, so a postcode its state does not use keeps the message the
     // blur's tick would otherwise replace.
     if (
@@ -2202,14 +2212,50 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       (fieldName === 'phone' || fieldName === 'billing-phone') &&
       target instanceof HTMLInputElement
     ) {
-      void showPhoneVerdict(
-        {
-          showError: (name, message) => this.validator.showError(name, message),
-          clearError: name => this.validator.clearError(name),
-        },
-        fieldName,
-        target
-      );
+      void showPhoneVerdict(this.phoneVerdictContext(), fieldName, target);
+    }
+  }
+
+  /** The two things `showPhoneVerdict` needs from this form. */
+  private phoneVerdictContext(): PhoneVerdictContext {
+    return {
+      showError: (name, message) => this.validator.showError(name, message),
+      clearError: name => this.validator.clearError(name),
+    };
+  }
+
+  /**
+   * Judges a field again as if it were left, when the message under it was written for the
+   * address's last country: a postcode or phone refused there can be right for this one.
+   *
+   * Only a field already marked: one restored at boot is not judged until it is left, and
+   * one the shopper is in is judged when they leave it.
+   *
+   * @returns Whether the field was judged.
+   */
+  private judgeAgainIfMarked(name: string): boolean {
+    const field = this.getFieldByName(name);
+    if (
+      !(field instanceof HTMLInputElement) ||
+      !field.classList.contains('next-error-field') ||
+      document.activeElement === field
+    ) {
+      return false;
+    }
+    updateFieldValidationDisplay(
+      this.fieldValidationContext(),
+      'blur',
+      name,
+      field.value
+    );
+    return true;
+  }
+
+  /** {@link judgeAgainIfMarked} for a phone once it has been read for the new country. */
+  private judgePhoneAgain(type: PhoneFieldType, input: HTMLInputElement): void {
+    const name = type === 'billing' ? 'billing-phone' : 'phone';
+    if (this.judgeAgainIfMarked(name)) {
+      void showPhoneVerdict(this.phoneVerdictContext(), name, input);
     }
   }
 

@@ -84,6 +84,12 @@ export interface PhoneInputContext {
    * the narrower type is what a fake in a test has to satisfy.
    */
   updateFormData: (data: Record<string, string>) => void;
+  /**
+   * Called once a field's number has been read for the country it now follows, so the
+   * form can judge it again: a message written for the last country, with that country's
+   * example, would otherwise stay under a number that is right for this one.
+   */
+  onCountryRead?: (type: PhoneFieldType, input: HTMLInputElement) => void;
   logger: Logger;
 }
 
@@ -100,6 +106,11 @@ interface PhoneFieldOptions {
   ) => Promise<PhoneNumberResult | undefined>;
   /** Receives what to store for the number after every edit, and once it is read. */
   onNumber: (value: string) => void;
+  /**
+   * Called once a number in the field has been read for the country the field now follows,
+   * the first one included: a verdict shown for the last country is stale.
+   */
+  onCountryRead?: () => void;
 }
 
 /** Where the field puts the E.164 number a page can read, while it can vouch for it. */
@@ -507,6 +518,12 @@ export class PhoneField implements PhoneNumberSource {
         if (this.input.value.trim()) this.settle();
         else this.publish();
       });
+    if (this.input.value.trim() && this.options.onCountryRead) {
+      void this.whenReady().then(() => {
+        if (load !== this.loads || this.listeners.signal.aborted) return;
+        this.options.onCountryRead?.();
+      });
+    }
   }
 
   /** Writes the number in its country's mask; a field with no rules is left as typed. */
@@ -590,6 +607,7 @@ function initializePhoneInput(
         loadRules: ctx.loadPhoneRules,
         readNumber: ctx.readPhoneNumber,
         onNumber: value => storeNumber(ctx, type, value),
+        onCountryRead: () => ctx.onCountryRead?.(type, phoneField),
       })
     );
   } catch (error) {
