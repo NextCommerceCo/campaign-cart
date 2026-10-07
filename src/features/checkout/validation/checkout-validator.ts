@@ -34,8 +34,13 @@ import {
   showError,
   type ErrorDisplayContext,
 } from './error-display';
-import { applyRule, createValidationRules } from './field-rules';
-import { fieldMessage, type MessageKey } from './field-messages';
+import {
+  addressTypeOf,
+  applyRule,
+  createValidationRules,
+  type FieldRuleContext,
+} from './field-rules';
+import { fieldMessage, postalMessage, type MessageKey } from './field-messages';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
@@ -78,6 +83,7 @@ export class CheckoutValidator {
   private phoneSource?: (
     type: 'shipping' | 'billing'
   ) => PhoneNumberSource | undefined;
+  private postcodeCountry?: FieldRuleContext['postcodeCountry'];
 
   // Validation rules for form fields
   private rules: Map<string, ValidationRule[]> = new Map();
@@ -115,6 +121,22 @@ export class CheckoutValidator {
     resolve: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined
   ): void {
     this.phoneSource = resolve;
+  }
+
+  /**
+   * Installs the lookup that tells the per-field postcode check which country, and which
+   * of its rules, an address's postcode is checked against. Without it, blur and autofill
+   * mark any postcode valid, and that verdict replaces the message submit has just shown.
+   *
+   * @example
+   * ```ts
+   * validator.setPostcodeCountry(type => ({ country: 'GB', config: gbConfig }));
+   * ```
+   */
+  public setPostcodeCountry(
+    resolve: NonNullable<FieldRuleContext['postcodeCountry']>
+  ): void {
+    this.postcodeCountry = resolve;
   }
 
   // ============================================================================
@@ -170,19 +192,33 @@ export class CheckoutValidator {
     let isValid = true;
     let message: string | undefined;
 
-    const ruleContext = {
+    const ruleContext: FieldRuleContext = {
       i18nRules: this.i18nRules,
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
+      }),
+      ...(this.postcodeCountry !== undefined && {
+        postcodeCountry: this.postcodeCountry,
       }),
       fieldName: name,
     };
 
     for (const rule of rules) {
       if (!applyRule(ruleContext, rule, value, context)) {
+        const postcode =
+          rule.type === 'postal'
+            ? this.postcodeCountry?.(addressTypeOf(name))
+            : undefined;
         message =
           (rule.type === 'custom' ? rule.message : undefined) ??
-          fieldMessage(this.i18nRules, RULE_MESSAGE[rule.type], name);
+          (postcode
+            ? postalMessage(
+                this.i18nRules,
+                name,
+                postcode.country,
+                postcode.config
+              )
+            : fieldMessage(this.i18nRules, RULE_MESSAGE[rule.type], name));
         this.setError(name, message);
         isValid = false;
         break;

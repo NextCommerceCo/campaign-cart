@@ -4,7 +4,7 @@ import {
   routeBillingFieldValue,
   type BillingFieldRoutingContext,
 } from '../billing-field-routing';
-import { updateBillingStateOptions } from '../state-fields';
+import { loadCountryConfig, updateBillingStateOptions } from '../state-fields';
 import { formatPostalCodeInPlace } from '../postal-code-format';
 import { phoneFieldFor, type PhoneField } from '../phone-input';
 import type { StateFieldsContext } from '../state-fields';
@@ -13,6 +13,7 @@ import { useCheckoutStore } from '@/state/checkout';
 
 vi.mock('../state-fields', () => ({
   updateBillingStateOptions: vi.fn().mockResolvedValue(undefined),
+  loadCountryConfig: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../postal-code-format', () => ({
@@ -173,7 +174,7 @@ describe('routeBillingField', () => {
     );
   });
 
-  it('does nothing extra when the page has no billing province dropdown', async () => {
+  it('still loads the billing country config when the page has no billing province dropdown', async () => {
     await routeBillingField(
       createCtx(),
       'billing-country',
@@ -182,6 +183,7 @@ describe('routeBillingField', () => {
     );
 
     expect(updateBillingStateOptions).not.toHaveBeenCalled();
+    expect(loadCountryConfig).toHaveBeenCalledWith(expect.anything(), 'CA');
     expect(useCheckoutStore.getState().billingAddress?.country).toBe('CA');
   });
 

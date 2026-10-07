@@ -763,6 +763,124 @@ test('a billing block builds the whole address, names and phone included', async
   ).toHaveCount(8);
 });
 
+/**
+ * A billing postcode is checked against the billing country
+ * ([#115](https://github.com/NextCommerceCo/campaign-cart/issues/115)). GB has no states,
+ * so its block builds no province dropdown, and that refill was the only thing that put a
+ * country's postcode rules where the check reads them: a billing country the shipping side
+ * never loaded passed any postcode, and the order was sent for the API to refuse.
+ */
+const GB_SPEC = {
+  ...countryRules(
+    'GB',
+    [
+      ['country'],
+      ['first_name', 'last_name'],
+      ['line1'],
+      ['city'],
+      ['postcode'],
+    ],
+    {
+      country: ruleField('Country', 'country', {
+        type: 'select',
+        options: 'countries',
+      }),
+      first_name: ruleField('First name', 'given-name'),
+      last_name: ruleField('Last name', 'family-name'),
+      line1: ruleField('Address', 'address-line1'),
+      city: ruleField('Town', 'address-level2'),
+      postcode: ruleField(
+        'Postcode',
+        'postal-code',
+        { type: 'text', max_length: 8 },
+        {
+          format: {
+            pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
+            example: 'SW1A 0AA',
+          },
+        }
+      ),
+    }
+  ),
+};
+
+/** A visitor typing `postcode` into a GB billing block, and leaving the field. */
+async function billingPostcodeInGb(
+  page: Page,
+  postcode: string
+): Promise<void> {
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'GB', name: 'United Kingdom' },
+    ],
+    rules: country =>
+      country === 'GB'
+        ? GB_SPEC
+        : { ...US_SPEC, states: [{ code: 'NY', name: 'New York' }] },
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await page.uncheck('input[name="use_shipping_address"]');
+  await page.selectOption(FIELD('billing-country'), 'GB');
+  await expect(page.locator(FIELD('billing-city'))).toHaveAttribute(
+    'placeholder',
+    'Town'
+  );
+  await expect(page.locator(FIELD('billing-province'))).toHaveCount(0);
+
+  await page.fill(FIELD('billing-address1'), '10 Downing Street');
+  await expect(page.locator(FIELD('billing-postal'))).toBeVisible();
+  await page.fill(FIELD('billing-postal'), postcode);
+  await page.locator(FIELD('billing-postal')).blur();
+}
+
+/** Submits, and waits for the submit check to have marked the fields it refuses. */
+async function submitAndSettle(page: Page): Promise<void> {
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+}
+
+test('a billing postcode wrong for its country shows a message when the field is left', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, '99999');
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(
+    /next-error-field/
+  );
+  await expect(
+    page.locator('[data-next-address-field="billing-postal"] .next-error-label')
+  ).toContainText('SW1A 0AA');
+});
+
+/**
+ * Read after submit has settled on purpose: the autofill poll fires a `change` on a typed
+ * field a moment after it is left, and per-field validation used to mark any postcode
+ * valid, so the message went away on its own.
+ */
+test('a billing postcode wrong for its country is still refused after submit', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, '99999');
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(
+    /next-error-field/
+  );
+});
+
+test('a billing postcode right for its country is not refused', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, 'SW1A 2AA');
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(/no-error/);
+  await expect(page.locator(FIELD('billing-postal'))).not.toHaveClass(
+    /next-error-field/
+  );
+});
+
 /** The `lang` of every layout request the block makes, in order. */
 function recordLayoutLangs(page: Page): string[] {
   const langs: string[] = [];

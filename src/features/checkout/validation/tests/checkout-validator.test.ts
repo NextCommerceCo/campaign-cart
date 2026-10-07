@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 import { CheckoutValidator, VALIDATION_PATTERNS } from '../checkout-validator';
+import { validateBillingAddress } from '../billing-address-validation';
 
 function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -133,6 +135,51 @@ describe('validateField', () => {
       isValid: true,
     });
     expect(validator.validateField('province', '')).toEqual({ isValid: true });
+  });
+});
+
+/**
+ * Issue #115: blur and submit judge a billing postcode by the same country and give the
+ * same message, so neither can repaint what the other decided.
+ */
+describe('validateField on a postcode', () => {
+  const gbConfig = {
+    postcodeExample: 'SW1A 0AA',
+    stateRequired: false,
+  } as CountryConfig;
+
+  it('refuses a billing postcode its country refuses, in the submit check’s words', () => {
+    const { validator, i18nRules } = createValidator(['billing-postal']);
+    i18nRules.validatePostalCode.mockReturnValue(false);
+    validator.setPostcodeCountry(type =>
+      type === 'billing' ? { country: 'GB', config: gbConfig } : undefined
+    );
+
+    const blur = validator.validateField('billing-postal', '99999');
+    const submit = validateBillingAddress(
+      { i18nRules },
+      { postal: '99999', country: 'GB' },
+      new Map([['GB', gbConfig]])
+    );
+
+    expect(blur.isValid).toBe(false);
+    expect(blur.message).toContain('SW1A 0AA');
+    expect(blur.message).toBe(submit.errors.postal);
+    expect(i18nRules.validatePostalCode).toHaveBeenCalledWith(
+      '99999',
+      'GB',
+      gbConfig
+    );
+  });
+
+  it('passes a postcode while its country has no rules loaded', () => {
+    const { validator, i18nRules } = createValidator(['postal']);
+    i18nRules.validatePostalCode.mockReturnValue(false);
+    validator.setPostcodeCountry(() => undefined);
+
+    expect(validator.validateField('postal', 'ABCDE')).toEqual({
+      isValid: true,
+    });
   });
 });
 

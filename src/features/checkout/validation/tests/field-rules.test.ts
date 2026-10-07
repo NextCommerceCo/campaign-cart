@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { CountryConfig } from '@/core/i18n-rules';
+
 import {
   applyRule,
   createValidationRules,
@@ -56,6 +58,7 @@ describe('createValidationRules', () => {
 
     expect([...rules.keys()].sort()).toEqual([
       'address1',
+      'billing-postal',
       'city',
       'country',
       'email',
@@ -76,34 +79,26 @@ describe('createValidationRules', () => {
   });
 
   /**
-   * DEFECT (left as found) — `applyRule` implements `postal` and `custom`, but the table
-   * is the only producer of rules and it produces neither: `postal` gets `required` alone.
-   * There is no public method to register a rule either, so both branches, and the
-   * `default` arm, are dead code.
-   *
-   * What the shopper sees: type `ABCDE` into a US ZIP field and blur it. The field goes
-   * green, because the only rule that ran was "not empty". The format is not checked until
-   * they press pay, at which point `form-validation.ts` runs the country check and the
-   * field they thought was accepted turns red. The per-field and submit-time paths
-   * disagree about the same value.
+   * Issue #115: `postal` used to get `required` alone, so blur ticked `ABCDE` in a US ZIP
+   * field, and the browser-autofill poll's `change` ticked it again after submit had
+   * marked it, wiping the submit message.
    */
-  it('DEFECT: no rule of type postal or custom is ever created, so blur never checks the format', () => {
+  it('checks both postcodes against their country, the billing one without required', () => {
+    const rules = createValidationRules();
+
+    expect(rules.get('postal')?.map(r => r.type)).toEqual([
+      'required',
+      'postal',
+    ]);
+    expect(rules.get('billing-postal')?.map(r => r.type)).toEqual(['postal']);
+  });
+
+  it('creates no custom rule, so that branch stays unreachable', () => {
     const everyRuleType = [...createValidationRules().values()]
       .flat()
       .map(r => r.type);
 
-    expect(everyRuleType).not.toContain('postal');
     expect(everyRuleType).not.toContain('custom');
-
-    // The branch works — nothing reaches it.
-    const ctx = createContext({
-      i18nRules: { validatePostalCode: vi.fn().mockReturnValue(false) },
-    });
-    const context = {
-      country: 'US',
-      countryConfigs: new Map([['US', {} as any]]),
-    };
-    expect(applyRule(ctx, { type: 'postal' }, 'ABCDE', context)).toBe(false);
   });
 });
 
@@ -124,15 +119,33 @@ describe('applyRule', () => {
     expect(applyRule(ctx, { type: 'phone' }, '')).toBe(true);
   });
 
-  it('postal passes when the country is unknown to the config map', () => {
+  it('postal checks a billing postcode against the billing country', () => {
+    const gbConfig = { postcodeExample: 'SW1A 0AA' } as CountryConfig;
+    const asked: string[] = [];
     const validatePostalCode = vi.fn().mockReturnValue(false);
-    const ctx = createContext({ i18nRules: { validatePostalCode } });
-    expect(
-      applyRule(ctx, { type: 'postal' }, 'ABCDE', {
-        country: 'US',
-        countryConfigs: new Map(),
-      })
-    ).toBe(true);
+    const ctx = createContext({
+      i18nRules: { validatePostalCode },
+      postcodeCountry: type => {
+        asked.push(type);
+        return { country: 'GB', config: gbConfig };
+      },
+      fieldName: 'billing-postal',
+    });
+
+    expect(applyRule(ctx, { type: 'postal' }, '99999')).toBe(false);
+    expect(asked).toEqual(['billing']);
+    expect(validatePostalCode).toHaveBeenCalledWith('99999', 'GB', gbConfig);
+  });
+
+  it('postal passes while the country has no rules loaded', () => {
+    const validatePostalCode = vi.fn().mockReturnValue(false);
+    const ctx = createContext({
+      i18nRules: { validatePostalCode },
+      postcodeCountry: () => undefined,
+      fieldName: 'postal',
+    });
+
+    expect(applyRule(ctx, { type: 'postal' }, 'ABCDE')).toBe(true);
     expect(validatePostalCode).not.toHaveBeenCalled();
   });
 

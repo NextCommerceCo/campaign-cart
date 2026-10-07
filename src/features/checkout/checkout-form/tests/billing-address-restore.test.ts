@@ -274,6 +274,7 @@ function createRestoreCtx(
         billingFields,
         countries: [],
       },
+      countryConfigs: new Map(),
     },
     ...overrides,
   };

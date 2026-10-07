@@ -27,6 +27,7 @@ import {
   type PostalCodeFormatContext,
 } from './postal-code-format';
 import {
+  loadCountryConfig,
   updateBillingStateOptions,
   type StateFieldsContext,
 } from './state-fields';
@@ -151,6 +152,8 @@ export async function routeBillingField(
         billingProvinceField,
         checkoutStore.formData.province
       );
+    } else {
+      await loadCountryConfig(ctx.stateFields, target.value);
     }
     // Currency is location-based only, not affected by billing or shipping country
   }

@@ -69,6 +69,7 @@ import {
   type CountryFieldsContext,
 } from './country-fields';
 import {
+  loadCountryConfig,
   updateStateOptions,
   type ShippingStateFieldsContext,
   type StateFieldsContext,
@@ -444,6 +445,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private initializeValidator(): void {
     this.validator = new CheckoutValidator(this.logger, this.i18nRules);
+    // The country each address's validation reads: the store, as on submit.
+    this.validator.setPostcodeCountry(type => {
+      const { formData, billingAddress } = useCheckoutStore.getState();
+      const country: unknown =
+        type === 'billing' ? billingAddress?.country : formData.country;
+      if (typeof country !== 'string') return undefined;
+      const config = this.countryConfigs.get(country);
+      return config ? { country, config } : undefined;
+    });
   }
 
   private cloneBillingFormFromShipping(): void {
@@ -1158,18 +1168,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       i18nRules: this.i18nRules,
       logger: this.logger,
       countryFields: this.countryFieldsContext(),
+      countryConfigs: this.countryConfigs,
     };
   }
 
   /**
    * The shipping path additionally writes form data, clears the province error, and
-   * caches the resolved country config — eight things, the largest context in this
+   * tracks the selected country's config — eight things, the largest context in this
    * folder. That size is the honest measure of how entangled filling this one field is.
    */
   private shippingStateFieldsContext(): ShippingStateFieldsContext {
     return {
       ...this.stateFieldsContext(),
-      countryConfigs: this.countryConfigs,
       currentCountryConfig: this.currentCountryConfig,
       updateFormData: data => this.updateFormData(data),
       clearError: field => this.clearError(field),
@@ -1643,6 +1653,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
+   * Puts the config of each address country into `countryConfigs` before a validation
+   * reads it. The postcode check passes a country it has no config for, and only a
+   * province `<select>` refill caches one — so a billing country picked in a block with no
+   * province field (GB) would otherwise send any postcode.
+   */
+  private async loadAddressCountryConfigs(): Promise<void> {
+    const { formData, billingAddress, sameAsShipping } =
+      useCheckoutStore.getState();
+    const countries = [
+      formData.country as unknown,
+      sameAsShipping ? undefined : billingAddress?.country,
+    ].filter(
+      (country): country is string =>
+        typeof country === 'string' && country !== ''
+    );
+    await Promise.all(
+      countries.map(country =>
+        loadCountryConfig(this.stateFieldsContext(), country)
+      )
+    );
+  }
+
+  /**
    * The billing pair every validation path must be given: the separate billing address the
    * shopper entered, and whether they asked for one at all.
    *
@@ -1695,6 +1728,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // A step gate that skips this lets a bad number through to a page where the field is
     // no longer on screen to correct.
     await this.settlePhoneNumbers();
+    await this.loadAddressCountryConfigs();
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
@@ -1800,6 +1834,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         );
       } else {
         // Otherwise use full validation
+        await this.loadAddressCountryConfigs();
         validation = await this.validator.validateForm(
           checkoutStore.formData,
           this.countryConfigs,
@@ -2255,6 +2290,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         target.value,
         provinceField
       );
+    } else {
+      await loadCountryConfig(this.stateFieldsContext(), target.value);
     }
 
     // Save the user's country selection to sessionStorage

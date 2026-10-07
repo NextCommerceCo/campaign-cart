@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   updateStateOptions,
   updateBillingStateOptions,
+  loadCountryConfig,
   type ShippingStateFieldsContext,
   type StateFieldsContext,
 } from '../state-fields';
@@ -112,6 +113,7 @@ function createBillingCtx(
     i18nRules: createFakeI18nRules().service,
     logger: createMockLogger() as unknown as Logger,
     countryFields: createCountryFieldsCtx(),
+    countryConfigs: new Map(),
     ...overrides,
   };
 }
@@ -392,5 +394,54 @@ describe('updateBillingStateOptions', () => {
 
     expect(updateFormData).not.toHaveBeenCalled();
     expect(clearError).not.toHaveBeenCalled();
+  });
+});
+
+// ─── the country config cache ────────────────────────────────────────────────
+
+// Issue #115: a billing country the shipping side never loaded had no config, and the
+// postcode check passes a country it has no config for.
+describe('countryConfigs', () => {
+  const gbConfig = createCountryConfig({ postcodeLabel: 'Postcode' });
+  const gbRules = (): ReturnType<typeof createFakeI18nRules> =>
+    createFakeI18nRules(() =>
+      Promise.resolve(createStatesData({ countryConfig: gbConfig, states: [] }))
+    );
+
+  it('caches the billing country config when the billing province list loads', async () => {
+    const { field } = createFieldWithContainer();
+    const ctx = createBillingCtx({ i18nRules: gbRules().service });
+
+    await updateBillingStateOptions(ctx, 'GB', field);
+
+    expect(ctx.countryConfigs.get('GB')).toBe(gbConfig);
+  });
+
+  it('loadCountryConfig fetches and caches a country with no province field to refill', async () => {
+    const ctx = createBillingCtx({ i18nRules: gbRules().service });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBe(gbConfig);
+    expect(ctx.countryConfigs.get('GB')).toBe(gbConfig);
+  });
+
+  it('loadCountryConfig returns a cached config without fetching', async () => {
+    const { service, getCountryStates } = gbRules();
+    const ctx = createBillingCtx({
+      i18nRules: service,
+      countryConfigs: new Map([['GB', gbConfig]]),
+    });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBe(gbConfig);
+    expect(getCountryStates).not.toHaveBeenCalled();
+  });
+
+  it('loadCountryConfig resolves undefined and caches nothing when the fetch fails', async () => {
+    const ctx = createBillingCtx({
+      i18nRules: createFakeI18nRules(() => Promise.reject(new Error('offline')))
+        .service,
+    });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBeUndefined();
+    expect(ctx.countryConfigs.has('GB')).toBe(false);
   });
 });

@@ -15,9 +15,17 @@
  * validator ({@link FieldRuleContext}); {@link createValidationRules} needs nothing.
  */
 
+import type { CountryConfig } from '@/core/i18n-rules';
+
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
+
+/** The country an address's postcode is checked against, and that country's rules. */
+export interface PostcodeCountry {
+  country: string;
+  config: CountryConfig;
+}
 
 /** What {@link applyRule} needs from `CheckoutValidator`. */
 export interface FieldRuleContext {
@@ -33,6 +41,14 @@ export interface FieldRuleContext {
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /**
+   * The country and rules an address's postcode is checked against: the pair the
+   * submit-time check reads, so blur cannot tick a postcode submit refuses. `undefined`
+   * while that country's rules have not loaded, and the postcode then passes.
+   */
+  postcodeCountry?: (
+    type: 'shipping' | 'billing'
+  ) => PostcodeCountry | undefined;
+  /**
    * The field being validated, so the phone rule asks the widget bound to *that* field.
    * Without it the rule can only guess, and guessing meant a billing number judged against
    * the shipping widget.
@@ -41,7 +57,7 @@ export interface FieldRuleContext {
 }
 
 /** Which address a field belongs to. Every billing field is named `billing-*`. */
-function phoneTypeOf(fieldName?: string): 'shipping' | 'billing' {
+export function addressTypeOf(fieldName?: string): 'shipping' | 'billing' {
   return fieldName?.startsWith('billing') ? 'billing' : 'shipping';
 }
 
@@ -49,7 +65,8 @@ function phoneTypeOf(fieldName?: string): 'shipping' | 'billing' {
  * Builds the field name → rules table used by per-field validation.
  *
  * Phone gets only a format rule: whether a phone is *required* is decided by the markup at
- * submit time, not here.
+ * submit time, not here. So does the billing postcode: whether a billing address is
+ * needed at all is the shopper's same-as-shipping choice, also read at submit.
  *
  * @example
  * ```ts
@@ -65,13 +82,15 @@ export function createValidationRules(): Map<string, ValidationRule[]> {
   const phoneRule: ValidationRule = { type: 'phone' };
   const nameRule: ValidationRule = { type: 'name' };
   const cityRule: ValidationRule = { type: 'city' };
+  const postalRule: ValidationRule = { type: 'postal' };
 
   rules.set('email', [requiredRule, emailRule]);
   rules.set('fname', [requiredRule, nameRule]);
   rules.set('lname', [requiredRule, nameRule]);
   rules.set('address1', [requiredRule]);
   rules.set('city', [requiredRule, cityRule]);
-  rules.set('postal', [requiredRule]);
+  rules.set('postal', [requiredRule, postalRule]);
+  rules.set('billing-postal', [postalRule]);
   rules.set('country', [requiredRule]);
   rules.set('phone', [phoneRule]); // Phone validation rules (required is conditional)
 
@@ -87,7 +106,7 @@ export function createValidationRules(): Map<string, ValidationRule[]> {
  * @param ctx What the rule may reach for — see {@link FieldRuleContext}.
  * @param rule The rule to run.
  * @param value The value the shopper entered.
- * @param context Extra data for the country-aware rules: `{ country, countryConfigs }`.
+ * @param context Handed to a `custom` rule's validator.
  *
  * @example
  * ```ts
@@ -111,7 +130,10 @@ export function applyRule(
 
     case 'phone':
       if (!value) return true;
-      return isValidPhone(value, ctx.phoneSource?.(phoneTypeOf(ctx.fieldName)));
+      return isValidPhone(
+        value,
+        ctx.phoneSource?.(addressTypeOf(ctx.fieldName))
+      );
 
     case 'name':
       return !value || isValidName(value);
@@ -120,11 +142,15 @@ export function applyRule(
       return !value || isValidCity(value);
 
     case 'postal': {
-      if (!value || !context?.country) return true;
-      const countryConfig = context.countryConfigs?.get(context.country);
+      if (!value) return true;
+      const postcode = ctx.postcodeCountry?.(addressTypeOf(ctx.fieldName));
       return (
-        !countryConfig ||
-        ctx.i18nRules.validatePostalCode(value, context.country, countryConfig)
+        !postcode ||
+        ctx.i18nRules.validatePostalCode(
+          value,
+          postcode.country,
+          postcode.config
+        )
       );
     }
 

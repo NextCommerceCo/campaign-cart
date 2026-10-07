@@ -11,7 +11,7 @@
  * of the extractions so far and the honest reason is that filling this field is not a
  * self-contained job: it writes form data, clears a validation error, caches the country
  * config, and relabels neighbouring fields. Shipping needs eight things
- * ({@link ShippingStateFieldsContext}); billing needs four ({@link StateFieldsContext}),
+ * ({@link ShippingStateFieldsContext}); billing needs five ({@link StateFieldsContext}),
  * which is why the context is split rather than one shape with fields billing would have to
  * supply and never use.
  */
@@ -63,12 +63,16 @@ export interface StateFieldsContext {
   logger: Logger;
   /** Passed through to the label helpers, which relabel the neighbouring fields. */
   countryFields: CountryFieldsContext;
+  /**
+   * Per-country config cache, written as each country resolves on either path. The
+   * postcode check reads it and passes a country it has no config for, so a billing
+   * country missing from it is a postcode nobody checks.
+   */
+  countryConfigs: Map<string, CountryConfig>;
 }
 
 /** What the shipping path additionally needs. */
 export interface ShippingStateFieldsContext extends StateFieldsContext {
-  /** Per-country config cache, written as each country resolves. */
-  countryConfigs: Map<string, CountryConfig>;
   /**
    * The config for the country now selected. A ref because the enhancer reads it
    * elsewhere — a copied value would leave the two disagreeing about which country the
@@ -120,9 +124,42 @@ function loadCountryStates(
       PROMISE_CLEANUP_MS
     );
   };
-  void request.then(scheduleCleanup, scheduleCleanup);
+  void request.then(data => {
+    ctx.countryConfigs.set(country, data.countryConfig);
+    scheduleCleanup();
+  }, scheduleCleanup);
 
   return request;
+}
+
+/**
+ * A country's config, from the cache or fetched into it, with no field to refill.
+ *
+ * The state loaders only run when the page has a province `<select>`, and a country with
+ * no states (a `data-next-address` block for GB) renders none — so validation calls this
+ * for every address country before checking a postcode against it.
+ *
+ * @returns `undefined` when the request fails; the postcode check then passes the value
+ *   rather than blocking the order on a network error.
+ */
+export async function loadCountryConfig(
+  ctx: StateFieldsContext,
+  country: string
+): Promise<CountryConfig | undefined> {
+  const cached = ctx.countryConfigs.get(country);
+  if (cached) return cached;
+
+  try {
+    const countryData = await loadCountryStates(ctx, country, () => {
+      ctx.logger.debug(
+        `Reusing existing state loading promise for ${country} (config)`
+      );
+    });
+    return countryData.countryConfig;
+  } catch (error) {
+    ctx.logger.warn('Failed to load country config:', error);
+    return undefined;
+  }
 }
 
 /** Fills a province field with a country's states behind a non-selectable prompt. */
@@ -198,7 +235,6 @@ export async function updateStateOptions(
       ctx.logger.debug(`Reusing existing state loading promise for ${country}`);
     });
 
-    ctx.countryConfigs.set(country, countryData.countryConfig);
     ctx.currentCountryConfig.value = countryData.countryConfig;
 
     updateFormLabels(ctx.countryFields, countryData.countryConfig);
