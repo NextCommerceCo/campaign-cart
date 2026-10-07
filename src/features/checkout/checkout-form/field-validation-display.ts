@@ -23,6 +23,70 @@ import type { CheckoutValidator } from '../validation/checkout-validator';
 import { fieldMessages } from '../utils/error-display-utils';
 import { useCheckoutStore } from '@/state/checkout';
 
+/** Tells a field's blur or change whether to wait for a mouse press to become a click. */
+export interface PressGate {
+  /** Resolves once the click has landed; `undefined` when no mouse button is down. */
+  wait: () => Promise<void> | undefined;
+}
+
+/**
+ * Holds a field's blur and change while a mouse button is down, until the click has landed.
+ *
+ * Pressing a button blurs the field on `mousedown`. A message shown or taken away there
+ * moves everything below the field before `mouseup`, the press ends over something else,
+ * and the button gets no click: the shopper presses "Place order" and nothing happens.
+ *
+ * A key press releases the hold too, so a press whose `mouseup` went to a dropdown's popup
+ * cannot leave a keyboard blur waiting for the next click.
+ *
+ * @param listen Adds a listener bound to the form's lifetime; `capture` so a page that
+ *   stops a `mousedown` from bubbling cannot hide the press.
+ *
+ * @example
+ * ```ts
+ * const gate = createPressGate((t, type, h, o) => this.listen(t, type, h, o));
+ * const held = gate.wait();
+ * if (held) await held;
+ * ```
+ */
+export function createPressGate(
+  listen: (
+    target: Document,
+    type: string,
+    handler: () => void,
+    options: { capture: boolean }
+  ) => void
+): PressGate {
+  let pressed = false;
+  let waiting: Array<() => void> = [];
+
+  const release = (): void => {
+    pressed = false;
+    const resolvers = waiting;
+    waiting = [];
+    // A timer, not a microtask: `click` is dispatched after `mouseup`, in the same task.
+    if (resolvers.length > 0) {
+      setTimeout(() => resolvers.forEach(resolve => resolve()), 0);
+    }
+  };
+
+  listen(
+    document,
+    'mousedown',
+    () => {
+      pressed = true;
+    },
+    { capture: true }
+  );
+  listen(document, 'mouseup', release, { capture: true });
+  listen(document, 'keydown', release, { capture: true });
+
+  return {
+    wait: () =>
+      pressed ? new Promise<void>(resolve => waiting.push(resolve)) : undefined,
+  };
+}
+
 /** Wrappers the SDK styles around a field. Either may carry the error icon. */
 const FIELD_WRAPPER = '.form-group, .form-input';
 

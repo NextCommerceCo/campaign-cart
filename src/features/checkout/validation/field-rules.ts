@@ -65,8 +65,10 @@ export function addressTypeOf(fieldName?: string): 'shipping' | 'billing' {
  * Builds the field name → rules table used by per-field validation.
  *
  * Phone gets only a format rule: whether a phone is *required* is decided by the markup at
- * submit time, not here. So does the billing postcode: whether a billing address is
- * needed at all is the shopper's same-as-shipping choice, also read at submit.
+ * submit time, not here.
+ *
+ * A billing field gets its shipping twin's rules, so blur cannot tick a billing value
+ * the submit check refuses. A field with no rules is pronounced valid, whatever it holds.
  *
  * @example
  * ```ts
@@ -90,9 +92,12 @@ export function createValidationRules(): Map<string, ValidationRule[]> {
   rules.set('address1', [requiredRule]);
   rules.set('city', [requiredRule, cityRule]);
   rules.set('postal', [requiredRule, postalRule]);
-  rules.set('billing-postal', [postalRule]);
   rules.set('country', [requiredRule]);
   rules.set('phone', [phoneRule]); // Phone validation rules (required is conditional)
+
+  for (const [name, fieldRules] of [...rules]) {
+    if (name !== 'email') rules.set(`billing-${name}`, fieldRules);
+  }
 
   return rules;
 }

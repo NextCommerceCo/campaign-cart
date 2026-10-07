@@ -58,6 +58,12 @@ describe('createValidationRules', () => {
 
     expect([...rules.keys()].sort()).toEqual([
       'address1',
+      'billing-address1',
+      'billing-city',
+      'billing-country',
+      'billing-fname',
+      'billing-lname',
+      'billing-phone',
       'billing-postal',
       'city',
       'country',
@@ -83,14 +89,24 @@ describe('createValidationRules', () => {
    * field, and the browser-autofill poll's `change` ticked it again after submit had
    * marked it, wiping the submit message.
    */
-  it('checks both postcodes against their country, the billing one without required', () => {
-    const rules = createValidationRules();
+  it('checks the postcode against its country', () => {
+    expect(
+      createValidationRules()
+        .get('postal')
+        ?.map(r => r.type)
+    ).toEqual(['required', 'postal']);
+  });
 
-    expect(rules.get('postal')?.map(r => r.type)).toEqual([
-      'required',
-      'postal',
-    ]);
-    expect(rules.get('billing-postal')?.map(r => r.type)).toEqual(['postal']);
+  it('gives every billing field its shipping twin’s rules, and email none', () => {
+    const rules = createValidationRules();
+    const shipping = [...rules.keys()].filter(
+      name => !name.startsWith('billing-')
+    );
+
+    for (const name of shipping.filter(name => name !== 'email')) {
+      expect(rules.get(`billing-${name}`)).toEqual(rules.get(name));
+    }
+    expect(rules.has('billing-email')).toBe(false);
   });
 
   it('creates no custom rule, so that branch stays unreachable', () => {

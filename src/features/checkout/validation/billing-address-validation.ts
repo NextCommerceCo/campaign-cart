@@ -14,7 +14,7 @@ import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidName } from './validation-patterns';
+import { isValidCity, isValidName } from './validation-patterns';
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
@@ -82,6 +82,9 @@ export function validateBillingAddress(
       !isValidName(value)
     ) {
       errors[field] = fieldMessage(source, 'invalid_characters', field);
+      isValid = false;
+    } else if (field === 'city' && !isValidCity(value)) {
+      errors.city = fieldMessage(source, 'invalid', 'city', { country });
       isValid = false;
     }
   });

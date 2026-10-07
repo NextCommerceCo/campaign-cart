@@ -804,7 +804,7 @@ const GB_SPEC = {
   ),
 };
 
-/** A visitor typing `postcode` into a GB billing block, and leaving the field. */
+/** A visitor typing `postcode` into a GB billing block; the field keeps the focus. */
 async function billingPostcodeInGb(
   page: Page,
   postcode: string
@@ -831,10 +831,13 @@ async function billingPostcodeInGb(
   await page.fill(FIELD('billing-address1'), '10 Downing Street');
   await expect(page.locator(FIELD('billing-postal'))).toBeVisible();
   await page.fill(FIELD('billing-postal'), postcode);
-  await page.locator(FIELD('billing-postal')).blur();
 }
 
-/** Submits, and waits for the submit check to have marked the fields it refuses. */
+/**
+ * Presses submit straight from the postcode, and waits for the submit check to have marked
+ * the fields it refuses. That press blurs the postcode, and the message its blur shows
+ * used to move the button before `mouseup`, so the press ended elsewhere and no submit ran.
+ */
 async function submitAndSettle(page: Page): Promise<void> {
   await page.click('button[type="submit"]');
   await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
@@ -844,6 +847,7 @@ test('a billing postcode wrong for its country shows a message when the field is
   page,
 }) => {
   await billingPostcodeInGb(page, '99999');
+  await page.locator(FIELD('billing-postal')).blur();
 
   await expect(page.locator(FIELD('billing-postal'))).toHaveClass(
     /next-error-field/

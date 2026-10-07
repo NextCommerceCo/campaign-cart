@@ -84,7 +84,9 @@ import {
   type AppliedFixedValues,
 } from './fixed-address-values';
 import {
+  createPressGate,
   updateFieldValidationDisplay,
+  type PressGate,
   type FieldValidationContext,
 } from './field-validation-display';
 import {
@@ -254,6 +256,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Event handlers
   private submitHandler?: (event: Event) => void;
   private changeHandler?: (event: Event) => void;
+  private pressGate?: PressGate;
   private paymentMethodChangeHandler?: (event: Event) => void;
   private shippingMethodChangeHandler?: (event: Event) => void;
   private billingAddressToggleHandler?: (event: Event) => void;
@@ -2122,6 +2125,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (!fieldName) return;
 
+    // Not a `<select>`: its `change` comes from its own popup, never from pressing
+    // something else, and holding it would hold back the province refill.
+    const held =
+      event.type === 'input' || target instanceof HTMLSelectElement
+        ? undefined
+        : this.pressGate?.wait();
+    if (held) await held;
+
     const checkoutStore = useCheckoutStore.getState();
 
     if (fieldName.startsWith('billing-')) {
@@ -2430,6 +2441,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form.addEventListener('submit', this.submitHandler);
     this.stopEnterKeyNavigation = setupEnterKeyNavigation(this.form);
 
+    this.pressGate = createPressGate((target, type, handler, options) =>
+      this.listen(target, type, handler, options)
+    );
     this.changeHandler = this.handleFieldChange.bind(this);
     this.bindFieldListeners();
 
@@ -2679,9 +2693,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private listen<E extends Event>(
     target: Document | Window | HTMLElement,
     type: string,
-    handler: (event: E) => void
+    handler: (event: E) => void,
+    options: { capture?: boolean } = {}
   ): void {
     target.addEventListener(type, handler as EventListener, {
+      ...options,
       signal: this.domListenerAbort.signal,
     });
   }

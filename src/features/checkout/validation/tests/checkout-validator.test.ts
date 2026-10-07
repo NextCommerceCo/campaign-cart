@@ -120,20 +120,21 @@ describe('validateField', () => {
   });
 
   /**
-   * DEFECT (left as found) — a field with no entry in the rule table gets `[]` rules, so
-   * the loop never runs and the verdict is valid. Nothing distinguishes "this value passed"
-   * from "nobody has a rule for this field".
-   *
-   * What the shopper sees: `address2`, `province`, and every `billing-*` field report as
-   * correct on blur no matter what is typed, including the billing fields the submit-time
-   * check will later reject. The form contradicts itself between blur and pay.
+   * A field with no entry in the rule table gets `[]` rules and is pronounced valid.
+   * `address2` and `province` are still such fields; the billing fields used to be too.
    */
-  it('DEFECT: an unruled field is pronounced valid rather than unchecked', () => {
-    const { validator } = createValidator(['billing-fname', 'province']);
+  it('judges a billing field like its shipping twin', () => {
+    const { validator } = createValidator(['billing-fname', 'billing-city']);
 
-    expect(validator.validateField('billing-fname', '!!!')).toEqual({
-      isValid: true,
-    });
+    expect(validator.validateField('billing-fname', '!!!').isValid).toBe(false);
+    expect(validator.validateField('billing-city', '12345').isValid).toBe(
+      false
+    );
+  });
+
+  it('pronounces a field with no rules valid, whatever it holds', () => {
+    const { validator } = createValidator(['province']);
+
     expect(validator.validateField('province', '')).toEqual({ isValid: true });
   });
 });

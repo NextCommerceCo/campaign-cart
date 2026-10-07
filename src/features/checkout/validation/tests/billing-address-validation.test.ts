@@ -157,21 +157,15 @@ describe('validateBillingAddress', () => {
     ).toThrow(TypeError);
   });
 
-  /**
-   * DEFECT (left as found) — the name check is only reached in the `else if` arm of the
-   * required check, and only for `first_name` / `last_name`. `city` is never format-checked
-   * here, though the shipping path checks it with `isValidCity`.
-   *
-   * What the shopper sees: a billing city of `12345` is accepted and reaches the order,
-   * while the same value in the shipping city field is rejected.
-   */
-  it('DEFECT: the billing city is never format-checked, unlike the shipping city', () => {
+  /** A billing city of `12345` used to reach the order while the shipping one was refused. */
+  it('checks the city format like the shipping city', () => {
     const result = validateBillingAddress(
       createContext(),
       { ...completeAddress, city: '12345' },
       configs
     );
 
-    expect(result.isValid).toBe(true);
+    expect(result.isValid).toBe(false);
+    expect(Object.keys(result.errors)).toEqual(['city']);
   });
 });
