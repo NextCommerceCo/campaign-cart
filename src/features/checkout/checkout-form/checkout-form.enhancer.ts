@@ -202,6 +202,15 @@ type CheckoutFormConfig = ReturnType<typeof useConfigStore.getState>;
 /** The checkout-store snapshot the field-routing steps read and write through. */
 type CheckoutStoreSnapshot = ReturnType<typeof useCheckoutStore.getState>;
 
+/** An address's fields that belong to its country; a name and a phone belong to the shopper. */
+const COUNTRY_BOUND_FIELDS = [
+  'address1',
+  'address2',
+  'city',
+  'province',
+  'postal',
+] as const;
+
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
   private apiClient!: IApiClient;
@@ -2163,6 +2172,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (!fieldName) return;
 
+    // The shopper moved the address to another country, so its street, city, state and
+    // postcode are the old country's. A change a script makes (a restored address, an
+    // autocomplete suggestion, the billing toggle) carries its own values and keeps them.
+    if (
+      event.type === 'change' &&
+      event.isTrusted &&
+      (fieldName === 'country' || fieldName === 'billing-country')
+    ) {
+      this.clearCountryBoundFields(fieldName === 'country' ? '' : 'billing-');
+    }
+
     // Not a `<select>`: its `change` comes from its own popup, never from pressing
     // something else, and holding it would hold back the province refill.
     const held =
@@ -2213,6 +2233,48 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       target instanceof HTMLInputElement
     ) {
       void showPhoneVerdict(this.phoneVerdictContext(), fieldName, target);
+    }
+  }
+
+  /**
+   * Empties the fields of an address that belong to its country, on the page and in the
+   * store, and leaves them neutral. Before the new country is routed, so a
+   * `data-next-address` block rebuilds them empty and the new country's fixed values are
+   * written after. The name, email and phone belong to the shopper and are kept.
+   */
+  private clearCountryBoundFields(prefix: '' | 'billing-'): void {
+    const emptied = Object.fromEntries(
+      COUNTRY_BOUND_FIELDS.map(name => [name, ''])
+    );
+    for (const name of COUNTRY_BOUND_FIELDS) {
+      const fieldName = `${prefix}${name}`;
+      const field = this.getFieldByName(fieldName);
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement
+      ) {
+        field.value = '';
+      }
+      useCheckoutStore.getState().clearError(fieldName);
+      this.validator.clearError(fieldName);
+      updateFieldValidationDisplay(
+        this.fieldValidationContext(),
+        'blur',
+        fieldName,
+        ''
+      );
+    }
+
+    if (!prefix) {
+      this.updateFormData(emptied);
+      return;
+    }
+    const checkoutStore = useCheckoutStore.getState();
+    if (checkoutStore.billingAddress) {
+      checkoutStore.setBillingAddress({
+        ...checkoutStore.billingAddress,
+        ...emptied,
+      });
     }
   }
 

@@ -165,6 +165,8 @@ Below is an example of a shipping step, its heading in the page's language.
 
 In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
+When the shopper picks another country, the street, city, state and postcode of that address are cleared, because they belong to the country the shopper left. The name, email and phone are kept. A country set by the page or by address autocomplete keeps the address that came with it.
+
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling](#styling) below covers its markup.
 
 If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.

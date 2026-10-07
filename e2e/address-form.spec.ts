@@ -6,6 +6,7 @@ import {
   stubAddressAutocomplete,
   bootSdk,
   captureEvents,
+  chooseAsShopper,
   ADDRESS_SERVICE_ROUTE,
   routeAddressService,
   countryRules,
@@ -270,7 +271,48 @@ test('an address typed after a country change still reaches the store', async ({
     .toBe('2 Rebuilt Road');
 });
 
-test('a typed address survives the rebuild', async ({ page }) => {
+/**
+ * A shopper who moves the address to another country starts its street, city, state and
+ * postcode over, as they would on any checkout: the old country's values are almost
+ * never right in the new one, and kept they sent an address in two countries. The name
+ * and phone are the shopper's, not the address's, and stay.
+ */
+test('a shopper moving to another country starts the address over and keeps the name', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await page.fill(FIELD('first_name'), 'Ada');
+  await page.fill(FIELD('address1'), '1 Test Street');
+  await page.fill(FIELD('city'), 'Testville');
+  await page.fill(FIELD('postal'), '10001');
+
+  await chooseAsShopper(page, FIELD('country'), 'JP');
+
+  // Japan's order: the block has been rebuilt for it.
+  await expect
+    .poll(blockOrder(page, 'shipping'))
+    .toEqual(['country', 'postal', 'province', 'city', 'address1', 'phone']);
+  await expect(page.locator(FIELD('address1'))).toHaveValue('');
+  await expect(page.locator(FIELD('postal'))).toHaveValue('');
+  await expect(page.locator(FIELD('first_name'))).toHaveValue('Ada');
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw
+          ? (
+              JSON.parse(raw) as {
+                state?: { formData?: Record<string, string> };
+              }
+            ).state?.formData
+          : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toMatchObject({ country: 'JP', fname: 'Ada' });
+});
+
+/** The negative control: a country a script writes comes with its own address. */
+test('a country a script writes keeps the typed address', async ({ page }) => {
   await bootSdk(page, FIXTURE);
 
   await page.fill(FIELD('address1'), '1 Test Street');

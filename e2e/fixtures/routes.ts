@@ -635,6 +635,31 @@ export async function stubAll(
   await stubCart(page);
 }
 
+/**
+ * Picks `value` the way a shopper does, with the keyboard: `selectOption` dispatches a
+ * `change` no person made (`isTrusted` false), which is a script's change to the SDK.
+ */
+export async function chooseAsShopper(
+  page: Page,
+  selector: string,
+  value: string
+): Promise<void> {
+  const select = page.locator(selector);
+  const below = await select.evaluate((el, wanted) => {
+    const options = [...(el as HTMLSelectElement).options];
+    return (
+      options.findIndex(option => option.value === wanted) >
+      (el as HTMLSelectElement).selectedIndex
+    );
+  }, value);
+  await select.focus();
+  for (let step = 0; step < 30; step++) {
+    if ((await select.inputValue()) === value) return;
+    await page.keyboard.press(below ? 'ArrowDown' : 'ArrowUp');
+  }
+  throw new Error(`could not reach ${value} in ${selector}`);
+}
+
 /** Navigate to a fixture and wait for the SDK to expose `window.next.on`. */
 export async function bootSdk(page: Page, fixture: string): Promise<void> {
   await page.goto(fixture);

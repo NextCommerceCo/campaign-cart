@@ -4,6 +4,7 @@ import {
   stubCampaign,
   stubCart,
   bootSdk,
+  chooseAsShopper,
   routeAddressService,
   countryRules,
   ruleField,
@@ -347,5 +348,65 @@ test.describe('a name and a city', () => {
     for (const name of ['fname', 'lname', 'city']) {
       await expect(page.locator(FIELD(name))).toHaveClass(/next-error-field/);
     }
+  });
+});
+
+/**
+ * A shopper who moves an address to another country starts its street, city, state and
+ * postcode over: the old country's values are almost never right in the new one, and kept
+ * they sent an address in two countries. The name stays, as it is the shopper's.
+ */
+test.describe('a shopper moving an address to another country', () => {
+  test.beforeEach(async ({ page }) => {
+    await routeAddressService(page, {
+      countries: [
+        { code: 'CA', name: 'Canada' },
+        { code: 'US', name: 'United States' },
+      ],
+      rules: () => ({
+        ...US_RULES,
+        states: [
+          { code: 'NY', name: 'New York' },
+          { code: 'ON', name: 'Ontario' },
+        ],
+      }),
+    });
+  });
+
+  test('starts the shipping address over and keeps the name', async ({
+    page,
+  }) => {
+    await bootSdk(page, FIXTURE);
+    await page.fill(FIELD('fname'), 'Ada');
+    await page.fill(FIELD('address1'), '1 Main St');
+    await page.fill(FIELD('city'), 'Albany');
+    await page.fill(FIELD('postal'), '12207');
+
+    await chooseAsShopper(page, FIELD('country'), 'CA');
+
+    for (const name of ['address1', 'city', 'postal']) {
+      await expect(page.locator(FIELD(name))).toHaveValue('');
+    }
+    await expect(page.locator(FIELD('fname'))).toHaveValue('Ada');
+  });
+
+  test('starts the billing address over and keeps the billing name', async ({
+    page,
+  }) => {
+    await bootSdk(page, FIXTURE);
+    await page.uncheck('input[name="use_shipping_address"]');
+    await page.fill(FIELD('billing-fname'), 'Ada');
+    await page.fill(FIELD('billing-address1'), '14 Billing Way');
+    await page.fill(FIELD('billing-city'), 'Albany');
+    await page.fill(FIELD('billing-postal'), '12207');
+
+    await chooseAsShopper(page, FIELD('billing-country'), 'CA');
+
+    for (const name of ['billing-address1', 'billing-city', 'billing-postal']) {
+      await expect(page.locator(FIELD(name))).toHaveValue('');
+    }
+    await expect(page.locator(FIELD('billing-fname'))).toHaveValue('Ada');
+    // The shipping address is another address, and is left alone.
+    await expect(page.locator(FIELD('country'))).not.toHaveValue('CA');
   });
 });
