@@ -1224,3 +1224,21 @@ describe('the verdict on an empty field', () => {
     expect(field.isValidNumber()).toBeNull();
   });
 });
+
+/**
+ * A `data-next-address` re-render can drop a phone field. The instance left on the removed
+ * input wrote its stale number over the stored one at submit.
+ */
+describe('initializePhoneInputs — a phone field that is gone', () => {
+  it('destroys the instance whose field left the maps', async () => {
+    const input = phoneInput();
+    const { ctx, field } = await shippingField(input);
+    const destroy = vi.spyOn(field, 'destroy');
+
+    ctx.fields.delete('phone');
+    initializePhoneInputs(ctx);
+
+    expect(destroy).toHaveBeenCalled();
+    expect(ctx.phoneInputs.has('shipping')).toBe(false);
+  });
+});

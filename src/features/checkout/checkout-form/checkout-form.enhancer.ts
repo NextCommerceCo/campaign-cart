@@ -620,10 +620,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * a page wanting floating labels on one styles them, which needs no script.
    */
   private async reapplyToRenderedFields(): Promise<void> {
-    this.update();
-    // `update()` finds the shipping fields; the billing ones are a separate scan, and a
-    // billing block's fields are just as absent at boot as a shipping block's.
+    // The billing scan comes first: `update()` sets up the phone fields from both maps, and
+    // run the other way round a billing block's phone got no widget, or kept the one on
+    // the input its last render removed.
     scanBillingFields(this.billingFormSetupContext());
+    this.update();
     this.locationFields?.refresh();
 
     // Not sequenced behind the two awaits below, which are requests: whether suggestions

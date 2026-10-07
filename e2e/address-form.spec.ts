@@ -977,6 +977,73 @@ test('a billing phone the country requires is refused when left blank', async ({
   );
 });
 
+/**
+ * A billing block's phone is a phone field like the shipping one: masked as typed, stored in
+ * E.164. Its fields were set up before the billing scan, so the phone got no widget, and
+ * after a re-render it kept the one on the input that render removed.
+ */
+test('a billing block phone is masked and stored in E.164, before and after a re-render', async ({
+  page,
+}) => {
+  const phone_number = ruleField(
+    'Phone number',
+    'tel',
+    { type: 'tel', input_mode: 'tel' },
+    {
+      required: false,
+      format: {
+        calling_code: '1',
+        national_prefix: '1',
+        masks: [{ mask: '(###) ###-####' }],
+        pattern: '^[0-9]{10,11}$',
+        example: '(201) 555-0123',
+      },
+    }
+  );
+  const withPhone = (code: string) => ({
+    ...countryRules(code, [['country'], ['line1'], ['phone_number']], {
+      country: ruleField('Country', 'country', {
+        type: 'select',
+        options: 'countries',
+      }),
+      line1: ruleField('Address', 'address-line1'),
+      phone_number,
+    }),
+    states: [],
+  });
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'CA', name: 'Canada' },
+    ],
+    rules: code => withPhone(code),
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  const billingPhone = page.locator(FIELD('billing-phone'));
+
+  await billingPhone.pressSequentially('4155552671');
+  await expect(billingPhone).toHaveValue('(415) 555-2671');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBe('+14155552671');
+
+  // Two re-renders, back to a country whose numbers the stub reads. Each puts the stored
+  // number back into the new input, so it is emptied before typing again.
+  await page.selectOption(FIELD('billing-country'), 'CA');
+  await expect(billingPhone).not.toHaveValue('');
+  await page.selectOption(FIELD('billing-country'), 'US');
+  await expect(billingPhone).not.toHaveValue('');
+  await billingPhone.fill('');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBeUndefined();
+  await billingPhone.pressSequentially('4155552671');
+  await expect(billingPhone).toHaveValue('(415) 555-2671');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBe('+14155552671');
+});
+
 /** The `lang` of every layout request the block makes, in order. */
 function recordLayoutLangs(page: Page): string[] {
   const langs: string[] = [];

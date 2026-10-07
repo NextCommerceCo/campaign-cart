@@ -694,16 +694,23 @@ export async function awaitPhoneRules(
  * Initialises both phone fields, where they exist.
  *
  * Called on boot and again after the billing form is revealed, since the billing phone
- * field may not have been in the DOM the first time.
+ * field may not have been in the DOM the first time. A field that is gone takes its
+ * instance with it: one left on a removed input wrote its stale number over the stored one
+ * at submit.
  */
 export function initializePhoneInputs(ctx: PhoneInputContext): void {
-  const shippingPhoneField = ctx.fields.get('phone');
-  if (shippingPhoneField instanceof HTMLInputElement) {
-    initializePhoneInput(ctx, 'shipping', shippingPhoneField);
-  }
-
-  const billingPhoneField = ctx.billingFields.get('billing-phone');
-  if (billingPhoneField instanceof HTMLInputElement) {
-    initializePhoneInput(ctx, 'billing', billingPhoneField);
+  const phoneFields: Record<PhoneFieldType, HTMLElement | undefined> = {
+    shipping: ctx.fields.get('phone'),
+    billing: ctx.billingFields.get('billing-phone'),
+  };
+  for (const [type, field] of Object.entries(phoneFields) as Array<
+    [PhoneFieldType, HTMLElement | undefined]
+  >) {
+    if (field instanceof HTMLInputElement) {
+      initializePhoneInput(ctx, type, field);
+    } else {
+      ctx.phoneInputs.get(type)?.destroy();
+      ctx.phoneInputs.delete(type);
+    }
   }
 }
