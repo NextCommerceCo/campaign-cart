@@ -8,6 +8,7 @@ import {
   countryRules,
   ruleField,
 } from './fixtures/routes';
+import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 /**
  * E2E for the billing form the checkout form clones from a hand-written shipping form.
@@ -128,4 +129,43 @@ test('a shopper billing to the shipping address moves on', async ({ page }) => {
   await page.click('button[type="submit"]');
 
   await page.waitForURL(/checkout-form\.html/);
+});
+
+/**
+ * A billing section open at boot (a returning shopper who chose a separate billing
+ * address and typed none of it yet) showed a country the store never held: the choice was
+ * dispatched as a `change` before the form listened for one.
+ */
+test('a billing section open at boot stores the country its dropdown shows', async ({
+  page,
+}) => {
+  await page.addInitScript(key => {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ state: { sameAsShipping: false }, version: 0 })
+    );
+  }, CHECKOUT_KEY);
+  await bootSdk(page, FIXTURE);
+  await expect(
+    page.locator('input[name="use_shipping_address"]')
+  ).not.toBeChecked();
+
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('US');
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw
+          ? (
+              JSON.parse(raw) as {
+                state?: { billingAddress?: { country?: string } };
+              }
+            ).state?.billingAddress?.country
+          : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toBe('US');
+  await expect(
+    page.locator(`${FIELD('billing-province')} option[value="NY"]`)
+  ).toHaveCount(1);
 });

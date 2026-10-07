@@ -671,8 +671,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    *
    * A dropdown with no empty first option (every one `data-next-address` builds) shows its
    * first country once filled, a country the store never heard of: a shopper who left it
-   * alone got "Country is required" under a filled-in dropdown. The `change` is what stores
-   * a chosen country and loads its provinces.
+   * alone got "Country is required" under a filled-in dropdown. The choice is routed like
+   * the shopper's own, which stores it and loads its provinces. A dispatched `change` would
+   * reach nothing at boot, where this runs before the field listeners are bound.
    */
   private syncBillingCountryField(): void {
     const field = this.billingFields.get('billing-country');
@@ -687,7 +688,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     field.value = wanted;
     if (stored !== wanted) {
-      field.dispatchEvent(new Event('change', { bubbles: true }));
+      void routeBillingField(
+        this.billingFieldRoutingContext(),
+        'billing-country',
+        field,
+        useCheckoutStore.getState()
+      );
     }
   }
 
