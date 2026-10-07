@@ -452,7 +452,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private initializeValidator(): void {
     this.validator = new CheckoutValidator(this.logger, this.i18nRules);
     // The country each address's validation reads: the store, as on submit.
-    this.validator.setPostcodeCountry(type => {
+    this.validator.setAddressCountry(type => {
       const { formData, billingAddress } = useCheckoutStore.getState();
       const country: unknown =
         type === 'billing' ? billingAddress?.country : formData.country;

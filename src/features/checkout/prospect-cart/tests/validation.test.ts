@@ -42,6 +42,10 @@ describe('isValidName', () => {
     expect(isValidName("O'Connor")).toBe(true);
     expect(isValidName('Mary-Jane')).toBe(true);
     expect(isValidName('José')).toBe(true);
+    // Checkout's shape: any script, marks included. The old pattern was Latin-1 only.
+    expect(isValidName('สุดา')).toBe(true);
+    expect(isValidName('田中')).toBe(true);
+    expect(isValidName('Владимир')).toBe(true);
   });
 
   it('rejects empty, single-character, and non-letter names', () => {

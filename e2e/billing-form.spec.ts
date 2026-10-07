@@ -275,3 +275,48 @@ test('names and cities written with Thai vowel marks are accepted on both addres
     await expect(page.locator(FIELD(name))).not.toHaveClass(/next-error-field/);
   }
 });
+
+/**
+ * The address-rules service sends the name and city patterns, and a page checks with
+ * them: a correction to one reaches every page without a release of the SDK. Here the
+ * service takes a city with digits, which the SDK's own pattern refuses.
+ */
+test.describe('a city pattern the address service sends', () => {
+  async function submitCity(page: Page, city: string): Promise<void> {
+    await bootSdk(page, FIXTURE);
+    await page.fill(FIELD('address1'), '1 Main St');
+    await page.fill(FIELD('city'), city);
+    await page.click('button[type="submit"]');
+    await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+  }
+
+  test('decides the check', async ({ page }) => {
+    await routeAddressService(page, {
+      countries: [{ code: 'US', name: 'United States' }],
+      rules: () => ({
+        ...US_RULES,
+        fields: {
+          ...(US_RULES.fields as Record<string, unknown>),
+          city: ruleField(
+            'City',
+            'address-level2',
+            { type: 'text' },
+            { format: { pattern: '^[\\p{L}\\p{M}\\p{N} ]{2,}$' } }
+          ),
+        },
+        states: [{ code: 'NY', name: 'New York' }],
+      }),
+    });
+    await submitCity(page, '100 Mile House');
+
+    await expect(page.locator(FIELD('city'))).not.toHaveClass(
+      /next-error-field/
+    );
+  });
+
+  test('is the built-in one where the service sends none', async ({ page }) => {
+    await submitCity(page, '100 Mile House');
+
+    await expect(page.locator(FIELD('city'))).toHaveClass(/next-error-field/);
+  });
+});

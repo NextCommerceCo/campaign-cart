@@ -152,7 +152,7 @@ describe('validateField on a postcode', () => {
   it('refuses a billing postcode its country refuses, in the submit check’s words', () => {
     const { validator, i18nRules } = createValidator(['billing-postal']);
     i18nRules.validatePostalCode.mockReturnValue(false);
-    validator.setPostcodeCountry(type =>
+    validator.setAddressCountry(type =>
       type === 'billing' ? { country: 'GB', config: gbConfig } : undefined
     );
 
@@ -176,7 +176,7 @@ describe('validateField on a postcode', () => {
   it('passes a postcode while its country has no rules loaded', () => {
     const { validator, i18nRules } = createValidator(['postal']);
     i18nRules.validatePostalCode.mockReturnValue(false);
-    validator.setPostcodeCountry(() => undefined);
+    validator.setAddressCountry(() => undefined);
 
     expect(validator.validateField('postal', 'ABCDE')).toEqual({
       isValid: true,

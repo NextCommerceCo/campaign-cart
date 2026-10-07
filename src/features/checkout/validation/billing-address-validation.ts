@@ -84,11 +84,14 @@ export function validateBillingAddress(
       isValid = false;
     } else if (
       (field === 'first_name' || field === 'last_name') &&
-      !isValidName(value)
+      !isValidName(value, countryConfig?.namePattern)
     ) {
       errors[field] = fieldMessage(source, 'invalid_characters', field);
       isValid = false;
-    } else if (field === 'city' && !isValidCity(value)) {
+    } else if (
+      field === 'city' &&
+      !isValidCity(value, countryConfig?.cityPattern)
+    ) {
       errors.city = fieldMessage(source, 'invalid', 'city', { country });
       isValid = false;
     }

@@ -83,7 +83,7 @@ export class CheckoutValidator {
   private phoneSource?: (
     type: 'shipping' | 'billing'
   ) => PhoneNumberSource | undefined;
-  private postcodeCountry?: FieldRuleContext['postcodeCountry'];
+  private addressCountry?: FieldRuleContext['addressCountry'];
 
   // Validation rules for form fields
   private rules: Map<string, ValidationRule[]> = new Map();
@@ -124,19 +124,20 @@ export class CheckoutValidator {
   }
 
   /**
-   * Installs the lookup that tells the per-field postcode check which country, and which
-   * of its rules, an address's postcode is checked against. Without it, blur and autofill
-   * mark any postcode valid, and that verdict replaces the message submit has just shown.
+   * Installs the lookup that tells the per-field checks which country, and which of its
+   * rules, an address is checked against: its postcode, name and city patterns. Without
+   * it, blur and autofill mark any postcode valid, and that verdict replaces the message
+   * submit has just shown.
    *
    * @example
    * ```ts
-   * validator.setPostcodeCountry(type => ({ country: 'GB', config: gbConfig }));
+   * validator.setAddressCountry(type => ({ country: 'GB', config: gbConfig }));
    * ```
    */
-  public setPostcodeCountry(
-    resolve: NonNullable<FieldRuleContext['postcodeCountry']>
+  public setAddressCountry(
+    resolve: NonNullable<FieldRuleContext['addressCountry']>
   ): void {
-    this.postcodeCountry = resolve;
+    this.addressCountry = resolve;
   }
 
   // ============================================================================
@@ -197,8 +198,8 @@ export class CheckoutValidator {
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
       }),
-      ...(this.postcodeCountry !== undefined && {
-        postcodeCountry: this.postcodeCountry,
+      ...(this.addressCountry !== undefined && {
+        addressCountry: this.addressCountry,
       }),
       fieldName: name,
     };
@@ -207,7 +208,7 @@ export class CheckoutValidator {
       if (!applyRule(ruleContext, rule, value, context)) {
         const postcode =
           rule.type === 'postal'
-            ? this.postcodeCountry?.(addressTypeOf(name))
+            ? this.addressCountry?.(addressTypeOf(name))
             : undefined;
         message =
           (rule.type === 'custom' ? rule.message : undefined) ??

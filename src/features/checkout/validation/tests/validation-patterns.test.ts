@@ -207,3 +207,20 @@ describe('hasEmoji', () => {
     expect(hasEmoji(true)).toBe(false);
   });
 });
+
+/** The address-rules service's pattern, when the address's country has one. */
+describe('a name or city pattern the service sends', () => {
+  const withDigits = '^[\\p{L}\\p{M}\\p{N} ]{2,}$';
+
+  it('decides the check in place of the built-in one', () => {
+    expect(isValidCity('100 Mile House')).toBe(false);
+    expect(isValidCity('100 Mile House', withDigits)).toBe(true);
+    expect(isValidName('Jane 2nd', withDigits)).toBe(true);
+  });
+
+  it('falls back to the built-in one when it does not compile', () => {
+    expect(isValidName('สุดา', '^[\\p{L]+$')).toBe(true);
+    expect(isValidName('Jane 2nd', '^[\\p{L]+$')).toBe(false);
+    expect(isValidCity('เชียงใหม่', '(')).toBe(true);
+  });
+});

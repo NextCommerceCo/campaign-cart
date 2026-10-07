@@ -151,18 +151,30 @@ export async function validateForm(
   });
 
   // Name validation
-  if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
+  if (
+    formData.fname &&
+    formData.fname.trim() &&
+    !isValidName(formData.fname, countryConfig?.namePattern)
+  ) {
     errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
     isValid = false;
   }
 
-  if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
+  if (
+    formData.lname &&
+    formData.lname.trim() &&
+    !isValidName(formData.lname, countryConfig?.namePattern)
+  ) {
     errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
     isValid = false;
   }
 
   // City validation
-  if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
+  if (
+    formData.city &&
+    formData.city.trim() &&
+    !isValidCity(formData.city, countryConfig?.cityPattern)
+  ) {
     errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
       country: formData.country,
     });

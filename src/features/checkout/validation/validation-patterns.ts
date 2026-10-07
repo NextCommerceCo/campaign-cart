@@ -6,6 +6,10 @@
  * one of them. They are pure functions of their argument, so they need **nothing** from
  * `CheckoutValidator` and can be tested by calling them.
  *
+ * A name and a city take the address-rules service's pattern when the caller has one
+ * (`CountryConfig.namePattern` / `cityPattern`), so a correction to it reaches every page
+ * without a release; the patterns here are what is used without one.
+ *
  * Country-specific checks are deliberately *not* here, because being pure disqualifies
  * them. A postal code lives with `I18nRules`; a phone number lives in
  * [phone-validation.ts](./phone-validation.ts), which asks the input's phone field. It was
@@ -15,6 +19,8 @@
  * Extracted verbatim from `checkout-validator.ts`, which still exposes all three as public
  * methods.
  */
+
+import { createLogger } from '@/core/logger';
 
 /**
  * The regular expressions behind the checks below.
@@ -107,9 +113,38 @@ export function isValidEmail(email: string): boolean {
   return true;
 }
 
+const logger = createLogger('ValidationPatterns');
+
+/** Each pattern the service sent, compiled once; `null` for one that does not compile. */
+const servedPatterns = new Map<string, RegExp | null>();
+
 /**
- * Whether a person's name contains only letters — any script — spaces, hyphens, and
- * apostrophes (straight or curly).
+ * The service's pattern, compiled with `u`, or `undefined` to use the SDK's own. One that
+ * does not compile falls back rather than refusing every value: a bad deployment of the
+ * service must not stop every shopper on every page from paying.
+ */
+function servedPattern(pattern: string | undefined): RegExp | undefined {
+  if (!pattern) return undefined;
+  if (!servedPatterns.has(pattern)) {
+    let compiled: RegExp | null = null;
+    try {
+      compiled = new RegExp(pattern, 'u');
+    } catch {
+      logger.warn(
+        'Invalid name or city pattern, using the built-in one:',
+        pattern
+      );
+    }
+    servedPatterns.set(pattern, compiled);
+  }
+  return servedPatterns.get(pattern) ?? undefined;
+}
+
+/**
+ * Whether a person's name contains only letters — any script, with their combining
+ * marks — spaces, hyphens, and apostrophes (straight or curly).
+ *
+ * @param pattern The service's pattern for the address's country, when there is one.
  *
  * @example
  * ```ts
@@ -118,13 +153,16 @@ export function isValidEmail(email: string): boolean {
  * isValidName('Jane 2nd');      // false — digits are not allowed
  * ```
  */
-export function isValidName(name: string): boolean {
-  return VALIDATION_PATTERNS.NAME.test(name.trim());
+export function isValidName(name: string, pattern?: string): boolean {
+  return (servedPattern(pattern) ?? VALIDATION_PATTERNS.NAME).test(name.trim());
 }
 
 /**
  * Whether a city name is plausible: at least two characters, starting with a letter, no
  * digits, and no run of three-or-more spaces or hyphens.
+ *
+ * @param pattern The service's pattern for the address's country, when there is one. It
+ *   is the whole check: the rules below are the SDK's own, for a deployment that sends none.
  *
  * @example
  * ```ts
@@ -132,8 +170,10 @@ export function isValidName(name: string): boolean {
  * isValidCity('Area 51');   // false — digits are not allowed
  * ```
  */
-export function isValidCity(city: string): boolean {
+export function isValidCity(city: string, pattern?: string): boolean {
   const trimmedCity = city.trim();
+  const served = servedPattern(pattern);
+  if (served) return served.test(trimmedCity);
 
   // City must not be empty
   if (!trimmedCity) {

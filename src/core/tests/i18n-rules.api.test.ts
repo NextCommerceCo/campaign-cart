@@ -156,6 +156,24 @@ describe('toCountryConfig', () => {
     expect(toCountryConfig(US).postcodeRequired).toBe(true);
   });
 
+  /** Read from each answer, so a correction to them reaches a page without a release. */
+  it('carries the name and city patterns the service sends, and none where it sends none', () => {
+    const name = '^\\p{L}[\\p{L}\\p{M}]*$';
+    const city = '^[\\p{L}\\p{M} ]{2,}$';
+    const config = toCountryConfig({
+      ...DE,
+      fields: {
+        first_name: field('First name', { pattern: name }),
+        city: field('City', { pattern: city }),
+      },
+    });
+
+    expect(config.namePattern).toBe(name);
+    expect(config.cityPattern).toBe(city);
+    expect(toCountryConfig(DE)).not.toHaveProperty('namePattern');
+    expect(toCountryConfig(DE)).not.toHaveProperty('cityPattern');
+  });
+
   it('carries the values the country fixes, and none where it fixes nothing', () => {
     const va = rules(
       'VA',

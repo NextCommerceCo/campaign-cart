@@ -21,8 +21,8 @@ import { isValidPhone, type PhoneNumberSource } from './phone-validation';
 import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
-/** The country an address's postcode is checked against, and that country's rules. */
-export interface PostcodeCountry {
+/** An address's country, and that country's rules: its postcode, name and city patterns. */
+export interface AddressCountry {
   country: string;
   config: CountryConfig;
 }
@@ -41,13 +41,12 @@ export interface FieldRuleContext {
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /**
-   * The country and rules an address's postcode is checked against: the pair the
-   * submit-time check reads, so blur cannot tick a postcode submit refuses. `undefined`
-   * while that country's rules have not loaded, and the postcode then passes.
+   * The country and rules an address is checked against: the pair the submit-time check
+   * reads, so blur cannot tick a postcode, name or city submit refuses. `undefined` while
+   * that country's rules have not loaded: the postcode then passes, and a name or city is
+   * checked with the SDK's own pattern.
    */
-  postcodeCountry?: (
-    type: 'shipping' | 'billing'
-  ) => PostcodeCountry | undefined;
+  addressCountry?: (type: 'shipping' | 'billing') => AddressCountry | undefined;
   /**
    * The field being validated, so the phone rule asks the widget bound to *that* field.
    * Without it the rule can only guess, and guessing meant a billing number judged against
@@ -141,14 +140,26 @@ export function applyRule(
       );
 
     case 'name':
-      return !value || isValidName(value);
+      return (
+        !value ||
+        isValidName(
+          value,
+          ctx.addressCountry?.(addressTypeOf(ctx.fieldName))?.config.namePattern
+        )
+      );
 
     case 'city':
-      return !value || isValidCity(value);
+      return (
+        !value ||
+        isValidCity(
+          value,
+          ctx.addressCountry?.(addressTypeOf(ctx.fieldName))?.config.cityPattern
+        )
+      );
 
     case 'postal': {
       if (!value) return true;
-      const postcode = ctx.postcodeCountry?.(addressTypeOf(ctx.fieldName));
+      const postcode = ctx.addressCountry?.(addressTypeOf(ctx.fieldName));
       return (
         !postcode ||
         ctx.i18nRules.validatePostalCode(
