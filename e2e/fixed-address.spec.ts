@@ -184,12 +184,11 @@ function storedBilling(
 }
 
 /**
- * The billing toggle empties the address each time the section opens and keeps its
- * country, and the values were only written on a country change: a second open left a
- * Vatican billing address with no city, which submit asked for under a block that has no
- * city field to show it on.
+ * Reopening the billing section used to empty the stored address and keep its country,
+ * and the fixed values were only written on a country change: a Vatican billing address
+ * came back with no city, which submit asked for under a block with no city field.
  */
-test('reopening the billing address keeps the city and postcode Vatican City fixes', async ({
+test('reopening the billing address keeps it, the city and postcode Vatican City fixes included', async ({
   page,
 }) => {
   // A block builds only the fields a country's rules describe.
@@ -235,15 +234,16 @@ test('reopening the billing address keeps the city and postcode Vatican City fix
   await setSameAsShipping(page, true);
   await setSameAsShipping(page, false);
 
-  // The street going is the sign the reopening has emptied the address.
-  await expect
-    .poll(async () => (await storedBilling(page))?.address1)
-    .toBeUndefined();
-  await expect
-    .poll(() => storedBilling(page))
-    .toMatchObject({
-      country: 'VA',
-      city: 'Vatican City',
-      postal: '00120',
-    });
+  // Past the moment the reopening seeds the country, which is when it used to empty.
+  await page.waitForTimeout(500);
+
+  expect(await storedBilling(page)).toMatchObject({
+    country: 'VA',
+    address1: 'Via 1',
+    city: 'Vatican City',
+    postal: '00120',
+  });
+  await expect(
+    page.locator('[data-next-checkout-field="billing-address1"]')
+  ).toHaveValue('Via 1');
 });

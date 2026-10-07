@@ -169,3 +169,40 @@ test('a billing section open at boot stores the country its dropdown shows', asy
     page.locator(`${FIELD('billing-province')} option[value="NY"]`)
   ).toHaveCount(1);
 });
+
+/**
+ * Clicks the billing toggle until the click holds: one made while the section is still
+ * animating is reverted on purpose.
+ */
+async function setSameAsShipping(page: Page, same: boolean): Promise<void> {
+  const toggle = page.locator('input[name="use_shipping_address"]');
+  await expect(() => toggle.setChecked(same, { timeout: 500 })).toPass();
+}
+
+/**
+ * Reopening the billing section emptied the stored address and left the fields filled,
+ * so submit reported every one of them missing under the value it showed.
+ */
+test('a billing address typed, closed and reopened is the one submit reads', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await setSameAsShipping(page, false);
+  await page.fill(FIELD('billing-fname'), 'Ada');
+  await page.fill(FIELD('billing-lname'), 'Lovelace');
+  await page.fill(FIELD('billing-address1'), '14 Billing Way');
+  await page.fill(FIELD('billing-city'), 'Albany');
+  await page.selectOption(FIELD('billing-province'), 'NY');
+  await page.fill(FIELD('billing-postal'), '12207');
+
+  await setSameAsShipping(page, true);
+  await setSameAsShipping(page, false);
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+
+  await expect(page.locator(FIELD('billing-fname'))).toHaveValue('Ada');
+  for (const name of ['billing-fname', 'billing-address1', 'billing-postal']) {
+    await expect(page.locator(FIELD(name))).not.toHaveClass(/next-error-field/);
+  }
+});
+

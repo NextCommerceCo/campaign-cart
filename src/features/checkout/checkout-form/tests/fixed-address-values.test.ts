@@ -5,7 +5,6 @@ import { useCheckoutStore } from '@/state/checkout';
 import {
   applyFixedValues,
   fixedValuesPatch,
-  refillFixedValues,
   type AppliedFixedValues,
 } from '../fixed-address-values';
 
@@ -86,65 +85,6 @@ describe('applyFixedValues', () => {
     const first = applyFixedValues(ctx, 'shipping', 'VA', applied);
     applied.country = 'US';
     await first;
-
-    expect(updateFormData).not.toHaveBeenCalled();
-  });
-
-  /** The billing toggle empties the address on every open and keeps its country. */
-  it('refills a value the billing address lost while its country stayed', async () => {
-    const { ctx } = context({
-      VA: { city: 'Vatican City', postcode: '00120' },
-    });
-    const applied: AppliedFixedValues = {};
-    const store = useCheckoutStore.getState();
-    store.setBillingAddress({
-      first_name: '',
-      last_name: '',
-      address1: '',
-      city: '',
-      province: '',
-      postal: '',
-      country: 'VA',
-      phone: '',
-    });
-    await applyFixedValues(ctx, 'billing', 'VA', applied);
-    const filled = useCheckoutStore.getState().billingAddress;
-    if (!filled) throw new Error('no billing address');
-    store.setBillingAddress({ ...filled, city: '', postal: '' });
-
-    refillFixedValues(ctx, 'billing', applied);
-
-    expect(useCheckoutStore.getState().billingAddress).toMatchObject({
-      city: 'Vatican City',
-      postal: '00120',
-    });
-  });
-
-  it('refills only an empty value, never one the shopper typed', async () => {
-    const { ctx } = context({
-      VA: { city: 'Vatican City', postcode: '00120' },
-    });
-    const applied: AppliedFixedValues = {};
-    await applyFixedValues(ctx, 'shipping', 'VA', applied);
-    useCheckoutStore.getState().updateFormData({ city: 'Rome', postal: '' });
-
-    refillFixedValues(ctx, 'shipping', applied);
-
-    expect(useCheckoutStore.getState().formData).toMatchObject({
-      city: 'Rome',
-      postal: '00120',
-    });
-  });
-
-  it('refills nothing while the country’s rules are still loading', () => {
-    const { ctx, updateFormData } = context({});
-    const applied: AppliedFixedValues = {
-      country: 'IT',
-      values: { city: 'Vatican City' },
-      settled: false,
-    };
-
-    refillFixedValues(ctx, 'shipping', applied);
 
     expect(updateFormData).not.toHaveBeenCalled();
   });
