@@ -242,3 +242,36 @@ test('the province list is the country chosen last, whichever answer arrives las
     page.locator(`${FIELD('province')} option[value="ON"]`)
   ).toHaveCount(0);
 });
+
+/**
+ * Thai, Lao, Khmer and every Indic script write vowels and tones as combining marks,
+ * which the name and city checks refused: a shopper named สุดา, or living in เชียงใหม่,
+ * could not pay. A Thai name with no such mark (สมชาย) always passed.
+ */
+test('names and cities written with Thai vowel marks are accepted on both addresses', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await page.fill(FIELD('fname'), 'สุดา');
+  await page.fill(FIELD('lname'), 'ใจดี');
+  await page.fill(FIELD('address1'), '1 ถนนนิมมานเหมินท์');
+  await page.fill(FIELD('city'), 'เชียงใหม่');
+  await setSameAsShipping(page, false);
+  await page.fill(FIELD('billing-fname'), 'ประยุทธ์');
+  await page.fill(FIELD('billing-address1'), '2 ถนนสุขุมวิท');
+  await page.fill(FIELD('billing-city'), 'กรุงเทพมหานคร');
+  await page.locator(FIELD('billing-city')).blur();
+
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+
+  for (const name of [
+    'fname',
+    'lname',
+    'city',
+    'billing-fname',
+    'billing-city',
+  ]) {
+    await expect(page.locator(FIELD(name))).not.toHaveClass(/next-error-field/);
+  }
+});

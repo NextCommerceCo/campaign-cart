@@ -27,12 +27,15 @@ export const VALIDATION_PATTERNS = {
   EMAIL:
     /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/,
   // Name validation - letter runs (any script, via \p{L}) separated by a single
-  // apostrophe (straight or curly), hyphen, or space.
-  // Examples: "田中", "Владимир", "Anne-Marie du Pré", "O'Brien", "O’Brien"
-  NAME: /^\p{L}+(?:['’ -]\p{L}+)*$/u,
-  // City validation - allows any Unicode letter, spaces, periods, apostrophes (both straight and curly), and hyphens
-  // Examples: "New York", "St. John's", "St. John’s", "São Paulo", "Québec-City", "Mont-Saint-Michel", "O'Fallon"
-  CITY: /^[\p{L}\s.'’-]+$/u,
+  // apostrophe (straight or curly), hyphen, or space. A run carries its combining marks
+  // (\p{M}): Thai, Lao, Khmer and every Indic script write vowels and tones with them, so
+  // without it "สุดา" and "नेहा" were refused and a shopper so named could not pay.
+  // Examples: "田中", "Владимир", "Anne-Marie du Pré", "O'Brien", "O’Brien", "สุดา"
+  NAME: /^\p{L}[\p{L}\p{M}]*(?:['’ -]\p{L}[\p{L}\p{M}]*)*$/u,
+  // City validation - any Unicode letter and its combining marks, spaces, periods,
+  // apostrophes (both straight and curly), and hyphens
+  // Examples: "New York", "St. John's", "São Paulo", "Québec-City", "เชียงใหม่", "नई दिल्ली"
+  CITY: /^[\p{L}\p{M}\s.'’-]+$/u,
 } as const;
 
 /**

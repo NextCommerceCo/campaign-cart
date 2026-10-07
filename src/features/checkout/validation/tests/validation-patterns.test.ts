@@ -50,6 +50,82 @@ describe('isValidName', () => {
     expect(isValidCity('Москва')).toBe(true);
   });
 
+  // \p{L} holds no combining marks, and Thai, Lao, Khmer, Myanmar, Sinhala and every Indic
+  // script write vowels and tones with them: "สมชาย" passed only because it has none.
+  it('accepts names and cities written with combining vowel and tone marks', () => {
+    expect(isValidName('สุดา')).toBe(true);
+    expect(isValidName('ประยุทธ์')).toBe(true);
+    expect(isValidName('राजेश कुमार')).toBe(true);
+    expect(isValidCity('เชียงใหม่')).toBe(true);
+    expect(isValidCity('नई दिल्ली')).toBe(true);
+    expect(isValidCity('عُمان')).toBe(true);
+  });
+
+  /**
+   * The domain, not the example: every region name ICU knows, in languages across the
+   * scripts shoppers type in. Measured before the marks were allowed: 3,803 of 9,122
+   * names refused as a city, 4,915 of 12,276 words refused as a name.
+   */
+  it('accepts every real place name made of letters, in every script sampled', () => {
+    const locales = [
+      'th',
+      'lo',
+      'km',
+      'my',
+      'si',
+      'hi',
+      'bn',
+      'ta',
+      'te',
+      'kn',
+      'ml',
+      'mr',
+      'gu',
+      'pa',
+      'ne',
+      'ar',
+      'fa',
+      'ur',
+      'he',
+      'am',
+      'ka',
+      'hy',
+      'ru',
+      'el',
+      'ja',
+      'zh',
+      'ko',
+      'vi',
+      'tr',
+      'pl',
+      'de',
+      'fr',
+    ];
+    const refusedCities: string[] = [];
+    const refusedNames: string[] = [];
+    for (const locale of locales) {
+      const regions = new Intl.DisplayNames([locale], {
+        type: 'region',
+        fallback: 'none',
+      });
+      for (let a = 65; a <= 90; a++) {
+        for (let b = 65; b <= 90; b++) {
+          const name = regions.of(String.fromCharCode(a, b));
+          // Words only: a name with a digit, comma or bracket is another rule's case.
+          if (!name || !/^[\p{L}\p{M} ]+$/u.test(name)) continue;
+          // One character is under the city minimum, and no city is that short.
+          if (name.length > 1 && !isValidCity(name)) refusedCities.push(name);
+          for (const word of name.split(' ')) {
+            if (!isValidName(word)) refusedNames.push(word);
+          }
+        }
+      }
+    }
+
+    expect(refusedCities).toEqual([]);
+    expect(refusedNames).toEqual([]);
+  });
+
   // \p{L} is a proper Unicode letter class, unlike the old À-ÿ code-point range, so it
   // no longer lets U+00D7 (×) and U+00F7 (÷) — maths symbols, not letters — through.
   it('rejects the multiplication and division signs the old Latin-1 range let through', () => {
