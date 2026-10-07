@@ -283,6 +283,33 @@ test.describe('postcode formatting', () => {
     await expect(postal).toHaveValue('M11A');
   });
 
+  /**
+   * The caret used to move by the length the value grew: a letter typed at the start
+   * left it one place too far, and Backspace over the space only saw it put back.
+   */
+  test('keeps the caret where the shopper is editing a GB postcode', async ({
+    page,
+  }) => {
+    await bootSdk(page, FIXTURE);
+    await chooseCountry(page, 'GB', 'Postcode');
+    const postal = page.locator(POSTAL);
+    const caret = () =>
+      postal.evaluate(input => (input as HTMLInputElement).selectionStart);
+
+    await postal.pressSequentially('w1a1aa');
+    await expect(postal).toHaveValue('W1A 1AA');
+    await postal.press('Home');
+    await postal.press('s');
+    await expect(postal).toHaveValue('SW1A 1AA');
+    expect(await caret()).toBe(1);
+
+    await postal.press('End');
+    for (let i = 0; i < 3; i++) await postal.press('ArrowLeft');
+    await postal.press('Backspace');
+    await postal.press('Backspace');
+    await expect(postal).toHaveValue('SW1 1AA');
+  });
+
   test('a formatted GB postcode passes the form validation', async ({
     page,
   }) => {
