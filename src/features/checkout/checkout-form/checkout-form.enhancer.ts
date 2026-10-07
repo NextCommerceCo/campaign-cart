@@ -83,6 +83,7 @@ import {
 import { setupEnterKeyNavigation } from './enter-key-navigation';
 import {
   applyFixedValues,
+  refillFixedValues,
   type AppliedFixedValues,
 } from './fixed-address-values';
 import {
@@ -2647,10 +2648,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         shipping,
         this.fixedValues.shipping
       );
+    } else {
+      refillFixedValues(ctx, 'shipping', this.fixedValues.shipping);
     }
     const billing = state.billingAddress?.country;
     if (billing !== this.fixedValues.billing.country) {
       void applyFixedValues(ctx, 'billing', billing, this.fixedValues.billing);
+    } else {
+      refillFixedValues(ctx, 'billing', this.fixedValues.billing);
     }
   }
 

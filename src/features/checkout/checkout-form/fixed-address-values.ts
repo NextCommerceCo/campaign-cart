@@ -56,6 +56,31 @@ export interface FixedValuesContext {
 export interface AppliedFixedValues {
   country?: string;
   values?: FixedValues;
+  /** `values` are `country`'s: false while that country's rules are loading. */
+  settled?: boolean;
+}
+
+/** Writes `patch` into one address, and says so in the debug log. */
+function writeFixedValues(
+  ctx: FixedValuesContext,
+  form: 'shipping' | 'billing',
+  country: string | undefined,
+  patch: Record<string, string>
+): void {
+  if (Object.keys(patch).length === 0) return;
+
+  const state = useCheckoutStore.getState();
+  if (form === 'shipping') {
+    ctx.updateFormData(patch);
+  } else if (state.billingAddress) {
+    state.setBillingAddress({ ...state.billingAddress, ...patch });
+  }
+  ctx.logger.debug(
+    `Wrote the fixed ${form} address values of ${country ?? 'no country'}`,
+    {
+      fields: Object.keys(patch),
+    }
+  );
 }
 
 /**
@@ -70,6 +95,7 @@ export async function applyFixedValues(
   applied: AppliedFixedValues
 ): Promise<void> {
   applied.country = country;
+  applied.settled = false;
   let values: FixedValues | undefined;
   if (country) {
     try {
@@ -88,17 +114,32 @@ export async function applyFixedValues(
   const address = form === 'shipping' ? state.formData : state.billingAddress;
   const patch = fixedValuesPatch(address, applied.values, values);
   applied.values = values;
-  if (Object.keys(patch).length === 0) return;
+  applied.settled = true;
+  writeFixedValues(ctx, form, country, patch);
+}
 
-  if (form === 'shipping') {
-    ctx.updateFormData(patch);
-  } else if (state.billingAddress) {
-    state.setBillingAddress({ ...state.billingAddress, ...patch });
+/**
+ * Writes back the fixed values an address lost while its country stayed the same.
+ *
+ * The billing toggle empties the address each time the section opens and keeps the
+ * country, so {@link applyFixedValues}, which runs on a country change, never put Vatican
+ * City's city back: submit then asked for a city the block has no field for. Only an empty
+ * value is refilled, so one the shopper typed stays theirs.
+ */
+export function refillFixedValues(
+  ctx: FixedValuesContext,
+  form: 'shipping' | 'billing',
+  applied: AppliedFixedValues
+): void {
+  if (!applied.settled) return;
+
+  const state = useCheckoutStore.getState();
+  const address: Readonly<Record<string, unknown>> | undefined =
+    form === 'shipping' ? state.formData : state.billingAddress;
+  const patch: Record<string, string> = {};
+  for (const [name, value] of Object.entries(applied.values ?? {})) {
+    const key = FORM_FIELD[name as keyof FixedValues];
+    if (value !== undefined && !address?.[key]) patch[key] = value;
   }
-  ctx.logger.debug(
-    `Wrote the fixed ${form} address values of ${country ?? 'no country'}`,
-    {
-      fields: Object.keys(patch),
-    }
-  );
+  writeFixedValues(ctx, form, applied.country, patch);
 }
