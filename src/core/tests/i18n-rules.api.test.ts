@@ -156,6 +156,24 @@ describe('toCountryConfig', () => {
     expect(toCountryConfig(US).postcodeRequired).toBe(true);
   });
 
+  /** None are sent today; they let the service refuse a value without a release here. */
+  it('carries the text-field patterns the service sends, by this SDK’s field names', () => {
+    const config = toCountryConfig({
+      ...DE,
+      fields: {
+        first_name: field('First name', { pattern: '^\\p{L}+$' }),
+        line1: field('Street', { pattern: '^(?!.*PO Box).*$' }),
+        city: field('City'),
+      },
+    });
+
+    expect(config.fieldPatterns).toEqual({
+      fname: '^\\p{L}+$',
+      address1: '^(?!.*PO Box).*$',
+    });
+    expect(toCountryConfig(DE)).not.toHaveProperty('fieldPatterns');
+  });
+
   it('carries the values the country fixes, and none where it fixes nothing', () => {
     const va = rules(
       'VA',

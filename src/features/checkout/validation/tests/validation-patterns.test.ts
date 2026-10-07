@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasEmoji, isValidEmail } from '../validation-patterns';
+import {
+  hasEmoji,
+  isValidEmail,
+  passesServedPattern,
+} from '../validation-patterns';
 
 describe('isValidEmail', () => {
   it('accepts ordinary addresses, including two-letter TLDs', () => {
@@ -42,5 +46,19 @@ describe('hasEmoji', () => {
   it('ignores a value that is not text', () => {
     expect(hasEmoji(undefined)).toBe(false);
     expect(hasEmoji(true)).toBe(false);
+  });
+});
+
+describe('passesServedPattern', () => {
+  it('matches the trimmed value with the u flag', () => {
+    expect(passesServedPattern('  สุดา ', '^\\p{L}[\\p{L}\\p{M}]*$')).toBe(
+      true
+    );
+    expect(passesServedPattern('PO Box 12', '^(?!.*PO Box).*$')).toBe(false);
+  });
+
+  it('passes without a pattern, and with one that does not compile', () => {
+    expect(passesServedPattern('12345', undefined)).toBe(true);
+    expect(passesServedPattern('12345', '^[\\p{L]+$')).toBe(true);
   });
 });

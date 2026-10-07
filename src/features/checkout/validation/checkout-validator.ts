@@ -40,7 +40,12 @@ import {
   createValidationRules,
   type FieldRuleContext,
 } from './field-rules';
-import { fieldMessage, postalMessage, type MessageKey } from './field-messages';
+import {
+  fieldMessage,
+  postalMessage,
+  SERVED_PATTERN_MESSAGE,
+  type MessageKey,
+} from './field-messages';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
@@ -65,6 +70,7 @@ const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
   email: 'invalid',
   phone: 'invalid',
   postal: 'invalid',
+  pattern: 'invalid',
   custom: 'invalid',
 };
 
@@ -211,7 +217,14 @@ export class CheckoutValidator {
                 postcode.country,
                 postcode.config
               )
-            : fieldMessage(this.i18nRules, RULE_MESSAGE[rule.type], name));
+            : fieldMessage(
+                this.i18nRules,
+                rule.type === 'pattern'
+                  ? (SERVED_PATTERN_MESSAGE[name.replace(/^billing-/, '')] ??
+                      'invalid')
+                  : RULE_MESSAGE[rule.type],
+                name
+              ));
         this.setError(name, message);
         isValid = false;
         break;

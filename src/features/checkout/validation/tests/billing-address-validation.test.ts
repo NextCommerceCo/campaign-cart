@@ -192,6 +192,24 @@ describe('validateBillingAddress', () => {
     });
   });
 
+  /** A pattern the service sends is keyed by the checkout's field names, an address by the API's. */
+  it('refuses what a served pattern refuses, under the billing address’s own keys', () => {
+    const result = validateBillingAddress(
+      createContext(),
+      { ...completeAddress, first_name: 'Ada2', city: 'PO Box 9' },
+      new Map([
+        [
+          'US',
+          countryConfig({
+            fieldPatterns: { fname: '^\\D+$', city: '^(?!PO Box).*$' },
+          }),
+        ],
+      ])
+    );
+
+    expect(Object.keys(result.errors).sort()).toEqual(['city', 'first_name']);
+  });
+
   /** The orders API takes any characters in a name or a city; only their absence fails. */
   it('takes a name and a city in any characters', () => {
     const result = validateBillingAddress(

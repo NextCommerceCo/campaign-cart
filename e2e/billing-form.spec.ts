@@ -298,6 +298,47 @@ test.describe('a name and a city', () => {
     }
   });
 
+  /**
+   * The address-rules service can refuse a value from every page at once, without a
+   * release of the SDK, by sending a pattern for the field. It sends none today.
+   */
+  test('are refused where the address service sends a pattern that refuses them', async ({
+    page,
+  }) => {
+    await routeAddressService(page, {
+      countries: [{ code: 'US', name: 'United States' }],
+      rules: () => ({
+        ...US_RULES,
+        fields: {
+          ...(US_RULES.fields as Record<string, unknown>),
+          city: ruleField(
+            'City',
+            'address-level2',
+            { type: 'text' },
+            { format: { pattern: '^\\D+$' } }
+          ),
+        },
+        states: [{ code: 'NY', name: 'New York' }],
+      }),
+    });
+    await bootSdk(page, FIXTURE);
+    await page.fill(FIELD('address1'), '1 Main St');
+    await page.fill(FIELD('city'), '100 Mile House');
+    await page.locator(FIELD('city')).blur();
+    await expect(page.locator(FIELD('city'))).toHaveClass(/next-error-field/);
+
+    await page.uncheck('input[name="use_shipping_address"]');
+    await page.fill(FIELD('billing-address1'), '2 Side St');
+    await page.fill(FIELD('billing-city'), 'Area 51');
+    await page.click('button[type="submit"]');
+    await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+
+    await expect(page.locator(FIELD('city'))).toHaveClass(/next-error-field/);
+    await expect(page.locator(FIELD('billing-city'))).toHaveClass(
+      /next-error-field/
+    );
+  });
+
   test('are still refused when left empty', async ({ page }) => {
     await bootSdk(page, FIXTURE);
     await page.fill(FIELD('address1'), '1 Main St');

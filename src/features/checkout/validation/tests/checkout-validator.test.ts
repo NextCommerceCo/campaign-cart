@@ -141,6 +141,33 @@ describe('validateField', () => {
     ).toBe(true);
   });
 
+  it('names a served pattern’s refusal the way the service words it for the field', () => {
+    const { validator } = createValidator(['fname', 'city']);
+    validator.setAddressCountry(() => ({
+      country: 'US',
+      config: {
+        stateLabel: 'State',
+        stateRequired: false,
+        postcodeLabel: 'ZIP Code',
+        postcodeRegex: null,
+        postcodeMinLength: 0,
+        postcodeMaxLength: 10,
+        postcodeExample: null,
+        postcodeFormat: null,
+        currencyCode: 'USD',
+        currencySymbol: '$',
+        fieldPatterns: { fname: '^\\D+$', city: '^\\D+$' },
+      } satisfies CountryConfig,
+    }));
+
+    expect(validator.validateField('fname', 'Ada2').message).toBe(
+      'First name can only contain letters, spaces, hyphens and apostrophes'
+    );
+    expect(validator.validateField('city', 'Area 51').message).toBe(
+      'City isn’t valid'
+    );
+  });
+
   it('pronounces a field with no rules valid, whatever it holds', () => {
     const { validator } = createValidator(['province']);
 

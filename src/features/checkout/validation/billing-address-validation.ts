@@ -17,7 +17,18 @@ import {
   isValidPhone,
   type PhoneNumberSource,
 } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
+
+/** A checkout field's name in a billing address, where the two differ. */
+const ADDRESS_KEY: Readonly<Record<string, string>> = {
+  fname: 'first_name',
+  lname: 'last_name',
+};
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
@@ -83,6 +94,25 @@ export function validateBillingAddress(
       isValid = false;
     }
   });
+
+  // The patterns are keyed by the checkout's field names, a billing address by the API's.
+  const address: Readonly<Record<string, unknown>> = billingAddress ?? {};
+  const patternProblems = servedPatternErrors(
+    source,
+    {
+      fname: address.first_name,
+      lname: address.last_name,
+      address1: address.address1,
+      address2: address.address2,
+      city: address.city,
+    },
+    countryConfig,
+    typeof address.country === 'string' ? address.country : undefined
+  );
+  for (const [field, message] of Object.entries(patternProblems)) {
+    errors[ADDRESS_KEY[field] ?? field] = message;
+    isValid = false;
+  }
 
   if (
     billingAddress?.phone &&

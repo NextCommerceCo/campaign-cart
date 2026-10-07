@@ -17,7 +17,12 @@ import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 import type { FormValidationContext } from './form-validation';
 import { billingFieldErrors, validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
 import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -121,6 +126,24 @@ export async function validateStep(
       if (!firstErrorField) firstErrorField = field;
     }
   });
+
+  const shippingCountry: unknown = formData.country;
+  const shippingConfig =
+    typeof shippingCountry === 'string'
+      ? countryConfigs.get(shippingCountry)
+      : undefined;
+  const patternProblems = servedPatternErrors(
+    ctx.i18nRules,
+    formData,
+    shippingConfig,
+    typeof shippingCountry === 'string' ? shippingCountry : undefined
+  );
+  Object.assign(errors, patternProblems);
+  const firstPattern = Object.keys(patternProblems)[0];
+  if (firstPattern) {
+    isValid = false;
+    if (!firstErrorField) firstErrorField = firstPattern;
+  }
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {

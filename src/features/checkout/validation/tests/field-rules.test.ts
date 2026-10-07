@@ -58,7 +58,9 @@ describe('createValidationRules', () => {
 
     expect([...rules.keys()].sort()).toEqual([
       'address1',
+      'address2',
       'billing-address1',
+      'billing-address2',
       'billing-city',
       'billing-country',
       'billing-fname',
@@ -85,25 +87,26 @@ describe('createValidationRules', () => {
   });
 
   /**
+   * The orders API takes any characters in them, so the only format check is a pattern the
+   * address-rules service sends, and it sends none today.
+   */
+  it('checks a name, street line and city only against a served pattern', () => {
+    const rules = createValidationRules();
+
+    for (const name of ['fname', 'lname', 'address1', 'city', 'billing-city']) {
+      expect(rules.get(name)?.map(r => r.type)).toEqual([
+        'required',
+        'pattern',
+      ]);
+    }
+    expect(rules.get('address2')?.map(r => r.type)).toEqual(['pattern']);
+  });
+
+  /**
    * Issue #115: `postal` used to get `required` alone, so blur ticked `ABCDE` in a US ZIP
    * field, and the browser-autofill poll's `change` ticked it again after submit had
    * marked it, wiping the submit message.
    */
-  /** The orders API takes any characters in them, so a format rule could only refuse a shopper. */
-  it('only requires a name and a city, on both addresses', () => {
-    const rules = createValidationRules();
-
-    for (const name of [
-      'fname',
-      'lname',
-      'city',
-      'billing-fname',
-      'billing-city',
-    ]) {
-      expect(rules.get(name)?.map(r => r.type)).toEqual(['required']);
-    }
-  });
-
   it('checks the postcode against its country', () => {
     expect(
       createValidationRules()
@@ -165,6 +168,63 @@ describe('applyRule', () => {
     expect(applyRule(ctx, { type: 'postal' }, '99999')).toBe(false);
     expect(asked).toEqual(['billing']);
     expect(validatePostalCode).toHaveBeenCalledWith('99999', 'GB', gbConfig);
+  });
+
+  describe('a pattern the address-rules service sends', () => {
+    const withPatterns = (fieldPatterns?: Record<string, string>) => {
+      const asked: string[] = [];
+      const ctx = createContext({
+        addressCountry: type => {
+          asked.push(type);
+          return {
+            country: 'CA',
+            config: {
+              ...(fieldPatterns ? { fieldPatterns } : {}),
+            } as CountryConfig,
+          };
+        },
+      });
+      return { ctx, asked };
+    };
+
+    it('refuses what it refuses, on the field’s own address', () => {
+      const { ctx, asked } = withPatterns({ city: '^\\D+$' });
+
+      expect(
+        applyRule(
+          { ...ctx, fieldName: 'billing-city' },
+          { type: 'pattern' },
+          '100 Mile House'
+        )
+      ).toBe(false);
+      expect(asked).toEqual(['billing']);
+    });
+
+    it('passes a field it has no pattern for, and every field where none is sent', () => {
+      const { ctx } = withPatterns({ city: '^\\D+$' });
+      expect(
+        applyRule(
+          { ...ctx, fieldName: 'fname' },
+          { type: 'pattern' },
+          'Jane 2nd'
+        )
+      ).toBe(true);
+      expect(
+        applyRule(
+          { ...withPatterns().ctx, fieldName: 'city' },
+          { type: 'pattern' },
+          '12345'
+        )
+      ).toBe(true);
+    });
+
+    it('passes everything when the pattern does not compile', () => {
+      const { ctx } = withPatterns({ city: '^[\\p{L]+$' });
+
+      expect(
+        applyRule({ ...ctx, fieldName: 'city' }, { type: 'pattern' }, '12345')
+      ).toBe(true);
+    });
   });
 
   it('postal passes while the country has no rules loaded', () => {

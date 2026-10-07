@@ -6,9 +6,11 @@
  * one of them. They are pure functions of their argument, so they need **nothing** from
  * `CheckoutValidator` and can be tested by calling them.
  *
- * A name and a city are not checked for what they are written in, only that they are
- * there: the orders API takes any characters in them, so a pattern here could only refuse
- * a real shopper. One did, for every name written with Thai or Indic vowel marks.
+ * A name, a street line and a city are not checked for what they are written in, only that
+ * they are there: the orders API takes any characters in them, so a pattern here could
+ * only refuse a real shopper. One did, for every name written with Thai or Indic vowel
+ * marks. The address-rules service can send one ({@link passesServedPattern}) when a value
+ * turns out to break orders.
  *
  * Country-specific checks are deliberately *not* here, because being pure disqualifies
  * them. A postal code lives with `I18nRules`; a phone number lives in
@@ -16,6 +18,8 @@
  * here once as a regex plus "at least ten digits", and judging a number without knowing
  * its country is what made it wrong.
  */
+
+import { createLogger } from '@/core/logger';
 
 /**
  * The regular expression behind {@link isValidEmail}, which adds the rules it cannot
@@ -94,6 +98,42 @@ export function isValidEmail(email: string): boolean {
   }
 
   return true;
+}
+
+const logger = createLogger('ValidationPatterns');
+
+/** Each pattern the service sent, compiled once; `null` for one that does not compile. */
+const servedPatterns = new Map<string, RegExp | null>();
+
+/**
+ * Whether a text field's value passes the pattern the address-rules service sent for it,
+ * compiled with the `u` flag and matched against the trimmed value.
+ *
+ * No pattern passes: none are sent today, and a field without one is only checked for being
+ * there. A pattern that does not compile passes too, because a bad deployment of the
+ * service must not stop every shopper on every page from paying.
+ *
+ * @example
+ * ```ts
+ * passesServedPattern('PO Box 12', '^(?!.*\\bPO Box\\b).*$'); // false
+ * passesServedPattern('PO Box 12', undefined);                 // true
+ * ```
+ */
+export function passesServedPattern(
+  value: string,
+  pattern: string | undefined
+): boolean {
+  if (!pattern) return true;
+  if (!servedPatterns.has(pattern)) {
+    let compiled: RegExp | null = null;
+    try {
+      compiled = new RegExp(pattern, 'u');
+    } catch {
+      logger.warn('Ignoring a field pattern that does not compile:', pattern);
+    }
+    servedPatterns.set(pattern, compiled);
+  }
+  return servedPatterns.get(pattern)?.test(value.trim()) ?? true;
 }
 
 /**

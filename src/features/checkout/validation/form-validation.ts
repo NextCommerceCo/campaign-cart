@@ -31,7 +31,12 @@ import {
   isValidPhone,
   type PhoneNumberSource,
 } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
 import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
@@ -149,6 +154,15 @@ export async function validateForm(
       isValid = false;
     }
   });
+
+  const patternProblems = servedPatternErrors(
+    ctx.i18nRules,
+    formData,
+    countryConfig,
+    formData.country
+  );
+  Object.assign(errors, patternProblems);
+  if (Object.keys(patternProblems).length > 0) isValid = false;
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {

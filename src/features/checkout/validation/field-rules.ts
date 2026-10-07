@@ -18,10 +18,10 @@
 import type { CountryConfig } from '@/core/i18n-rules';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
-import { isValidEmail } from './validation-patterns';
+import { isValidEmail, passesServedPattern } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
-/** An address's country, and that country's rules: the postcode it is checked against. */
+/** An address's country, and that country's rules: its postcode, and any served patterns. */
 export interface AddressCountry {
   country: string;
   config: CountryConfig;
@@ -41,9 +41,9 @@ export interface FieldRuleContext {
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /**
-   * The country and rules an address's postcode is checked against: the pair the
-   * submit-time check reads, so blur cannot tick a postcode submit refuses. `undefined`
-   * while that country's rules have not loaded, and the postcode then passes.
+   * The country and rules an address is checked against: the pair the submit-time check
+   * reads, so blur cannot tick a postcode, or a value a served pattern refuses, that submit
+   * refuses. `undefined` while that country's rules have not loaded, and both then pass.
    */
   addressCountry?: (type: 'shipping' | 'billing') => AddressCountry | undefined;
   /**
@@ -63,8 +63,9 @@ export function addressTypeOf(fieldName?: string): 'shipping' | 'billing' {
  * Builds the field name → rules table used by per-field validation.
  *
  * Phone gets only a format rule: whether a phone is *required* is decided by the markup at
- * submit time, not here. A name and a city get no format rule at all: the orders API takes
- * any characters in them.
+ * submit time, not here. A name, a street line and a city are checked only against a
+ * pattern the address-rules service sends for them, and it sends none today: the orders
+ * API takes any characters in them.
  *
  * A billing field gets its shipping twin's rules, so blur cannot tick a billing value
  * the submit check refuses. A field with no rules is pronounced valid, whatever it holds.
@@ -82,12 +83,14 @@ export function createValidationRules(): Map<string, ValidationRule[]> {
   const emailRule: ValidationRule = { type: 'email' };
   const phoneRule: ValidationRule = { type: 'phone' };
   const postalRule: ValidationRule = { type: 'postal' };
+  const patternRule: ValidationRule = { type: 'pattern' };
 
   rules.set('email', [requiredRule, emailRule]);
-  rules.set('fname', [requiredRule]);
-  rules.set('lname', [requiredRule]);
-  rules.set('address1', [requiredRule]);
-  rules.set('city', [requiredRule]);
+  rules.set('fname', [requiredRule, patternRule]);
+  rules.set('lname', [requiredRule, patternRule]);
+  rules.set('address1', [requiredRule, patternRule]);
+  rules.set('address2', [patternRule]);
+  rules.set('city', [requiredRule, patternRule]);
   rules.set('postal', [requiredRule, postalRule]);
   rules.set('country', [requiredRule]);
   rules.set('phone', [phoneRule]); // Phone validation rules (required is conditional)
@@ -135,6 +138,16 @@ export function applyRule(
       return isValidPhone(
         value,
         ctx.phoneSource?.(addressTypeOf(ctx.fieldName))
+      );
+
+    case 'pattern':
+      return (
+        !value ||
+        passesServedPattern(
+          value,
+          ctx.addressCountry?.(addressTypeOf(ctx.fieldName))?.config
+            .fieldPatterns?.[(ctx.fieldName ?? '').replace(/^billing-/, '')]
+        )
       );
 
     case 'postal': {

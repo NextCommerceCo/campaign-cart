@@ -87,7 +87,10 @@ export interface RulesField {
     options?: 'countries' | 'states';
     span?: number;
   };
-  /** On `postcode` and `phone_number` only: see `docs/http-api.md` in the service's repo. */
+  /**
+   * On `postcode` and `phone_number`, and a `pattern` alone on a text field the service
+   * chooses to check ({@link SERVED_PATTERN_FIELDS}): see the service's fields reference.
+   */
   format?: {
     pattern?: string;
     example?: string;
@@ -99,6 +102,18 @@ export interface RulesField {
     national_number_pattern?: string;
   };
 }
+
+/**
+ * The text fields a pattern from the service can check: its name for each, and this SDK's.
+ * A pattern is compiled with the `u` flag and matched against the trimmed value.
+ */
+const SERVED_PATTERN_FIELDS = {
+  first_name: 'fname',
+  last_name: 'lname',
+  line1: 'address1',
+  line2: 'address2',
+  city: 'city',
+} as const;
 
 /** Values every address in a country shares, sent without being asked for. */
 export type FixedValues = Partial<
@@ -153,6 +168,12 @@ export function toCountryConfig(
   const postcode = rules.fields.postcode;
   const postcodeFormat = postcode?.format;
   const phone = rules.fields.phone_number?.format;
+  const fieldPatterns = Object.fromEntries(
+    Object.entries(SERVED_PATTERN_FIELDS).flatMap(([service, sdk]) => {
+      const pattern = rules.fields[service]?.format?.pattern;
+      return pattern ? [[sdk, pattern]] : [];
+    })
+  );
 
   return {
     stateLabel: state?.label ?? 'State',
@@ -177,6 +198,7 @@ export function toCountryConfig(
     ...(rules.address.fixed && Object.keys(rules.address.fixed).length > 0
       ? { fixed: rules.address.fixed }
       : {}),
+    ...(Object.keys(fieldPatterns).length > 0 ? { fieldPatterns } : {}),
     currencyCode: currencyCode ?? '',
     currencySymbol: '',
   };

@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "88469cfd8b62cb234e9040e063946c4b882cd490cffd09638dde8092e7bfa239",
+    "inputSha256": "fa2c6a588445a9d823f6595852493338f35d150231219e3295ff6602844720d6",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -88,7 +88,7 @@
       },
       {
         "path": "src/core/i18n-rules/i18n-rules.ts",
-        "sha256": "e37c606aa095284e7c31e3c9900ebeaf3ef1728f0148d05f3cc0ac6d403017f0"
+        "sha256": "053829e8ee581cf5351308129e994c7621e213ff2588bb520745b2640d33ac15"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.debug-utils.ts",
