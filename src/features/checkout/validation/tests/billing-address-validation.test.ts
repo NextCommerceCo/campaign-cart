@@ -192,15 +192,19 @@ describe('validateBillingAddress', () => {
     });
   });
 
-  /** A billing city of `12345` used to reach the order while the shipping one was refused. */
-  it('checks the city format like the shipping city', () => {
+  /** The orders API takes any characters in a name or a city; only their absence fails. */
+  it('takes a name and a city in any characters', () => {
     const result = validateBillingAddress(
       createContext(),
-      { ...completeAddress, city: '12345' },
+      {
+        ...completeAddress,
+        first_name: 'John Jr.',
+        last_name: 'ประยุทธ์',
+        city: '100 Mile House',
+      },
       configs
     );
 
-    expect(result.isValid).toBe(false);
-    expect(Object.keys(result.errors)).toEqual(['city']);
+    expect(result).toEqual({ isValid: true, errors: {} });
   });
 });

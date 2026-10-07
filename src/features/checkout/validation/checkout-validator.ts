@@ -8,7 +8,7 @@
  *
  * | Module | What it decides |
  * |---|---|
- * | `validation-patterns.ts` | whether one value looks like an email / phone / name / city |
+ * | `validation-patterns.ts` | whether one value looks like an email, or holds an emoji |
  * | `field-labels.ts` | what a field is called in a message |
  * | `field-rules.ts` | the per-field rules used while the shopper types |
  * | `form-validation.ts` | the full submit-time verdict |
@@ -45,12 +45,7 @@ import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
-import {
-  hasEmoji,
-  isValidCity,
-  isValidEmail,
-  isValidName,
-} from './validation-patterns';
+import { hasEmoji, isValidEmail } from './validation-patterns';
 import type {
   FormValidationResult,
   ValidationResult,
@@ -68,10 +63,8 @@ export type {
 const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
   required: 'blank',
   email: 'invalid',
-  name: 'invalid_characters',
   phone: 'invalid',
   postal: 'invalid',
-  city: 'invalid',
   custom: 'invalid',
 };
 
@@ -124,10 +117,9 @@ export class CheckoutValidator {
   }
 
   /**
-   * Installs the lookup that tells the per-field checks which country, and which of its
-   * rules, an address is checked against: its postcode, name and city patterns. Without
-   * it, blur and autofill mark any postcode valid, and that verdict replaces the message
-   * submit has just shown.
+   * Installs the lookup that tells the per-field postcode check which country, and which
+   * of its rules, an address's postcode is checked against. Without it, blur and autofill
+   * mark any postcode valid, and that verdict replaces the message submit has just shown.
    *
    * @example
    * ```ts
@@ -295,14 +287,6 @@ export class CheckoutValidator {
 
   public isValidEmail(email: string): boolean {
     return isValidEmail(email);
-  }
-
-  public isValidName(name: string): boolean {
-    return isValidName(name);
-  }
-
-  public isValidCity(city: string): boolean {
-    return isValidCity(city);
   }
 
   // ============================================================================

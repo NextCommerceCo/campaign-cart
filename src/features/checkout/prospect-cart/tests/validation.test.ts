@@ -42,16 +42,16 @@ describe('isValidName', () => {
     expect(isValidName("O'Connor")).toBe(true);
     expect(isValidName('Mary-Jane')).toBe(true);
     expect(isValidName('José')).toBe(true);
-    // Checkout's shape: any script, marks included. The old pattern was Latin-1 only.
+    // The old pattern was Latin-1 only.
     expect(isValidName('สุดา')).toBe(true);
     expect(isValidName('田中')).toBe(true);
     expect(isValidName('Владимир')).toBe(true);
   });
 
-  it('rejects empty, single-character, and non-letter names', () => {
+  it('rejects only a name under two characters, whatever it is written in', () => {
     expect(isValidName('')).toBe(false);
-    expect(isValidName('A')).toBe(false);
-    expect(isValidName('John123')).toBe(false);
+    expect(isValidName(' A ')).toBe(false);
+    expect(isValidName('John Smith Jr.')).toBe(true);
   });
 });
 

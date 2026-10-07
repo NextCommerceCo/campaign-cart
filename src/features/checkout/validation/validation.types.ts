@@ -20,7 +20,7 @@
  */
 export interface ValidationRule {
   /** Which built-in check to run. `custom` runs {@link ValidationRule.validator} instead. */
-  type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
+  type: 'required' | 'email' | 'phone' | 'postal' | 'custom';
   /**
    * Shown when a `custom` check fails. A built-in check shows the address-rules service's
    * message for it instead (`field-messages.ts`), so its wording follows the page's language.

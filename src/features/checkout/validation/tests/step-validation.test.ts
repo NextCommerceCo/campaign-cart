@@ -125,7 +125,8 @@ describe('validateStep — step 1', () => {
     );
 
     expect(result.errors.email).toBe('Enter a valid email address');
-    expect(result.errors.city).toBe('City isn’t valid');
+    // A city is only required: the orders API takes any characters in one.
+    expect(result.errors.city).toBeUndefined();
   });
 });
 

@@ -27,18 +27,12 @@ export type { MessageSource };
  * What is wrong with a value, in the service's words. `blank` is an empty field of either
  * kind: the service serves a dropdown's as `not_selected`, and it is read from there.
  */
-export type MessageKey =
-  | 'blank'
-  | 'invalid'
-  | 'invalid_characters'
-  | 'contains_emoji';
+export type MessageKey = 'blank' | 'invalid' | 'contains_emoji';
 
 /** For when neither the page nor the service has the sentence in the form's language. */
 const ENGLISH: Record<MessageKey, string> = {
   blank: '{{label}} is required',
   invalid: '{{label}} isn’t valid',
-  invalid_characters:
-    '{{label}} can only contain letters, spaces, hyphens and apostrophes',
   contains_emoji: '{{label}} can’t contain emojis',
 };
 

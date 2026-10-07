@@ -1,13 +1,11 @@
 /**
  * Whether an email, phone, or name is complete enough to send with a prospect
  * cart. A prospect is captured on partial intent, not a submitted order, so a phone
- * nothing could judge needs only a digit count. A name is shaped the way checkout
- * checks one, so a shopper checkout takes is never left out of the lead.
+ * nothing could judge needs only a digit count, and a name only a length.
  */
 
 import { phoneFieldFor } from '../checkout-form/phone-input';
 import { checkPhone } from '../validation/phone-validation';
-import { isValidName as isNameShaped } from '../validation/validation-patterns';
 
 /**
  * Digits a phone must have before a lead is worth capturing, when nothing could judge it.
@@ -86,10 +84,9 @@ export function isValidPhone(
 }
 
 /**
- * Two characters before a lead is worth capturing, in checkout's shape. The shape was a
- * Latin-1 pattern of its own, so a name in Thai, Japanese or Cyrillic never made a lead.
+ * Two characters before a lead is worth capturing, whatever they are written in. It was a
+ * Latin-1 pattern, so a name in Thai, Japanese or Cyrillic never made a lead.
  */
 export function isValidName(name: string): boolean {
-  const trimmed = name.trim();
-  return trimmed.length >= 2 && isNameShaped(trimmed);
+  return name.trim().length >= 2;
 }

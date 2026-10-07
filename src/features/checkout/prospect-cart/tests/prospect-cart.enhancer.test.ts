@@ -95,7 +95,9 @@ describe('ProspectCartEnhancer', () => {
     sessionStorage.clear();
     vi.clearAllMocks();
     createCartMock.mockReset();
-    createCartMock.mockResolvedValue({ checkout_url: 'https://checkout.example/abc' });
+    createCartMock.mockResolvedValue({
+      checkout_url: 'https://checkout.example/abc',
+    });
     defaultStores();
   });
 
@@ -242,7 +244,9 @@ describe('ProspectCartEnhancer', () => {
   describe('email validation (isValidEmail)', () => {
     let enhancer: ProspectCartEnhancer;
     beforeEach(async () => {
-      enhancer = new ProspectCartEnhancer(buildContainer('<input type="email" />'));
+      enhancer = new ProspectCartEnhancer(
+        buildContainer('<input type="email" />')
+      );
       await enhancer.initialize();
     });
 
@@ -265,11 +269,11 @@ describe('ProspectCartEnhancer', () => {
       'test@test....com',
     ];
 
-    it.each(valid)('accepts %s', (email) => {
+    it.each(valid)('accepts %s', email => {
       expect((enhancer as any).isValidEmail(email)).toBe(true);
     });
 
-    it.each(invalid)('rejects %s', (email) => {
+    it.each(invalid)('rejects %s', email => {
       expect((enhancer as any).isValidEmail(email)).toBe(false);
     });
   });
@@ -277,7 +281,9 @@ describe('ProspectCartEnhancer', () => {
   describe('name validation (isValidName)', () => {
     let enhancer: ProspectCartEnhancer;
     beforeEach(async () => {
-      enhancer = new ProspectCartEnhancer(buildContainer('<input type="email" />'));
+      enhancer = new ProspectCartEnhancer(
+        buildContainer('<input type="email" />')
+      );
       await enhancer.initialize();
     });
 
@@ -289,12 +295,11 @@ describe('ProspectCartEnhancer', () => {
       expect((enhancer as any).isValidName('Jean Luc')).toBe(true);
     });
 
-    it('rejects empty, too-short, or invalid characters', () => {
+    it('rejects only what is too short, whatever the characters', () => {
       expect((enhancer as any).isValidName('')).toBe(false);
       expect((enhancer as any).isValidName('A')).toBe(false);
       expect((enhancer as any).isValidName('  ')).toBe(false);
-      expect((enhancer as any).isValidName('John123')).toBe(false);
-      expect((enhancer as any).isValidName('John@Doe')).toBe(false);
+      expect((enhancer as any).isValidName('John Smith Jr.')).toBe(true);
     });
   });
 
@@ -391,7 +396,9 @@ describe('ProspectCartEnhancer', () => {
     });
 
     it('falls back to config store getCurrency() when campaign currency is missing', async () => {
-      (useCampaignStore.getState as any).mockReturnValue({ currency: undefined });
+      (useCampaignStore.getState as any).mockReturnValue({
+        currency: undefined,
+      });
       const enhancer = new ProspectCartEnhancer(buildContainer('<div></div>'));
       await enhancer.initialize();
       expect((enhancer as any).getCurrency()).toBe('USD');
@@ -403,7 +410,10 @@ describe('ProspectCartEnhancer', () => {
       const originalLocation = window.location;
       // happy-dom allows reassigning location via search string
       Object.defineProperty(window, 'location', {
-        value: { ...originalLocation, search: '?utm_source=google&utm_medium=cpc' },
+        value: {
+          ...originalLocation,
+          search: '?utm_source=google&utm_medium=cpc',
+        },
         writable: true,
       });
 
@@ -412,11 +422,16 @@ describe('ProspectCartEnhancer', () => {
 
       const utm = (enhancer as any).collectUtmData();
       expect(utm).toMatchObject({ utm_source: 'google', utm_medium: 'cpc' });
-      expect(JSON.parse(sessionStorage.getItem('next_utm_data')!)).toMatchObject({
+      expect(
+        JSON.parse(sessionStorage.getItem('next_utm_data')!)
+      ).toMatchObject({
         utm_source: 'google',
       });
 
-      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+      });
     });
 
     it('merges stored UTM data with URL params', async () => {
@@ -527,7 +542,11 @@ describe('ProspectCartEnhancer', () => {
         getNumber: () => '+15551234567',
       });
 
-      setFieldValues(container, { phone: '+15551234567', fname: 'Jane', lname: 'Doe' });
+      setFieldValues(container, {
+        phone: '+15551234567',
+        fname: 'Jane',
+        lname: 'Doe',
+      });
 
       enhancer.checkAndCreateCart();
       await vi.waitFor(() => expect(createCartMock).toHaveBeenCalledTimes(1));
@@ -653,7 +672,9 @@ describe('ProspectCartEnhancer', () => {
         id: 'https://checkout.example/abc',
         email: 'user@example.com',
       });
-      const stored = JSON.parse(sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)!);
+      const stored = JSON.parse(
+        sessionStorage.getItem(PROSPECT_CART_STORAGE_KEY)!
+      );
       expect(stored.id).toBe('https://checkout.example/abc');
     });
 
@@ -676,7 +697,9 @@ describe('ProspectCartEnhancer', () => {
     it('retries with minimal data when the first request fails and email is valid', async () => {
       createCartMock
         .mockRejectedValueOnce(new Error('first failure'))
-        .mockResolvedValueOnce({ checkout_url: 'https://checkout.example/retry' });
+        .mockResolvedValueOnce({
+          checkout_url: 'https://checkout.example/retry',
+        });
 
       const container = buildContainer(`
         <input data-next-checkout-field="email" type="email" value="user@example.com" />
@@ -698,7 +721,9 @@ describe('ProspectCartEnhancer', () => {
         language: 'en',
       });
       expect(retryArg.attribution).toBeUndefined();
-      expect(enhancer.getCurrentProspectCart()?.id).toBe('https://checkout.example/retry');
+      expect(enhancer.getCurrentProspectCart()?.id).toBe(
+        'https://checkout.example/retry'
+      );
     });
 
     it('does not retry when the email is invalid', async () => {
@@ -841,7 +866,10 @@ describe('ProspectCartEnhancer', () => {
       const enhancer = new ProspectCartEnhancer(buildContainer('<div></div>'));
       await enhancer.initialize();
       const handler = vi.fn();
-      enhancer['element'].addEventListener('next:prospect-cart-abandoned', handler);
+      enhancer['element'].addEventListener(
+        'next:prospect-cart-abandoned',
+        handler
+      );
       await enhancer.abandonCart();
       expect(handler).not.toHaveBeenCalled();
     });
@@ -862,7 +890,10 @@ describe('ProspectCartEnhancer', () => {
       const enhancer = new ProspectCartEnhancer(buildContainer('<div></div>'));
       await enhancer.initialize();
       const handler = vi.fn();
-      enhancer['element'].addEventListener('next:prospect-cart-converted', handler);
+      enhancer['element'].addEventListener(
+        'next:prospect-cart-converted',
+        handler
+      );
       await enhancer.convertCart();
       expect(handler).not.toHaveBeenCalled();
     });
@@ -937,21 +968,29 @@ describe('ProspectCartEnhancer', () => {
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
       // private access for test assertion
-      expect((enhancer as any).emailField).toBe(container.querySelector('input'));
+      expect((enhancer as any).emailField).toBe(
+        container.querySelector('input')
+      );
     });
 
     it('finds email field via input[name*="email"] fallback', async () => {
-      const container = buildContainer('<input name="customer_email_address" />');
+      const container = buildContainer(
+        '<input name="customer_email_address" />'
+      );
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
-      expect((enhancer as any).emailField).toBe(container.querySelector('input'));
+      expect((enhancer as any).emailField).toBe(
+        container.querySelector('input')
+      );
     });
 
     it('finds phone field via input[type="tel"]', async () => {
       const container = buildContainer('<input type="tel" />');
       const enhancer = new ProspectCartEnhancer(container);
       await enhancer.initialize();
-      expect((enhancer as any).phoneField).toBe(container.querySelector('input'));
+      expect((enhancer as any).phoneField).toBe(
+        container.querySelector('input')
+      );
     });
   });
 });

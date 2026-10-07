@@ -54,8 +54,6 @@ describe('CheckoutValidator — public surface', () => {
       'validateStep',
       'validateForm',
       'isValidEmail',
-      'isValidName',
-      'isValidCity',
       'setError',
       'clearError',
       'clearAllErrors',
@@ -126,10 +124,21 @@ describe('validateField', () => {
   it('judges a billing field like its shipping twin', () => {
     const { validator } = createValidator(['billing-fname', 'billing-city']);
 
-    expect(validator.validateField('billing-fname', '!!!').isValid).toBe(false);
-    expect(validator.validateField('billing-city', '12345').isValid).toBe(
-      false
+    expect(validator.validateField('billing-fname', '').isValid).toBe(false);
+    expect(validator.validateField('fname', '').isValid).toBe(false);
+  });
+
+  /** The orders API takes any characters in a name or a city, so nothing here refuses one. */
+  it('takes a name or a city in any characters, as long as it is there', () => {
+    const { validator } = createValidator(['fname', 'billing-city']);
+
+    expect(validator.validateField('fname', 'John Smith Jr.').isValid).toBe(
+      true
     );
+    expect(validator.validateField('fname', 'สุดา').isValid).toBe(true);
+    expect(
+      validator.validateField('billing-city', '100 Mile House').isValid
+    ).toBe(true);
   });
 
   it('pronounces a field with no rules valid, whatever it holds', () => {

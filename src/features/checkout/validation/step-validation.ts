@@ -18,7 +18,7 @@ import type { FormValidationContext } from './form-validation';
 import { billingFieldErrors, validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /**
@@ -121,47 +121,6 @@ export async function validateStep(
       if (!firstErrorField) firstErrorField = field;
     }
   });
-
-  // The shipping country's name and city patterns, where its rules have arrived.
-  const shippingCountry: unknown = formData.country;
-  const patterns =
-    typeof shippingCountry === 'string'
-      ? countryConfigs.get(shippingCountry)
-      : undefined;
-
-  // Name validation
-  if (
-    formData.fname &&
-    formData.fname.trim() &&
-    !isValidName(formData.fname, patterns?.namePattern)
-  ) {
-    errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
-    isValid = false;
-    if (!firstErrorField) firstErrorField = 'fname';
-  }
-
-  if (
-    formData.lname &&
-    formData.lname.trim() &&
-    !isValidName(formData.lname, patterns?.namePattern)
-  ) {
-    errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
-    isValid = false;
-    if (!firstErrorField) firstErrorField = 'lname';
-  }
-
-  // City validation
-  if (
-    formData.city &&
-    formData.city.trim() &&
-    !isValidCity(formData.city, patterns?.cityPattern)
-  ) {
-    errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
-      country: formData.country,
-    });
-    isValid = false;
-    if (!firstErrorField) firstErrorField = 'city';
-  }
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {

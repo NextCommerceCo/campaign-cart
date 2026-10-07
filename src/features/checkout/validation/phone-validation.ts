@@ -240,7 +240,7 @@ export function checkPhone(
 /**
  * Whether a phone number is good enough to accept, the way every gate in the SDK asks it.
  *
- * The companion to {@link isValidEmail} and {@link isValidName}. `unknown` passes: a shopper
+ * The companion to {@link isValidEmail}. `unknown` passes: a shopper
  * is not told their phone is wrong on the strength of a check that could not run. Decided
  * here rather than at each gate, so a number that opens one opens all of them.
  *

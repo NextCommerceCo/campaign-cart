@@ -66,14 +66,6 @@ export interface CountryConfig {
    * sends none; the phone field is then a plain input.
    */
   phone?: PhoneRules;
-  /**
-   * What a first or last name is checked against, and {@link cityPattern} a city: the
-   * service's `fields.*.format.pattern`, compiled with the `u` flag. Read from each answer
-   * so a correction reaches the page without a release; absent from a deployment that
-   * sends none, and the SDK's own patterns are used.
-   */
-  namePattern?: string;
-  cityPattern?: string;
   currencyCode: string;
   currencySymbol: string;
 }

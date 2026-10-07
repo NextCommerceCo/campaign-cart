@@ -58,8 +58,8 @@ describe('fieldMessage', () => {
 
   it('is all English when the service has no sentence for it', () => {
     // A Thai name inside an English sentence is what this rule exists to prevent.
-    expect(fieldMessage(THAI, 'invalid_characters', 'fname')).toBe(
-      'First name can only contain letters, spaces, hyphens and apostrophes'
+    expect(fieldMessage(THAI, 'invalid', 'fname')).toBe(
+      'First name isn’t valid'
     );
     expect(fieldMessage(THAI, 'blank', 'city')).toBe('City is required');
   });

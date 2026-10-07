@@ -32,7 +32,7 @@ import {
   type PhoneNumberSource,
 } from './phone-validation';
 import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /** What form and step validation need from `CheckoutValidator`. */
@@ -149,37 +149,6 @@ export async function validateForm(
       isValid = false;
     }
   });
-
-  // Name validation
-  if (
-    formData.fname &&
-    formData.fname.trim() &&
-    !isValidName(formData.fname, countryConfig?.namePattern)
-  ) {
-    errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
-    isValid = false;
-  }
-
-  if (
-    formData.lname &&
-    formData.lname.trim() &&
-    !isValidName(formData.lname, countryConfig?.namePattern)
-  ) {
-    errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
-    isValid = false;
-  }
-
-  // City validation
-  if (
-    formData.city &&
-    formData.city.trim() &&
-    !isValidCity(formData.city, countryConfig?.cityPattern)
-  ) {
-    errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
-      country: formData.country,
-    });
-    isValid = false;
-  }
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {

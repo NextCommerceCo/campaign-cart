@@ -214,7 +214,6 @@ The key is `fields.<field>.errors.<error>`. One key covers the field in every co
 | `blank` | A required field left empty |
 | `not_selected` | Nothing chosen in a dropdown |
 | `invalid` | Wrong format, or not in the list |
-| `invalid_characters` | A name with digits or symbols |
 | `contains_emoji` | A field holding an emoji |
 | `not_in_state` | A postcode its state does not use |
 

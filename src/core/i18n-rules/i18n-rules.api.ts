@@ -87,10 +87,7 @@ export interface RulesField {
     options?: 'countries' | 'states';
     span?: number;
   };
-  /**
-   * On `postcode`, `phone_number`, `first_name`, `last_name` and `city`: see the service's
-   * fields reference. A name's and a city's is a `pattern` alone.
-   */
+  /** On `postcode` and `phone_number` only: see `docs/http-api.md` in the service's repo. */
   format?: {
     pattern?: string;
     example?: string;
@@ -156,8 +153,6 @@ export function toCountryConfig(
   const postcode = rules.fields.postcode;
   const postcodeFormat = postcode?.format;
   const phone = rules.fields.phone_number?.format;
-  const namePattern = rules.fields.first_name?.format?.pattern;
-  const cityPattern = rules.fields.city?.format?.pattern;
 
   return {
     stateLabel: state?.label ?? 'State',
@@ -182,8 +177,6 @@ export function toCountryConfig(
     ...(rules.address.fixed && Object.keys(rules.address.fixed).length > 0
       ? { fixed: rules.address.fixed }
       : {}),
-    ...(namePattern ? { namePattern } : {}),
-    ...(cityPattern ? { cityPattern } : {}),
     currencyCode: currencyCode ?? '',
     currencySymbol: '',
   };

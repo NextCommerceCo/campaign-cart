@@ -89,6 +89,21 @@ describe('createValidationRules', () => {
    * field, and the browser-autofill poll's `change` ticked it again after submit had
    * marked it, wiping the submit message.
    */
+  /** The orders API takes any characters in them, so a format rule could only refuse a shopper. */
+  it('only requires a name and a city, on both addresses', () => {
+    const rules = createValidationRules();
+
+    for (const name of [
+      'fname',
+      'lname',
+      'city',
+      'billing-fname',
+      'billing-city',
+    ]) {
+      expect(rules.get(name)?.map(r => r.type)).toEqual(['required']);
+    }
+  });
+
   it('checks the postcode against its country', () => {
     expect(
       createValidationRules()
@@ -130,8 +145,7 @@ describe('applyRule', () => {
   it('every format rule passes an empty value, so emptiness is reported once', () => {
     const ctx = createContext();
     expect(applyRule(ctx, { type: 'email' }, '')).toBe(true);
-    expect(applyRule(ctx, { type: 'name' }, '')).toBe(true);
-    expect(applyRule(ctx, { type: 'city' }, '')).toBe(true);
+    expect(applyRule(ctx, { type: 'postal' }, '')).toBe(true);
     expect(applyRule(ctx, { type: 'phone' }, '')).toBe(true);
   });
 
@@ -151,36 +165,6 @@ describe('applyRule', () => {
     expect(applyRule(ctx, { type: 'postal' }, '99999')).toBe(false);
     expect(asked).toEqual(['billing']);
     expect(validatePostalCode).toHaveBeenCalledWith('99999', 'GB', gbConfig);
-  });
-
-  it('name and city use the served pattern of the field’s own address country', () => {
-    const asked: string[] = [];
-    const config = {
-      namePattern: '^[\\p{L}\\p{N}]+$',
-      cityPattern: '^[\\p{L}\\p{N} ]+$',
-    } as CountryConfig;
-    const ctx = createContext({
-      addressCountry: type => {
-        asked.push(type);
-        return { country: 'CA', config };
-      },
-    });
-
-    expect(
-      applyRule(
-        { ...ctx, fieldName: 'billing-fname' },
-        { type: 'name' },
-        'Jane2'
-      )
-    ).toBe(true);
-    expect(
-      applyRule(
-        { ...ctx, fieldName: 'city' },
-        { type: 'city' },
-        '100 Mile House'
-      )
-    ).toBe(true);
-    expect(asked).toEqual(['billing', 'shipping']);
   });
 
   it('postal passes while the country has no rules loaded', () => {

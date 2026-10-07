@@ -18,10 +18,10 @@
 import type { CountryConfig } from '@/core/i18n-rules';
 
 import { isValidPhone, type PhoneNumberSource } from './phone-validation';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import { isValidEmail } from './validation-patterns';
 import type { ValidationRule } from './validation.types';
 
-/** An address's country, and that country's rules: its postcode, name and city patterns. */
+/** An address's country, and that country's rules: the postcode it is checked against. */
 export interface AddressCountry {
   country: string;
   config: CountryConfig;
@@ -41,10 +41,9 @@ export interface FieldRuleContext {
    */
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /**
-   * The country and rules an address is checked against: the pair the submit-time check
-   * reads, so blur cannot tick a postcode, name or city submit refuses. `undefined` while
-   * that country's rules have not loaded: the postcode then passes, and a name or city is
-   * checked with the SDK's own pattern.
+   * The country and rules an address's postcode is checked against: the pair the
+   * submit-time check reads, so blur cannot tick a postcode submit refuses. `undefined`
+   * while that country's rules have not loaded, and the postcode then passes.
    */
   addressCountry?: (type: 'shipping' | 'billing') => AddressCountry | undefined;
   /**
@@ -64,7 +63,8 @@ export function addressTypeOf(fieldName?: string): 'shipping' | 'billing' {
  * Builds the field name → rules table used by per-field validation.
  *
  * Phone gets only a format rule: whether a phone is *required* is decided by the markup at
- * submit time, not here.
+ * submit time, not here. A name and a city get no format rule at all: the orders API takes
+ * any characters in them.
  *
  * A billing field gets its shipping twin's rules, so blur cannot tick a billing value
  * the submit check refuses. A field with no rules is pronounced valid, whatever it holds.
@@ -81,15 +81,13 @@ export function createValidationRules(): Map<string, ValidationRule[]> {
   const requiredRule: ValidationRule = { type: 'required' };
   const emailRule: ValidationRule = { type: 'email' };
   const phoneRule: ValidationRule = { type: 'phone' };
-  const nameRule: ValidationRule = { type: 'name' };
-  const cityRule: ValidationRule = { type: 'city' };
   const postalRule: ValidationRule = { type: 'postal' };
 
   rules.set('email', [requiredRule, emailRule]);
-  rules.set('fname', [requiredRule, nameRule]);
-  rules.set('lname', [requiredRule, nameRule]);
+  rules.set('fname', [requiredRule]);
+  rules.set('lname', [requiredRule]);
   rules.set('address1', [requiredRule]);
-  rules.set('city', [requiredRule, cityRule]);
+  rules.set('city', [requiredRule]);
   rules.set('postal', [requiredRule, postalRule]);
   rules.set('country', [requiredRule]);
   rules.set('phone', [phoneRule]); // Phone validation rules (required is conditional)
@@ -137,24 +135,6 @@ export function applyRule(
       return isValidPhone(
         value,
         ctx.phoneSource?.(addressTypeOf(ctx.fieldName))
-      );
-
-    case 'name':
-      return (
-        !value ||
-        isValidName(
-          value,
-          ctx.addressCountry?.(addressTypeOf(ctx.fieldName))?.config.namePattern
-        )
-      );
-
-    case 'city':
-      return (
-        !value ||
-        isValidCity(
-          value,
-          ctx.addressCountry?.(addressTypeOf(ctx.fieldName))?.config.cityPattern
-        )
       );
 
     case 'postal': {
