@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { ORDER_KEY } from './fixtures/storage-keys';
+import { CHECKOUT_KEY, ORDER_KEY } from './fixtures/storage-keys';
 import type { Order } from '../src/types/api';
 import { TEST_ORDER } from './fixtures/order';
 import { bootSdk } from './fixtures/routes';
@@ -211,4 +211,40 @@ test('a card declined at 3-D Secure reports no purchase', async ({ page }) => {
     .toBe(true);
 
   expect(await purchases(page)).toEqual([]);
+});
+
+/**
+ * The payment step of a multi-step checkout has no billing fields. A billing address chosen
+ * on an earlier step and left incomplete failed submit with messages that had no field to
+ * appear under, so the pay button did nothing a shopper could see.
+ */
+test('an incomplete billing address from an earlier step is named on the payment page', async ({
+  page,
+}) => {
+  const posts: string[] = [];
+  await page.route('**/api/v1/orders/**', route => {
+    posts.push(route.request().url());
+    return route.fulfill({ json: PAID_ORDER });
+  });
+  await page.addInitScript(key => {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        state: {
+          sameAsShipping: false,
+          billingAddress: { address1: '2 Side St', country: 'US' },
+        },
+        version: 0,
+      })
+    );
+  }, CHECKOUT_KEY);
+
+  await bootSdk(page, CHECKOUT);
+  await addOnePackage(page);
+  await submitCard(page);
+
+  await expect(
+    page.locator('[data-next-component="credit-error"]')
+  ).toContainText('Billing first name');
+  expect(posts).toEqual([]);
 });

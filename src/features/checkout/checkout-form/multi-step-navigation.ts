@@ -119,6 +119,11 @@ export interface StepNavigationContext {
     billingAddress: CheckoutState['billingAddress'];
     sameAsShipping: boolean;
   };
+  /**
+   * Whether this page holds billing fields. A step that does is where a billing address
+   * gets checked: by the payment step there is no field left to show a message under.
+   */
+  hasBillingFields: () => boolean;
   logger: Logger;
 }
 
@@ -228,7 +233,8 @@ export async function handleStepNavigation(
       ctx.countryConfigs,
       ctx.currentCountryConfig.value,
       billing.billingAddress,
-      billing.sameAsShipping
+      billing.sameAsShipping,
+      ctx.hasBillingFields()
     );
 
     if (!validation.isValid) {

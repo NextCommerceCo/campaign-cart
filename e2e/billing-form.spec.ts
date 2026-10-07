@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { MINIMAL_CAMPAIGN } from './fixtures/campaign';
 import {
   stubCampaign,
@@ -85,4 +85,47 @@ test('a billing province left on its prompt is still refused', async ({
   await expect(page.locator(FIELD('billing-province'))).toHaveClass(
     /next-error-field/
   );
+});
+
+/** The first step of a multi-step checkout, where the billing address is chosen. */
+const STEP_FIXTURE = '/e2e/fixtures/billing-form-step.html';
+
+async function fillShipping(page: Page): Promise<void> {
+  await page.fill(FIELD('email'), 'ada@example.test');
+  await page.fill(FIELD('fname'), 'Ada');
+  await page.fill(FIELD('lname'), 'Lovelace');
+  await page.fill(FIELD('address1'), '1 Main St');
+  await page.fill(FIELD('city'), 'New York');
+  await page.selectOption(FIELD('province'), 'NY');
+  await page.fill(FIELD('postal'), '10001');
+}
+
+/**
+ * A billing address chosen on step 1 was first checked on the payment page, which has no
+ * billing fields, so the shopper moved on with it blank and met a pay button that did
+ * nothing they could see.
+ */
+test('a blank billing address stops the shopper on the step that holds it', async ({
+  page,
+}) => {
+  await bootSdk(page, STEP_FIXTURE);
+  await fillShipping(page);
+  await page.uncheck('input[name="use_shipping_address"]');
+  await expect(page.locator(FIELD('billing-fname'))).toBeVisible();
+
+  await page.click('button[type="submit"]');
+
+  await expect(page.locator(FIELD('billing-fname'))).toHaveClass(
+    /next-error-field/
+  );
+  await expect(page).toHaveURL(/billing-form-step\.html/);
+});
+
+test('a shopper billing to the shipping address moves on', async ({ page }) => {
+  await bootSdk(page, STEP_FIXTURE);
+  await fillShipping(page);
+
+  await page.click('button[type="submit"]');
+
+  await page.waitForURL(/checkout-form\.html/);
 });

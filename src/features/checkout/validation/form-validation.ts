@@ -50,6 +50,45 @@ export interface FormValidationContext {
   creditCardService?: CreditCardService;
 }
 
+/** The form field each billing address key is entered in. */
+const BILLING_FIELD: Readonly<Record<string, string>> = {
+  first_name: 'billing-fname',
+  last_name: 'billing-lname',
+  address1: 'billing-address1',
+  city: 'billing-city',
+  province: 'billing-province',
+  postal: 'billing-postal',
+  country: 'billing-country',
+  phone: 'billing-phone',
+};
+
+/**
+ * The separate billing address's failures, keyed by the form fields that show them.
+ *
+ * @example
+ * ```ts
+ * billingFieldErrors(ctx, { country: 'US' }, countryConfigs);
+ * // { 'billing-fname': 'Enter a first name', … }
+ * ```
+ */
+export function billingFieldErrors(
+  ctx: FormValidationContext,
+  billingAddress: unknown,
+  countryConfigs: Map<string, CountryConfig>
+): Record<string, string> {
+  const { errors } = validateBillingAddress(
+    ctx,
+    billingAddress,
+    countryConfigs
+  );
+  return Object.fromEntries(
+    Object.entries(errors).map(([key, error]) => [
+      BILLING_FIELD[key] ?? `billing-${key}`,
+      error,
+    ])
+  );
+}
+
 /**
  * Validates the whole form and returns every problem found.
  *
@@ -223,31 +262,13 @@ export async function validateForm(
   // Billing address validation. Guarded on the shopper's *choice* alone: no captured
   // address is a missing billing address, not a reason to skip the check.
   if (!sameAsShipping) {
-    const billingErrors = validateBillingAddress(
+    const billingErrors = billingFieldErrors(
       ctx,
       billingAddress,
       countryConfigs
     );
-
-    Object.entries(billingErrors.errors).forEach(([field, error]) => {
-      const fieldNameMap: Record<string, string> = {
-        first_name: 'billing-fname',
-        last_name: 'billing-lname',
-        address1: 'billing-address1',
-        city: 'billing-city',
-        province: 'billing-province',
-        postal: 'billing-postal',
-        country: 'billing-country',
-        phone: 'billing-phone',
-      };
-
-      const htmlFieldName = fieldNameMap[field] || `billing-${field}`;
-      errors[htmlFieldName] = error;
-    });
-
-    if (!billingErrors.isValid) {
-      isValid = false;
-    }
+    Object.assign(errors, billingErrors);
+    if (Object.keys(billingErrors).length > 0) isValid = false;
   }
 
   // After collecting all errors, find the first error field based on DOM position

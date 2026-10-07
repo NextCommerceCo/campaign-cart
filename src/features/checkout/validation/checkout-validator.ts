@@ -239,10 +239,11 @@ export class CheckoutValidator {
   /**
    * Validate only fields required for a specific checkout step.
    *
-   * `billingAddress` and `sameAsShipping` are used by step 3 only — it is the last gate
-   * before payment, so it runs the full form check. Pass the same pair the submit path
-   * passes to {@link CheckoutValidator.validateForm}, or the two paths will disagree about
-   * whether the billing address needs checking.
+   * Step 3 is the last gate before payment, so it runs the full form check, billing
+   * included. Steps 1 and 2 check billing only when `billingOnPage` says their page holds
+   * the billing fields. Pass the same `billingAddress` / `sameAsShipping` pair the submit
+   * path passes to {@link CheckoutValidator.validateForm}, or the two paths will disagree
+   * about whether the billing address needs checking.
    */
   public async validateStep(
     step: number,
@@ -250,7 +251,8 @@ export class CheckoutValidator {
     countryConfigs: Map<string, CountryConfig>,
     currentCountryConfig?: CountryConfig,
     billingAddress?: any,
-    sameAsShipping: boolean = true
+    sameAsShipping: boolean = true,
+    billingOnPage: boolean = false
   ): Promise<FormValidationResult> {
     return validateStep(
       this.formContext(),
@@ -259,7 +261,8 @@ export class CheckoutValidator {
       countryConfigs,
       currentCountryConfig,
       billingAddress,
-      sameAsShipping
+      sameAsShipping,
+      billingOnPage
     );
   }
 
@@ -317,8 +320,9 @@ export class CheckoutValidator {
     clearAllErrors(this.errorContext());
   }
 
-  public showError(fieldName: string, message: string): void {
-    showError(this.errorContext(), fieldName, message);
+  /** @returns `false` when the page has no such field to show the message under. */
+  public showError(fieldName: string, message: string): boolean {
+    return showError(this.errorContext(), fieldName, message);
   }
 
   // ============================================================================

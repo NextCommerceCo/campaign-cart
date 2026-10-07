@@ -1742,7 +1742,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * The eight things `multi-step-navigation.ts` needs to move to the next step.
+   * The nine things `multi-step-navigation.ts` needs to move to the next step.
    *
    * Built fresh per call: `currentStep` and `nextStepUrl` are read at submit time, and a
    * context captured at boot would still hold the values detection wrote.
@@ -1756,6 +1756,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       currentCountryConfig: this.currentCountryConfig,
       loadingOverlay: this.loadingOverlay,
       getBillingValidationInput: () => this.getBillingValidationInput(),
+      hasBillingFields: () =>
+        [...this.billingFields.values()].some(field => field.isConnected),
       logger: this.logger,
     };
   }
@@ -1902,28 +1904,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           firstErrorField: validation.firstErrorField,
         });
 
-        if (validation.errors) {
-          Object.entries(validation.errors).forEach(([field, error]) => {
-            checkoutStore.setError(field, error as string);
-            // Also show error in UI
-            this.validator.showError(field, error as string);
-          });
+        const errors: Record<string, string> = validation.errors ?? {};
+        const unshown: string[] = [];
+        for (const [field, error] of Object.entries(errors)) {
+          checkoutStore.setError(field, error);
+          if (!this.validator.showError(field, error)) unshown.push(field);
         }
 
-        // For express payments with validation, show a detailed error message
-        if (isExpressPayment && requireExpressValidation) {
-          const errorFields = Object.keys(validation.errors || {});
-
-          // `general` is a message of its own, not a field to name.
-          const fieldList = errorFields
-            .filter(field => field !== 'general')
-            .map(field => checkoutFieldLabel(field))
-            .join(', ');
-          const generalMessage = `Please check the following fields: ${fieldList}`;
-          checkoutStore.setError('general', generalMessage);
-
-          // Also show payment error to make it more visible
-          this.displayPaymentError(generalMessage);
+        // A message with no field on this page to sit under (a billing address entered on
+        // an earlier step, the payment system's own `general`) is otherwise on screen
+        // nowhere, and the pay button looks dead. Express with validation names them all.
+        const named = (
+          isExpressPayment && requireExpressValidation
+            ? Object.keys(errors)
+            : unshown
+        ).filter(field => field !== 'general');
+        const summary = [
+          unshown.includes('general') ? errors.general : undefined,
+          named.length > 0
+            ? `Please check the following fields: ${named
+                .map(field => checkoutFieldLabel(field))
+                .join(', ')}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        if (summary) {
+          checkoutStore.setError('general', summary);
+          this.displayPaymentError(summary);
         }
 
         if (validation.firstErrorField) {
