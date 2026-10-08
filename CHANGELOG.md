@@ -18,6 +18,7 @@ The billing address is now checked the way the shipping address is: its postcode
 - **The billing state and country on the page are the ones the order gets.** A new billing country no longer keeps the old country's state, a state filled in from the shipping address no longer reads as missing, and a billing country shown when the page opens is stored.
 - **Ticking "Use shipping address as billing address" ignores the billing section.** Nothing in it is checked or sent, and its messages are cleared. What the shopper typed stays, so unticking shows it again with no messages.
 - **A billing phone marked `required` must be filled in**, and a billing phone in a `data-next-address` block is formatted and sent in E.164 like the shipping one, also after the block is rebuilt for another country.
+- **A billing phone in a `data-next-address` block follows the billing country chosen.** It kept the country the page opened with, so a Thai number was checked against another country's format under a country dropdown reading Thailand.
 - **A billing address on an earlier step of a multi-step checkout is checked on that step.** On the payment step, a message whose field is not on the page is shown in the payment error box instead of nowhere, and so is `Payment cannot be validated right now`.
 - **The city and postcode a country fixes, such as Vatican City's, are filled in for the billing address too.**
 

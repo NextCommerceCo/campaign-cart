@@ -24,27 +24,27 @@ import { CHECKOUT_KEY } from './fixtures/storage-keys';
 
 const FIXTURE = '/e2e/fixtures/address-form.html';
 
-const US_SPEC = countryRules(
-  'US',
-  [
-    ['country'],
-    ['first_name', 'last_name'],
-    ['line1'],
-    ['city', 'state', 'postcode'],
-    ['phone_number'],
-  ],
-  {
-    country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
-    line1: ruleField('Address', 'address-line1'),
-    city: ruleField('City', 'address-level2'),
-    state: ruleField('State', 'address-level1', { type: 'select', options: 'states' }),
-    postcode: ruleField('ZIP Code', 'postal-code'),
-    first_name: ruleField('First name', 'given-name'),
-    last_name: ruleField('Last name', 'family-name'),
-    email: ruleField('Email', 'email', { type: 'email' }),
-    phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
-  }
-);
+const US_LAYOUT = [
+  ['country'],
+  ['first_name', 'last_name'],
+  ['line1'],
+  ['city', 'state', 'postcode'],
+  ['phone_number'],
+];
+
+const US_FIELDS = {
+  country: ruleField('Country', 'country', { type: 'select', options: 'countries' }),
+  line1: ruleField('Address', 'address-line1'),
+  city: ruleField('City', 'address-level2'),
+  state: ruleField('State', 'address-level1', { type: 'select', options: 'states' }),
+  postcode: ruleField('ZIP Code', 'postal-code'),
+  first_name: ruleField('First name', 'given-name'),
+  last_name: ruleField('Last name', 'family-name'),
+  email: ruleField('Email', 'email', { type: 'email' }),
+  phone_number: ruleField('Phone number', 'tel', { type: 'tel' }, { required: false }),
+};
+
+const US_SPEC = countryRules('US', US_LAYOUT, US_FIELDS);
 
 const JP_SPEC = countryRules(
   'JP',
@@ -772,6 +772,76 @@ test('a returning visitor’s billing block opens in the billing country they ch
   await expect(page.locator(FIELD('billing-country'))).toHaveValue('JP');
   await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
     '14 Billing Way'
+  );
+});
+
+/**
+ * A billing block rebuilds its phone input on every country change, before the new country
+ * dropdown is filled. The phone took the boot country then and kept it, judging a Thai
+ * number against another country's rules under a dropdown reading Thailand.
+ */
+test('a billing block phone follows the billing country chosen', async ({
+  page,
+}) => {
+  await routeAddressService(page, {
+    geo: { currency: 'USD', ip: '203.0.113.7' },
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'TH', name: 'Thailand' },
+    ],
+    rules: async (country, { withStates }) => {
+      if (!withStates) {
+        await new Promise(resolve => setTimeout(resolve, LAYOUT_DELAY_MS));
+      }
+      return {
+        ...countryRules(country, US_LAYOUT, US_FIELDS),
+        states: [{ code: 'NY', name: 'New York' }],
+      };
+    },
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(US_BILLING);
+  const usPhone = await page.locator(FIELD('billing-phone')).elementHandle();
+  await chooseAsShopper(page, FIELD('billing-country'), 'TH');
+  // The phone that was on screen follows the pick; the one the TH layout builds is the
+  // one that kept the boot country.
+  await expect.poll(() => usPhone?.evaluate(el => el.isConnected)).toBe(false);
+
+  await expect(page.locator(FIELD('billing-phone'))).toHaveAttribute(
+    'data-next-phone-country',
+    'TH'
+  );
+  // The shipping phone stays with the shipping country.
+  await expect(page.locator(FIELD('phone'))).toHaveAttribute(
+    'data-next-phone-country',
+    'US'
+  );
+});
+
+/**
+ * Closing and reopening the billing section put the shipping country back in the billing
+ * dropdown, under the address typed for the other country.
+ */
+test('a billing block keeps its country when the section is closed and reopened', async ({
+  page,
+}) => {
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(US_BILLING);
+  await chooseAsShopper(page, FIELD('billing-country'), 'JP');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(JP_BILLING);
+  await page.fill(FIELD('billing-fname'), 'Hanako');
+  await page.fill(FIELD('billing-address1'), '1-1 Chiyoda');
+  await page.fill(FIELD('billing-postal'), '100-0001');
+
+  const toggle = page.locator('input[name="use_shipping_address"]');
+  await expect(() => toggle.setChecked(true, { timeout: 500 })).toPass();
+  await expect(() => toggle.setChecked(false, { timeout: 500 })).toPass();
+  // Past the 50 ms the reopened section waits before seeding a country.
+  await page.waitForTimeout(300);
+
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('JP');
+  await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
+    '1-1 Chiyoda'
   );
 });
 

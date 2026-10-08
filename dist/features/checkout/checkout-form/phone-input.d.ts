@@ -56,7 +56,7 @@ export declare class PhoneField implements PhoneNumberSource {
     private showWritten;
     private publish;
     private showCountry;
-    private follow;
+    follow(): void;
     private render;
 }
 export interface PhoneVerdictContext {
