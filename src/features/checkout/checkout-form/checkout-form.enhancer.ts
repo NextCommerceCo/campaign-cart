@@ -2252,7 +2252,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const field = this.getFieldByName(fieldName);
       if (
         field instanceof HTMLInputElement ||
-        field instanceof HTMLSelectElement
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
       ) {
         field.value = '';
       }

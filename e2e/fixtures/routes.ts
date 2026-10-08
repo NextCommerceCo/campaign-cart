@@ -654,8 +654,11 @@ export async function chooseAsShopper(
   }, value);
   await select.focus();
   for (let step = 0; step < 30; step++) {
-    if ((await select.inputValue()) === value) return;
+    const before = await select.inputValue();
+    if (before === value) return;
     await page.keyboard.press(below ? 'ArrowDown' : 'ArrowUp');
+    // A press that moves nothing has hit the end of the list without finding it.
+    if ((await select.inputValue()) === before) break;
   }
   throw new Error(`could not reach ${value} in ${selector}`);
 }
