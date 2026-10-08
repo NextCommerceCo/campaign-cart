@@ -776,6 +776,33 @@ test('a returning visitor’s billing block opens in the billing country they ch
 });
 
 /**
+ * Closing and reopening the billing section put the shipping country back in the billing
+ * dropdown, under the address typed for the other country.
+ */
+test('a billing block keeps its country when the section is closed and reopened', async ({
+  page,
+}) => {
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(US_BILLING);
+  await chooseAsShopper(page, FIELD('billing-country'), 'JP');
+  await expect.poll(blockOrder(page, 'billing')).toEqual(JP_BILLING);
+  await page.fill(FIELD('billing-fname'), 'Hanako');
+  await page.fill(FIELD('billing-address1'), '1-1 Chiyoda');
+  await page.fill(FIELD('billing-postal'), '100-0001');
+
+  const toggle = page.locator('input[name="use_shipping_address"]');
+  await expect(() => toggle.setChecked(true, { timeout: 500 })).toPass();
+  await expect(() => toggle.setChecked(false, { timeout: 500 })).toPass();
+  // Past the 50 ms the reopened section waits before seeding a country.
+  await page.waitForTimeout(300);
+
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('JP');
+  await expect(page.locator(FIELD('billing-address1'))).toHaveValue(
+    '1-1 Chiyoda'
+  );
+});
+
+/**
  * A billing address is a whole address, so its block builds the names and the phone too,
  * under their `billing-` names: the shipping block's are the shipping address's.
  */
