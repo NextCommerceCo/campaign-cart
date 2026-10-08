@@ -27,6 +27,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private locationFields?;
     private submitHandler?;
     private changeHandler?;
+    private pressGate?;
     private paymentMethodChangeHandler?;
     private shippingMethodChangeHandler?;
     private billingAddressToggleHandler?;
@@ -65,6 +66,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private listenForRenderedAddressFields;
     private reapplyToRenderedFields;
     private repopulateAddressFields;
+    private syncBillingCountryField;
     private listenForPaymentErrors;
     private listenForDebugCountryChanges;
     private setupBfcacheRestoreHandler;
@@ -92,6 +94,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private fieldValidationContext;
     private autofillDetectionContext;
     private stateFieldsContext;
+    private billingStateFieldsContext;
     private shippingStateFieldsContext;
     private countryFieldsContext;
     private expirationFieldsContext;
@@ -112,6 +115,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private getNextPageUrlFromMeta;
     private multiStepDetectionContext;
     private detectMultiStepCheckout;
+    private loadAddressCountryConfigs;
     private getBillingValidationInput;
     private stepNavigationContext;
     private handleStepNavigation;
@@ -122,6 +126,11 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private processOrder;
     private handleTokenizedPayment;
     private handleFieldChange;
+    private clearCountryBoundFields;
+    private forgetVerdict;
+    private phoneVerdictContext;
+    private judgeAgainIfMarked;
+    private judgePhoneAgain;
     private postalCodeFormatContext;
     private contactPersistenceContext;
     private billingFieldRoutingContext;

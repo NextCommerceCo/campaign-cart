@@ -1,10 +1,10 @@
 import { CheckoutState } from '../../../state/checkout';
 import { PostalCodeFormatContext } from './postal-code-format';
-import { StateFieldsContext } from './state-fields';
+import { BillingStateFieldsContext } from './state-fields';
 export interface BillingFieldRoutingContext {
     billingFields: Map<string, HTMLElement>;
     postalCodeFormat: PostalCodeFormatContext;
-    stateFields: StateFieldsContext;
+    stateFields: BillingStateFieldsContext;
 }
 type BillingAddress = CheckoutState['billingAddress'];
 interface BillingAddressStore {

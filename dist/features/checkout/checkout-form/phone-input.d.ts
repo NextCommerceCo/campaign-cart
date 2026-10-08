@@ -10,6 +10,7 @@ export interface PhoneInputContext {
     loadPhoneRules: (countryCode: string) => Promise<PhoneRules | undefined>;
     readPhoneNumber: (number: string, country: string) => Promise<PhoneNumberResult | undefined>;
     updateFormData: (data: Record<string, string>) => void;
+    onCountryRead?: (type: PhoneFieldType, input: HTMLInputElement) => void;
     logger: Logger;
 }
 interface PhoneFieldOptions {
@@ -18,6 +19,7 @@ interface PhoneFieldOptions {
     loadRules: (countryCode: string) => Promise<PhoneRules | undefined>;
     readNumber: (number: string, country: string) => Promise<PhoneNumberResult | undefined>;
     onNumber: (value: string) => void;
+    onCountryRead?: () => void;
 }
 export declare function phoneFieldFor(input: HTMLInputElement): PhoneField | undefined;
 export declare class PhoneField implements PhoneNumberSource {

@@ -10,6 +10,6 @@ export interface ErrorDisplayContext {
 export declare function setError(ctx: ErrorDisplayContext, fieldName: string, message: string): void;
 export declare function clearError(ctx: ErrorDisplayContext, fieldName: string): void;
 export declare function clearAllErrors(ctx: ErrorDisplayContext): void;
-export declare function showError(ctx: ErrorDisplayContext, fieldName: string, message: string): void;
+export declare function showError(ctx: ErrorDisplayContext, fieldName: string, message: string): boolean;
 export declare function hideErrorOnly(ctx: ErrorDisplayContext, fieldName: string): void;
 //# sourceMappingURL=error-display.d.ts.map

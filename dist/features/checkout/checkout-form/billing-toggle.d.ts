@@ -1,6 +1,7 @@
 import { Logger } from '../../../core/logger';
 import { BillingAnimationContext } from './billing-animation';
 export interface BillingToggleContext {
+    forgetBillingVerdicts: () => void;
     animationInProgress: {
         value: boolean;
     };

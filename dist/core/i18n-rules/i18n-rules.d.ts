@@ -14,6 +14,7 @@ export interface CountryConfig {
     postcodeRequired?: boolean;
     fixed?: FixedValues;
     phone?: PhoneRules;
+    fieldPatterns?: Readonly<Record<string, string>>;
     currencyCode: string;
     currencySymbol: string;
 }

@@ -1,5 +1,5 @@
 export interface ValidationRule {
-    type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
+    type: 'required' | 'email' | 'phone' | 'postal' | 'pattern' | 'custom';
     message?: string;
     validator?: (value: any, context?: any) => boolean;
 }
