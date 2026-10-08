@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.4.41",
+  "sdkVersion": "0.4.42",
   "supportedSdkVersions": {
     "min": "0.4.38",
     "max": "0.4.38"

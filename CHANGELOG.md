@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.4.42] — 2026-10-08 — Billing Checked Like Shipping, and Any Name or City
+
+The billing address is now checked the way the shipping address is: its postcode against the billing country, on leaving a field and on submit, so an order the API would refuse is no longer sent. A name or a city is taken in any characters, so shoppers who write theirs in Thai or an Indic script can pay again. Picking another country clears the old country's address. Read Before you upgrade first if your page relies on how errors appear, on what stays in the form when the country changes, or on the express checkout's error message.
+
+### Before you upgrade
+
+- **A wrong postcode shows its message when the shopper leaves the field**, for the shipping and the billing address alike. It used to show a tick there and turn red only on submit.
+- **A name or a city is only required, in any characters.** The orders API takes any characters in them, so the SDK no longer refuses digits, periods, commas or a script it did not know: `John Smith Jr.`, `100 Mile House` and `สุดา` all pass. The `invalid_characters` message is no longer shown.
+- **When the shopper picks another country, the street, city, state and postcode of that address are cleared.** The name, email and phone are kept. A country set by the page or by address autocomplete keeps the address that came with it. See [Shipping address](docs/guides/pages/checkout-page.md#shipping-address).
+- **The express checkout's message for missing fields reads `Please check the following fields: …`** instead of `Please fill in the following required fields: …`, with labels such as `Last name` and `Postal code`.
+
+### Billing address
+
+- **The billing postcode is checked against the billing country**, on leaving the field and on submit, and the order is not sent while it is wrong. Its rules were only ever loaded for the shipping country, so a UK billing postcode on a Canadian order passed as `99999`. ([#115](https://github.com/NextCommerceCo/campaign-cart/issues/115))
+- **The billing fields are checked as the shopper leaves them**, with the same rules as the shipping fields. They used to show a tick whatever they held.
+- **The billing state and country on the page are the ones the order gets.** A new billing country no longer keeps the old country's state, a state filled in from the shipping address no longer reads as missing, and a billing country shown when the page opens is stored.
+- **Ticking "Use shipping address as billing address" ignores the billing section.** Nothing in it is checked or sent, and its messages are cleared. What the shopper typed stays, so unticking shows it again with no messages.
+- **A billing phone marked `required` must be filled in**, and a billing phone in a `data-next-address` block is formatted and sent in E.164 like the shipping one, also after the block is rebuilt for another country.
+- **A billing address on an earlier step of a multi-step checkout is checked on that step.** On the payment step, a message whose field is not on the page is shown in the payment error box instead of nowhere, and so is `Payment cannot be validated right now`.
+- **The city and postcode a country fixes, such as Vatican City's, are filled in for the billing address too.**
+
+### Checkout form
+
+- **A phone or postcode marked wrong is checked again when the address moves to another country**, so a message written for the old country no longer stays under a value that is right for the new one.
+- **The first press of the pay button submits.** A message appearing under the field being left used to move the button before the press ended, and the press did nothing.
+- **The state list is always the one for the country chosen last**, even when the shopper changes country quickly.
+- **The cursor in a postcode stays where the shopper is typing**, and Backspace steps back over the space the format adds.
+- **A prospect cart is created for a name in any script.** It took Latin names only.
+- **A name or a city can be checked against a pattern `i18n-rules.nextcommerce.com` sends**, for a value that turns out to break orders. None is sent today, and a page needs no change for one to apply.
+
 ## [0.4.41] — 2026-10-06 — New Card Fields, Checked Coupons, and Phone Numbers in E.164
 
 The card number and CVV are now set up by 29next's payment script, which loads Spreedly's hosted fields with the campaign's payment key. A coupon code is shown as applied only when it actually takes money off. The phone number is read by the address service, so the order always gets it in E.164. Card, decline and coupon messages follow the page's language. Read Before you upgrade first if your page sets a Content-Security-Policy, sets the payment key itself, listens for `checkout:spreedly-ready`, or reads a coupon's `message`.
