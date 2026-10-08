@@ -483,8 +483,13 @@ export class PhoneField implements PhoneNumberSource {
     }
   }
 
-  /** Points the field at the address country, else the fallback while that has none. */
-  private follow(): void {
+  /**
+   * Points the field at the address country, else the fallback while that has none.
+   *
+   * Public because a script that sets the country `<select>` by assignment fires no
+   * `change`: the checkout form calls it once it has filled a rebuilt address block.
+   */
+  follow(): void {
     const selected = this.options.countryField?.value;
     // `''` is a select with nothing chosen yet, which falls back like a missing one.
     const country = (

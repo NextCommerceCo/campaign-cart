@@ -645,6 +645,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     await this.repopulateAddressFields();
     await this.populateFormData();
     await this.restoreBillingAddress();
+    // The phone fields were built above against country dropdowns that were still empty,
+    // and the steps since set those by assignment, which fires no `change`.
+    this.phoneInputs.forEach(field => field.follow());
   }
 
   /**
