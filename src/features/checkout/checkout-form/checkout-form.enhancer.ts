@@ -23,6 +23,7 @@ import {
   type CreditCardData,
 } from '../services/credit-card-service';
 import { CheckoutValidator } from '../validation/checkout-validator';
+import { checkoutFieldLabel } from '../validation/field-labels';
 import { UIService } from '../services/ui-service';
 import { useAttributionStore } from '@/state/attribution';
 import { useParameterStore } from '@/state/parameter';
@@ -46,7 +47,9 @@ import {
   initializePhoneInputs,
   showPhoneVerdict,
   type PhoneField,
+  type PhoneFieldType,
   type PhoneInputContext,
+  type PhoneVerdictContext,
 } from './phone-input';
 import { normalizeStoredPhones } from './phone-normalization';
 import { validateExpressFields } from './express-field-validation';
@@ -69,7 +72,9 @@ import {
   type CountryFieldsContext,
 } from './country-fields';
 import {
+  loadCountryConfig,
   updateStateOptions,
+  type BillingStateFieldsContext,
   type ShippingStateFieldsContext,
   type StateFieldsContext,
 } from './state-fields';
@@ -83,7 +88,10 @@ import {
   type AppliedFixedValues,
 } from './fixed-address-values';
 import {
+  createPressGate,
+  resetFieldDisplay,
   updateFieldValidationDisplay,
+  type PressGate,
   type FieldValidationContext,
 } from './field-validation-display';
 import {
@@ -103,6 +111,7 @@ import {
 } from './postcode-state-check';
 import {
   routeBillingField,
+  routeBillingFieldValue,
   type BillingFieldRoutingContext,
 } from './billing-field-routing';
 import { readFieldValue } from './field-value';
@@ -194,6 +203,15 @@ type CheckoutFormConfig = ReturnType<typeof useConfigStore.getState>;
 /** The checkout-store snapshot the field-routing steps read and write through. */
 type CheckoutStoreSnapshot = ReturnType<typeof useCheckoutStore.getState>;
 
+/** An address's fields that belong to its country; a name and a phone belong to the shopper. */
+const COUNTRY_BOUND_FIELDS = [
+  'address1',
+  'address2',
+  'city',
+  'province',
+  'postal',
+] as const;
+
 export class CheckoutFormEnhancer extends BaseEnhancer {
   private form!: HTMLFormElement;
   private apiClient!: IApiClient;
@@ -253,6 +271,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Event handlers
   private submitHandler?: (event: Event) => void;
   private changeHandler?: (event: Event) => void;
+  private pressGate?: PressGate;
   private paymentMethodChangeHandler?: (event: Event) => void;
   private shippingMethodChangeHandler?: (event: Event) => void;
   private billingAddressToggleHandler?: (event: Event) => void;
@@ -444,6 +463,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private initializeValidator(): void {
     this.validator = new CheckoutValidator(this.logger, this.i18nRules);
+    // The country each address's validation reads: the store, as on submit.
+    this.validator.setAddressCountry(type => {
+      const { formData, billingAddress } = useCheckoutStore.getState();
+      const country: unknown =
+        type === 'billing' ? billingAddress?.country : formData.country;
+      if (typeof country !== 'string') return undefined;
+      const config = this.countryConfigs.get(country);
+      return config ? { country, config } : undefined;
+    });
   }
 
   private cloneBillingFormFromShipping(): void {
@@ -603,10 +631,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
    * a page wanting floating labels on one styles them, which needs no script.
    */
   private async reapplyToRenderedFields(): Promise<void> {
-    this.update();
-    // `update()` finds the shipping fields; the billing ones are a separate scan, and a
-    // billing block's fields are just as absent at boot as a shipping block's.
+    // The billing scan comes first: `update()` sets up the phone fields from both maps, and
+    // run the other way round a billing block's phone got no widget, or kept the one on
+    // the input its last render removed.
     scanBillingFields(this.billingFormSetupContext());
+    this.update();
     this.locationFields?.refresh();
 
     // Not sequenced behind the two awaits below, which are requests: whether suggestions
@@ -644,6 +673,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (this.billingFields.size > 0) {
       populateBillingCountryDropdown(this.countryFieldsContext());
+      this.syncBillingCountryField();
+    }
+  }
+
+  /**
+   * Makes the billing country dropdown show the stored billing country, or the shipping one
+   * when none is stored, as the billing toggle does.
+   *
+   * A dropdown with no empty first option (every one `data-next-address` builds) shows its
+   * first country once filled, a country the store never heard of: a shopper who left it
+   * alone got "Country is required" under a filled-in dropdown. The choice is routed like
+   * the shopper's own, which stores it and loads its provinces. A dispatched `change` would
+   * reach nothing at boot, where this runs before the field listeners are bound.
+   */
+  private syncBillingCountryField(): void {
+    const field = this.billingFields.get('billing-country');
+    if (!(field instanceof HTMLSelectElement)) return;
+
+    const { billingAddress, formData } = useCheckoutStore.getState();
+    const stored = billingAddress?.country ?? '';
+    const shipping: unknown = formData.country;
+    const fallback = typeof shipping === 'string' ? shipping : '';
+    const wanted = stored === '' ? fallback : stored;
+    if (!wanted || ![...field.options].some(o => o.value === wanted)) return;
+
+    field.value = wanted;
+    if (stored !== wanted) {
+      void routeBillingField(
+        this.billingFieldRoutingContext(),
+        'billing-country',
+        field,
+        useCheckoutStore.getState()
+      );
     }
   }
 
@@ -869,6 +931,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       if (this.billingFields.size > 0) {
         populateBillingCountryDropdown(this.countryFieldsContext());
+        this.syncBillingCountryField();
       }
 
       // Initialize address autocomplete
@@ -1026,7 +1089,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingFields: this.billingFields,
       updateFormData: data => this.updateFormData(data),
       shippingStateFields: this.shippingStateFieldsContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 
@@ -1158,18 +1221,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       i18nRules: this.i18nRules,
       logger: this.logger,
       countryFields: this.countryFieldsContext(),
+      countryConfigs: this.countryConfigs,
+    };
+  }
+
+  /** The billing path additionally writes the province it shows to the billing address. */
+  private billingStateFieldsContext(): BillingStateFieldsContext {
+    return {
+      ...this.stateFieldsContext(),
+      setBillingProvince: province => {
+        const checkoutStore = useCheckoutStore.getState();
+        if ((checkoutStore.billingAddress?.province ?? '') === province) return;
+        routeBillingFieldValue('billing-province', province, checkoutStore);
+      },
     };
   }
 
   /**
    * The shipping path additionally writes form data, clears the province error, and
-   * caches the resolved country config — eight things, the largest context in this
+   * tracks the selected country's config — eight things, the largest context in this
    * folder. That size is the honest measure of how entangled filling this one field is.
    */
   private shippingStateFieldsContext(): ShippingStateFieldsContext {
     return {
       ...this.stateFieldsContext(),
-      countryConfigs: this.countryConfigs,
       currentCountryConfig: this.currentCountryConfig,
       updateFormData: data => this.updateFormData(data),
       clearError: field => this.clearError(field),
@@ -1207,7 +1282,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private billingAddressRestoreContext(): BillingAddressRestoreContext {
     return {
       ...this.billingFormSetupContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 
@@ -1238,6 +1313,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       readPhoneNumber: (number, country) =>
         this.i18nRules.readPhoneNumber(number, country),
       updateFormData: data => this.updateFormData(data),
+      onCountryRead: (type, input) => this.judgePhoneAgain(type, input),
       logger: this.logger,
     };
   }
@@ -1643,6 +1719,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
+   * Puts the config of each address country into `countryConfigs` before a validation
+   * reads it. The postcode check passes a country it has no config for, and only a
+   * province `<select>` refill caches one — so a billing country picked in a block with no
+   * province field (GB) would otherwise send any postcode.
+   */
+  private async loadAddressCountryConfigs(): Promise<void> {
+    const { formData, billingAddress, sameAsShipping } =
+      useCheckoutStore.getState();
+    const countries = [
+      formData.country as unknown,
+      sameAsShipping ? undefined : billingAddress?.country,
+    ].filter(
+      (country): country is string =>
+        typeof country === 'string' && country !== ''
+    );
+    await Promise.all(
+      countries.map(country =>
+        loadCountryConfig(this.stateFieldsContext(), country)
+      )
+    );
+  }
+
+  /**
    * The billing pair every validation path must be given: the separate billing address the
    * shopper entered, and whether they asked for one at all.
    *
@@ -1662,7 +1761,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   /**
-   * The eight things `multi-step-navigation.ts` needs to move to the next step.
+   * The nine things `multi-step-navigation.ts` needs to move to the next step.
    *
    * Built fresh per call: `currentStep` and `nextStepUrl` are read at submit time, and a
    * context captured at boot would still hold the values detection wrote.
@@ -1676,6 +1775,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       currentCountryConfig: this.currentCountryConfig,
       loadingOverlay: this.loadingOverlay,
       getBillingValidationInput: () => this.getBillingValidationInput(),
+      hasBillingFields: () =>
+        [...this.billingFields.values()].some(field => field.isConnected),
       logger: this.logger,
     };
   }
@@ -1695,6 +1796,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // A step gate that skips this lets a bad number through to a page where the field is
     // no longer on screen to correct.
     await this.settlePhoneNumbers();
+    await this.loadAddressCountryConfigs();
     await handleStepNavigation(this.stepNavigationContext(), checkoutStore);
   }
 
@@ -1800,6 +1902,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         );
       } else {
         // Otherwise use full validation
+        await this.loadAddressCountryConfigs();
         validation = await this.validator.validateForm(
           checkoutStore.formData,
           this.countryConfigs,
@@ -1820,51 +1923,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           firstErrorField: validation.firstErrorField,
         });
 
-        if (validation.errors) {
-          Object.entries(validation.errors).forEach(([field, error]) => {
-            checkoutStore.setError(field, error as string);
-            // Also show error in UI
-            this.validator.showError(field, error as string);
-          });
+        const errors: Record<string, string> = validation.errors ?? {};
+        const unshown: string[] = [];
+        for (const [field, error] of Object.entries(errors)) {
+          checkoutStore.setError(field, error);
+          if (!this.validator.showError(field, error)) unshown.push(field);
         }
 
-        // For express payments with validation, show a detailed error message
-        if (isExpressPayment && requireExpressValidation) {
-          const errorFields = Object.keys(validation.errors || {});
-          // const errorCount = errorFields.length;
-
-          // Create a human-readable list of field names
-          const fieldNameMap: Record<string, string> = {
-            email: 'Email',
-            fname: 'First Name',
-            lname: 'Last Name',
-            phone: 'Phone',
-            address1: 'Address',
-            city: 'City',
-            province: 'State/Province',
-            postal: 'ZIP/Postal Code',
-            country: 'Country',
-            'cc-month': 'Expiration Month',
-            'cc-year': 'Expiration Year',
-            'exp-month': 'Expiration Month',
-            'exp-year': 'Expiration Year',
-            'billing-fname': 'Billing First Name',
-            'billing-lname': 'Billing Last Name',
-            'billing-address1': 'Billing Address',
-            'billing-city': 'Billing City',
-            'billing-province': 'Billing State/Province',
-            'billing-postal': 'Billing ZIP/Postal Code',
-            'billing-country': 'Billing Country',
-          };
-
-          const requiredFields = errorFields
-            .map(field => fieldNameMap[field] || field)
-            .join(', ');
-          const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
-          checkoutStore.setError('general', generalMessage);
-
-          // Also show payment error to make it more visible
-          this.displayPaymentError(generalMessage);
+        // A message with no field on this page to sit under (a billing address entered on
+        // an earlier step, the payment system's own `general`) is otherwise on screen
+        // nowhere, and the pay button looks dead. Express with validation names them all.
+        const named = (
+          isExpressPayment && requireExpressValidation
+            ? Object.keys(errors)
+            : unshown
+        ).filter(field => field !== 'general');
+        const summary = [
+          unshown.includes('general') ? errors.general : undefined,
+          named.length > 0
+            ? `Please check the following fields: ${named
+                .map(field => checkoutFieldLabel(field))
+                .join(', ')}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        if (summary) {
+          checkoutStore.setError('general', summary);
+          this.displayPaymentError(summary);
         }
 
         if (validation.firstErrorField) {
@@ -2087,6 +2173,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     if (!fieldName) return;
 
+    // The shopper moved the address to another country, so its street, city, state and
+    // postcode are the old country's. A change a script makes (a restored address, an
+    // autocomplete suggestion, the billing toggle) carries its own values and keeps them.
+    if (
+      event.type === 'change' &&
+      event.isTrusted &&
+      (fieldName === 'country' || fieldName === 'billing-country')
+    ) {
+      this.clearCountryBoundFields(fieldName === 'country' ? '' : 'billing-');
+    }
+
+    // Not a `<select>`: its `change` comes from its own popup, never from pressing
+    // something else, and holding it would hold back the province refill.
+    const held =
+      event.type === 'input' || target instanceof HTMLSelectElement
+        ? undefined
+        : this.pressGate?.wait();
+    if (held) await held;
+
     const checkoutStore = useCheckoutStore.getState();
 
     if (fieldName.startsWith('billing-')) {
@@ -2107,6 +2212,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       target.value
     );
 
+    // After routing, which has loaded the new country's rules into `countryConfigs`.
+    if (fieldName === 'country' || fieldName === 'billing-country') {
+      this.judgeAgainIfMarked(
+        fieldName === 'country' ? 'postal' : 'billing-postal'
+      );
+    }
+
     // After the display, so a postcode its state does not use keeps the message the
     // blur's tick would otherwise replace.
     if (
@@ -2121,14 +2233,93 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       (fieldName === 'phone' || fieldName === 'billing-phone') &&
       target instanceof HTMLInputElement
     ) {
-      void showPhoneVerdict(
-        {
-          showError: (name, message) => this.validator.showError(name, message),
-          clearError: name => this.validator.clearError(name),
-        },
-        fieldName,
-        target
-      );
+      void showPhoneVerdict(this.phoneVerdictContext(), fieldName, target);
+    }
+  }
+
+  /**
+   * Empties the fields of an address that belong to its country, on the page and in the
+   * store, and leaves them neutral. Before the new country is routed, so a
+   * `data-next-address` block rebuilds them empty and the new country's fixed values are
+   * written after. The name, email and phone belong to the shopper and are kept.
+   */
+  private clearCountryBoundFields(prefix: '' | 'billing-'): void {
+    const emptied = Object.fromEntries(
+      COUNTRY_BOUND_FIELDS.map(name => [name, ''])
+    );
+    for (const name of COUNTRY_BOUND_FIELDS) {
+      const fieldName = `${prefix}${name}`;
+      const field = this.getFieldByName(fieldName);
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        field.value = '';
+      }
+      this.forgetVerdict(fieldName);
+    }
+
+    if (!prefix) {
+      this.updateFormData(emptied);
+      return;
+    }
+    const checkoutStore = useCheckoutStore.getState();
+    if (checkoutStore.billingAddress) {
+      checkoutStore.setBillingAddress({
+        ...checkoutStore.billingAddress,
+        ...emptied,
+      });
+    }
+  }
+
+  /** Drops a field's verdict everywhere it is kept: the store, the validator, the page. */
+  private forgetVerdict(fieldName: string): void {
+    useCheckoutStore.getState().clearError(fieldName);
+    this.validator.clearError(fieldName);
+    resetFieldDisplay(this.fieldValidationContext(), fieldName);
+  }
+
+  /** The two things `showPhoneVerdict` needs from this form. */
+  private phoneVerdictContext(): PhoneVerdictContext {
+    return {
+      showError: (name, message) => this.validator.showError(name, message),
+      clearError: name => this.validator.clearError(name),
+    };
+  }
+
+  /**
+   * Judges a field again as if it were left, when the message under it was written for the
+   * address's last country: a postcode or phone refused there can be right for this one.
+   *
+   * Only a field already marked: one restored at boot is not judged until it is left, and
+   * one the shopper is in is judged when they leave it.
+   *
+   * @returns Whether the field was judged.
+   */
+  private judgeAgainIfMarked(name: string): boolean {
+    const field = this.getFieldByName(name);
+    if (
+      !(field instanceof HTMLInputElement) ||
+      !field.classList.contains('next-error-field') ||
+      document.activeElement === field
+    ) {
+      return false;
+    }
+    updateFieldValidationDisplay(
+      this.fieldValidationContext(),
+      'blur',
+      name,
+      field.value
+    );
+    return true;
+  }
+
+  /** {@link judgeAgainIfMarked} for a phone once it has been read for the new country. */
+  private judgePhoneAgain(type: PhoneFieldType, input: HTMLInputElement): void {
+    const name = type === 'billing' ? 'billing-phone' : 'phone';
+    if (this.judgeAgainIfMarked(name)) {
+      void showPhoneVerdict(this.phoneVerdictContext(), name, input);
     }
   }
 
@@ -2158,7 +2349,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     return {
       billingFields: this.billingFields,
       postalCodeFormat: this.postalCodeFormatContext(),
-      stateFields: this.stateFieldsContext(),
+      stateFields: this.billingStateFieldsContext(),
     };
   }
 
@@ -2255,6 +2446,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         target.value,
         provinceField
       );
+    } else {
+      await loadCountryConfig(this.stateFieldsContext(), target.value);
     }
 
     // Save the user's country selection to sessionStorage
@@ -2354,6 +2547,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       debounceTimer: this.billingAnimationDebounceTimer,
       animation: this.billingAnimationContext(),
       billingFields: this.billingFields,
+      forgetBillingVerdicts: () => {
+        for (const name of this.billingFields.keys()) this.forgetVerdict(name);
+      },
       logger: this.logger,
     };
   }
@@ -2393,6 +2589,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form.addEventListener('submit', this.submitHandler);
     this.stopEnterKeyNavigation = setupEnterKeyNavigation(this.form);
 
+    this.pressGate = createPressGate((target, type, handler, options) =>
+      this.listen(target, type, handler, options)
+    );
     this.changeHandler = this.handleFieldChange.bind(this);
     this.bindFieldListeners();
 
@@ -2642,9 +2841,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private listen<E extends Event>(
     target: Document | Window | HTMLElement,
     type: string,
-    handler: (event: E) => void
+    handler: (event: E) => void,
+    options: { capture?: boolean } = {}
   ): void {
     target.addEventListener(type, handler as EventListener, {
+      ...options,
       signal: this.domListenerAbort.signal,
     });
   }

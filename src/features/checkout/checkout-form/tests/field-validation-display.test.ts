@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  createPressGate,
+  resetFieldDisplay,
   updateFieldValidationDisplay,
   type FieldValidationContext,
 } from '../field-validation-display';
@@ -342,5 +344,96 @@ describe('valid paths clear the error label everywhere input does', () => {
     updateFieldValidationDisplay(ctx, 'change', 'email', 'a@b.com');
 
     expect(formGroup.querySelector('.next-error-label')).toBeNull();
+  });
+});
+
+// ─── createPressGate ─────────────────────────────────────────────────────────
+
+/**
+ * A blur caused by pressing "Place order" used to paint its verdict on `mousedown`, which
+ * moved the button before `mouseup`, so the press ended elsewhere and no click fired.
+ */
+describe('createPressGate', () => {
+  let abort: AbortController;
+  const gate = () =>
+    createPressGate((target, type, handler, options) =>
+      target.addEventListener(type, handler, {
+        ...options,
+        signal: abort.signal,
+      })
+    );
+
+  beforeEach(() => {
+    abort = new AbortController();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    abort.abort();
+    vi.useRealTimers();
+  });
+
+  it('lets a blur through at once when no mouse button is down', () => {
+    expect(gate().wait()).toBeUndefined();
+  });
+
+  it('holds a blur during a press until the click after mouseup has run', async () => {
+    const pressGate = gate();
+    const order: string[] = [];
+
+    document.dispatchEvent(new MouseEvent('mousedown'));
+    const held = pressGate.wait();
+    void held?.then(() => order.push('blur'));
+
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    document.dispatchEvent(new MouseEvent('click'));
+    order.push('click');
+    await vi.runAllTimersAsync();
+
+    expect(held).toBeInstanceOf(Promise);
+    expect(order).toEqual(['click', 'blur']);
+  });
+
+  it('releases a held blur on a key press, so a lost mouseup cannot keep it', async () => {
+    const pressGate = gate();
+    document.dispatchEvent(new MouseEvent('mousedown'));
+    const resolved = vi.fn();
+    void pressGate.wait()?.then(resolved);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    await vi.runAllTimersAsync();
+
+    expect(resolved).toHaveBeenCalled();
+    expect(pressGate.wait()).toBeUndefined();
+  });
+
+  it('sees a press whose mousedown a page stopped from bubbling', () => {
+    const pressGate = gate();
+    const button = document.createElement('button');
+    button.addEventListener('mousedown', e => e.stopPropagation());
+    document.body.appendChild(button);
+
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+    expect(pressGate.wait()).toBeInstanceOf(Promise);
+  });
+});
+
+describe('resetFieldDisplay', () => {
+  it('takes the message, the error and the tick away, and leaves the value', () => {
+    const { field, wrapper } = makeFieldInFormGroup();
+    field.value = '92503';
+    field.classList.add('has-error', 'next-error-field', 'no-error');
+    wrapper.classList.add('addErrorIcon', 'addTick');
+    const label = document.createElement('div');
+    label.className = 'next-error-label';
+    wrapper.appendChild(label);
+
+    resetFieldDisplay(createCtx(field), 'billing-postal');
+
+    expect(field.className).toBe('');
+    expect(wrapper.classList.contains('addErrorIcon')).toBe(false);
+    expect(wrapper.querySelector('.next-error-label')).toBeNull();
+    expect(field.value).toBe('92503');
   });
 });

@@ -165,6 +165,8 @@ Below is an example of a shipping step, its heading in the page's language.
 
 In a country with one city or postcode for every address, such as Vatican City, the block does not ask for it and the SDK sends it with the order. The checkout form still fills the country list with the countries the campaign ships to and the state list with the selected country's states, validates the fields, and keeps the city, state and postcode row hidden until the street address has a value.
 
+When the shopper picks another country, the street, city, state and postcode of that address are cleared, because they belong to the country the shopper left. The name, email and phone are kept. A country set by the page or by address autocomplete keeps the address that came with it.
+
 [Address block](../reference/data-attributes.md#address-block) lists its attributes, and [Styling](#styling) below covers its markup.
 
 If the fields cannot be loaded, the block shows a generic English address form instead, with state and postcode optional, so the shopper can still check out.
@@ -173,7 +175,7 @@ If the fields cannot be loaded, the block shows a generic English address form i
 
 ### Billing address
 
-A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on, laid out for the billing country: choosing another country in the block's own country select rebuilds it for that country, and changing the shipping country leaves it alone. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it.
+A separate billing address is a second address block, `data-next-address="billing"`, inside the `different-billing-address` section. It builds the same fields as the shipping block, named `billing-address1`, `billing-city` and so on, laid out for the billing country: choosing another country in the block's own country select rebuilds it for that country, and changing the shipping country leaves it alone. A checkbox named `use_shipping_address` opens and closes the section: checked means billing matches shipping, and the SDK collapses it. While it is checked, nothing in the section is checked or sent with the order, and its error messages are cleared. What the shopper typed stays, so unchecking it again shows the billing address as it was left.
 
 Below is an example of a billing section that closes when the shopper ticks the box.
 
@@ -214,7 +216,6 @@ The key is `fields.<field>.errors.<error>`. One key covers the field in every co
 | `blank` | A required field left empty |
 | `not_selected` | Nothing chosen in a dropdown |
 | `invalid` | Wrong format, or not in the list |
-| `invalid_characters` | A name with digits or symbols |
 | `contains_emoji` | A field holding an emoji |
 | `not_in_state` | A postcode its state does not use |
 

@@ -8,7 +8,7 @@
  *
  * | Module | What it decides |
  * |---|---|
- * | `validation-patterns.ts` | whether one value looks like an email / phone / name / city |
+ * | `validation-patterns.ts` | whether one value looks like an email, or holds an emoji |
  * | `field-labels.ts` | what a field is called in a message |
  * | `field-rules.ts` | the per-field rules used while the shopper types |
  * | `form-validation.ts` | the full submit-time verdict |
@@ -34,18 +34,23 @@ import {
   showError,
   type ErrorDisplayContext,
 } from './error-display';
-import { applyRule, createValidationRules } from './field-rules';
-import { fieldMessage, type MessageKey } from './field-messages';
+import {
+  addressTypeOf,
+  applyRule,
+  createValidationRules,
+  type FieldRuleContext,
+} from './field-rules';
+import {
+  fieldMessage,
+  postalMessage,
+  SERVED_PATTERN_MESSAGE,
+  type MessageKey,
+} from './field-messages';
 import { focusFirstErrorField } from './first-error-field';
 import { validateForm, type FormValidationContext } from './form-validation';
 import { type PhoneNumberSource } from './phone-validation';
 import { validateStep } from './step-validation';
-import {
-  hasEmoji,
-  isValidCity,
-  isValidEmail,
-  isValidName,
-} from './validation-patterns';
+import { hasEmoji, isValidEmail } from './validation-patterns';
 import type {
   FormValidationResult,
   ValidationResult,
@@ -63,10 +68,9 @@ export type {
 const RULE_MESSAGE: Record<ValidationRule['type'], MessageKey> = {
   required: 'blank',
   email: 'invalid',
-  name: 'invalid_characters',
   phone: 'invalid',
   postal: 'invalid',
-  city: 'invalid',
+  pattern: 'invalid',
   custom: 'invalid',
 };
 
@@ -78,6 +82,7 @@ export class CheckoutValidator {
   private phoneSource?: (
     type: 'shipping' | 'billing'
   ) => PhoneNumberSource | undefined;
+  private addressCountry?: FieldRuleContext['addressCountry'];
 
   // Validation rules for form fields
   private rules: Map<string, ValidationRule[]> = new Map();
@@ -115,6 +120,22 @@ export class CheckoutValidator {
     resolve: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined
   ): void {
     this.phoneSource = resolve;
+  }
+
+  /**
+   * Installs the lookup that tells the per-field postcode check which country, and which
+   * of its rules, an address's postcode is checked against. Without it, blur and autofill
+   * mark any postcode valid, and that verdict replaces the message submit has just shown.
+   *
+   * @example
+   * ```ts
+   * validator.setAddressCountry(type => ({ country: 'GB', config: gbConfig }));
+   * ```
+   */
+  public setAddressCountry(
+    resolve: NonNullable<FieldRuleContext['addressCountry']>
+  ): void {
+    this.addressCountry = resolve;
   }
 
   // ============================================================================
@@ -170,19 +191,40 @@ export class CheckoutValidator {
     let isValid = true;
     let message: string | undefined;
 
-    const ruleContext = {
+    const ruleContext: FieldRuleContext = {
       i18nRules: this.i18nRules,
       ...(this.phoneSource !== undefined && {
         phoneSource: this.phoneSource,
+      }),
+      ...(this.addressCountry !== undefined && {
+        addressCountry: this.addressCountry,
       }),
       fieldName: name,
     };
 
     for (const rule of rules) {
       if (!applyRule(ruleContext, rule, value, context)) {
+        const postcode =
+          rule.type === 'postal'
+            ? this.addressCountry?.(addressTypeOf(name))
+            : undefined;
         message =
           (rule.type === 'custom' ? rule.message : undefined) ??
-          fieldMessage(this.i18nRules, RULE_MESSAGE[rule.type], name);
+          (postcode
+            ? postalMessage(
+                this.i18nRules,
+                name,
+                postcode.country,
+                postcode.config
+              )
+            : fieldMessage(
+                this.i18nRules,
+                rule.type === 'pattern'
+                  ? (SERVED_PATTERN_MESSAGE[name.replace(/^billing-/, '')] ??
+                      'invalid')
+                  : RULE_MESSAGE[rule.type],
+                name
+              ));
         this.setError(name, message);
         isValid = false;
         break;
@@ -203,10 +245,11 @@ export class CheckoutValidator {
   /**
    * Validate only fields required for a specific checkout step.
    *
-   * `billingAddress` and `sameAsShipping` are used by step 3 only — it is the last gate
-   * before payment, so it runs the full form check. Pass the same pair the submit path
-   * passes to {@link CheckoutValidator.validateForm}, or the two paths will disagree about
-   * whether the billing address needs checking.
+   * Step 3 is the last gate before payment, so it runs the full form check, billing
+   * included. Steps 1 and 2 check billing only when `billingOnPage` says their page holds
+   * the billing fields. Pass the same `billingAddress` / `sameAsShipping` pair the submit
+   * path passes to {@link CheckoutValidator.validateForm}, or the two paths will disagree
+   * about whether the billing address needs checking.
    */
   public async validateStep(
     step: number,
@@ -214,7 +257,8 @@ export class CheckoutValidator {
     countryConfigs: Map<string, CountryConfig>,
     currentCountryConfig?: CountryConfig,
     billingAddress?: any,
-    sameAsShipping: boolean = true
+    sameAsShipping: boolean = true,
+    billingOnPage: boolean = false
   ): Promise<FormValidationResult> {
     return validateStep(
       this.formContext(),
@@ -223,7 +267,8 @@ export class CheckoutValidator {
       countryConfigs,
       currentCountryConfig,
       billingAddress,
-      sameAsShipping
+      sameAsShipping,
+      billingOnPage
     );
   }
 
@@ -257,14 +302,6 @@ export class CheckoutValidator {
     return isValidEmail(email);
   }
 
-  public isValidName(name: string): boolean {
-    return isValidName(name);
-  }
-
-  public isValidCity(city: string): boolean {
-    return isValidCity(city);
-  }
-
   // ============================================================================
   // ERROR MANAGEMENT
   // ============================================================================
@@ -281,8 +318,9 @@ export class CheckoutValidator {
     clearAllErrors(this.errorContext());
   }
 
-  public showError(fieldName: string, message: string): void {
-    showError(this.errorContext(), fieldName, message);
+  /** @returns `false` when the page has no such field to show the message under. */
+  public showError(fieldName: string, message: string): boolean {
+    return showError(this.errorContext(), fieldName, message);
   }
 
   // ============================================================================

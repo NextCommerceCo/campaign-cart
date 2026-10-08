@@ -15,10 +15,15 @@
 import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
 import type { FormValidationContext } from './form-validation';
-import { validateForm } from './form-validation';
+import { billingFieldErrors, validateForm } from './form-validation';
 import { isPhoneMarkedRequired, isValidPhone } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
+import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /**
@@ -39,11 +44,14 @@ import type { FormValidationResult } from './validation.types';
  * @param countryConfigs Country code → rules (state required, postal format).
  * @param currentCountryConfig No longer read: messages take their wording from the address-rules service
  * (`field-messages.ts`). Kept only because the arguments after it are positional.
- * @param billingAddress The separate billing address, when there is one. Used by step 3
- * only. Pass what the checkout store holds — a missing address with `sameAsShipping`
- * `false` is itself a failure, not a reason to skip the check.
- * @param sameAsShipping Whether the shopper is billing to the shipping address. Used by
- * step 3 only. Defaults to `true`, which skips the billing check entirely.
+ * @param billingAddress The separate billing address, when there is one. Pass what the
+ * checkout store holds — a missing address with `sameAsShipping` `false` is itself a
+ * failure, not a reason to skip the check.
+ * @param sameAsShipping Whether the shopper is billing to the shipping address. Defaults
+ * to `true`, which skips the billing check entirely.
+ * @param billingOnPage Whether this step's page holds the billing fields. Step 3 checks
+ * billing regardless; steps 1 and 2 check it only here, because the payment page of a
+ * multi-step checkout has no billing fields to show a message under.
  *
  * @example
  * ```ts
@@ -64,7 +72,8 @@ export async function validateStep(
   countryConfigs: Map<string, CountryConfig>,
   currentCountryConfig?: CountryConfig,
   billingAddress?: any,
-  sameAsShipping: boolean = true
+  sameAsShipping: boolean = true,
+  billingOnPage: boolean = false
 ): Promise<FormValidationResult> {
   let isValid = true;
   let firstErrorField: string | undefined;
@@ -118,26 +127,22 @@ export async function validateStep(
     }
   });
 
-  // Name validation
-  if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
+  const shippingCountry: unknown = formData.country;
+  const shippingConfig =
+    typeof shippingCountry === 'string'
+      ? countryConfigs.get(shippingCountry)
+      : undefined;
+  const patternProblems = servedPatternErrors(
+    ctx.i18nRules,
+    formData,
+    shippingConfig,
+    typeof shippingCountry === 'string' ? shippingCountry : undefined
+  );
+  Object.assign(errors, patternProblems);
+  const firstPattern = Object.keys(patternProblems)[0];
+  if (firstPattern) {
     isValid = false;
-    if (!firstErrorField) firstErrorField = 'fname';
-  }
-
-  if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
-    isValid = false;
-    if (!firstErrorField) firstErrorField = 'lname';
-  }
-
-  // City validation
-  if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
-      country: formData.country,
-    });
-    isValid = false;
-    if (!firstErrorField) firstErrorField = 'city';
+    if (!firstErrorField) firstErrorField = firstPattern;
   }
 
   // Email validation
@@ -189,6 +194,20 @@ export async function validateStep(
   if (firstEmoji) {
     isValid = false;
     if (!firstErrorField) firstErrorField = firstEmoji;
+  }
+
+  if (!sameAsShipping && billingOnPage) {
+    const billingErrors = billingFieldErrors(
+      ctx,
+      billingAddress,
+      countryConfigs
+    );
+    Object.assign(errors, billingErrors);
+    const firstBilling = Object.keys(billingErrors)[0];
+    if (firstBilling) {
+      isValid = false;
+      if (!firstErrorField) firstErrorField = firstBilling;
+    }
   }
 
   return { isValid, firstErrorField, errors };

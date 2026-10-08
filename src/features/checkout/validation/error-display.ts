@@ -108,6 +108,9 @@ export function clearAllErrors(ctx: ErrorDisplayContext): void {
  * Used when the verdict was reached somewhere else — the form re-displaying the errors a
  * submit returned, for instance.
  *
+ * @returns `false` when the page has no such field, so the message is on screen nowhere
+ *   and the caller has to show it some other way.
+ *
  * @example
  * ```ts
  * showError(ctx, 'postal', 'Please enter a valid ZIP code (e.g. 90210)');
@@ -117,15 +120,16 @@ export function showError(
   ctx: ErrorDisplayContext,
   fieldName: string,
   message: string
-): void {
+): boolean {
   const field = findFormField(fieldName);
   if (!field) {
     ctx.logger.warn(`Field not found for error display: ${fieldName}`);
-    return;
+    return false;
   }
 
   ctx.logger.debug(`Showing error for field ${fieldName}:`, { field, message });
   ctx.errorManager.showFieldError(field, message);
+  return true;
 }
 
 /** Removes a field's message and nothing else — never adds the success styling. */

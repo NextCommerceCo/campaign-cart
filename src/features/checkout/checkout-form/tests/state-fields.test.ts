@@ -2,8 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   updateStateOptions,
   updateBillingStateOptions,
+  loadCountryConfig,
+  type BillingStateFieldsContext,
   type ShippingStateFieldsContext,
-  type StateFieldsContext,
 } from '../state-fields';
 import type {
   CountryConfig,
@@ -105,13 +106,15 @@ function createShippingCtx(
 }
 
 function createBillingCtx(
-  overrides: Partial<StateFieldsContext> = {}
-): StateFieldsContext {
+  overrides: Partial<BillingStateFieldsContext> = {}
+): BillingStateFieldsContext {
   return {
     stateLoadingPromises: new Map(),
     i18nRules: createFakeI18nRules().service,
     logger: createMockLogger() as unknown as Logger,
     countryFields: createCountryFieldsCtx(),
+    countryConfigs: new Map(),
+    setBillingProvince: vi.fn(),
     ...overrides,
   };
 }
@@ -376,6 +379,61 @@ describe('updateBillingStateOptions', () => {
     expect(field.value).toBe('QC');
   });
 
+  /**
+   * Nothing else writes the billing province when its list is rebuilt: a new country kept
+   * the old country's province, and a pre-selected one showed while submit called it missing.
+   */
+  it('writes the province it shows to the billing address, pre-selected or not', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      'CA',
+      field,
+      'QC'
+    );
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      'CA',
+      field,
+      'ZZ'
+    );
+
+    expect(setBillingProvince.mock.calls).toEqual([['QC'], ['']]);
+  });
+
+  it('clears the billing province when the country is cleared', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({ setBillingProvince }),
+      '',
+      field
+    );
+
+    expect(setBillingProvince).toHaveBeenCalledWith('');
+  });
+
+  it('leaves the billing province alone when the list cannot load', async () => {
+    const setBillingProvince = vi.fn();
+    const { field } = createFieldWithContainer();
+
+    await updateBillingStateOptions(
+      createBillingCtx({
+        setBillingProvince,
+        i18nRules: createFakeI18nRules(() =>
+          Promise.reject(new Error('offline'))
+        ).service,
+      }),
+      'CA',
+      field
+    );
+
+    expect(setBillingProvince).not.toHaveBeenCalled();
+  });
+
   it('touches neither form data nor validation errors, unlike the shipping path', async () => {
     const { field } = createFieldWithContainer();
     const updateFormData = vi.fn();
@@ -392,5 +450,112 @@ describe('updateBillingStateOptions', () => {
 
     expect(updateFormData).not.toHaveBeenCalled();
     expect(clearError).not.toHaveBeenCalled();
+  });
+});
+
+// ─── the country config cache ────────────────────────────────────────────────
+
+// Issue #115: a billing country the shipping side never loaded had no config, and the
+// postcode check passes a country it has no config for.
+describe('countryConfigs', () => {
+  const gbConfig = createCountryConfig({ postcodeLabel: 'Postcode' });
+  const gbRules = (): ReturnType<typeof createFakeI18nRules> =>
+    createFakeI18nRules(() =>
+      Promise.resolve(createStatesData({ countryConfig: gbConfig, states: [] }))
+    );
+
+  it('caches the billing country config when the billing province list loads', async () => {
+    const { field } = createFieldWithContainer();
+    const ctx = createBillingCtx({ i18nRules: gbRules().service });
+
+    await updateBillingStateOptions(ctx, 'GB', field);
+
+    expect(ctx.countryConfigs.get('GB')).toBe(gbConfig);
+  });
+
+  it('loadCountryConfig fetches and caches a country with no province field to refill', async () => {
+    const ctx = createBillingCtx({ i18nRules: gbRules().service });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBe(gbConfig);
+    expect(ctx.countryConfigs.get('GB')).toBe(gbConfig);
+  });
+
+  it('loadCountryConfig returns a cached config without fetching', async () => {
+    const { service, getCountryStates } = gbRules();
+    const ctx = createBillingCtx({
+      i18nRules: service,
+      countryConfigs: new Map([['GB', gbConfig]]),
+    });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBe(gbConfig);
+    expect(getCountryStates).not.toHaveBeenCalled();
+  });
+
+  it('loadCountryConfig resolves undefined and caches nothing when the fetch fails', async () => {
+    const ctx = createBillingCtx({
+      i18nRules: createFakeI18nRules(() => Promise.reject(new Error('offline')))
+        .service,
+    });
+
+    await expect(loadCountryConfig(ctx, 'GB')).resolves.toBeUndefined();
+    expect(ctx.countryConfigs.has('GB')).toBe(false);
+  });
+});
+
+// ─── answers arriving out of order ──────────────────────────────────────────
+
+/** Countries answer in any order; a slow one used to land last and win. */
+describe('a country answer that arrives after a newer request', () => {
+  function deferredRules() {
+    const pending = new Map<string, (data: CountryStatesData) => void>();
+    const { service } = createFakeI18nRules(
+      country =>
+        new Promise<CountryStatesData>(resolve => pending.set(country, resolve))
+    );
+    return {
+      service,
+      answer: (country: string, data: CountryStatesData) =>
+        pending.get(country)?.(data),
+    };
+  }
+  const canada = createStatesData({
+    states: [{ code: 'ON', name: 'Ontario' }],
+  });
+  const us = createStatesData({
+    states: [{ code: 'NY', name: 'New York' }],
+  });
+
+  it('is dropped by the shipping list, which keeps the newer country', async () => {
+    const { service, answer } = deferredRules();
+    const ctx = createShippingCtx({ i18nRules: service });
+    const { field } = createFieldWithContainer();
+
+    const first = updateStateOptions(ctx, 'CA', field);
+    const second = updateStateOptions(ctx, 'US', field);
+    answer('US', us);
+    await second;
+    answer('CA', canada);
+    await first;
+
+    expect([...field.options].map(o => o.value)).toContain('NY');
+    expect([...field.options].map(o => o.value)).not.toContain('ON');
+    expect(field.disabled).toBe(false);
+  });
+
+  it('is dropped by the billing list, which stores nothing for it', async () => {
+    const { service, answer } = deferredRules();
+    const setBillingProvince = vi.fn();
+    const ctx = createBillingCtx({ i18nRules: service, setBillingProvince });
+    const { field } = createFieldWithContainer();
+
+    const first = updateBillingStateOptions(ctx, 'CA', field);
+    const second = updateBillingStateOptions(ctx, 'US', field, 'NY');
+    answer('US', us);
+    await second;
+    answer('CA', canada);
+    await first;
+
+    expect(field.value).toBe('NY');
+    expect(setBillingProvince.mock.calls).toEqual([['NY']]);
   });
 });

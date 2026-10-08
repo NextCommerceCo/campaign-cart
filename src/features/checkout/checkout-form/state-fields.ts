@@ -11,7 +11,7 @@
  * of the extractions so far and the honest reason is that filling this field is not a
  * self-contained job: it writes form data, clears a validation error, caches the country
  * config, and relabels neighbouring fields. Shipping needs eight things
- * ({@link ShippingStateFieldsContext}); billing needs four ({@link StateFieldsContext}),
+ * ({@link ShippingStateFieldsContext}); billing needs five ({@link StateFieldsContext}),
  * which is why the context is split rather than one shape with fields billing would have to
  * supply and never use.
  */
@@ -46,6 +46,17 @@ function provinceRowOf(provinceField: HTMLElement): HTMLElement {
   return alone ? row : provinceField;
 }
 
+/**
+ * The country each province field was last asked to show. Countries answer in any order,
+ * and a slow one used to land last: Canadian provinces under a dropdown reading United
+ * States, a stale province stored with them.
+ */
+const requestedCountry = new WeakMap<HTMLSelectElement, string>();
+
+function isLatestRequest(field: HTMLSelectElement, country: string): boolean {
+  return requestedCountry.get(field) === country;
+}
+
 /** Milliseconds an in-flight request stays cached after settling. */
 const PROMISE_CLEANUP_MS = 100;
 
@@ -63,12 +74,25 @@ export interface StateFieldsContext {
   logger: Logger;
   /** Passed through to the label helpers, which relabel the neighbouring fields. */
   countryFields: CountryFieldsContext;
+  /**
+   * Per-country config cache, written as each country resolves on either path. The
+   * postcode check reads it and passes a country it has no config for, so a billing
+   * country missing from it is a postcode nobody checks.
+   */
+  countryConfigs: Map<string, CountryConfig>;
+}
+
+/** What the billing path additionally needs. */
+export interface BillingStateFieldsContext extends StateFieldsContext {
+  /**
+   * Writes the province the billing field now shows into the stored billing address,
+   * which is what validation reads and the order is built from.
+   */
+  setBillingProvince: (province: string) => void;
 }
 
 /** What the shipping path additionally needs. */
 export interface ShippingStateFieldsContext extends StateFieldsContext {
-  /** Per-country config cache, written as each country resolves. */
-  countryConfigs: Map<string, CountryConfig>;
   /**
    * The config for the country now selected. A ref because the enhancer reads it
    * elsewhere — a copied value would leave the two disagreeing about which country the
@@ -120,9 +144,42 @@ function loadCountryStates(
       PROMISE_CLEANUP_MS
     );
   };
-  void request.then(scheduleCleanup, scheduleCleanup);
+  void request.then(data => {
+    ctx.countryConfigs.set(country, data.countryConfig);
+    scheduleCleanup();
+  }, scheduleCleanup);
 
   return request;
+}
+
+/**
+ * A country's config, from the cache or fetched into it, with no field to refill.
+ *
+ * The state loaders only run when the page has a province `<select>`, and a country with
+ * no states (a `data-next-address` block for GB) renders none — so validation calls this
+ * for every address country before checking a postcode against it.
+ *
+ * @returns `undefined` when the request fails; the postcode check then passes the value
+ *   rather than blocking the order on a network error.
+ */
+export async function loadCountryConfig(
+  ctx: StateFieldsContext,
+  country: string
+): Promise<CountryConfig | undefined> {
+  const cached = ctx.countryConfigs.get(country);
+  if (cached) return cached;
+
+  try {
+    const countryData = await loadCountryStates(ctx, country, () => {
+      ctx.logger.debug(
+        `Reusing existing state loading promise for ${country} (config)`
+      );
+    });
+    return countryData.countryConfig;
+  } catch (error) {
+    ctx.logger.warn('Failed to load country config:', error);
+    return undefined;
+  }
 }
 
 /** Fills a province field with a country's states behind a non-selectable prompt. */
@@ -180,6 +237,7 @@ export async function updateStateOptions(
   country: string,
   provinceField: HTMLSelectElement
 ): Promise<void> {
+  requestedCountry.set(provinceField, country);
   if (!country || country.trim() === '') {
     setPlaceholderOnly(provinceField, 'Select Country First');
     return;
@@ -197,8 +255,8 @@ export async function updateStateOptions(
     const countryData = await loadCountryStates(ctx, country, () => {
       ctx.logger.debug(`Reusing existing state loading promise for ${country}`);
     });
+    if (!isLatestRequest(provinceField, country)) return;
 
-    ctx.countryConfigs.set(country, countryData.countryConfig);
     ctx.currentCountryConfig.value = countryData.countryConfig;
 
     updateFormLabels(ctx.countryFields, countryData.countryConfig);
@@ -263,10 +321,11 @@ export async function updateStateOptions(
       );
     }
   } catch (error) {
+    if (!isLatestRequest(provinceField, country)) return;
     ctx.logger.error('Failed to load states:', error);
     provinceField.innerHTML = originalHTML;
   } finally {
-    provinceField.disabled = false;
+    if (isLatestRequest(provinceField, country)) provinceField.disabled = false;
   }
 }
 
@@ -275,20 +334,26 @@ export async function updateStateOptions(
  *
  * Simpler than the shipping path in two ways that are deliberate, not oversights: it does
  * **not** hide the container for state-less countries, and it does **not** touch form data
- * or validation errors — billing province is read off the field at submit time rather than
- * mirrored into the store as it changes.
+ * or validation errors.
  *
- * @param shippingProvince Pre-selects the same region as the shipping address, for the
- *   common case where the two differ only in street.
+ * Whatever the field ends up showing is written to the stored billing address, an empty
+ * prompt included. Nothing else writes it when the list is rebuilt, so a new country used
+ * to keep the old country's province (`GB` with state `CA`), and a pre-selected province
+ * showed on screen while submit reported it missing.
+ *
+ * @param province Pre-selected when the new list has it: the shipping province, for the
+ *   common case where the two differ only in street, or the stored one on restore.
  */
 export async function updateBillingStateOptions(
-  ctx: StateFieldsContext,
+  ctx: BillingStateFieldsContext,
   country: string,
   billingProvinceField: HTMLSelectElement,
-  shippingProvince?: string
+  province?: string
 ): Promise<void> {
+  requestedCountry.set(billingProvinceField, country);
   if (!country || country.trim() === '') {
     setPlaceholderOnly(billingProvinceField, 'Select Country First');
+    ctx.setBillingProvince('');
     return;
   }
 
@@ -302,17 +367,22 @@ export async function updateBillingStateOptions(
         `Reusing existing state loading promise for ${country} (billing)`
       );
     });
+    if (!isLatestRequest(billingProvinceField, country)) return;
 
     updateBillingFormLabels(ctx.countryFields, countryData.countryConfig);
     renderStates(billingProvinceField, countryData);
 
-    if (shippingProvince) {
-      billingProvinceField.value = shippingProvince;
+    if (province) {
+      billingProvinceField.value = province;
     }
+    ctx.setBillingProvince(billingProvinceField.value);
   } catch (error) {
+    if (!isLatestRequest(billingProvinceField, country)) return;
     ctx.logger.error('Failed to load billing states:', error);
     billingProvinceField.innerHTML = originalHTML;
   } finally {
-    billingProvinceField.disabled = false;
+    if (isLatestRequest(billingProvinceField, country)) {
+      billingProvinceField.disabled = false;
+    }
   }
 }

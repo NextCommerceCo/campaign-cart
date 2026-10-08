@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { CountryConfig } from '@/core/i18n-rules';
 import type { Logger } from '@/core/logger';
 
 import { CheckoutValidator, VALIDATION_PATTERNS } from '../checkout-validator';
+import { validateBillingAddress } from '../billing-address-validation';
 
 function createMockLogger() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -52,8 +54,6 @@ describe('CheckoutValidator — public surface', () => {
       'validateStep',
       'validateForm',
       'isValidEmail',
-      'isValidName',
-      'isValidCity',
       'setError',
       'clearError',
       'clearAllErrors',
@@ -118,21 +118,105 @@ describe('validateField', () => {
   });
 
   /**
-   * DEFECT (left as found) — a field with no entry in the rule table gets `[]` rules, so
-   * the loop never runs and the verdict is valid. Nothing distinguishes "this value passed"
-   * from "nobody has a rule for this field".
-   *
-   * What the shopper sees: `address2`, `province`, and every `billing-*` field report as
-   * correct on blur no matter what is typed, including the billing fields the submit-time
-   * check will later reject. The form contradicts itself between blur and pay.
+   * A field with no entry in the rule table gets `[]` rules and is pronounced valid.
+   * `address2` and `province` are still such fields; the billing fields used to be too.
    */
-  it('DEFECT: an unruled field is pronounced valid rather than unchecked', () => {
-    const { validator } = createValidator(['billing-fname', 'province']);
+  it('judges a billing field like its shipping twin', () => {
+    const { validator } = createValidator(['billing-fname', 'billing-city']);
 
-    expect(validator.validateField('billing-fname', '!!!')).toEqual({
+    expect(validator.validateField('billing-fname', '').isValid).toBe(false);
+    expect(validator.validateField('fname', '').isValid).toBe(false);
+  });
+
+  /** The orders API takes any characters in a name or a city, so nothing here refuses one. */
+  it('takes a name or a city in any characters, as long as it is there', () => {
+    const { validator } = createValidator(['fname', 'billing-city']);
+
+    expect(validator.validateField('fname', 'John Smith Jr.').isValid).toBe(
+      true
+    );
+    expect(validator.validateField('fname', 'สุดา').isValid).toBe(true);
+    expect(
+      validator.validateField('billing-city', '100 Mile House').isValid
+    ).toBe(true);
+  });
+
+  it('names a served pattern’s refusal the way the service words it for the field', () => {
+    const { validator } = createValidator(['fname', 'city']);
+    validator.setAddressCountry(() => ({
+      country: 'US',
+      config: {
+        stateLabel: 'State',
+        stateRequired: false,
+        postcodeLabel: 'ZIP Code',
+        postcodeRegex: null,
+        postcodeMinLength: 0,
+        postcodeMaxLength: 10,
+        postcodeExample: null,
+        postcodeFormat: null,
+        currencyCode: 'USD',
+        currencySymbol: '$',
+        fieldPatterns: { fname: '^\\D+$', city: '^\\D+$' },
+      } satisfies CountryConfig,
+    }));
+
+    expect(validator.validateField('fname', 'Ada2').message).toBe(
+      'First name can only contain letters, spaces, hyphens and apostrophes'
+    );
+    expect(validator.validateField('city', 'Area 51').message).toBe(
+      'City isn’t valid'
+    );
+  });
+
+  it('pronounces a field with no rules valid, whatever it holds', () => {
+    const { validator } = createValidator(['province']);
+
+    expect(validator.validateField('province', '')).toEqual({ isValid: true });
+  });
+});
+
+/**
+ * Issue #115: blur and submit judge a billing postcode by the same country and give the
+ * same message, so neither can repaint what the other decided.
+ */
+describe('validateField on a postcode', () => {
+  const gbConfig = {
+    postcodeExample: 'SW1A 0AA',
+    stateRequired: false,
+  } as CountryConfig;
+
+  it('refuses a billing postcode its country refuses, in the submit check’s words', () => {
+    const { validator, i18nRules } = createValidator(['billing-postal']);
+    i18nRules.validatePostalCode.mockReturnValue(false);
+    validator.setAddressCountry(type =>
+      type === 'billing' ? { country: 'GB', config: gbConfig } : undefined
+    );
+
+    const blur = validator.validateField('billing-postal', '99999');
+    const submit = validateBillingAddress(
+      { i18nRules },
+      { postal: '99999', country: 'GB' },
+      new Map([['GB', gbConfig]])
+    );
+
+    expect(blur.isValid).toBe(false);
+    expect(blur.message).toContain('SW1A 0AA');
+    expect(blur.message).toBe(submit.errors.postal);
+    expect(i18nRules.validatePostalCode).toHaveBeenCalledWith(
+      '99999',
+      'GB',
+      gbConfig
+    );
+  });
+
+  it('passes a postcode while its country has no rules loaded', () => {
+    const { validator, i18nRules } = createValidator(['postal']);
+    i18nRules.validatePostalCode.mockReturnValue(false);
+    validator.setAddressCountry(() => undefined);
+
+    expect(validator.validateField('postal', 'ABCDE')).toEqual({
       isValid: true,
     });
-    expect(validator.validateField('province', '')).toEqual({ isValid: true });
   });
 });
 

@@ -1224,3 +1224,71 @@ describe('the verdict on an empty field', () => {
     expect(field.isValidNumber()).toBeNull();
   });
 });
+
+/**
+ * A `data-next-address` re-render can drop a phone field. The instance left on the removed
+ * input wrote its stale number over the stored one at submit.
+ */
+describe('initializePhoneInputs — a phone field that is gone', () => {
+  it('destroys the instance whose field left the maps', async () => {
+    const input = phoneInput();
+    const { ctx, field } = await shippingField(input);
+    const destroy = vi.spyOn(field, 'destroy');
+
+    ctx.fields.delete('phone');
+    initializePhoneInputs(ctx);
+
+    expect(destroy).toHaveBeenCalled();
+    expect(ctx.phoneInputs.has('shipping')).toBe(false);
+  });
+});
+
+/**
+ * A message under the phone was written for the country it was judged in, with that
+ * country's example. Moving the address to another country left it there, under a number
+ * right for the new one, until the form was told to judge it again.
+ */
+describe('the country a phone field follows changing', () => {
+  it('tells the form once the number has been read for the new country', async () => {
+    const input = phoneInput();
+    input.value = '4155552671';
+    const select = countrySelect('TH', 'US');
+    const onCountryRead = vi.fn();
+    const ctx = makeCtx({
+      fields: new Map<string, HTMLElement>([
+        ['phone', input],
+        ['country', select],
+      ]),
+      onCountryRead,
+    });
+    initializePhoneInputs(ctx);
+    const field = ctx.phoneInputs.get('shipping');
+    await field?.whenReady();
+    onCountryRead.mockClear();
+
+    chooseCountry(select, 'US');
+    await field?.whenReady();
+    await Promise.resolve();
+
+    expect(onCountryRead).toHaveBeenCalledWith('shipping', input);
+  });
+
+  it('says nothing for an empty field, which has no verdict to go stale', async () => {
+    const select = countrySelect('TH', 'US');
+    const onCountryRead = vi.fn();
+    const ctx = makeCtx({
+      fields: new Map<string, HTMLElement>([
+        ['phone', phoneInput()],
+        ['country', select],
+      ]),
+      onCountryRead,
+    });
+    initializePhoneInputs(ctx);
+
+    chooseCountry(select, 'US');
+    await ctx.phoneInputs.get('shipping')?.whenReady();
+    await Promise.resolve();
+
+    expect(onCountryRead).not.toHaveBeenCalled();
+  });
+});

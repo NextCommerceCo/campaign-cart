@@ -12,6 +12,7 @@ export interface FieldLookupContext {
     fields: Map<string, HTMLElement>;
     billingFields: Map<string, HTMLElement>;
 }
+export declare function dropDetachedFields(fields: Map<string, HTMLElement>): void;
 export declare function scanAllFields(ctx: FieldScanContext): SubmitControl | undefined;
 export declare function getFieldNameFromElement(element: HTMLElement): string | null;
 export declare function getFieldByName(ctx: FieldLookupContext, fieldName: string): HTMLElement | null;

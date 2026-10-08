@@ -29,7 +29,7 @@ import {
   updateBillingStateOptions,
   updateStateOptions,
   type ShippingStateFieldsContext,
-  type StateFieldsContext,
+  type BillingStateFieldsContext,
 } from './state-fields';
 
 /** What resolving the starting country needs from the form. */
@@ -52,7 +52,7 @@ export interface CountryApplicationContext {
   /** Refills the shipping province dropdown. */
   shippingStateFields: ShippingStateFieldsContext;
   /** Refills the billing province dropdown. */
-  stateFields: StateFieldsContext;
+  stateFields: BillingStateFieldsContext;
 }
 
 /**

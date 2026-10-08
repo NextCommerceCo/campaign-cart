@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.4.41",
+  "sdkVersion": "0.4.42",
   "supportedSdkVersions": {
     "min": "0.4.38",
     "max": "0.4.38"
@@ -8,7 +8,7 @@
   "provenance": {
     "extractor": "src/docs/extract/extract-storage-keys.ts",
     "registry": "src/docs/content/storage-keys.ts",
-    "inputSha256": "11a5a1c7f0ad3d2be26e9a60fbceee535871bcab0446b2e36bdf9680b0c40a0d",
+    "inputSha256": "0a803d44f0e489392585f3b79f4c3b5bdc89ae9fcbe1f1883f8fa9c5100cc1d4",
     "inputs": [
       {
         "path": "src/core/analytics/data-layer-manager.ts",
@@ -88,7 +88,7 @@
       },
       {
         "path": "src/core/i18n-rules/i18n-rules.ts",
-        "sha256": "e37c606aa095284e7c31e3c9900ebeaf3ef1728f0148d05f3cc0ac6d403017f0"
+        "sha256": "053829e8ee581cf5351308129e994c7621e213ff2588bb520745b2640d33ac15"
       },
       {
         "path": "src/core/sdk-initializer/sdk-initializer.debug-utils.ts",
@@ -128,11 +128,11 @@
       },
       {
         "path": "src/features/checkout/checkout-form/checkout-form.enhancer.ts",
-        "sha256": "e23eb146f1464cace4333dda067e82704756d92e3953600d03779af1f979eb16"
+        "sha256": "94ddbdb2c5aa4b3093ea6487cac4fe0333224bf81435979f48c9f966e43efea3"
       },
       {
         "path": "src/features/checkout/checkout-form/country-selection.ts",
-        "sha256": "86548a07977bdbb545013c3c7c497fadb42661a6f66380af9523c13b4a6aae2f"
+        "sha256": "d64cd6e281f219f73f93afd885769c8cfe878877c4fa637dd7f0298bf9a66bc9"
       },
       {
         "path": "src/features/checkout/checkout-form/duplicate-purchase-warning.ts",

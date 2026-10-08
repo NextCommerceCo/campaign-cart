@@ -146,3 +146,104 @@ test('leaving Vatican City takes its city back out, so a US order asks for one',
   ).toHaveCount(1);
   expect(posts).toHaveLength(0);
 });
+
+/** Whether the checkout store holds "use the shipping address for billing". */
+function storedSameAsShipping(page: Page): Promise<boolean | undefined> {
+  return page.evaluate(key => {
+    const raw = sessionStorage.getItem(key);
+    const persisted = raw
+      ? (JSON.parse(raw) as { state?: { sameAsShipping?: boolean } })
+      : undefined;
+    return persisted?.state?.sameAsShipping;
+  }, CHECKOUT_KEY);
+}
+
+/**
+ * Clicks the billing toggle and waits for the choice to land in the store. A click while
+ * the section is still animating is reverted on purpose, so it is retried until it holds.
+ */
+async function setSameAsShipping(page: Page, same: boolean): Promise<void> {
+  const toggle = page.locator('input[name="use_shipping_address"]');
+  await expect(() => toggle.setChecked(same, { timeout: 500 })).toPass();
+  await expect.poll(() => storedSameAsShipping(page)).toBe(same);
+}
+
+/** The billing address the checkout store holds, read from its persisted copy. */
+function storedBilling(
+  page: Page
+): Promise<Record<string, string> | undefined> {
+  return page.evaluate(key => {
+    const raw = sessionStorage.getItem(key);
+    const persisted = raw
+      ? (JSON.parse(raw) as {
+          state?: { billingAddress?: Record<string, string> };
+        })
+      : undefined;
+    return persisted?.state?.billingAddress;
+  }, CHECKOUT_KEY);
+}
+
+/**
+ * Reopening the billing section used to empty the stored address and keep its country,
+ * and the fixed values were only written on a country change: a Vatican billing address
+ * came back with no city, which submit asked for under a block with no city field.
+ */
+test('reopening the billing address keeps it, the city and postcode Vatican City fixes included', async ({
+  page,
+}) => {
+  // A block builds only the fields a country's rules describe.
+  const country = ruleField('Country', 'country', {
+    type: 'select',
+    options: 'countries',
+  });
+  const line1 = ruleField('Address', 'address-line1');
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'VA', name: 'Vatican City' },
+    ],
+    rules: code =>
+      code === 'VA'
+        ? countryRules(
+            'VA',
+            [['country'], ['line1']],
+            { country, line1 },
+            {
+              address: {
+                layout: [['country'], ['line1']],
+                fixed: { city: 'Vatican City', postcode: '00120' },
+              },
+            }
+          )
+        : countryRules('US', [['country'], ['line1']], { country, line1 }),
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await page.selectOption('[data-next-checkout-field="country"]', 'VA');
+  // The page opens with the section showing; closing and opening it is what copies the
+  // shipping country across.
+  await setSameAsShipping(page, true);
+  await setSameAsShipping(page, false);
+  await expect
+    .poll(async () => (await storedBilling(page))?.city)
+    .toBe('Vatican City');
+  await page.fill('[data-next-checkout-field="billing-address1"]', 'Via 1');
+  await expect
+    .poll(async () => (await storedBilling(page))?.address1)
+    .toBe('Via 1');
+
+  await setSameAsShipping(page, true);
+  await setSameAsShipping(page, false);
+
+  // Past the moment the reopening seeds the country, which is when it used to empty.
+  await page.waitForTimeout(500);
+
+  expect(await storedBilling(page)).toMatchObject({
+    country: 'VA',
+    address1: 'Via 1',
+    city: 'Vatican City',
+    postal: '00120',
+  });
+  await expect(
+    page.locator('[data-next-checkout-field="billing-address1"]')
+  ).toHaveValue('Via 1');
+});

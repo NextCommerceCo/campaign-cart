@@ -19,7 +19,7 @@ import {
 } from '@/core/i18n-rules';
 
 import { formatFieldName } from './field-labels';
-import { hasEmoji } from './validation-patterns';
+import { hasEmoji, passesServedPattern } from './validation-patterns';
 
 export type { MessageSource };
 
@@ -32,6 +32,19 @@ export type MessageKey =
   | 'invalid'
   | 'invalid_characters'
   | 'contains_emoji';
+
+/**
+ * The message a value refused by a served pattern shows, by field: a name's
+ * `invalid_characters`, the others' `invalid` — sentences the service has in every
+ * language, so a pattern added there needs no new text.
+ */
+export const SERVED_PATTERN_MESSAGE: Readonly<Record<string, MessageKey>> = {
+  fname: 'invalid_characters',
+  lname: 'invalid_characters',
+  address1: 'invalid',
+  address2: 'invalid',
+  city: 'invalid',
+};
 
 /** For when neither the page nor the service has the sentence in the form's language. */
 const ENGLISH: Record<MessageKey, string> = {
@@ -141,6 +154,38 @@ export function emojiErrors(
         ...(country ? { country } : {}),
       });
     }
+  }
+  return errors;
+}
+
+/**
+ * The message for every value a pattern from the address-rules service refuses, keyed by
+ * this SDK's field name (`fname`, `address1`, `city`). Empty where the country's rules
+ * carry no pattern, which is every country today.
+ *
+ * @example
+ * ```ts
+ * servedPatternErrors(source, { city: 'PO Box 12' }, config, 'US');
+ * // { city: 'Enter a valid city' } where the service's city pattern refuses it
+ * ```
+ */
+export function servedPatternErrors(
+  source: MessageSource | undefined,
+  values: Readonly<Record<string, unknown>> | undefined,
+  config: { fieldPatterns?: Readonly<Record<string, string>> } | undefined,
+  country?: string
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const [field, pattern] of Object.entries(config?.fieldPatterns ?? {})) {
+    const value = values?.[field];
+    if (typeof value !== 'string' || !value.trim()) continue;
+    if (passesServedPattern(value, pattern)) continue;
+    errors[field] = fieldMessage(
+      source,
+      SERVED_PATTERN_MESSAGE[field] ?? 'invalid',
+      field,
+      { ...(country ? { country } : {}) }
+    );
   }
   return errors;
 }

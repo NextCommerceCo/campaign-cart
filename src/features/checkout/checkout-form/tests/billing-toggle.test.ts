@@ -36,6 +36,7 @@ function context(
       logger,
     },
     billingFields: new Map<string, HTMLElement>(),
+    forgetBillingVerdicts: vi.fn(),
     logger,
     ...overrides,
   } as never;
@@ -89,7 +90,26 @@ describe('handleBillingAddressToggle', () => {
     expect(useCheckoutStore.getState().sameAsShipping).toBe(true);
   });
 
-  it('expands the section, seeds the billing country and empties the rest', () => {
+  /**
+   * Ticked, nothing in the billing section is checked or sent, so a message left in it is
+   * one the shopper cannot act on, and it would be back, unasked, on unticking.
+   */
+  it('takes the billing verdicts away when ticked, and only then', () => {
+    billingSection();
+    const forgetBillingVerdicts = vi.fn();
+    const ctx = context({ forgetBillingVerdicts });
+
+    handleBillingAddressToggle(ctx, toggleEvent(false));
+    vi.advanceTimersByTime(10);
+    expect(forgetBillingVerdicts).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
+    handleBillingAddressToggle(ctx, toggleEvent(true));
+    vi.advanceTimersByTime(10);
+    expect(forgetBillingVerdicts).toHaveBeenCalledTimes(1);
+  });
+
+  it('expands the section and seeds the billing country from shipping', () => {
     billingSection();
     useCheckoutStore.getState().updateFormData({ country: 'CA' });
     const countrySelect = document.createElement('select');
@@ -106,18 +126,45 @@ describe('handleBillingAddressToggle', () => {
 
     vi.advanceTimersByTime(50);
     expect(countrySelect.value).toBe('CA');
+    // The `change` is what stores it, through the form's own routing.
     expect(changes).toHaveBeenCalledTimes(1);
-    expect(useCheckoutStore.getState().billingAddress).toEqual({
-      first_name: '',
+    expect(useCheckoutStore.getState().billingAddress).toBeUndefined();
+  });
+
+  /**
+   * Reopening used to empty the stored address and leave the fields filled, so submit
+   * reported every typed field missing.
+   */
+  it('keeps a billing address the shopper already typed, country included', () => {
+    billingSection();
+    useCheckoutStore.getState().updateFormData({ country: 'CA' });
+    const typed = {
+      first_name: 'Ada',
       last_name: '',
-      address1: '',
-      address2: '',
+      address1: '2 Side St',
       city: '',
-      province: '',
+      province: 'NY',
       postal: '',
-      country: 'CA',
+      country: 'US',
       phone: '',
+    };
+    useCheckoutStore.getState().setBillingAddress(typed);
+    const countrySelect = document.createElement('select');
+    countrySelect.innerHTML =
+      '<option value="US">United States</option><option value="CA">Canada</option>';
+    countrySelect.value = 'US';
+    const changes = vi.fn();
+    countrySelect.addEventListener('change', changes);
+    const ctx = context({
+      billingFields: new Map([['billing-country', countrySelect]]),
     });
+
+    handleBillingAddressToggle(ctx, toggleEvent(false));
+    vi.advanceTimersByTime(60);
+
+    expect(countrySelect.value).toBe('US');
+    expect(changes).not.toHaveBeenCalled();
+    expect(useCheckoutStore.getState().billingAddress).toEqual(typed);
   });
 
   it('finds a section written with the legacy os-checkout-element spelling', () => {
@@ -177,14 +224,20 @@ describe('handleBillingAddressToggle', () => {
    * anywhere, so nothing can cancel it.
    *
    * `destroy()` clears the 10 ms debounce and the animation's own fallback timers, but
-   * this one is a bare `setTimeout` — a form torn down in that window still writes
-   * `billingAddress` into the checkout store and still dispatches a `change` on a detached
-   * `<select>`. On a page that swaps the checkout out (a step change, an SPA route) that
-   * is a store write from a form the shopper can no longer see.
+   * this one is a bare `setTimeout` — a form torn down in that window still dispatches a
+   * `change` on a detached `<select>`. On a page that swaps the checkout out (a step
+   * change, an SPA route) that is a write from a form the shopper can no longer see.
    */
   it('DEFECT: the billing-country timer survives everything the form can cancel', () => {
     billingSection();
-    const ctx = context();
+    useCheckoutStore.getState().updateFormData({ country: 'CA' });
+    const countrySelect = document.createElement('select');
+    countrySelect.innerHTML = '<option value="CA">Canada</option>';
+    const changes = vi.fn();
+    countrySelect.addEventListener('change', changes);
+    const ctx = context({
+      billingFields: new Map([['billing-country', countrySelect]]),
+    });
 
     handleBillingAddressToggle(ctx, toggleEvent(false));
     vi.advanceTimersByTime(10);
@@ -195,6 +248,6 @@ describe('handleBillingAddressToggle', () => {
 
     vi.advanceTimersByTime(50);
 
-    expect(useCheckoutStore.getState().billingAddress).toBeDefined();
+    expect(changes).toHaveBeenCalledTimes(1);
   });
 });

@@ -12,20 +12,8 @@ import {
   type PhoneNumberSource,
 } from '../validation/phone-validation';
 import type { FormValidationResult } from '../validation/validation.types';
+import { formatFieldName } from '../validation/field-labels';
 import { sdkCheckoutFieldName } from '@/utils/checkout-field-names';
-
-/** The label a shopper sees for a field in the "is required" message. */
-const FIELD_LABELS: Record<string, string> = {
-  email: 'Email',
-  fname: 'First Name',
-  lname: 'Last Name',
-  phone: 'Phone',
-  address1: 'Address',
-  city: 'City',
-  province: 'State/Province',
-  postal: 'ZIP/Postal Code',
-  country: 'Country',
-};
 
 /** What this needs from the checkout form. */
 export interface ExpressFieldValidationContext {
@@ -65,7 +53,7 @@ export function validateExpressFields(
     const text = typeof value === 'string' ? value.trim() : value;
 
     if (!text) {
-      errors[field] = `${FIELD_LABELS[field] ?? field} is required`;
+      errors[field] = `${formatFieldName(field)} is required`;
     } else if (field === 'email' && !isValidEmail(String(text))) {
       errors[field] = 'Please enter a valid email address';
     } else if (

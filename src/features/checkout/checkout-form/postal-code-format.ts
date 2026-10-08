@@ -56,9 +56,36 @@ export function formatPostalCodeInPlace(
   const formatted = ctx.i18nRules.formatPostalCode(target.value, countryConfig);
   if (formatted === target.value) return;
 
-  const cursorPos = target.selectionStart ?? 0;
-  const lengthDiff = formatted.length - target.value.length;
+  const kept = significantBefore(target.value, target.selectionStart ?? 0);
   target.value = formatted;
-  // Restore cursor position after formatting
-  target.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
+  const caret = caretAfter(formatted, kept);
+  target.setSelectionRange(caret, caret);
+}
+
+/** A postcode's own characters; a space or hyphen is the format's. */
+const SIGNIFICANT = /[\p{L}\p{N}]/u;
+
+function significantBefore(text: string, offset: number): number {
+  let count = 0;
+  for (let i = 0; i < offset && i < text.length; i++) {
+    if (SIGNIFICANT.test(text[i])) count++;
+  }
+  return count;
+}
+
+/**
+ * Where the caret goes in `text` to have `count` of its own characters before it: right
+ * after the last of them, so Backspace steps back over a separator the format put there.
+ *
+ * `SW1A1AA` with the caret after `SW1A` → `SW1A| 1AA`. Moving by the length the value grew
+ * instead put a caret typed at the start one place too far, and Backspace over the space
+ * only saw it put back.
+ */
+function caretAfter(text: string, count: number): number {
+  if (count === 0) return 0;
+  let seen = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (SIGNIFICANT.test(text[i]) && ++seen === count) return i + 1;
+  }
+  return text.length;
 }

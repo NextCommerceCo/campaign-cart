@@ -27,8 +27,9 @@ import {
   type PostalCodeFormatContext,
 } from './postal-code-format';
 import {
+  loadCountryConfig,
   updateBillingStateOptions,
-  type StateFieldsContext,
+  type BillingStateFieldsContext,
 } from './state-fields';
 
 /**
@@ -57,7 +58,7 @@ export interface BillingFieldRoutingContext {
   /** Passed through for the billing postcode. */
   postalCodeFormat: PostalCodeFormatContext;
   /** Passed through to refill the billing province dropdown. */
-  stateFields: StateFieldsContext;
+  stateFields: BillingStateFieldsContext;
 }
 
 /** The shape the checkout store's billing-address setter takes. */
@@ -151,6 +152,8 @@ export async function routeBillingField(
         billingProvinceField,
         checkoutStore.formData.province
       );
+    } else {
+      await loadCountryConfig(ctx.stateFields, target.value);
     }
     // Currency is location-based only, not affected by billing or shipping country
   }

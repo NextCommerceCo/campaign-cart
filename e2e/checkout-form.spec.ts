@@ -265,9 +265,10 @@ test('a page writing first_name and last_name is checked and stored as fname and
     ).toBeVisible();
   }
 
-  // Checked as the shopper leaves it, not only on submit.
+  // Checked as the shopper leaves it, not only on submit. A name takes any characters
+  // but an emoji, which no field takes.
   const lastName = page.locator('[data-next-checkout-field="last_name"]');
-  await lastName.fill('Lovelace2');
+  await lastName.fill('Lovelace😀');
   await lastName.blur();
   await expect(lastName).toHaveClass(/has-error/);
   await lastName.fill('Lovelace');

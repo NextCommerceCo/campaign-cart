@@ -26,6 +26,7 @@ export interface StepNavigationContext {
         billingAddress: CheckoutState['billingAddress'];
         sameAsShipping: boolean;
     };
+    hasBillingFields: () => boolean;
     logger: Logger;
 }
 export declare function detectMultiStepCheckout(ctx: MultiStepDetectionContext): MultiStepState | null;

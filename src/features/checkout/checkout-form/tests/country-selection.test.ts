@@ -10,7 +10,7 @@ import {
 } from '../country-selection';
 import type {
   ShippingStateFieldsContext,
-  StateFieldsContext,
+  BillingStateFieldsContext,
 } from '../state-fields';
 
 const updateStateOptions = vi.hoisted(() => vi.fn());
@@ -188,7 +188,7 @@ describe('applyCountryToAddressForms', () => {
         billingFields,
         updateFormData,
         shippingStateFields: {} as ShippingStateFieldsContext,
-        stateFields: {} as StateFieldsContext,
+        stateFields: {} as BillingStateFieldsContext,
       },
     };
   }

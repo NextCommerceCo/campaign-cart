@@ -25,7 +25,7 @@
  */
 
 import type { Logger } from '@/core/logger';
-import { useCheckoutStore } from '@/state/checkout';
+import { useCheckoutStore, type CheckoutState } from '@/state/checkout';
 
 import { BILLING_CONTAINER_SELECTOR } from '../constants/selectors';
 
@@ -40,8 +40,31 @@ const DEBOUNCE_MS = 10;
 /** Lets the expand animation start before the billing country is written into it. */
 const POPULATE_DELAY_MS = 50;
 
+/** The billing fields a shopper types: the country and province are picked from a list. */
+const TYPED_BILLING_FIELDS = [
+  'first_name',
+  'last_name',
+  'address1',
+  'address2',
+  'city',
+  'postal',
+  'phone',
+] as const;
+
+function hasTypedBillingAddress(
+  address: CheckoutState['billingAddress']
+): boolean {
+  return TYPED_BILLING_FIELDS.some(key => (address?.[key] ?? '').trim() !== '');
+}
+
 /** What this module needs from the checkout form. */
 export interface BillingToggleContext {
+  /**
+   * Takes every verdict off the billing fields and keeps their values. Ticked, nothing in
+   * the section is checked or sent, so nothing in it is the shopper's to fix; unticked again
+   * it comes back as typed, judged only when a field is left or the form submitted.
+   */
+  forgetBillingVerdicts: () => void;
   /**
    * True while an expand/collapse is running — the same ref `billing-animation.ts` holds,
    * so the guard here and the animation there read one flag rather than two copies.
@@ -121,16 +144,22 @@ export function handleBillingAddressToggle(
     checkoutStore.setSameAsShipping(target.checked);
 
     if (target.checked) {
+      ctx.forgetBillingVerdicts();
       ctx.logger.info('[Billing] Collapsing form...');
       collapseBillingForm(ctx.animation, billingSection);
     } else {
       ctx.logger.info('[Billing] Expanding form...');
       expandBillingForm(ctx.animation, billingSection);
 
-      // Populate billing fields after expansion
+      // Seed the billing country from shipping, unless the shopper already typed a billing
+      // address here, which stays as it is on screen and in the store. The address used
+      // to be emptied in the store alone, so the fields still showed what was typed while
+      // submit reported every one of them missing.
       setTimeout(() => {
-        // Only set the country and trigger state loading
-        const shippingCountry = checkoutStore.formData.country;
+        const { formData, billingAddress } = useCheckoutStore.getState();
+        if (hasTypedBillingAddress(billingAddress)) return;
+
+        const shippingCountry = formData.country;
         const billingCountryField = ctx.billingFields.get('billing-country');
 
         if (
@@ -143,19 +172,6 @@ export function handleBillingAddressToggle(
           );
           ctx.logger.debug('[Billing] Set country to:', shippingCountry);
         }
-
-        // Clear the billing address in the store (except country)
-        checkoutStore.setBillingAddress({
-          first_name: '',
-          last_name: '',
-          address1: '',
-          address2: '',
-          city: '',
-          province: '',
-          postal: '',
-          country: shippingCountry || '',
-          phone: '',
-        });
       }, POPULATE_DELAY_MS);
     }
   }, DEBOUNCE_MS);

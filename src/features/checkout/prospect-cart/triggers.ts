@@ -164,10 +164,7 @@ export function setupEmailEntryTrigger(context: TriggerContext): void {
       () => {
         const firstName = firstNameField.value.trim();
         if (isValidName(firstName)) {
-          context.logger.debug(
-            'Valid first name detected on change event:',
-            firstName
-          );
+          context.logger.debug('Valid first name detected on change event');
           checkForCartCreation();
         }
       },
@@ -194,10 +191,7 @@ export function setupEmailEntryTrigger(context: TriggerContext): void {
       () => {
         const lastName = lastNameField.value.trim();
         if (isValidName(lastName)) {
-          context.logger.debug(
-            'Valid last name detected on change event:',
-            lastName
-          );
+          context.logger.debug('Valid last name detected on change event');
           checkForCartCreation();
         }
       },

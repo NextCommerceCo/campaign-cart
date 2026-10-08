@@ -6,6 +6,7 @@ import {
   emojiErrors,
   fieldMessage,
   postalMessage,
+  servedPatternErrors,
   type MessageSource,
 } from '../field-messages';
 
@@ -58,8 +59,8 @@ describe('fieldMessage', () => {
 
   it('is all English when the service has no sentence for it', () => {
     // A Thai name inside an English sentence is what this rule exists to prevent.
-    expect(fieldMessage(THAI, 'invalid_characters', 'fname')).toBe(
-      'First name can only contain letters, spaces, hyphens and apostrophes'
+    expect(fieldMessage(THAI, 'invalid', 'fname')).toBe(
+      'First name isn’t valid'
     );
     expect(fieldMessage(THAI, 'blank', 'city')).toBe('City is required');
   });
@@ -108,6 +109,30 @@ describe('emojiErrors', () => {
       postal: 'รหัส ZIP ต้องไม่มีอีโมจิ',
     });
     expect(emojiErrors(THAI, undefined)).toEqual({});
+  });
+});
+
+describe('servedPatternErrors', () => {
+  it('reports each value its field’s served pattern refuses, in that field’s sentence', () => {
+    const config = { fieldPatterns: { fname: '^\\D+$', city: '^\\D+$' } };
+
+    expect(
+      servedPatternErrors(
+        undefined,
+        { fname: 'Ada2', lname: 'L0velace', city: 'Albany', address1: '' },
+        config
+      )
+    ).toEqual({
+      fname:
+        'First name can only contain letters, spaces, hyphens and apostrophes',
+    });
+  });
+
+  it('reports nothing where no pattern is sent, which is every country today', () => {
+    expect(servedPatternErrors(undefined, { fname: 'Ada2' }, {})).toEqual({});
+    expect(
+      servedPatternErrors(undefined, { fname: 'Ada2' }, undefined)
+    ).toEqual({});
   });
 });
 

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { CountryConfig } from '@/core/i18n-rules';
+
 import {
   applyRule,
   createValidationRules,
@@ -56,6 +58,15 @@ describe('createValidationRules', () => {
 
     expect([...rules.keys()].sort()).toEqual([
       'address1',
+      'address2',
+      'billing-address1',
+      'billing-address2',
+      'billing-city',
+      'billing-country',
+      'billing-fname',
+      'billing-lname',
+      'billing-phone',
+      'billing-postal',
       'city',
       'country',
       'email',
@@ -76,34 +87,52 @@ describe('createValidationRules', () => {
   });
 
   /**
-   * DEFECT (left as found) — `applyRule` implements `postal` and `custom`, but the table
-   * is the only producer of rules and it produces neither: `postal` gets `required` alone.
-   * There is no public method to register a rule either, so both branches, and the
-   * `default` arm, are dead code.
-   *
-   * What the shopper sees: type `ABCDE` into a US ZIP field and blur it. The field goes
-   * green, because the only rule that ran was "not empty". The format is not checked until
-   * they press pay, at which point `form-validation.ts` runs the country check and the
-   * field they thought was accepted turns red. The per-field and submit-time paths
-   * disagree about the same value.
+   * The orders API takes any characters in them, so the only format check is a pattern the
+   * address-rules service sends, and it sends none today.
    */
-  it('DEFECT: no rule of type postal or custom is ever created, so blur never checks the format', () => {
+  it('checks a name, street line and city only against a served pattern', () => {
+    const rules = createValidationRules();
+
+    for (const name of ['fname', 'lname', 'address1', 'city', 'billing-city']) {
+      expect(rules.get(name)?.map(r => r.type)).toEqual([
+        'required',
+        'pattern',
+      ]);
+    }
+    expect(rules.get('address2')?.map(r => r.type)).toEqual(['pattern']);
+  });
+
+  /**
+   * Issue #115: `postal` used to get `required` alone, so blur ticked `ABCDE` in a US ZIP
+   * field, and the browser-autofill poll's `change` ticked it again after submit had
+   * marked it, wiping the submit message.
+   */
+  it('checks the postcode against its country', () => {
+    expect(
+      createValidationRules()
+        .get('postal')
+        ?.map(r => r.type)
+    ).toEqual(['required', 'postal']);
+  });
+
+  it('gives every billing field its shipping twin’s rules, and email none', () => {
+    const rules = createValidationRules();
+    const shipping = [...rules.keys()].filter(
+      name => !name.startsWith('billing-')
+    );
+
+    for (const name of shipping.filter(name => name !== 'email')) {
+      expect(rules.get(`billing-${name}`)).toEqual(rules.get(name));
+    }
+    expect(rules.has('billing-email')).toBe(false);
+  });
+
+  it('creates no custom rule, so that branch stays unreachable', () => {
     const everyRuleType = [...createValidationRules().values()]
       .flat()
       .map(r => r.type);
 
-    expect(everyRuleType).not.toContain('postal');
     expect(everyRuleType).not.toContain('custom');
-
-    // The branch works — nothing reaches it.
-    const ctx = createContext({
-      i18nRules: { validatePostalCode: vi.fn().mockReturnValue(false) },
-    });
-    const context = {
-      country: 'US',
-      countryConfigs: new Map([['US', {} as any]]),
-    };
-    expect(applyRule(ctx, { type: 'postal' }, 'ABCDE', context)).toBe(false);
   });
 });
 
@@ -119,20 +148,94 @@ describe('applyRule', () => {
   it('every format rule passes an empty value, so emptiness is reported once', () => {
     const ctx = createContext();
     expect(applyRule(ctx, { type: 'email' }, '')).toBe(true);
-    expect(applyRule(ctx, { type: 'name' }, '')).toBe(true);
-    expect(applyRule(ctx, { type: 'city' }, '')).toBe(true);
+    expect(applyRule(ctx, { type: 'postal' }, '')).toBe(true);
     expect(applyRule(ctx, { type: 'phone' }, '')).toBe(true);
   });
 
-  it('postal passes when the country is unknown to the config map', () => {
+  it('postal checks a billing postcode against the billing country', () => {
+    const gbConfig = { postcodeExample: 'SW1A 0AA' } as CountryConfig;
+    const asked: string[] = [];
     const validatePostalCode = vi.fn().mockReturnValue(false);
-    const ctx = createContext({ i18nRules: { validatePostalCode } });
-    expect(
-      applyRule(ctx, { type: 'postal' }, 'ABCDE', {
-        country: 'US',
-        countryConfigs: new Map(),
-      })
-    ).toBe(true);
+    const ctx = createContext({
+      i18nRules: { validatePostalCode },
+      addressCountry: type => {
+        asked.push(type);
+        return { country: 'GB', config: gbConfig };
+      },
+      fieldName: 'billing-postal',
+    });
+
+    expect(applyRule(ctx, { type: 'postal' }, '99999')).toBe(false);
+    expect(asked).toEqual(['billing']);
+    expect(validatePostalCode).toHaveBeenCalledWith('99999', 'GB', gbConfig);
+  });
+
+  describe('a pattern the address-rules service sends', () => {
+    const withPatterns = (fieldPatterns?: Record<string, string>) => {
+      const asked: string[] = [];
+      const ctx = createContext({
+        addressCountry: type => {
+          asked.push(type);
+          return {
+            country: 'CA',
+            config: {
+              ...(fieldPatterns ? { fieldPatterns } : {}),
+            } as CountryConfig,
+          };
+        },
+      });
+      return { ctx, asked };
+    };
+
+    it('refuses what it refuses, on the field’s own address', () => {
+      const { ctx, asked } = withPatterns({ city: '^\\D+$' });
+
+      expect(
+        applyRule(
+          { ...ctx, fieldName: 'billing-city' },
+          { type: 'pattern' },
+          '100 Mile House'
+        )
+      ).toBe(false);
+      expect(asked).toEqual(['billing']);
+    });
+
+    it('passes a field it has no pattern for, and every field where none is sent', () => {
+      const { ctx } = withPatterns({ city: '^\\D+$' });
+      expect(
+        applyRule(
+          { ...ctx, fieldName: 'fname' },
+          { type: 'pattern' },
+          'Jane 2nd'
+        )
+      ).toBe(true);
+      expect(
+        applyRule(
+          { ...withPatterns().ctx, fieldName: 'city' },
+          { type: 'pattern' },
+          '12345'
+        )
+      ).toBe(true);
+    });
+
+    it('passes everything when the pattern does not compile', () => {
+      const { ctx } = withPatterns({ city: '^[\\p{L]+$' });
+
+      expect(
+        applyRule({ ...ctx, fieldName: 'city' }, { type: 'pattern' }, '12345')
+      ).toBe(true);
+    });
+  });
+
+  it('postal passes while the country has no rules loaded', () => {
+    const validatePostalCode = vi.fn().mockReturnValue(false);
+    const ctx = createContext({
+      i18nRules: { validatePostalCode },
+      addressCountry: () => undefined,
+      fieldName: 'postal',
+    });
+
+    expect(applyRule(ctx, { type: 'postal' }, 'ABCDE')).toBe(true);
     expect(validatePostalCode).not.toHaveBeenCalled();
   });
 

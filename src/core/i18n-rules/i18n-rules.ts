@@ -66,6 +66,14 @@ export interface CountryConfig {
    * sends none; the phone field is then a plain input.
    */
   phone?: PhoneRules;
+  /**
+   * Patterns the address-rules service sends for a text field, by this SDK's field name
+   * (`fname`, `lname`, `address1`, `address2`, `city`): its `fields.*.format.pattern`.
+   * None are sent today, and a field without one is only checked for being there. They
+   * exist so a value that turns out to break orders can be refused from the service, in
+   * every page at once, without a release of this SDK.
+   */
+  fieldPatterns?: Readonly<Record<string, string>>;
   currencyCode: string;
   currencySymbol: string;
 }

@@ -31,8 +31,13 @@ import {
   isValidPhone,
   type PhoneNumberSource,
 } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidCity, isValidEmail, isValidName } from './validation-patterns';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
+import { isValidEmail } from './validation-patterns';
 import type { FormValidationResult } from './validation.types';
 
 /** What form and step validation need from `CheckoutValidator`. */
@@ -48,6 +53,45 @@ export interface FormValidationContext {
   phoneSource?: (type: 'shipping' | 'billing') => PhoneNumberSource | undefined;
   /** Set once the card fields exist. Absent means the card is not checked here at all. */
   creditCardService?: CreditCardService;
+}
+
+/** The form field each billing address key is entered in. */
+const BILLING_FIELD: Readonly<Record<string, string>> = {
+  first_name: 'billing-fname',
+  last_name: 'billing-lname',
+  address1: 'billing-address1',
+  city: 'billing-city',
+  province: 'billing-province',
+  postal: 'billing-postal',
+  country: 'billing-country',
+  phone: 'billing-phone',
+};
+
+/**
+ * The separate billing address's failures, keyed by the form fields that show them.
+ *
+ * @example
+ * ```ts
+ * billingFieldErrors(ctx, { country: 'US' }, countryConfigs);
+ * // { 'billing-fname': 'Enter a first name', … }
+ * ```
+ */
+export function billingFieldErrors(
+  ctx: FormValidationContext,
+  billingAddress: unknown,
+  countryConfigs: Map<string, CountryConfig>
+): Record<string, string> {
+  const { errors } = validateBillingAddress(
+    ctx,
+    billingAddress,
+    countryConfigs
+  );
+  return Object.fromEntries(
+    Object.entries(errors).map(([key, error]) => [
+      BILLING_FIELD[key] ?? `billing-${key}`,
+      error,
+    ])
+  );
 }
 
 /**
@@ -111,24 +155,14 @@ export async function validateForm(
     }
   });
 
-  // Name validation
-  if (formData.fname && formData.fname.trim() && !isValidName(formData.fname)) {
-    errors.fname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'fname');
-    isValid = false;
-  }
-
-  if (formData.lname && formData.lname.trim() && !isValidName(formData.lname)) {
-    errors.lname = fieldMessage(ctx.i18nRules, 'invalid_characters', 'lname');
-    isValid = false;
-  }
-
-  // City validation
-  if (formData.city && formData.city.trim() && !isValidCity(formData.city)) {
-    errors.city = fieldMessage(ctx.i18nRules, 'invalid', 'city', {
-      country: formData.country,
-    });
-    isValid = false;
-  }
+  const patternProblems = servedPatternErrors(
+    ctx.i18nRules,
+    formData,
+    countryConfig,
+    formData.country
+  );
+  Object.assign(errors, patternProblems);
+  if (Object.keys(patternProblems).length > 0) isValid = false;
 
   // Email validation
   if (formData.email && !isValidEmail(formData.email)) {
@@ -223,31 +257,13 @@ export async function validateForm(
   // Billing address validation. Guarded on the shopper's *choice* alone: no captured
   // address is a missing billing address, not a reason to skip the check.
   if (!sameAsShipping) {
-    const billingErrors = validateBillingAddress(
+    const billingErrors = billingFieldErrors(
       ctx,
       billingAddress,
       countryConfigs
     );
-
-    Object.entries(billingErrors.errors).forEach(([field, error]) => {
-      const fieldNameMap: Record<string, string> = {
-        first_name: 'billing-fname',
-        last_name: 'billing-lname',
-        address1: 'billing-address1',
-        city: 'billing-city',
-        province: 'billing-province',
-        postal: 'billing-postal',
-        country: 'billing-country',
-        phone: 'billing-phone',
-      };
-
-      const htmlFieldName = fieldNameMap[field] || `billing-${field}`;
-      errors[htmlFieldName] = error;
-    });
-
-    if (!billingErrors.isValid) {
-      isValid = false;
-    }
+    Object.assign(errors, billingErrors);
+    if (Object.keys(billingErrors).length > 0) isValid = false;
   }
 
   // After collecting all errors, find the first error field based on DOM position

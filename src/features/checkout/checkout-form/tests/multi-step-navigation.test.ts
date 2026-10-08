@@ -75,6 +75,7 @@ function navigationContext(
       billingAddress: undefined,
       sameAsShipping: true,
     }),
+    hasBillingFields: () => false,
     logger: createMockLogger(),
     ...overrides,
     validator,
@@ -245,6 +246,22 @@ describe('handleStepNavigation — the failing step', () => {
     expect(call?.[5]).toBe(false);
   });
 
+  it('tells the validator whether this page holds the billing fields', async () => {
+    const ctx = navigationContext({
+      currentStep: 1,
+      hasBillingFields: () => true,
+      validator: {
+        validateStep: vi.fn().mockResolvedValue({ isValid: false, errors: {} }),
+        showError: vi.fn(),
+        focusFirstErrorField: vi.fn(),
+      },
+    });
+
+    await handleStepNavigation(ctx, storeDouble());
+
+    expect(ctx.validator.validateStep.mock.calls[0]?.[6]).toBe(true);
+  });
+
   it('leaves the shopper on the page with a general error when the check throws', async () => {
     const ctx = navigationContext({
       validator: {
@@ -327,7 +344,8 @@ describe('handleStepNavigation — the passing step', () => {
       expect.anything(),
       undefined,
       undefined,
-      true
+      true,
+      false
     );
     expect(ctx.logger.warn).toHaveBeenCalledWith(
       'Step 4 has no rules of its own, validating it as the address step'

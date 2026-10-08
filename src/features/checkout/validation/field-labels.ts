@@ -33,7 +33,30 @@ export function formatFieldName(field: string): string {
     country: 'Country',
     email: 'Email',
     phone: 'Phone number',
+    'cc-number': 'Card number',
+    cvv: 'Security code',
+    'cc-month': 'Expiration month',
+    'exp-month': 'Expiration month',
+    'cc-year': 'Expiration year',
+    'exp-year': 'Expiration year',
   };
 
   return fieldNames[field] ?? field;
+}
+
+/**
+ * A checkout field's label in a list of fields, saying which address it belongs to.
+ *
+ * @example
+ * ```ts
+ * checkoutFieldLabel('billing-postal'); // 'Billing postal code'
+ * checkoutFieldLabel('email');          // 'Email'
+ * ```
+ */
+export function checkoutFieldLabel(field: string): string {
+  const base = field.replace(/^billing-/, '');
+  const label = formatFieldName(base);
+  return base === field
+    ? label
+    : `Billing ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
 }

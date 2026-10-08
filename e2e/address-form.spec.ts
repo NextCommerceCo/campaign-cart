@@ -6,6 +6,7 @@ import {
   stubAddressAutocomplete,
   bootSdk,
   captureEvents,
+  chooseAsShopper,
   ADDRESS_SERVICE_ROUTE,
   routeAddressService,
   countryRules,
@@ -270,7 +271,48 @@ test('an address typed after a country change still reaches the store', async ({
     .toBe('2 Rebuilt Road');
 });
 
-test('a typed address survives the rebuild', async ({ page }) => {
+/**
+ * A shopper who moves the address to another country starts its street, city, state and
+ * postcode over, as they would on any checkout: the old country's values are almost
+ * never right in the new one, and kept they sent an address in two countries. The name
+ * and phone are the shopper's, not the address's, and stay.
+ */
+test('a shopper moving to another country starts the address over and keeps the name', async ({
+  page,
+}) => {
+  await bootSdk(page, FIXTURE);
+  await page.fill(FIELD('first_name'), 'Ada');
+  await page.fill(FIELD('address1'), '1 Test Street');
+  await page.fill(FIELD('city'), 'Testville');
+  await page.fill(FIELD('postal'), '10001');
+
+  await chooseAsShopper(page, FIELD('country'), 'JP');
+
+  // Japan's order: the block has been rebuilt for it.
+  await expect
+    .poll(blockOrder(page, 'shipping'))
+    .toEqual(['country', 'postal', 'province', 'city', 'address1', 'phone']);
+  await expect(page.locator(FIELD('address1'))).toHaveValue('');
+  await expect(page.locator(FIELD('postal'))).toHaveValue('');
+  await expect(page.locator(FIELD('first_name'))).toHaveValue('Ada');
+  await expect
+    .poll(() =>
+      page.evaluate(key => {
+        const raw = sessionStorage.getItem(key);
+        return raw
+          ? (
+              JSON.parse(raw) as {
+                state?: { formData?: Record<string, string> };
+              }
+            ).state?.formData
+          : undefined;
+      }, CHECKOUT_KEY)
+    )
+    .toMatchObject({ country: 'JP', fname: 'Ada' });
+});
+
+/** The negative control: a country a script writes comes with its own address. */
+test('a country a script writes keeps the typed address', async ({ page }) => {
   await bootSdk(page, FIXTURE);
 
   await page.fill(FIELD('address1'), '1 Test Street');
@@ -761,6 +803,287 @@ test('a billing block builds the whole address, names and phone included', async
   await expect(
     page.locator('[data-next-address="shipping"] [data-next-checkout-field]')
   ).toHaveCount(8);
+});
+
+/**
+ * A billing postcode is checked against the billing country
+ * ([#115](https://github.com/NextCommerceCo/campaign-cart/issues/115)). GB has no states,
+ * so its block builds no province dropdown, and that refill was the only thing that put a
+ * country's postcode rules where the check reads them: a billing country the shipping side
+ * never loaded passed any postcode, and the order was sent for the API to refuse.
+ */
+const GB_SPEC = {
+  ...countryRules(
+    'GB',
+    [
+      ['country'],
+      ['first_name', 'last_name'],
+      ['line1'],
+      ['city'],
+      ['postcode'],
+    ],
+    {
+      country: ruleField('Country', 'country', {
+        type: 'select',
+        options: 'countries',
+      }),
+      first_name: ruleField('First name', 'given-name'),
+      last_name: ruleField('Last name', 'family-name'),
+      line1: ruleField('Address', 'address-line1'),
+      city: ruleField('Town', 'address-level2'),
+      postcode: ruleField(
+        'Postcode',
+        'postal-code',
+        { type: 'text', max_length: 8 },
+        {
+          format: {
+            pattern: '^[A-Z]{1,2}\\d[A-Z\\d]?\\d[A-Z]{2}$',
+            example: 'SW1A 0AA',
+          },
+        }
+      ),
+    }
+  ),
+};
+
+/** A visitor typing `postcode` into a GB billing block; the field keeps the focus. */
+async function billingPostcodeInGb(
+  page: Page,
+  postcode: string
+): Promise<void> {
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'GB', name: 'United Kingdom' },
+    ],
+    rules: country =>
+      country === 'GB'
+        ? GB_SPEC
+        : { ...US_SPEC, states: [{ code: 'NY', name: 'New York' }] },
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await page.uncheck('input[name="use_shipping_address"]');
+  await page.selectOption(FIELD('billing-country'), 'GB');
+  await expect(page.locator(FIELD('billing-city'))).toHaveAttribute(
+    'placeholder',
+    'Town'
+  );
+  await expect(page.locator(FIELD('billing-province'))).toHaveCount(0);
+
+  await page.fill(FIELD('billing-address1'), '10 Downing Street');
+  await expect(page.locator(FIELD('billing-postal'))).toBeVisible();
+  await page.fill(FIELD('billing-postal'), postcode);
+}
+
+/**
+ * Presses submit straight from the postcode, and waits for the submit check to have marked
+ * the fields it refuses. That press blurs the postcode, and the message its blur shows
+ * used to move the button before `mouseup`, so the press ended elsewhere and no submit ran.
+ */
+async function submitAndSettle(page: Page): Promise<void> {
+  await page.click('button[type="submit"]');
+  await expect(page.locator(FIELD('email'))).toHaveClass(/next-error-field/);
+}
+
+test('a billing postcode wrong for its country shows a message when the field is left', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, '99999');
+  await page.locator(FIELD('billing-postal')).blur();
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(
+    /next-error-field/
+  );
+  await expect(
+    page.locator('[data-next-address-field="billing-postal"] .next-error-label')
+  ).toContainText('SW1A 0AA');
+});
+
+/**
+ * Read after submit has settled on purpose: the autofill poll fires a `change` on a typed
+ * field a moment after it is left, and per-field validation used to mark any postcode
+ * valid, so the message went away on its own.
+ */
+test('a billing postcode wrong for its country is still refused after submit', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, '99999');
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(
+    /next-error-field/
+  );
+});
+
+test('a billing postcode right for its country is not refused', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, 'SW1A 2AA');
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-postal'))).toHaveClass(/no-error/);
+  await expect(page.locator(FIELD('billing-postal'))).not.toHaveClass(
+    /next-error-field/
+  );
+});
+
+/** The billing address as the checkout store last persisted it. */
+function storedBillingAddress(page: Page) {
+  return () =>
+    page.evaluate(key => {
+      const raw = sessionStorage.getItem(key);
+      const state = raw
+        ? (
+            JSON.parse(raw) as {
+              state?: { billingAddress?: Record<string, string> };
+            }
+          ).state
+        : undefined;
+      return state?.billingAddress ?? null;
+    }, CHECKOUT_KEY);
+}
+
+/** A new billing country used to keep the old country's province (`GB` with state `NY`). */
+test('a new billing country drops the province of the old one', async ({
+  page,
+}) => {
+  await billingPostcodeInGb(page, 'SW1A 2AA');
+  await page.selectOption(FIELD('billing-country'), 'US');
+  await page.selectOption(FIELD('billing-province'), 'NY');
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'US',
+    province: 'NY',
+  });
+
+  await page.selectOption(FIELD('billing-country'), 'GB');
+
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.province)
+    .toBeUndefined();
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'GB',
+  });
+});
+
+/**
+ * A billing country dropdown the block builds has no empty first option, so once filled
+ * it showed its first country while the store held none: "Country is required" under a
+ * filled-in dropdown, for a shopper who never touched it.
+ */
+test('a billing country dropdown shows the country the store holds', async ({
+  page,
+}) => {
+  await routeAddressService(page, {
+    countries: [
+      { code: 'CA', name: 'Canada' },
+      { code: 'US', name: 'United States' },
+    ],
+    rules: () => ({ ...US_SPEC, states: [{ code: 'NY', name: 'New York' }] }),
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await expect(page.locator(FIELD('country'))).toHaveValue('US');
+
+  await expect(page.locator(FIELD('billing-country'))).toHaveValue('US');
+  await expect.poll(storedBillingAddress(page)).toMatchObject({
+    country: 'US',
+  });
+});
+
+/** Only the shipping phone was looked at, so a blank billing phone the page requires went out. */
+test('a billing phone the country requires is refused when left blank', async ({
+  page,
+}) => {
+  const phoneRequired = {
+    ...US_SPEC,
+    fields: {
+      ...(US_SPEC.fields as Record<string, unknown>),
+      phone_number: ruleField('Phone number', 'tel', { type: 'tel' }),
+    },
+    states: [{ code: 'NY', name: 'New York' }],
+  };
+  await routeAddressService(page, {
+    countries: [{ code: 'US', name: 'United States' }],
+    rules: () => phoneRequired,
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  await page.uncheck('input[name="use_shipping_address"]');
+  await expect(page.locator(FIELD('billing-phone'))).toHaveAttribute(
+    'required',
+    ''
+  );
+
+  await submitAndSettle(page);
+
+  await expect(page.locator(FIELD('billing-phone'))).toHaveClass(
+    /next-error-field/
+  );
+});
+
+/**
+ * A billing block's phone is a phone field like the shipping one: masked as typed, stored in
+ * E.164. Its fields were set up before the billing scan, so the phone got no widget, and
+ * after a re-render it kept the one on the input that render removed.
+ */
+test('a billing block phone is masked and stored in E.164, before and after a re-render', async ({
+  page,
+}) => {
+  const phone_number = ruleField(
+    'Phone number',
+    'tel',
+    { type: 'tel', input_mode: 'tel' },
+    {
+      required: false,
+      format: {
+        calling_code: '1',
+        national_prefix: '1',
+        masks: [{ mask: '(###) ###-####' }],
+        pattern: '^[0-9]{10,11}$',
+        example: '(201) 555-0123',
+      },
+    }
+  );
+  const withPhone = (code: string) => ({
+    ...countryRules(code, [['country'], ['line1'], ['phone_number']], {
+      country: ruleField('Country', 'country', {
+        type: 'select',
+        options: 'countries',
+      }),
+      line1: ruleField('Address', 'address-line1'),
+      phone_number,
+    }),
+    states: [],
+  });
+  await routeAddressService(page, {
+    countries: [
+      { code: 'US', name: 'United States' },
+      { code: 'CA', name: 'Canada' },
+    ],
+    rules: code => withPhone(code),
+  });
+  await bootSdk(page, '/e2e/fixtures/address-form-billing.html');
+  const billingPhone = page.locator(FIELD('billing-phone'));
+
+  await billingPhone.pressSequentially('4155552671');
+  await expect(billingPhone).toHaveValue('(415) 555-2671');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBe('+14155552671');
+
+  // Two re-renders, back to a country whose numbers the stub reads. Each puts the stored
+  // number back into the new input, so it is emptied before typing again.
+  await page.selectOption(FIELD('billing-country'), 'CA');
+  await expect(billingPhone).not.toHaveValue('');
+  await page.selectOption(FIELD('billing-country'), 'US');
+  await expect(billingPhone).not.toHaveValue('');
+  await billingPhone.fill('');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBeUndefined();
+  await billingPhone.pressSequentially('4155552671');
+  await expect(billingPhone).toHaveValue('(415) 555-2671');
+  await expect
+    .poll(async () => (await storedBillingAddress(page)())?.phone)
+    .toBe('+14155552671');
 });
 
 /** The `lang` of every layout request the block makes, in order. */

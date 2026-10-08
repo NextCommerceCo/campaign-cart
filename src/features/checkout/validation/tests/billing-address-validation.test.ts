@@ -157,21 +157,72 @@ describe('validateBillingAddress', () => {
     ).toThrow(TypeError);
   });
 
-  /**
-   * DEFECT (left as found) — the name check is only reached in the `else if` arm of the
-   * required check, and only for `first_name` / `last_name`. `city` is never format-checked
-   * here, though the shipping path checks it with `isValidCity`.
-   *
-   * What the shopper sees: a billing city of `12345` is accepted and reaches the order,
-   * while the same value in the shipping city field is rejected.
-   */
-  it('DEFECT: the billing city is never format-checked, unlike the shipping city', () => {
+  describe('the billing phone', () => {
+    function phoneField(name: string, required: boolean): void {
+      const input = document.createElement('input');
+      input.setAttribute('data-next-checkout-field', name);
+      input.required = required;
+      document.body.appendChild(input);
+    }
+
+    /** Only the shipping phone was looked at, so a blank required billing one went out. */
+    it('is required when its own field is marked required', () => {
+      phoneField('billing-phone', true);
+
+      const result = validateBillingAddress(
+        createContext(),
+        { ...completeAddress, phone: '' },
+        configs
+      );
+
+      expect(Object.keys(result.errors)).toEqual(['phone']);
+    });
+
+    it('is not required by a required shipping phone', () => {
+      phoneField('phone', true);
+      phoneField('billing-phone', false);
+
+      expect(
+        validateBillingAddress(
+          createContext(),
+          { ...completeAddress, phone: '' },
+          configs
+        ).isValid
+      ).toBe(true);
+    });
+  });
+
+  /** A pattern the service sends is keyed by the checkout's field names, an address by the API's. */
+  it('refuses what a served pattern refuses, under the billing address’s own keys', () => {
     const result = validateBillingAddress(
       createContext(),
-      { ...completeAddress, city: '12345' },
+      { ...completeAddress, first_name: 'Ada2', city: 'PO Box 9' },
+      new Map([
+        [
+          'US',
+          countryConfig({
+            fieldPatterns: { fname: '^\\D+$', city: '^(?!PO Box).*$' },
+          }),
+        ],
+      ])
+    );
+
+    expect(Object.keys(result.errors).sort()).toEqual(['city', 'first_name']);
+  });
+
+  /** The orders API takes any characters in a name or a city; only their absence fails. */
+  it('takes a name and a city in any characters', () => {
+    const result = validateBillingAddress(
+      createContext(),
+      {
+        ...completeAddress,
+        first_name: 'John Jr.',
+        last_name: 'ประยุทธ์',
+        city: '100 Mile House',
+      },
       configs
     );
 
-    expect(result.isValid).toBe(true);
+    expect(result).toEqual({ isValid: true, errors: {} });
   });
 });

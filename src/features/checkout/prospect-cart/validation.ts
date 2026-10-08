@@ -1,7 +1,7 @@
 /**
  * Whether an email, phone, or name is complete enough to send with a prospect
- * cart. Deliberately more lenient than checkout's own field validation — a
- * prospect is captured on partial intent, not a submitted order.
+ * cart. A prospect is captured on partial intent, not a submitted order, so a phone
+ * nothing could judge needs only a digit count, and a name only a length.
  */
 
 import { phoneFieldFor } from '../checkout-form/phone-input';
@@ -83,18 +83,10 @@ export function isValidPhone(
   return digits.length >= minDigits;
 }
 
+/**
+ * Two characters before a lead is worth capturing, whatever they are written in. It was a
+ * Latin-1 pattern, so a name in Thai, Japanese or Cyrillic never made a lead.
+ */
 export function isValidName(name: string): boolean {
-  // Name must not be empty
-  if (!name || name.trim().length === 0) {
-    return false;
-  }
-
-  // Name must be at least 2 characters
-  if (name.trim().length < 2) {
-    return false;
-  }
-
-  // Name can only contain letters, spaces, hyphens, apostrophes, and accented characters
-  const nameRegex = /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/;
-  return nameRegex.test(name.trim());
+  return name.trim().length >= 2;
 }

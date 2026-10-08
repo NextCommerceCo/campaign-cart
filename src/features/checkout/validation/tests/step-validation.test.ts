@@ -125,7 +125,8 @@ describe('validateStep — step 1', () => {
     );
 
     expect(result.errors.email).toBe('Enter a valid email address');
-    expect(result.errors.city).toBe('City isn’t valid');
+    // A city is only required: the orders API takes any characters in one.
+    expect(result.errors.city).toBeUndefined();
   });
 });
 
@@ -393,5 +394,58 @@ describe('validateStep — the gaps between the steps', () => {
 
     expect('firstErrorField' in result).toBe(true);
     expect(result.firstErrorField).toBeUndefined();
+  });
+});
+
+/**
+ * A billing address chosen on step 1 was first checked on the payment step, which has no
+ * billing fields: its messages had nowhere to appear and the pay button looked dead.
+ */
+describe('validateStep — a billing address on an early step', () => {
+  it('checks it on the step whose page holds the billing fields', async () => {
+    const result = await validateStep(
+      createContext(),
+      1,
+      completeForm(),
+      configs,
+      undefined,
+      { country: 'US' },
+      false,
+      true
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(Object.keys(result.errors ?? {})).toContain('billing-fname');
+    expect(result.firstErrorField).toBe('billing-fname');
+  });
+
+  it('leaves it to a later step when this page holds no billing fields', async () => {
+    const result = await validateStep(
+      createContext(),
+      1,
+      completeForm(),
+      configs,
+      undefined,
+      { country: 'US' },
+      false,
+      false
+    );
+
+    expect(result.isValid).toBe(true);
+  });
+
+  it('skips it when the shopper bills to the shipping address', async () => {
+    const result = await validateStep(
+      createContext(),
+      1,
+      completeForm(),
+      configs,
+      undefined,
+      undefined,
+      true,
+      true
+    );
+
+    expect(result.isValid).toBe(true);
   });
 });

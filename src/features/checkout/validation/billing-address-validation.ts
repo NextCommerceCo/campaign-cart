@@ -12,9 +12,23 @@
 
 import { asksForPostcode, type CountryConfig } from '@/core/i18n-rules';
 
-import { isValidPhone, type PhoneNumberSource } from './phone-validation';
-import { emojiErrors, fieldMessage, postalMessage } from './field-messages';
-import { isValidName } from './validation-patterns';
+import {
+  isPhoneMarkedRequired,
+  isValidPhone,
+  type PhoneNumberSource,
+} from './phone-validation';
+import {
+  emojiErrors,
+  fieldMessage,
+  postalMessage,
+  servedPatternErrors,
+} from './field-messages';
+
+/** A checkout field's name in a billing address, where the two differ. */
+const ADDRESS_KEY: Readonly<Record<string, string>> = {
+  fname: 'first_name',
+  lname: 'last_name',
+};
 
 /** What this module needs from `CheckoutValidator`. */
 export interface BillingAddressValidationContext {
@@ -65,6 +79,7 @@ export function validateBillingAddress(
   }
 
   if (asksForPostcode(countryConfig)) requiredBillingFields.push('postal');
+  if (isPhoneMarkedRequired('billing')) requiredBillingFields.push('phone');
 
   const country = billingAddress?.country;
   const source = ctx.i18nRules;
@@ -77,14 +92,27 @@ export function validateBillingAddress(
         country,
       });
       isValid = false;
-    } else if (
-      (field === 'first_name' || field === 'last_name') &&
-      !isValidName(value)
-    ) {
-      errors[field] = fieldMessage(source, 'invalid_characters', field);
-      isValid = false;
     }
   });
+
+  // The patterns are keyed by the checkout's field names, a billing address by the API's.
+  const address: Readonly<Record<string, unknown>> = billingAddress ?? {};
+  const patternProblems = servedPatternErrors(
+    source,
+    {
+      fname: address.first_name,
+      lname: address.last_name,
+      address1: address.address1,
+      address2: address.address2,
+      city: address.city,
+    },
+    countryConfig,
+    typeof address.country === 'string' ? address.country : undefined
+  );
+  for (const [field, message] of Object.entries(patternProblems)) {
+    errors[ADDRESS_KEY[field] ?? field] = message;
+    isValid = false;
+  }
 
   if (
     billingAddress?.phone &&
