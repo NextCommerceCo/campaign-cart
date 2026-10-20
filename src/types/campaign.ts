@@ -21,7 +21,7 @@ export interface Campaign {
   available_currencies?: Array<{ code: string; label: string }>;
   /** Countries this campaign ships to (ISO 3166-1 alpha-2 codes with display labels). */
   available_shipping_countries?: Array<{ code: string; label: string }>;
-  /** Express payment methods enabled (e.g. `'paypal'`, `'apple_pay'`, `'google_pay'`). */
+  /** Express payment methods enabled (e.g. `'paypal'`, `'apple_pay'`, `'google_pay'`, `'shop_pay'`). */
   available_express_payment_methods?: Array<{ code: string; label: string }>;
   /** Standard payment methods enabled for this campaign. */
   available_payment_methods?: Array<{ code: string; label: string }>;

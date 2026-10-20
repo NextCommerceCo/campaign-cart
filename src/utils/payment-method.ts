@@ -46,6 +46,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   sofort: 'Sofort',
   swish: 'Swish',
   twint: 'Twint',
+  shop_pay: 'Shop Pay',
 };
 
 /**
@@ -62,7 +63,12 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
  * and the store holds `link` either way. Answering `true` would reset a shopper's
  * Link *radio* to a card behind their back, which is issue #74 again.
  */
-const EXPRESS_PAYMENT_METHODS = ['paypal', 'apple_pay', 'google_pay'];
+const EXPRESS_PAYMENT_METHODS = [
+  'paypal',
+  'apple_pay',
+  'google_pay',
+  'shop_pay',
+];
 
 /**
  * Whether paying by this method sends the shopper off the checkout page.

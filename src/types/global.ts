@@ -154,7 +154,7 @@ export interface EventMap {
    * `express-checkout:initialized`, which is the event the express container
    * actually fires.
    */
-  'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' };
+  'checkout:express-started': { method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' };
   /**
    * The page is holding a finished order: it was opened with `?ref_id=` — a
    * success, receipt or upsell page — and the order came back from the orders API.
@@ -547,13 +547,13 @@ export interface EventMap {
 
   // Express Checkout Events
   /**
-   * An express payment button (PayPal, Apple Pay, Google Pay or Link) rendered
+   * An express payment button (PayPal, Apple Pay, Google Pay, Shop Pay or Link) rendered
    * and is ready to click. Fires once per available method, so a page offering
    * all four sees it four times.
    */
   'express-checkout:initialized': {
     /** Which express method became available. */
-    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link';
     /** The container the button was rendered into. */
     element: HTMLElement;
   };
@@ -564,7 +564,7 @@ export interface EventMap {
    * `error:occurred`.
    */
   'express-checkout:error': {
-    method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link';
     error: string;
   };
   /**
@@ -576,7 +576,7 @@ export interface EventMap {
    * `itemCount` only. Read the cart store for the total.
    */
   'express-checkout:started': {
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
     cartTotal: { value: number; formatted: string };
     itemCount: number;
   };
@@ -586,7 +586,7 @@ export interface EventMap {
    * carry payment details.
    */
   'express-checkout:failed': {
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
     error: string;
   };
   /**
@@ -605,7 +605,7 @@ export interface EventMap {
    * The payload wraps the order: `{ method, order }`, not the order itself.
    */
   'express-checkout:completed': {
-    method: 'paypal' | 'apple_pay' | 'google_pay';
+    method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
     order: any;
   };
   /**
@@ -1781,13 +1781,14 @@ export interface PaymentConfig {
       paypal?: boolean;
       apple_pay?: boolean;
       google_pay?: boolean;
+      shop_pay?: boolean;
       link?: boolean;
       /** @deprecated Write `apple_pay`. Still read, so existing config keeps working. */
       applePay?: boolean;
       /** @deprecated Write `google_pay`. Still read, so existing config keeps working. */
       googlePay?: boolean;
     };
-    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[]; // Order in which payment methods should be displayed
+    methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link')[]; // Order in which payment methods should be displayed
     requireValidation?: boolean; // If true, express payment methods in combo form will require form validation
     requiredFields?: string[]; // List of fields required for express checkout (e.g., ['email', 'fname', 'lname'])
   };

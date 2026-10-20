@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.43] — 2026-10-20 — Shop Pay Support
+
+Shoppers can now pay with Shop Pay, either from the payment options on the checkout form or from the express buttons at the top of the page.
+
+### Shop Pay
+
+- **Shop Pay can be a payment option on the checkout form.** Add it like any other option that sends the shopper to the provider to pay: its name is `shop_pay`. The order is saved with Shop Pay as the way the customer paid.
+- **Shop Pay can be an express button.** It appears next to the PayPal, Apple Pay, Google Pay and Link buttons when the campaign has Shop Pay turned on, or when the page's settings turn it on. Its place among the buttons is set the same way as the others, and without a set order it comes before Link.
+- **A shopper who comes back from Shop Pay without paying goes back to paying by card.** The other express buttons already work this way.
+- **Receipts and order pages show "Shop Pay"** as the way the customer paid.
+
+### Before you upgrade
+
+- **Give the Shop Pay button its colours.** The button has no background of its own, so the white logo is invisible until your page styles it. Shop Pay's own purple is `#5a31f4`.
+
 ## [0.4.42] — 2026-10-08 — Billing Checked Like Shipping, and Any Name or City
 
 The billing address is now checked the way the shipping address is: its postcode against the billing country, on leaving a field and on submit, so an order the API would refuse is no longer sent. A name or a city is taken in any characters, so shoppers who write theirs in Thai or an Indic script can pay again. Picking another country clears the old country's address. Read Before you upgrade first if your page relies on how errors appear, on what stays in the form when the country changes, or on the express checkout's error message.

@@ -134,7 +134,7 @@ export class AttributeParser {
       const checkoutType = element.getAttribute('data-next-express-checkout');
       if (checkoutType === 'container') {
         types.push('express-checkout-container');
-      } else if (checkoutType === 'paypal' || checkoutType === 'apple_pay' || checkoutType === 'google_pay') {
+      } else if (checkoutType === 'paypal' || checkoutType === 'apple_pay' || checkoutType === 'google_pay' || checkoutType === 'shop_pay') {
         types.push('express-checkout');
       }
     }

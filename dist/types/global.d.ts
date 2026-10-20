@@ -32,7 +32,7 @@ export interface EventMap {
     'checkout:payment-ready': {};
     'checkout:spreedly-ready': {};
     'checkout:express-started': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
     };
     'order:completed': Order;
     'order:redirect-missing': {
@@ -145,15 +145,15 @@ export interface EventMap {
         error: string;
     };
     'express-checkout:initialized': {
-        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link';
         element: HTMLElement;
     };
     'express-checkout:error': {
-        method: 'paypal' | 'apple_pay' | 'google_pay' | 'link';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link';
         error: string;
     };
     'express-checkout:started': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
         cartTotal: {
             value: number;
             formatted: string;
@@ -161,11 +161,11 @@ export interface EventMap {
         itemCount: number;
     };
     'express-checkout:failed': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
         error: string;
     };
     'express-checkout:completed': {
-        method: 'paypal' | 'apple_pay' | 'google_pay';
+        method: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay';
         order: any;
     };
     'express-checkout:redirect-missing': {
@@ -591,11 +591,12 @@ export interface PaymentConfig {
             paypal?: boolean;
             apple_pay?: boolean;
             google_pay?: boolean;
+            shop_pay?: boolean;
             link?: boolean;
             applePay?: boolean;
             googlePay?: boolean;
         };
-        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'link')[];
+        methodOrder?: ('paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link')[];
         requireValidation?: boolean;
         requiredFields?: string[];
     };

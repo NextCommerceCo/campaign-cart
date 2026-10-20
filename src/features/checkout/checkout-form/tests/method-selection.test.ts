@@ -105,6 +105,7 @@ describe('handlePaymentMethodChange', () => {
     ['ideal', 'ideal'],
     ['bancontact', 'bancontact'],
     ['twint', 'twint'],
+    ['shop_pay', 'shop_pay'],
     ['swish', 'swish'],
     ['affirm', 'affirm'],
     ['link', 'link'],

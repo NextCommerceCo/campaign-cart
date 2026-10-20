@@ -514,6 +514,7 @@ export type PaymentMethod =
   | 'sepa_debit'
   | 'swish'
   | 'twint'
+  | 'shop_pay'
   | 'link'
   | 'affirm'
   | 'external';

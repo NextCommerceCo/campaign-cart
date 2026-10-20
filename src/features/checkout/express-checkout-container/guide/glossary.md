@@ -40,7 +40,7 @@ through it.
 
 ## Express payment method
 
-One wallet: `paypal`, `apple_pay`, or `google_pay`. These are the spellings the
+One wallet: `paypal`, `apple_pay`, `google_pay`, or `shop_pay`. These are the spellings the
 feature uses in `express-checkout:initialized` and on each generated button, so they
 are also what you style and branch on.
 

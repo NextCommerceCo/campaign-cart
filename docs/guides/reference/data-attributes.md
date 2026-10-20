@@ -628,6 +628,7 @@ Values `data-next-payment-method` and `data-next-payment-form` both accept. Pair
 | `sofort` | Sofort | no | no |
 | `swish` | Swish | no | no |
 | `twint` | TWINT | no | no |
+| `shop_pay` | Shop Pay | no | yes |
 
 The card is the only method that collects anything on your page. For every other one, `data-next-payment-form` can be empty: the form still validates and captures the shopper's details, then the order is created and the shopper is sent to that provider to pay.
 
@@ -646,7 +647,7 @@ Values `data-next-express-checkout` accepts.
 | `container` | The express checkout block |
 | `buttons` | Where the SDK injects the wallet buttons |
 
-The SDK injects one button per express method the campaign lists, for PayPal, Apple Pay, Google Pay and Link. Apple Pay is left out on Android. `paymentConfig.expressCheckout` sets the order through `methodOrder`, and its `methods` block is read only when the campaign lists no express methods at all.
+The SDK injects one button per express method the campaign lists, for PayPal, Apple Pay, Google Pay, Shop Pay and Link. Apple Pay is left out on Android. `paymentConfig.expressCheckout` sets the order through `methodOrder`, and its `methods` block is read only when the campaign lists no express methods at all.
 
 Link is the one method offered both ways. As an express button it goes straight to Link; as a radio it validates the form and captures the shopper's details first. A page carrying both shows Link twice.
 
