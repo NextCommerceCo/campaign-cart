@@ -23,6 +23,7 @@ export declare class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     private createPayPalButton;
     private createApplePayButton;
     private createGooglePayButton;
+    private createShopPayButton;
     private createLinkButton;
     private createButton;
     update(): void;

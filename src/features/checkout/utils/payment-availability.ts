@@ -43,6 +43,17 @@ export function isGooglePayAvailable(): boolean {
 }
 
 /**
+ * Whether Shop Pay can be offered here.
+ *
+ * Always: like PayPal and Link it is a redirect, so nothing about the device or
+ * browser decides it — whether the shopper has a Shop account is settled on
+ * Shop's own page, not on ours.
+ */
+export function isShopPayAvailable(): boolean {
+  return true;
+}
+
+/**
  * Check if PayPal is available
  * PayPal generally works on all browsers and devices
  */
@@ -65,6 +76,7 @@ export function isLinkAvailable(): boolean {
 export function getPaymentCapabilities(): {
   applePay: boolean;
   googlePay: boolean;
+  shopPay: boolean;
   paypal: boolean;
   link: boolean;
   userAgent: string;
@@ -73,6 +85,7 @@ export function getPaymentCapabilities(): {
   return {
     applePay: isApplePayAvailable(),
     googlePay: isGooglePayAvailable(),
+    shopPay: isShopPayAvailable(),
     paypal: isPayPalAvailable(),
     link: isLinkAvailable(),
     userAgent: navigator.userAgent,

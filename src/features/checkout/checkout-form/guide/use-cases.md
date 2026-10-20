@@ -139,7 +139,7 @@ shopper away before you have their address.
 ```
 
 The full list is `affirm`, `bancontact`, `giropay`, `ideal`, `klarna`, `link`,
-`sepa_debit`, `sofort`, `swish`, `twint`; see [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) for all
+`sepa_debit`, `sofort`, `shop_pay`, `swish`, `twint`; see [data attributes reference](../../../../../docs/guides/reference/data-attributes.md) for all
 of them.
 
 A name that is not on that list is sent to the API as written rather than

@@ -108,7 +108,8 @@
   border-top-color: #ffffff;
 }
 
-.payment-btn.cc-google-pay .spinner {
+.payment-btn.cc-google-pay .spinner,
+.payment-btn.cc-shop-pay .spinner {
   border-color: rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
 }

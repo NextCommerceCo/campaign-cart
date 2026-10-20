@@ -19,9 +19,9 @@ import { useCampaignStore } from '@/state/campaign';
 import { getApiClient } from '@/client';
 import { OrderManager } from '../managers/order-manager';
 import { ExpressCheckoutProcessor } from '../processors/express-checkout-processor';
-import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG, LINK_SVG } from '../constants/payment-icons';
+import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG, SHOP_PAY_SVG, LINK_SVG } from '../constants/payment-icons';
 import { LoadingOverlay } from '@/core/ui/loading-overlay';
-import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, isLinkAvailable, getPaymentCapabilities } from '@/features/checkout/utils/payment-availability';
+import { isApplePayAvailable, isGooglePayAvailable, isShopPayAvailable, isPayPalAvailable, isLinkAvailable, getPaymentCapabilities } from '@/features/checkout/utils/payment-availability';
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';
 
@@ -177,6 +177,13 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
               this.logger.debug('Google Pay not available on this device/browser');
             }
             break;
+          case 'shop_pay':
+            if (isShopPayAvailable()) {
+              this.createShopPayButton();
+            } else {
+              this.logger.debug('Shop Pay not available on this device/browser');
+            }
+            break;
           case 'link':
             if (isLinkAvailable()) {
               this.createLinkButton();
@@ -211,6 +218,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
         paypal: configured.paypal ?? false,
         apple_pay: configured.apple_pay ?? configured.applePay ?? false,
         google_pay: configured.google_pay ?? configured.googlePay ?? false,
+        shop_pay: configured.shop_pay ?? false,
         link: configured.link ?? false,
       };
 
@@ -234,7 +242,7 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       this.clearButtons();
 
       // Determine order of methods
-      const order = methodOrder || ['paypal', 'apple_pay', 'google_pay', 'link'];
+      const order = methodOrder || ['paypal', 'apple_pay', 'google_pay', 'shop_pay', 'link'];
 
       // Create buttons in the specified order
       // BUT only if the device actually supports them
@@ -259,6 +267,13 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
               this.createGooglePayButton();
             } else if (methods.google_pay) {
               this.logger.debug('Google Pay enabled in config but not available on device/browser');
+            }
+            break;
+          case 'shop_pay':
+            if (methods.shop_pay && isShopPayAvailable()) {
+              this.createShopPayButton();
+            } else if (methods.shop_pay) {
+              this.logger.debug('Shop Pay enabled in config but not available on device/browser');
             }
             break;
           case 'link':
@@ -460,6 +475,25 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     this.logger.debug('Google Pay express checkout button created');
   }
   
+  private async createShopPayButton(): Promise<void> {
+    const button = this.createButton('shop_pay', 'cc-shop-pay', 'payment-btn__logo', SHOP_PAY_SVG);
+    this.buttonInstances.set('shop_pay', button);
+    this.buttonsContainer!.appendChild(button);
+
+    // Add click handler
+    const handler = (event: Event) => this.handleButtonClick('shop_pay', event);
+    this.buttonClickHandlers.set('shop_pay', handler);
+    button.addEventListener('click', handler);
+
+    // Emit initialized event
+    this.emit('express-checkout:initialized', {
+      method: 'shop_pay',
+      element: button
+    });
+
+    this.logger.debug('Shop Pay express checkout button created');
+  }
+
   private async createLinkButton(): Promise<void> {
     const button = this.createButton('link', 'cc-link', 'payment-btn__logo', LINK_SVG);
     this.buttonInstances.set('link', button);

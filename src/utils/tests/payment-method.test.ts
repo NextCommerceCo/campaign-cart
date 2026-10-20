@@ -29,6 +29,7 @@ describe('paymentMethodLabel', () => {
     ['sofort', 'Sofort'],
     ['swish', 'Swish'],
     ['twint', 'Twint'],
+    ['shop_pay', 'Shop Pay'],
   ])('labels %s as "%s", the platform’s own name for it', (code, label) => {
     expect(paymentMethodLabel(code)).toBe(label);
   });
@@ -54,7 +55,7 @@ describe('paymentMethodLabel', () => {
  * radio choice replaced by a card).
  */
 describe('isExpressPaymentMethod', () => {
-  it.each(['paypal', 'apple_pay', 'google_pay'])(
+  it.each(['paypal', 'apple_pay', 'google_pay', 'shop_pay'])(
     'says %s is paid for off this page',
     method => {
       expect(isExpressPaymentMethod(method)).toBe(true);

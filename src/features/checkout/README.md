@@ -305,7 +305,7 @@ Fields are found by either:
 Standard field names: `fname`, `lname`, `email`, `phone`, `address1`, `address2`, `city`, `province`, `postal`, `country`, `card-number`, `card-expiry`, `card-cvv`, `card-name`
 
 ### Payment method detection
-Reads `[data-next-payment-method]` or `[os-payment-method]` elements. Supported values: `credit`, `paypal`, `apple_pay`, `google_pay`, `klarna`, `affirm`, `bancontact`, `giropay`, `ideal`, `link`, `sepa_debit`, `sofort`, `swish`, `twint` — underscores, matching every other place the SDK names a method. Separators and case are ignored (`apple-pay` = `apple_pay`), and `constants/field-mappings.ts` holds the one table that maps a value to the store's name and on to the API's. A value the table does not list is passed through to the orders API unchanged rather than read as a card, so the API decides whether it can be charged.
+Reads `[data-next-payment-method]` or `[os-payment-method]` elements. Supported values: `credit`, `paypal`, `apple_pay`, `google_pay`, `klarna`, `affirm`, `bancontact`, `giropay`, `ideal`, `link`, `sepa_debit`, `sofort`, `swish`, `twint`, `shop_pay` — underscores, matching every other place the SDK names a method. Separators and case are ignored (`apple-pay` = `apple_pay`), and `constants/field-mappings.ts` holds the one table that maps a value to the store's name and on to the API's. A value the table does not list is passed through to the orders API unchanged rather than read as a card, so the API decides whether it can be charged.
 
 ### Shipping / billing form containers
 - `[data-next-component="shipping-form"]` or `[os-checkout-component="shipping-form"]`
@@ -346,6 +346,7 @@ Container for express payment buttons. Manages visibility of PayPal/Apple Pay/Go
   <div data-next-express-checkout="paypal"><!-- PayPal button --></div>
   <div data-next-express-checkout="apple_pay"><!-- Apple Pay button --></div>
   <div data-next-express-checkout="google_pay"><!-- Google Pay button --></div>
+  <div data-next-express-checkout="shop_pay"><!-- Shop Pay button --></div>
 </div>
 ```
 

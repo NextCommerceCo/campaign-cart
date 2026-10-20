@@ -4,5 +4,5 @@ export declare function toCheckoutPaymentMethod(value: string | null | undefined
 export declare function namesStoredPaymentMethod(markupValue: string | null | undefined, storedMethod: string): boolean;
 export declare function isKnownPaymentMethod(method: string): boolean;
 export declare function toApiPaymentMethod(method: string): Payment['payment_method'];
-export declare const EXPRESS_PAYMENT_METHOD_MAP: Record<string, 'paypal' | 'apple_pay' | 'google_pay' | 'link'>;
+export declare const EXPRESS_PAYMENT_METHOD_MAP: Record<string, 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link'>;
 //# sourceMappingURL=field-mappings.d.ts.map

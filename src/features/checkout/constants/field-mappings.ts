@@ -57,6 +57,7 @@ const RADIO_PAYMENT_METHOD_MAP: Record<string, CheckoutPaymentMethod> = {
   sofort: 'sofort',
   swish: 'swish',
   twint: 'twint',
+  shop_pay: 'shop_pay',
 };
 
 /**
@@ -179,6 +180,7 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   sofort: 'sofort',
   swish: 'swish',
   twint: 'twint',
+  shop_pay: 'shop_pay',
 };
 
 /**
@@ -195,10 +197,11 @@ const API_PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
  */
 export const EXPRESS_PAYMENT_METHOD_MAP: Record<
   string,
-  'paypal' | 'apple_pay' | 'google_pay' | 'link'
+  'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link'
 > = {
   paypal: 'paypal',
   apple_pay: 'apple_pay',
   google_pay: 'google_pay',
+  shop_pay: 'shop_pay',
   link: 'link',
 };

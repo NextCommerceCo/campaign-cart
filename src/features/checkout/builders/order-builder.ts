@@ -140,7 +140,7 @@ export class OrderBuilder {
 
   public buildExpressOrder(
     cartItems: any[],
-    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'link',
+    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay' | 'shop_pay' | 'link',
     vouchers: string[] = []
   ): CreateOrder {
     // Get attribution from store
