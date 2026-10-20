@@ -16,7 +16,7 @@ Status: proposal, October 2026. A rewrite, not a port of `campaign-cart`.
 ## 1. Install
 
 ```html
-<script src="https://sdk.nextcommerce.com/v1/campaign.js"
+<script src="https://sdk.nextcommerce.com/v1/loader.js"
         data-campaign="pk_live_xxxxxxxx" defer></script>
 ```
 
@@ -25,11 +25,11 @@ debug panel.
 
 ## 2. Versioning
 
-- **One URL per major version:** `/v1/campaign.js`. Merchants never pin a minor or patch.
+- **One URL per major version:** `/v1/loader.js`. Merchants never pin a minor or patch.
 - **Fixes reach every page at once.** Breaking changes go to `/v2/`, which should be rare.
 - **Under the hood:**
   - Every build is uploaded to R2 under its own folder (`/v1/b/<build>/…`) and kept.
-  - `campaign.js` points to the current build and is cached for 5 minutes. A tab that is
+  - `loader.js` points to the current build and is cached for 5 minutes. A tab that is
     already open keeps working because old builds are never deleted.
 - **Release** moves the pointer to the new build. **Rollback** moves it back. Nothing is
   rebuilt.
@@ -44,7 +44,7 @@ Not in v1: canary channels, per-campaign versions, pinned URLs, a UMD build.
 
 Every page starts the same way:
 
-1. Load `campaign.js`.
+1. Load `loader.js`.
 2. Read `data-campaign`.
 3. Fetch the campaign from Campaign App and restore the cart from storage.
 4. Bind the HTML.
@@ -64,32 +64,31 @@ shopper typed, and let them retry. The SDK never moves to the next page after a 
 
 ## 4. HTML API
 
-Attributes only, so it works in Webflow and plain HTML.
+Attributes only, so it works in Webflow and plain HTML. The attribute names live
+campaigns already use are kept, so templates need no edits.
 
-| Need | Attribute |
-|---|---|
-| Show a value | `data-next-text="cart.total"` |
-| Show or hide | `data-next-show="cart.hasItems"` |
-| Repeat | `<template data-next-each="cart.lines">` |
-| Add to cart | `data-next-add="12"` (package id) |
-| Pick one package | `data-next-selector` with `data-next-option="12"` on each card |
-| Change quantity / remove | `data-next-qty="+1"`, `data-next-remove` |
-| Coupon | `data-next-coupon` |
-| Checkout form | `<form data-next-checkout data-next-success="/up1">` |
-| Card fields | `data-next-card` |
-| Upsell offer | `data-next-offer="34"` with `data-next-accept="/up2"` and `data-next-decline="/thank-you"` |
-| Countdown | `data-next-countdown="15m"` |
-| Translate | `data-next-i18n="checkout.title"` |
+| Need | Attribute | Status |
+|---|---|---|
+| Show a value | `data-next-display="cart.total"` | built |
+| Show or hide | `data-next-show="cart.hasItems"` · `data-next-hide="param.banner=='n'"` | built |
+| Pick one bundle | `data-next-bundle-selector` with `data-next-bundle-card` · `data-next-bundle-display` | built |
+| Order bump | `data-next-toggle-card` · `data-next-toggle-display` · `data-next-package-sync` | built |
+| Add to cart | `data-next-action="add-to-cart"` · `data-next-url` | built |
+| Start a cart from a link | `?forcePackageId=2:1` | built |
+| Cart lines, coupon, quantity | `data-next-cart-summary` · `data-next-coupon` · `data-next-quantity` | next |
+| Checkout form, payment, address | `data-next-checkout` · `data-next-checkout-field` · `data-next-payment-method` | next |
+| Upsell, receipt | `data-next-upsell` · `data-next-upsell-action` · `order.*` | next |
 
-- Values have types. Money is always formatted as money in the page's language and
-  currency. Nothing is guessed from a field's name.
+- Values have types. Money is formatted as money in the campaign's currency and
+  language; booleans show or hide the element. Nothing is guessed from a field's name.
 - Values are written as text, never as HTML.
-- Old pages can load an optional compat file that maps the old attributes.
+- Old JavaScript entry points (`nextConfig.apiKey`, `next.addItem`, `next:initialized`,
+  `window.nextReady`, …) still work and are marked `@deprecated` in the code.
 
 ## 5. Inside the SDK
 
 ```
-campaign.js (tiny)  →  core  →  features, loaded only when the page uses them
+loader.js (tiny)  →  core  →  features, loaded only when the page uses them
                                 cart · checkout · offers · display · countdown
                        core  →  tracking
                        debug panel, loaded only with ?debug=1

@@ -1,33 +1,28 @@
 import { Api, type ApiLine } from './api';
 import { Events, type EngineEvent } from './events';
-import type { StorageAdapter } from './storage';
-import type { Campaign, CartGroup, CartState, CartSummary, EventName, Package, State } from './types';
+import { StorageAdapter } from './storage';
+import type { Campaign, CartGroup, CartState, EventName, Package, State } from './types';
 
 export interface EngineOptions {
   apiKey: string;
-  storage: StorageAdapter;
-  fetch: typeof fetch;
   apiBase: string;
+  fetch: typeof fetch;
+  campaign: Promise<Campaign>;
+  storagePrefix: string;
+  storage: Array<Storage | null | undefined>;
   currency?: string;
   params?: Record<string, string>;
-  prefetchedCampaign?: Promise<Campaign>;
+  now?: () => number;
 }
 
-const CART_KEY = 'cart';
-const CAMPAIGN_KEY = 'campaign';
 const CART_MAX_AGE = 7 * 24 * 3600 * 1000;
 const SNAPSHOT_MAX_AGE = 24 * 3600 * 1000;
-const STORAGE_VERSION = 1;
 
-export const ENGINE_STORAGE_VERSION = STORAGE_VERSION;
+type SavedCart = Pick<CartState, 'groups' | 'coupons' | 'dismissed' | 'shippingId' | 'summary'>;
 
-type PersistedCart = Pick<CartState, 'groups' | 'coupons' | 'dismissed' | 'shippingId' | 'summary'>;
+const emptyCart = (): CartState => ({ groups: {}, coupons: [], dismissed: [], calculating: false });
 
-function emptyCart(): CartState {
-  return { groups: {}, coupons: [], dismissed: [], calculating: false };
-}
-
-export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
+function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
   const merged = new Map<number, number>();
   for (const group of Object.values(groups)) {
     for (const line of group.lines) merged.set(line.packageId, (merged.get(line.packageId) ?? 0) + line.quantity);
@@ -35,21 +30,26 @@ export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
   return [...merged].filter(([, q]) => q > 0).map(([package_id, quantity]) => ({ package_id, quantity }));
 }
 
-export function normalizeCode(code: string): string {
-  return code.trim().toUpperCase();
-}
+const normalizeCode = (code: string) => code.trim().toUpperCase();
 
 export class Engine {
   readonly events = new Events();
   private api: Api;
+  private storage: StorageAdapter;
   private state: State;
   private calcSeq = 0;
   private calcAbort?: AbortController;
-  private calcScheduled = false;
-  private calcDone?: Promise<void>;
+  private pending?: Promise<void>;
 
   constructor(private options: EngineOptions) {
     this.api = new Api(options.apiKey, options.fetch, options.apiBase);
+    this.storage = new StorageAdapter({
+      prefix: options.storagePrefix,
+      version: 1,
+      backends: options.storage,
+      now: options.now,
+      onDegrade: (reason) => this.events.emit('storage.degraded', { reason }),
+    });
     this.state = { cart: emptyCart(), selections: {}, params: options.params ?? {} };
   }
 
@@ -69,34 +69,34 @@ export class Engine {
     return mergeLines(this.state.cart.groups);
   }
 
-  vouchers(): string[] {
-    const all = new Set(this.state.cart.coupons);
-    for (const group of Object.values(this.state.cart.groups)) group.vouchers.forEach((v) => all.add(v));
-    return [...all];
-  }
-
   restore(): boolean {
-    const { storage } = this.options;
-    const cart = storage.get<PersistedCart>(CART_KEY, 'local', CART_MAX_AGE);
-    if (cart) this.state.cart = { ...emptyCart(), ...cart };
-    const campaign = storage.get<Campaign>(this.campaignKey(), 'local', SNAPSHOT_MAX_AGE);
+    const cart = this.storage.get<SavedCart>('cart', CART_MAX_AGE);
+    if (cart) this.state = { ...this.state, cart: { ...emptyCart(), ...cart } };
+    const campaign = this.storage.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
     if (campaign) {
-      this.state.campaign = campaign;
+      this.state = { ...this.state, campaign };
       this.events.emit('campaign.loaded', { campaign, fromCache: true });
     }
     return !!campaign;
   }
 
   async load(): Promise<void> {
+    let campaign: Campaign;
     try {
-      const campaign = await (this.options.prefetchedCampaign ?? this.api.getCampaign(this.options.currency));
-      this.state.campaign = campaign;
-      this.options.storage.set(this.campaignKey(), campaign, 'local');
-      this.events.emit('campaign.loaded', { campaign, fromCache: false });
-      if (this.lines().length) await this.calculate();
+      campaign = await this.options.campaign;
     } catch (err) {
-      this.fail('load', err);
+      return this.fail('load', err);
     }
+    this.state = { ...this.state, campaign };
+    this.storage.set(this.campaignKey(), campaign);
+    this.events.emit('campaign.loaded', { campaign, fromCache: false });
+    const groups = this.knownPackagesOnly(this.state.cart.groups);
+    if (groups !== this.state.cart.groups) void this.commit({ groups });
+    else if (this.lines().length) void this.scheduleCalculate();
+  }
+
+  reset(): void {
+    this.storage.clear();
   }
 
   setGroup(id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}): Promise<void> {
@@ -122,7 +122,7 @@ export class Engine {
     const groups: Record<string, CartGroup> = {};
     for (const [id, group] of Object.entries(this.state.cart.groups)) {
       const lines = group.lines
-        .map((l) => (l.packageId === packageId ? { ...l, quantity: Math.max(0, quantity) } : l))
+        .map((l) => (l.packageId === packageId ? { ...l, quantity } : l))
         .filter((l) => l.quantity > 0);
       if (lines.length) groups[id] = { ...group, lines };
     }
@@ -134,7 +134,7 @@ export class Engine {
   }
 
   clear(): Promise<void> {
-    return this.commit({ groups: {}, coupons: [], dismissed: [], summary: undefined });
+    return this.commit({ groups: {}, coupons: [], dismissed: [] });
   }
 
   applyCoupon(code: string): Promise<void> {
@@ -159,65 +159,86 @@ export class Engine {
   }
 
   private campaignKey(): string {
-    return `${CAMPAIGN_KEY}:${this.options.currency ?? 'default'}`;
+    return `campaign:${this.options.currency ?? 'default'}`;
+  }
+
+  private knownPackagesOnly(groups: Record<string, CartGroup>): Record<string, CartGroup> {
+    const unknown = mergeLines(groups).filter((l) => !this.getPackage(l.package_id));
+    if (!unknown.length) return groups;
+    this.fail('cart', new Error(`removed unknown package ids ${unknown.map((l) => l.package_id).join(', ')}`));
+    const known: Record<string, CartGroup> = {};
+    for (const [id, group] of Object.entries(groups)) {
+      const lines = group.lines.filter((l) => this.getPackage(l.packageId));
+      if (lines.length) known[id] = { ...group, lines };
+    }
+    return known;
   }
 
   private commit(patch: Partial<CartState>): Promise<void> {
-    const cart = { ...this.state.cart, ...patch };
-    if (!mergeLines(cart.groups).length) cart.summary = undefined;
+    const cart: CartState = { ...this.state.cart, ...patch };
+    const hasLines = mergeLines(cart.groups).length > 0;
+    if (!hasLines) cart.summary = undefined;
+    cart.calculating = hasLines && !!this.state.campaign;
     this.state = { ...this.state, cart };
-    this.persist();
+    this.save();
     this.events.emit('cart.updated', { cart });
     return this.scheduleCalculate();
   }
 
-  private persist(): void {
+  private save(): void {
     const { groups, coupons, dismissed, shippingId, summary } = this.state.cart;
-    this.options.storage.set<PersistedCart>(CART_KEY, { groups, coupons, dismissed, shippingId, summary }, 'local');
+    this.storage.set<SavedCart>('cart', { groups, coupons, dismissed, shippingId, summary });
   }
 
   private scheduleCalculate(): Promise<void> {
-    if (!this.calcScheduled) {
-      this.calcScheduled = true;
-      this.calcDone = Promise.resolve().then(() => {
-        this.calcScheduled = false;
-        return this.calculate();
-      });
-    }
-    return this.calcDone ?? Promise.resolve();
+    this.pending ??= Promise.resolve().then(() => {
+      this.pending = undefined;
+      return this.calculate();
+    });
+    return this.pending;
   }
 
   private async calculate(): Promise<void> {
-    const lines = this.lines();
-    if (!lines.length || !this.state.campaign) return;
     const seq = ++this.calcSeq;
     this.calcAbort?.abort();
+    const lines = this.lines();
+    const campaign = this.state.campaign;
+    if (!lines.length || !campaign) {
+      if (this.state.cart.calculating) this.setCart({ calculating: false });
+      return;
+    }
     const abort = (this.calcAbort = new AbortController());
-    this.setCalculating(true);
     try {
-      const summary: CartSummary = await this.api.calculate(
+      const summary = await this.api.calculate(
         {
           lines,
           vouchers: this.vouchers(),
-          currency: this.state.campaign.currency,
+          currency: campaign.currency,
           shipping_method: this.state.cart.shippingId,
         },
         abort.signal,
       );
       if (seq !== this.calcSeq) return;
-      this.state = { ...this.state, cart: { ...this.state.cart, summary, calculating: false } };
-      this.persist();
+      this.setCart({ summary, calculating: false });
+      this.save();
       this.events.emit('cart.calculated', { summary });
-      this.events.emit('cart.updated', { cart: this.state.cart });
     } catch (err) {
-      if (seq !== this.calcSeq || abort.signal.aborted) return;
-      this.setCalculating(false);
+      if (seq !== this.calcSeq) return;
+      this.setCart({ calculating: false });
       this.fail('calculate', err);
     }
   }
 
-  private setCalculating(calculating: boolean): void {
-    this.state = { ...this.state, cart: { ...this.state.cart, calculating } };
+  private vouchers(): string[] {
+    const all = new Set(this.state.cart.coupons);
+    for (const group of Object.values(this.state.cart.groups)) group.vouchers.forEach((v) => all.add(normalizeCode(v)));
+    return [...all];
+  }
+
+  private setCart(patch: Partial<CartState>): void {
+    const cart = { ...this.state.cart, ...patch };
+    this.state = { ...this.state, cart };
+    this.events.emit('cart.updated', { cart });
   }
 
   private fail(action: string, err: unknown): void {

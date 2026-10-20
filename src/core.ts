@@ -1,19 +1,20 @@
 import { bindAll } from './bindings';
 import type { BootConfig } from './config';
-import { Engine, ENGINE_STORAGE_VERSION } from './engine/engine';
+import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import { funnelFromPath, storageScope } from './engine/scope';
-import { StorageAdapter } from './engine/storage';
 import type { Campaign, EventName } from './engine/types';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './legacy';
 
-function browserStorage(get: () => Storage): Storage | null {
+declare const __VERSION__: string;
+
+const browserStorage = (get: () => Storage): Storage | null => {
   try {
     return get();
   } catch {
     return null;
   }
-}
+};
 
 export function parseForcePackages(raw: string | null): Array<{ packageId: number; quantity: number }> {
   if (!raw) return [];
@@ -26,48 +27,51 @@ export function parseForcePackages(raw: string | null): Array<{ packageId: numbe
 
 export interface NextApi extends LegacyApi {
   version: string;
-  on(name: EventName | '*', fn: (event: EngineEvent) => void, options?: { replay?: boolean }): () => void;
+  on(name: EventName | '*', fn: (event: EngineEvent) => void): () => void;
   getState: Engine['getState'];
   bind(root: ParentNode): void;
-  actions: Pick<
-    Engine,
-    'addItem' | 'removeItem' | 'setQuantity' | 'setGroup' | 'clear' | 'applyCoupon' | 'removeCoupon' | 'setShipping'
-  >;
+  actions: {
+    addItem(packageId: number, quantity?: number): Promise<void>;
+    removeItem(packageId: number): Promise<void>;
+    setQuantity(packageId: number, quantity: number): Promise<void>;
+    clear(): Promise<void>;
+    applyCoupon(code: string): Promise<void>;
+    removeCoupon(code: string): Promise<void>;
+    setShipping(shippingId: number | undefined): Promise<void>;
+  };
 }
 
-declare const __VERSION__: string;
-
-export function boot(config: BootConfig, prefetched?: Promise<Campaign>): { engine: Engine; next: NextApi } {
+export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const html = document.documentElement;
+  const params = new URLSearchParams(location.search);
   const funnel = config.funnel || funnelFromPath(location.pathname);
   const scope = storageScope(config.apiKey, funnel);
 
-  let engine!: Engine;
-  const storage = new StorageAdapter({
-    prefix: `next:${scope}`,
-    version: ENGINE_STORAGE_VERSION,
-    local: browserStorage(() => localStorage),
-    session: browserStorage(() => sessionStorage),
-    onDegrade: (tier, reason) => engine?.events.emit('storage.degraded', { tier, reason }),
-  });
-  if (config.reset) storage.clear();
-
-  const params = Object.fromEntries(new URLSearchParams(location.search));
-  engine = new Engine({
+  const engine = new Engine({
     apiKey: config.apiKey,
     apiBase: config.apiBase,
-    storage,
     fetch: window.fetch.bind(window),
+    campaign,
+    storagePrefix: `next:${scope}`,
+    storage: [browserStorage(() => localStorage), browserStorage(() => sessionStorage)],
     currency: config.currency,
-    params,
-    prefetchedCampaign: prefetched,
+    params: Object.fromEntries(params),
   });
 
-  console.info(`[next] storage scope ${scope} (funnel "${funnel || '(none)'}")`);
+  if (config.debug) {
+    console.info(`[next] storage scope ${scope} (funnel "${funnel || '(none)'}")`);
+    engine.on('*', (e) => console.debug('[next]', e.name, e.data), { replay: true });
+  }
+
+  if (config.reset) {
+    engine.reset();
+    params.delete('reset');
+    history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
+  }
 
   const hasSnapshot = engine.restore();
 
-  const forced = parseForcePackages(params.forcePackageId ?? null);
+  const forced = parseForcePackages(params.get('forcePackageId'));
   if (forced.length) {
     void engine.clear();
     void engine.setGroup('items', { lines: forced, vouchers: [] });
@@ -75,36 +79,40 @@ export function boot(config: BootConfig, prefetched?: Promise<Campaign>): { engi
 
   const bindings = bindAll(document, engine);
 
+  let ready = false;
   const next: NextApi = {
-    version: typeof __VERSION__ === 'string' ? __VERSION__ : 'dev',
-    on: (name, fn, options) => engine.on(name, fn, options),
+    version: __VERSION__,
+    on: (name, fn) => engine.on(name, fn, { replay: name === 'ready' && ready }),
     getState: () => engine.getState(),
     bind: (root) => bindings.bind(root),
-    actions: engine,
+    actions: {
+      addItem: (packageId, quantity) => engine.addItem(packageId, quantity),
+      removeItem: (packageId) => engine.removeItem(packageId),
+      setQuantity: (packageId, quantity) => engine.setQuantity(packageId, quantity),
+      clear: () => engine.clear(),
+      applyCoupon: (code) => engine.applyCoupon(code),
+      removeCoupon: (code) => engine.removeCoupon(code),
+      setShipping: (shippingId) => engine.setShipping(shippingId),
+    },
     ...legacyApi(engine),
   };
+  (window as unknown as { next: NextApi }).next = next;
 
-  let ready = false;
   const markReady = () => {
     if (ready) return;
     ready = true;
     bindings.render();
     html.setAttribute('data-next-ready', '');
     engine.events.emit('ready', {});
-    announceLegacyReady(next, next.version);
+    announceLegacyReady(next);
   };
 
-  (window as unknown as { next: NextApi }).next = next;
-
+  const loading = engine.load();
   if (hasSnapshot) markReady();
-  void engine.load().then(() => {
+  void loading.then(() => {
     if (engine.getState().campaign) markReady();
-    else if (!hasSnapshot) html.setAttribute('data-next-error', 'campaign');
+    else html.setAttribute('data-next-error', 'campaign');
   });
 
-  if (config.debug) {
-    engine.on('*', (e) => console.debug('[next]', e.name, e.data), { replay: true });
-  }
-
-  return { engine, next };
+  return next;
 }

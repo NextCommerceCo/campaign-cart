@@ -33,11 +33,17 @@ export function legacyApi(engine: Engine): LegacyApi {
 }
 
 /** @deprecated Use `next.on('ready', fn)` and `html[data-next-ready]`. */
-export function announceLegacyReady(next: object, version: string): void {
+export function announceLegacyReady(next: { version: string }): void {
   document.documentElement.classList.add('next-display-ready');
-  document.dispatchEvent(new CustomEvent('next:initialized', { detail: { version } }));
+  document.dispatchEvent(new CustomEvent('next:initialized', { bubbles: true, detail: { version: next.version } }));
   const win = window as unknown as { nextReady?: unknown };
-  const queue = win.nextReady;
-  if (Array.isArray(queue)) queue.forEach((fn: (n: object) => void) => fn(next));
-  win.nextReady = { push: (fn: (n: object) => void) => fn(next) };
+  const run = (fn: (n: object) => void) => {
+    try {
+      fn(next);
+    } catch (err) {
+      console.error('[next] nextReady callback failed', err);
+    }
+  };
+  if (Array.isArray(win.nextReady)) win.nextReady.forEach(run);
+  win.nextReady = { push: run };
 }

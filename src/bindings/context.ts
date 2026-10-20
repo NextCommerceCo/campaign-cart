@@ -6,6 +6,7 @@ import { legacySelectorId } from '../legacy';
 export type Render = () => void;
 
 export interface Card {
+  selectorId: string;
   cardId: string;
   lines: CartLine[];
   vouchers: string[];
@@ -15,36 +16,53 @@ export interface Card {
 
 export class BindContext {
   readonly selectors = new Map<string, Card[]>();
+  private bound = new WeakMap<Element, Set<string>>();
   private warned = new Set<string>();
 
   constructor(readonly engine: Engine) {}
 
-  readonly cards: CardLookup = (selectorId, cardId) => {
-    const cards = this.selectors.get(selectorId);
-    const id = cardId ?? this.engine.getState().selections[selectorId];
-    const card = cards?.find((c) => c.cardId === id);
-    return card && { cardId: card.cardId, lines: card.lines };
+  claim(el: Element, attr: string): boolean {
+    const attrs = this.bound.get(el) ?? new Set<string>();
+    if (attrs.has(attr)) return false;
+    this.bound.set(el, attrs.add(attr));
+    return true;
+  }
+
+  each<E extends Element = HTMLElement>(root: ParentNode, attr: string, fn: (el: E) => void): void {
+    const selector = `[${attr}]`;
+    const els = [...root.querySelectorAll<E>(selector)];
+    if (root instanceof Element && root.matches(selector)) els.unshift(root as E);
+    els.filter((el) => this.claim(el, attr)).forEach(fn);
+  }
+
+  selected(selectorId: string): Card | undefined {
+    const id = this.engine.getState().selections[selectorId];
+    return this.selectors.get(selectorId)?.find((c) => c.cardId === id);
+  }
+
+  readonly cards: CardLookup = (id) => {
+    const card = this.selected(id) ?? [...this.selectors.values()].flat().find((c) => c.cardId === id);
+    return card && { lines: card.lines, selected: this.selected(card.selectorId) === card };
   };
+
+  cardOf(el: Element): Card | undefined {
+    const cardEl = el.closest('[data-next-bundle-card]');
+    return cardEl ? [...this.selectors.values()].flat().find((c) => c.el === cardEl) : undefined;
+  }
+
+  contextOf(el: Element): Context {
+    const ctx: Context = {};
+    const card = this.cardOf(el);
+    if (card) ctx.card = { selectorId: card.selectorId, cardId: card.cardId, lines: card.lines };
+    const id = Number(el.closest('[data-next-package-id]')?.getAttribute('data-next-package-id'));
+    if (id) ctx.packageId = id;
+    return ctx;
+  }
 
   warn(message: string): void {
     if (this.warned.has(message)) return;
     this.warned.add(message);
     console.warn(`[next] ${message}`);
-  }
-
-  contextOf(el: Element): Context {
-    const ctx: Context = {};
-    const cardEl = el.closest('[data-next-bundle-card]');
-    const selectorEl = cardEl?.closest('[data-next-bundle-selector]');
-    if (cardEl && selectorEl) {
-      const selectorId = selectorIdOf(selectorEl);
-      const card = this.selectors.get(selectorId)?.find((c) => c.el === cardEl);
-      if (card) ctx.card = { selectorId, cardId: card.cardId, lines: card.lines };
-    }
-    const pkgEl = el.closest('[data-next-package-id]');
-    const id = Number(pkgEl?.getAttribute('data-next-package-id'));
-    if (id) ctx.packageId = id;
-    return ctx;
   }
 }
 
@@ -76,3 +94,16 @@ export function setVisible(el: HTMLElement, visible: boolean): void {
   el.classList.toggle('next-visible', visible);
   el.classList.toggle('next-hidden', !visible);
 }
+
+export function setState(el: Element, on: boolean): void {
+  el.classList.toggle('next-selected', on);
+  el.classList.toggle('next-active', on);
+  el.classList.toggle('next-in-cart', on);
+  el.classList.toggle('next-not-in-cart', !on);
+  el.setAttribute('data-next-selected', String(on));
+  el.setAttribute('data-next-active', String(on));
+  el.setAttribute('aria-pressed', String(on));
+}
+
+export const isFormControl = (target: EventTarget | null) =>
+  target instanceof Element && !!target.closest('a, input, select, textarea, label');

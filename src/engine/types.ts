@@ -87,7 +87,7 @@ export interface EventMap {
   'cart.updated': { cart: CartState };
   'cart.calculated': { summary: CartSummary };
   'selection.changed': { selectorId: string; cardId: string };
-  'storage.degraded': { tier: string; reason: string };
+  'storage.degraded': { reason: string };
   'ready': Record<string, never>;
   'error': { action: string; message: string };
 }

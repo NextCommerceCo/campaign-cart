@@ -17,9 +17,12 @@ const cents = (amount: string | number | undefined): number => Math.round(Number
 const money = (c: number | undefined): Value => ({ type: 'money', value: c === undefined ? undefined : c / 100 });
 const pct = (part: number, whole: number): Value => ({ type: 'percent', value: whole > 0 ? (part / whole) * 100 : 0 });
 const bool = (value: boolean): Value => ({ type: 'bool', value });
+const notLoaded = (v: Value | undefined): Value | undefined => v && (v.type === 'bool' ? v : { type: v.type, value: undefined });
+
+const NO_PACKAGE: Package = { ref_id: 0, external_id: 0, name: '', price: '0', price_total: '0', qty: 0, image: '', is_recurring: false };
 
 function packageValue(pkg: Package | undefined, prop: string): Value | undefined {
-  if (!pkg) return { type: 'text', value: undefined };
+  if (!pkg) return notLoaded(packageValue(NO_PACKAGE, prop));
   const total = cents(pkg.price_total);
   const retail = pkg.price_retail_total ? cents(pkg.price_retail_total) : total;
   switch (prop) {
@@ -40,12 +43,12 @@ function packageValue(pkg: Package | undefined, prop: string): Value | undefined
 }
 
 function linesValue(engine: Engine, lines: CartLine[], prop: string, selected: boolean): Value | undefined {
+  if (lines.some((l) => !engine.getPackage(l.packageId))) return notLoaded(linesValue(engine, [], prop, selected));
   let total = 0;
   let retail = 0;
   let units = 0;
   for (const line of lines) {
-    const pkg = engine.getPackage(line.packageId);
-    if (!pkg) return { type: 'text', value: undefined };
+    const pkg = engine.getPackage(line.packageId)!;
     total += cents(pkg.price_total) * line.quantity;
     retail += cents(pkg.price_retail_total ?? pkg.price_total) * line.quantity;
     units += pkg.qty * line.quantity;
@@ -116,7 +119,9 @@ function shippingValue(state: State, prop: string): Value | undefined {
   }
 }
 
-export type CardLookup = (selectorId: string, cardId?: string) => { cardId: string; lines: CartLine[] } | undefined;
+export type CardLookup = (id: string) => { lines: CartLine[]; selected: boolean } | undefined;
+
+export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 
 export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?: CardLookup): Value | undefined {
   const state = engine.getState();
@@ -135,13 +140,14 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
       return id === undefined ? { type: 'text', value: undefined } : packageValue(engine.getPackage(id), prop);
     }
     case 'bundle': {
-      const pick = cards?.(second);
-      if (!pick) return { type: 'text', value: undefined };
-      return linesValue(engine, pick.lines, rest.join('.'), state.selections[second] === pick.cardId);
+      const card = cards?.(second);
+      if (!card) return { type: 'text', value: undefined };
+      return linesValue(engine, card.lines, rest.join('.'), card.selected);
     }
     case 'toggle': {
       const id = Number(second);
-      return linesValue(engine, [{ packageId: id, quantity: 1 }], rest.join('.'), !!state.cart.groups[`toggle:${id}`]);
+      const line = state.cart.groups[toggleGroup(id)]?.lines[0];
+      return linesValue(engine, [{ packageId: id, quantity: line?.quantity ?? 1 }], rest.join('.'), !!line);
     }
     default:
       if (parts.length === 1 && ctx.card) {
@@ -179,7 +185,7 @@ export function format(v: Value, currency: string | undefined, locale?: string, 
   const n = Number(v.value);
   switch (type) {
     case 'money':
-      return currency ? formatter(locale, { style: 'currency', currency }).format(n) : n.toFixed(2);
+      return currency ? formatter(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(n) : n.toFixed(2);
     case 'percent':
       return formatter(locale, { style: 'percent', maximumFractionDigits: 0 }).format(n / 100);
     case 'int':

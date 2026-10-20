@@ -6,7 +6,6 @@ import { bindDisplay } from './display';
 import { bindPackageToggles } from './package-toggle';
 
 export interface Bindings {
-  context: BindContext;
   render(): void;
   bind(root: ParentNode): void;
 }
@@ -19,13 +18,15 @@ export function bindAll(
   const context = new BindContext(engine);
   const renders: Render[] = [];
 
-  const bind = (node: ParentNode) => {
-    renders.push(
+  const bind = (node: ParentNode): Render[] => {
+    const added = [
       ...bindBundleSelectors(node, context),
       ...bindPackageToggles(node, context),
       ...bindAddToCart(node, context, navigate),
       ...bindDisplay(node, context),
-    );
+    ];
+    renders.push(...added);
+    return added;
   };
 
   const render = () => renders.forEach((r) => r());
@@ -44,12 +45,7 @@ export function bindAll(
   render();
 
   return {
-    context,
     render,
-    bind(node) {
-      const before = renders.length;
-      bind(node);
-      renders.slice(before).forEach((r) => r());
-    },
+    bind: (node) => bind(node).forEach((r) => r()),
   };
 }

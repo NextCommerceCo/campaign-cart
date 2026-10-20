@@ -1,4 +1,4 @@
-import type { Campaign, CartSummary } from './types';
+import type { CartSummary } from './types';
 
 export interface ApiLine {
   package_id: number;
@@ -23,10 +23,6 @@ export class Api {
     private base: string,
   ) {}
 
-  getCampaign(currency?: string): Promise<Campaign> {
-    return this.request<Campaign>(`${this.base}/api/v1/campaigns/${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`);
-  }
-
   calculate(
     body: { lines: ApiLine[]; vouchers: string[]; currency?: string; shipping_method?: number },
     signal?: AbortSignal,
@@ -38,13 +34,16 @@ export class Api {
     });
   }
 
-  async request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
     const res = await this.fetchImpl(url, {
       ...init,
       headers: { Authorization: this.apiKey, 'Content-Type': 'application/json', ...init.headers },
     });
     const text = await res.text();
-    const body: unknown = text ? JSON.parse(text) : null;
+    let body: unknown = text;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {}
     if (!res.ok) throw new ApiError(`${init.method ?? 'GET'} ${url} → ${res.status}`, res.status, body);
     return body as T;
   }

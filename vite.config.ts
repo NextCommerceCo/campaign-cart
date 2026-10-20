@@ -1,19 +1,32 @@
+import { readFileSync } from 'node:fs';
+import { transformWithEsbuild } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+
 export default defineConfig({
+  define: { __VERSION__: JSON.stringify(version) },
+  plugins: [
+    {
+      name: 'minify-es',
+      async generateBundle(_, bundle) {
+        for (const chunk of Object.values(bundle)) {
+          if (chunk.type === 'chunk') chunk.code = (await transformWithEsbuild(chunk.code, chunk.fileName, { minify: true })).code;
+        }
+      },
+    },
+  ],
   build: {
     target: 'es2020',
     outDir: 'dist',
     emptyOutDir: true,
-    modulePreload: false,
+    lib: {
+      entry: 'src/loader.ts',
+      formats: ['es'],
+      fileName: () => 'loader.js',
+    },
     rollupOptions: {
-      input: { loader: 'src/loader.ts' },
-      preserveEntrySignatures: 'allow-extension',
-      output: {
-        format: 'es',
-        entryFileNames: '[name].js',
-        chunkFileNames: '[name]-[hash].js',
-      },
+      output: { chunkFileNames: '[name]-[hash].js' },
     },
   },
   test: {

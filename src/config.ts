@@ -16,6 +16,7 @@ interface LegacyConfig {
 
 const meta = (doc: Document, name: string) => doc.querySelector(`meta[name="${name}"]`)?.getAttribute('content') ?? '';
 const nextConfig = (win: Window) => ((win as unknown as { nextConfig?: LegacyConfig }).nextConfig ?? {}) as LegacyConfig;
+const scriptAttr = (doc: Document, name: string) => doc.querySelector(`script[${name}]`)?.getAttribute(name) ?? '';
 
 /** @deprecated Put the key on the script tag: `data-campaign="pk_…"`. */
 export function legacyApiKey(doc: Document, win: Window): string {
@@ -33,13 +34,12 @@ export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: b
 }
 
 export function readConfig(doc: Document, win: Window): BootConfig {
-  const script = doc.querySelector('script[data-campaign]');
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);
   return {
-    apiKey: script?.getAttribute('data-campaign') || legacyApiKey(doc, win),
+    apiKey: scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win),
     apiBase: API_BASE,
-    funnel: script?.getAttribute('data-funnel') || legacyFunnel(doc, win),
+    funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
     currency: params.get('currency') || undefined,
     debug: params.get('debug') === '1' || legacy.debug,
     reset: params.get('reset') === '1' || legacy.reset,

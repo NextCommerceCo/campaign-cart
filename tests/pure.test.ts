@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseCondition } from '../src/engine/condition';
 import { funnelFromPath, storageScope } from '../src/engine/scope';
@@ -17,34 +19,41 @@ describe('storage scope', () => {
   it('gives two funnels on one key different scopes', () => {
     expect(storageScope('pk_1', 'helloweena')).not.toBe(storageScope('pk_1', 'helloweenb'));
     expect(storageScope('pk_1', 'a')).toBe(storageScope('pk_1', 'a'));
-    // The separator keeps (pk_x, hu) and (pk_xhu, '') apart.
     expect(storageScope('pk_x', 'hu')).not.toBe(storageScope('pk_xhu', ''));
   });
 });
 
 describe('storage adapter', () => {
+  const adapter = (store: Storage, version = 1, now?: () => number) =>
+    new StorageAdapter({ prefix: 'p', version, backends: [store], now });
+
   it('drops a value written by another schema version', () => {
     const local = new MemoryStorage();
-    new StorageAdapter({ prefix: 'p', version: 1, local }).set('cart', 1, 'local');
-    expect(new StorageAdapter({ prefix: 'p', version: 2, local }).get('cart', 'local')).toBeUndefined();
+    adapter(local, 1).set('cart', 1);
+    expect(adapter(local, 2).get('cart')).toBeUndefined();
   });
 
   it('drops an expired value', () => {
     let now = 0;
-    const s = new StorageAdapter({ prefix: 'p', version: 1, local: new MemoryStorage(), now: () => now });
-    s.set('x', 1, 'local');
+    const s = adapter(new MemoryStorage(), 1, () => now);
+    s.set('x', 1);
     now = 1000;
-    expect(s.get('x', 'local', 500)).toBeUndefined();
+    expect(s.get('x', 500)).toBeUndefined();
+  });
+
+  it('ignores a corrupt stored value', () => {
+    const local = new MemoryStorage();
+    local.setItem('p:cart', '{not json');
+    expect(adapter(local).get('cart')).toBeUndefined();
   });
 
   it('clears only its own prefix', () => {
     const local = new MemoryStorage();
     local.setItem('other', 'keep');
-    const s = new StorageAdapter({ prefix: 'next:a', version: 1, local });
-    s.set('cart', 1, 'local');
+    const s = adapter(local);
+    s.set('cart', 1);
     s.clear();
-    expect(local.getItem('other')).toBe('keep');
-    expect(local.length).toBe(1);
+    expect([...local.data.keys()]).toEqual(['other']);
   });
 });
 
@@ -66,16 +75,24 @@ describe('condition grammar', () => {
 });
 
 describe('display values', () => {
-  it('formats money by type, in the campaign currency', async () => {
+  it('formats by type in the campaign currency', async () => {
     const { engine } = makeEngine();
     await engine.load();
     await engine.addItem(2);
     expect(format(resolve(engine, 'cart.total')!, 'USD', 'en')).toBe('$89.00');
+    expect(format(resolve(engine, 'cart.savingsPercentage')!, 'USD', 'en')).toBe('55%');
     expect(format(resolve(engine, 'package.2.savingsPercentage')!, 'USD', 'en')).toBe('55%');
     expect(format(resolve(engine, 'package.price', { packageId: 1 })!, 'USD', 'en')).toBe('$49.00');
+    expect(resolve(engine, 'shipping.isFree')).toEqual({ type: 'bool', value: true });
+    expect(resolve(engine, 'campaign.name')).toEqual({ type: 'text', value: 'Olympus' });
   });
 
-  it('knows a path from a typo', async () => {
+  it('shows the local dollar sign, not CA$ or A$', () => {
+    expect(format({ type: 'money', value: 10 }, 'CAD', 'en')).toBe('$10.00');
+    expect(format({ type: 'money', value: 10 }, 'AUD', 'en')).toBe('$10.00');
+  });
+
+  it('knows a path from a typo', () => {
     const { engine } = makeEngine();
     expect(resolve(engine, 'cart.totl')).toBeUndefined();
     expect(resolve(engine, 'cart.total')).toEqual({ type: 'money', value: undefined });
@@ -90,5 +107,18 @@ describe('forcePackageId', () => {
       { packageId: 5, quantity: 1 },
     ]);
     expect(parseForcePackages('abc')).toEqual([]);
+  });
+});
+
+describe('chunk boundary', () => {
+  it('only the loader imports config at runtime, so core never re-evaluates the loader', () => {
+    const files = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+        d.isDirectory() ? files(join(dir, d.name)) : [join(dir, d.name)],
+      );
+    const offenders = files('src')
+      .filter((f) => !f.endsWith('loader.ts') && !f.endsWith('config.ts'))
+      .filter((f) => /^import (?!type)[^;]*from '\.{1,2}\/(\.\.\/)?(config|loader)'/m.test(readFileSync(f, 'utf8')));
+    expect(offenders).toEqual([]);
   });
 });
