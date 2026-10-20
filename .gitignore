@@ -1,65 +1,12 @@
-# Dependencies
 node_modules/
-
-
-
-# Logs
-*.log
-npm-debug.log*
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-
-# Test coverage
 coverage/
-
-# Temporary files
-*.tmp
-.cache/
-
-/clients
-
-# generated content
-.source
-
-# TypeDoc generated site
-docs/site/
-
-# staged docs input (docs-stage.mjs output: guides with pre-rendered mermaid + rewritten links)
-docs/.staged/
-docs/.staged-home.md
-
-# test & build
-/out/
-/build
-*.tsbuildinfo
-
-# misc
-*.pem
-/.pnp
-.pnp.js
-yarn-debug.log*
-yarn-error.log*
-
-# others
-.env*.local
-.vercel
-next-env.d.ts
-
+.vscode/
+.wrangler/
+.archify/
 playwright-report/
 test-results/
-
-# Wrangler's local state, written next to whichever config it runs against
-# (docs/wrangler.jsonc for the docs site). Machine-local, never committed.
-.wrangler/
-# Local working notes, not shared
-docs/code-findings.md
+.claude/settings.local.json
+docs/site/
+docs/.staged/
+docs/.staged-home.md
+dist/

@@ -1,21 +1,19 @@
-# Next Commerce Cart SDK
+# NEXT Campaign SDK
 
-TypeScript SDK for building campaign pages on [NextCommerce](https://nextcommerce.com). Provides cart management, checkout flows, upsell sequences, and analytics through a data-attribute-driven HTML API.
+One headless **Engine** owns all campaign state (Action → State → Event). DOM bindings,
+analytics and debug tools are subscribers to its events. See
+[docs/architecture/design.md](docs/architecture/design.md) and
+[docs/architecture/redesign-review.md](docs/architecture/redesign-review.md).
 
-## Links
+```html
+<script type="module" src=".../dist/loader.js" data-campaign="pk_live_…" data-funnel="my-funnel"></script>
+```
 
-- **Docs**: [developers.nextcommerce.com/docs/campaigns](https://developers.nextcommerce.com/docs/campaigns)
-- **Starter templates**: [github.com/NextCommerceCo/campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)
+Old pages keep working: `window.nextConfig.apiKey`, `<meta name="next-api-key">`,
+`<meta name="next-funnel">`, `window.nextReady` and `next:initialized` are still read.
 
-## Development
-
-| Task | Command |
+| Command | |
 |---|---|
-| Dev server | `npm run dev` |
-| Build | `npm run build` |
-| Type check | `npm run type-check` |
-| Lint | `npm run lint` |
-| Unit tests | `npm run test` |
-| E2E tests | `npm run test:e2e` |
-
-See [CLAUDE.md](CLAUDE.md) for architecture overview and contribution guidelines.
+| `npm test` | unit tests (the Engine suite runs in plain Node) |
+| `npm run typecheck` | TypeScript |
+| `npm run build` | build to `dist/` (CI artifact, not committed) and fail if a chunk is over its gzip budget |
