@@ -150,9 +150,36 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
-      if (e.name === 'cart.updated') onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
-      if (e.name === 'cart.calculated')
-        send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
+      const cart = ecommerce(engine.cart.lines());
+      const value = Number(cartTotal());
+      switch (e.name) {
+        case 'cart.updated':
+          return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
+        case 'cart.calculated':
+          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart });
+        case 'checkout.started':
+          return send('dl_begin_checkout', { cart_total: cartTotal(), ecommerce: cart });
+        case 'checkout.shipping-added': {
+          const { tier } = e.data as EventMap['checkout.shipping-added'];
+          const shipping = { ...cart, currencyCode: cart.currency, shipping_tier: tier };
+          return send('dl_add_shipping_info', {
+            ecommerce: shipping,
+            event_category: 'ecommerce',
+            event_value: value,
+            shipping_tier: tier,
+          });
+        }
+        case 'checkout.payment-added': {
+          const { method } = e.data as EventMap['checkout.payment-added'];
+          const type = method === 'card_token' ? 'Credit Card' : method;
+          return send('dl_add_payment_info', {
+            ecommerce: { ...cart, payment_type: type },
+            event_category: 'ecommerce',
+            event_value: value,
+            payment_type: type,
+          });
+        }
+      }
     },
     { replay: true },
   );

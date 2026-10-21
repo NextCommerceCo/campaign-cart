@@ -124,6 +124,24 @@ describe('analytics', () => {
     expect(win.NextDataLayer![0].ecommerce.items).toMatchObject([{ item_id: '12' }]);
   });
 
+  it('reports checkout steps in the 0.4.x shape', async () => {
+    const engine = await ready('', {}, (e) => void e.cart.addItem(2));
+    startAnalytics(engine, options);
+    await flush();
+    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
+    engine.events.emit('checkout.shipping-added', { tier: 'Standard' });
+    engine.events.emit('checkout.payment-added', { method: 'card_token' });
+    const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
+    expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
+    expect(shipping).toMatchObject({
+      event: 'dl_add_shipping_info',
+      shipping_tier: 'Standard',
+      event_value: 89,
+      ecommerce: { currencyCode: 'USD', shipping_tier: 'Standard' },
+    });
+    expect(payment).toMatchObject({ event: 'dl_add_payment_info', payment_type: 'Credit Card' });
+  });
+
   it('loads the NextCampaign script once and sends one page_view', async () => {
     const engine = await ready();
     const config = vi.fn();
