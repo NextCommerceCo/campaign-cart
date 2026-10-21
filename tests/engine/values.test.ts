@@ -6,7 +6,7 @@ describe('display values', () => {
   it('formats by type in the campaign currency', async () => {
     const { engine } = makeEngine();
     await engine.load();
-    await engine.addItem(2);
+    await engine.cart.addItem(2);
     expect(format(resolve(engine, 'cart.total')!, 'USD', 'en')).toBe('$89.00');
     expect(format(resolve(engine, 'cart.savingsPercentage')!, 'USD', 'en')).toBe('55%');
     expect(format(resolve(engine, 'package.2.savingsPercentage')!, 'USD', 'en')).toBe('55%');

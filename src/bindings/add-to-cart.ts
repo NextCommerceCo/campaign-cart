@@ -14,15 +14,15 @@ export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: 
       if (selectorId && !pick) return b.warn(`add-to-cart: selector "${selectorId}" has no selected card`);
       if (!pick && !packageId) return b.warn('add-to-cart needs data-next-package-id or data-next-selector-id');
 
-      if (el.getAttribute('data-next-clear-cart') === 'true') void b.engine.clear();
+      if (el.getAttribute('data-next-clear-cart') === 'true') void b.engine.cart.clear();
       if (pick) putInCart(b, pick);
-      else void b.engine.addItem(packageId, Number(el.getAttribute('data-next-quantity') || 1));
+      else void b.engine.cart.addItem(packageId, Number(el.getAttribute('data-next-quantity') || 1));
 
       const url = el.getAttribute('data-next-url');
       if (!url) return;
       el.setAttribute('aria-busy', 'true');
       el.classList.add('next-loading');
-      navigate(nextUrl(url, new URL(location.href), b.engine.getState().params));
+      navigate(nextUrl(url, new URL(location.href), b.engine.getState().visit.params));
     });
   });
   return [];

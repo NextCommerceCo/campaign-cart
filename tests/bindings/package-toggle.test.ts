@@ -43,10 +43,10 @@ describe('order bump', () => {
     document.body.innerHTML = html;
     const { engine } = makeEngine();
     await engine.load();
-    await engine.addItem(9);
+    await engine.cart.addItem(9);
     bindAll(document, engine, vi.fn());
     await flush();
-    expect(engine.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
     expect(document.querySelector('#bump')!.classList.contains('next-in-cart')).toBe(true);
   });
 
@@ -60,9 +60,18 @@ describe('order bump', () => {
     await flush();
     await flush();
     expect(engine.getState().cart.groups['toggle:9']?.lines).toEqual([{ packageId: 9, quantity: 1 }]);
-    await engine.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 3 }], vouchers: [] });
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 3 }], vouchers: [] });
     await flush();
     expect(engine.getState().cart.groups['toggle:9']?.lines).toEqual([{ packageId: 9, quantity: 3 }]);
     expect($('#bump-price').textContent).toBe('$27.00');
+  });
+
+  it('sends a bump marked data-next-is-upsell as an upsell line', async () => {
+    const { engine, $ } = await mount(
+      `<div id="bump" data-next-toggle-card data-next-package-id="9" data-next-is-upsell="true"></div>`,
+    );
+    $('#bump').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1, is_upsell: true }]);
   });
 });

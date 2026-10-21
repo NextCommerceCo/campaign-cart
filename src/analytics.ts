@@ -1,4 +1,5 @@
-import { type Engine, mergeLines } from './engine/engine';
+import { mergeLines } from './engine/cart';
+import type { Engine } from './engine/engine';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -98,7 +99,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     'ready',
     (e) => {
       baseline = e.data.lines;
-      send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.lines()) });
+      send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
       const ids = [
         ...new Set(
           [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
@@ -154,7 +155,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   engine.on(
     'cart.calculated',
-    () => baseline && send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: ecommerce(engine.lines()) }),
+    () => baseline && send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) }),
     { replay: true },
   );
 

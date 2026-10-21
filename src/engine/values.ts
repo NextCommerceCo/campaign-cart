@@ -124,7 +124,7 @@ function linesValue(engine: Engine, lines: CartLine[], prop: string, selected: b
 function cartValue(state: State, engine: Engine, prop: string): Value | undefined {
   const { cart } = state;
   const summary = cart.summary;
-  const lines = engine.lines();
+  const lines = engine.cart.lines();
   const units = lines.reduce((n, l) => n + (engine.getPackage(l.package_id)?.qty ?? 1) * l.quantity, 0);
   const subtotal = summary ? cents(summary.subtotal) : undefined;
   const discount = summary ? cents(summary.total_discount) : 0;
@@ -220,7 +220,7 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
     case 'campaign':
       return { type: 'text', value: state.campaign?.[second as 'name' | 'currency' | 'language'] };
     case 'param':
-      return { type: 'text', value: state.params[parts.slice(1).join('.')] };
+      return { type: 'text', value: state.visit.params[parts.slice(1).join('.')] };
     case 'package': {
       const explicit = /^\d+$/.test(second);
       const id = explicit ? Number(second) : ctx.packageId;
@@ -306,7 +306,7 @@ export function cartTokens(engine: Engine): Tokens {
   const shipping = s?.shipping_method;
   const free = !!shipping && cents(shipping.price) === 0;
   const discounted = !!shipping && cents(shipping.original_price) > cents(shipping.price);
-  const lines = engine.lines();
+  const lines = engine.cart.lines();
   return {
     subtotal: m(s?.subtotal),
     total: m(s?.total),

@@ -43,9 +43,9 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close('dismissed');
 
   const show = () => {
-    const shown = engine.readSession<number>('exit-intent') ?? 0;
+    const shown = engine.getState().visit.exitIntentShown;
     if (open.length || shown >= o.maxTriggers) return;
-    engine.writeSession('exit-intent', shown + 1);
+    engine.noteExitIntentShown();
 
     const overlay = Object.assign(document.createElement('div'), { className: 'exit-intent-overlay' });
     overlay.dataset.exitIntent = 'overlay';
@@ -63,7 +63,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
         button.addEventListener('click', async () => {
           const action = button.dataset.exitIntentAction;
           const couponCode = button.dataset.couponCode;
-          if (action === 'apply-coupon' && couponCode) await engine.applyCoupon(couponCode);
+          if (action === 'apply-coupon' && couponCode) await engine.cart.applyCoupon(couponCode);
           if (action === 'custom') await o.action?.();
           emit('action', { action, couponCode });
           close();

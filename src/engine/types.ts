@@ -68,6 +68,15 @@ export interface CartSummary {
 export interface CartLine {
   packageId: number;
   quantity: number;
+  isUpsell?: boolean;
+  properties?: Record<string, string>;
+}
+
+export interface ApiLine {
+  package_id: number;
+  quantity: number;
+  is_upsell?: boolean;
+  properties?: Record<string, string>;
 }
 
 export interface CartGroup {
@@ -84,12 +93,17 @@ export interface CartState {
   calculating: boolean;
 }
 
+export interface VisitState {
+  params: Record<string, string>;
+  landing?: Visit;
+  exitIntentShown: number;
+}
+
 export interface State {
-  visit?: Visit;
   campaign?: Campaign;
   cart: CartState;
   selections: Record<string, string>;
-  params: Record<string, string>;
+  visit: VisitState;
 }
 
 export interface ExitIntentDetail {
@@ -104,7 +118,7 @@ export interface EventMap {
   'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
   'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };
-  ready: { lines: Array<{ package_id: number; quantity: number }> };
+  ready: { lines: ApiLine[] };
   'exit-intent.shown': ExitIntentDetail;
   'exit-intent.clicked': ExitIntentDetail;
   'exit-intent.dismissed': ExitIntentDetail;

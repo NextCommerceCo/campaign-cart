@@ -1,4 +1,12 @@
-export const ONE_SHOT_PARAMS = ['reset', 'forcePackageId', 'debug', 'debugger', 'payment_failed'];
+export const ONE_SHOT_PARAMS = [
+  'reset',
+  'forcePackageId',
+  'debug',
+  'debugger',
+  'payment_failed',
+  'ref_id',
+  'order_ref_id',
+];
 
 const ATTRIBUTION =
   /^(utm_\w+|gclid|gbraid|wbraid|fbclid|ttclid|msclkid|clickid|evclid|affid|aff|sub\d|subaffiliate\d|funnel|currency)$/;

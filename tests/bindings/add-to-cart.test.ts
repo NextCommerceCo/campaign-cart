@@ -13,9 +13,9 @@ describe('add to cart', () => {
       { params: { utm_source: 'fb', forcePackageId: '2' } },
     );
     $('#buy').click();
-    expect(engine.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
     expect(navigate).toHaveBeenCalledWith(`${location.origin}/checkout?utm_source=fb`);
     $('#buy').click();
-    expect(engine.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
   });
 });

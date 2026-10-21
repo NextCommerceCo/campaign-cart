@@ -1,9 +1,4 @@
-import type { CartSummary, Send } from './types';
-
-export interface ApiLine {
-  package_id: number;
-  quantity: number;
-}
+import type { ApiLine, CartSummary, Send } from './types';
 
 export class ApiError extends Error {
   constructor(

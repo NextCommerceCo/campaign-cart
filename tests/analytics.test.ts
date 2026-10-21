@@ -90,12 +90,12 @@ describe('analytics', () => {
   it('turns cart changes after ready into add, swap, remove and cart-updated events', async () => {
     const engine = await ready();
     const error = vi.spyOn(console, 'error');
-    await engine.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
-    engine.events.emit('ready', { lines: engine.lines() });
-    await engine.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
-    await engine.setGroup('bundle:main', { lines: [{ packageId: 2, quantity: 1 }], vouchers: [] });
-    await engine.setGroup('toggle:9', null);
+    engine.events.emit('ready', { lines: engine.cart.lines() });
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 2, quantity: 1 }], vouchers: [] });
+    await engine.cart.setGroup('toggle:9', null);
     await flush();
     expect(names()).toEqual([
       'dl_user_data',

@@ -22,8 +22,13 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       }
       return qty;
     };
-    const add = () => engine.setGroup(group, { lines: [{ packageId, quantity: quantity() }], vouchers: [] });
-    const isOn = () => engine.lines().some((l) => l.package_id === packageId);
+    const isUpsell = el.getAttribute('data-next-is-upsell') === 'true';
+    const add = () =>
+      engine.cart.setGroup(group, {
+        lines: [{ packageId, quantity: quantity(), ...(isUpsell && { isUpsell }) }],
+        vouchers: [],
+      });
+    const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
 
     const { cart } = engine.getState();
     if (el.getAttribute('data-next-selected') === 'true' && !isOn() && !cart.dismissed.includes(group)) void add();
@@ -31,8 +36,8 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
     el.addEventListener('click', (e) => {
       if (isFormControl(e.target)) return;
       if (!isOn()) void add();
-      else if (engine.getState().cart.groups[group]) void engine.setGroup(group, null, { dismiss: true });
-      else void engine.removeItem(packageId);
+      else if (engine.getState().cart.groups[group]) void engine.cart.setGroup(group, null, { dismiss: true });
+      else void engine.cart.removeItem(packageId);
     });
 
     if (sync.length) {

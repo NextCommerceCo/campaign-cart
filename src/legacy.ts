@@ -58,15 +58,15 @@ export interface LegacyApi {
 export function legacyApi(engine: Engine): LegacyApi {
   const products = (lines: CartLine[]) => ({ lines, vouchers: [] });
   return {
-    addItem: ({ packageId, quantity = 1 }) => engine.addItem(packageId, quantity),
-    clearCart: () => engine.setGroups({}),
-    swapCart: (items) => engine.setGroups({ items: products(items) }),
-    applyCoupon: (code) => engine.applyCoupon(code),
+    addItem: ({ packageId, quantity = 1 }) => engine.cart.addItem(packageId, quantity),
+    clearCart: () => engine.cart.setGroups({}),
+    swapCart: (items) => engine.cart.setGroups({ items: products(items) }),
+    applyCoupon: (code) => engine.cart.applyCoupon(code),
     getPackage: (id) => engine.getPackage(id),
     getCampaignData: () => engine.getState().campaign,
     getCartData: () => {
       const { cart, campaign } = engine.getState();
-      const lines = engine.lines().map((l) => {
+      const lines = engine.cart.lines().map((l) => {
         const pkg = engine.getPackage(l.package_id);
         const line = cart.summary?.lines.find((s) => s.package_id === l.package_id);
         return {

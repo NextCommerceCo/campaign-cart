@@ -44,8 +44,8 @@ afterEach(() => {
 describe('cart summary', () => {
   it('fills totals, lines and discounts from the server summary', async () => {
     const { engine, $, $$ } = await setup(SUMMARY);
-    await engine.addItem(2);
-    await engine.applyCoupon('save10');
+    await engine.cart.addItem(2);
+    await engine.cart.applyCoupon('save10');
     await flush();
     expect($('.subtotal').textContent).toBe('$89.00');
     expect($('.total').textContent).toBe('$79.00');
@@ -64,7 +64,7 @@ describe('cart summary', () => {
   it('writes server text as text, never as HTML', async () => {
     const { engine, $ } = await setup(SUMMARY);
     engine.getState().campaign!.packages[0]!.name = '<img src=x onerror=alert(1)>';
-    await engine.addItem(1);
+    await engine.cart.addItem(1);
     await flush();
     expect($('.title').textContent).toBe('1x <img src=x onerror=alert(1)>');
     expect(document.querySelector('.title img')).toBeNull();
@@ -78,14 +78,14 @@ describe('cart summary', () => {
 
   it('changes quantity from controls inside rendered lines', async () => {
     const { engine, $ } = await setup(SUMMARY);
-    await engine.addItem(1);
+    await engine.cart.addItem(1);
     await flush();
     $('[data-next-quantity="increase"]').click();
     await flush();
-    expect(engine.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
     $('[data-next-quantity="decrease"]').click();
     $('[data-next-quantity="decrease"]').click();
     await flush();
-    expect(engine.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
   });
 });

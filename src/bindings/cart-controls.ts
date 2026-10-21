@@ -16,14 +16,14 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
       const packageId = packageIdOf(el);
       if (!packageId) return b.warn('quantity control without data-package-id');
       e.preventDefault();
-      const current = engine.lines().find((l) => l.package_id === packageId)?.quantity ?? 0;
+      const current = engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0;
       const step = Number(el.getAttribute('data-step') || 1);
       const min = Number(el.getAttribute('data-min') ?? 1);
       const max = Number(el.getAttribute('data-max') || Infinity);
-      if (el.hasAttribute('data-next-remove-item')) void engine.removeItem(packageId);
+      if (el.hasAttribute('data-next-remove-item')) void engine.cart.removeItem(packageId);
       else if (el.getAttribute('data-next-quantity') === 'increase')
-        void engine.setQuantity(packageId, Math.min(max, current + step));
-      else void engine.setQuantity(packageId, Math.max(min, current - step));
+        void engine.cart.setQuantity(packageId, Math.min(max, current + step));
+      else void engine.cart.setQuantity(packageId, Math.max(min, current - step));
     });
   }
 
@@ -33,7 +33,7 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
     if (!input) return b.warn('data-next-coupon needs an <input>');
     const apply = () => {
       if (!input.value.trim()) return;
-      void engine.applyCoupon(input.value);
+      void engine.cart.applyCoupon(input.value);
       input.value = '';
       button?.classList.add('next-disabled');
     };

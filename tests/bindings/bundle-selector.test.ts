@@ -13,7 +13,7 @@ describe('bundle selector', () => {
   it('puts the pre-selected card in the cart', async () => {
     const { engine, $ } = await mount(SELECTOR);
     expect(engine.getState().selections.main).toBe('two');
-    expect(engine.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
     expect($('[data-next-bundle-id="two"]').classList.contains('next-selected')).toBe(true);
     expect($('#total').textContent).toBe('$89.00');
     expect($('#pick').textContent).toBe('$89.00');
@@ -26,7 +26,7 @@ describe('bundle selector', () => {
     await flush();
     $('[data-next-bundle-id="one"]').click();
     await flush();
-    expect(engine.lines()).toEqual([
+    expect(engine.cart.lines()).toEqual([
       { package_id: 1, quantity: 1 },
       { package_id: 9, quantity: 1 },
     ]);
@@ -49,11 +49,11 @@ describe('bundle selector', () => {
         'data-next-selector-id="main" data-next-selection-mode="select"',
       ),
     );
-    expect(select.engine.lines()).toEqual([]);
+    expect(select.engine.cart.lines()).toEqual([]);
     expect(select.engine.getState().selections.main).toBe('two');
     const upsell = await mount(
       `<div data-next-upsell="offer"></div>${SELECTOR.replace(/<div data-next-toggle-container>[\s\S]*?<\/div>\s*<\/div>/, '')}`,
     );
-    expect(upsell.engine.lines()).toEqual([]);
+    expect(upsell.engine.cart.lines()).toEqual([]);
   });
 });

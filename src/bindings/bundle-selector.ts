@@ -13,8 +13,8 @@ const sameLines = (a: Card['lines'], b: Card['lines']) => {
 };
 
 export function putInCart(b: BindContext, card: Card): void {
-  void b.engine.setGroup(bundleGroup(card.selectorId), { lines: card.lines, vouchers: card.vouchers });
-  if (card.shippingId) void b.engine.setShipping(card.shippingId);
+  void b.engine.cart.setGroup(bundleGroup(card.selectorId), { lines: card.lines, vouchers: card.vouchers });
+  if (card.shippingId) void b.engine.cart.setShipping(card.shippingId);
 }
 
 export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] {

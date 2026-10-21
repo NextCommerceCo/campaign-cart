@@ -107,8 +107,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const forced = parseForcePackages(params.get('forcePackageId'));
   if (forced.length) {
-    void engine.clear();
-    void engine.setGroup('items', { lines: forced, vouchers: [] });
+    void engine.cart.clear();
+    void engine.cart.setGroup('items', { lines: forced, vouchers: [] });
   }
 
   const bindings = bindAll(document, engine);
@@ -127,13 +127,13 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     getState: () => engine.getState(),
     bind: (root) => bindings.bind(root),
     actions: {
-      addItem: (packageId, quantity) => engine.addItem(packageId, quantity),
-      removeItem: (packageId) => engine.removeItem(packageId),
-      setQuantity: (packageId, quantity) => engine.setQuantity(packageId, quantity),
-      clear: () => engine.clear(),
-      applyCoupon: (code) => engine.applyCoupon(code),
-      removeCoupon: (code) => engine.removeCoupon(code),
-      setShipping: (shippingId) => engine.setShipping(shippingId),
+      addItem: (packageId, quantity) => engine.cart.addItem(packageId, quantity),
+      removeItem: (packageId) => engine.cart.removeItem(packageId),
+      setQuantity: (packageId, quantity) => engine.cart.setQuantity(packageId, quantity),
+      clear: () => engine.cart.clear(),
+      applyCoupon: (code) => engine.cart.applyCoupon(code),
+      removeCoupon: (code) => engine.cart.removeCoupon(code),
+      setShipping: (shippingId) => engine.cart.setShipping(shippingId),
     },
     ...legacyApi(engine),
   };
@@ -144,7 +144,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     ready = true;
     bindings.render();
     html.setAttribute('data-next-ready', '');
-    engine.events.emit('ready', { lines: engine.lines() });
+    engine.events.emit('ready', { lines: engine.cart.lines() });
     announceLegacyReady(next);
     const analytics = legacyAnalytics();
     if (analytics.enabled) {

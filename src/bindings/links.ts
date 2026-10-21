@@ -10,7 +10,7 @@ export function bindLinks(root: ParentNode, b: BindContext): Render[] {
     if (!href || href.startsWith('#') || /^(javascript|mailto|tel|sms|whatsapp):/i.test(href)) return;
     const current = new URL(location.href);
     if (new URL(href, current).origin !== current.origin) return;
-    link.href = nextUrl(href, current, b.engine.getState().params);
+    link.href = nextUrl(href, current, b.engine.getState().visit.params);
   });
   return [];
 }
