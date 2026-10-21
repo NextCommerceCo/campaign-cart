@@ -138,6 +138,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const orderPage = document.querySelector(ORDER_MARKUP);
   const orderChunk = orderPage ? import('./order') : undefined;
+  if (document.querySelector('[data-next-accordion], [data-next-tooltip]'))
+    void import('./widgets').then((m) => m.bindWidgets());
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
   const slotsChunk = slotsPage ? import('./slots') : undefined;
 

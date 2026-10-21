@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const LAZY = ['analytics', 'exit-intent', 'checkout', 'order', 'slots', 'debug'];
+const LAZY = ['analytics', 'exit-intent', 'checkout', 'order', 'slots', 'widgets', 'debug'];
 const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules'];
 const BROWSER_GLOBALS =
   /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
@@ -14,6 +14,7 @@ const ALLOWED: Record<string, string[]> = {
   order: ['engine', 'order', 'bindings/context', 'bindings/dom'],
   analytics: ['engine'],
   slots: ['engine', 'bindings/dom'],
+  widgets: [],
   'exit-intent': ['engine'],
   debug: ['engine'],
   core: ['engine', 'bindings', 'legacy'],

@@ -31,3 +31,12 @@ This page lists what changes for a page builder.
 | `dl_upsell_purchase` queued in sessionStorage and sent on the next page                                                                 | Sent on the next page from the order's own lines; nothing is queued                                          |
 | `dl_purchase` `user_properties` with the customer's email, name and address                                                             | Without personal data; the order id and items are unchanged                                                  |
 | `order.*` display paths, `[data-next-order-items]` with `{item.*}` tokens                                                               | The paths and tokens live pages use, unchanged                                                               |
+
+## Page widgets
+
+| 0.4.x                                                                                                                                   | Now                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `data-next-accordion` (+ `-trigger`, `-panel`, `-text`, `data-open-text`, `data-close-text`, `data-toggle-class`, `data-initial-state`) | Unchanged, in a small chunk loaded only where it is used                                                   |
+| `data-next-tooltip` (+ `-delay`, `-offset`, `-max-width`, `-class`)                                                                     | Unchanged look; placed above (or below when there is no room) without floating-ui. `-placement` is ignored |
+| `data-next-i18n` (apollo-multi-variant only)                                                                                            | **Removed.** It could replace page copy with the service's text; pages keep their own words                |
+| `data-next-include-shipping`                                                                                                            | Ignored, as it was in practice: 0.4.x never sent it to the API                                             |
