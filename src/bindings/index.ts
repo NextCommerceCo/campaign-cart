@@ -37,16 +37,7 @@ export function bindAll(
 
   const render = () => renders.forEach((r) => r());
 
-  let queued = false;
-  engine.on('*', () => {
-    if (queued) return;
-    queued = true;
-    queueMicrotask(() => {
-      queued = false;
-      render();
-    });
-  });
-
+  engine.subscribe(render);
   bind(root);
   render();
 

@@ -43,10 +43,7 @@ export function createCart(ctx: Context) {
     return [...all];
   };
 
-  const set = (patch: Partial<CartState>) => {
-    ctx.update('cart', patch);
-    ctx.emit('cart.updated', { cart: state() });
-  };
+  const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
 
   const calculate = async (): Promise<void> => {
     const current = ++seq;
@@ -86,6 +83,7 @@ export function createCart(ctx: Context) {
       ...(!hasLines && { summary: undefined }),
       calculating: hasLines && !!ctx.getState().campaign,
     });
+    ctx.emit('cart.updated', { cart: state() });
     return recalculate();
   };
 

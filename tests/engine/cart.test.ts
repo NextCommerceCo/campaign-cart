@@ -38,13 +38,16 @@ describe('cart', () => {
     expect(engine.getState().cart.summary).toBeUndefined();
     expect(engine.getState().cart.calculating).toBe(false);
   });
-  it('reports calculating through cart.updated', async () => {
+  it('shows calculating in state, and keeps cart.updated for changes the shopper made', async () => {
     const { engine } = makeEngine();
     await engine.load();
-    const seen: boolean[] = [];
-    engine.on('cart.updated', (e) => seen.push((e.data as { cart: { calculating: boolean } }).cart.calculating));
-    await engine.cart.addItem(1);
-    expect(seen).toEqual([true, false]);
+    const updated: boolean[] = [];
+    engine.on('cart.updated', (e) => updated.push(e.data.cart.calculating));
+    const pending = engine.cart.addItem(1);
+    expect(engine.getState().cart.calculating).toBe(true);
+    await pending;
+    expect(engine.getState().cart.calculating).toBe(false);
+    expect(updated).toEqual([true]);
   });
   it('swaps one group without touching another', async () => {
     const { engine } = makeEngine();
