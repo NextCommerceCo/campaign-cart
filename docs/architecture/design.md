@@ -75,7 +75,8 @@ campaigns already use are kept, so templates need no edits.
 | Order bump | `data-next-toggle-card` · `data-next-toggle-display` · `data-next-package-sync` | built |
 | Add to cart | `data-next-action="add-to-cart"` · `data-next-url` | built |
 | Start a cart from a link | `?forcePackageId=2:1` | built |
-| Cart lines, coupon, quantity | `data-next-cart-summary` · `data-next-coupon` · `data-next-quantity` | next |
+| Cart summary and lines | `data-next-cart-summary` with `{subtotal}` `{item.*}` tokens · `data-summary-lines` · `data-next-discounts` | built |
+| Coupon, quantity | `data-next-coupon` · `data-next-quantity="increase\|decrease"` · `data-next-remove-item` | built |
 | Checkout form, payment, address | `data-next-checkout` · `data-next-checkout-field` · `data-next-payment-method` | next |
 | Upsell, receipt | `data-next-upsell` · `data-next-upsell-action` · `order.*` | next |
 

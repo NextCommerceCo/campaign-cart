@@ -1,6 +1,8 @@
 import type { Engine } from '../engine/engine';
 import { bindAddToCart } from './add-to-cart';
 import { bindBundleSelectors } from './bundle-selector';
+import { bindCartControls } from './cart-controls';
+import { bindCartSummary } from './cart-summary';
 import { BindContext, type Render } from './context';
 import { bindDisplay } from './display';
 import { bindPackageToggles } from './package-toggle';
@@ -23,6 +25,8 @@ export function bindAll(
       ...bindBundleSelectors(node, context),
       ...bindPackageToggles(node, context),
       ...bindAddToCart(node, context, navigate),
+      ...bindCartControls(node, context),
+      ...bindCartSummary(node, context),
       ...bindDisplay(node, context),
     ];
     renders.push(...added);

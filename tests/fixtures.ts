@@ -45,9 +45,24 @@ export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = 
     const subtotal = lines.reduce((n, l) => n + Number(campaign.packages.find((p) => p.ref_id === l.package_id)!.price_total) * l.quantity, 0);
     const discount = (body.vouchers as string[]).includes('SAVE10') ? 10 : 0;
     const summary: CartSummary = {
-      lines: [],
+      lines: lines.map((l) => {
+        const p = campaign.packages.find((x) => x.ref_id === l.package_id)!;
+        const total = (Number(p.price_total) * l.quantity).toFixed(2);
+        return {
+          package_id: l.package_id,
+          quantity: l.quantity,
+          unit_price: p.price,
+          original_unit_price: p.price_retail ?? p.price,
+          package_price: p.price_total,
+          original_package_price: p.price_retail_total ?? p.price_total,
+          subtotal: total,
+          total_discount: '0.00',
+          total,
+          discounts: [],
+        };
+      }),
       offer_discounts: [],
-      voucher_discounts: discount ? [{ name: 'SAVE10', amount: '10.00' }] : [],
+      voucher_discounts: discount ? [{ name: 'SAVE10', description: 'SAVE10', amount: '10.00', percentage: '10.00' }] : [],
       subtotal: subtotal.toFixed(2),
       total_discount: discount.toFixed(2),
       total: (subtotal - discount).toFixed(2),

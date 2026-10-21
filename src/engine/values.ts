@@ -1,5 +1,5 @@
 import type { Engine } from './engine';
-import type { CartLine, Package, State } from './types';
+import type { CartLine, Discount, Package, State, SummaryLine } from './types';
 
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 
@@ -202,4 +202,77 @@ export function truthy(v: Value | undefined): boolean {
   if (typeof v.value === 'boolean') return v.value;
   if (typeof v.value === 'number') return v.value !== 0;
   return v.value !== '' && v.value !== 'false' && v.value !== '0';
+}
+
+export type Tokens = Record<string, string>;
+
+export function cartTokens(engine: Engine): Tokens {
+  const { cart, campaign } = engine.getState();
+  const s = cart.summary;
+  const currency = s?.currency ?? campaign?.currency;
+  const locale = campaign?.language;
+  const m = (amount: string | undefined) => (s ? format(money(cents(amount)), currency, locale) : '');
+  const shipping = s?.shipping_method;
+  const free = !!shipping && cents(shipping.price) === 0;
+  const discounted = !!shipping && cents(shipping.original_price) > cents(shipping.price);
+  const lines = engine.lines();
+  return {
+    subtotal: m(s?.subtotal),
+    total: m(s?.total),
+    shipping: free ? 'Free' : m(shipping?.price),
+    shippingName: shipping?.name ?? '',
+    shippingCode: shipping?.code ?? '',
+    shippingOriginal: discounted ? m(shipping?.original_price) : '',
+    totalDiscount: m(s?.total_discount),
+    discounts: m(s?.total_discount),
+    totalDiscountPercentage: s ? format(pct(cents(s.total_discount), cents(s.subtotal)), currency, locale) : '',
+    currency: currency ?? '',
+    isCalculating: String(cart.calculating),
+    isEmpty: String(!lines.length),
+    itemCount: String(lines.length),
+    totalQuantity: String(lines.reduce((n, l) => n + l.quantity, 0)),
+    isFreeShipping: String(free),
+    hasShippingDiscount: String(discounted),
+    hasDiscounts: String(!!s && cents(s.total_discount) > 0),
+  };
+}
+
+export function lineTokens(engine: Engine, line: SummaryLine, currency: string | undefined): Tokens {
+  const pkg = engine.getPackage(line.package_id);
+  const locale = engine.getState().campaign?.language;
+  const m = (amount: string) => format(money(cents(amount)), currency, locale);
+  const unit = cents(line.unit_price);
+  const original = cents(line.original_unit_price);
+  const tokens: Tokens = {
+    packageId: String(line.package_id),
+    name: pkg?.name ?? '',
+    image: pkg?.image ?? '',
+    quantity: String(line.quantity),
+    variantName: pkg?.product_variant_name ?? '',
+    productName: pkg?.product_name ?? '',
+    sku: pkg?.product_sku ?? '',
+    price: m(line.total),
+    originalPrice: m(line.subtotal),
+    unitPrice: m(line.unit_price),
+    originalUnitPrice: m(line.original_unit_price),
+    discountAmount: m(line.total_discount),
+    discountPercentage: format(pct(Math.max(0, original - unit), original), currency, locale),
+    hasDiscount: cents(line.total_discount) > 0 ? 'show' : 'hide',
+    currency: currency ?? '',
+  };
+  return Object.fromEntries(
+    Object.entries(tokens).flatMap(([k, v]) => [
+      [`item.${k}`, v],
+      [`line.${k}`, v],
+    ]),
+  );
+}
+
+export function discountTokens(discount: Discount, currency: string | undefined, locale?: string): Tokens {
+  return {
+    'discount.name': discount.name ?? '',
+    'discount.description': discount.description ?? '',
+    'discount.amount': format(money(cents(discount.amount)), currency, locale),
+    'discount.percentage': discount.percentage ? format({ type: 'percent', value: Number(discount.percentage) }, currency, locale) : '',
+  };
 }

@@ -9,6 +9,9 @@ export interface Package {
   qty: number;
   image: string;
   is_recurring: boolean;
+  product_name?: string;
+  product_variant_name?: string;
+  product_sku?: string | null;
 }
 
 export interface ShippingOption {
@@ -30,6 +33,7 @@ export interface Discount {
   offer_id?: number;
   name?: string;
   description?: string;
+  percentage?: string;
   amount: string;
 }
 
@@ -37,6 +41,7 @@ export interface SummaryLine {
   package_id: number;
   quantity: number;
   unit_price: string;
+  original_unit_price: string;
   package_price: string;
   original_package_price: string;
   subtotal: string;
