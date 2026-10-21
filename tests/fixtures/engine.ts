@@ -13,6 +13,7 @@ export interface MakeEngine {
   params?: Record<string, string>;
   visit?: Visit;
   now?: () => number;
+  reset?: boolean;
 }
 
 export function makeEngine(opts: MakeEngine = {}) {
@@ -29,6 +30,7 @@ export function makeEngine(opts: MakeEngine = {}) {
     params: opts.params,
     visit: opts.visit,
     now: opts.now,
+    reset: opts.reset,
   });
   return { engine, api, local, session };
 }

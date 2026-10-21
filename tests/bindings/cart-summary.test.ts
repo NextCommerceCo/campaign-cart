@@ -28,7 +28,7 @@ const SUMMARY = `
 async function setup(html: string) {
   document.body.innerHTML = html;
   const { engine } = makeEngine();
-  await engine.load();
+  await engine.start();
   bindAll(document, engine, vi.fn());
   return {
     engine,

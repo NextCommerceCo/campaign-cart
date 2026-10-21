@@ -2,7 +2,7 @@ import { Api } from './api';
 import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart';
 import { type EngineEvent, Events } from './events';
-import { keptParams } from './params';
+import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './selectors';
 import { StorageAdapter } from './storage';
 import type { Campaign, EventMap, EventName, Package, Send, State } from './types';
@@ -18,6 +18,7 @@ export interface EngineOptions {
   params?: Record<string, string>;
   visit?: Visit;
   funnel?: string;
+  reset?: boolean;
   now?: () => number;
 }
 
@@ -42,6 +43,7 @@ export class Engine {
   private local: StorageAdapter;
   private listeners = new Set<() => void>();
   private notifying = false;
+  private ready = false;
 
   constructor(private options: EngineOptions) {
     this.api = new Api(options.apiKey, options.send, options.apiBase);
@@ -70,6 +72,23 @@ export class Engine {
     };
     this.cart = createCart(context);
     this.selectors = createSelectors(context, this.cart);
+
+    if (options.reset) {
+      this.session.clear();
+      this.local.clear();
+    }
+    this.restore();
+    const forced = parseForcePackages(options.params?.forcePackageId);
+    if (forced.length) {
+      void this.cart.clear();
+      void this.cart.setGroup('items', { lines: forced, vouchers: [] });
+    }
+  }
+
+  async start(): Promise<void> {
+    this.markReady();
+    await this.load();
+    this.markReady();
   }
 
   getState(): Readonly<State> {
@@ -94,7 +113,11 @@ export class Engine {
     return buildAttribution(visit.params, visit.landing, this.options.funnel || campaign?.name);
   }
 
-  restore(): boolean {
+  noteExitIntentShown(): void {
+    this.update('visit', { exitIntentShown: this.state.visit.exitIntentShown + 1 });
+  }
+
+  private restore(): void {
     const cart = this.session.get<Partial<State['cart']>>('cart');
     const visit = this.session.get<Partial<State['visit']>>('visit');
     const campaign = this.local.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
@@ -105,10 +128,9 @@ export class Engine {
       exitIntentShown: visit?.exitIntentShown ?? 0,
     });
     if (campaign) this.events.emit('campaign.loaded', { campaign, fromCache: true });
-    return !!campaign;
   }
 
-  async load(): Promise<void> {
+  private async load(): Promise<void> {
     let campaign: Campaign;
     try {
       campaign = await this.options.campaign;
@@ -121,13 +143,10 @@ export class Engine {
     this.selectors.campaignLoaded();
   }
 
-  noteExitIntentShown(): void {
-    this.update('visit', { exitIntentShown: this.state.visit.exitIntentShown + 1 });
-  }
-
-  reset(): void {
-    this.session.clear();
-    this.local.clear();
+  private markReady(): void {
+    if (this.ready || !this.state.campaign) return;
+    this.ready = true;
+    this.events.emit('ready', { lines: this.cart.lines() });
   }
 
   private update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>): void {

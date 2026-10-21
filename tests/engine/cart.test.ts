@@ -8,7 +8,7 @@ const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouch
 describe('cart', () => {
   it('coalesces changes in one tick into one calculate request with the key header', async () => {
     const { engine, api } = makeEngine();
-    await engine.load();
+    await engine.start();
     void engine.cart.addItem(1);
     void engine.cart.setGroup('bundle:main', { lines: [{ packageId: 9, quantity: 1 }], vouchers: ['save10'] });
     await engine.cart.applyCoupon(' save10 ');
@@ -20,7 +20,7 @@ describe('cart', () => {
   it('never lets an older response overwrite a newer one', async () => {
     const api = fakeApi({ delays: [40, 5], ignoreAbort: true });
     const { engine } = makeEngine({ fetch: api.fetch });
-    await engine.load();
+    await engine.start();
     void engine.cart.addItem(1);
     await flush();
     void engine.cart.addItem(9);
@@ -30,7 +30,7 @@ describe('cart', () => {
   it('does not bring a summary back when the cart is emptied mid-request', async () => {
     const api = fakeApi({ delays: [20] });
     const { engine } = makeEngine({ fetch: api.fetch });
-    await engine.load();
+    await engine.start();
     void engine.cart.setGroup('toggle:9', toggle(9));
     await flush();
     void engine.cart.setGroup('toggle:9', null, { dismiss: true });
@@ -40,7 +40,7 @@ describe('cart', () => {
   });
   it('shows calculating in state, and keeps cart.updated for changes the shopper made', async () => {
     const { engine } = makeEngine();
-    await engine.load();
+    await engine.start();
     const updated: boolean[] = [];
     engine.on('cart.updated', (e) => updated.push(e.data.cart.calculating));
     const pending = engine.cart.addItem(1);
@@ -51,7 +51,7 @@ describe('cart', () => {
   });
   it('swaps one group without touching another', async () => {
     const { engine } = makeEngine();
-    await engine.load();
+    await engine.start();
     await engine.cart.setGroup('bundle:main', toggle(1));
     await engine.cart.setGroup('toggle:9', toggle(9));
     await engine.cart.setGroup('bundle:main', toggle(2));
@@ -77,7 +77,7 @@ describe('cart', () => {
       ],
       vouchers: [],
     });
-    await engine.load();
+    await engine.start();
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
     expect(errors).toHaveLength(1);
@@ -101,7 +101,7 @@ describe('cart', () => {
   });
   it('keeps working in memory when every storage is blocked', async () => {
     const { engine } = makeEngine({ local: new MemoryStorage('always'), session: new MemoryStorage('always') });
-    await engine.load();
+    await engine.start();
     await engine.cart.addItem(1);
     expect(engine.getState().cart.summary?.total).toBe('49.00');
   });
@@ -110,7 +110,7 @@ describe('cart', () => {
     const { engine } = makeEngine({ fetch: failing });
     const errors: Array<{ message: string }> = [];
     engine.on('error', (e) => errors.push(e.data as { message: string }));
-    await engine.load();
+    await engine.start();
     await engine.cart.addItem(1);
     expect(errors[0]!.message).toContain('502');
     expect(engine.getState().cart.calculating).toBe(false);
@@ -118,7 +118,7 @@ describe('cart', () => {
 
   it('keeps lines with different properties or an upsell flag apart, and sends them', async () => {
     const { engine, api } = makeEngine();
-    await engine.load();
+    await engine.start();
     await engine.cart.setGroups({
       a: { lines: [{ packageId: 1, quantity: 1, properties: { engraving: 'Ann' } }], vouchers: [] },
       b: { lines: [{ packageId: 1, quantity: 1, properties: { engraving: 'Bob' } }], vouchers: [] },

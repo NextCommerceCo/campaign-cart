@@ -44,12 +44,10 @@ describe('attribution', () => {
       session: store,
       visit: { landingPage: 'https://shop.test/lp', referrer: 'r', device: 'UA', deviceType: 'desktop' },
     }).engine;
-    first.restore();
     const second = makeEngine({
       session: store,
       visit: { landingPage: 'https://shop.test/checkout', referrer: '', device: 'UA', deviceType: 'desktop' },
     }).engine;
-    second.restore();
     expect(second.attribution().metadata.landing_page).toBe('https://shop.test/lp');
   });
 });

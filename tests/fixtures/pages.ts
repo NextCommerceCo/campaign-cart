@@ -28,8 +28,7 @@ export async function mount(
 ) {
   document.body.innerHTML = html;
   const made = makeEngine({ session: opts.session, fetch: opts.fetch, params: opts.params });
-  made.engine.restore();
-  await made.engine.load();
+  await made.engine.start();
   const navigate = vi.fn();
   const bindings = bindAll(document, made.engine, navigate);
   await flush();

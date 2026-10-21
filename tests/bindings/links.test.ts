@@ -8,8 +8,7 @@ async function ready(html = '', params: Record<string, string> = {}) {
     params,
     visit: { landingPage: 'https://shop.test/lp', referrer: '', device: 'UA', deviceType: 'desktop' },
   });
-  engine.restore();
-  await engine.load();
+  await engine.start();
   return engine;
 }
 

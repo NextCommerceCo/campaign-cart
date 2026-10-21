@@ -5,7 +5,7 @@ import { makeEngine } from '../fixtures/engine';
 describe('display values', () => {
   it('formats by type in the campaign currency', async () => {
     const { engine } = makeEngine();
-    await engine.load();
+    await engine.start();
     await engine.cart.addItem(2);
     expect(format(resolve(engine, 'cart.total')!, 'USD', 'en')).toBe('$89.00');
     expect(format(resolve(engine, 'cart.savingsPercentage')!, 'USD', 'en')).toBe('55%');

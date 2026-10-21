@@ -1,5 +1,6 @@
 import { mergeLines } from './engine/cart';
 import type { Engine } from './engine/engine';
+import type { CartState, EventMap } from './engine/types';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -95,67 +96,64 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   let baseline: Line[] | undefined;
 
-  engine.on(
-    'ready',
-    (e) => {
-      baseline = e.data.lines;
-      send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
-      const ids = [
-        ...new Set(
-          [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
-            Number(el.getAttribute('data-next-package-id')),
-          ),
+  const onReady = (lines: Line[]) => {
+    baseline = lines;
+    send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
+    const ids = [
+      ...new Set(
+        [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
+          Number(el.getAttribute('data-next-package-id')),
         ),
-      ];
-      const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
-      if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(viewed) });
-      if (viewed.length > 1) {
-        send('dl_view_item_list', {
-          ecommerce: { ...ecommerce(viewed), item_list_id: 'product_list', item_list_name: 'Product List' },
-        });
-      }
-    },
-    { replay: true },
-  );
+      ),
+    ];
+    const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
+    if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(viewed) });
+    if (viewed.length > 1) {
+      send('dl_view_item_list', {
+        ecommerce: { ...ecommerce(viewed), item_list_id: 'product_list', item_list_name: 'Product List' },
+      });
+    }
+  };
+
+  const onCartUpdated = (previous: Line[], cart: CartState) => {
+    const lines = mergeLines(cart.groups);
+    const before = new Map(previous.map((l) => [l.package_id, l.quantity]));
+    const after = new Map(lines.map((l) => [l.package_id, l.quantity]));
+    const added: Line[] = [];
+    const removed: Line[] = [];
+    for (const id of new Set([...before.keys(), ...after.keys()])) {
+      const diff = (after.get(id) ?? 0) - (before.get(id) ?? 0);
+      if (diff > 0) added.push({ package_id: id, quantity: diff });
+      if (diff < 0) removed.push({ package_id: id, quantity: -diff });
+    }
+    baseline = lines;
+    if (added.length && removed.length) {
+      const a = ecommerce(added);
+      const r = ecommerce(removed);
+      send('dl_package_swapped', {
+        ecommerce: {
+          currency: a.currency,
+          value_change: cents(a.value - r.value),
+          items_removed: r.items,
+          items_added: a.items,
+        },
+      });
+    } else if (added.length) {
+      send('dl_add_to_cart', { ecommerce: ecommerce(added) });
+    } else if (removed.length) {
+      send('dl_remove_from_cart', { ecommerce: ecommerce(removed) });
+    }
+  };
 
   engine.on(
-    'cart.updated',
+    '*',
     (e) => {
+      if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
-      const lines = mergeLines(e.data.cart.groups);
-      const before = new Map(baseline.map((l) => [l.package_id, l.quantity]));
-      const after = new Map(lines.map((l) => [l.package_id, l.quantity]));
-      const added: Line[] = [];
-      const removed: Line[] = [];
-      for (const id of new Set([...before.keys(), ...after.keys()])) {
-        const diff = (after.get(id) ?? 0) - (before.get(id) ?? 0);
-        if (diff > 0) added.push({ package_id: id, quantity: diff });
-        if (diff < 0) removed.push({ package_id: id, quantity: -diff });
-      }
-      baseline = lines;
-      if (added.length && removed.length) {
-        const a = ecommerce(added);
-        const r = ecommerce(removed);
-        send('dl_package_swapped', {
-          ecommerce: {
-            currency: a.currency,
-            value_change: cents(a.value - r.value),
-            items_removed: r.items,
-            items_added: a.items,
-          },
-        });
-      } else if (added.length) {
-        send('dl_add_to_cart', { ecommerce: ecommerce(added) });
-      } else if (removed.length) {
-        send('dl_remove_from_cart', { ecommerce: ecommerce(removed) });
-      }
+      if (e.name === 'cart.updated') onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
+      if (e.name === 'cart.calculated')
+        send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
     },
-    { replay: true },
-  );
-
-  engine.on(
-    'cart.calculated',
-    () => baseline && send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) }),
     { replay: true },
   );
 

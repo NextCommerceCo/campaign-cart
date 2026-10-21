@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../src/analytics';
+import type { Engine } from '../src/engine/engine';
 import { flush, makeEngine } from './fixtures/engine';
 
 type Win = Window & {
@@ -12,14 +13,14 @@ const win = window as Win;
 const options = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false };
 const names = () => (win.NextDataLayer ?? []).map((e) => e.event);
 
-async function ready(html = '', params: Record<string, string> = {}) {
+async function ready(html = '', params: Record<string, string> = {}, before?: (engine: Engine) => void) {
   document.body.innerHTML = html;
   const { engine } = makeEngine({
     params,
     visit: { landingPage: 'https://shop.test/lp', referrer: '', device: 'UA', deviceType: 'desktop' },
   });
-  engine.restore();
-  await engine.load();
+  before?.(engine);
+  await engine.start();
   return engine;
 }
 
@@ -39,7 +40,6 @@ describe('analytics', () => {
   it('sends dl_user_data on ready with the old envelope and no personal data', async () => {
     const engine = await ready('', { utm_source: 'fb', email: 'jane@x.com' });
     startAnalytics(engine, options);
-    engine.events.emit('ready', { lines: [] });
     const [event] = win.NextDataLayer!;
     expect(event).toMatchObject({
       event: 'dl_user_data',
@@ -59,7 +59,6 @@ describe('analytics', () => {
     const engine = await ready(
       `<div data-next-package-id="1"></div><div data-next-package-id="9"></div><div data-next-package-id="1"></div>`,
     );
-    engine.events.emit('ready', { lines: [] });
     startAnalytics(engine, options);
     expect(names()).toEqual(['dl_user_data', 'dl_view_item_list']);
     expect(win.NextDataLayer![1].ecommerce.items.map((i: any) => i.item_id)).toEqual(['11', '19']);
@@ -76,7 +75,6 @@ describe('analytics', () => {
       },
     });
     startAnalytics(engine, options);
-    engine.events.emit('ready', { lines: [] });
     expect(seen).toEqual(['dl_user_data', 'dl_view_item']);
     expect(win.NextDataLayer).toHaveLength(1);
     expect(win.NextDataLayer![0]).toMatchObject({
@@ -88,17 +86,19 @@ describe('analytics', () => {
   });
 
   it('turns cart changes after ready into add, swap, remove and cart-updated events', async () => {
-    const engine = await ready();
+    const engine = await ready('', {}, (e) => {
+      void e.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
+    });
     const error = vi.spyOn(console, 'error');
-    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
-    engine.events.emit('ready', { lines: engine.cart.lines() });
+    await flush();
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 2, quantity: 1 }], vouchers: [] });
     await engine.cart.setGroup('toggle:9', null);
     await flush();
     expect(names()).toEqual([
       'dl_user_data',
+      'dl_cart_updated',
       'dl_add_to_cart',
       'dl_cart_updated',
       'dl_package_swapped',
@@ -114,6 +114,14 @@ describe('analytics', () => {
     });
     expect(error).not.toHaveBeenCalled();
     error.mockRestore();
+  });
+
+  it('ignores cart changes made before ready, such as a forced cart', async () => {
+    const engine = await ready('', { forcePackageId: '2' });
+    startAnalytics(engine, options);
+    await flush();
+    expect(names()).toEqual(['dl_user_data', 'dl_cart_updated']);
+    expect(win.NextDataLayer![0].ecommerce.items).toMatchObject([{ item_id: '12' }]);
   });
 
   it('loads the NextCampaign script once and sends one page_view', async () => {

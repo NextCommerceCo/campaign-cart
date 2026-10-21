@@ -4,7 +4,7 @@ import { makeEngine } from '../fixtures/engine';
 describe('events', () => {
   it('replays buffered events and survives a throwing subscriber', async () => {
     const { engine } = makeEngine();
-    await engine.load();
+    await engine.start();
     const seen: string[] = [];
     engine.on(
       'campaign.loaded',

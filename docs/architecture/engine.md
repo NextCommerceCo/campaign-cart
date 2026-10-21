@@ -131,12 +131,15 @@ chunk never uses them up. Nothing is queued across a redirect.
 | `order.placed`                                                            | order                                                                                                | analytics                                                                |
 | `order.loaded`                                                            | order, purchase?, upsells?                                                                           | analytics                                                                |
 | `upsell.viewed` / `upsell.accepted` / `upsell.skipped`                    | refId, lines                                                                                         | analytics                                                                |
-| `storage.degraded`, `ready`, `error`, `exit-intent.*`                     | as today                                                                                             |                                                                          |
+| `ready`                                                                   | lines; once, when a campaign is available (snapshot or fresh); emitted by `start()`                  | core (`html[data-next-ready]`, legacy announce, analytics), page scripts |
+| `storage.degraded`, `error`, `exit-intent.*`                              | as today                                                                                             |                                                                          |
 
 ### 3.6 Engine core
 
 ```ts
 class Engine {
+  constructor(options); // restores saved state (cleared first with `reset`), applies ?forcePackageId
+  start(): Promise<void>; // ready from the snapshot → load the campaign → ready if not yet
   getState(): State;
   subscribe(fn: () => void): () => void; // after any change, once per tick
   on(event, fn, { replay }): () => void; // domain events
@@ -144,7 +147,6 @@ class Engine {
   selectors: SelectorActions;
   checkout?: CheckoutActions;
   order?: OrderActions; // attached by their chunks
-  start(campaign: Promise<Campaign>): Promise<void>; // restore → first notify → load
 }
 // context given to every action file: getState, update(slice, patch), emit, api, storage
 ```
@@ -153,6 +155,10 @@ class Engine {
 cards use their quote).
 
 ## 4. Main flows
+
+**Boot.** `new Engine()` restores the tab's state → core binds the page (selectors register and
+put their pick in the cart) → `engine.start()` → `ready` → core sets `html[data-next-ready]` and
+loads analytics on idle.
 
 **Landing → add to cart.** binding → `cart.addItem` → `update(cart)` → save + notify →
 `cart.updated` → latest-wins calculate → `cart.calculated` → re-render.

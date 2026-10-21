@@ -42,7 +42,7 @@ describe('order bump', () => {
     const html = `<div id="bump" data-next-toggle-card data-next-package-id="9" data-next-selected="true"></div>`;
     document.body.innerHTML = html;
     const { engine } = makeEngine();
-    await engine.load();
+    await engine.start();
     await engine.cart.addItem(9);
     bindAll(document, engine, vi.fn());
     await flush();

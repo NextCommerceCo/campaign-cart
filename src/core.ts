@@ -25,15 +25,6 @@ const browserStorage = (get: () => Storage): Storage | null => {
 
 const cookie = (name: string) => document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1];
 
-export function parseForcePackages(raw: string | null): Array<{ packageId: number; quantity: number }> {
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((part) => part.split(':').map(Number))
-    .filter(([id]) => id && id > 0)
-    .map(([id, qty]) => ({ packageId: id!, quantity: qty && qty > 0 ? qty : 1 }));
-}
-
 const EVENT_NAMES: EventName[] = [
   'campaign.loaded',
   'cart.updated',
@@ -90,6 +81,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       fbc: cookie('_fbc'),
     },
     funnel: config.funnel || undefined,
+    reset: config.reset,
   });
 
   if (config.debug) {
@@ -98,22 +90,12 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   }
 
   if (config.reset) {
-    engine.reset();
     params.delete('reset');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
 
-  const hasSnapshot = engine.restore();
-
-  const forced = parseForcePackages(params.get('forcePackageId'));
-  if (forced.length) {
-    void engine.cart.clear();
-    void engine.cart.setGroup('items', { lines: forced, vouchers: [] });
-  }
-
   const bindings = bindAll(document, engine);
 
-  let ready = false;
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
@@ -122,7 +104,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         console.warn(`[next] next.on: unknown event "${name}"`);
         return () => {};
       }
-      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' && ready });
+      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' });
     },
     getState: () => engine.getState(),
     bind: (root) => bindings.bind(root),
@@ -139,12 +121,9 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   };
   (window as unknown as { next: NextApi }).next = next;
 
-  const markReady = () => {
-    if (ready) return;
-    ready = true;
+  engine.on('ready', () => {
     bindings.render();
     html.setAttribute('data-next-ready', '');
-    engine.events.emit('ready', { lines: engine.cart.lines() });
     announceLegacyReady(next);
     const analytics = legacyAnalytics();
     if (analytics.enabled) {
@@ -158,16 +137,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         );
       (window.requestIdleCallback ?? setTimeout)(() => void start());
     }
-  };
-
+  });
   engine.on('error', (e) => {
     if (e.data.action === 'load') html.setAttribute('data-next-error', 'campaign');
   });
-  const loading = engine.load();
-  if (hasSnapshot) markReady();
-  void loading.then(() => {
-    if (engine.getState().campaign) markReady();
-  });
+  void engine.start();
 
   addEventListener('pageshow', (e) => {
     if (e.persisted) location.reload();

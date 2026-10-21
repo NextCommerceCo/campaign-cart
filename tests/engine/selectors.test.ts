@@ -19,12 +19,11 @@ describe('selectors', () => {
   it('picks the card already in the cart, then the preferred one, then the first', async () => {
     const session = new MemoryStorage();
     const first = makeEngine({ session }).engine;
-    await first.load();
+    await first.start();
     await first.selectors.register('main', CARDS, 'swap', 'two');
     expect(first.getState().selectors.main?.picked).toBe('two');
 
     const next = makeEngine({ session }).engine;
-    next.restore();
     await next.selectors.register('main', CARDS, 'swap', 'one');
     expect(next.getState().selectors.main?.picked).toBe('two');
 
@@ -35,7 +34,7 @@ describe('selectors', () => {
 
   it('puts the pick in the cart with its vouchers and shipping in swap mode only', async () => {
     const { engine, api } = makeEngine();
-    await engine.load();
+    await engine.start();
     await engine.selectors.register('main', CARDS, 'swap', 'two');
     expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
     expect(api.calls.at(-1)?.body).toMatchObject({ vouchers: ['BUNDLE'], shipping_method: 2 });
@@ -48,7 +47,7 @@ describe('selectors', () => {
 
   it('announces a pick once and does not resend a cart that already has it', async () => {
     const { engine, api } = makeEngine();
-    await engine.load();
+    await engine.start();
     const seen: string[] = [];
     engine.on('selection.changed', (e) => seen.push(e.data.cardId));
     await engine.selectors.register('main', CARDS, 'swap');
@@ -61,7 +60,7 @@ describe('selectors', () => {
 
   it('prices offer cards with the upsell quote, not the package price', async () => {
     const { engine, api } = makeEngine();
-    await engine.load();
+    await engine.start();
     void engine.selectors.register('offer', CARDS, 'offer');
     expect(engine.getState().selectors.offer?.quoting).toBe(true);
     expect(price(engine, 'bundle.one.price')).toBe('');
@@ -82,7 +81,7 @@ describe('selectors', () => {
     const { engine } = makeEngine({ fetch: api.fetch });
     void engine.selectors.register('offer', CARDS, 'offer');
     expect(api.calls).toHaveLength(0);
-    await engine.load();
+    await engine.start();
     void engine.selectors.register('offer', [CARDS[1]!], 'offer');
     await wait(40);
     expect(api.calls).toHaveLength(3);
@@ -95,7 +94,7 @@ describe('selectors', () => {
     const { engine } = makeEngine({ fetch: failing });
     const errors: string[] = [];
     engine.on('error', (e) => errors.push(e.data.action));
-    await engine.load();
+    await engine.start();
     await engine.selectors.register('offer', CARDS, 'offer');
     await flush();
     expect(errors).toEqual(['quote']);

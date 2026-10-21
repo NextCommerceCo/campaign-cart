@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
-import { boot, parseForcePackages } from '../src/core';
+import { boot } from '../src/core';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi } from './fixtures/api';
 import { campaign } from './fixtures/campaign';
@@ -131,16 +131,5 @@ describe('boot', () => {
     const next = boot({ ...config, reset: true }, Promise.resolve(campaign));
     expect(next.getState().cart.groups).toEqual({});
     expect(location.search).toBe('?utm_source=fb');
-  });
-});
-
-describe('forcePackageId', () => {
-  it('reads ids with optional quantities', () => {
-    expect(parseForcePackages('2')).toEqual([{ packageId: 2, quantity: 1 }]);
-    expect(parseForcePackages('2:3,5')).toEqual([
-      { packageId: 2, quantity: 3 },
-      { packageId: 5, quantity: 1 },
-    ]);
-    expect(parseForcePackages('abc')).toEqual([]);
   });
 });

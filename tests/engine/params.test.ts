@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextUrl } from '../../src/engine/params';
+import { nextUrl, parseForcePackages } from '../../src/engine/params';
 
 describe('next page URL', () => {
   const params = { utm_source: 'fb', gclid: 'G1', email: 'jane@x.com', debugger: 'true', reset: '1' };
@@ -15,5 +15,16 @@ describe('next page URL', () => {
     expect(nextUrl('https://partner.test/checkout', here, params)).toBe(
       'https://partner.test/checkout?utm_source=fb&gclid=G1',
     );
+  });
+});
+
+describe('forcePackageId', () => {
+  it('reads ids with optional quantities', () => {
+    expect(parseForcePackages('2')).toEqual([{ packageId: 2, quantity: 1 }]);
+    expect(parseForcePackages('2:3,5')).toEqual([
+      { packageId: 2, quantity: 3 },
+      { packageId: 5, quantity: 1 },
+    ]);
+    expect(parseForcePackages('abc')).toEqual([]);
   });
 });
