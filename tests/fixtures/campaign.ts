@@ -9,6 +9,7 @@ export const campaign: Campaign = {
     {
       ref_id: 1,
       product_id: 400,
+      product_variant_attribute_values: [{ code: 'color', name: 'Color', value: 'Black' }],
       external_id: 11,
       name: 'Earbuds ×1',
       price: '49.00',
@@ -22,6 +23,7 @@ export const campaign: Campaign = {
     {
       ref_id: 2,
       product_id: 400,
+      product_variant_attribute_values: [{ code: 'color', name: 'Color', value: 'White' }],
       external_id: 12,
       name: 'Earbuds ×2',
       price: '44.50',
@@ -53,6 +55,16 @@ export const campaign: Campaign = {
       price_retail_total: '80.00',
       qty: 1,
       image: 'https://cdn.test/3.png',
+      is_recurring: false,
+    },
+    {
+      ref_id: 78,
+      external_id: 178,
+      name: 'Custom print',
+      price: '5.00',
+      price_total: '5.00',
+      qty: 1,
+      image: 'https://cdn.test/78.png',
       is_recurring: false,
     },
   ],

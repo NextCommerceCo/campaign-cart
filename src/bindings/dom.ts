@@ -1,4 +1,4 @@
-import type { CartLine } from '../engine/types';
+import type { SelectorLine } from '../engine/types';
 import { legacySelectorId } from '../legacy';
 
 export function selectorIdOf(el: Element): string {
@@ -14,10 +14,32 @@ export function parseJson<T>(raw: string | null, fallback: T): T {
   }
 }
 
-export function parseLines(raw: string | null): CartLine[] {
-  return parseJson<CartLine[]>(raw, [])
-    .map((i) => ({ packageId: Number(i.packageId), quantity: Number(i.quantity ?? 1) }))
+export function parseLines(raw: string | null): SelectorLine[] {
+  return parseJson<SelectorLine[]>(raw, [])
+    .map((i) => ({
+      packageId: Number(i.packageId),
+      quantity: Number(i.quantity ?? 1),
+      ...(i.configurable === true && { configurable: true }),
+    }))
     .filter((l) => l.packageId > 0 && l.quantity > 0);
+}
+
+export function ownProperties(el: Element): Record<string, string> {
+  const inputs = [...el.querySelectorAll<HTMLInputElement>('[data-next-property]')];
+  return Object.fromEntries(
+    inputs.map((i) => [i.getAttribute('data-next-property')!, i.value.trim()]).filter(([, value]) => value),
+  );
+}
+
+export function pageProperties(card?: Element): Record<string, string> {
+  const exclude = (card?.getAttribute('data-next-exclude-property') ?? '').split(',').map((s) => s.trim());
+  if (exclude.includes('*')) return {};
+  const found: Record<string, string> = {};
+  for (const el of document.querySelectorAll<HTMLInputElement>('[data-next-default-property]')) {
+    const name = el.getAttribute('data-next-default-property')!;
+    if (el.value.trim() && !exclude.includes(name)) found[name] = el.value.trim();
+  }
+  return found;
 }
 
 export function setText(el: Element, text: string): void {

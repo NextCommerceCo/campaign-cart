@@ -138,6 +138,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const orderPage = document.querySelector(ORDER_MARKUP);
   const orderChunk = orderPage ? import('./order') : undefined;
+  const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
+  const slotsChunk = slotsPage ? import('./slots') : undefined;
 
   const reveal = () => {
     bindings.render();
@@ -160,6 +162,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     const binding = [
       checkoutForm && checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm)),
       orderChunk?.then((m) => m.bindOrder(engine)),
+      slotsChunk?.then((m) => m.bindSlots(engine, (root) => bindings.bind(root))),
     ].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);
     else reveal();

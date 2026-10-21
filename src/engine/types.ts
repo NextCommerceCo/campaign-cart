@@ -17,6 +17,8 @@ export interface Package {
   product_variant_name?: string;
   product_sku?: string | null;
   product_id?: number;
+  product_purchase_availability?: string;
+  product_variant_attribute_values?: Array<{ code: string; name: string; value: string }>;
 }
 
 export interface ShippingOption {
@@ -100,8 +102,18 @@ export interface CartState {
 
 export type SelectorMode = 'swap' | 'select' | 'offer';
 
+export interface SelectorLine extends CartLine {
+  configurable?: boolean;
+}
+
+export interface Slot {
+  packageId: number;
+  properties?: Record<string, string>;
+}
+
 export interface SelectorCard extends CartGroup {
   id: string;
+  lines: SelectorLine[];
   shippingId?: number;
   quantity?: number;
   min?: number;
@@ -113,6 +125,7 @@ export interface Selector {
   cards: SelectorCard[];
   picked?: string;
   quantities?: Record<string, number>;
+  slots?: Record<string, Slot[]>;
   quotes?: Record<string, CartSummary>;
   quoting?: boolean;
 }

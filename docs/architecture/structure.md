@@ -85,18 +85,20 @@ src/
     index.ts upsell.ts receipt.ts legacy.ts
   analytics.ts         analytics   subscriber, loaded on idle
   exit-intent.ts       exit-intent loaded on the first next.exitIntent() call
+  slots.ts             slots       loaded when a bundle selector has a slot template (multi-variant pages)
   debug.ts             debug       loaded with ?debug=1
 ```
 
-| Chunk       | Loaded when                       | Budget (gzip) |
-| ----------- | --------------------------------- | ------------- |
-| loader      | always, inline                    | 2.5 KB        |
-| core        | always                            | 25 KB         |
-| checkout    | `form[data-next-checkout]`        | 30 KB         |
-| order       | `[data-next-upsell]` or `order.*` | 10 KB         |
-| analytics   | idle after ready                  | 8 KB          |
-| exit-intent | first `next.exitIntent()`         | 3 KB          |
-| debug       | `?debug=1`                        | 30 KB         |
+| Chunk       | Loaded when                            | Budget (gzip) |
+| ----------- | -------------------------------------- | ------------- |
+| loader      | always, inline                         | 2.5 KB        |
+| core        | always                                 | 25 KB         |
+| checkout    | `form[data-next-checkout]`             | 30 KB         |
+| order       | `[data-next-upsell]` or `order.*`      | 10 KB         |
+| analytics   | idle after ready                       | 8 KB          |
+| exit-intent | first `next.exitIntent()`              | 3 KB          |
+| slots       | a bundle selector with a slot template | 6 KB          |
+| debug       | `?debug=1`                             | 30 KB         |
 
 ## Imports
 
@@ -107,6 +109,7 @@ src/
 | `checkout/*`                                 | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`     |
 | `order/*`                                    | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`        |
 | `analytics.ts`, `exit-intent.ts`, `debug.ts` | `engine/*`                                                             |
+| `slots.ts`                                   | `engine/*`, `bindings/dom.ts`                                          |
 | `core.ts`, `legacy.ts`                       | `engine/*` (core files), `bindings/*`; lazy chunks only via `import()` |
 | `loader.ts`                                  | `config.ts`; `core.ts` only via `import()`                             |
 

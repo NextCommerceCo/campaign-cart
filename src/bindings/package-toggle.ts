@@ -1,6 +1,6 @@
 import { toggleGroup } from '../engine/values';
 import { type BindContext, type Render } from './context';
-import { isFormControl, setState } from './dom';
+import { isFormControl, ownProperties, pageProperties, setState } from './dom';
 
 export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
   const renders: Render[] = [];
@@ -27,11 +27,20 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       return qty;
     };
     const isUpsell = el.getAttribute('data-next-is-upsell') === 'true';
-    const add = () =>
-      engine.cart.setGroup(group, {
-        lines: [{ packageId, quantity: quantity(), ...(isUpsell && { isUpsell }) }],
+    const add = () => {
+      const properties = { ...pageProperties(el), ...ownProperties(el) };
+      return engine.cart.setGroup(group, {
+        lines: [
+          {
+            packageId,
+            quantity: quantity(),
+            ...(isUpsell && { isUpsell }),
+            ...(Object.keys(properties).length && { properties }),
+          },
+        ],
         vouchers: [],
       });
+    };
     const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
 
     let preselected =
@@ -42,6 +51,13 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       void add();
     };
     addPreselected();
+
+    const inputs = [
+      ...el.querySelectorAll('[data-next-property]'),
+      ...document.querySelectorAll('[data-next-default-property]'),
+    ];
+    for (const input of inputs)
+      input.addEventListener('change', () => engine.getState().cart.groups[group] && void add());
 
     el.addEventListener('click', (e) => {
       if (isFormControl(e.target)) return;

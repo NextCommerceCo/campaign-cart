@@ -77,6 +77,27 @@ describe('selectors', () => {
     expect(next.cart.lines()).toEqual([{ package_id: 1, quantity: 3 }]);
   });
 
+  it('turns a configurable item into one slot per unit, each with its own variant and properties', async () => {
+    const session = new MemoryStorage();
+    const { engine, api } = makeEngine({ session });
+    await engine.start();
+    const card = { id: 'two', lines: [{ packageId: 1, quantity: 2, configurable: true }], vouchers: [] };
+    await engine.selectors.register('main', [card], 'swap');
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    await engine.selectors.setSlot('main', 'two', 1, { packageId: 2, properties: { number: '23' } });
+    expect(engine.cart.lines()).toEqual([
+      { package_id: 1, quantity: 1 },
+      { package_id: 2, quantity: 1, properties: { number: '23' } },
+    ]);
+    const next = makeEngine({ session, fetch: api.fetch }).engine;
+    await next.selectors.register('main', [card], 'swap');
+    expect(next.getState().selectors.main?.slots?.two).toEqual([
+      { packageId: 1 },
+      { packageId: 2, properties: { number: '23' } },
+    ]);
+    expect(next.cart.lines()).toEqual(engine.cart.lines());
+  });
+
   it('re-prices an offer when its quantity changes', async () => {
     const { engine, api } = makeEngine();
     await engine.start();
