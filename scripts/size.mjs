@@ -10,7 +10,7 @@ const BUDGETS = [
   { match: /^order-.*\.js$/, name: 'order', kb: 10 },
   { match: /^slots-.*\.js$/, name: 'slots', kb: 6 },
   { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
-  { match: /^debug-.*\.js$/, name: 'debug', kb: 30 },
+  { match: /^debug-.*\.js$/, name: 'debug', kb: 3 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
 ];
 

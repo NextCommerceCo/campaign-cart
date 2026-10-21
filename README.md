@@ -19,6 +19,7 @@ the 0.4.x SDK on those pages.
 | `npm run typecheck` | TypeScript                                                                        |
 | `npm run build`     | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
 | `bun dev`           | the real campaign pages with this SDK from source; see below                      |
+| `bun run e2e`       | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
 
 ## Local development
 
@@ -39,3 +40,8 @@ data and cart totals are live, while prospect carts, orders and payment.js stay 
 terminal prints a `curl` command for any campaign it has not saved yet.
 
 Page scripts other than the SDK (GTM, page JS) run as they are.
+
+`bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
+receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production
+host, and fails on a console error. It needs `../my-campaigns/_site` and a Chromium
+(`bunx playwright-core install chromium`, or `CHROME=/path/to/chrome`).

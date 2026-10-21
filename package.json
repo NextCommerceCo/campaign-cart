@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun dev/server.ts",
+    "e2e": "bun dev/e2e.ts",
     "build": "vite build && node scripts/size.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "happy-dom": "^20.14.6",
+    "playwright-core": "^1.56.1",
     "prettier": "^3.9.10",
     "typescript": "5.9",
     "vite": "^7.3.7",

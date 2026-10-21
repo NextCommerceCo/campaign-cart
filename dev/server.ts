@@ -4,7 +4,6 @@ import { extname, join, resolve } from 'node:path';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 import { mockApi } from './mock';
 
-const live = process.argv.includes('--live');
 const SITE = resolve(process.env.SITE ?? join(import.meta.dirname, '../../my-campaigns/_site'));
 const LOADER = /<script\b[^>]*\bsrc="[^"]*\/loader\.js(?:\?[^"]*)?"[^>]*>\s*<\/script>/;
 
@@ -49,7 +48,7 @@ function withLocalSdk(html: string): string {
   });
 }
 
-function sitePages(server: () => ViteDevServer): Plugin {
+function sitePages(server: () => ViteDevServer, live: boolean): Plugin {
   return {
     name: 'campaign-pages',
     configureServer(vite) {
@@ -81,22 +80,31 @@ function sitePages(server: () => ViteDevServer): Plugin {
   };
 }
 
-if (!existsSync(SITE)) {
-  console.error(`[dev] no campaign pages at ${SITE}. Build my-campaigns, or set SITE=/path/to/_site`);
-  process.exit(1);
+export async function startDev({ live = false, quiet = false } = {}) {
+  if (!existsSync(SITE))
+    throw new Error(`no campaign pages at ${SITE}. Build my-campaigns, or set SITE=/path/to/_site`);
+  let vite: ViteDevServer;
+  vite = await createServer({
+    plugins: [sitePages(() => vite, live)],
+    server: { port: 5173 },
+    clearScreen: false,
+    logLevel: quiet ? 'silent' : 'info',
+  });
+  await vite.listen();
+  const origin = vite.resolvedUrls?.local[0]?.replace(/\/$/, '') ?? 'http://localhost:5173';
+  return { origin, close: () => vite.close() };
 }
 
-let vite: ViteDevServer;
-vite = await createServer({ plugins: [sitePages(() => vite)], server: { port: 5173 }, clearScreen: false });
-await vite.listen();
-
-const origin = vite.resolvedUrls?.local[0]?.replace(/\/$/, '') ?? 'http://localhost:5173';
-const campaigns = readdirSync(SITE).filter((d) => statSync(join(SITE, d)).isDirectory() && !d.startsWith('.'));
-console.log(`\n  Campaign SDK dev — ${live ? 'LIVE campaign data (orders and prospects still mocked)' : 'mock API'}`);
-console.log(`  Pages from ${SITE}\n`);
-for (const name of campaigns) {
-  const pages = readdirSync(join(SITE, name)).filter((p) => existsSync(join(SITE, name, p, 'index.html')));
-  const first = ['checkout', 'information', 'landing'].find((p) => pages.includes(p)) ?? pages[0];
-  if (first) console.log(`  ${name.padEnd(32)} ${origin}/${name}/${first}/`);
+if (import.meta.main) {
+  const live = process.argv.includes('--live');
+  const { origin } = await startDev({ live });
+  const campaigns = readdirSync(SITE).filter((d) => statSync(join(SITE, d)).isDirectory() && !d.startsWith('.'));
+  console.log(`\n  Campaign SDK dev — ${live ? 'LIVE campaign data (orders and prospects still mocked)' : 'mock API'}`);
+  console.log(`  Pages from ${SITE}\n`);
+  for (const name of campaigns) {
+    const pages = readdirSync(join(SITE, name)).filter((p) => existsSync(join(SITE, name, p, 'index.html')));
+    const first = ['checkout', 'information', 'landing'].find((p) => pages.includes(p)) ?? pages[0];
+    if (first) console.log(`  ${name.padEnd(32)} ${origin}/${name}/${first}/`);
+  }
+  console.log('\n  Test cards: 4242 4242 4242 4242 pays · 4000 0000 0000 0002 declines\n');
 }
-console.log('\n  Test cards: 4242 4242 4242 4242 pays · 4000 0000 0000 0002 declines\n');

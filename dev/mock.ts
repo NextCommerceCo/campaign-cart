@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { join, resolve } from 'node:path';
 
 export const LIVE_API = 'https://campaigns.apps.29next.com';
-const CAMPAIGNS = resolve(import.meta.dirname, 'campaigns');
+const CAMPAIGNS = resolve(process.env.DEV_CAMPAIGNS ?? join(import.meta.dirname, 'campaigns'));
 const RULES_REPO = resolve(process.env.I18N_RULES ?? join(import.meta.dirname, '../../i18n-rules'));
 
 type Rules = { fetch(req: Request, env: object): Promise<Response> };

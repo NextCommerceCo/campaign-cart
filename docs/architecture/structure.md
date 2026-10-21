@@ -44,7 +44,7 @@ docs/
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
-dev/                       bun dev: campaign pages + SDK from source + mock API (server, mock, client)
+dev/                       bun dev and bun run e2e: campaign pages + SDK from source + mock API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
 README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .prettierrc.json
@@ -100,7 +100,7 @@ src/
 | exit-intent | first `next.exitIntent()`                        | 3 KB          |
 | slots       | a bundle selector with a slot template           | 6 KB          |
 | widgets     | `[data-next-accordion]` or `[data-next-tooltip]` | 3 KB          |
-| debug       | `?debug=1`                                       | 30 KB         |
+| debug       | `?debug=1`                                       | 3 KB          |
 
 ## Imports
 
