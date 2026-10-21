@@ -87,6 +87,11 @@ export interface State {
   params: Record<string, string>;
 }
 
+export interface ExitIntentDetail {
+  imageUrl?: string;
+  template?: string;
+}
+
 export interface EventMap {
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   'cart.updated': { cart: CartState };
@@ -95,6 +100,11 @@ export interface EventMap {
   'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };
   'ready': Record<string, never>;
+  'exit-intent.shown': ExitIntentDetail;
+  'exit-intent.clicked': ExitIntentDetail;
+  'exit-intent.dismissed': ExitIntentDetail;
+  'exit-intent.closed': ExitIntentDetail;
+  'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
   'error': { action: string; message: string };
 }
 

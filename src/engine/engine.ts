@@ -102,6 +102,14 @@ export class Engine {
     else if (this.lines().length) void this.scheduleCalculate();
   }
 
+  readSession<T>(name: string): T | undefined {
+    return this.session.get<T>(name);
+  }
+
+  writeSession<T>(name: string, value: T): void {
+    this.session.set(name, value);
+  }
+
   reset(): void {
     this.session.clear();
     this.persistent.clear();

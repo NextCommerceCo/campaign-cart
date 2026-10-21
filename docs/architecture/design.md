@@ -83,8 +83,11 @@ campaigns already use are kept, so templates need no edits.
 - Values have types. Money is formatted as money in the campaign's currency and
   language; booleans show or hide the element. Nothing is guessed from a field's name.
 - Values are written as text, never as HTML.
-- Old JavaScript entry points (`nextConfig.apiKey`, `next.addItem`, `next:initialized`,
-  `window.nextReady`, …) still work and are marked `@deprecated` in the code.
+- Old JavaScript entry points (`nextConfig.apiKey`, `next.addItem`, `next.clearCart`,
+  `next.swapCart`, `next.getCartData`, `next.exitIntent`, `next.on('bundle:selection-changed')`,
+  `next:initialized`, `window.nextReady`, …) still work and are marked `@deprecated` in the
+  code. `next.exitIntent` loads its own 1 KB chunk on first use. `next.fomo` was already
+  removed in 0.4.x and is not coming back.
 
 ## 5. Inside the SDK
 

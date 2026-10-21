@@ -28,6 +28,7 @@ export function parseForcePackages(raw: string | null): Array<{ packageId: numbe
 const EVENT_NAMES: EventName[] = [
   'campaign.loaded', 'cart.updated', 'cart.calculated', 'selection.changed',
   'shipping.changed', 'storage.degraded', 'ready', 'error',
+  'exit-intent.shown', 'exit-intent.clicked', 'exit-intent.dismissed', 'exit-intent.closed', 'exit-intent.action',
 ];
 
 export interface NextApi extends LegacyApi {

@@ -1,5 +1,6 @@
 import type { Engine } from './engine/engine';
-import type { Campaign, CartLine, CartState, EventName, Package } from './engine/types';
+import type { Campaign, CartLine, EventName, Package } from './engine/types';
+import type { ExitIntentOptions } from './features/exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */
 export function legacySelectorId(el: Element): string | null {
@@ -11,7 +12,29 @@ export const LEGACY_EVENTS: Record<string, EventName> = {
   'bundle:selection-changed': 'selection.changed',
   'cart:updated': 'cart.updated',
   'shipping:method-changed': 'shipping.changed',
+  'exit-intent:shown': 'exit-intent.shown',
+  'exit-intent:clicked': 'exit-intent.clicked',
+  'exit-intent:dismissed': 'exit-intent.dismissed',
+  'exit-intent:closed': 'exit-intent.closed',
+  'exit-intent:action': 'exit-intent.action',
 };
+
+export interface LegacyCartLine {
+  packageId: number;
+  quantity: number;
+  name?: string;
+  image?: string;
+  price?: string;
+  total?: string;
+}
+
+export interface LegacyCartData {
+  cartLines: LegacyCartLine[];
+  items: LegacyCartLine[];
+  cartTotals: { subtotal?: string; total?: string; discount?: string; currency?: string };
+  campaignData?: Campaign;
+  appliedCoupons: string[];
+}
 
 export interface LegacyApi {
   /** @deprecated Use `next.actions.addItem(packageId, quantity)`. */
@@ -26,8 +49,10 @@ export interface LegacyApi {
   getPackage(id: number): Package | undefined;
   /** @deprecated Use `next.getState().campaign`. */
   getCampaignData(): Campaign | undefined;
-  /** @deprecated Use `next.getState().cart`. */
-  getCartData(): CartState;
+  /** @deprecated Use `next.getState().cart`. Returns the 0.4.x shape. */
+  getCartData(): LegacyCartData;
+  /** @deprecated Exit intent will move to the page kit. */
+  exitIntent(options: ExitIntentOptions): Promise<() => void>;
 }
 
 export function legacyApi(engine: Engine): LegacyApi {
@@ -39,7 +64,23 @@ export function legacyApi(engine: Engine): LegacyApi {
     applyCoupon: (code) => engine.applyCoupon(code),
     getPackage: (id) => engine.getPackage(id),
     getCampaignData: () => engine.getState().campaign,
-    getCartData: () => engine.getState().cart,
+    getCartData: () => {
+      const { cart, campaign } = engine.getState();
+      const lines = engine.lines().map((l) => {
+        const pkg = engine.getPackage(l.package_id);
+        const line = cart.summary?.lines.find((s) => s.package_id === l.package_id);
+        return { packageId: l.package_id, quantity: l.quantity, name: pkg?.name, image: pkg?.image, price: pkg?.price_total, total: line?.total };
+      });
+      const s = cart.summary;
+      return {
+        cartLines: lines,
+        items: lines,
+        cartTotals: { subtotal: s?.subtotal, total: s?.total, discount: s?.total_discount, currency: s?.currency },
+        campaignData: campaign,
+        appliedCoupons: cart.coupons,
+      };
+    },
+    exitIntent: (options) => import('./features/exit-intent').then((m) => m.exitIntent(engine, options)),
   };
 }
 
