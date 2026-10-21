@@ -1,5 +1,5 @@
 import { parseCondition } from '../engine/condition';
-import { format, resolve, resolveLines, toggleGroup, truthy, type Value } from '../engine/values';
+import { format, resolve, resolveCard, resolveLines, toggleGroup, truthy, type Value } from '../engine/values';
 import { type BindContext, type Render } from './context';
 import { setText, setVisible } from './dom';
 
@@ -20,7 +20,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
     const path = el.getAttribute('data-next-display') ?? '';
     const ctx = b.contextOf(el);
     renders.push(() => {
-      const v = resolve(b.engine, path, ctx, b.cards);
+      const v = resolve(b.engine, path, ctx);
       if (!v) return b.warn(`unknown display path "${path}"`);
       write(el, v, b);
     });
@@ -31,7 +31,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
     const card = b.cardOf(el);
     if (!card) return b.warn('data-next-bundle-display outside a [data-next-bundle-card]');
     renders.push(() => {
-      const v = resolveLines(b.engine, card.lines, prop, b.selected(card.selectorId) === card);
+      const v = resolveCard(b.engine, card, prop);
       if (!v) return b.warn(`unknown bundle-display property "${prop}"`);
       write(el, v, b);
     });
@@ -58,7 +58,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
       if (!condition) return b.warn(`cannot read ${attr}="${source}"`);
       const ctx = b.contextOf(el);
       renders.push(() => {
-        const v = resolve(b.engine, condition.path, ctx, b.cards);
+        const v = resolve(b.engine, condition.path, ctx);
         if (!v) return b.warn(`unknown path "${condition.path}" in ${attr}`);
         const met =
           condition.kind === 'compare'

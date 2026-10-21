@@ -12,7 +12,7 @@ import { MemoryStorage } from '../fixtures/storage';
 describe('bundle selector', () => {
   it('puts the pre-selected card in the cart', async () => {
     const { engine, $ } = await mount(SELECTOR);
-    expect(engine.getState().selections.main).toBe('two');
+    expect(engine.getState().selectors.main?.picked).toBe('two');
     expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
     expect($('[data-next-bundle-id="two"]').classList.contains('next-selected')).toBe(true);
     expect($('#total').textContent).toBe('$89.00');
@@ -42,6 +42,16 @@ describe('bundle selector', () => {
     expect(api.calls).toHaveLength(1);
   });
 
+  it('shows offer cards at their upsell price and keeps them out of the cart', async () => {
+    const { engine, $ } = await mount(
+      SELECTOR.replace('data-next-selector-id="main"', 'data-next-selector-id="main" data-next-upsell-context'),
+    );
+    expect($('#one-price').textContent).toBe('$24.50');
+    expect($('#pick').textContent).toBe('$44.50');
+    expect($('[data-next-bundle-id="two"]').classList.contains('next-loading')).toBe(false);
+    expect(engine.cart.lines()).toEqual([]);
+  });
+
   it('only records the pick in select mode and on upsell pages', async () => {
     const select = await mount(
       SELECTOR.replace(
@@ -50,7 +60,7 @@ describe('bundle selector', () => {
       ),
     );
     expect(select.engine.cart.lines()).toEqual([]);
-    expect(select.engine.getState().selections.main).toBe('two');
+    expect(select.engine.getState().selectors.main?.picked).toBe('two');
     const upsell = await mount(
       `<div data-next-upsell="offer"></div>${SELECTOR.replace(/<div data-next-toggle-container>[\s\S]*?<\/div>\s*<\/div>/, '')}`,
     );

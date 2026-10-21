@@ -1,20 +1,10 @@
 import type { Engine } from '../engine/engine';
-import type { CartLine } from '../engine/types';
-import type { CardLookup, Context } from '../engine/values';
+import type { CardRef, Context } from '../engine/values';
 
 export type Render = () => void;
 
-export interface Card {
-  selectorId: string;
-  cardId: string;
-  lines: CartLine[];
-  vouchers: string[];
-  shippingId?: number;
-  el: Element;
-}
-
 export class BindContext {
-  readonly selectors = new Map<string, Card[]>();
+  readonly cards = new WeakMap<Element, CardRef>();
   private bound = new WeakMap<Element, Set<string>>();
   private warned = new Set<string>();
 
@@ -34,25 +24,15 @@ export class BindContext {
     els.filter((el) => this.claim(el, attr)).forEach(fn);
   }
 
-  selected(selectorId: string): Card | undefined {
-    const id = this.engine.getState().selections[selectorId];
-    return this.selectors.get(selectorId)?.find((c) => c.cardId === id);
-  }
-
-  readonly cards: CardLookup = (id) => {
-    const card = this.selected(id) ?? [...this.selectors.values()].flat().find((c) => c.cardId === id);
-    return card && { lines: card.lines, selected: this.selected(card.selectorId) === card };
-  };
-
-  cardOf(el: Element): Card | undefined {
+  cardOf(el: Element): CardRef | undefined {
     const cardEl = el.closest('[data-next-bundle-card]');
-    return cardEl ? [...this.selectors.values()].flat().find((c) => c.el === cardEl) : undefined;
+    return cardEl ? this.cards.get(cardEl) : undefined;
   }
 
   contextOf(el: Element): Context {
     const ctx: Context = {};
     const card = this.cardOf(el);
-    if (card) ctx.card = { selectorId: card.selectorId, cardId: card.cardId, lines: card.lines };
+    if (card) ctx.card = card;
     const id = Number(el.closest('[data-next-package-id]')?.getAttribute('data-next-package-id'));
     if (id) ctx.packageId = id;
     return ctx;

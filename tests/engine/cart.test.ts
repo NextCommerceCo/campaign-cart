@@ -89,7 +89,11 @@ describe('cart', () => {
     engine.on('selection.changed', (e) => seen.push(e.data));
     await engine.cart.setShipping(2);
     await engine.cart.setShipping(2);
-    engine.select('main', 'two', [{ packageId: 2, quantity: 1 }]);
+    void engine.selectors.register(
+      'main',
+      [{ id: 'two', lines: [{ packageId: 2, quantity: 1 }], vouchers: [] }],
+      'select',
+    );
     expect(seen).toEqual([
       { methodId: 2 },
       { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },

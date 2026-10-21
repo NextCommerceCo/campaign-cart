@@ -20,9 +20,9 @@ export class Api {
 
   calculate(
     body: { lines: ApiLine[]; vouchers: string[]; currency?: string; shipping_method?: number },
-    signal?: AbortSignal,
+    { signal, upsell }: { signal?: AbortSignal; upsell?: boolean } = {},
   ): Promise<CartSummary> {
-    return this.request<CartSummary>(`${this.base}/api/v1/carts/calculate/`, {
+    return this.request<CartSummary>(`${this.base}/api/v1/carts/calculate/${upsell ? '?upsell=true' : ''}`, {
       method: 'POST',
       body: JSON.stringify(body),
       signal,

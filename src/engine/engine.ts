@@ -3,8 +3,9 @@ import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart';
 import { type EngineEvent, Events } from './events';
 import { keptParams } from './params';
+import { createSelectors, type SelectorActions } from './selectors';
 import { StorageAdapter } from './storage';
-import type { Campaign, CartLine, EventMap, EventName, Package, Send, State } from './types';
+import type { Campaign, EventMap, EventName, Package, Send, State } from './types';
 
 export interface EngineOptions {
   apiKey: string;
@@ -34,6 +35,7 @@ const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
 export class Engine {
   readonly events = new Events();
   readonly cart: CartActions;
+  readonly selectors: SelectorActions;
   private state: State;
   private api: Api;
   private session: StorageAdapter;
@@ -55,17 +57,19 @@ export class Engine {
     this.local = adapter('local', [options.storage.local, options.storage.session]);
     this.state = {
       cart: emptyCart(),
-      selections: {},
+      selectors: {},
       visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0 },
     };
-    this.cart = createCart({
+    const context: Context = {
       getState: () => this.state,
       update: (slice, patch) => this.update(slice, patch),
       emit: (name, data) => this.events.emit(name, data),
       fail: (action, err) => this.fail(action, err),
       getPackage: (id) => this.getPackage(id),
       api: this.api,
-    });
+    };
+    this.cart = createCart(context);
+    this.selectors = createSelectors(context, this.cart);
   }
 
   getState(): Readonly<State> {
@@ -114,12 +118,7 @@ export class Engine {
     this.update('campaign', campaign);
     this.events.emit('campaign.loaded', { campaign, fromCache: false });
     void this.cart.campaignLoaded();
-  }
-
-  select(selectorId: string, cardId: string, items: CartLine[]): void {
-    if (this.state.selections[selectorId] === cardId) return;
-    this.update('selections', { [selectorId]: cardId });
-    this.events.emit('selection.changed', { selectorId, cardId, items });
+    this.selectors.campaignLoaded();
   }
 
   noteExitIntentShown(): void {

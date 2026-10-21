@@ -22,7 +22,7 @@ describe('events', () => {
     const order: string[] = [];
     engine.on('selection.changed', () => engine.events.emit('ready', { lines: [] }));
     engine.on('*', (e) => order.push(e.name));
-    engine.select('main', 'one', []);
+    engine.selectors.register('main', [{ id: 'one', lines: [], vouchers: [] }], 'select');
     expect(order).toEqual(['selection.changed', 'ready']);
   });
 

@@ -18,6 +18,7 @@ export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = 
     if (delay) await new Promise((r) => setTimeout(r, delay));
     if (init.signal?.aborted && !options.ignoreAbort) throw new DOMException('aborted', 'AbortError');
     const lines = body.lines as Array<{ package_id: number; quantity: number }>;
+    const offer = url.includes('upsell=true') ? 0.5 : 1;
     const subtotal = lines.reduce(
       (n, l) => n + Number(campaign.packages.find((p) => p.ref_id === l.package_id)!.price_total) * l.quantity,
       0,
@@ -26,7 +27,7 @@ export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = 
     const summary: CartSummary = {
       lines: lines.map((l) => {
         const p = campaign.packages.find((x) => x.ref_id === l.package_id)!;
-        const total = (Number(p.price_total) * l.quantity).toFixed(2);
+        const gross = Number(p.price_total) * l.quantity;
         return {
           package_id: l.package_id,
           quantity: l.quantity,
@@ -34,9 +35,9 @@ export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = 
           original_unit_price: p.price_retail ?? p.price,
           package_price: p.price_total,
           original_package_price: p.price_retail_total ?? p.price_total,
-          subtotal: total,
-          total_discount: '0.00',
-          total,
+          subtotal: gross.toFixed(2),
+          total_discount: (gross * (1 - offer)).toFixed(2),
+          total: (gross * offer).toFixed(2),
           discounts: [],
         };
       }),

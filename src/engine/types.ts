@@ -93,6 +93,21 @@ export interface CartState {
   calculating: boolean;
 }
 
+export type SelectorMode = 'swap' | 'select' | 'offer';
+
+export interface SelectorCard extends CartGroup {
+  id: string;
+  shippingId?: number;
+}
+
+export interface Selector {
+  mode: SelectorMode;
+  cards: SelectorCard[];
+  picked?: string;
+  quotes?: Record<string, CartSummary>;
+  quoting?: boolean;
+}
+
 export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
@@ -102,7 +117,7 @@ export interface VisitState {
 export interface State {
   campaign?: Campaign;
   cart: CartState;
-  selections: Record<string, string>;
+  selectors: Record<string, Selector>;
   visit: VisitState;
 }
 

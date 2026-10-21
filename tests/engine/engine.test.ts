@@ -81,7 +81,7 @@ describe('Engine', () => {
     engine.subscribe(notified);
     void engine.cart.addItem(1);
     void engine.cart.applyCoupon('SAVE10');
-    engine.select('main', 'one', []);
+    engine.selectors.register('main', [{ id: 'one', lines: [], vouchers: [] }], 'select');
     expect(notified).not.toHaveBeenCalled();
     await Promise.resolve();
     expect(notified).toHaveBeenCalledTimes(1);

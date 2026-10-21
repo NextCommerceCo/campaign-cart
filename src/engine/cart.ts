@@ -1,7 +1,7 @@
 import type { Context } from './engine';
 import type { ApiLine, CartGroup, CartLine, CartState } from './types';
 
-const lineKey = (l: CartLine) =>
+export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
 
 export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
@@ -57,7 +57,7 @@ export function createCart(ctx: Context) {
     try {
       const summary = await ctx.api.calculate(
         { lines: lines(), vouchers: vouchers(), currency: campaign.currency, shipping_method: state().shippingId },
-        controller.signal,
+        { signal: controller.signal },
       );
       if (current !== seq) return;
       set({ summary, calculating: false });

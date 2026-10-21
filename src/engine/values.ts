@@ -1,5 +1,5 @@
 import type { Engine } from './engine';
-import type { CartLine, Discount, Package, State, SummaryLine } from './types';
+import type { CartLine, CartSummary, Discount, Package, State, SummaryLine } from './types';
 
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 
@@ -8,9 +8,14 @@ export interface Value {
   value: string | number | boolean | undefined;
 }
 
+export interface CardRef {
+  selectorId: string;
+  cardId: string;
+}
+
 export interface Context {
   packageId?: number;
-  card?: { selectorId: string; cardId: string; lines: CartLine[] };
+  card?: CardRef;
 }
 
 const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
@@ -75,7 +80,13 @@ function packageValue(pkg: Package | undefined, prop: string): Value | undefined
   }
 }
 
-function linesValue(engine: Engine, lines: CartLine[], prop: string, selected: boolean): Value | undefined {
+function linesValue(
+  engine: Engine,
+  lines: CartLine[],
+  prop: string,
+  selected: boolean,
+  quote?: CartSummary,
+): Value | undefined {
   if (lines.some((l) => !engine.getPackage(l.packageId))) return notLoaded(linesValue(engine, [], prop, selected));
   let total = 0;
   let retail = 0;
@@ -85,6 +96,10 @@ function linesValue(engine: Engine, lines: CartLine[], prop: string, selected: b
     total += cents(pkg.price_total) * line.quantity;
     retail += cents(pkg.price_retail_total ?? pkg.price_total) * line.quantity;
     units += pkg.qty * line.quantity;
+  }
+  if (quote) {
+    total = quote.lines.reduce((n, l) => n + cents(l.total), 0);
+    retail = quote.lines.reduce((n, l) => n + cents(l.subtotal), 0);
   }
   const first = lines[0] ? engine.getPackage(lines[0].packageId) : undefined;
   switch (prop) {
@@ -204,11 +219,27 @@ function shippingValue(state: State, prop: string): Value | undefined {
   }
 }
 
-export type CardLookup = (id: string) => { lines: CartLine[]; selected: boolean } | undefined;
-
 export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 
-export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?: CardLookup): Value | undefined {
+function findCard(state: State, id: string): CardRef | undefined {
+  const picked = state.selectors[id]?.picked;
+  if (picked) return { selectorId: id, cardId: picked };
+  for (const [selectorId, selector] of Object.entries(state.selectors)) {
+    if (selector.cards.some((c) => c.id === id)) return { selectorId, cardId: id };
+  }
+  return undefined;
+}
+
+export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value | undefined {
+  const selector = engine.getState().selectors[ref.selectorId];
+  const card = selector?.cards.find((c) => c.id === ref.cardId);
+  if (!selector || !card) return notLoaded(linesValue(engine, [], prop, false));
+  const quote = selector.quotes?.[card.id];
+  const v = linesValue(engine, card.lines, prop, selector.picked === card.id, quote);
+  return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
+}
+
+export function resolve(engine: Engine, path: string, ctx: Context = {}): Value | undefined {
   const state = engine.getState();
   const parts = path.split('.');
   const [root = '', second = '', ...rest] = parts;
@@ -228,9 +259,8 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
       return id === undefined ? { type: 'text', value: undefined } : packageValue(engine.getPackage(id), prop);
     }
     case 'bundle': {
-      const card = cards?.(second);
-      if (!card) return { type: 'text', value: undefined };
-      return linesValue(engine, card.lines, rest.join('.'), card.selected);
+      const ref = findCard(state, second);
+      return ref ? resolveCard(engine, ref, rest.join('.')) : { type: 'text', value: undefined };
     }
     case 'toggle': {
       const id = Number(second);
@@ -238,9 +268,7 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
       return linesValue(engine, [{ packageId: id, quantity: line?.quantity ?? 1 }], rest.join('.'), !!line);
     }
     default:
-      if (parts.length === 1 && ctx.card) {
-        return linesValue(engine, ctx.card.lines, root, state.selections[ctx.card.selectorId] === ctx.card.cardId);
-      }
+      if (parts.length === 1 && ctx.card) return resolveCard(engine, ctx.card, root);
       if (parts.length === 1 && ctx.packageId !== undefined)
         return packageValue(engine.getPackage(ctx.packageId), root);
       if (parts.length === 1) return cartValue(state, engine, root);
