@@ -96,6 +96,29 @@ function calculate(
 }
 
 let orders = 0;
+const ADDRESSES: Record<string, Array<[string, string, string, string, string]>> = {
+  US: [
+    ['1 Main St', 'Austin', 'Texas', 'TX', '73301'],
+    ['100 Market St', 'San Francisco', 'California', 'CA', '94105'],
+    ['350 5th Ave', 'New York', 'New York', 'NY', '10118'],
+  ],
+  GB: [
+    ['10 Downing St', 'London', 'England', 'ENG', 'SW1A 2AA'],
+    ['221B Baker St', 'London', 'England', 'ENG', 'NW1 6XE'],
+  ],
+};
+
+function suggestAddresses(query: URLSearchParams) {
+  const country = query.get('country') || 'US';
+  const words = (query.get('query_text') ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  const all = (ADDRESSES[country] ?? []).map(([line1, city, state, state_code, postcode]) => ({
+    label: `${line1}, ${city}, ${state_code} ${postcode}, ${country}`,
+    address: { line1, city, state, state_code, postcode, country, country_code: country },
+  }));
+  const matching = all.filter((a) => words.some((w) => a.label.toLowerCase().includes(w)));
+  return matching.length ? matching : all;
+}
+
 const placed = new Map<string, Record<string, unknown>>();
 
 type Line = { package_id: number; quantity: number };
@@ -244,7 +267,8 @@ export function mockApi(api: string) {
       return send(res, 400, { detail: 'dev mock: body is not JSON' });
     }
 
-    if (live && (path === '/api/v1/campaigns/' || path === '/api/v1/carts/calculate/')) {
+    const readOnly = ['/api/v1/campaigns/', '/api/v1/carts/calculate/', '/api/v1/addresses/autocomplete/'];
+    if (live && readOnly.includes(path)) {
       const answer = await fetch(`${LIVE_API}${path}${url.search}`, {
         method: req.method,
         headers: { Authorization: key, 'Content-Type': 'application/json' },
@@ -256,6 +280,8 @@ export function mockApi(api: string) {
       return res.end(text);
     }
 
+    if (path === '/api/v1/addresses/autocomplete/')
+      return send(res, 200, { results: suggestAddresses(url.searchParams) });
     if (path === '/api/v1/carts/') {
       console.log(`[dev] prospect cart for ${body?.user?.email}`);
       return send(res, 201, { id: Date.now(), checkout_url: `${url.origin}/__dev/cart` });

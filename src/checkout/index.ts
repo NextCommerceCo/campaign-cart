@@ -3,11 +3,19 @@ import { type CheckoutActions, createCheckout, EXPRESS_METHODS, redirectFor } fr
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import { bindAddress } from './address';
+import { bindAutocomplete } from './autocomplete';
 import { bindBilling, cloneBillingRows } from './billing';
 import { bindExpress } from './express';
 import { bindFields, phoneRequired, scanFields, syncFields } from './form';
 import { bindLabels } from './labels';
-import { announceProspect, clearStepGuard, legacyCountries, stepUrlOf, writeStepGuard } from './legacy';
+import {
+  announceProspect,
+  clearStepGuard,
+  legacyAutocomplete,
+  legacyCountries,
+  stepUrlOf,
+  writeStepGuard,
+} from './legacy';
 import { errorBox, showBox, shown } from './messages';
 import { bindCard, bindPayment } from './payment';
 import { bindReview } from './review';
@@ -64,6 +72,7 @@ export function bindCheckout(
   cloneBillingRows(form);
   const fields = scanFields(form);
   const labels = bindLabels(form);
+  if (legacyAutocomplete()) bindAutocomplete(fields, checkout);
   const card = bindCard(engine, checkout, form);
   const stepUrl = stepUrlOf(form);
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);

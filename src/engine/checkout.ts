@@ -6,6 +6,7 @@ import { nextUrl } from './params';
 import { fieldError, formErrors, type RulesApi, type Scope, validEmail } from './rules';
 import type {
   Address,
+  AddressSuggestion,
   ApiLine,
   CheckoutError,
   CheckoutState,
@@ -262,6 +263,15 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
     paymentReady(method: string): void {
       emitOnce('checkout.payment-added', { method: paymentCode(method) });
+    },
+
+    async suggestAddresses(query: string, country: string, signal?: AbortSignal): Promise<AddressSuggestion[]> {
+      try {
+        return (await ctx.api.autocomplete(query, country, signal)).results ?? [];
+      } catch (err) {
+        if (!signal?.aborted) ctx.fail('autocomplete', err);
+        return [];
+      }
     },
 
     async loadCountries(allowed: string[] = []): Promise<void> {

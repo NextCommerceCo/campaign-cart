@@ -25,7 +25,7 @@ export const component = (name: string) =>
   `[data-next-component="${name}"], [os-checkout-element="${name}"], [os-checkout-component="${name}"]`;
 
 interface LegacyConfig {
-  addressConfig?: { countries?: Array<{ code: string }>; dontShowStates?: string[] };
+  addressConfig?: { countries?: Array<{ code: string }>; dontShowStates?: string[]; enableAutocomplete?: boolean };
   paymentConfig?: { expressCheckout?: { methodOrder?: string[] } };
 }
 
@@ -36,6 +36,9 @@ export const legacyCountries = () => (config().addressConfig?.countries ?? []).m
 
 /** @deprecated `nextConfig.addressConfig.dontShowStates`. */
 export const legacyHiddenStates = () => config().addressConfig?.dontShowStates ?? [];
+
+/** @deprecated `nextConfig.addressConfig.enableAutocomplete`, the NextCommerce address lookup. */
+export const legacyAutocomplete = () => config().addressConfig?.enableAutocomplete === true;
 
 /** @deprecated `nextConfig.paymentConfig.expressCheckout.methodOrder`. The campaign's order is used. */
 export const legacyExpressOrder = () =>

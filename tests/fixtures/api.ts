@@ -20,6 +20,21 @@ export interface FakeApiOptions {
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 
+export const ADDRESSES = [
+  {
+    label: '1 Main St, Austin, TX 73301, USA',
+    address: {
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'New York',
+      state_code: 'NY',
+      postcode: '73301',
+      country: 'United States',
+      country_code: 'US',
+    },
+  },
+];
+
 export function fakeApi(options: FakeApiOptions = {}) {
   const calls: Call[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -37,6 +52,10 @@ export function fakeApi(options: FakeApiOptions = {}) {
       return options.order?.(body) ?? json({ ref_id: 'R1', order_status_url: 'https://shop.test/status/R1' });
     }
     if (url.endsWith('/carts/')) return json({ id: 7, checkout_url: 'https://shop.test/c/7' });
+    if (url.includes('/addresses/autocomplete/')) {
+      const query = new URL(url).searchParams.get('query_text') ?? '';
+      return json({ results: ADDRESSES.filter((a) => a.label.toLowerCase().includes(query.toLowerCase())) });
+    }
     const lines = body.lines as Array<{ package_id: number; quantity: number }>;
     const upsellPrice = url.includes('upsell=true');
     const rate = (packageId: number) => (upsellPrice ? 0.5 : 1 - (options.offers?.[packageId] ?? 0));

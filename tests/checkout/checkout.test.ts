@@ -286,6 +286,38 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'paypal' });
   });
 
+  it('suggests addresses from the NextCommerce lookup and fills the address, like 0.4.x', async () => {
+    (window as unknown as { nextConfig: unknown }).nextConfig = { addressConfig: { enableAutocomplete: true } };
+    const { field, api, engine } = await mount('olympus/checkout.html');
+    const input = field('address1');
+    input.focus();
+    input.value = '1 Main';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    const lookup = api.calls.find((c) => c.url.includes('/addresses/autocomplete/'))!;
+    expect(new URL(lookup.url).searchParams.toString()).toBe('query_text=1+Main&country=US');
+    const items = [...document.querySelectorAll<HTMLElement>('.pac-container-nextcommerce .pac-item-nextcommerce')];
+    expect(items.map((i) => i.textContent)).toEqual(['1 Main St, Austin, TX 73301, USA']);
+    expect(items[0]!.querySelector('b')!.textContent).toBe('1');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    expect(input.value).toBe('1 Main St, Austin, TX 73301, USA');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(input.value).toBe('1 Main');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    document.querySelector<HTMLElement>('.pac-item-nextcommerce')!.click();
+    await new Promise((r) => setTimeout(r, 350));
+    expect([field('address1').value, field('city').value, field('postal').value, field('province').value]).toEqual([
+      '1 Main St',
+      'Austin',
+      '73301',
+      'NY',
+    ]);
+    expect(engine.getState().checkout!.fields).toMatchObject({ line1: '1 Main St', city: 'Austin', state: 'NY' });
+    delete (window as unknown as { nextConfig?: unknown }).nextConfig;
+  });
+
   it('floats each label above its field once the field has a value', async () => {
     const { type, field, engine } = await mount('olympus/checkout.html');
     const label = (name: string) => field(name).closest('.form-group')!.querySelector('label.label-checkout')!;

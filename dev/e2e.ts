@@ -41,16 +41,27 @@ async function funnel(page: Page, origin: string) {
     (s) => (document.querySelector(s) as HTMLSelectElement)?.options.length > 1,
     field('province'),
   );
-  const shopper = {
-    email: 'e2e@example.com',
-    fname: 'Jane',
-    lname: 'Doe',
-    address1: '1 Main St',
-    city: 'Austin',
-    postal: '73301',
-  };
+  const shopper = { email: 'e2e@example.com', fname: 'Jane', lname: 'Doe' };
   for (const [name, value] of Object.entries(shopper)) await page.fill(field(name), value);
-  await page.selectOption(field('province'), 'TX');
+  await page.click(field('address1'));
+  await page.keyboard.type('1 Main');
+  await page.click('.pac-item-nextcommerce', { timeout: 5000 });
+  await page.waitForFunction(
+    (s) => (document.querySelector(s) as HTMLSelectElement)?.value === 'TX',
+    field('province'),
+  );
+  const address = await page.evaluate(
+    (names) =>
+      names.map((n) => (document.querySelector(`[data-next-checkout-field="${n}"]`) as HTMLInputElement).value),
+    ['address1', 'city', 'postal'],
+  );
+  check(address.join('|') === '1 Main St|Austin|73301', `address autocomplete fills the address (got ${address})`);
+  const floated = await page.evaluate(
+    () =>
+      document.querySelector('[data-next-checkout-field="email"]')?.closest('.form-group')?.querySelector('label')
+        ?.className,
+  );
+  check(floated?.includes('has-value'), 'the email label floats once filled');
   await page.fill('#spreedly-number input', '4242424242424242');
   await page.fill('#spreedly-cvv input', '123');
   await page.selectOption(field('exp-month'), '12');

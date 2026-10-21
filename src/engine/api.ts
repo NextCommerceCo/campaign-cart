@@ -1,4 +1,13 @@
-import type { ApiLine, CartSummary, CheckoutError, Order, OrderBody, ProspectBody, Send } from './types';
+import type {
+  AddressSuggestion,
+  ApiLine,
+  CartSummary,
+  CheckoutError,
+  Order,
+  OrderBody,
+  ProspectBody,
+  Send,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -46,6 +55,11 @@ export class Api {
       method: 'POST',
       body: JSON.stringify(body),
     });
+  }
+
+  autocomplete(query: string, country: string, signal?: AbortSignal): Promise<{ results?: AddressSuggestion[] }> {
+    const params = new URLSearchParams({ query_text: query, ...(country && { country }) });
+    return this.request(`${this.base}/api/v1/addresses/autocomplete/?${params}`, { signal });
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {

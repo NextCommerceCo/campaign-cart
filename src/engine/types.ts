@@ -145,6 +145,20 @@ export interface VisitState {
   exitIntentShown: number;
 }
 
+export interface AddressSuggestion {
+  label: string;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    state_code: string;
+    postcode: string;
+    country: string;
+    country_code: string;
+  };
+}
+
 export interface CountryOption {
   code: string;
   name: string;
