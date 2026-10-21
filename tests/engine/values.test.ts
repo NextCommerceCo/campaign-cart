@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { format, resolve } from '../../src/engine/values';
+import { discountPercent, format, resolve } from '../../src/engine/values';
 import { makeEngine } from '../fixtures/engine';
 
 describe('display values', () => {
@@ -18,6 +18,13 @@ describe('display values', () => {
   it('shows the local dollar sign, not CA$ or A$', () => {
     expect(format({ type: 'money', value: 10 }, 'CAD', 'en')).toBe('$10.00');
     expect(format({ type: 'money', value: 10 }, 'AUD', 'en')).toBe('$10.00');
+  });
+
+  it('keeps the decimals of a discount percentage the way 0.4.x did', () => {
+    expect(discountPercent('10.00', 'en')).toBe('10%');
+    expect(discountPercent('12.5', 'en')).toBe('12.5%');
+    expect(discountPercent('33.333', 'en')).toBe('33.33%');
+    expect(discountPercent(undefined, 'en')).toBe('');
   });
 
   it('knows a path from a typo', () => {

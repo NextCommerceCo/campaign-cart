@@ -39,7 +39,7 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
       copy.querySelectorAll('[data-summary-lines]').forEach((lines) =>
         stamp(
           lines,
-          cart.summary?.lines ?? [],
+          [...(cart.summary?.lines ?? [])].sort((a, b) => a.package_id - b.package_id),
           (line) => lineTokens(engine, line, cart.summary?.currency),
           (row, line) => {
             const properties = cartLines.find((l) => l.package_id === line.package_id && l.properties)?.properties;

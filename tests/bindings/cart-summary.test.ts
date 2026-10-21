@@ -88,6 +88,38 @@ describe('cart summary', () => {
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
   });
+  it('labels subscription lines and lists lines by package, like 0.4.x', async () => {
+    const { engine, $$ } = await setup(`
+      <div data-next-cart-summary>
+        <template>
+          <div data-summary-lines>
+            <template>
+              <div class="row" data-package-id="{item.packageId}">
+                <span class="every" data-next-show="item.isRecurring" style="display:none">{item.frequency}</span>
+                <span class="once" data-next-hide="item.isRecurring">One-time purchase</span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>`);
+    Object.assign(
+      engine.getState().campaign!.packages.find((p) => p.ref_id === 9)!,
+      {
+        is_recurring: true,
+        interval: 'month',
+        interval_count: 3,
+      },
+    );
+    await engine.cart.addItem(9);
+    await engine.cart.addItem(1);
+    await flush();
+    const rows = $$('.row');
+    expect(rows.map((r) => r.getAttribute('data-package-id'))).toEqual(['1', '9']);
+    expect(rows.map((r) => r.querySelector<HTMLElement>('.every')!.style.display)).toEqual(['none', '']);
+    expect(rows.map((r) => r.querySelector<HTMLElement>('.once')!.style.display)).toEqual(['', 'none']);
+    expect(rows[1]!.querySelector('.every')!.textContent).toBe('Every 3 months');
+  });
+
   it('evaluates conditions inside the summary and shows each line’s personalisation', async () => {
     const { engine, $ } = await setup(`
       <div data-next-cart-summary>

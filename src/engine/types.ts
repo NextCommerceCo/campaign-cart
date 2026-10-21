@@ -13,6 +13,9 @@ export interface Package {
   qty: number;
   image: string;
   is_recurring: boolean;
+  interval?: 'day' | 'month' | null;
+  interval_count?: number | null;
+  price_recurring?: string | null;
   product_name?: string;
   product_variant_name?: string;
   product_sku?: string | null;
@@ -59,6 +62,11 @@ export interface SummaryLine {
   total_discount: string;
   total: string;
   discounts: Discount[];
+  is_recurring?: boolean;
+  interval?: 'day' | 'month' | null;
+  interval_count?: number | null;
+  price_recurring?: string | null;
+  original_recurring_price?: string | null;
 }
 
 export interface CartSummary {

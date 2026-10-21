@@ -148,7 +148,7 @@ function cartValue(state: State, engine: Engine, prop: string): Value | undefine
   const units = lines.reduce((n, l) => n + (engine.getPackage(l.package_id)?.qty ?? 1) * l.quantity, 0);
   const subtotal = summary ? cents(summary.subtotal) : undefined;
   const discount = summary ? cents(summary.total_discount) : 0;
-  const shipping = summary?.shipping_method ? cents(summary.shipping_method.price) : undefined;
+  const shipping = summary ? cents(summary.shipping_method?.price ?? '0') : undefined;
   const compare = lines.reduce((n, l) => {
     const pkg = engine.getPackage(l.package_id);
     return n + (pkg ? cents(pkg.price_retail_total ?? pkg.price_total) * l.quantity : 0);
@@ -360,7 +360,7 @@ export function cartTokens(engine: Engine): Tokens {
   const locale = campaign?.language;
   const m = (amount: string | undefined) => (s ? format(money(cents(amount)), currency, locale) : '');
   const shipping = s?.shipping_method;
-  const free = !!shipping && cents(shipping.price) === 0;
+  const free = !shipping || cents(shipping.price) === 0;
   const discounted = !!shipping && cents(shipping.original_price) > cents(shipping.price);
   const lines = engine.cart.lines();
   return {
@@ -384,12 +384,22 @@ export function cartTokens(engine: Engine): Tokens {
   };
 }
 
+function frequency(interval: string | null | undefined, count: number | null | undefined): string {
+  const n = count ?? 1;
+  if (interval === 'day') return n === 1 ? 'Daily' : `Every ${n} days`;
+  if (interval === 'month') return n === 1 ? 'Monthly' : `Every ${n} months`;
+  return '';
+}
+
 export function lineTokens(engine: Engine, line: SummaryLine, currency: string | undefined): Tokens {
   const pkg = engine.getPackage(line.package_id);
   const locale = engine.getState().campaign?.language;
   const m = (amount: string) => format(money(cents(amount)), currency, locale);
   const unit = cents(line.unit_price);
   const original = cents(line.original_unit_price);
+  const interval = line.interval ?? pkg?.interval;
+  const count = line.interval_count ?? pkg?.interval_count;
+  const recurring = line.price_recurring ?? pkg?.price_recurring;
   const tokens: Tokens = {
     packageId: String(line.package_id),
     name: pkg?.name ?? '',
@@ -406,6 +416,12 @@ export function lineTokens(engine: Engine, line: SummaryLine, currency: string |
     discountPercentage: format(pct(Math.max(0, original - unit), original), currency, locale),
     hasDiscount: cents(line.total_discount) > 0 ? 'show' : 'hide',
     currency: currency ?? '',
+    isRecurring: String(!!(line.is_recurring ?? pkg?.is_recurring)),
+    interval: interval ?? '',
+    intervalCount: count != null ? String(count) : '',
+    frequency: frequency(interval, count),
+    recurringPrice: recurring != null ? m(recurring) : '',
+    originalRecurringPrice: line.original_recurring_price != null ? m(line.original_recurring_price) : '',
   };
   return Object.fromEntries(
     Object.entries(tokens).flatMap(([k, v]) => [
@@ -420,8 +436,12 @@ export function discountTokens(discount: Discount, currency: string | undefined,
     'discount.name': discount.name ?? '',
     'discount.description': discount.description ?? '',
     'discount.amount': format(money(cents(discount.amount)), currency, locale),
-    'discount.percentage': discount.percentage
-      ? format({ type: 'percent', value: Number(discount.percentage) }, currency, locale)
-      : '',
+    'discount.percentage': discountPercent(discount.percentage, locale),
   };
+}
+
+export function discountPercent(value: string | undefined, locale?: string): string {
+  const n = Number(value);
+  if (!value || !Number.isFinite(n)) return '';
+  return formatter(locale, { style: 'percent', maximumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n / 100);
 }
