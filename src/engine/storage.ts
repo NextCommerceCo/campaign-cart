@@ -58,6 +58,16 @@ export class StorageAdapter {
     }
   }
 
+  remove(name: string): void {
+    const key = this.key(name);
+    this.memory.delete(key);
+    for (const store of this.backends) {
+      try {
+        store.removeItem(key);
+      } catch {}
+    }
+  }
+
   clear(): void {
     this.memory.clear();
     for (const store of this.backends) {

@@ -7,6 +7,7 @@ const BUDGETS = [
   { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
   { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
   { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
+  { match: /^order-.*\.js$/, name: 'order', kb: 10 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
 ];
 

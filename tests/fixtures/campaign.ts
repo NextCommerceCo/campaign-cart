@@ -40,5 +40,17 @@ export const campaign: Campaign = {
       image: 'https://cdn.test/9.png',
       is_recurring: false,
     },
+    {
+      ref_id: 3,
+      external_id: 13,
+      name: 'Earbuds case',
+      price: '40.00',
+      price_total: '40.00',
+      price_retail: '80.00',
+      price_retail_total: '80.00',
+      qty: 1,
+      image: 'https://cdn.test/3.png',
+      is_recurring: false,
+    },
   ],
 };

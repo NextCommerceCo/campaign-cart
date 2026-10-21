@@ -135,6 +135,22 @@ the ref is not in the reported list (localStorage, last 20). Upsell purchases ar
 `dl_upsell_purchase` and then calls `order.markReported(ids)`, so a late or missing analytics
 chunk never uses them up. Nothing is queued across a redirect.
 
+### 3.4.1 Order details
+
+- The order chunk loads on pages with `[data-next-upsell]`, `[data-next-order-items]` or an
+  `order.*` display or condition. It loads `?ref_id` (or `?order_ref_id`), reusing the tab's
+  copy for 15 minutes, and the page is revealed (`html[data-next-ready]`, 0.4.x's
+  `next-display-ready`) only after that, so the receipt skeleton never lifts onto empty fields.
+- An offer is accepted at most once per order and page (`order.accepted`, sessionStorage), so
+  Back cannot charge twice; a repeat moves on as if accepted. Lines are the offer selector's
+  picked card × its stepper quantity, with the card's vouchers.
+- `order.loaded` carries `purchase` (the id to report) and `upsells` (unreported upsell lines,
+  numbered in order). Upsells are reported from the order on the page after the accept, so a
+  redirect can never drop them, and nothing is queued. A paid order clears a cart that was
+  kept for a payment gateway.
+- `order.*` values resolve once the chunk registers them (`registerValues`); before that they
+  read as not loaded, so `data-next-show="order.hasTax"` stays hidden rather than warning.
+
 ### 3.5 Domain events
 
 | Event                                                                     | Payload                                                                                              | Used by                                                                  |
@@ -147,7 +163,7 @@ chunk never uses them up. Nothing is queued across a redirect.
 | `checkout.started` / `checkout.shipping-added` / `checkout.payment-added` | lines / tier / method                                                                                | analytics                                                                |
 | `prospect.saved`                                                          | cart, email, phone (E.164)                                                                           | checkout binding → `next:prospect-cart-created` DOM event for forwarders |
 | `order.placed`                                                            | order                                                                                                | analytics                                                                |
-| `order.loaded`                                                            | order, purchase?, upsells?                                                                           | analytics                                                                |
+| `order.loaded`                                                            | order, purchase? (id), upsells? ({id, number, line})                                                 | analytics, then `order.markReported`                                     |
 | `upsell.viewed` / `upsell.accepted` / `upsell.skipped`                    | refId, lines                                                                                         | analytics                                                                |
 | `ready`                                                                   | lines; once, when a campaign is available (snapshot or fresh); emitted by `start()`                  | core (`html[data-next-ready]`, legacy announce, analytics), page scripts |
 | `storage.degraded`, `error`, `exit-intent.*`                              | as today                                                                                             |                                                                          |
@@ -195,7 +211,7 @@ same URL; skip → `order.skipUpsell()` and navigate.
 ## 5. Files
 
 `src/engine/`: `engine.ts`, `types.ts`, `cart.ts`, `selectors.ts` (core); `checkout.ts`,
-`order.ts`, `rules.ts`, `errors.ts` (loaded by their chunks); shared `api.ts`, `storage.ts`,
+`order.ts`, `rules.ts` (loaded by their chunks); shared `api.ts` (with the order error mapping), `storage.ts`,
 `events.ts`, `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`. See
 [structure.md](structure.md).
 

@@ -3,7 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const LAZY = ['analytics', 'exit-intent', 'checkout', 'order', 'debug'];
-const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules', 'engine/errors'];
+const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules'];
 const BROWSER_GLOBALS =
   /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
 

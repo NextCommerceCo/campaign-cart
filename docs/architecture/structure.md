@@ -63,9 +63,9 @@ src/
   engine/              headless    no DOM; the only code that calls the API or storage
     engine.ts types.ts                          core
     cart.ts selectors.ts values.ts condition.ts core
-    api.ts storage.ts events.ts                 core
+    api.ts storage.ts events.ts                 core (api.ts also maps order errors: one request less per lazy chunk)
     attribution.ts params.ts scope.ts           core
-    checkout.ts rules.ts errors.ts              loaded by the checkout chunk
+    checkout.ts rules.ts                        loaded by the checkout chunk
     order.ts                                    loaded by the order chunk
   bindings/            core        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
@@ -111,7 +111,7 @@ src/
 | `loader.ts`                                  | `config.ts`; `core.ts` only via `import()`                             |
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
-chunk; a static path from `core.ts` to `engine/checkout|order|rules|errors.ts`; a browser global
+chunk; a static path from `core.ts` to `engine/checkout|order|rules.ts`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) inside `engine/`; a folder deeper
 than two levels; a default export or a re-export barrel.

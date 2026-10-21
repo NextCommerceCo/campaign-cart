@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../src/analytics';
 import type { Engine } from '../src/engine/engine';
+import { createOrder } from '../src/engine/order';
+import { fakeApi, json } from './fixtures/api';
 import { flush, makeEngine } from './fixtures/engine';
+import { ORDER, withUpsell } from './fixtures/order';
+import { MemoryStorage } from './fixtures/storage';
 
 type Win = Window & {
   NextDataLayer?: any[];
@@ -140,6 +144,47 @@ describe('analytics', () => {
       ecommerce: { currencyCode: 'USD', shipping_tier: 'Standard' },
     });
     expect(payment).toMatchObject({ event: 'dl_add_payment_info', payment_type: 'Credit Card' });
+  });
+
+  it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
+    const local = new MemoryStorage();
+    const run = async () => {
+      delete win.NextDataLayer;
+      const fetch = fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch;
+      const { engine } = makeEngine({ local, fetch });
+      await engine.start();
+      engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+      await engine.order.load('R1');
+      startAnalytics(engine, options);
+      return names();
+    };
+    expect(await run()).toEqual(['dl_user_data', 'dl_purchase', 'dl_upsell_purchase']);
+    const [, purchase, upsell] = win.NextDataLayer!;
+    expect(purchase.ecommerce).toMatchObject({
+      transaction_id: '1001',
+      value: 89,
+      tax: 7.12,
+      shipping: 9.99,
+      affiliation: 'Online Store',
+      items: [{ item_id: 'EB-2', item_name: 'Earbuds', price: 44.5, quantity: 2 }],
+    });
+    expect(upsell).toMatchObject({
+      ecommerce: { transaction_id: 'R1-US1', affiliation: 'Upsell', value: 20 },
+      upsell_metadata: { original_order_id: 'R1', upsell_number: 1 },
+    });
+    expect(JSON.stringify(purchase)).not.toContain('jane@example.com');
+    expect(await run()).toEqual(['dl_user_data']);
+  });
+
+  it('reports upsell views and skips', async () => {
+    const engine = await ready();
+    startAnalytics(engine, options);
+    engine.events.emit('upsell.viewed', { refId: 'R1', page: '/up/' });
+    engine.events.emit('upsell.skipped', { refId: 'R1' });
+    expect(win.NextDataLayer!.slice(-2)).toMatchObject([
+      { event: 'dl_viewed_upsell', order_id: 'R1', page_path: '/up/' },
+      { event: 'dl_skipped_upsell', order_id: 'R1' },
+    ]);
   });
 
   it('loads the NextCampaign script once and sends one page_view', async () => {

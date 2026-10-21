@@ -1,5 +1,6 @@
 import type { CartSummary } from '../../src/engine/types';
 import { campaign } from './campaign';
+import { ORDER, withUpsell } from './order';
 
 export interface Call {
   url: string;
@@ -12,6 +13,8 @@ export interface FakeApiOptions {
   delays?: number[];
   ignoreAbort?: boolean;
   order?: (body: any) => Response;
+  getOrder?: (ref: string) => Response;
+  upsell?: (ref: string, body: any) => Response;
 }
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -25,6 +28,10 @@ export function fakeApi(options: FakeApiOptions = {}) {
     const delay = options.delays?.[calls.length - 1] ?? 0;
     if (delay) await new Promise((r) => setTimeout(r, delay));
     if (init.signal?.aborted && !options.ignoreAbort) throw new DOMException('aborted', 'AbortError');
+    const upsell = url.match(/\/orders\/([^/]+)\/upsells\/$/);
+    if (upsell) return options.upsell?.(upsell[1]!, body) ?? json(withUpsell(ORDER, 99, body.lines[0].quantity));
+    const order = url.match(/\/orders\/([^/]+)\/$/);
+    if (order) return options.getOrder?.(order[1]!) ?? json({ ...ORDER, ref_id: order[1] });
     if (url.endsWith('/orders/')) {
       return options.order?.(body) ?? json({ ref_id: 'R1', order_status_url: 'https://shop.test/status/R1' });
     }

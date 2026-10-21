@@ -96,12 +96,33 @@ function calculate(
 }
 
 let orders = 0;
+const placed = new Map<string, Record<string, unknown>>();
 
-function placeOrder(body: {
-  payment_detail: { payment_method: string; card_token?: string };
-  success_url: string;
-  payment_failed_url: string;
-}) {
+type Line = { package_id: number; quantity: number };
+
+function orderLines(campaign: Campaign | undefined, lines: Line[], upsell = false) {
+  return lines.map((l, i) => {
+    const pkg = campaign?.packages.find((p) => p.ref_id === l.package_id);
+    const total = (Number(pkg?.price_total ?? 0) * l.quantity).toFixed(2);
+    return {
+      id: Date.now() + i,
+      product_title: pkg?.name ?? `Package ${l.package_id}`,
+      product_sku: `PKG-${l.package_id}`,
+      quantity: l.quantity,
+      price_excl_tax: total,
+      price_incl_tax: total,
+      is_upsell: upsell,
+    };
+  });
+}
+
+function totals(order: Record<string, unknown>) {
+  const lines = order.lines as Array<{ price_incl_tax: string }>;
+  const sum = lines.reduce((n, l) => n + Number(l.price_incl_tax), 0).toFixed(2);
+  return { ...order, total_excl_tax: sum, total_incl_tax: sum, total_tax: '0.00', shipping_incl_tax: '0.00' };
+}
+
+function placeOrder(campaign: Campaign | undefined, body: Record<string, any>) {
   const ref = `DEV${1000 + ++orders}`;
   const { payment_method: method, card_token: token } = body.payment_detail;
   console.log(`[dev] order ${ref} by ${method}`);
@@ -111,6 +132,18 @@ function placeOrder(body: {
       body: { payment_response_code: '51', payment_details: 'Insufficient funds (dev mock: card 4000 0000 0000 0002)' },
     };
   }
+  const order: Record<string, unknown> = totals({
+    ref_id: ref,
+    number: 1000 + orders,
+    currency: campaign?.currency,
+    lines: orderLines(campaign, body.lines),
+    user: body.user,
+    shipping_address: body.shipping_address,
+    billing_address: body.billing_same_as_shipping_address === false ? body.billing_address : body.shipping_address,
+    payment_method: method,
+    shipping_method: 'Standard',
+    supports_post_purchase_upsells: true,
+  });
   if (method !== 'card_token') {
     const gateway = new URL('/__dev/gateway', body.success_url);
     gateway.search = new URLSearchParams({
@@ -119,19 +152,18 @@ function placeOrder(body: {
       success: body.success_url,
       failure: body.payment_failed_url,
     }).toString();
-    return { status: 201, body: { ref_id: ref, payment_complete_url: gateway.href } };
+    order.payment_complete_url = gateway.href;
   }
-  return { status: 201, body: { ref_id: ref } };
+  placed.set(ref, order);
+  return { status: 201, body: order };
 }
 
-const GATEWAY = (q: URLSearchParams) => {
-  const success = new URL(q.get('success')!);
-  success.searchParams.set('ref_id', q.get('ref')!);
-  return `<!doctype html><meta name="viewport" content="width=device-width"><title>Dev gateway</title>
+const GATEWAY = (
+  q: URLSearchParams,
+) => `<!doctype html><meta name="viewport" content="width=device-width"><title>Dev gateway</title>
 <body style="font:16px system-ui;max-width:28rem;margin:4rem auto;padding:0 1rem">
-<h1>Dev payment gateway</h1><p>Order <b>${q.get('ref')}</b> paid by <b>${q.get('method')}</b>. Nothing is charged.</p>
-<p><a href="${success.href}">Approve</a> · <a href="${q.get('failure')}">Fail the payment</a></p></body>`;
-};
+<h1>Dev payment gateway</h1><p>Order <b>${q.get('ref')}</b> by <b>${q.get('method')}</b>. Nothing is charged.</p>
+<p><a href="/__dev/gateway/approve?${q}">Approve</a> · <a href="${q.get('failure')}">Fail the payment</a></p></body>`;
 
 export function mockApi(live: boolean) {
   mkdirSync(CAMPAIGNS, { recursive: true });
@@ -142,6 +174,14 @@ export function mockApi(live: boolean) {
     if (url.pathname === '/__dev/gateway') {
       res.writeHead(200, { 'content-type': 'text/html' });
       return res.end(GATEWAY(url.searchParams));
+    }
+    if (url.pathname === '/__dev/gateway/approve') {
+      const ref = url.searchParams.get('ref')!;
+      delete placed.get(ref)?.payment_complete_url;
+      const success = new URL(url.searchParams.get('success')!);
+      success.searchParams.set('ref_id', ref);
+      res.writeHead(302, { location: success.href });
+      return res.end();
     }
 
     if (url.pathname.startsWith('/__mock/rules/')) {
@@ -183,8 +223,19 @@ export function mockApi(live: boolean) {
       return send(res, 201, { id: Date.now(), checkout_url: `${url.origin}/__dev/cart` });
     }
     if (path === '/api/v1/orders/') {
-      const order = placeOrder(body);
+      const order = placeOrder(savedCampaign(key), body);
       return send(res, order.status, order.body);
+    }
+    const ref = path.match(/^\/api\/v1\/orders\/([^/]+)\/(upsells\/)?$/);
+    if (ref) {
+      const order = placed.get(ref[1]!);
+      if (!order)
+        return send(res, 404, { detail: `dev mock: no order ${ref[1]} (orders live until bun dev restarts)` });
+      if (!ref[2]) return send(res, 200, order);
+      console.log(`[dev] upsell on ${ref[1]}: ${JSON.stringify(body.lines)}`);
+      order.lines = [...(order.lines as unknown[]), ...orderLines(savedCampaign(key), body.lines, true)];
+      Object.assign(order, totals(order));
+      return send(res, 201, order);
     }
 
     const campaign = savedCampaign(key);

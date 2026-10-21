@@ -2,6 +2,7 @@ import { Api } from './api';
 import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart';
 import type { CheckoutActions } from './checkout';
+import type { OrderActions } from './order';
 import { type EngineEvent, Events } from './events';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './selectors';
@@ -32,6 +33,8 @@ export interface Context {
   getPackage(id: number): Package | undefined;
   attribution(): Attribution;
   saved<T>(slice: keyof State): T | undefined;
+  forget(slice: 'checkout'): void;
+  local: StorageAdapter;
   api: Api;
 }
 
@@ -42,6 +45,7 @@ export class Engine {
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
   checkout?: CheckoutActions;
+  order?: OrderActions;
   private state: State;
   private api: Api;
   private session: StorageAdapter;
@@ -77,6 +81,11 @@ export class Engine {
       getPackage: (id) => this.getPackage(id),
       attribution: () => this.attribution(),
       saved: (slice) => this.session.get(slice),
+      forget: (slice) => {
+        this.session.remove(slice);
+        this.state = { ...this.state, [slice]: undefined };
+      },
+      local: this.local,
       api: this.api,
     };
     this.cart = createCart(this.context);
@@ -178,13 +187,17 @@ export class Engine {
   }
 
   private save(slice: keyof State): void {
-    const { cart, visit, campaign, checkout } = this.state;
+    const { cart, visit, campaign, checkout, order } = this.state;
     if (slice === 'cart') {
       const { groups, coupons, dismissed, shippingId } = cart;
       this.session.set('cart', { groups, coupons, dismissed, shippingId });
     }
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
+    if (slice === 'order' && order) {
+      const { refId, order: saved, loadedAt, accepted } = order;
+      this.session.set('order', { refId, order: saved, loadedAt, accepted });
+    }
     if (slice === 'checkout' && checkout) {
       const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved } = checkout;
       this.session.set('checkout', { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved });

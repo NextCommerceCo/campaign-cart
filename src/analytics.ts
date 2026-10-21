@@ -1,6 +1,6 @@
 import { mergeLines } from './engine/cart';
 import type { Engine } from './engine/engine';
-import type { CartState, EventMap } from './engine/types';
+import type { CartState, EventMap, Order, OrderLine } from './engine/types';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -145,6 +145,64 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
   };
 
+  const orderItem = (order: Order, line: OrderLine, index: number) => ({
+    item_id: line.product_sku || String(line.product_id ?? line.id),
+    item_name: line.product_title,
+    item_category: engine.getState().campaign?.name,
+    ...(line.variant_title && { item_variant: line.variant_title }),
+    ...(line.image && { item_image: line.image }),
+    price: cents(Number(line.price_excl_tax) / (line.quantity || 1)),
+    quantity: line.quantity,
+    currency: order.currency ?? currency(),
+    index,
+  });
+
+  const onOrder = ({ order, purchase, upsells }: EventMap['order.loaded']) => {
+    const reported: string[] = [];
+    if (purchase) {
+      const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
+      const items = lines.map((l, i) => orderItem(order, l, i));
+      const discount = Number(order.total_discounts ?? 0);
+      send('dl_purchase', {
+        pageType: 'purchase',
+        ecommerce: {
+          currency: order.currency ?? currency(),
+          transaction_id: purchase,
+          value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
+          tax: Number(order.total_tax ?? 0),
+          shipping: Number(order.shipping_incl_tax ?? 0),
+          affiliation: 'Online Store',
+          items,
+          ...(discount > 0 && { discount }),
+        },
+      });
+      reported.push(purchase);
+    }
+    for (const { id, number, line } of upsells ?? []) {
+      const item = orderItem(order, line, 0);
+      send('dl_upsell_purchase', {
+        pageType: 'upsell',
+        ecommerce: {
+          currency: item.currency,
+          transaction_id: `${order.ref_id}-US${number}`,
+          value: cents(item.price * item.quantity),
+          tax: 0,
+          shipping: 0,
+          affiliation: 'Upsell',
+          items: [item],
+        },
+        upsell_metadata: {
+          original_order_id: order.ref_id,
+          upsell_number: number,
+          package_id: String(line.product_id ?? line.id),
+          package_name: line.product_title,
+        },
+      });
+      reported.push(id);
+    }
+    if (reported.length) engine.order?.markReported(reported);
+  };
+
   engine.on(
     '*',
     (e) => {
@@ -169,6 +227,21 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             shipping_tier: tier,
           });
         }
+        case 'order.loaded':
+          return onOrder(e.data as EventMap['order.loaded']);
+        case 'upsell.viewed': {
+          const { refId, page } = e.data as EventMap['upsell.viewed'];
+          return send('dl_viewed_upsell', {
+            order_id: refId,
+            page_path: page,
+            upsell: { package_id: 'page_view', package_name: 'Upsell Page View', currency: currency() },
+          });
+        }
+        case 'upsell.skipped':
+          return send('dl_skipped_upsell', {
+            order_id: (e.data as EventMap['upsell.skipped']).refId,
+            upsell: { package_id: 'unknown', package_name: 'Unknown Package' },
+          });
         case 'checkout.payment-added': {
           const { method } = e.data as EventMap['checkout.payment-added'];
           const type = method === 'card_token' ? 'Credit Card' : method;

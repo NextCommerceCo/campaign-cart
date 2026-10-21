@@ -19,10 +19,13 @@ export interface Context {
   card?: CardRef;
 }
 
-const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
-const money = (c: number | undefined): Value => ({ type: 'money', value: c === undefined ? undefined : c / 100 });
+export const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
+export const money = (c: number | undefined): Value => ({
+  type: 'money',
+  value: c === undefined ? undefined : c / 100,
+});
 const pct = (part: number, whole: number): Value => ({ type: 'percent', value: whole > 0 ? (part / whole) * 100 : 0 });
-const bool = (value: boolean): Value => ({ type: 'bool', value });
+export const bool = (value: boolean): Value => ({ type: 'bool', value });
 const notLoaded = (v: Value | undefined): Value | undefined =>
   v && (v.type === 'bool' ? v : { type: v.type, value: undefined });
 
@@ -240,10 +243,19 @@ export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value |
   return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
 }
 
+type Resolver = (state: State, path: string) => Value | undefined;
+const LAZY_ROOTS = ['order'];
+const roots = new Map<string, Resolver>();
+
+export const registerValues = (root: string, resolver: Resolver) => void roots.set(root, resolver);
+
 export function resolve(engine: Engine, path: string, ctx: Context = {}): Value | undefined {
   const state = engine.getState();
   const parts = path.split('.');
   const [root = '', second = '', ...rest] = parts;
+  const lazy = roots.get(root);
+  if (lazy) return lazy(state, parts.slice(1).join('.'));
+  if (LAZY_ROOTS.includes(root)) return { type: 'text', value: undefined };
   switch (root) {
     case 'cart':
       return cartValue(state, engine, second);

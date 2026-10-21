@@ -118,6 +118,18 @@ describe('boot', () => {
     expect(next.getState().cart.groups).toEqual({ items: { lines: [{ packageId: 2, quantity: 2 }], vouchers: [] } });
   });
 
+  it('reveals a receipt only after its order has loaded', async () => {
+    vi.stubGlobal('fetch', fakeApi({ delays: [50] }).fetch);
+    history.replaceState(null, '', '/receipt/?ref_id=R1');
+    document.body.innerHTML = `<div data-next-order-items><div class="line">{item.name}</div></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    expect(document.documentElement.hasAttribute('data-next-ready')).toBe(false);
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    expect(next.getState().order?.status).toBe('ready');
+    expect(document.querySelector('.line')!.textContent).toBe('Earbuds');
+  });
+
   it('binds the checkout chunk on a checkout page', async () => {
     document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email"></form>`;
     const form = document.querySelector('form')!;

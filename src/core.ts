@@ -15,6 +15,9 @@ import {
 
 declare const __VERSION__: string;
 
+const ORDER_MARKUP =
+  '[data-next-upsell], [data-next-order-items], [data-next-display^="order."], [data-next-show^="order."], [data-next-hide^="order."]';
+
 const browserStorage = (get: () => Storage): Storage | null => {
   try {
     return get();
@@ -133,8 +136,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   };
   (window as unknown as { next: NextApi }).next = next;
 
-  engine.on('ready', () => {
-    if (checkoutForm) void checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm));
+  const orderPage = document.querySelector(ORDER_MARKUP);
+  const orderChunk = orderPage ? import('./order') : undefined;
+
+  const reveal = () => {
     bindings.render();
     html.setAttribute('data-next-ready', '');
     announceLegacyReady(next);
@@ -150,6 +155,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         );
       (window.requestIdleCallback ?? setTimeout)(() => void start());
     }
+  };
+  engine.on('ready', () => {
+    const binding = [
+      checkoutForm && checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm)),
+      orderChunk?.then((m) => m.bindOrder(engine)),
+    ].filter(Boolean);
+    if (binding.length) void Promise.allSettled(binding).then(reveal);
+    else reveal();
   });
   engine.on('error', (e) => {
     if (e.data.action === 'load') html.setAttribute('data-next-error', 'campaign');
