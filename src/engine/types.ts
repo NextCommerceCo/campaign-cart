@@ -17,6 +17,7 @@ export interface Package {
   product_variant_name?: string;
   product_sku?: string | null;
   product_id?: number;
+  product_variant_id?: number;
   product_purchase_availability?: string;
   product_variant_attribute_values?: Array<{ code: string; name: string; value: string }>;
 }
@@ -314,7 +315,7 @@ export interface EventMap {
   'order.loaded': { order: Order; purchase?: string; upsells?: Array<{ id: string; number: number; line: OrderLine }> };
   'upsell.viewed': { refId: string; page: string };
   'upsell.accepted': { refId: string; lines: ApiLine[] };
-  'upsell.skipped': { refId: string };
+  'upsell.skipped': { refId: string; packageId?: number };
   'exit-intent.shown': ExitIntentDetail;
   'exit-intent.clicked': ExitIntentDetail;
   'exit-intent.dismissed': ExitIntentDetail;

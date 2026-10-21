@@ -126,6 +126,9 @@ describe('analytics', () => {
     await flush();
     expect(names()).toEqual(['dl_user_data', 'dl_cart_updated']);
     expect(win.NextDataLayer![0].ecommerce.items).toMatchObject([{ item_id: '12' }]);
+    expect(win.NextDataLayer![1].ecommerce.items).toEqual([
+      expect.objectContaining({ item_id: '12', item_product_id: '400', price: 44.5, discount: 54.5, quantity: 2 }),
+    ]);
   });
 
   it('reports checkout steps in the 0.4.x shape', async () => {
@@ -160,6 +163,8 @@ describe('analytics', () => {
     };
     expect(await run()).toEqual(['dl_user_data', 'dl_purchase', 'dl_upsell_purchase']);
     const [, purchase, upsell] = win.NextDataLayer!;
+    expect(purchase.event_id).toBe('1001');
+    expect(upsell.event_id).toBe('R1-US1');
     expect(purchase.ecommerce).toMatchObject({
       transaction_id: '1001',
       value: 89,
@@ -224,9 +229,39 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     engine.events.emit('upsell.viewed', { refId: 'R1', page: '/up/' });
     engine.events.emit('upsell.skipped', { refId: 'R1' });
-    expect(win.NextDataLayer!.slice(-2)).toMatchObject([
+    engine.events.emit('upsell.skipped', { refId: 'R1', packageId: 3 });
+    expect(win.NextDataLayer!.slice(-3)).toMatchObject([
       { event: 'dl_viewed_upsell', order_id: 'R1', page_path: '/up/' },
-      { event: 'dl_skipped_upsell', order_id: 'R1' },
+      { event: 'dl_skipped_upsell', order_id: 'R1', upsell: { package_id: 'unknown' } },
+      { event: 'dl_skipped_upsell', upsell: { package_id: '3', package_name: 'Earbuds case' } },
+    ]);
+  });
+
+  it('reports the exit-intent popup the 0.4.x way', async () => {
+    const engine = await ready();
+    startAnalytics(engine, options);
+    const image = { imageUrl: 'https://cdn.test/exit.png' };
+    engine.events.emit('exit-intent.shown', image);
+    engine.events.emit('exit-intent.clicked', image);
+    engine.events.emit('exit-intent.action', { template: 'exit', action: 'apply-coupon', couponCode: 'EXIT10' });
+    engine.events.emit('exit-intent.dismissed', { template: 'exit' });
+    engine.events.emit('exit-intent.closed', image);
+    expect(win.NextDataLayer!.slice(1)).toMatchObject([
+      {
+        event: 'dl_exit_intent_shown',
+        event_category: 'engagement',
+        event_label: image.imageUrl,
+        exit_intent: { image_url: image.imageUrl, template: '' },
+      },
+      { event: 'dl_exit_intent_accepted', event_action: 'exit_intent_accepted' },
+      {
+        event: 'dl_exit_intent_action',
+        event_action: 'exit_intent_apply-coupon',
+        event_label: 'EXIT10',
+        exit_intent: { action: 'apply-coupon', coupon_code: 'EXIT10' },
+      },
+      { event: 'dl_exit_intent_dismissed', event_label: 'exit' },
+      { event: 'dl_exit_intent_closed' },
     ]);
   });
 

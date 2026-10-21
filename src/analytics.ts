@@ -1,6 +1,6 @@
 import { mergeLines } from './engine/cart';
 import type { Engine } from './engine/engine';
-import type { CartState, EventMap, Order, OrderLine } from './engine/types';
+import type { CartState, EventMap, ExitIntentDetail, Order, OrderLine, SummaryLine } from './engine/types';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -25,6 +25,13 @@ type Win = Window & {
   NextDataLayerTransformFn?: (event: DataLayerEvent) => DataLayerEvent | null | undefined | false;
   nextCampaign?: { config(o: { apiKey: string }): void; event(name: string, data: object): void };
 };
+
+const EXIT_INTENT = {
+  'exit-intent.shown': 'shown',
+  'exit-intent.clicked': 'accepted',
+  'exit-intent.dismissed': 'dismissed',
+  'exit-intent.closed': 'closed',
+} as const;
 
 const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/';
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -86,16 +93,26 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   const currency = () => engine.getState().cart.summary?.currency ?? engine.getState().campaign?.currency ?? 'USD';
 
-  const item = (packageId: number, count: number, index: number, unitPrice?: string) => {
+  const ids = (product?: number, variant?: number) => ({
+    ...(product != null && { item_product_id: String(product) }),
+    ...(variant != null && { item_variant_id: String(variant) }),
+  });
+
+  const item = (packageId: number, count: number, index: number, line?: SummaryLine) => {
     const pkg = engine.getPackage(packageId);
     if (!pkg) return undefined;
+    const price = Number(line?.unit_price ?? pkg.price);
+    const before = Number(line?.original_unit_price) || Number(pkg.price_retail) || 0;
     return {
       item_id: pkg.product_sku || String(pkg.external_id),
       item_name: pkg.product_name || pkg.name,
       item_category: engine.getState().campaign?.name,
       ...(pkg.product_variant_name && { item_variant: pkg.product_variant_name }),
+      ...ids(pkg.product_id, pkg.product_variant_id),
+      ...(pkg.product_sku && { item_sku: pkg.product_sku }),
       item_image: pkg.image,
-      price: Number(unitPrice ?? pkg.price),
+      price,
+      ...(before > price && { discount: cents(before - price) }),
       quantity: pkg.qty * count,
       currency: currency(),
       index,
@@ -106,13 +123,26 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     const summary = engine.getState().cart.summary;
     const items = lines
       .map((l, i) =>
-        item(l.package_id, l.quantity, i, summary?.lines.find((s) => s.package_id === l.package_id)?.unit_price),
+        item(
+          l.package_id,
+          l.quantity,
+          i,
+          summary?.lines.find((s) => s.package_id === l.package_id),
+        ),
       )
       .filter((i): i is NonNullable<typeof i> => !!i);
     return { currency: currency(), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
   };
 
   const cartTotal = () => engine.getState().cart.summary?.total ?? '0';
+
+  const exitIntent = (name: string, { imageUrl, template }: ExitIntentDetail) =>
+    send(`dl_exit_intent_${name}`, {
+      event_category: 'engagement',
+      event_action: `exit_intent_${name}`,
+      event_label: imageUrl || template || 'exit-intent',
+      exit_intent: { image_url: imageUrl || '', template: template || '' },
+    });
 
   let baseline: Line[] | undefined;
 
@@ -186,6 +216,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       item_name: line.product_title,
       item_category: engine.getState().campaign?.name,
       ...(line.variant_title && { item_variant: line.variant_title }),
+      ...ids(line.product_id, line.variant_id),
       ...(line.product_sku && { item_sku: line.product_sku }),
       ...(line.image && { item_image: line.image }),
       price: cents(paid),
@@ -204,6 +235,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       const items = lines.map((l, i) => orderItem(order, l, i, incl));
       const discount = Number(order.total_discounts ?? 0);
       send('dl_purchase', {
+        event_id: purchase,
         pageType: 'purchase',
         ecommerce: {
           currency: order.currency ?? currency(),
@@ -220,11 +252,13 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
     for (const { id, number, line } of upsells ?? []) {
       const item = orderItem(order, line, 0, taxIncluded(order));
+      const transaction = `${order.ref_id}-US${number}`;
       send('dl_upsell_purchase', {
+        event_id: transaction,
         pageType: 'upsell',
         ecommerce: {
           currency: item.currency,
-          transaction_id: `${order.ref_id}-US${number}`,
+          transaction_id: transaction,
           value: cents(item.price * item.quantity),
           tax: 0,
           shipping: 0,
@@ -234,7 +268,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         upsell_metadata: {
           original_order_id: order.ref_id,
           upsell_number: number,
-          package_id: String(line.product_id ?? line.id),
+          package_id: String(line.package ?? line.product_id ?? line.id),
           package_name: line.product_title,
         },
       });
@@ -277,11 +311,31 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             upsell: { package_id: 'page_view', package_name: 'Upsell Page View', currency: currency() },
           });
         }
-        case 'upsell.skipped':
+        case 'upsell.skipped': {
+          const { refId, packageId } = e.data as EventMap['upsell.skipped'];
+          const pkg = packageId ? engine.getPackage(packageId) : undefined;
           return send('dl_skipped_upsell', {
-            order_id: (e.data as EventMap['upsell.skipped']).refId,
-            upsell: { package_id: 'unknown', package_name: 'Unknown Package' },
+            order_id: refId,
+            upsell: {
+              package_id: packageId ? String(packageId) : 'unknown',
+              package_name: pkg?.name ?? (packageId ? `Package ${packageId}` : 'Unknown Package'),
+            },
           });
+        }
+        case 'exit-intent.shown':
+        case 'exit-intent.clicked':
+        case 'exit-intent.dismissed':
+        case 'exit-intent.closed':
+          return exitIntent(EXIT_INTENT[e.name], e.data as ExitIntentDetail);
+        case 'exit-intent.action': {
+          const { action, couponCode } = e.data as EventMap['exit-intent.action'];
+          return send('dl_exit_intent_action', {
+            event_category: 'engagement',
+            event_action: `exit_intent_${action}`,
+            event_label: couponCode || action,
+            exit_intent: { action, coupon_code: couponCode || '' },
+          });
+        }
         case 'checkout.payment-added': {
           const { method } = e.data as EventMap['checkout.payment-added'];
           const type = method === 'card_token' ? 'Credit Card' : method;

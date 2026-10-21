@@ -42,7 +42,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         const url = targetUrl(button, accept, engine);
         if (!accept) {
           leaving = true;
-          order.skip();
+          order.skip({ selectorId, lines: packageId ? [{ packageId, quantity }] : undefined });
           offer.classList.add('next-skipped');
           return go(url, 0);
         }

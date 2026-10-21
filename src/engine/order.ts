@@ -22,10 +22,11 @@ const PAYMENT_LABELS: Record<string, string> = {
   link: 'Link',
   affirm: 'Affirm',
   bancontact: 'Bancontact',
+  external: 'External',
   giropay: 'Giropay',
   sofort: 'Sofort',
   swish: 'Swish',
-  twint: 'TWINT',
+  twint: 'Twint',
   shop_pay: 'Shop Pay',
 };
 
@@ -138,6 +139,8 @@ export function orderValue(state: State, path: string): Value | undefined {
 
 export type Accepted = 'accepted' | 'repeat' | 'unsupported' | 'failed' | 'busy';
 
+type Offer = { selectorId?: string; lines?: CartLine[] };
+
 export function createOrder(ctx: Context, cart: CartActions) {
   const state = () => ctx.getState().order!;
   const set = (patch: Partial<OrderState>) => ctx.update('order', patch);
@@ -147,6 +150,12 @@ export function createOrder(ctx: Context, cart: CartActions) {
   set({ status: 'idle', accepted: [], ...ctx.saved<Partial<OrderState>>('order') });
 
   const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
+
+  const offerLines = (offer: Offer) => {
+    const selector = offer.selectorId ? ctx.getState().selectors[offer.selectorId] : undefined;
+    const card = pickedCard(selector);
+    return { card, lines: selector && card ? cardLines(selector, card) : (offer.lines ?? []) };
+  };
 
   const settle = (order: Order, page?: string) => {
     const paid = !order.payment_complete_url;
@@ -201,21 +210,19 @@ export function createOrder(ctx: Context, cart: CartActions) {
       ctx.emit('upsell.viewed', { refId, page });
     },
 
-    skip(): void {
+    skip(offer: Offer = {}): void {
       const { refId } = state();
-      if (refId) ctx.emit('upsell.skipped', { refId });
+      if (refId) ctx.emit('upsell.skipped', { refId, packageId: offerLines(offer).lines[0]?.packageId });
     },
 
-    async accept(offer: { selectorId?: string; lines?: CartLine[] }, page: string): Promise<Accepted> {
+    async accept(offer: Offer, page: string): Promise<Accepted> {
       const { order, refId, status, accepted } = state();
       if (status === 'accepting' || status === 'loading') return 'busy';
       if (!order || !refId || !order.supports_post_purchase_upsells) return 'unsupported';
       const key = `${refId}:${page}`;
       if (accepted.includes(key)) return 'repeat';
 
-      const selector = offer.selectorId ? ctx.getState().selectors[offer.selectorId] : undefined;
-      const card = pickedCard(selector);
-      const lines = selector && card ? cardLines(selector, card) : (offer.lines ?? []);
+      const { card, lines } = offerLines(offer);
       const body = mergeLines({ offer: { lines, vouchers: [] } });
       if (!body.length) return 'failed';
 

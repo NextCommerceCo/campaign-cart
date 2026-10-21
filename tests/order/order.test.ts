@@ -79,10 +79,13 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
   });
 
   it('skips straight to the next page', async () => {
-    const { $, navigate, events, upsells } = await mount('apollo/upsell-bundle-stepper.html');
+    const { engine, $, navigate, events, upsells } = await mount('apollo/upsell-bundle-stepper.html');
+    const skipped = vi.fn();
+    engine.on('upsell.skipped', (e) => skipped(e.data));
     $('[data-next-upsell-action="skip"]').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
     expect(events).toContain('upsell.skipped');
+    expect(skipped).toHaveBeenCalledWith({ refId: 'R1', packageId: 3 });
     expect(upsells()).toHaveLength(0);
   });
 
