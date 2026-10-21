@@ -119,8 +119,43 @@ function bindTooltip(target: HTMLElement): void {
   document.addEventListener('keydown', (e) => e.key === 'Escape' && hide());
 }
 
+const SCROLL_TARGETS = [
+  '.cart-items__list',
+  '[data-next-cart-items]',
+  '[data-next-order-items]',
+  '.order-items__list',
+  '.scrollable-content',
+];
+
+function scrollTarget(hint: HTMLElement): HTMLElement | null {
+  const selector = hint.getAttribute('data-next-scroll-target');
+  if (selector) return document.querySelector<HTMLElement>(selector);
+  const within = (scope: Element | null) =>
+    scope && SCROLL_TARGETS.map((s) => scope.querySelector<HTMLElement>(s)).find(Boolean);
+  return within(hint.parentElement) || within(hint.closest('.order-summary, .cart-items, .modal-content')) || null;
+}
+
+function bindScrollHint(hint: HTMLElement): void {
+  const target = scrollTarget(hint);
+  if (!target) return;
+  const threshold = Number(hint.getAttribute('data-next-scroll-threshold') || 5);
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const shown = target.scrollHeight > target.clientHeight && target.scrollTop <= threshold;
+    hint.classList.toggle('cart-items__scroll-hint--active', shown);
+    hint.setAttribute('aria-hidden', String(!shown));
+  };
+  const later = () => (frame ||= requestAnimationFrame(update));
+  target.addEventListener('scroll', later, { passive: true });
+  addEventListener('resize', later);
+  new MutationObserver(later).observe(target, { childList: true, subtree: true, characterData: true });
+  update();
+}
+
 export function bindWidgets(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-next-accordion]').forEach(bindAccordion);
+  root.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]').forEach(bindScrollHint);
   const tips = root.querySelectorAll<HTMLElement>('[data-next-tooltip]');
   if (tips.length && !document.getElementById('next-tooltip-styles')) {
     document.head.append(

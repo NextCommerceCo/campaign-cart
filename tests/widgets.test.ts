@@ -45,4 +45,39 @@ describe('page widgets', () => {
     vi.advanceTimersByTime(400);
     expect(document.querySelector('.next-tooltip')).toBeNull();
   });
+
+  it('shows the receipt’s scroll hint only while the order list overflows and sits at the top', async () => {
+    const doc = new DOMParser().parseFromString(
+      readFileSync('tests/fixtures/pages/apollo/receipt.html', 'utf8'),
+      'text/html',
+    );
+    document.body.innerHTML = doc.body.innerHTML;
+    const layout = { scrollHeight: 0, clientHeight: 0, scrollTop: 0 };
+    const lists = [...document.querySelectorAll<HTMLElement>('[data-next-order-items]')];
+    for (const list of lists)
+      for (const key of Object.keys(layout) as Array<keyof typeof layout>)
+        Object.defineProperty(list, key, { get: () => layout[key] });
+    const hints = [...document.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]')];
+    const shown = () => hints.map((h) => h.classList.contains('cart-items__scroll-hint--active'));
+    const frame = async () => {
+      await Promise.resolve();
+      await new Promise(requestAnimationFrame);
+    };
+    expect(hints).toHaveLength(2);
+    expect(shown()).toEqual([true, true]);
+
+    bindWidgets();
+    expect(shown()).toEqual([false, false]);
+    expect(hints[0]!.getAttribute('aria-hidden')).toBe('true');
+
+    Object.assign(layout, { scrollHeight: 600, clientHeight: 288 });
+    lists[0]!.append(document.createElement('div'));
+    await frame();
+    expect(shown()).toEqual([true, false]);
+
+    layout.scrollTop = 40;
+    lists[0]!.dispatchEvent(new Event('scroll'));
+    await frame();
+    expect(shown()).toEqual([false, false]);
+  });
 });
