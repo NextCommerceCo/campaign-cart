@@ -1,6 +1,7 @@
 import { Api } from './api';
 import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart';
+import type { CheckoutActions } from './checkout';
 import { type EngineEvent, Events } from './events';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './selectors';
@@ -24,10 +25,13 @@ export interface EngineOptions {
 
 export interface Context {
   getState(): State;
-  update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>): void;
+  update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
+  on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void): () => void;
   fail(action: string, err: unknown): void;
   getPackage(id: number): Package | undefined;
+  attribution(): Attribution;
+  saved<T>(slice: keyof State): T | undefined;
   api: Api;
 }
 
@@ -37,6 +41,7 @@ export class Engine {
   readonly events = new Events();
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
+  checkout?: CheckoutActions;
   private state: State;
   private api: Api;
   private session: StorageAdapter;
@@ -44,6 +49,7 @@ export class Engine {
   private listeners = new Set<() => void>();
   private notifying = false;
   private ready = false;
+  private context: Context;
 
   constructor(private options: EngineOptions) {
     this.api = new Api(options.apiKey, options.send, options.apiBase);
@@ -62,16 +68,19 @@ export class Engine {
       selectors: {},
       visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0 },
     };
-    const context: Context = {
+    this.context = {
       getState: () => this.state,
-      update: (slice, patch) => this.update(slice, patch),
+      update: (slice, patch, opts) => this.update(slice, patch, opts),
       emit: (name, data) => this.events.emit(name, data),
+      on: (name, fn) => this.events.on(name, fn),
       fail: (action, err) => this.fail(action, err),
       getPackage: (id) => this.getPackage(id),
+      attribution: () => this.attribution(),
+      saved: (slice) => this.session.get(slice),
       api: this.api,
     };
-    this.cart = createCart(context);
-    this.selectors = createSelectors(context, this.cart);
+    this.cart = createCart(this.context);
+    this.selectors = createSelectors(this.context, this.cart);
 
     if (options.reset) {
       this.session.clear();
@@ -89,6 +98,10 @@ export class Engine {
     this.markReady();
     await this.load();
     this.markReady();
+  }
+
+  attach<T>(create: (ctx: Context) => T): T {
+    return create(this.context);
   }
 
   getState(): Readonly<State> {
@@ -149,10 +162,14 @@ export class Engine {
     this.events.emit('ready', { lines: this.cart.lines() });
   }
 
-  private update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>): void {
+  private update<K extends keyof State>(
+    slice: K,
+    patch: Partial<NonNullable<State[K]>>,
+    { silent = false }: { silent?: boolean } = {},
+  ): void {
     this.state = { ...this.state, [slice]: { ...this.state[slice], ...patch } };
     this.save(slice);
-    if (this.notifying) return;
+    if (silent || this.notifying) return;
     this.notifying = true;
     queueMicrotask(() => {
       this.notifying = false;
@@ -161,13 +178,17 @@ export class Engine {
   }
 
   private save(slice: keyof State): void {
-    const { cart, visit, campaign } = this.state;
+    const { cart, visit, campaign, checkout } = this.state;
     if (slice === 'cart') {
       const { groups, coupons, dismissed, shippingId } = cart;
       this.session.set('cart', { groups, coupons, dismissed, shippingId });
     }
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
+    if (slice === 'checkout' && checkout) {
+      const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved } = checkout;
+      this.session.set('checkout', { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved });
+    }
   }
 
   private campaignKey(): string {

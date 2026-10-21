@@ -1,4 +1,4 @@
-import type { ApiLine, CartSummary, Send } from './types';
+import type { ApiLine, CartSummary, Order, OrderBody, ProspectBody, Send } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -27,6 +27,14 @@ export class Api {
       body: JSON.stringify(body),
       signal,
     });
+  }
+
+  createCart(body: ProspectBody): Promise<unknown> {
+    return this.request(`${this.base}/api/v1/carts/`, { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  createOrder(body: OrderBody): Promise<Order> {
+    return this.request<Order>(`${this.base}/api/v1/orders/`, { method: 'POST', body: JSON.stringify(body) });
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {

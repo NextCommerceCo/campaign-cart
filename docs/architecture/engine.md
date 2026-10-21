@@ -108,6 +108,24 @@ CORS preflight today). When it does, one key per order attempt is reused for ret
 unknown outcome (network error, timeout, 5xx) and replaced after a definite answer or a cart
 change. Until then the single-flight guard is the protection.
 
+### 3.3.1 Checkout details
+
+- **Field names** in the Engine are the API's and i18n-rules': `email, first_name, last_name,
+phone_number, line1, line2, city, state, postcode, country, accepts_marketing`, and
+  `billing_*` for the billing address. Page names (`fname`, `address1`, `postal`, …) are
+  mapped by the checkout chunk.
+- **Validation codes** are i18n-rules' (`blank, not_selected, invalid, invalid_characters,
+contains_emoji, too_long`), so its translated `fields.<name>.errors` show as they are.
+  Required: email, names, line1, city, country; postcode and state where the country's rules
+  say; phone only when the page marks it. Express checks only email and names.
+- **Remote checks** (`/v1/validate`) give the phone in E.164 for the order and show a
+  postcode outside its state as a warning. They never block, and never on our failure.
+- **After a paid order** (no `payment_complete_url`) the cart and form are cleared from state
+  and storage **without a re-render**, so the page does not flash an empty cart while it
+  navigates. With a gateway URL the cart is kept for a retry after a failed payment.
+- **Unchanged from 0.4.x on purpose:** `user.language: 'en'`, `accepts_marketing` defaults to
+  true, 400 `errors{}` are joined into the general message rather than mapped to fields.
+
 ### 3.4 Purchases (once, and only when paid)
 
 `order.load` reports a purchase only when the order has no `payment_complete_url`, the page is

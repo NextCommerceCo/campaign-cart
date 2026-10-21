@@ -26,13 +26,14 @@ export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
 const normalizeCode = (code: string) => code.trim().toUpperCase();
 
 export function emptyCart(): CartState {
-  return { groups: {}, coupons: [], dismissed: [], calculating: false };
+  return { groups: {}, coupons: [], dismissed: [], calculating: false, frozen: false };
 }
 
 export function createCart(ctx: Context) {
   let seq = 0;
   let abort: AbortController | undefined;
   let pending: Promise<void> | undefined;
+  let running: Promise<void> | undefined;
 
   const state = () => ctx.getState().cart;
   const lines = () => mergeLines(state().groups);
@@ -72,10 +73,18 @@ export function createCart(ctx: Context) {
   const recalculate = (): Promise<void> =>
     (pending ??= Promise.resolve().then(() => {
       pending = undefined;
-      return calculate();
+      return (running = calculate());
     }));
 
+  const settled = async (): Promise<void> => {
+    for (let next = pending ?? running; next; next = pending ?? running) {
+      await next;
+      if (running === next) running = undefined;
+    }
+  };
+
   const commit = (patch: Partial<CartState>): Promise<void> => {
+    if (state().frozen) return Promise.resolve();
     const groups = patch.groups ?? state().groups;
     const hasLines = mergeLines(groups).length > 0;
     set({
@@ -124,6 +133,13 @@ export function createCart(ctx: Context) {
     lines,
     vouchers,
     recalculate,
+    settled,
+    freeze: (frozen: boolean) => set({ frozen }),
+    clearAfterOrder() {
+      seq++;
+      abort?.abort();
+      ctx.update('cart', { ...emptyCart(), frozen: true }, { silent: true });
+    },
     campaignLoaded(): Promise<void> {
       const groups = knownOnly(state().groups);
       return groups !== state().groups ? commit({ groups }) : lines().length ? recalculate() : Promise.resolve();

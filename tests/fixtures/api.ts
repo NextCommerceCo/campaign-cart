@@ -8,7 +8,15 @@ export interface Call {
   body?: any;
 }
 
-export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = {}) {
+export interface FakeApiOptions {
+  delays?: number[];
+  ignoreAbort?: boolean;
+  order?: (body: any) => Response;
+}
+
+export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
+
+export function fakeApi(options: FakeApiOptions = {}) {
   const calls: Call[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = String(input);
@@ -17,6 +25,10 @@ export function fakeApi(options: { delays?: number[]; ignoreAbort?: boolean } = 
     const delay = options.delays?.[calls.length - 1] ?? 0;
     if (delay) await new Promise((r) => setTimeout(r, delay));
     if (init.signal?.aborted && !options.ignoreAbort) throw new DOMException('aborted', 'AbortError');
+    if (url.endsWith('/orders/')) {
+      return options.order?.(body) ?? json({ ref_id: 'R1', order_status_url: 'https://shop.test/status/R1' });
+    }
+    if (url.endsWith('/carts/')) return json({ id: 7, checkout_url: 'https://shop.test/c/7' });
     const lines = body.lines as Array<{ package_id: number; quantity: number }>;
     const offer = url.includes('upsell=true') ? 0.5 : 1;
     const subtotal = lines.reduce(
