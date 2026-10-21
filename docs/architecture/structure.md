@@ -44,7 +44,7 @@ docs/
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
-dev/                       bun dev and bun run e2e: campaign pages + SDK from source + mock API
+dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
 README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .prettierrc.json

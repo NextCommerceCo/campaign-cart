@@ -20,26 +20,46 @@ the 0.4.x SDK on those pages.
 | `npm run build`     | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
 | `bun dev`           | the real campaign pages with this SDK from source; see below                      |
 | `bun run e2e`       | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
+| `bun run qa`        | a passcode link for QA on another network (Cloudflare quick tunnel)               |
 
 ## Local development
 
 `bun dev` serves the campaign pages built in `../my-campaigns/_site` (or `SITE=/path/to/_site`)
-on http://localhost:5173, with their `loader.js` tag swapped for this repo's source. Saving a
-file reloads the page. Nothing leaves your machine:
+with their `loader.js` tag swapped for this repo's SDK. Open http://localhost:5173/ for a list
+of every campaign page. Every page shows a badge with the mode it runs in.
+
+| Command                               | API                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `bun dev`                             | **MOCK** — nothing leaves your machine                                          |
+| `bun dev --api live`                  | **LIVE** — real campaign data and prices; orders, prospects and payment.js fake |
+| `bun dev --api full --key pk_…`       | **FULL** — the real API: real orders and real payment.js. Use a test campaign   |
+| `bun dev --api http://localhost:8000` | **LOCAL API** — everything goes to your local backend                           |
+
+Options: `--key pk_…` uses that campaign key on every page instead of the page's own;
+`--dist` serves the built SDK (`bun run build` first) instead of the source; `--port 5180`.
+
+In MOCK and LIVE:
 
 - the Campaigns API is a local mock: cart totals from the campaign's prices, prospect carts
   and orders logged in the terminal;
-- i18n-rules runs in-process from `../i18n-rules` (or `I18N_RULES=…`);
 - payment.js is a fake card form: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` declines;
-  express and redirect methods go to a local gateway page with Approve / Fail;
-- the NextCampaign analytics script is a stub that logs to the console.
+  express and redirect methods go to a local gateway page with Approve / Fail.
 
-The mock needs each campaign's real JSON once, saved in `dev/campaigns/` (not committed).
-`bun dev --live` fetches it from the live Campaigns API and saves it; in that mode campaign
-data and cart totals are live, while prospect carts, orders and payment.js stay mocked. The
-terminal prints a `curl` command for any campaign it has not saved yet.
+In every mode i18n-rules runs in-process from `../i18n-rules` (or `I18N_RULES=…`) when it is
+there, the NextCampaign analytics script is a stub, and page scripts (GTM, page JS) run as they
+are. MOCK needs each campaign's JSON once in `dev/campaigns/` (not committed): `bun dev --api
+live` saves it, or run the `curl` command the terminal prints.
 
-Page scripts other than the SDK (GTM, page JS) run as they are.
+### Sharing with QA on another network
+
+`bun run qa` builds the SDK, serves the pages with the built files (fast on phones), and opens
+a Cloudflare quick tunnel ([`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+installed once, no account). It prints a link with a passcode, for example
+`https://random-words.trycloudflare.com/?qa=…`. The link opens the page list; without the
+passcode the server answers "Ask for the full link". It works only while the command runs.
+Every request from QA goes through your machine, so QA never needs your network or your local
+backend. Takes the same `--api` / `--key` options, e.g. `bun run qa --api full --key pk_test_…`;
+`--no-tunnel` serves on this machine only.
 
 `bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
 receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production

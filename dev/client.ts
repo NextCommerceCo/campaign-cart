@@ -1,8 +1,19 @@
+interface DevPage {
+  mode: string;
+  stubPayments: boolean;
+  rules: boolean;
+}
+
+const dev = (window as unknown as { __NEXT_DEV__?: DevPage }).__NEXT_DEV__ ?? {
+  mode: 'MOCK',
+  stubPayments: true,
+  rules: true,
+};
 const API = 'https://campaigns.apps.29next.com';
 const RULES = 'https://i18n-rules.nextcommerce.com';
 const STUBS: Record<string, string> = {
-  'https://payments.29next.com/js/v1/payment.js': '/__dev/stub/payment.js',
   [`${API}/js/v1/campaign/`]: '/__dev/stub/next-campaign.js',
+  ...(dev.stubPayments && { 'https://payments.29next.com/js/v1/payment.js': '/__dev/stub/payment.js' }),
 };
 
 const PRECONNECT = /^https:\/\/(payments\.29next\.com|core\.spreedly\.com)/;
@@ -11,21 +22,23 @@ const real = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const url = input instanceof Request ? input.url : String(input);
   const local = url.startsWith(API)
-    ? url.replace(API, '/__mock/api')
-    : url.startsWith(RULES)
-      ? url.replace(RULES, '/__mock/rules')
+    ? url.replace(API, '/__api')
+    : dev.rules && url.startsWith(RULES)
+      ? url.replace(RULES, '/__rules')
       : undefined;
   if (!local) return real(input, init);
   return input instanceof Request ? real(new Request(local, input), init) : real(local, init);
 };
 
-const href = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href')!;
-Object.defineProperty(HTMLLinkElement.prototype, 'href', {
-  ...href,
-  set(this: HTMLLinkElement, value: string) {
-    href.set!.call(this, PRECONNECT.test(value) ? location.origin : value);
-  },
-});
+if (dev.stubPayments) {
+  const href = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href')!;
+  Object.defineProperty(HTMLLinkElement.prototype, 'href', {
+    ...href,
+    set(this: HTMLLinkElement, value: string) {
+      href.set!.call(this, PRECONNECT.test(value) ? location.origin : value);
+    },
+  });
+}
 
 const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src')!;
 Object.defineProperty(HTMLScriptElement.prototype, 'src', {
@@ -34,6 +47,29 @@ Object.defineProperty(HTMLScriptElement.prototype, 'src', {
     const stub = Object.entries(STUBS).find(([prefix]) => value.startsWith(prefix))?.[1];
     src.set!.call(this, stub ?? value);
   },
+});
+
+addEventListener('DOMContentLoaded', () => {
+  const badge = Object.assign(document.createElement('a'), {
+    href: '/',
+    textContent: dev.mode,
+    title: 'Campaign SDK test mode',
+  });
+  const color = dev.mode === 'FULL' ? '#c51a00' : dev.mode === 'MOCK' ? '#555' : '#0b62d6';
+  Object.assign(badge.style, {
+    position: 'fixed',
+    left: '8px',
+    bottom: '8px',
+    zIndex: '2147483646',
+    background: color,
+    color: '#fff',
+    font: '600 11px/1 system-ui',
+    padding: '6px 9px',
+    borderRadius: '999px',
+    textDecoration: 'none',
+    opacity: '.85',
+  });
+  document.body.append(badge);
 });
 
 const luhn = (digits: string) =>
@@ -115,6 +151,8 @@ class DevNextPayment implements Handlers {
   destroy() {}
 }
 
-(window as unknown as { __devNextPayment: unknown }).__devNextPayment = DevNextPayment;
-(window as unknown as { NextPayment: unknown }).NextPayment = DevNextPayment;
-console.info('[dev] Campaign SDK from source; API, i18n-rules and payment.js are local');
+if (dev.stubPayments) {
+  (window as unknown as { __devNextPayment: unknown }).__devNextPayment = DevNextPayment;
+  (window as unknown as { NextPayment: unknown }).NextPayment = DevNextPayment;
+}
+console.info(`[dev] Campaign SDK test page: ${dev.mode}`);

@@ -179,9 +179,18 @@ const GATEWAY = (q: URLSearchParams, req: IncomingMessage) => {
 <p><a href="/__dev/gateway/approve?${escape(q.toString())}">Approve</a> · <a href="${escape(failure)}">Fail the payment</a></p></body>`;
 };
 
-export function mockApi(live: boolean) {
+export const hasLocalRules = () => existsSync(join(RULES_REPO, 'src/index.ts'));
+
+export function apiTarget(api: string): string | undefined {
+  if (api === 'full') return LIVE_API;
+  return /^https?:\/\//.test(api) ? api.replace(/\/$/, '') : undefined;
+}
+
+export function mockApi(api: string) {
   mkdirSync(CAMPAIGNS, { recursive: true });
   const warned = new Set<string>();
+  const live = api === 'live';
+  const target = apiTarget(api);
 
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const url = new URL(req.url ?? '/', 'http://dev');
@@ -199,12 +208,12 @@ export function mockApi(live: boolean) {
       return res.end();
     }
 
-    if (url.pathname.startsWith('/__mock/rules/')) {
+    if (url.pathname.startsWith('/__rules/')) {
       const app = await rulesApp();
       if (!app) return send(res, 503, { error: 'no local i18n-rules' });
       const body = req.method === 'POST' ? await bodyOf(req) : undefined;
       const answer = await app.fetch(
-        new Request(`http://rules${url.pathname.slice('/__mock/rules'.length)}${url.search}`, {
+        new Request(`http://rules${url.pathname.slice('/__rules'.length)}${url.search}`, {
           method: req.method,
           headers: { 'content-type': 'application/json' },
           body,
@@ -215,10 +224,19 @@ export function mockApi(live: boolean) {
       return res.end(await answer.text());
     }
 
-    if (!url.pathname.startsWith('/__mock/api/')) return next();
-    const path = url.pathname.slice('/__mock/api'.length);
+    if (!url.pathname.startsWith('/__api/')) return next();
+    const path = url.pathname.slice('/__api'.length);
     const key = String(req.headers.authorization ?? '');
     const raw = req.method === 'POST' ? await bodyOf(req) : '';
+    if (target) {
+      const answer = await fetch(`${target}${path}${url.search}`, {
+        method: req.method,
+        headers: { Authorization: key, 'Content-Type': 'application/json' },
+        body: raw || undefined,
+      });
+      res.writeHead(answer.status, { 'content-type': answer.headers.get('content-type') ?? 'application/json' });
+      return res.end(await answer.text());
+    }
     let body: any;
     try {
       body = raw ? JSON.parse(raw) : undefined;

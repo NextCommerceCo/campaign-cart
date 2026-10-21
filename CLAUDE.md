@@ -7,8 +7,9 @@ structure.
 ## Commands
 
 `npm test` · `npm run typecheck` · `npm run build` (fails over a gzip budget) · `npm run format` ·
-`bun dev` (campaign pages with the SDK from source and a mock API; never run `--live` for the
-user: it calls the live Campaigns API)
+`bun dev` (campaign pages with the SDK and a mock API) · `bun run e2e`. Never run
+`--api live|full` or `bun run qa` without `--no-tunnel` for the user: they reach the live API or
+publish a public link
 
 ## Rules
 

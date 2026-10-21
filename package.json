@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "bun dev/server.ts",
     "e2e": "bun dev/e2e.ts",
+    "qa": "bun dev/qa.ts",
     "build": "vite build && node scripts/size.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
