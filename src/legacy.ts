@@ -1,6 +1,6 @@
 import type { Engine } from './engine/engine';
 import type { Campaign, CartLine, EventName, Package } from './engine/types';
-import type { ExitIntentOptions } from './features/exit-intent';
+import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */
 export function legacySelectorId(el: Element): string | null {
@@ -69,7 +69,14 @@ export function legacyApi(engine: Engine): LegacyApi {
       const lines = engine.lines().map((l) => {
         const pkg = engine.getPackage(l.package_id);
         const line = cart.summary?.lines.find((s) => s.package_id === l.package_id);
-        return { packageId: l.package_id, quantity: l.quantity, name: pkg?.name, image: pkg?.image, price: pkg?.price_total, total: line?.total };
+        return {
+          packageId: l.package_id,
+          quantity: l.quantity,
+          name: pkg?.name,
+          image: pkg?.image,
+          price: pkg?.price_total,
+          total: line?.total,
+        };
       });
       const s = cart.summary;
       return {
@@ -80,7 +87,7 @@ export function legacyApi(engine: Engine): LegacyApi {
         appliedCoupons: cart.coupons,
       };
     },
-    exitIntent: (options) => import('./features/exit-intent').then((m) => m.exitIntent(engine, options)),
+    exitIntent: (options) => import('./exit-intent').then((m) => m.exitIntent(engine, options)),
   };
 }
 
@@ -110,7 +117,8 @@ export function legacyAnalytics(): { enabled: boolean; nextCampaign: boolean } {
   const config = (window as unknown as { nextConfig?: { analytics?: LegacyAnalyticsConfig } }).nextConfig?.analytics;
   const providers = config?.providers ?? {};
   for (const name of ['facebook', 'rudderstack', 'custom']) {
-    if (providers[name]?.enabled) console.warn(`[next] analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
+    if (providers[name]?.enabled)
+      console.warn(`[next] analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
   }
   return { enabled: config?.enabled !== false, nextCampaign: providers.nextCampaign?.enabled !== false };
 }
@@ -122,4 +130,3 @@ export function removeLegacyPersonalData(): void {
     localStorage.removeItem('nextDataLayer_userProperties');
   } catch {}
 }
-

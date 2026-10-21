@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
-import { boot } from '../src/core';
+import { boot, parseForcePackages } from '../src/core';
 import type { Campaign } from '../src/engine/types';
-import { campaign, fakeApi, flush } from './fixtures';
+import { fakeApi } from './fixtures/api';
+import { campaign } from './fixtures/campaign';
+import { flush } from './fixtures/engine';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
 
@@ -39,7 +41,12 @@ describe('boot', () => {
     const onWindow = vi.fn();
     window.addEventListener('next:initialized', onWindow);
     const queued = vi.fn();
-    (window as unknown as { nextReady: unknown[] }).nextReady = [() => { throw new Error('page bug'); }, queued];
+    (window as unknown as { nextReady: unknown[] }).nextReady = [
+      () => {
+        throw new Error('page bug');
+      },
+      queued,
+    ];
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const next = boot(config, Promise.resolve(campaign));
@@ -94,7 +101,10 @@ describe('boot', () => {
     next.on('bundle:selection-changed' as never, changed);
     next.on('fomo:shown' as never, vi.fn());
     document.querySelector<HTMLElement>('#two')!.click();
-    expect(changed).toHaveBeenCalledWith({ selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] }, expect.anything());
+    expect(changed).toHaveBeenCalledWith(
+      { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },
+      expect.anything(),
+    );
     expect(warn).toHaveBeenCalledWith('[next] next.on: unknown event "fomo:shown"');
   });
 
@@ -121,5 +131,16 @@ describe('boot', () => {
     const next = boot({ ...config, reset: true }, Promise.resolve(campaign));
     expect(next.getState().cart.groups).toEqual({});
     expect(location.search).toBe('?utm_source=fb');
+  });
+});
+
+describe('forcePackageId', () => {
+  it('reads ids with optional quantities', () => {
+    expect(parseForcePackages('2')).toEqual([{ packageId: 2, quantity: 1 }]);
+    expect(parseForcePackages('2:3,5')).toEqual([
+      { packageId: 2, quantity: 3 },
+      { packageId: 5, quantity: 1 },
+    ]);
+    expect(parseForcePackages('abc')).toEqual([]);
   });
 });

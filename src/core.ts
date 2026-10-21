@@ -4,7 +4,14 @@ import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { Campaign, EventMap, EventName } from './engine/types';
-import { announceLegacyReady, legacyAnalytics, LEGACY_EVENTS, legacyApi, type LegacyApi, removeLegacyPersonalData } from './legacy';
+import {
+  announceLegacyReady,
+  legacyAnalytics,
+  LEGACY_EVENTS,
+  legacyApi,
+  type LegacyApi,
+  removeLegacyPersonalData,
+} from './legacy';
 
 declare const __VERSION__: string;
 
@@ -28,9 +35,19 @@ export function parseForcePackages(raw: string | null): Array<{ packageId: numbe
 }
 
 const EVENT_NAMES: EventName[] = [
-  'campaign.loaded', 'cart.updated', 'cart.calculated', 'selection.changed',
-  'shipping.changed', 'storage.degraded', 'ready', 'error',
-  'exit-intent.shown', 'exit-intent.clicked', 'exit-intent.dismissed', 'exit-intent.closed', 'exit-intent.action',
+  'campaign.loaded',
+  'cart.updated',
+  'cart.calculated',
+  'selection.changed',
+  'shipping.changed',
+  'storage.degraded',
+  'ready',
+  'error',
+  'exit-intent.shown',
+  'exit-intent.clicked',
+  'exit-intent.dismissed',
+  'exit-intent.closed',
+  'exit-intent.action',
 ];
 
 export interface NextApi extends LegacyApi {
@@ -58,7 +75,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const engine = new Engine({
     apiKey: config.apiKey,
     apiBase: config.apiBase,
-    fetch: window.fetch.bind(window),
+    send: window.fetch.bind(window),
     campaign,
     storagePrefix: `next:${scope}`,
     storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
@@ -132,7 +149,13 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     const analytics = legacyAnalytics();
     if (analytics.enabled) {
       const start = () =>
-        import('./analytics').then((m) => m.startAnalytics(engine, { apiKey: config.apiKey, version: next.version, nextCampaign: analytics.nextCampaign }));
+        import('./analytics').then((m) =>
+          m.startAnalytics(engine, {
+            apiKey: config.apiKey,
+            version: next.version,
+            nextCampaign: analytics.nextCampaign,
+          }),
+        );
       (window.requestIdleCallback ?? setTimeout)(() => void start());
     }
   };

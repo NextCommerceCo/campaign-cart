@@ -1,6 +1,5 @@
 export type Condition =
-  | { kind: 'path'; path: string; negate: boolean }
-  | { kind: 'compare'; path: string; op: '==' | '!='; literal: string };
+  { kind: 'path'; path: string; negate: boolean } | { kind: 'compare'; path: string; op: '==' | '!='; literal: string };
 
 const COMPARE = /^([\w.]+?)(?:\(\))?\s*(==|!=)\s*(['"]?)(.*?)\3$/;
 const PATH = /^(!?)\s*([\w.]+?)(?:\(\))?$/;

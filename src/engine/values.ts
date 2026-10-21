@@ -17,28 +17,61 @@ const cents = (amount: string | number | undefined): number => Math.round(Number
 const money = (c: number | undefined): Value => ({ type: 'money', value: c === undefined ? undefined : c / 100 });
 const pct = (part: number, whole: number): Value => ({ type: 'percent', value: whole > 0 ? (part / whole) * 100 : 0 });
 const bool = (value: boolean): Value => ({ type: 'bool', value });
-const notLoaded = (v: Value | undefined): Value | undefined => v && (v.type === 'bool' ? v : { type: v.type, value: undefined });
+const notLoaded = (v: Value | undefined): Value | undefined =>
+  v && (v.type === 'bool' ? v : { type: v.type, value: undefined });
 
-const NO_PACKAGE: Package = { ref_id: 0, external_id: 0, name: '', price: '0', price_total: '0', qty: 0, image: '', is_recurring: false };
+const NO_PACKAGE: Package = {
+  ref_id: 0,
+  external_id: 0,
+  name: '',
+  price: '0',
+  price_total: '0',
+  qty: 0,
+  image: '',
+  is_recurring: false,
+};
 
 function packageValue(pkg: Package | undefined, prop: string): Value | undefined {
   if (!pkg) return notLoaded(packageValue(NO_PACKAGE, prop));
   const total = cents(pkg.price_total);
   const retail = pkg.price_retail_total ? cents(pkg.price_retail_total) : total;
   switch (prop) {
-    case 'name': return { type: 'text', value: pkg.name };
-    case 'image': return { type: 'url', value: pkg.image };
-    case 'qty': case 'quantity': return { type: 'int', value: pkg.qty };
-    case 'price': case 'unitPrice': return money(cents(pkg.price));
-    case 'price_total': case 'priceTotal': case 'total': return money(total);
-    case 'price_retail': case 'priceRetail': return money(pkg.price_retail ? cents(pkg.price_retail) : undefined);
-    case 'price_retail_total': case 'priceRetailTotal': case 'compareTotal': return money(retail);
-    case 'savingsAmount': case 'totalSavings': return money(Math.max(0, retail - total));
-    case 'savingsPercentage': case 'totalSavingsPercentage': return pct(Math.max(0, retail - total), retail);
-    case 'hasSavings': case 'hasTotalSavings': return bool(retail > total);
-    case 'hasRetailPrice': return bool(!!pkg.price_retail);
-    case 'isRecurring': return bool(pkg.is_recurring);
-    default: return undefined;
+    case 'name':
+      return { type: 'text', value: pkg.name };
+    case 'image':
+      return { type: 'url', value: pkg.image };
+    case 'qty':
+    case 'quantity':
+      return { type: 'int', value: pkg.qty };
+    case 'price':
+    case 'unitPrice':
+      return money(cents(pkg.price));
+    case 'price_total':
+    case 'priceTotal':
+    case 'total':
+      return money(total);
+    case 'price_retail':
+    case 'priceRetail':
+      return money(pkg.price_retail ? cents(pkg.price_retail) : undefined);
+    case 'price_retail_total':
+    case 'priceRetailTotal':
+    case 'compareTotal':
+      return money(retail);
+    case 'savingsAmount':
+    case 'totalSavings':
+      return money(Math.max(0, retail - total));
+    case 'savingsPercentage':
+    case 'totalSavingsPercentage':
+      return pct(Math.max(0, retail - total), retail);
+    case 'hasSavings':
+    case 'hasTotalSavings':
+      return bool(retail > total);
+    case 'hasRetailPrice':
+      return bool(!!pkg.price_retail);
+    case 'isRecurring':
+      return bool(pkg.is_recurring);
+    default:
+      return undefined;
   }
 }
 
@@ -55,18 +88,36 @@ function linesValue(engine: Engine, lines: CartLine[], prop: string, selected: b
   }
   const first = lines[0] ? engine.getPackage(lines[0].packageId) : undefined;
   switch (prop) {
-    case 'name': return { type: 'text', value: first?.name };
-    case 'image': return { type: 'url', value: first?.image };
-    case 'price': case 'total': return money(total);
-    case 'originalPrice': case 'compare': return money(retail);
-    case 'discountAmount': case 'savings': return money(Math.max(0, retail - total));
-    case 'discountPercentage': case 'savingsPercentage': case 'savingsOfferPercentage': return pct(Math.max(0, retail - total), retail);
-    case 'hasDiscount': case 'hasSavings': return bool(retail > total);
-    case 'unitPrice': return money(units ? Math.round(total / units) : 0);
-    case 'originalUnitPrice': return money(units ? Math.round(retail / units) : 0);
-    case 'quantity': return { type: 'int', value: units };
-    case 'isSelected': return bool(selected);
-    default: return undefined;
+    case 'name':
+      return { type: 'text', value: first?.name };
+    case 'image':
+      return { type: 'url', value: first?.image };
+    case 'price':
+    case 'total':
+      return money(total);
+    case 'originalPrice':
+    case 'compare':
+      return money(retail);
+    case 'discountAmount':
+    case 'savings':
+      return money(Math.max(0, retail - total));
+    case 'discountPercentage':
+    case 'savingsPercentage':
+    case 'savingsOfferPercentage':
+      return pct(Math.max(0, retail - total), retail);
+    case 'hasDiscount':
+    case 'hasSavings':
+      return bool(retail > total);
+    case 'unitPrice':
+      return money(units ? Math.round(total / units) : 0);
+    case 'originalUnitPrice':
+      return money(units ? Math.round(retail / units) : 0);
+    case 'quantity':
+      return { type: 'int', value: units };
+    case 'isSelected':
+      return bool(selected);
+    default:
+      return undefined;
   }
 }
 
@@ -85,37 +136,71 @@ function cartValue(state: State, engine: Engine, prop: string): Value | undefine
   const paid = subtotal === undefined ? undefined : subtotal - discount;
   const savings = paid === undefined ? 0 : Math.max(0, compare - paid);
   switch (prop) {
-    case 'total': return money(summary ? cents(summary.total) : undefined);
-    case 'subtotal': return money(subtotal);
-    case 'shipping': return money(shipping);
-    case 'totalDiscount': case 'discountAmount': return money(discount);
-    case 'totalDiscountPercentage': case 'discountPercentage': return pct(discount, subtotal ?? 0);
-    case 'compareTotal': case 'originalPrice': return money(compare);
-    case 'totalSavingsAmount': case 'savingsAmount': return money(savings);
-    case 'totalSavingsPercentage': case 'savingsPercentage': return pct(savings, compare);
-    case 'currency': return { type: 'text', value: summary?.currency ?? state.campaign?.currency };
-    case 'quantity': case 'totalQuantity': return { type: 'int', value: units };
-    case 'itemCount': case 'count': return { type: 'int', value: lines.length };
-    case 'discountCode': return { type: 'text', value: cart.coupons[0] };
-    case 'hasItems': return bool(lines.length > 0);
-    case 'isEmpty': return bool(lines.length === 0);
-    case 'hasSavings': return bool(savings > 0);
-    case 'hasDiscounts': return bool(discount > 0);
-    case 'hasCoupon': return bool(cart.coupons.length > 0);
-    case 'hasFreeShipping': case 'isFreeShipping': return bool(!!summary && shipping === 0);
-    case 'isCalculating': return bool(cart.calculating);
-    default: return undefined;
+    case 'total':
+      return money(summary ? cents(summary.total) : undefined);
+    case 'subtotal':
+      return money(subtotal);
+    case 'shipping':
+      return money(shipping);
+    case 'totalDiscount':
+    case 'discountAmount':
+      return money(discount);
+    case 'totalDiscountPercentage':
+    case 'discountPercentage':
+      return pct(discount, subtotal ?? 0);
+    case 'compareTotal':
+    case 'originalPrice':
+      return money(compare);
+    case 'totalSavingsAmount':
+    case 'savingsAmount':
+      return money(savings);
+    case 'totalSavingsPercentage':
+    case 'savingsPercentage':
+      return pct(savings, compare);
+    case 'currency':
+      return { type: 'text', value: summary?.currency ?? state.campaign?.currency };
+    case 'quantity':
+    case 'totalQuantity':
+      return { type: 'int', value: units };
+    case 'itemCount':
+    case 'count':
+      return { type: 'int', value: lines.length };
+    case 'discountCode':
+      return { type: 'text', value: cart.coupons[0] };
+    case 'hasItems':
+      return bool(lines.length > 0);
+    case 'isEmpty':
+      return bool(lines.length === 0);
+    case 'hasSavings':
+      return bool(savings > 0);
+    case 'hasDiscounts':
+      return bool(discount > 0);
+    case 'hasCoupon':
+      return bool(cart.coupons.length > 0);
+    case 'hasFreeShipping':
+    case 'isFreeShipping':
+      return bool(!!summary && shipping === 0);
+    case 'isCalculating':
+      return bool(cart.calculating);
+    default:
+      return undefined;
   }
 }
 
 function shippingValue(state: State, prop: string): Value | undefined {
   const method = state.cart.summary?.shipping_method;
   switch (prop) {
-    case 'cost': case 'price': return money(method ? cents(method.price) : undefined);
-    case 'name': return { type: 'text', value: method?.name };
-    case 'code': return { type: 'text', value: method?.code };
-    case 'isFree': return bool(!!method && cents(method.price) === 0);
-    default: return undefined;
+    case 'cost':
+    case 'price':
+      return money(method ? cents(method.price) : undefined);
+    case 'name':
+      return { type: 'text', value: method?.name };
+    case 'code':
+      return { type: 'text', value: method?.code };
+    case 'isFree':
+      return bool(!!method && cents(method.price) === 0);
+    default:
+      return undefined;
   }
 }
 
@@ -128,11 +213,14 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
   const parts = path.split('.');
   const [root = '', second = '', ...rest] = parts;
   switch (root) {
-    case 'cart': return cartValue(state, engine, second);
-    case 'shipping': return shippingValue(state, second);
+    case 'cart':
+      return cartValue(state, engine, second);
+    case 'shipping':
+      return shippingValue(state, second);
     case 'campaign':
       return { type: 'text', value: state.campaign?.[second as 'name' | 'currency' | 'language'] };
-    case 'param': return { type: 'text', value: state.params[parts.slice(1).join('.')] };
+    case 'param':
+      return { type: 'text', value: state.params[parts.slice(1).join('.')] };
     case 'package': {
       const explicit = /^\d+$/.test(second);
       const id = explicit ? Number(second) : ctx.packageId;
@@ -153,7 +241,8 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}, cards?:
       if (parts.length === 1 && ctx.card) {
         return linesValue(engine, ctx.card.lines, root, state.selections[ctx.card.selectorId] === ctx.card.cardId);
       }
-      if (parts.length === 1 && ctx.packageId !== undefined) return packageValue(engine.getPackage(ctx.packageId), root);
+      if (parts.length === 1 && ctx.packageId !== undefined)
+        return packageValue(engine.getPackage(ctx.packageId), root);
       if (parts.length === 1) return cartValue(state, engine, root);
       return undefined;
   }
@@ -185,7 +274,9 @@ export function format(v: Value, currency: string | undefined, locale?: string, 
   const n = Number(v.value);
   switch (type) {
     case 'money':
-      return currency ? formatter(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(n) : n.toFixed(2);
+      return currency
+        ? formatter(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(n)
+        : n.toFixed(2);
     case 'percent':
       return formatter(locale, { style: 'percent', maximumFractionDigits: 0 }).format(n / 100);
     case 'int':
@@ -273,6 +364,8 @@ export function discountTokens(discount: Discount, currency: string | undefined,
     'discount.name': discount.name ?? '',
     'discount.description': discount.description ?? '',
     'discount.amount': format(money(cents(discount.amount)), currency, locale),
-    'discount.percentage': discount.percentage ? format({ type: 'percent', value: Number(discount.percentage) }, currency, locale) : '',
+    'discount.percentage': discount.percentage
+      ? format({ type: 'percent', value: Number(discount.percentage) }, currency, locale)
+      : '',
   };
 }

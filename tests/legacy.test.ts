@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../src/core';
-import { campaign, fakeApi, flush } from './fixtures';
+import { fakeApi } from './fixtures/api';
+import { campaign } from './fixtures/campaign';
+import { flush } from './fixtures/engine';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
 
@@ -22,7 +24,16 @@ describe('getCartData (0.4.x shape)', () => {
     await flush();
     await next.addItem({ packageId: 2, quantity: 1 });
     const data = next.getCartData();
-    expect(data.cartLines).toEqual([{ packageId: 2, quantity: 1, name: 'Earbuds ×2', image: 'https://cdn.test/2.png', price: '89.00', total: '89.00' }]);
+    expect(data.cartLines).toEqual([
+      {
+        packageId: 2,
+        quantity: 1,
+        name: 'Earbuds ×2',
+        image: 'https://cdn.test/2.png',
+        price: '89.00',
+        total: '89.00',
+      },
+    ]);
     expect(data.items).toBe(data.cartLines);
     expect(data.cartTotals.total).toBe('89.00');
   });
@@ -67,7 +78,10 @@ describe('exitIntent', () => {
     document.querySelector<HTMLElement>('[data-exit-intent-action]')!.click();
     await flush();
     expect(next.getState().cart.coupons).toEqual(['EXIT10']);
-    expect(actions).toHaveBeenCalledWith(expect.objectContaining({ action: 'apply-coupon', couponCode: 'EXIT10' }), expect.anything());
+    expect(actions).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'apply-coupon', couponCode: 'EXIT10' }),
+      expect.anything(),
+    );
 
     leave();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

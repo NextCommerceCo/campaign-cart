@@ -83,7 +83,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   const ecommerce = (lines: Line[]) => {
     const summary = engine.getState().cart.summary;
     const items = lines
-      .map((l, i) => item(l.package_id, l.quantity, i, summary?.lines.find((s) => s.package_id === l.package_id)?.unit_price))
+      .map((l, i) =>
+        item(l.package_id, l.quantity, i, summary?.lines.find((s) => s.package_id === l.package_id)?.unit_price),
+      )
       .filter((i): i is NonNullable<typeof i> => !!i);
     return { currency: currency(), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
   };
@@ -97,11 +99,19 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       baseline = e.data.lines;
       send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.lines()) });
-      const ids = [...new Set([...document.querySelectorAll('[data-next-package-id]')].map((el) => Number(el.getAttribute('data-next-package-id'))))];
+      const ids = [
+        ...new Set(
+          [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
+            Number(el.getAttribute('data-next-package-id')),
+          ),
+        ),
+      ];
       const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
       if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(viewed) });
       if (viewed.length > 1) {
-        send('dl_view_item_list', { ecommerce: { ...ecommerce(viewed), item_list_id: 'product_list', item_list_name: 'Product List' } });
+        send('dl_view_item_list', {
+          ecommerce: { ...ecommerce(viewed), item_list_id: 'product_list', item_list_name: 'Product List' },
+        });
       }
     },
     { replay: true },
@@ -125,7 +135,14 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       if (added.length && removed.length) {
         const a = ecommerce(added);
         const r = ecommerce(removed);
-        send('dl_package_swapped', { ecommerce: { currency: a.currency, value_change: cents(a.value - r.value), items_removed: r.items, items_added: a.items } });
+        send('dl_package_swapped', {
+          ecommerce: {
+            currency: a.currency,
+            value_change: cents(a.value - r.value),
+            items_removed: r.items,
+            items_added: a.items,
+          },
+        });
       } else if (added.length) {
         send('dl_add_to_cart', { ecommerce: ecommerce(added) });
       } else if (removed.length) {

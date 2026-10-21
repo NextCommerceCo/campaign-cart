@@ -33,7 +33,11 @@ export class Events {
     }
   }
 
-  on<K extends EventName>(name: K | '*', fn: (event: EngineEvent<K>) => void, options: { replay?: boolean } = {}): () => void {
+  on<K extends EventName>(
+    name: K | '*',
+    fn: (event: EngineEvent<K>) => void,
+    options: { replay?: boolean } = {},
+  ): () => void {
     const listener = fn as Listener;
     let set = this.listeners.get(name);
     if (!set) this.listeners.set(name, (set = new Set()));

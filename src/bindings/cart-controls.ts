@@ -9,7 +9,9 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
   const { engine } = b;
   if (root === document && b.claim(document.documentElement, 'cart-controls')) {
     document.addEventListener('click', (e) => {
-      const el = (e.target as Element).closest?.('[data-next-quantity="increase"], [data-next-quantity="decrease"], [data-next-remove-item]');
+      const el = (e.target as Element).closest?.(
+        '[data-next-quantity="increase"], [data-next-quantity="decrease"], [data-next-remove-item]',
+      );
       if (!el) return;
       const packageId = packageIdOf(el);
       if (!packageId) return b.warn('quantity control without data-package-id');
@@ -19,7 +21,8 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
       const min = Number(el.getAttribute('data-min') ?? 1);
       const max = Number(el.getAttribute('data-max') || Infinity);
       if (el.hasAttribute('data-next-remove-item')) void engine.removeItem(packageId);
-      else if (el.getAttribute('data-next-quantity') === 'increase') void engine.setQuantity(packageId, Math.min(max, current + step));
+      else if (el.getAttribute('data-next-quantity') === 'increase')
+        void engine.setQuantity(packageId, Math.min(max, current + step));
       else void engine.setQuantity(packageId, Math.max(min, current - step));
     });
   }

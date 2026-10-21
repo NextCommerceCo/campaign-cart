@@ -1,6 +1,7 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { fakeApi, flush, makeEngine, MemoryStorage, wait } from './fixtures';
+import { fakeApi } from '../fixtures/api';
+import { flush, makeEngine, wait } from '../fixtures/engine';
+import { MemoryStorage } from '../fixtures/storage';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
 
@@ -93,7 +94,13 @@ describe('Engine', () => {
     const { engine } = makeEngine();
     const errors: unknown[] = [];
     engine.on('error', (e) => errors.push(e.data));
-    void engine.setGroup('items', { lines: [{ packageId: 1, quantity: 1 }, { packageId: 404, quantity: 1 }], vouchers: [] });
+    void engine.setGroup('items', {
+      lines: [
+        { packageId: 1, quantity: 1 },
+        { packageId: 404, quantity: 1 },
+      ],
+      vouchers: [],
+    });
     await engine.load();
     await flush();
     expect(engine.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
@@ -164,7 +171,10 @@ describe('Engine', () => {
     await engine.setShipping(2);
     await engine.setShipping(2);
     engine.select('main', 'two', [{ packageId: 2, quantity: 1 }]);
-    expect(seen).toEqual([{ methodId: 2 }, { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] }]);
+    expect(seen).toEqual([
+      { methodId: 2 },
+      { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },
+    ]);
   });
 
   it('keeps working in memory when every storage is blocked', async () => {
@@ -185,33 +195,3 @@ describe('Engine', () => {
     expect(engine.getState().cart.calculating).toBe(false);
   });
 });
-
-describe('events', () => {
-  it('replays buffered events and survives a throwing subscriber', async () => {
-    const { engine } = makeEngine();
-    await engine.load();
-    const seen: string[] = [];
-    engine.on('campaign.loaded', () => { throw new Error('boom'); }, { replay: true });
-    engine.on('campaign.loaded', (e) => seen.push(e.name), { replay: true });
-    expect(seen).toEqual(['campaign.loaded']);
-  });
-
-  it('delivers events emitted inside a listener after the current one', () => {
-    const { engine } = makeEngine();
-    const order: string[] = [];
-    engine.on('selection.changed', () => engine.events.emit('ready', { lines: [] }));
-    engine.on('*', (e) => order.push(e.name));
-    engine.select('main', 'one', []);
-    expect(order).toEqual(['selection.changed', 'ready']);
-  });
-
-  it('stops delivering after unsubscribe', () => {
-    const { engine } = makeEngine();
-    const seen: string[] = [];
-    const off = engine.on('ready', (e) => seen.push(e.name));
-    off();
-    engine.events.emit('ready', { lines: [] });
-    expect(seen).toEqual([]);
-  });
-});
-

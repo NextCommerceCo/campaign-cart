@@ -16,8 +16,7 @@ Status: proposal, October 2026. A rewrite, not a port of `campaign-cart`.
 ## 1. Install
 
 ```html
-<script src="https://sdk.nextcommerce.com/v1/loader.js"
-        data-campaign="pk_live_xxxxxxxx" defer></script>
+<script src="https://sdk.nextcommerce.com/v1/loader.js" data-campaign="pk_live_xxxxxxxx" defer></script>
 ```
 
 That is the whole setup. A `pk_test_` key runs against the sandbox. `?debug=1` opens the
@@ -52,12 +51,12 @@ Every page starts the same way:
 
 If loading fails, `html[data-next-error]` is set so the page can show its own fallback.
 
-| Page | What the SDK does | Where it goes next |
-|---|---|---|
-| Landing | Shows offers and prices, adds to cart, saves UTM and click IDs | The checkout link on the page |
-| Checkout | Validates the form (i18n-rules), gets a card token (`payment.js`), creates the order | 3-D Secure if the bank asks, then `data-next-success` |
-| Upsell | Accept adds the offer to the order; decline skips it | The accept or decline link on the page |
-| Thank-you | Shows the order from `ref_id` in the URL | — |
+| Page      | What the SDK does                                                                    | Where it goes next                                    |
+| --------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| Landing   | Shows offers and prices, adds to cart, saves UTM and click IDs                       | The checkout link on the page                         |
+| Checkout  | Validates the form (i18n-rules), gets a card token (`payment.js`), creates the order | 3-D Secure if the bank asks, then `data-next-success` |
+| Upsell    | Accept adds the offer to the order; decline skips it                                 | The accept or decline link on the page                |
+| Thank-you | Shows the order from `ref_id` in the URL                                             | —                                                     |
 
 **On error** (decline, network, server): show the message on the page, keep what the
 shopper typed, and let them retry. The SDK never moves to the next page after a failure.
@@ -67,18 +66,18 @@ shopper typed, and let them retry. The SDK never moves to the next page after a 
 Attributes only, so it works in Webflow and plain HTML. The attribute names live
 campaigns already use are kept, so templates need no edits.
 
-| Need | Attribute | Status |
-|---|---|---|
-| Show a value | `data-next-display="cart.total"` | built |
-| Show or hide | `data-next-show="cart.hasItems"` · `data-next-hide="param.banner=='n'"` | built |
-| Pick one bundle | `data-next-bundle-selector` with `data-next-bundle-card` · `data-next-bundle-display` | built |
-| Order bump | `data-next-toggle-card` · `data-next-toggle-display` · `data-next-package-sync` | built |
-| Add to cart | `data-next-action="add-to-cart"` · `data-next-url` | built |
-| Start a cart from a link | `?forcePackageId=2:1` | built |
-| Cart summary and lines | `data-next-cart-summary` with `{subtotal}` `{item.*}` tokens · `data-summary-lines` · `data-next-discounts` | built |
-| Coupon, quantity | `data-next-coupon` · `data-next-quantity="increase\|decrease"` · `data-next-remove-item` | built |
-| Checkout form, payment, address | `data-next-checkout` · `data-next-checkout-field` · `data-next-payment-method` | next |
-| Upsell, receipt | `data-next-upsell` · `data-next-upsell-action` · `order.*` | next |
+| Need                            | Attribute                                                                                                   | Status |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------ |
+| Show a value                    | `data-next-display="cart.total"`                                                                            | built  |
+| Show or hide                    | `data-next-show="cart.hasItems"` · `data-next-hide="param.banner=='n'"`                                     | built  |
+| Pick one bundle                 | `data-next-bundle-selector` with `data-next-bundle-card` · `data-next-bundle-display`                       | built  |
+| Order bump                      | `data-next-toggle-card` · `data-next-toggle-display` · `data-next-package-sync`                             | built  |
+| Add to cart                     | `data-next-action="add-to-cart"` · `data-next-url`                                                          | built  |
+| Start a cart from a link        | `?forcePackageId=2:1`                                                                                       | built  |
+| Cart summary and lines          | `data-next-cart-summary` with `{subtotal}` `{item.*}` tokens · `data-summary-lines` · `data-next-discounts` | built  |
+| Coupon, quantity                | `data-next-coupon` · `data-next-quantity="increase\|decrease"` · `data-next-remove-item`                    | built  |
+| Checkout form, payment, address | `data-next-checkout` · `data-next-checkout-field` · `data-next-payment-method`                              | next   |
+| Upsell, receipt                 | `data-next-upsell` · `data-next-upsell-action` · `order.*`                                                  | next   |
 
 - Values have types. Money is formatted as money in the campaign's currency and
   language; booleans show or hide the element. Nothing is guessed from a field's name.
@@ -165,9 +164,9 @@ limit.
 
 ## 10. What we need from the backend
 
-| # | Need | Why |
-|---|---|---|
-| B1 | `Idempotency-Key` accepted on order and upsell requests | A retry can never charge twice |
-| B2 | Campaign GET cacheable (`Cache-Control`) | Fast first page load |
-| B3 | Paid-order webhook from Prime to the collector | Correct revenue |
-| B4 | Publishable key with an allowed-domains list | A copied key is useless elsewhere |
+| #   | Need                                                    | Why                               |
+| --- | ------------------------------------------------------- | --------------------------------- |
+| B1  | `Idempotency-Key` accepted on order and upsell requests | A retry can never charge twice    |
+| B2  | Campaign GET cacheable (`Cache-Control`)                | Fast first page load              |
+| B3  | Paid-order webhook from Prime to the collector          | Correct revenue                   |
+| B4  | Publishable key with an allowed-domains list            | A copied key is useless elsewhere |

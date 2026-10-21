@@ -6,9 +6,9 @@ if (!config.apiKey) {
   console.error('[next] no campaign key: add data-campaign="pk_…" to the loader.js script tag');
   document.documentElement.setAttribute('data-next-error', 'config');
 } else {
-  const campaign = fetch(campaignUrl(config.apiBase, config.currency), { headers: { Authorization: config.apiKey } }).then((r) =>
-    r.ok ? r.json() : Promise.reject(new Error(`campaign request failed: ${r.status}`)),
-  );
+  const campaign = fetch(campaignUrl(config.apiBase, config.currency), {
+    headers: { Authorization: config.apiKey },
+  }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`campaign request failed: ${r.status}`))));
   campaign.catch(() => {});
 
   import('./core')

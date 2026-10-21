@@ -1,4 +1,4 @@
-import type { CartSummary } from './types';
+import type { CartSummary, Send } from './types';
 
 export interface ApiLine {
   package_id: number;
@@ -19,7 +19,7 @@ export class ApiError extends Error {
 export class Api {
   constructor(
     private apiKey: string,
-    private fetchImpl: typeof fetch,
+    private send: Send,
     private base: string,
   ) {}
 
@@ -35,7 +35,7 @@ export class Api {
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
-    const res = await this.fetchImpl(url, {
+    const res = await this.send(url, {
       ...init,
       headers: { Authorization: this.apiKey, 'Content-Type': 'application/json', ...init.headers },
     });

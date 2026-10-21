@@ -1,0 +1,44 @@
+import type { Campaign } from '../../src/engine/types';
+
+export const campaign: Campaign = {
+  name: 'Olympus',
+  currency: 'USD',
+  language: 'en',
+  shipping_methods: [{ ref_id: 1, code: 'standard', price: '0.00' }],
+  packages: [
+    {
+      ref_id: 1,
+      external_id: 11,
+      name: 'Earbuds ×1',
+      price: '49.00',
+      price_total: '49.00',
+      price_retail: '99.00',
+      price_retail_total: '99.00',
+      qty: 1,
+      image: 'https://cdn.test/1.png',
+      is_recurring: false,
+    },
+    {
+      ref_id: 2,
+      external_id: 12,
+      name: 'Earbuds ×2',
+      price: '44.50',
+      price_total: '89.00',
+      price_retail: '99.00',
+      price_retail_total: '198.00',
+      qty: 2,
+      image: 'https://cdn.test/2.png',
+      is_recurring: false,
+    },
+    {
+      ref_id: 9,
+      external_id: 19,
+      name: 'Protection plan',
+      price: '9.00',
+      price_total: '9.00',
+      qty: 1,
+      image: 'https://cdn.test/9.png',
+      is_recurring: false,
+    },
+  ],
+};

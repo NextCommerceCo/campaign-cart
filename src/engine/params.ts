@@ -1,6 +1,7 @@
 export const ONE_SHOT_PARAMS = ['reset', 'forcePackageId', 'debug', 'debugger', 'payment_failed'];
 
-const ATTRIBUTION = /^(utm_\w+|gclid|gbraid|wbraid|fbclid|ttclid|msclkid|clickid|evclid|affid|aff|sub\d|subaffiliate\d|funnel|currency)$/;
+const ATTRIBUTION =
+  /^(utm_\w+|gclid|gbraid|wbraid|fbclid|ttclid|msclkid|clickid|evclid|affid|aff|sub\d|subaffiliate\d|funnel|currency)$/;
 
 export function keptParams(params: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(params).filter(([key]) => !ONE_SHOT_PARAMS.includes(key)));

@@ -1,5 +1,6 @@
 import { toggleGroup } from '../engine/values';
-import { type BindContext, isFormControl, type Render, setState } from './context';
+import { type BindContext, type Render } from './context';
+import { isFormControl, setState } from './dom';
 
 export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
   const renders: Render[] = [];

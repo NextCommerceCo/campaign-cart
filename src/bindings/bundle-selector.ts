@@ -1,9 +1,14 @@
-import { type BindContext, type Card, isFormControl, parseJson, parseLines, type Render, selectorIdOf, setState } from './context';
+import { type BindContext, type Card, type Render } from './context';
+import { isFormControl, parseJson, parseLines, selectorIdOf, setState } from './dom';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
 
 const sameLines = (a: Card['lines'], b: Card['lines']) => {
-  const key = (l: Card['lines']) => l.map((x) => `${x.packageId}x${x.quantity}`).sort().join(',');
+  const key = (l: Card['lines']) =>
+    l
+      .map((x) => `${x.packageId}x${x.quantity}`)
+      .sort()
+      .join(',');
   return key(a) === key(b);
 };
 

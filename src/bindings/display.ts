@@ -1,6 +1,7 @@
 import { parseCondition } from '../engine/condition';
 import { format, resolve, resolveLines, toggleGroup, truthy, type Value } from '../engine/values';
-import { type BindContext, type Render, setText, setVisible } from './context';
+import { type BindContext, type Render } from './context';
+import { setText, setVisible } from './dom';
 
 function write(el: HTMLElement, v: Value, b: BindContext): void {
   const campaign = b.engine.getState().campaign;

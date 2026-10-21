@@ -25,7 +25,11 @@ export interface Attribution {
   metadata: Record<string, string | number>;
 }
 
-export function buildAttribution(params: Record<string, string>, visit: Visit | undefined, funnel: string | undefined): Attribution {
+export function buildAttribution(
+  params: Record<string, string>,
+  visit: Visit | undefined,
+  funnel: string | undefined,
+): Attribution {
   const pick = (...keys: string[]) => keys.map((k) => params[k]).find(Boolean);
   const sub = (n: number) => pick(`subaffiliate${n}`, `sub${n}`)?.slice(0, 225);
   const evclid = params.evclid;
@@ -56,5 +60,7 @@ export function buildAttribution(params: Record<string, string>, visit: Visit | 
       ...(evclid && { everflow_transaction_id: evclid }),
     },
   };
-  return Object.fromEntries(Object.entries(result).filter(([, v]) => v !== undefined && v !== '')) as unknown as Attribution;
+  return Object.fromEntries(
+    Object.entries(result).filter(([, v]) => v !== undefined && v !== ''),
+  ) as unknown as Attribution;
 }

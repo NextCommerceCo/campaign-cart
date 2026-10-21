@@ -14,8 +14,8 @@ analytics and attribution. Checkout, upsell and receipt are not built yet, so th
 the 0.4.x SDK on those pages. See the status column in
 [design.md §4](docs/architecture/design.md#4-html-api).
 
-| Command | |
-|---|---|
-| `npm test` | unit tests (the Engine suite runs in plain Node) |
-| `npm run typecheck` | TypeScript |
-| `npm run build` | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
+| Command             |                                                                                   |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `npm test`          | unit tests (the Engine suite runs in plain Node)                                  |
+| `npm run typecheck` | TypeScript                                                                        |
+| `npm run build`     | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |

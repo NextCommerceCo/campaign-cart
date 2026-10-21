@@ -15,7 +15,8 @@ interface LegacyConfig {
 }
 
 const meta = (doc: Document, name: string) => doc.querySelector(`meta[name="${name}"]`)?.getAttribute('content') ?? '';
-const nextConfig = (win: Window) => ((win as unknown as { nextConfig?: LegacyConfig }).nextConfig ?? {}) as LegacyConfig;
+const nextConfig = (win: Window) =>
+  ((win as unknown as { nextConfig?: LegacyConfig }).nextConfig ?? {}) as LegacyConfig;
 const scriptAttr = (doc: Document, name: string) => doc.querySelector(`script[${name}]`)?.getAttribute(name) ?? '';
 
 /** @deprecated Put the key on the script tag: `data-campaign="pk_…"`. */

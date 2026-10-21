@@ -11,7 +11,8 @@ export default defineConfig({
       name: 'minify-es',
       async generateBundle(_, bundle) {
         for (const chunk of Object.values(bundle)) {
-          if (chunk.type === 'chunk') chunk.code = (await transformWithEsbuild(chunk.code, chunk.fileName, { minify: true })).code;
+          if (chunk.type === 'chunk')
+            chunk.code = (await transformWithEsbuild(chunk.code, chunk.fileName, { minify: true })).code;
         }
       },
     },
@@ -30,10 +31,21 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'happy-dom',
     environmentOptions: {
-      happyDOM: { settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true, handleDisabledFileLoadingAsSuccess: true } },
+      happyDOM: {
+        settings: {
+          disableJavaScriptFileLoading: true,
+          disableCSSFileLoading: true,
+          handleDisabledFileLoadingAsSuccess: true,
+        },
+      },
     },
-    include: ['tests/**/*.test.ts'],
+    projects: [
+      { extends: true, test: { name: 'engine', include: ['tests/engine/**/*.test.ts'], environment: 'node' } },
+      {
+        extends: true,
+        test: { name: 'dom', include: ['tests/**/*.test.ts'], exclude: ['tests/engine/**'], environment: 'happy-dom' },
+      },
+    ],
   },
 });

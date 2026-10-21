@@ -3,12 +3,12 @@ import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { Events, type EngineEvent } from './events';
 import { keptParams } from './params';
 import { StorageAdapter } from './storage';
-import type { Campaign, CartGroup, CartLine, CartState, EventName, Package, State } from './types';
+import type { Campaign, CartGroup, CartLine, CartState, EventName, Package, Send, State } from './types';
 
 export interface EngineOptions {
   apiKey: string;
   apiBase: string;
-  fetch: typeof fetch;
+  send: Send;
   campaign: Promise<Campaign>;
   storagePrefix: string;
   storage: { local: Storage | null; session: Storage | null };
@@ -46,7 +46,7 @@ export class Engine {
   private pending?: Promise<void>;
 
   constructor(private options: EngineOptions) {
-    this.api = new Api(options.apiKey, options.fetch, options.apiBase);
+    this.api = new Api(options.apiKey, options.send, options.apiBase);
     const adapter = (name: string, backends: Array<Storage | null>) =>
       new StorageAdapter({
         prefix: options.storagePrefix,
@@ -64,7 +64,11 @@ export class Engine {
     return this.state;
   }
 
-  on<K extends EventName>(name: K | '*', fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void {
+  on<K extends EventName>(
+    name: K | '*',
+    fn: (event: EngineEvent<K>) => void,
+    options?: { replay?: boolean },
+  ): () => void {
     return this.events.on(name, fn, options);
   }
 

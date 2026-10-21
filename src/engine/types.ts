@@ -1,5 +1,7 @@
 import type { Visit } from './attribution';
 
+export type Send = (url: string, init: RequestInit) => Promise<Response>;
+
 export interface Package {
   ref_id: number;
   external_id: number;
@@ -102,13 +104,13 @@ export interface EventMap {
   'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
   'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };
-  'ready': { lines: Array<{ package_id: number; quantity: number }> };
+  ready: { lines: Array<{ package_id: number; quantity: number }> };
   'exit-intent.shown': ExitIntentDetail;
   'exit-intent.clicked': ExitIntentDetail;
   'exit-intent.dismissed': ExitIntentDetail;
   'exit-intent.closed': ExitIntentDetail;
   'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
-  'error': { action: string; message: string };
+  error: { action: string; message: string };
 }
 
 export type EventName = keyof EventMap;

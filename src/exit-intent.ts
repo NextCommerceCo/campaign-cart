@@ -1,4 +1,4 @@
-import type { Engine } from '../engine/engine';
+import type { Engine } from './engine/engine';
 
 export interface ExitIntentOptions {
   image?: string;
@@ -13,11 +13,20 @@ export interface ExitIntentOptions {
 }
 
 const OVERLAY = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999999';
-const POPUP = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000000;max-width:90vw;max-height:90vh;overflow:auto';
-const CLOSE = 'position:absolute;top:10px;right:10px;background:none;border:0;font-size:30px;line-height:1;cursor:pointer;color:#666';
+const POPUP =
+  'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000000;max-width:90vw;max-height:90vh;overflow:auto';
+const CLOSE =
+  'position:absolute;top:10px;right:10px;background:none;border:0;font-size:30px;line-height:1;cursor:pointer;color:#666';
 
 export function exitIntent(engine: Engine, options: ExitIntentOptions): () => void {
-  const o = { showCloseButton: false, overlayClosable: true, imageClickable: true, maxTriggers: 1, disableOnMobile: true, ...options };
+  const o = {
+    showCloseButton: false,
+    overlayClosable: true,
+    imageClickable: true,
+    maxTriggers: 1,
+    disableOnMobile: true,
+    ...options,
+  };
   const detail = { imageUrl: o.image, template: o.template };
   const emit = (name: 'shown' | 'clicked' | 'dismissed' | 'closed' | 'action', extra: object = {}) =>
     engine.events.emit(`exit-intent.${name}`, { ...detail, ...extra });
@@ -45,7 +54,8 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     popup.dataset.exitIntent = 'popup';
     popup.style.cssText = POPUP;
 
-    const template = o.template && document.querySelector<HTMLTemplateElement>(`template[data-template="${o.template}"]`);
+    const template =
+      o.template && document.querySelector<HTMLTemplateElement>(`template[data-template="${o.template}"]`);
     if (template) {
       popup.classList.add('exit-intent-template-popup');
       popup.append(template.content.cloneNode(true));
@@ -75,7 +85,10 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     }
 
     if (o.showCloseButton) {
-      const button = Object.assign(document.createElement('button'), { className: 'exit-intent-close', textContent: '×' });
+      const button = Object.assign(document.createElement('button'), {
+        className: 'exit-intent-close',
+        textContent: '×',
+      });
       button.dataset.exitIntent = 'close';
       button.style.cssText = CLOSE;
       button.addEventListener('click', () => close('closed'));

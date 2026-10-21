@@ -17,7 +17,12 @@ function fill(root: ParentNode, tokens: Tokens): void {
   }
 }
 
-function stamp<T>(container: Element, items: T[], tokensOf: (item: T) => Tokens, each?: (el: DocumentFragment, item: T) => void): void {
+function stamp<T>(
+  container: Element,
+  items: T[],
+  tokensOf: (item: T) => Tokens,
+  each?: (el: DocumentFragment, item: T) => void,
+): void {
   const template = container.querySelector(':scope > template');
   if (!template) return;
   container.replaceChildren(template);
@@ -39,7 +44,13 @@ function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): voi
   root.querySelectorAll<HTMLElement>('[data-next-discounts]').forEach((el) => {
     if (!scoped && (el.closest('[data-next-cart-summary]') || el.closest('[data-next-bundle-card]'))) return;
     const kind = el.getAttribute('data-next-discounts');
-    const list = !s ? [] : kind === 'offer' ? s.offer_discounts : kind === 'voucher' ? s.voucher_discounts : [...s.offer_discounts, ...s.voucher_discounts];
+    const list = !s
+      ? []
+      : kind === 'offer'
+        ? s.offer_discounts
+        : kind === 'voucher'
+          ? s.voucher_discounts
+          : [...s.offer_discounts, ...s.voucher_discounts];
     stamp(el, list, (d) => discountTokens(d, s?.currency, campaign?.language));
   });
 }
@@ -61,8 +72,11 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
       const copy = template.content.cloneNode(true) as DocumentFragment;
       fill(copy, tokens);
       copy.querySelectorAll('[data-summary-lines]').forEach((lines) =>
-        stamp(lines, cart.summary?.lines ?? [], (line) => lineTokens(engine, line, cart.summary?.currency), (row) =>
-          row.querySelectorAll('[data-next-item-properties]').forEach((p) => stamp(p, [], () => ({}))),
+        stamp(
+          lines,
+          cart.summary?.lines ?? [],
+          (line) => lineTokens(engine, line, cart.summary?.currency),
+          (row) => row.querySelectorAll('[data-next-item-properties]').forEach((p) => stamp(p, [], () => ({}))),
         ),
       );
       renderDiscounts(copy, b, true);
