@@ -49,7 +49,10 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 | `data-next-default-property="<name>"`                                                                    | A page-wide personalisation added to every line…                              |
 | `data-next-exclude-property="<name,…\|*>"`                                                               | …except on this card                                                          |
 | `data-next-upsell-context`                                                                               | Cards priced as a post-purchase offer (`?upsell=true`)                        |
-| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts; the cards are then priced on the server, as in 0.4.x   |
+| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts                                                         |
+
+Every card is priced on the server with its vouchers and the shopper's coupons, as in 0.4.x;
+the campaign's package prices show until the quote arrives.
 
 ## Order bumps and cart
 
@@ -57,10 +60,10 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `data-next-toggle-card`, `data-next-package-id`                | A bump that adds or removes its package. `data-next-is-upsell="true"` flags the line                                     |
 | `data-next-package-sync` / `data-next-product-sync`            | The bump's quantity follows these packages / products in the cart                                                        |
-| `data-next-toggle-display`, `data-next-toggle-image`           | The bump's own values and image                                                                                          |
+| `data-next-toggle-display`, `data-next-toggle-image`           | The bump's own values (server-priced, like 0.4.x) and image                                                              |
 | `data-next-action="add-to-cart"`                               | With `data-next-package-id` (+ `data-next-quantity`) or `data-next-selector-id`; `data-next-clear-cart`, `data-next-url` |
 | `data-next-cart-summary`                                       | Cart lines and totals                                                                                                    |
-| `data-next-coupon`, `data-next-remove-item`, quantity controls | Cart editing controls                                                                                                    |
+| `data-next-coupon`, `data-next-remove-item`, quantity controls | Cart editing controls. A code is kept only when the server gives a discount for it                                       |
 
 ## Checkout
 
@@ -71,6 +74,8 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 | `data-next-required="true"` / `required`                                                                   | On the phone field: make it required                                                                                                                                                                                                |
 | `input[name="use_shipping_address"]`, `data-next-component="different-billing-address"` / `"billing-form"` | Same-as-shipping toggle, billing section, rows cloned from `shipping-field-row`                                                                                                                                                     |
 | `data-next-component="location"`                                                                           | Shown once a street address is typed                                                                                                                                                                                                |
+| `nextConfig.addressConfig.enableAutocomplete: true`                                                        | Address suggestions under the street field (NextCommerce lookup)                                                                                                                                                                    |
+| `.form-group label.label-checkout`                                                                         | Floating label: gets `has-value` (and `is-focused` with `data-label-behavior="placeholder"`)                                                                                                                                        |
 | `input[name="payment_method"]`, `data-next-payment-method`, `data-next-payment-form`                       | Payment choice and its panels                                                                                                                                                                                                       |
 | `data-next-checkout-field="cc-number" / "cvv" / "exp-month" / "exp-year"`                                  | Card fields (payment.js)                                                                                                                                                                                                            |
 | `data-next-express-checkout="container" / "buttons"`                                                       | Express buttons are added here                                                                                                                                                                                                      |
@@ -89,4 +94,6 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 
 ## Page widgets
 
-`data-next-accordion` (with `-trigger`, `-panel`, `-text`) and `data-next-tooltip`.
+`data-next-accordion` (with `-trigger`, `-panel`, `-text`), `data-next-tooltip`, and
+`data-next-component="scroll-hint"` (`data-next-scroll-target`, `data-next-scroll-threshold`):
+`cart-items__scroll-hint--active` stays on only while the list it sits by can scroll and is at the top.

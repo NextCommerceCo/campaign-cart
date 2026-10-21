@@ -9,6 +9,7 @@
 | `campaign.loaded`                                      | `campaign`, `fromCache`          | Snapshot, then the fresh campaign                         |
 | `cart.updated`                                         | `cart`                           | The shopper changed lines, coupons or shipping            |
 | `cart.calculated`                                      | `summary`                        | Server totals arrived                                     |
+| `coupon.refused`                                       | `code`                           | The server gives no discount for a code; it is not kept   |
 | `selection.changed`                                    | `selectorId`, `cardId`, `items`  | A bundle pick, quantity or slot changed                   |
 | `shipping.changed`                                     | `methodId`                       |                                                           |
 | `checkout.started`                                     | `lines`                          | Once, when the checkout form is bound                     |
@@ -22,8 +23,8 @@
 | `exit-intent.*`                                        | popup details                    |                                                           |
 | `error`                                                | `action`, `message`              | For analytics and debugging; pages read errors from state |
 
-0.4.x names still work: `bundle:selection-changed`, `cart:updated`,
-`shipping:method-changed`, `exit-intent:*`. DOM events kept for page scripts:
+0.4.x names still work: `bundle:selection-changed`, `cart:updated`, `coupon:validation-failed`,
+`shipping:method-changed`, `exit-intent:*`. Other 0.4.x names log a warning and never fire. DOM events kept for page scripts:
 `next:initialized`, `next:ready` (window) and `next:prospect-cart-created` (checkout form).
 
 ## dataLayer
@@ -33,4 +34,7 @@ falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` afte
 `{ ecommerce: null }`: `dl_user_data`, `dl_view_item(_list)`, `dl_add_to_cart`,
 `dl_remove_from_cart`, `dl_package_swapped`, `dl_cart_updated`, `dl_begin_checkout`,
 `dl_add_shipping_info`, `dl_add_payment_info`, `dl_purchase` (once, only when paid),
-`dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`. No personal data is sent.
+`dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`, `dl_exit_intent_shown` /
+`_accepted` / `_dismissed` / `_closed` / `_action`. No personal data is sent. The purchase
+events use the transaction id as `event_id`, as 0.4.x did. `nextConfig.analytics.providers.gtm.enabled: false`
+keeps events out of `dataLayer` (only `NextDataLayer`).

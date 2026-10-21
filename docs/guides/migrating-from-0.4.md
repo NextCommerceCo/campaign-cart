@@ -2,7 +2,8 @@
 
 Pages built for 0.4.x keep working: old attribute names, `nextConfig` keys and `window.next`
 methods are read by each chunk's `legacy.ts` and marked `@deprecated` with their replacement.
-This page lists what changes for a page builder.
+This page lists what changes for a page builder. Every 0.4.43 attribute, method, event and
+config key, with its live usage, is in [parity-0.4.md](../architecture/parity-0.4.md).
 
 ## Checkout
 
@@ -13,6 +14,9 @@ This page lists what changes for a page builder.
 | `<div data-next-address="shipping\|billing">` (SDK-drawn address)         | **Removed.** Write the fields in HTML like the other templates (apollo-multi-variant is the only campaign using it)               |
 | Phone flag dropdown (intl-tel-input, `.iti` CSS)                          | **Removed.** A plain phone input; the number is sent in E.164 from i18n-rules                                                     |
 | Google address autocomplete (`nextConfig.googleMaps`)                     | **Removed.** No campaign had an API key set                                                                                       |
+| NextCommerce address autocomplete (`addressConfig.enableAutocomplete`)    | Still read. Same dropdown and `pac-*` classes                                                                                     |
+| Express buttons                                                           | Unchanged: the order is placed without checking the form; PayPal chosen in the form asks for email and name first                 |
+| Coupon field and `next.applyCoupon`                                       | Unchanged: a code that takes nothing off is not kept, and `coupon:validation-failed` fires                                        |
 | `nextConfig.addressConfig.countries` / `dontShowStates`                   | Still read. The campaign's shipping countries come first                                                                          |
 | `nextConfig.paymentConfig.expressCheckout.methodOrder`                    | Still read. The campaign's express methods come first                                                                             |
 | `sessionStorage['next-checkout-store']` (step guard)                      | Written in the old shape on multi-step pages, under the exact key the guard script reads                                          |

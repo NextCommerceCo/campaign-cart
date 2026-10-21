@@ -13,7 +13,7 @@ Available after the `ready` event (`next.on('ready', fn)` also fires for late li
 | `next.actions.setQuantity(packageId, qty)`                | Change a package's quantity                                                    |
 | `next.actions.setGroup(id, { lines, vouchers? } \| null)` | Replace (or remove) a named group of lines                                     |
 | `next.actions.clear()`                                    | Empty the cart                                                                 |
-| `next.actions.applyCoupon(code)` / `removeCoupon(code)`   | Coupons                                                                        |
+| `next.actions.applyCoupon(code)` / `removeCoupon(code)`   | Coupons; `applyCoupon` resolves `false` when the server gives no discount      |
 | `next.actions.setShipping(id)`                            | Shipping method                                                                |
 
 Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
@@ -21,3 +21,6 @@ Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 `getPackage(id)`, `getCampaignData()`, `getCartData()` (0.4.x shape), `exitIntent(options)`,
 `getShippingMethods()`, `setShippingMethod(id)`, `getSelectedShippingMethod()`, the
 `window.nextReady` queue, and the `next:ready` / `next:initialized` window events.
+
+The other 0.4.x members are gone; no live page calls them. [parity-0.4.md](../architecture/parity-0.4.md)
+lists each one with what to use instead.
