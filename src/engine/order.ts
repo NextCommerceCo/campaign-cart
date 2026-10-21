@@ -6,6 +6,7 @@ import type { CartLine, CheckoutState, Order, OrderAddress, OrderLine, OrderStat
 import { bool, cents, money, type Value } from './values';
 
 const ORDER_TTL = 15 * 60 * 1000;
+const LOAD_TIMEOUT = 10_000;
 const REPORTED = 'reported';
 const REPORTED_KEEP = 50;
 
@@ -180,7 +181,9 @@ export function createOrder(ctx: Context, cart: CartActions) {
         ...(state().refId !== refId && { order: undefined }),
       });
       try {
-        const loaded = await ctx.api.getOrder(refId);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT);
+        const loaded = await ctx.api.getOrder(refId, controller.signal).finally(() => clearTimeout(timer));
         if (current !== seq) return;
         set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
         settle(loaded, page);

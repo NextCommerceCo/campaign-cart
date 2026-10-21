@@ -152,8 +152,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const slotsChunk = slotsPage ? import('./slots') : undefined;
 
   const reveal = () => {
-    bindings.render();
-    html.setAttribute('data-next-ready', '');
+    try {
+      bindings.render();
+    } finally {
+      html.setAttribute('data-next-ready', '');
+    }
     announceLegacyReady(next);
     const analytics = legacyAnalytics();
     if (analytics.enabled) {

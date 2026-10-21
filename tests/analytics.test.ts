@@ -176,6 +176,49 @@ describe('analytics', () => {
     expect(await run()).toEqual(['dl_user_data']);
   });
 
+  it('prices a VAT-inclusive order the way its packages are listed', async () => {
+    const vat = {
+      ...ORDER,
+      lines: [
+        {
+          id: 21,
+          package: 1,
+          product_title: 'Earbuds',
+          quantity: 1,
+          price_incl_tax: '49.00',
+          price_excl_tax: '40.83',
+          price_incl_tax_excl_discounts: '49.00',
+          price_excl_tax_excl_discounts: '40.83',
+        },
+      ],
+      shipping_incl_tax: '6.00',
+      shipping_excl_tax: '5.00',
+    };
+    const { engine } = makeEngine({ fetch: fakeApi({ getOrder: () => json(vat) }).fetch });
+    await engine.start();
+    engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    await engine.order.load('R9');
+    startAnalytics(engine, options);
+    const purchase = win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!;
+    expect(purchase.ecommerce).toMatchObject({ value: 49, shipping: 6, items: [{ price: 49 }] });
+  });
+
+  it('keeps addresses out of events, even in the landing page and referrer', async () => {
+    const { engine } = makeEngine({
+      visit: {
+        landingPage: 'https://shop.test/lp?email=jane@example.com',
+        referrer: 'https://mail.test/open?to=jane@example.com',
+        device: 'UA',
+        deviceType: 'mobile',
+      },
+    });
+    await engine.start();
+    startAnalytics(engine, options);
+    const [event] = win.NextDataLayer!;
+    expect(event.attribution.metadata.landing_page).toBe('https://shop.test/lp');
+    expect(JSON.stringify(win.NextDataLayer)).not.toContain('jane@example.com');
+  });
+
   it('reports upsell views and skips', async () => {
     const engine = await ready();
     startAnalytics(engine, options);

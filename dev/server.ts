@@ -1,11 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 import { mockApi } from './mock';
 
 const SITE = resolve(process.env.SITE ?? join(import.meta.dirname, '../../my-campaigns/_site'));
-const LOADER = /<script\b[^>]*\bsrc="[^"]*\/loader\.js(?:\?[^"]*)?"[^>]*>\s*<\/script>/;
+const LOADER = /<script\b[^>]*\bsrc=["'][^"']*\/loader\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>/;
+const LEFTOVER_SDK = /<script\b[^>]*campaign-cart[^>]*>\s*<\/script>/g;
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -30,8 +31,14 @@ const STUBS: Record<string, string> = {
 };
 
 function pageFile(pathname: string): string | undefined {
-  const base = join(SITE, decodeURIComponent(pathname));
-  if (!base.startsWith(SITE)) return undefined;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
+  const base = resolve(SITE, `.${decoded}`);
+  if (base !== SITE && !base.startsWith(SITE + sep)) return undefined;
   for (const file of [base, join(base, 'index.html'), `${base}.html`]) {
     if (existsSync(file) && statSync(file).isFile()) return file;
   }
@@ -39,13 +46,16 @@ function pageFile(pathname: string): string | undefined {
 }
 
 function withLocalSdk(html: string): string {
-  return html.replace(LOADER, (tag) => {
+  const swapped = html.replace(LOADER, (tag) => {
     const local = tag
       .replace(/\s\btype="[^"]*"/, '')
       .replace(/\bsrc="[^"]*"/, 'src="/src/loader.ts"')
       .replace('<script', '<script type="module"');
     return `<script type="module" src="/dev/client.ts"></script>\n${local}`;
   });
+  if (!LEFTOVER_SDK.test(swapped)) return swapped;
+  console.warn('[dev] removed an SDK script tag it could not swap, so it cannot reach production');
+  return swapped.replace(LEFTOVER_SDK, '');
 }
 
 function sitePages(server: () => ViteDevServer, live: boolean): Plugin {
@@ -53,7 +63,14 @@ function sitePages(server: () => ViteDevServer, live: boolean): Plugin {
     name: 'campaign-pages',
     configureServer(vite) {
       vite.middlewares.use(mockApi(live));
-      vite.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+      vite.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+        serve(req, res, next).catch((err: unknown) => {
+          console.error('[dev]', err);
+          res.writeHead(500);
+          res.end(String(err));
+        }),
+      );
+      const serve = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
         const { pathname } = new URL(req.url ?? '/', 'http://dev');
         const stub = pathname.startsWith('/__dev/stub/') && STUBS[pathname.slice('/__dev/stub/'.length)];
         if (stub) {
@@ -75,7 +92,7 @@ function sitePages(server: () => ViteDevServer, live: boolean): Plugin {
         const html = await server().transformIndexHtml(pathname, withLocalSdk(readFileSync(file, 'utf8')));
         res.writeHead(200, { 'content-type': 'text/html' });
         res.end(html);
-      });
+      };
     },
   };
 }

@@ -16,7 +16,7 @@ Status: proposal, October 2026. A rewrite, not a port of `campaign-cart`.
 ## 1. Install
 
 ```html
-<script src="https://sdk.nextcommerce.com/v1/loader.js" data-campaign="pk_live_xxxxxxxx" defer></script>
+<script type="module" src="https://sdk.nextcommerce.com/v1/loader.js" data-campaign="pk_live_xxxxxxxx"></script>
 ```
 
 That is the whole setup. A `pk_test_` key runs against the sandbox. `?debug=1` opens the
@@ -152,7 +152,7 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   it loads from.
 - Setup mistakes always print in the console: missing key, unknown attribute, unknown
   field.
-- SDK errors are reported to the collector, so failures are visible.
+- SDK errors go out as the `error` event (debug panel, analytics); a collector endpoint is a backend ask (B3).
 
 ## 9. Release
 

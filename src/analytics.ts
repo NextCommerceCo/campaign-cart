@@ -9,6 +9,15 @@ export interface AnalyticsOptions {
 }
 
 type Line = { package_id: number; quantity: number };
+
+const withoutQuery = (url: string) => {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return '';
+  }
+};
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
 type Win = Window & {
   NextDataLayer?: DataLayerEvent[];
@@ -44,6 +53,17 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
   };
 
+  const attribution = () => {
+    const a = engine.attribution();
+    const metadata = Object.fromEntries(
+      Object.entries(a.metadata).map(([k, v]) => [
+        k,
+        typeof v === 'string' && /^https?:/.test(v) ? withoutQuery(v) : v,
+      ]),
+    );
+    return { ...a, metadata };
+  };
+
   const send = (name: string, data: object) => {
     const { campaign } = engine.getState();
     const event = transform({
@@ -53,11 +73,11 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       user_properties: { visitor_type: 'guest' },
       page_location: location.origin + location.pathname,
       page_title: document.title,
-      page_referrer: document.referrer,
+      page_referrer: withoutQuery(document.referrer),
       campaign_name: campaign?.name,
       campaign_currency: campaign?.currency,
       campaign_language: campaign?.language,
-      attribution: engine.attribution(),
+      attribution: attribution(),
       _metadata: { source: 'NextDataLayer', version: options.version },
       ...data,
     });
@@ -145,23 +165,43 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
   };
 
-  const orderItem = (order: Order, line: OrderLine, index: number) => ({
-    item_id: line.product_sku || String(line.product_id ?? line.id),
-    item_name: line.product_title,
-    item_category: engine.getState().campaign?.name,
-    ...(line.variant_title && { item_variant: line.variant_title }),
-    ...(line.image && { item_image: line.image }),
-    price: cents(Number(line.price_excl_tax) / (line.quantity || 1)),
-    quantity: line.quantity,
-    currency: order.currency ?? currency(),
-    index,
-  });
+  const taxIncluded = (order: Order) => {
+    for (const line of order.lines ?? []) {
+      const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
+      const qty = line.quantity || 1;
+      const incl = Number(line.price_incl_tax_excl_discounts) / qty;
+      const excl = Number(line.price_excl_tax_excl_discounts) / qty;
+      if (!(catalog > 0) || !Number.isFinite(incl) || !Number.isFinite(excl) || Math.abs(incl - excl) <= 0.02) continue;
+      return Math.abs(incl - catalog) < Math.abs(excl - catalog);
+    }
+    return false;
+  };
+
+  const orderItem = (order: Order, line: OrderLine, index: number, incl: boolean) => {
+    const qty = line.quantity || 1;
+    const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
+    const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;
+    return {
+      item_id: line.product_sku || String(line.product_id ?? line.id),
+      item_name: line.product_title,
+      item_category: engine.getState().campaign?.name,
+      ...(line.variant_title && { item_variant: line.variant_title }),
+      ...(line.product_sku && { item_sku: line.product_sku }),
+      ...(line.image && { item_image: line.image }),
+      price: cents(paid),
+      ...(listed > paid && { discount: cents(listed - paid) }),
+      quantity: line.quantity,
+      currency: order.currency ?? currency(),
+      index,
+    };
+  };
 
   const onOrder = ({ order, purchase, upsells }: EventMap['order.loaded']) => {
     const reported: string[] = [];
     if (purchase) {
       const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
-      const items = lines.map((l, i) => orderItem(order, l, i));
+      const incl = taxIncluded(order);
+      const items = lines.map((l, i) => orderItem(order, l, i, incl));
       const discount = Number(order.total_discounts ?? 0);
       send('dl_purchase', {
         pageType: 'purchase',
@@ -170,7 +210,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           transaction_id: purchase,
           value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
           tax: Number(order.total_tax ?? 0),
-          shipping: Number(order.shipping_incl_tax ?? 0),
+          shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
           affiliation: 'Online Store',
           items,
           ...(discount > 0 && { discount }),
@@ -179,7 +219,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       reported.push(purchase);
     }
     for (const { id, number, line } of upsells ?? []) {
-      const item = orderItem(order, line, 0);
+      const item = orderItem(order, line, 0, taxIncluded(order));
       send('dl_upsell_purchase', {
         pageType: 'upsell',
         ecommerce: {

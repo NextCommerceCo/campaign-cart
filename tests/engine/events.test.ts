@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { makeEngine } from '../fixtures/engine';
 
 describe('events', () => {
@@ -33,5 +33,16 @@ describe('events', () => {
     off();
     engine.events.emit('ready', { lines: [] });
     expect(seen).toEqual([]);
+  });
+  it('runs a ready listener added during ready once, and keeps ready for late listeners', () => {
+    const { engine } = makeEngine();
+    const late = vi.fn();
+    engine.on('ready', () => engine.on('ready', late, { replay: true }));
+    engine.events.emit('ready', { lines: [] });
+    expect(late).toHaveBeenCalledTimes(1);
+    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { summary: {} as never });
+    const later = vi.fn();
+    engine.on('ready', later, { replay: true });
+    expect(later).toHaveBeenCalledTimes(1);
   });
 });

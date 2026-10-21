@@ -50,8 +50,8 @@ subscribes. Changed:
 4. **Two kinds of notification.** `subscribe(fn)` — state changed, once per tick, for
    rendering. `on(event)` — domain events, for analytics and page scripts.
 5. **Errors live in state.** Field, decline and server errors go to `checkout.errors` /
-   `order.status` and render like any state. `placeOrder` / `acceptUpsell` resolve to the
-   order or `undefined`. The `error` event is for analytics and debug only.
+   `order.status` and render like any state. `placeOrder` resolves to the order or
+   `undefined`, and `accept` to its outcome. The `error` event is for analytics and debug only.
 6. **The Engine returns data, the DOM layer navigates.** Pure `redirectFor(order, successUrl)`
    and `nextUrl(target, params)` build URLs (adding `ref_id` and session params); the binding
    owns timing (upsell moves on after 1 s on error, as today).
@@ -64,7 +64,7 @@ subscribes. Changed:
 | `cart`      | groups of lines `{packageId, quantity, isUpsell?, properties?}`, coupons, dismissed bumps, shipping id, summary, calculating, `frozen` | sessionStorage (not summary / calculating / frozen)             | the tab                                |
 | `selectors` | per selector: cards, picked card, mode `swap \| select \| offer`, offer quotes per card (stepper quantity lands with the order chunk)  | not stored; registered by bindings                              | the page                               |
 | `checkout`  | fields, same-as-shipping, payment method, step, errors, status `idle \| placing`, countries, rules per country, prospect saved         | sessionStorage: fields, same-as-shipping, step. Never card data | the tab                                |
-| `order`     | ref id, order, status, pending gateway ref, accepted offers by page, reported purchase ids                                             | sessionStorage; reported ids in localStorage (last 20)          | 15 min reuse; reported ids across tabs |
+| `order`     | ref id, order, status, accepted offers by order and page (the gateway ref waits in `checkout.pendingRef`)                              | sessionStorage; reported ids in localStorage (last 50)          | 15 min reuse; reported ids across tabs |
 | `visit`     | params (without `ref_id`), attribution, first landing page, exit-intent count                                                          | sessionStorage                                                  | the tab                                |
 
 Lines are merged for the API by `packageId + isUpsell + properties`, not by package id alone.
@@ -82,7 +82,7 @@ Lines are merged for the API by `packageId + isUpsell + properties`, not by pack
 | `checkout.paymentReady(method)`                                                                         | checkout | reported by the DOM layer                                                                                                                                                                               | —                                                | `checkout.payment-added` once                         |
 | `checkout.placeOrder({ method, tokenize?, successUrl, failureUrl })`                                    | checkout | see 3.3                                                                                                                                                                                                 | `POST /orders/`                                  | `order.placed`                                        |
 | `order.load(refId)`                                                                                     | order    | latest-wins                                                                                                                                                                                             | `GET /orders/{ref}/`                             | `order.loaded { purchase?, upsells? }`                |
-| `order.view()` / `order.acceptUpsell(selectorId)` / `order.skipUpsell()`                                | order    | accept is single-flight and recorded per page, so Back cannot charge twice                                                                                                                              | `POST /orders/{ref}/upsells/`                    | `upsell.viewed`, `upsell.accepted`, `upsell.skipped`  |
+| `order.view(page)` / `order.accept({ selectorId \| lines }, page)` / `order.skip()`                     | order    | accept is single-flight and recorded per page, so Back cannot charge twice                                                                                                                              | `POST /orders/{ref}/upsells/`                    | `upsell.viewed`, `upsell.accepted`, `upsell.skipped`  |
 | `order.markReported(ids)`                                                                               | order    | called by analytics after it pushed the events                                                                                                                                                          | —                                                | —                                                     |
 
 Validation is pure (`rules.ts`); remote checks (`/v1/validate`: postcode ↔ state, phone E.164)
@@ -130,7 +130,7 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
 
 `order.load` reports a purchase only when the order has no `payment_complete_url`, the page is
 not the failure landing (`?payment_failed=true` or the failure path recorded at placeOrder), and
-the ref is not in the reported list (localStorage, last 20). Upsell purchases are the order's
+the ref is not in the reported list (localStorage, last 50). Upsell purchases are the order's
 `is_upsell` lines not yet reported. Analytics turns them into `dl_purchase` /
 `dl_upsell_purchase` and then calls `order.markReported(ids)`, so a late or missing analytics
 chunk never uses them up. Nothing is queued across a redirect.
@@ -202,9 +202,9 @@ loads analytics on idle.
 binding navigates to `redirectFor(order, successUrl)`; on `undefined` the errors are already in
 state and rendered.
 
-**Upsell.** `order.load(ref)` → `order.view()` → accept: `order.acceptUpsell(selectorId)` →
+**Upsell.** `order.load(ref)` → `order.view()` → accept: `order.accept({ selectorId }, page)` →
 binding navigates to `nextUrl(acceptUrl)` with `ref_id`; error or unsupported → after 1 s to the
-same URL; skip → `order.skipUpsell()` and navigate.
+same URL; skip → `order.skip()` and navigate.
 
 **Receipt.** `order.load(ref)` → `order.*` paths read `state.order`.
 

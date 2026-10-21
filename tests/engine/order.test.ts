@@ -149,6 +149,22 @@ describe('order', () => {
     expect(upsells()).toHaveLength(1);
   });
 
+  it('gives up on an order request that never answers, so the page can show', async () => {
+    vi.useFakeTimers();
+    const hang = ((_: string, init: RequestInit) =>
+      new Promise((_, reject) =>
+        init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))),
+      )) as unknown as typeof fetch;
+    const { engine } = makeEngine({ fetch: hang });
+    await engine.start();
+    const order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    const loading = order.load('R1');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await loading;
+    expect(engine.getState().order?.status).toBe('failed');
+    vi.useRealTimers();
+  });
+
   it('keeps the shopper on track when an offer fails', async () => {
     const { engine, order } = await setup({ api: { upsell: () => json({ message: 'Card declined' }, 400) } });
     await order.load('R1');

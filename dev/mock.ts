@@ -158,12 +158,26 @@ function placeOrder(campaign: Campaign | undefined, body: Record<string, any>) {
   return { status: 201, body: order };
 }
 
-const GATEWAY = (
-  q: URLSearchParams,
-) => `<!doctype html><meta name="viewport" content="width=device-width"><title>Dev gateway</title>
+const escape = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+function sameSite(target: string | null, req: IncomingMessage): URL | undefined {
+  try {
+    const origin = `http://${req.headers.host}`;
+    const url = new URL(target ?? '', origin);
+    return url.origin === origin ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const GATEWAY = (q: URLSearchParams, req: IncomingMessage) => {
+  const failure = sameSite(q.get('failure'), req)?.href ?? '/';
+  return `<!doctype html><meta name="viewport" content="width=device-width"><title>Dev gateway</title>
 <body style="font:16px system-ui;max-width:28rem;margin:4rem auto;padding:0 1rem">
-<h1>Dev payment gateway</h1><p>Order <b>${q.get('ref')}</b> by <b>${q.get('method')}</b>. Nothing is charged.</p>
-<p><a href="/__dev/gateway/approve?${q}">Approve</a> · <a href="${q.get('failure')}">Fail the payment</a></p></body>`;
+<h1>Dev payment gateway</h1><p>Order <b>${escape(q.get('ref') ?? '')}</b> by <b>${escape(q.get('method') ?? '')}</b>. Nothing is charged.</p>
+<p><a href="/__dev/gateway/approve?${escape(q.toString())}">Approve</a> · <a href="${escape(failure)}">Fail the payment</a></p></body>`;
+};
 
 export function mockApi(live: boolean) {
   mkdirSync(CAMPAIGNS, { recursive: true });
@@ -173,12 +187,13 @@ export function mockApi(live: boolean) {
     const url = new URL(req.url ?? '/', 'http://dev');
     if (url.pathname === '/__dev/gateway') {
       res.writeHead(200, { 'content-type': 'text/html' });
-      return res.end(GATEWAY(url.searchParams));
+      return res.end(GATEWAY(url.searchParams, req));
     }
     if (url.pathname === '/__dev/gateway/approve') {
-      const ref = url.searchParams.get('ref')!;
-      delete placed.get(ref)?.payment_complete_url;
-      const success = new URL(url.searchParams.get('success')!);
+      const ref = url.searchParams.get('ref') ?? '';
+      const success = sameSite(url.searchParams.get('success'), req);
+      if (!success || !placed.has(ref)) return send(res, 400, { detail: 'dev mock: unknown order or success page' });
+      delete placed.get(ref)!.payment_complete_url;
       success.searchParams.set('ref_id', ref);
       res.writeHead(302, { location: success.href });
       return res.end();
@@ -204,7 +219,12 @@ export function mockApi(live: boolean) {
     const path = url.pathname.slice('/__mock/api'.length);
     const key = String(req.headers.authorization ?? '');
     const raw = req.method === 'POST' ? await bodyOf(req) : '';
-    const body = raw ? JSON.parse(raw) : undefined;
+    let body: any;
+    try {
+      body = raw ? JSON.parse(raw) : undefined;
+    } catch {
+      return send(res, 400, { detail: 'dev mock: body is not JSON' });
+    }
 
     if (live && (path === '/api/v1/campaigns/' || path === '/api/v1/carts/calculate/')) {
       const answer = await fetch(`${LIVE_API}${path}${url.search}`, {
@@ -223,6 +243,9 @@ export function mockApi(live: boolean) {
       return send(res, 201, { id: Date.now(), checkout_url: `${url.origin}/__dev/cart` });
     }
     if (path === '/api/v1/orders/') {
+      if (!body?.payment_detail?.payment_method || !body.success_url) {
+        return send(res, 400, { detail: 'dev mock: order needs payment_detail and success_url' });
+      }
       const order = placeOrder(savedCampaign(key), body);
       return send(res, order.status, order.body);
     }
@@ -232,6 +255,7 @@ export function mockApi(live: boolean) {
       if (!order)
         return send(res, 404, { detail: `dev mock: no order ${ref[1]} (orders live until bun dev restarts)` });
       if (!ref[2]) return send(res, 200, order);
+      if (!Array.isArray(body?.lines)) return send(res, 400, { detail: 'dev mock: upsell needs lines' });
       console.log(`[dev] upsell on ${ref[1]}: ${JSON.stringify(body.lines)}`);
       order.lines = [...(order.lines as unknown[]), ...orderLines(savedCampaign(key), body.lines, true)];
       Object.assign(order, totals(order));

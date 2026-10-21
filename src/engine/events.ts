@@ -19,14 +19,19 @@ export class Events {
   emit<K extends EventName>(name: K, data: EventMap[K]): void {
     const event: EngineEvent = { name, data, at: Date.now() };
     this.buffer.push(event);
-    if (this.buffer.length > BUFFER_SIZE) this.buffer.shift();
+    if (this.buffer.length > BUFFER_SIZE)
+      this.buffer.splice(
+        this.buffer.findIndex((e) => e.name !== 'ready'),
+        1,
+      );
     this.queue.push(event);
     if (this.emitting) return;
     this.emitting = true;
     try {
       for (let next = this.queue.shift(); next; next = this.queue.shift()) {
         const current = next;
-        for (const key of [current.name, '*']) this.listeners.get(key)?.forEach((fn) => deliver(fn, current));
+        for (const key of [current.name, '*'])
+          [...(this.listeners.get(key) ?? [])].forEach((fn) => deliver(fn, current));
       }
     } finally {
       this.emitting = false;

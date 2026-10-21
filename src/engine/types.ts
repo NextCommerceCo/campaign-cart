@@ -234,6 +234,7 @@ export interface ProspectBody {
 
 export interface OrderLine {
   id: number | string;
+  package?: number;
   image?: string;
   is_upsell?: boolean;
   price_excl_tax: string;

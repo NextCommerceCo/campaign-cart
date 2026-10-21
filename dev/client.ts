@@ -5,13 +5,27 @@ const STUBS: Record<string, string> = {
   [`${API}/js/v1/campaign/`]: '/__dev/stub/next-campaign.js',
 };
 
+const PRECONNECT = /^https:\/\/(payments\.29next\.com|core\.spreedly\.com)/;
+
 const real = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const url = input instanceof Request ? input.url : String(input);
-  if (url.startsWith(API)) return real(url.replace(API, '/__mock/api'), init);
-  if (url.startsWith(RULES)) return real(url.replace(RULES, '/__mock/rules'), init);
-  return real(input, init);
+  const local = url.startsWith(API)
+    ? url.replace(API, '/__mock/api')
+    : url.startsWith(RULES)
+      ? url.replace(RULES, '/__mock/rules')
+      : undefined;
+  if (!local) return real(input, init);
+  return input instanceof Request ? real(new Request(local, input), init) : real(local, init);
 };
+
+const href = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href')!;
+Object.defineProperty(HTMLLinkElement.prototype, 'href', {
+  ...href,
+  set(this: HTMLLinkElement, value: string) {
+    href.set!.call(this, PRECONNECT.test(value) ? location.origin : value);
+  },
+});
 
 const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src')!;
 Object.defineProperty(HTMLScriptElement.prototype, 'src', {

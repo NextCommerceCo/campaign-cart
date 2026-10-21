@@ -104,7 +104,8 @@ const { origin, close } = await startDev({ quiet: true });
 const browser = await chromium.launch({ executablePath: chrome(), args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const problems: string[] = [];
-await page.route(/29next\.com|nextcommerce\.com/, (route) => {
+await page.route(/29next\.store/, (route) => route.abort());
+await page.route(/29next\.com|nextcommerce\.com|spreedly\.com/, (route) => {
   problems.push(`production request blocked: ${route.request().url()}`);
   return route.abort();
 });
