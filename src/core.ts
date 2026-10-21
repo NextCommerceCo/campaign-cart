@@ -99,7 +99,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   if (config.debug) {
     console.info(`[next] storage scope ${scope} (funnel "${funnel || '(none)'}")`);
-    engine.on('*', (e) => console.debug('[next]', e.name, e.data), { replay: true });
+    const reset = () => location.assign(`${location.pathname}?reset=1`);
+    void import('./debug').then((m) => m.startDebug(engine, { scope, funnel, reset }));
   }
 
   if (config.reset) {
