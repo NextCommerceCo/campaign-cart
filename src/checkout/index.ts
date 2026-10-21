@@ -6,6 +6,7 @@ import { bindAddress } from './address';
 import { bindBilling, cloneBillingRows } from './billing';
 import { bindExpress } from './express';
 import { bindFields, phoneRequired, scanFields, syncFields } from './form';
+import { bindLabels } from './labels';
 import { announceProspect, clearStepGuard, legacyCountries, stepUrlOf, writeStepGuard } from './legacy';
 import { errorBox, showBox, shown } from './messages';
 import { bindCard, bindPayment } from './payment';
@@ -62,6 +63,7 @@ export function bindCheckout(
   form.noValidate = true;
   cloneBillingRows(form);
   const fields = scanFields(form);
+  const labels = bindLabels(form);
   const card = bindCard(engine, checkout, form);
   const stepUrl = stepUrlOf(form);
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
@@ -144,6 +146,7 @@ export function bindCheckout(
 
   const renders = [
     bindFields(engine, checkout, fields),
+    labels,
     bindAddress(engine, form, fields),
     bindBilling(engine, checkout, form),
     bindPayment(engine, checkout, form),

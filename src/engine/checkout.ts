@@ -304,7 +304,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         return undefined;
       };
 
-      const invalid = formErrors(state(), express ? 'express' : 'all', input.phoneRequired);
+      const invalid = input.method ? {} : formErrors(state(), express ? 'express' : 'all', input.phoneRequired);
       if (Object.keys(invalid).length) return stop(showErrors(invalid));
       if (!cart.lines().length) return stop({ form: { code: 'empty_cart' } });
       await cart.settled();

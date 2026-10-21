@@ -257,18 +257,67 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     });
   });
 
-  it('pays with PayPal express from the injected button and hands over to PayPal', async () => {
-    const { type, orders, navigate } = await mount('olympus/checkout.html', {
+  it('pays with PayPal express from the injected button, before the form is filled, like 0.4.x', async () => {
+    const { orders, navigate } = await mount('olympus/checkout.html', {
       order: () => json({ ref_id: 'R3', payment_complete_url: 'https://paypal.test/R3' }),
     });
-    type('email', 'jane@example.com');
-    type('fname', 'Jane');
-    type('lname', 'Doe');
     document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
     await flush();
     await flush();
     expect(Object.keys(orders()[0]!.body)).not.toContain('shipping_address');
     expect(navigate).toHaveBeenCalledWith('https://paypal.test/R3');
+  });
+
+  it('asks for the contact fields before a PayPal order chosen in the form, like 0.4.x requiredFields', async () => {
+    const { fill, submit, orders, $, field } = await mount('olympus/checkout.html', {
+      order: () => json({ ref_id: 'R4', payment_complete_url: 'https://paypal.test/R4' }),
+    });
+    const paypal = $('input[name="payment_method"][value="paypal"]');
+    paypal.checked = true;
+    paypal.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    await submit();
+    expect(orders()).toHaveLength(0);
+    expect(field('email').classList).toContain('next-error-field');
+    expect(field('address1').classList).not.toContain('next-error-field');
+    fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'paypal' });
+  });
+
+  it('floats each label above its field once the field has a value', async () => {
+    const { type, field, engine } = await mount('olympus/checkout.html');
+    const label = (name: string) => field(name).closest('.form-group')!.querySelector('label.label-checkout')!;
+    expect(label('email').classList).not.toContain('has-value');
+    type('email', 'jane@example.com');
+    expect(label('email').classList).toContain('has-value');
+    expect(field('email').style.paddingTop).toBe('14px');
+    type('email', '');
+    expect(label('email').classList).not.toContain('has-value');
+    engine.checkout!.setField('city', 'Austin');
+    await flush();
+    expect(field('city').value).toBe('Austin');
+    expect(label('city').classList).toContain('has-value');
+  });
+
+  it('floats a placeholder-style label while its field has focus', async () => {
+    document.body.innerHTML = `<form><div class="form-group"><div class="form-input">
+      <label class="label-checkout label-checkout--floating">Email</label>
+      <input data-next-checkout-field="email" data-label-behavior="placeholder" placeholder="Email*">
+    </div></div></form>`;
+    const { bindLabels } = await import('../../src/checkout/labels');
+    bindLabels(document.querySelector('form')!);
+    const input = document.querySelector('input')!;
+    const label = document.querySelector('label')!;
+    input.focus();
+    input.dispatchEvent(new Event('focus'));
+    expect([...label.classList]).toEqual(expect.arrayContaining(['has-value', 'is-focused']));
+    expect(input.placeholder).toBe('');
+    input.blur();
+    input.dispatchEvent(new Event('blur'));
+    expect(label.classList).not.toContain('has-value');
+    expect(input.placeholder).toBe('Email*');
   });
 
   it('shows an express failure next to the express buttons', async () => {
