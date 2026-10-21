@@ -2,9 +2,7 @@ import type { Engine } from './engine/engine';
 import { cardSlots, pickedCard } from './engine/selectors';
 import type { Discount, Package, SelectorCard, Slot } from './engine/types';
 import { cents, format } from './engine/values';
-import { ownProperties, pageProperties, selectorIdOf, setVisible } from './bindings/dom';
-
-type Bind = (root: ParentNode) => void;
+import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './bindings/dom';
 
 const escape = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -105,14 +103,13 @@ function variantSelects(engine: Engine, host: Element, slot: Slot, choose: (pack
 
 function renderStage(
   engine: Engine,
-  bind: Bind,
   selectorId: string,
   stage: Element,
   template: string,
   cards: Map<string, Element>,
 ) {
   let shown = '';
-  const rendered: Array<{ el: HTMLElement; packageId: number }> = [];
+  const rendered: Array<{ el: HTMLElement; slot: Slot; boxes: Array<{ box: HTMLElement; tpl: string }> }> = [];
 
   const apply = (card: SelectorCard, index: number, patch: Partial<Slot>) =>
     engine.selectors.setSlot(selectorId, card.id, index, patch);
@@ -122,21 +119,8 @@ function renderStage(
     ...ownProperties(el),
   });
 
-  const renderSlot = (card: SelectorCard, slot: Slot, index: number): HTMLElement => {
-    const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
-    Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
-    const pkg = engine.getPackage(slot.packageId);
-    const values = itemValues(engine, pkg, index);
-    el.innerHTML = fill(template, values);
-    for (const attr of ['data-next-show', 'data-next-hide'] as const) {
-      for (const node of el.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)) {
-        const on = values[node.getAttribute(attr)!] === 'show';
-        setVisible(node, attr === 'data-next-show' ? on : !on);
-        node.removeAttribute(attr);
-      }
-    }
-    for (const box of el.querySelectorAll<HTMLElement>('[data-next-discounts]')) {
-      const tpl = box.querySelector('template')?.innerHTML ?? '';
+  const refresh = ({ el, slot, boxes }: (typeof rendered)[number]) => {
+    for (const { box, tpl } of boxes) {
       const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer');
       box.innerHTML = found
         .map((d) =>
@@ -148,6 +132,25 @@ function renderStage(
         )
         .join('');
     }
+    applyValues(el, engine);
+  };
+
+  const renderSlot = (card: SelectorCard, slot: Slot, index: number): (typeof rendered)[number] => {
+    const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
+    Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
+    const values = itemValues(engine, engine.getPackage(slot.packageId), index);
+    el.innerHTML = fill(template, values);
+    for (const attr of ['data-next-show', 'data-next-hide'] as const) {
+      for (const node of el.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)) {
+        const on = values[node.getAttribute(attr)!] === 'show';
+        setVisible(node, attr === 'data-next-show' ? on : !on);
+        node.removeAttribute(attr);
+      }
+    }
+    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box) => ({
+      box,
+      tpl: box.querySelector('template')?.innerHTML ?? '',
+    }));
     for (const host of el.querySelectorAll('[data-next-variant-selectors]')) {
       variantSelects(engine, host, slot, (packageId) => void apply(card, index, { packageId }));
     }
@@ -156,8 +159,9 @@ function renderStage(
       input.value = slot.properties?.[name] ?? '';
       input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
     }
-    bind(el);
-    return el;
+    const entry = { el, slot, boxes };
+    refresh(entry);
+    return entry;
   };
 
   for (const input of document.querySelectorAll('[data-next-default-property]')) {
@@ -175,27 +179,30 @@ function renderStage(
     const key = `${card.id}:${slots.length}:${engine.getState().campaign ? 1 : 0}`;
     if (key !== shown) {
       shown = key;
-      rendered.length = 0;
-      stage.replaceChildren(
-        ...slots.map((slot, i) => {
-          const el = renderSlot(card, slot, i);
-          rendered.push({ el, packageId: slot.packageId });
-          return el;
-        }),
-      );
+      rendered.splice(0, rendered.length, ...slots.map((slot, i) => renderSlot(card, slot, i)));
+      stage.replaceChildren(...rendered.map((r) => r.el));
       return;
     }
     slots.forEach((slot, i) => {
       const old = rendered[i];
-      if (!old || old.packageId === slot.packageId) return;
-      const el = renderSlot(card, slot, i);
-      old.el.replaceWith(el);
-      rendered[i] = { el, packageId: slot.packageId };
+      if (!old) return;
+      if (old.slot.packageId === slot.packageId) {
+        old.slot = slot;
+        return refresh(old);
+      }
+      const code =
+        (document.activeElement as HTMLElement | null)?.closest('.next-bundle-slot') === old.el
+          ? (document.activeElement as HTMLElement).getAttribute('data-next-variant-code')
+          : null;
+      const next = renderSlot(card, slot, i);
+      old.el.replaceWith(next.el);
+      rendered[i] = next;
+      if (code) next.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();
     });
   };
 }
 
-export function bindSlots(engine: Engine, bind: Bind): () => void {
+export function bindSlots(engine: Engine): () => void {
   const renders = [...document.querySelectorAll('[data-next-bundle-selector]')].flatMap((selectorEl) => {
     const templateId = selectorEl.getAttribute('data-next-bundle-slot-template-id');
     const source = templateId ? document.getElementById(templateId) : null;
@@ -209,7 +216,7 @@ export function bindSlots(engine: Engine, bind: Bind): () => void {
         el,
       ]),
     );
-    return [renderStage(engine, bind, selectorId, stage, template, cards)];
+    return [renderStage(engine, selectorId, stage, template, cards)];
   });
   const render = () => renders.forEach((r) => r());
   engine.subscribe(render);

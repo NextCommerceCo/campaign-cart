@@ -57,11 +57,11 @@ const SHIPPING = {
   postal: '90210',
 };
 
-async function mount(file: string, options: { order?: (body: any) => Response } = {}) {
+async function mount(file: string, options: { order?: (body: any) => Response; rulesDown?: boolean } = {}) {
   const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
-  vi.stubGlobal('fetch', fakeRules({ geo: 'US' }).send);
+  vi.stubGlobal('fetch', fakeRules({ geo: 'US', down: options.rulesDown }).send);
   (window as unknown as { NextPayment: unknown }).NextPayment = FakeNextPayment;
   const api = fakeApi({ order: options.order });
   const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(CAMPAIGN), session: sessionStorage });
@@ -271,6 +271,22 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(navigate).toHaveBeenCalledWith('https://paypal.test/R3');
   });
 
+  it('shows an express failure next to the express buttons', async () => {
+    const { type, $ } = await mount('olympus/checkout.html', {
+      order: () => json({ message: 'PayPal is unavailable' }, 400),
+    });
+    type('email', 'jane@example.com');
+    type('fname', 'Jane');
+    type('lname', 'Doe');
+    document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
+    await flush();
+    await flush();
+    const express = $('[data-next-component="express-error"]');
+    expect(express.style.display).toBe('flex');
+    expect(express.textContent).toContain('PayPal is unavailable. Please try a different payment method.');
+    expect($('[data-next-component="credit-error"]').style.display).toBe('none');
+  });
+
   it('tells page scripts about the prospect cart, once', async () => {
     const { fill, form } = await mount('olympus/checkout.html');
     const created = vi.fn();
@@ -295,6 +311,25 @@ describe('three-step checkout (shop-three-step)', () => {
     const guard = JSON.parse(sessionStorage.getItem('next-checkout-store')!);
     expect(guard.state.step).toBe(2);
     expect(guard.state.formData).toMatchObject({ email: 'jane@example.com', fname: 'Jane', postal: '90210' });
+  });
+
+  it('keeps the state chosen on step one when the last step’s hidden copy has no options', async () => {
+    history.replaceState(null, '', '/shop-three-step/billing/');
+    const { checkout, submit, orders, card } = await mount('shop-three-step/billing.html', { rulesDown: true });
+    const step1 = {
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      city: 'Austin',
+    };
+    for (const [name, value] of Object.entries({ country: 'US', ...step1, state: 'CA', postcode: '90210' })) {
+      checkout.setField(name, value);
+    }
+    card();
+    await submit();
+    await flush();
+    expect(orders()[0]?.body.shipping_address).toMatchObject({ state: 'CA', postcode: '90210' });
   });
 
   it('shows what was entered earlier on the last step', async () => {

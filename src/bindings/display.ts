@@ -1,17 +1,9 @@
 import { parseCondition } from '../engine/condition';
-import { format, resolve, resolveCard, resolveLines, toggleGroup, truthy, type Value } from '../engine/values';
+import { resolve, resolveCard, resolveLines, toggleGroup, type Value } from '../engine/values';
 import { type BindContext, type Render } from './context';
-import { setText, setVisible } from './dom';
+import { conditionMet, setVisible, writeValue } from './dom';
 
-function write(el: HTMLElement, v: Value, b: BindContext): void {
-  const campaign = b.engine.getState().campaign;
-  if (v.type === 'bool') return setVisible(el, truthy(v));
-  if (v.type === 'url' && el instanceof HTMLImageElement) {
-    if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
-    return;
-  }
-  setText(el, format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format')));
-}
+const write = (el: HTMLElement, v: Value, b: BindContext) => writeValue(el, v, b.engine);
 
 export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
   const renders: Render[] = [];
@@ -60,10 +52,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
       renders.push(() => {
         const v = resolve(b.engine, condition.path, ctx);
         if (!v) return b.warn(`unknown path "${condition.path}" in ${attr}`);
-        const met =
-          condition.kind === 'compare'
-            ? (String(v.value ?? '') === condition.literal) === (condition.op === '==')
-            : truthy(v) !== condition.negate;
+        const met = conditionMet(condition, v);
         setVisible(el, attr === 'data-next-show' ? met : !met);
       });
     });

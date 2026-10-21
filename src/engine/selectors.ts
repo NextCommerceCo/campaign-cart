@@ -99,7 +99,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
               vouchers: card.vouchers,
               currency,
             },
-            { signal: controller.signal, upsell: true },
+            { signal: controller.signal, upsell: selector.mode === 'offer' },
           ),
         ),
       );
@@ -115,7 +115,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
   };
 
   return {
-    register(id: string, cards: SelectorCard[], mode: SelectorMode, preferred?: string): Promise<void> {
+    register(id: string, cards: SelectorCard[], mode: SelectorMode, preferred?: string, priced = false): Promise<void> {
       const previous = get(id)?.picked;
       const inCart = ctx.getState().cart.groups[bundleGroup(id)];
       const restored =
@@ -125,9 +125,9 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const quantities = restored && inCart ? { [restored.id]: quantityIn(restored, inCart)! } : undefined;
       const slots = restored && inCart && slotsIn(restored, inCart);
       ctx.update('selectors', {
-        [id]: { mode, cards, quantities, ...(slots && { slots: { [restored!.id]: slots } }) },
+        [id]: { mode, cards, quantities, priced, ...(slots && { slots: { [restored!.id]: slots } }) },
       });
-      if (mode === 'offer') void quote(id);
+      if (mode === 'offer' || priced) void quote(id);
       return initial ? pick(id, initial.id) : Promise.resolve();
     },
     pick,
@@ -140,7 +140,8 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
       if (selector.picked !== cardId) return Promise.resolve();
       ctx.emit('selection.changed', { selectorId: id, cardId, items: cardLines(get(id)!, card) });
-      if (selector.mode === 'offer') return quote(id);
+      const quoting = selector.mode === 'offer' || selector.priced ? quote(id) : Promise.resolve();
+      if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
     },
     setQuantity(id: string, quantity: number): Promise<void> {
@@ -151,12 +152,13 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
       ctx.emit('selection.changed', { selectorId: id, cardId: card.id, items: cardLines(get(id)!, card) });
-      if (selector.mode === 'offer') return quote(id);
+      const quoting = selector.mode === 'offer' || selector.priced ? quote(id) : Promise.resolve();
+      if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
     },
     campaignLoaded(): void {
       for (const [id, selector] of Object.entries(ctx.getState().selectors)) {
-        if (selector.mode === 'offer' && !selector.quotes && !inFlight.has(id)) void quote(id);
+        if ((selector.mode === 'offer' || selector.priced) && !selector.quotes && !inFlight.has(id)) void quote(id);
       }
     },
   };

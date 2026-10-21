@@ -1,7 +1,8 @@
 import { cardQuantity, pickedCard } from '../engine/selectors';
 import type { SelectorCard, SelectorMode } from '../engine/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, parseJson, parseLines, selectorIdOf, setState } from './dom';
+import { isFormControl, parseJson, parseLines, selectorIdOf, setState, stamp } from './dom';
+import { cardQuote, discountTokens } from '../engine/values';
 
 function modeOf(el: Element, upsellPage: boolean): SelectorMode {
   if (el.hasAttribute('data-next-upsell-context')) return 'offer';
@@ -82,15 +83,30 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
     if (!cards.length) return;
 
     const preferred = [...els].find(([, el]) => el.getAttribute('data-next-selected') === 'true')?.[0];
-    void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred);
+    const priced = [...els.values()].some((el) => el.querySelector('[data-next-discounts]'));
+    void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred, priced);
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {
       const selector = b.engine.getState().selectors[selectorId];
       selectorEl.setAttribute('data-selected-bundle', selector?.picked ?? '');
+      const { campaign } = b.engine.getState();
       els.forEach((el, id) => {
         setState(el, id === selector?.picked);
         el.classList.toggle('next-loading', !!selector?.quoting);
+        const card = selector?.cards.find((c) => c.id === id);
+        const quote = selector && card && cardQuote(selector, card);
+        for (const box of el.querySelectorAll('[data-next-discounts]')) {
+          const kind = box.getAttribute('data-next-discounts');
+          const list = !quote
+            ? []
+            : kind === 'offer'
+              ? quote.offer_discounts
+              : kind === 'voucher'
+                ? quote.voucher_discounts
+                : [...quote.offer_discounts, ...quote.voucher_discounts];
+          stamp(box, list, (d) => discountTokens(d, quote?.currency, campaign?.language));
+        }
       });
     });
   });

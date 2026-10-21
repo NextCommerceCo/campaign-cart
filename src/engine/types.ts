@@ -125,6 +125,7 @@ export interface Selector {
   cards: SelectorCard[];
   picked?: string;
   quantities?: Record<string, number>;
+  priced?: boolean;
   slots?: Record<string, Slot[]>;
   quotes?: Record<string, CartSummary>;
   quoting?: boolean;

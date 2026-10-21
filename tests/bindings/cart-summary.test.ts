@@ -88,4 +88,32 @@ describe('cart summary', () => {
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
   });
+  it('evaluates conditions inside the summary and shows each line’s personalisation', async () => {
+    const { engine, $ } = await setup(`
+      <div data-next-cart-summary>
+        <template>
+          <div data-summary-lines>
+            <template>
+              <div class="row">
+                <span class="sale" data-next-show="item.hasDiscount">on sale</span>
+                <div data-next-item-properties><template><i>{property.key}: {property.value}</i></template></div>
+              </div>
+            </template>
+          </div>
+          <div class="saved" data-next-show="cart.hasDiscounts">You saved <b data-next-display="cart.discountAmount"></b></div>
+        </template>
+      </div>`);
+    await engine.cart.setGroup('main', {
+      lines: [{ packageId: 1, quantity: 1, properties: { number: '23' } }],
+      vouchers: [],
+    });
+    await flush();
+    expect($('.saved').style.display).toBe('none');
+    expect($('.row i').textContent).toBe('number: 23');
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    expect($('.saved').style.display).toBe('');
+    expect($('.saved b').textContent).toBe('$10.00');
+    expect($('.sale').style.display).toBe('none');
+  });
 });

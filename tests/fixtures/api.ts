@@ -57,12 +57,12 @@ export function fakeApi(options: FakeApiOptions = {}) {
           subtotal: gross.toFixed(2),
           total_discount: (gross * (1 - offer)).toFixed(2),
           total: (gross * offer).toFixed(2),
-          discounts: [],
+          discounts: discount ? [{ offer_id: 10, name: 'SAVE10', amount: '1.00', percentage: '10.00' }] : [],
         };
       }),
       offer_discounts: [],
       voucher_discounts: discount
-        ? [{ name: 'SAVE10', description: 'SAVE10', amount: '10.00', percentage: '10.00' }]
+        ? [{ offer_id: 10, name: 'SAVE10', description: 'SAVE10', amount: '10.00', percentage: '10.00' }]
         : [],
       subtotal: subtotal.toFixed(2),
       total_discount: discount.toFixed(2),

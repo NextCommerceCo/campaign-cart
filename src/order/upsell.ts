@@ -32,14 +32,16 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
       setTimeout(() => offer.classList.remove(name), ms);
     };
     const go = (url: string | undefined, delay: number) => url && setTimeout(() => navigate(url), delay);
+    let leaving = false;
 
     for (const button of buttons) {
       const accept = ACCEPT_WORDS.includes(button.getAttribute('data-next-upsell-action') ?? '');
       button.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (offer.classList.contains('next-processing') || offer.classList.contains('next-skipped')) return;
+        if (leaving || offer.classList.contains('next-processing')) return;
         const url = targetUrl(button, accept, engine);
         if (!accept) {
+          leaving = true;
           order.skip();
           offer.classList.add('next-skipped');
           return go(url, 0);
@@ -47,12 +49,13 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         offer.classList.add('next-processing');
         const lines = packageId ? [{ packageId, quantity }] : undefined;
         const result: Accepted = await order.accept({ selectorId, lines }, page);
-        offer.classList.remove('next-processing');
-        if (result === 'busy') return;
+        if (result === 'busy') return offer.classList.remove('next-processing');
+        leaving = true;
         if (result === 'accepted' || result === 'repeat') {
           flash('next-success', 3000);
           return go(url, SUCCESS_MS);
         }
+        offer.classList.remove('next-processing');
         flash('next-error', 5000);
         go(url, FEEDBACK_MS);
       });
@@ -66,7 +69,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         offer.classList.toggle('next-hidden', !available);
         if (available) order.view(page);
       }
-      const busy = state?.status === 'accepting' || offer.classList.contains('next-skipped');
+      const busy = state?.status === 'accepting' || leaving;
       for (const button of buttons) button.classList.toggle('next-disabled', busy);
     };
   });

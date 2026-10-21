@@ -175,7 +175,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     const binding = [
       checkoutForm && checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm)),
       orderChunk?.then((m) => m.bindOrder(engine)),
-      slotsChunk?.then((m) => m.bindSlots(engine, (root) => bindings.bind(root))),
+      slotsChunk?.then((m) => m.bindSlots(engine)),
     ].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);
     else reveal();

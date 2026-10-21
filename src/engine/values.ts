@@ -1,7 +1,7 @@
 import type { Engine } from './engine';
 import { mergeLines } from './cart';
 import { cardLines } from './selectors';
-import type { CartLine, CartSummary, Discount, Package, State, SummaryLine } from './types';
+import type { CartLine, CartSummary, Discount, Package, Selector, SelectorCard, State, SummaryLine } from './types';
 
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 
@@ -235,18 +235,24 @@ function findCard(state: State, id: string): CardRef | undefined {
   return undefined;
 }
 
+const lineKey = (pairs: Array<{ package_id: number; quantity: number }>) =>
+  pairs
+    .map((l) => `${l.package_id}x${l.quantity}`)
+    .sort()
+    .join();
+
+export function cardQuote(selector: Selector, card: SelectorCard): CartSummary | undefined {
+  const quoted = selector.quotes?.[card.id];
+  const current = mergeLines({ card: { lines: cardLines(selector, card), vouchers: [] } });
+  return quoted && lineKey(quoted.lines) === lineKey(current) ? quoted : undefined;
+}
+
 export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value | undefined {
   const selector = engine.getState().selectors[ref.selectorId];
   const card = selector?.cards.find((c) => c.id === ref.cardId);
   if (!selector || !card) return notLoaded(linesValue(engine, [], prop, false));
   const lines = cardLines(selector, card);
-  const key = (pairs: Array<{ package_id: number; quantity: number }>) =>
-    pairs
-      .map((l) => `${l.package_id}x${l.quantity}`)
-      .sort()
-      .join();
-  const quoted = selector.quotes?.[card.id];
-  const quote = quoted && key(quoted.lines) === key(mergeLines({ card: { lines, vouchers: [] } })) ? quoted : undefined;
+  const quote = cardQuote(selector, card);
   const v = linesValue(engine, lines, prop, selector.picked === card.id, quote);
   return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
 }

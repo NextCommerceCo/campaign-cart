@@ -1,42 +1,6 @@
-import { cartTokens, discountTokens, lineTokens, type Tokens } from '../engine/values';
+import { cartTokens, discountTokens, lineTokens } from '../engine/values';
 import type { BindContext, Render } from './context';
-
-const TOKEN = /\{([\w.]+)\}/g;
-
-function fill(root: ParentNode, tokens: Tokens): void {
-  const replace = (text: string) => text.replace(TOKEN, (_, key: string) => tokens[key] ?? '');
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.nodeValue?.includes('{')) node.nodeValue = replace(node.nodeValue);
-    } else {
-      for (const attr of [...(node as Element).attributes]) {
-        if (attr.value.includes('{')) attr.value = replace(attr.value);
-      }
-    }
-  }
-}
-
-function stamp<T>(
-  container: Element,
-  items: T[],
-  tokensOf: (item: T) => Tokens,
-  each?: (el: DocumentFragment, item: T) => void,
-): void {
-  const template = container.querySelector(':scope > template');
-  if (!template) return;
-  container.replaceChildren(template);
-  for (const item of items) {
-    const copy = (template as HTMLTemplateElement).content.cloneNode(true) as DocumentFragment;
-    fill(copy, tokensOf(item));
-    each?.(copy, item);
-    container.append(copy);
-  }
-  container.classList.toggle('next-summary-empty', !items.length);
-  container.classList.toggle('next-summary-has-items', items.length > 0);
-  container.classList.toggle('next-discounts-empty', !items.length);
-  container.classList.toggle('next-discounts-has-items', items.length > 0);
-}
+import { applyValues, fillTokens, stamp, tokenValue } from './dom';
 
 function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): void {
   const { cart, campaign } = b.engine.getState();
@@ -70,16 +34,27 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
       last = key;
       const tokens = cartTokens(engine);
       const copy = template.content.cloneNode(true) as DocumentFragment;
-      fill(copy, tokens);
+      fillTokens(copy, tokens);
+      const cartLines = engine.cart.lines();
       copy.querySelectorAll('[data-summary-lines]').forEach((lines) =>
         stamp(
           lines,
           cart.summary?.lines ?? [],
           (line) => lineTokens(engine, line, cart.summary?.currency),
-          (row) => row.querySelectorAll('[data-next-item-properties]').forEach((p) => stamp(p, [], () => ({}))),
+          (row, line) => {
+            const properties = cartLines.find((l) => l.package_id === line.package_id && l.properties)?.properties;
+            row.querySelectorAll('[data-next-item-properties]').forEach((p) =>
+              stamp(p, Object.entries(properties ?? {}), ([key, value]) => ({
+                'property.key': key,
+                'property.value': value,
+              })),
+            );
+            applyValues(row, engine, tokenValue(lineTokens(engine, line, cart.summary?.currency)));
+          },
         ),
       );
       renderDiscounts(copy, b, true);
+      applyValues(copy, engine);
       el.replaceChildren(template, copy);
       const flags: Record<string, boolean> = {
         'next-cart-empty': tokens.isEmpty === 'true',

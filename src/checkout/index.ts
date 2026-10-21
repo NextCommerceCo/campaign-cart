@@ -80,7 +80,7 @@ export function bindCheckout(
   };
 
   const pay = async (method?: string): Promise<void> => {
-    syncFields(fields, checkout);
+    syncFields(fields, checkout, engine.getState().checkout?.fields ?? {});
     box =
       method && EXPRESS_METHODS.includes(method) ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
     const successUrl = meta('next-success-url', 'next-next-url', 'os-next-page');
@@ -98,7 +98,7 @@ export function bindCheckout(
   };
 
   const advance = () => {
-    syncFields(fields, checkout);
+    syncFields(fields, checkout, engine.getState().checkout?.fields ?? {});
     const step = Number(form.getAttribute('data-next-step-number')) || 1;
     if (!checkout.validate('shipping', step === 1 && phoneRequired(fields))) return focusFirstError();
     checkout.setStep(step + 1);
@@ -124,7 +124,10 @@ export function bindCheckout(
     if (state.errors.form) parts.push(formText(state.errors.form));
     if (unshown.length) parts.push(formText({ code: 'unshown' }, { fields: unshown.map((n) => label(n)).join(', ') }));
     const text = box === 'express' && parts.length ? expressText(parts.join(' ')) : parts.join(' ');
-    const target = errorBox(form, box);
+    const target =
+      box === 'express'
+        ? (document.querySelector<HTMLElement>('[data-next-component="express-error"]') ?? errorBox(document, 'credit'))
+        : (errorBox(form, box) ?? errorBox(document, box));
     for (const el of document.querySelectorAll<HTMLElement>('[data-next-component$="-error"]')) {
       if (el !== target) showBox(el, undefined);
     }

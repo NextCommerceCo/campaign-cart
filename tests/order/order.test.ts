@@ -67,6 +67,17 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     expect(back.upsells()).toHaveLength(0);
   });
 
+  it('ignores a skip tapped while an accepted offer is moving on', async () => {
+    const { $, navigate, events } = await mount('apollo/upsell-bundle-stepper.html');
+    $('[data-next-upsell-action="add"]').click();
+    await vi.waitFor(() => expect(events).toContain('upsell.accepted'));
+    $('[data-next-upsell-action="skip"]').click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 150));
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(events).not.toContain('upsell.skipped');
+  });
+
   it('skips straight to the next page', async () => {
     const { $, navigate, events, upsells } = await mount('apollo/upsell-bundle-stepper.html');
     $('[data-next-upsell-action="skip"]').click();

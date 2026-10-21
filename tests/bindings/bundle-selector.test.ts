@@ -9,6 +9,12 @@ import { fakeApi } from '../fixtures/api';
 import { flush } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 
+async function mountWithApi(html: string) {
+  const api = fakeApi();
+  const mounted = await mount(html, { fetch: api.fetch });
+  return { ...mounted, api };
+}
+
 describe('bundle selector', () => {
   it('puts the pre-selected card in the cart', async () => {
     const { engine, $ } = await mount(SELECTOR);
@@ -79,6 +85,19 @@ describe('bundle selector', () => {
     $('#down').click();
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+  });
+
+  it('fills a card’s own discount badge from that card’s server price', async () => {
+    const { $, api } = await mountWithApi(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-bundle-vouchers='["SAVE10"]'>
+          <span id="pill" data-next-discounts="voucher"><template><b>SAVE {discount.percentage}</b></template></span>
+        </div>
+      </div>`);
+    await flush();
+    expect($('#pill b').textContent).toBe('SAVE 10%');
+    expect(api.calls.some((c) => c.url.endsWith('/carts/calculate/') && c.body.vouchers.includes('SAVE10'))).toBe(true);
   });
 
   it('only records the pick in select mode and on upsell pages', async () => {

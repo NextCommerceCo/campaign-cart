@@ -44,8 +44,11 @@ export const phoneRequired = (fields: Fields) => {
   return !!phone && (phone.required || phone.getAttribute('data-next-required') === 'true');
 };
 
-export function syncFields(fields: Fields, checkout: CheckoutActions): void {
-  for (const [name, el] of fields) checkout.setField(name, valueOf(el));
+export function syncFields(fields: Fields, checkout: CheckoutActions, current: Record<string, string>): void {
+  for (const [name, el] of fields) {
+    if (!valueOf(el) && current[name]) continue;
+    checkout.setField(name, valueOf(el));
+  }
 }
 
 export function bindFields(engine: Engine, checkout: CheckoutActions, fields: Fields): () => void {

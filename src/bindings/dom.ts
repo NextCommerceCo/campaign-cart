@@ -1,4 +1,7 @@
+import { type Condition, parseCondition } from '../engine/condition';
+import type { Engine } from '../engine/engine';
 import type { SelectorLine } from '../engine/types';
+import { format, resolve, type Tokens, truthy, type Value } from '../engine/values';
 import { legacySelectorId } from '../legacy';
 
 export function selectorIdOf(el: Element): string {
@@ -64,3 +67,86 @@ export function setState(el: Element, on: boolean): void {
 
 export const isFormControl = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('a, input, select, textarea, label');
+
+export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
+  const campaign = engine.getState().campaign;
+  if (v.type === 'bool') return setVisible(el, truthy(v));
+  if (v.type === 'url' && el instanceof HTMLImageElement) {
+    if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
+    return;
+  }
+  setText(el, format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format')));
+}
+
+export const conditionMet = (condition: Condition, v: Value) =>
+  condition.kind === 'compare'
+    ? (String(v.value ?? '') === condition.literal) === (condition.op === '==')
+    : truthy(v) !== condition.negate;
+
+export const tokenValue =
+  (tokens: Record<string, string>) =>
+  (path: string): Value | undefined => {
+    const raw = tokens[path];
+    if (raw === undefined) return undefined;
+    if (raw === 'true' || raw === 'show') return { type: 'bool', value: true };
+    if (raw === 'false' || raw === 'hide') return { type: 'bool', value: false };
+    return { type: 'text', value: raw };
+  };
+
+export function applyValues(
+  root: ParentNode,
+  engine: Engine,
+  local: (path: string) => Value | undefined = () => undefined,
+): void {
+  for (const el of root.querySelectorAll<HTMLElement>('[data-next-display]')) {
+    const path = el.getAttribute('data-next-display')!;
+    const v = local(path) ?? resolve(engine, path);
+    if (v) writeValue(el, v, engine);
+  }
+  for (const attr of ['data-next-show', 'data-next-hide'] as const) {
+    for (const el of root.querySelectorAll<HTMLElement>(`[${attr}]`)) {
+      const condition = parseCondition(el.getAttribute(attr)!);
+      const v = condition && (local(condition.path) ?? resolve(engine, condition.path));
+      if (!condition || !v) continue;
+      const met = conditionMet(condition, v);
+      setVisible(el, attr === 'data-next-show' ? met : !met);
+    }
+  }
+}
+
+const TOKEN = /\{([\w.]+)\}/g;
+
+export function fillTokens(root: ParentNode, tokens: Tokens): void {
+  const replace = (text: string) => text.replace(TOKEN, (_, key: string) => tokens[key] ?? '');
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.nodeValue?.includes('{')) node.nodeValue = replace(node.nodeValue);
+    } else {
+      for (const attr of [...(node as Element).attributes]) {
+        if (attr.value.includes('{')) attr.value = replace(attr.value);
+      }
+    }
+  }
+}
+
+export function stamp<T>(
+  container: Element,
+  items: T[],
+  tokensOf: (item: T) => Tokens,
+  each?: (el: DocumentFragment, item: T) => void,
+): void {
+  const template = container.querySelector(':scope > template');
+  if (!template) return;
+  container.replaceChildren(template);
+  for (const item of items) {
+    const copy = (template as HTMLTemplateElement).content.cloneNode(true) as DocumentFragment;
+    fillTokens(copy, tokensOf(item));
+    each?.(copy, item);
+    container.append(copy);
+  }
+  container.classList.toggle('next-summary-empty', !items.length);
+  container.classList.toggle('next-summary-has-items', items.length > 0);
+  container.classList.toggle('next-discounts-empty', !items.length);
+  container.classList.toggle('next-discounts-has-items', items.length > 0);
+}

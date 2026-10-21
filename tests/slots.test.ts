@@ -10,8 +10,8 @@ async function mount() {
   document.body.innerHTML = doc.body.innerHTML;
   const { engine } = makeEngine();
   await engine.start();
-  const bindings = bindAll(document, engine, () => {});
-  bindSlots(engine, (root) => bindings.bind(root));
+  bindAll(document, engine, () => {});
+  bindSlots(engine);
   await flush();
   const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
   const slots = () => [
@@ -80,5 +80,28 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
       is_upsell: true,
       properties: { bump_custom_text: 'Jane' },
     });
+  });
+  it('fills a slot’s discount row once the coupon is priced, without redrawing the slot', async () => {
+    const { slots, engine } = await mount();
+    const slot = slots()[0]!;
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    expect(slots()[0]).toBe(slot);
+    const row = slot.querySelector<HTMLElement>('[data-next-discounts="voucher"]')!;
+    expect(row.textContent).toContain('+10% extra');
+    expect(row.style.display).toBe('');
+  });
+
+  it('keeps focus on the variant select the shopper is using', async () => {
+    const { $, slots, change } = await mount();
+    $('[data-next-bundle-id="buy2"]').click();
+    await flush();
+    const select = slots()[1]!.querySelector<HTMLSelectElement>('select[data-next-variant-code="color"]')!;
+    select.focus();
+    await change(select, 'White');
+    const now = document.activeElement as HTMLSelectElement;
+    expect(now).not.toBe(select);
+    expect(now.getAttribute('data-next-variant-code')).toBe('color');
+    expect(now.closest('.next-bundle-slot')).toBe(slots()[1]);
   });
 });
