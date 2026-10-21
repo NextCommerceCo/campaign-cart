@@ -3,7 +3,7 @@ import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import { funnelFromPath, storageScope } from './engine/scope';
-import type { Campaign, EventMap, EventName } from './engine/types';
+import type { Campaign, CartLine, EventMap, EventName } from './engine/types';
 import {
   announceLegacyReady,
   legacyAnalytics,
@@ -41,6 +41,10 @@ const EVENT_NAMES: EventName[] = [
   'checkout.payment-added',
   'prospect.saved',
   'order.placed',
+  'order.loaded',
+  'upsell.viewed',
+  'upsell.accepted',
+  'upsell.skipped',
   'error',
   'exit-intent.shown',
   'exit-intent.clicked',
@@ -62,6 +66,7 @@ export interface NextApi extends LegacyApi {
     applyCoupon(code: string): Promise<void>;
     removeCoupon(code: string): Promise<void>;
     setShipping(shippingId: number | undefined): Promise<void>;
+    setGroup(id: string, group: { lines: CartLine[]; vouchers?: string[] } | null): Promise<void>;
   };
 }
 
@@ -131,6 +136,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       applyCoupon: (code) => engine.cart.applyCoupon(code),
       removeCoupon: (code) => engine.cart.removeCoupon(code),
       setShipping: (shippingId) => engine.cart.setShipping(shippingId),
+      setGroup: (id, group) =>
+        engine.cart.setGroup(id, group && { lines: group.lines, vouchers: group.vouchers ?? [] }),
     },
     ...legacyApi(engine),
   };

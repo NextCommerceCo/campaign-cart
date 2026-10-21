@@ -130,6 +130,16 @@ describe('boot', () => {
     expect(document.querySelector('.line')!.textContent).toBe('Earbuds');
   });
 
+  it('lets page scripts set a cart group and hear about upsells', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    next.on('upsell.accepted', vi.fn());
+    await next.actions.setGroup('gift', { lines: [{ packageId: 9, quantity: 1 }] });
+    expect(next.getState().cart.groups.gift?.lines).toEqual([{ packageId: 9, quantity: 1 }]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('binds the checkout chunk on a checkout page', async () => {
     document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email"></form>`;
     const form = document.querySelector('form')!;
