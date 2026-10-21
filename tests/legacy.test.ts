@@ -50,6 +50,19 @@ describe('shipping methods (shop-three-step page script)', () => {
   });
 });
 
+describe('coupons (0.4.x)', () => {
+  it('refuses a code the server gives nothing for, under the old event name too', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    await next.addItem({ packageId: 1 });
+    const failed = vi.fn();
+    next.on('coupon:validation-failed' as never, failed);
+    expect(await next.applyCoupon('nope')).toBe(false);
+    expect(failed).toHaveBeenCalledWith({ code: 'NOPE' }, expect.anything());
+    expect(next.getState().cart.coupons).toEqual([]);
+  });
+});
+
 describe('exitIntent', () => {
   const leave = () => document.dispatchEvent(new MouseEvent('mouseout', { clientY: -1, relatedTarget: null }));
 

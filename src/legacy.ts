@@ -7,10 +7,11 @@ export function legacySelectorId(el: Element): string | null {
   return el.getAttribute('data-next-id');
 }
 
-/** @deprecated Old `next.on` names. Use `selection.changed`, `cart.updated`, `shipping.changed`. */
+/** @deprecated Old `next.on` names. Use `selection.changed`, `cart.updated`, `coupon.refused`, `shipping.changed`. */
 export const LEGACY_EVENTS: Record<string, EventName> = {
   'bundle:selection-changed': 'selection.changed',
   'cart:updated': 'cart.updated',
+  'coupon:validation-failed': 'coupon.refused',
   'shipping:method-changed': 'shipping.changed',
   'exit-intent:shown': 'exit-intent.shown',
   'exit-intent:clicked': 'exit-intent.clicked',
@@ -44,7 +45,7 @@ export interface LegacyApi {
   /** @deprecated Use `next.actions.setGroup(id, { lines, vouchers })`. */
   swapCart(items: CartLine[]): Promise<void>;
   /** @deprecated Use `next.actions.applyCoupon(code)`. */
-  applyCoupon(code: string): Promise<void>;
+  applyCoupon(code: string): Promise<boolean>;
   /** @deprecated Use `next.getState().campaign.packages`. */
   getPackage(id: number): Package | undefined;
   /** @deprecated Use `next.getState().campaign`. */
@@ -125,14 +126,18 @@ interface LegacyAnalyticsConfig {
 }
 
 /** @deprecated `nextConfig.analytics`. GTM reads `dataLayer`; other vendors use GTM or the page's forwarder. */
-export function legacyAnalytics(): { enabled: boolean; nextCampaign: boolean } {
+export function legacyAnalytics(): { enabled: boolean; nextCampaign: boolean; dataLayer: boolean } {
   const config = (window as unknown as { nextConfig?: { analytics?: LegacyAnalyticsConfig } }).nextConfig?.analytics;
   const providers = config?.providers ?? {};
   for (const name of ['facebook', 'rudderstack', 'custom']) {
     if (providers[name]?.enabled)
       console.warn(`[next] analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
   }
-  return { enabled: config?.enabled !== false, nextCampaign: providers.nextCampaign?.enabled !== false };
+  return {
+    enabled: config?.enabled !== false,
+    nextCampaign: providers.nextCampaign?.enabled !== false,
+    dataLayer: providers.gtm?.enabled !== false,
+  };
 }
 
 /** @deprecated Removes the old SDK's plain-text personal-data cookie and stored profile. */

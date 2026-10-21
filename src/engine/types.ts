@@ -71,7 +71,14 @@ export interface SummaryLine {
 
 export interface CartSummary {
   lines: SummaryLine[];
-  shipping_method?: { id: number; name: string; code: string; price: string; original_price: string };
+  shipping_method?: {
+    id: number;
+    name: string;
+    code: string;
+    price: string;
+    original_price: string;
+    discounts?: Discount[];
+  };
   offer_discounts: Discount[];
   voucher_discounts: Discount[];
   subtotal: string;
@@ -331,6 +338,7 @@ export interface EventMap {
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   'cart.updated': { cart: CartState };
   'cart.calculated': { summary: CartSummary };
+  'coupon.refused': { code: string };
   'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
   'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };

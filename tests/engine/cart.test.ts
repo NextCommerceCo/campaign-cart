@@ -11,12 +11,41 @@ describe('cart', () => {
     await engine.start();
     void engine.cart.addItem(1);
     void engine.cart.setGroup('bundle:main', { lines: [{ packageId: 9, quantity: 1 }], vouchers: ['save10'] });
-    await engine.cart.applyCoupon(' save10 ');
+    await engine.cart.setShipping(1);
+    expect(await engine.cart.applyCoupon(' save10 ')).toBe(false);
     expect(api.calls).toHaveLength(1);
     expect(api.calls[0]!.headers.Authorization).toBe('pk_test');
     expect(api.calls[0]!.body.vouchers).toEqual(['SAVE10']);
     expect(engine.getState().cart.summary?.total).toBe('48.00');
   });
+  it('keeps a code only when the server gives a discount for it, like 0.4.x', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    const refused: string[] = [];
+    engine.on('coupon.refused', (e) => refused.push(e.data.code));
+    await engine.cart.addItem(1);
+    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    expect(refused).toEqual(['NOPE']);
+    expect(api.calls.filter((c) => c.body.vouchers.includes('NOPE'))).toHaveLength(1);
+  });
+
+  it('checks a code entered on an empty cart once the cart has items', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const refused: string[] = [];
+    engine.on('coupon.refused', (e) => refused.push(e.data.code));
+    expect(await engine.cart.applyCoupon('nope')).toBe(true);
+    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    await engine.cart.addItem(1);
+    await flush();
+    await engine.cart.settled();
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    expect(refused).toEqual(['NOPE']);
+  });
+
   it('never lets an older response overwrite a newer one', async () => {
     const api = fakeApi({ delays: [40, 5], ignoreAbort: true });
     const { engine } = makeEngine({ fetch: api.fetch });

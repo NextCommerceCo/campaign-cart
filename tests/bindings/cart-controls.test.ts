@@ -27,10 +27,15 @@ describe('coupon', () => {
     input.value = ' save10 ';
     input.dispatchEvent(new Event('input'));
     expect($('button').classList.contains('next-disabled')).toBe(false);
+    await engine.cart.addItem(1);
     $('button').click();
-    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    await vi.waitFor(() => expect(engine.getState().cart.coupons).toEqual(['SAVE10']));
+    expect(input.value).toBe('');
     input.value = 'welcome';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-    expect(engine.getState().cart.coupons).toEqual(['SAVE10', 'WELCOME']);
+    await flush();
+    await flush();
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    expect(input.value).toBe('welcome');
   });
 });

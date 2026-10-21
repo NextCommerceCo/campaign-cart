@@ -6,6 +6,7 @@ export interface AnalyticsOptions {
   apiKey: string;
   version: string;
   nextCampaign: boolean;
+  dataLayer?: boolean;
 }
 
 type Line = { package_id: number; quantity: number };
@@ -39,12 +40,13 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
   win.NextDataLayer ??= [];
-  win.dataLayer ??= [];
+  if (options.dataLayer !== false) win.dataLayer ??= [];
   const page = Math.random().toString(36).slice(2, 10);
   let seq = 0;
 
   const deliver = (event: DataLayerEvent) => {
     win.NextDataLayer!.push(event);
+    if (options.dataLayer === false) return;
     win.dataLayer!.push({ ecommerce: null });
     win.dataLayer!.push(event);
   };

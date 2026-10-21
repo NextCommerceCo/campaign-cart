@@ -59,6 +59,13 @@ describe('analytics', () => {
     expect(win.dataLayer).toEqual([{ ecommerce: null }, event]);
   });
 
+  it('leaves dataLayer alone when the page turned the GTM provider off, like 0.4.x', async () => {
+    const engine = await ready();
+    startAnalytics(engine, { ...options, dataLayer: false });
+    expect(names()).toEqual(['dl_user_data']);
+    expect(win.dataLayer).toBeUndefined();
+  });
+
   it('replays ready when it attaches late, and reports what the page shows', async () => {
     const engine = await ready(
       `<div data-next-package-id="1"></div><div data-next-package-id="9"></div><div data-next-package-id="1"></div>`,

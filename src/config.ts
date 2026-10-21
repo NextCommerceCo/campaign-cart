@@ -31,7 +31,8 @@ export function legacyFunnel(doc: Document, win: Window): string {
 
 /** @deprecated Use `?debug=1` and `?reset=1`. */
 export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: boolean } {
-  return { debug: params.get('debugger') === 'true', reset: params.get('reset') === 'true' };
+  const debug = params.get('debugger') === 'true' || params.get('debug') === 'true';
+  return { debug, reset: params.get('reset') === 'true' };
 }
 
 declare const __VERSION__: string;

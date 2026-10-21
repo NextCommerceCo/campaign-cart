@@ -32,6 +32,7 @@ const EVENT_NAMES: EventName[] = [
   'campaign.loaded',
   'cart.updated',
   'cart.calculated',
+  'coupon.refused',
   'selection.changed',
   'shipping.changed',
   'storage.degraded',
@@ -63,7 +64,7 @@ export interface NextApi extends LegacyApi {
     removeItem(packageId: number): Promise<void>;
     setQuantity(packageId: number, quantity: number): Promise<void>;
     clear(): Promise<void>;
-    applyCoupon(code: string): Promise<void>;
+    applyCoupon(code: string): Promise<boolean>;
     removeCoupon(code: string): Promise<void>;
     setShipping(shippingId: number | undefined): Promise<void>;
     setGroup(id: string, group: { lines: CartLine[]; vouchers?: string[] } | null): Promise<void>;
@@ -166,6 +167,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
             apiKey: config.apiKey,
             version: next.version,
             nextCampaign: analytics.nextCampaign,
+            dataLayer: analytics.dataLayer,
           }),
         );
       (window.requestIdleCallback ?? setTimeout)(() => void start());

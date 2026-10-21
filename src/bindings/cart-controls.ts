@@ -31,20 +31,23 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
     const input = el.querySelector('input') ?? (el instanceof HTMLInputElement ? el : null);
     const button = el.querySelector('button');
     if (!input) return b.warn('data-next-coupon needs an <input>');
-    const apply = () => {
-      if (!input.value.trim()) return;
-      void engine.cart.applyCoupon(input.value);
-      input.value = '';
-      button?.classList.add('next-disabled');
+    const apply = async () => {
+      const code = input.value.trim();
+      if (!code || button?.classList.contains('next-loading')) return;
+      button?.classList.add('next-loading');
+      const applied = await engine.cart.applyCoupon(code);
+      button?.classList.remove('next-loading');
+      if (applied && input.value.trim() === code) input.value = '';
+      button?.classList.toggle('next-disabled', !input.value.trim());
     };
     button?.addEventListener('click', (e) => {
       e.preventDefault();
-      apply();
+      void apply();
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        apply();
+        void apply();
       }
     });
     input.addEventListener('input', () => button?.classList.toggle('next-disabled', !input.value.trim()));

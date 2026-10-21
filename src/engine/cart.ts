@@ -1,5 +1,5 @@
 import type { Context } from './engine';
-import type { ApiLine, CartGroup, CartLine, CartState } from './types';
+import type { ApiLine, CartGroup, CartLine, CartState, CartSummary } from './types';
 
 export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
@@ -25,6 +25,17 @@ export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
 
 const normalizeCode = (code: string) => code.trim().toUpperCase();
 
+const cents = (amount: string | undefined) => Math.round(Number(amount ?? 0) * 100);
+
+function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
+  const ids = (s: CartSummary) =>
+    new Set(
+      [...s.voucher_discounts, ...s.offer_discounts, ...(s.shipping_method?.discounts ?? [])].map((d) => d.offer_id),
+    );
+  const before = ids(without);
+  return [...ids(withCode)].some((id) => !before.has(id)) || cents(withCode.total) < cents(without.total);
+}
+
 export function emptyCart(): CartState {
   return { groups: {}, coupons: [], dismissed: [], calculating: false, frozen: false };
 }
@@ -45,6 +56,32 @@ export function createCart(ctx: Context) {
   };
 
   const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
+  const unchecked = new Set<string>();
+
+  const price = (codes: string[]) =>
+    ctx.api.calculate({
+      lines: lines(),
+      vouchers: codes,
+      currency: ctx.getState().campaign!.currency,
+      shipping_method: state().shippingId,
+    });
+
+  const refuse = (code: string) => {
+    ctx.emit('coupon.refused', { code });
+    return commit({ coupons: state().coupons.filter((c) => c !== code) });
+  };
+
+  const recheck = async (withAll: CartSummary) => {
+    for (const code of [...unchecked]) {
+      unchecked.delete(code);
+      if (!state().coupons.includes(code)) continue;
+      try {
+        if (!addsDiscount(await price(vouchers().filter((v) => v !== code)), withAll)) await refuse(code);
+      } catch {
+        unchecked.add(code);
+      }
+    }
+  };
 
   const calculate = async (): Promise<void> => {
     const current = ++seq;
@@ -63,6 +100,7 @@ export function createCart(ctx: Context) {
       if (current !== seq) return;
       set({ summary, calculating: false });
       ctx.emit('cart.calculated', { summary });
+      if (unchecked.size) void recheck(summary);
     } catch (err) {
       if (current !== seq) return;
       set({ calculating: false });
@@ -176,10 +214,26 @@ export function createCart(ctx: Context) {
       return setGroup(groupId, { ...current, lines: next });
     },
     clear: () => commit({ groups: {}, coupons: [], dismissed: [] }),
-    applyCoupon(code: string) {
+    async applyCoupon(code: string): Promise<boolean> {
       const normalized = normalizeCode(code);
-      if (!normalized || state().coupons.includes(normalized)) return Promise.resolve();
-      return commit({ coupons: [...state().coupons, normalized] });
+      if (!normalized || vouchers().includes(normalized)) return false;
+      if (!lines().length || !ctx.getState().campaign) unchecked.add(normalized);
+      else {
+        await settled();
+        try {
+          const without = state().summary ?? (await price(vouchers()));
+          if (!addsDiscount(without, await price([...vouchers(), normalized]))) {
+            ctx.emit('coupon.refused', { code: normalized });
+            return false;
+          }
+        } catch (err) {
+          ctx.fail('coupon', err);
+          return false;
+        }
+        if (state().coupons.includes(normalized)) return false;
+      }
+      await commit({ coupons: [...state().coupons, normalized] });
+      return true;
     },
     removeCoupon: (code: string) => commit({ coupons: state().coupons.filter((c) => c !== normalizeCode(code)) }),
     setShipping(shippingId: number | undefined) {
