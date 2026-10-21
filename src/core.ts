@@ -100,6 +100,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   }
 
   const bindings = bindAll(document, engine);
+  const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
+  const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
 
   const next: NextApi = {
     version: __VERSION__,
@@ -127,6 +129,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   (window as unknown as { next: NextApi }).next = next;
 
   engine.on('ready', () => {
+    if (checkoutForm) void checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm));
     bindings.render();
     html.setAttribute('data-next-ready', '');
     announceLegacyReady(next);

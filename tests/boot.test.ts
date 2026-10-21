@@ -118,6 +118,13 @@ describe('boot', () => {
     expect(next.getState().cart.groups).toEqual({ items: { lines: [{ packageId: 2, quantity: 2 }], vouchers: [] } });
   });
 
+  it('binds the checkout chunk on a checkout page', async () => {
+    document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email"></form>`;
+    const form = document.querySelector('form')!;
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(form.noValidate).toBe(true));
+  });
+
   it('removes the old SDK’s plain-text personal-data cookie', () => {
     document.cookie = 'next_user_data=%7B%22email%22%3A%22a%40b.c%22%7D; path=/';
     boot(config, Promise.resolve(campaign));

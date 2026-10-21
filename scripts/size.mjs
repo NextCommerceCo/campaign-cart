@@ -6,6 +6,7 @@ const BUDGETS = [
   { match: /^core-.*\.js$/, name: 'core', kb: 25 },
   { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
   { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
+  { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
 ];
 
 const files = readdirSync('dist');

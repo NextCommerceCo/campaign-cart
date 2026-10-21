@@ -27,7 +27,12 @@ export default defineConfig({
       fileName: () => 'loader.js',
     },
     rollupOptions: {
-      output: { chunkFileNames: '[name]-[hash].js' },
+      output: {
+        chunkFileNames: (chunk) =>
+          chunk.name === 'index' && chunk.facadeModuleId
+            ? `${chunk.facadeModuleId.split('/').at(-2)}-[hash].js`
+            : '[name]-[hash].js',
+      },
     },
   },
   test: {

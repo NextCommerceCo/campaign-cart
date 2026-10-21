@@ -39,6 +39,17 @@ describe('getCartData (0.4.x shape)', () => {
   });
 });
 
+describe('shipping methods (shop-three-step page script)', () => {
+  it('lists, sets and reads the shipping method', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    expect(next.getShippingMethods()).toEqual(campaign.shipping_methods);
+    await next.setShippingMethod(1);
+    expect(next.getState().cart.shippingId).toBe(1);
+    expect(next.getSelectedShippingMethod()).toEqual(campaign.shipping_methods[0]);
+  });
+});
+
 describe('exitIntent', () => {
   const leave = () => document.dispatchEvent(new MouseEvent('mouseout', { clientY: -1, relatedTarget: null }));
 

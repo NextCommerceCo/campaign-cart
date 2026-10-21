@@ -28,7 +28,7 @@ const COUNTRIES = [
 export function fakeRules(options: { geo?: string; down?: boolean } = {}) {
   const calls: string[] = [];
   const send = async (url: string, init: RequestInit) => {
-    const path = url.replace('https://rules.test', '');
+    const path = url.replace(/^https:\/\/[^/]+/, '');
     calls.push(`${init.method} ${path}`);
     if (options.down) return json({}, 503);
     if (path.startsWith('/v1/countries?')) return json(COUNTRIES);
@@ -50,5 +50,5 @@ export function fakeRules(options: { geo?: string; down?: boolean } = {}) {
       },
     });
   };
-  return { calls, api: new RulesApi(send, 'https://rules.test', 'en') };
+  return { calls, send, api: new RulesApi(send, 'https://rules.test', 'en') };
 }

@@ -69,11 +69,14 @@ src/
     dom.ts                         setText, setVisible, setState, parse helpers
     display.ts bundle-selector.ts variants.ts package-toggle.ts add-to-cart.ts
     cart-summary.ts cart-controls.ts links.ts
-  checkout/            checkout    loaded when the page has form[data-next-checkout]
-    index.ts form.ts billing.ts address.ts payment.ts express.ts steps.ts review.ts
+  checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
+    index.ts                       bindCheckout: submit, steps, error box, processing overlay
+    form.ts address.ts billing.ts  fields, country/state/location, same-as-shipping and cloned rows
+    payment.ts express.ts logos.ts payment radios and panels, payment.js card, express buttons
+    review.ts                      [data-next-checkout-review]
     messages.ts                    field and payment error display
-    texts.ts                       shopper-facing texts by language (the Engine returns codes)
-    legacy.ts                      guard key, prospect DOM event, os-* names, payment words
+    texts.ts                       English texts by code; i18n-rules' translated messages first
+    legacy.ts                      page field names, os-* names, old config, step guard, prospect DOM event
   order/               order       loaded when the page has an upsell offer or order.* values
     index.ts upsell.ts receipt.ts legacy.ts
   analytics.ts         analytics   subscriber, loaded on idle

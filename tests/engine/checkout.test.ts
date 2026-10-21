@@ -6,6 +6,7 @@ import { fakeRules } from '../fixtures/rules';
 import { MemoryStorage } from '../fixtures/storage';
 
 const SHIPPING = {
+  country: 'US',
   email: 'jane@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -13,7 +14,6 @@ const SHIPPING = {
   city: 'Austin',
   state: 'CA',
   postcode: '90210',
-  country: 'US',
 };
 const URLS = { failureUrl: 'https://shop.test/checkout?payment_failed=true', pageUrl: 'https://shop.test/checkout' };
 
@@ -63,7 +63,7 @@ describe('checkout', () => {
     });
     expect(body('card_token')).not.toHaveProperty('billing_address');
     expect(body('card_token').user?.phone_number).toBe('(415) 555-2671');
-    await checkout.verify('phone_number');
+    await checkout.leave('phone_number');
     expect(body('card_token').shipping_address?.phone_number).toBe('+14155552671');
     checkout.setSameAsShipping(false);
     fill({ billing_first_name: 'Ann', billing_line1: '2 Side St', billing_city: 'Reno' });
@@ -144,17 +144,24 @@ describe('checkout', () => {
     checkout.setField('country', 'US');
     await flush();
     checkout.setField('postcode', '123');
-    checkout.check('postcode');
-    checkout.check('line1');
+    await checkout.leave('postcode');
+    await checkout.leave('line1');
     expect(engine.getState().checkout!.errors).toEqual({ postcode: { code: 'invalid' } });
     checkout.setField('postcode', '10001');
     expect(engine.getState().checkout!.errors).toEqual({});
     fill({ state: 'CA', phone_number: '(415) 555-2671' });
-    await Promise.all([checkout.verify('postcode'), checkout.verify('phone_number')]);
+    await Promise.all([checkout.leave('state'), checkout.leave('phone_number')]);
     expect(engine.getState().checkout).toMatchObject({
       phoneE164: '+14155552671',
       errors: { postcode: { code: 'not_in_state', message: 'Enter a valid ZIP Code for California', warning: true } },
     });
+  });
+
+  it('forgets the state when the country changes', async () => {
+    const { engine, fill } = await setup();
+    fill({ country: 'US', state: 'CA' });
+    fill({ country: 'GB' });
+    expect(engine.getState().checkout!.fields).toMatchObject({ country: 'GB', state: '' });
   });
 
   it('saves the prospect once, when the email and both names are in', async () => {
@@ -163,11 +170,12 @@ describe('checkout', () => {
     const saved = vi.fn();
     engine.on('prospect.saved', (e) => saved(e.data));
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
-    await flush();
+    await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(0);
     checkout.setField('first_name', 'Jane');
     checkout.setField('last_name', 'Does');
-    await flush();
+    expect(posts('/carts/')).toHaveLength(0);
+    await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(1);
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { email: 'jane@example.com', first_name: 'Jane' } });
     expect(saved).toHaveBeenCalledWith({
@@ -176,7 +184,7 @@ describe('checkout', () => {
     });
     const next = await setup({ session });
     next.checkout.setField('last_name', 'Doe');
-    await flush();
+    await next.checkout.leave('last_name');
     expect(next.posts('/carts/')).toHaveLength(0);
   });
 

@@ -1,5 +1,5 @@
 import type { Engine } from './engine/engine';
-import type { Campaign, CartLine, EventName, Package } from './engine/types';
+import type { Campaign, CartLine, EventName, Package, ShippingOption } from './engine/types';
 import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */
@@ -53,6 +53,12 @@ export interface LegacyApi {
   getCartData(): LegacyCartData;
   /** @deprecated Exit intent will move to the page kit. */
   exitIntent(options: ExitIntentOptions): Promise<() => void>;
+  /** @deprecated Use `next.getState().campaign.shipping_methods`. */
+  getShippingMethods(): ShippingOption[];
+  /** @deprecated Use `next.actions.setShipping(id)`. */
+  setShippingMethod(id: number): Promise<void>;
+  /** @deprecated Use `next.getState().cart.shippingId`. */
+  getSelectedShippingMethod(): ShippingOption | undefined;
 }
 
 export function legacyApi(engine: Engine): LegacyApi {
@@ -88,6 +94,12 @@ export function legacyApi(engine: Engine): LegacyApi {
       };
     },
     exitIntent: (options) => import('./exit-intent').then((m) => m.exitIntent(engine, options)),
+    getShippingMethods: () => engine.getState().campaign?.shipping_methods ?? [],
+    setShippingMethod: (id) => engine.cart.setShipping(id),
+    getSelectedShippingMethod: () => {
+      const { campaign, cart } = engine.getState();
+      return campaign?.shipping_methods.find((m) => m.ref_id === cart.shippingId);
+    },
   };
 }
 

@@ -75,7 +75,7 @@ export function orderBody(
     currency: campaign.currency,
     shipping_method: state.cart.shippingId ?? campaign.shipping_methods[0]?.ref_id ?? 1,
     payment_detail: { payment_method: method, ...(token && { card_token: token }) },
-    success_url: urls.successUrl ?? new URL('/success', urls.pageUrl).href,
+    success_url: new URL(urls.successUrl ?? '/success', urls.pageUrl).href,
     payment_failed_url: urls.failureUrl,
   };
   if (EXPRESS_METHODS.includes(method)) return body;
@@ -217,24 +217,25 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     setField(name: string, value: string): void {
       if (state().status === 'placed' || state().fields[name] === value) return;
       const { [name]: _, ...errors } = state().errors;
+      const country = (name === 'country' || name === 'billing_country') && !!state().fields[name];
       set({
-        fields: { ...state().fields, [name]: value },
+        fields: { ...state().fields, [name]: value, ...(country && { [name.replace('country', 'state')]: '' }) },
         errors,
         ...(name === 'phone_number' && { phoneE164: undefined }),
       });
       if (name === 'country' || name === 'billing_country') void loadCountry(value);
       if (once.has('checkout.started') && shippingComplete()) emitOnce('checkout.shipping-added', { tier: tier() });
-      void saveProspect();
     },
 
-    check(name: string): void {
+    async leave(name: string): Promise<void> {
       const { fields, rules } = state();
       const country = name.startsWith('billing_') ? fields.billing_country : fields.country;
       const code = fieldError(name, fields[name] ?? '', false, rules[country ?? '']);
       if (code) set({ errors: { ...state().errors, [name]: { code } } });
+      if (name === 'phone_number') await verify('phone_number');
+      if (name === 'postcode' || name === 'state') await verify('postcode');
+      await saveProspect();
     },
-
-    verify,
 
     setSameAsShipping(same: boolean): void {
       if (same === state().sameAsShipping) return;
