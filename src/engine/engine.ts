@@ -1,4 +1,5 @@
 import { Api, type ApiLine } from './api';
+import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { Events, type EngineEvent } from './events';
 import { keptParams } from './params';
 import { StorageAdapter } from './storage';
@@ -13,6 +14,8 @@ export interface EngineOptions {
   storage: { local: Storage | null; session: Storage | null };
   currency?: string;
   params?: Record<string, string>;
+  visit?: Visit;
+  funnel?: string;
   now?: () => number;
 }
 
@@ -22,7 +25,7 @@ type SavedCart = Pick<CartState, 'groups' | 'coupons' | 'dismissed' | 'shippingI
 
 const emptyCart = (): CartState => ({ groups: {}, coupons: [], dismissed: [], calculating: false });
 
-function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
+export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
   const merged = new Map<number, number>();
   for (const group of Object.values(groups)) {
     for (const line of group.lines) merged.set(line.packageId, (merged.get(line.packageId) ?? 0) + line.quantity);
@@ -79,6 +82,11 @@ export class Engine {
     const params = { ...this.session.get<Record<string, string>>('params'), ...keptParams(this.state.params) };
     this.session.set('params', params);
     this.state = { ...this.state, params: { ...params, ...this.state.params } };
+    const visit = this.session.get<Visit>('visit') ?? this.options.visit;
+    if (visit) {
+      this.session.set('visit', visit);
+      this.state = { ...this.state, visit };
+    }
     const campaign = this.persistent.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
     if (campaign) {
       this.state = { ...this.state, campaign };
@@ -100,6 +108,10 @@ export class Engine {
     const groups = this.knownPackagesOnly(this.state.cart.groups);
     if (groups !== this.state.cart.groups) void this.commit({ groups });
     else if (this.lines().length) void this.scheduleCalculate();
+  }
+
+  attribution(): Attribution {
+    return buildAttribution(this.state.params, this.state.visit, this.options.funnel || this.state.campaign?.name);
   }
 
   readSession<T>(name: string): T | undefined {

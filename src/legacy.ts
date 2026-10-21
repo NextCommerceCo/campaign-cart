@@ -100,6 +100,21 @@ export function announceLegacyReady(next: { version: string }): void {
   win.nextReady = { push: run };
 }
 
+interface LegacyAnalyticsConfig {
+  enabled?: boolean;
+  providers?: Record<string, { enabled?: boolean } | undefined>;
+}
+
+/** @deprecated `nextConfig.analytics`. GTM reads `dataLayer`; other vendors use GTM or the page's forwarder. */
+export function legacyAnalytics(): { enabled: boolean; nextCampaign: boolean } {
+  const config = (window as unknown as { nextConfig?: { analytics?: LegacyAnalyticsConfig } }).nextConfig?.analytics;
+  const providers = config?.providers ?? {};
+  for (const name of ['facebook', 'rudderstack', 'custom']) {
+    if (providers[name]?.enabled) console.warn(`[next] analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
+  }
+  return { enabled: config?.enabled !== false, nextCampaign: providers.nextCampaign?.enabled !== false };
+}
+
 /** @deprecated Removes the old SDK's plain-text personal-data cookie and stored profile. */
 export function removeLegacyPersonalData(): void {
   document.cookie = 'next_user_data=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';

@@ -199,7 +199,7 @@ describe('events', () => {
   it('delivers events emitted inside a listener after the current one', () => {
     const { engine } = makeEngine();
     const order: string[] = [];
-    engine.on('selection.changed', () => engine.events.emit('ready', {}));
+    engine.on('selection.changed', () => engine.events.emit('ready', { lines: [] }));
     engine.on('*', (e) => order.push(e.name));
     engine.select('main', 'one', []);
     expect(order).toEqual(['selection.changed', 'ready']);
@@ -210,7 +210,7 @@ describe('events', () => {
     const seen: string[] = [];
     const off = engine.on('ready', (e) => seen.push(e.name));
     off();
-    engine.events.emit('ready', {});
+    engine.events.emit('ready', { lines: [] });
     expect(seen).toEqual([]);
   });
 });

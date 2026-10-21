@@ -124,18 +124,28 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 
 ## 7. Tracking
 
-- **One event list:** keep the existing `dl_*` names so GTM containers keep working.
-- **Every event goes three ways:**
-  1. `dataLayer`, for GTM.
-  2. Each vendor pixel the campaign enabled, only after consent.
-  3. The NEXT collector, sent with `sendBeacon`. Unsent events are kept and retried on
-     the next page.
-- **Deduplication:** every event has one `event_id`, used by all three paths, so vendors
-  can remove duplicates.
-- **Server side:** Collector (Cloudflare Worker) → Queue → NEXT Analytics.
-- **Revenue:** purchases are confirmed by the server (Prime), so revenue never depends on
-  the thank-you page loading.
-- Server copies to Meta or TikTok are a later option, not v1.
+Analytics is a subscriber in its own chunk. It loads when the browser is idle after
+`next:ready` and replays the events it missed, so it never delays prices.
+
+- **`dl_*` events in the 0.4.x shape** (`event`, `event_id`, `event_time`,
+  `user_properties`, `ecommerce {currency, value, items}`, `attribution`, `campaign_*`).
+  Each one goes through `window.NextDataLayerTransformFn` first (a falsy return drops it),
+  then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
+  Page forwarders and GTM keep working unchanged.
+- **Events today:** `dl_user_data` and `dl_view_item(_list)` on ready; `dl_add_to_cart`,
+  `dl_remove_from_cart`, `dl_package_swapped` from cart changes the shopper makes;
+  `dl_cart_updated` after each server calculation. Checkout and upsell events come with
+  their chunks.
+- **No personal data** in events: `user_properties` is `{visitor_type}` only and
+  `page_location` has no query string.
+- **NEXT page view:** the `nextCampaign` script loads on idle and sends one `page_view`.
+- **Vendors** (Meta, TikTok, GA4, …) go through GTM or the page's forwarder adapters. The
+  old built-in Meta, RudderStack and custom providers are not rebuilt; enabling them in
+  `nextConfig` prints a warning.
+- **Attribution:** UTM, gclid, fbclid, affiliate, sub1–5, clickid, evclid, `_fbp`/`_fbc`
+  and the funnel are kept for the tab session, with the first landing page. The same
+  object goes on every event and on the order.
+- **Links:** same-site links carry the session's params (this replaces `utmTransfer`).
 
 ## 8. Errors and debugging
 

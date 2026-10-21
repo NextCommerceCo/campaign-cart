@@ -4,7 +4,7 @@ import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { Campaign, EventMap, EventName } from './engine/types';
-import { announceLegacyReady, LEGACY_EVENTS, legacyApi, type LegacyApi, removeLegacyPersonalData } from './legacy';
+import { announceLegacyReady, legacyAnalytics, LEGACY_EVENTS, legacyApi, type LegacyApi, removeLegacyPersonalData } from './legacy';
 
 declare const __VERSION__: string;
 
@@ -15,6 +15,8 @@ const browserStorage = (get: () => Storage): Storage | null => {
     return null;
   }
 };
+
+const cookie = (name: string) => document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1];
 
 export function parseForcePackages(raw: string | null): Array<{ packageId: number; quantity: number }> {
   if (!raw) return [];
@@ -62,6 +64,15 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
     currency: config.currency,
     params: Object.fromEntries(params),
+    visit: {
+      landingPage: location.href,
+      referrer: document.referrer,
+      device: navigator.userAgent,
+      deviceType: matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop',
+      fbp: cookie('_fbp'),
+      fbc: cookie('_fbc'),
+    },
+    funnel: config.funnel || undefined,
   });
 
   if (config.debug) {
@@ -116,8 +127,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     ready = true;
     bindings.render();
     html.setAttribute('data-next-ready', '');
-    engine.events.emit('ready', {});
+    engine.events.emit('ready', { lines: engine.lines() });
     announceLegacyReady(next);
+    const analytics = legacyAnalytics();
+    if (analytics.enabled) {
+      const start = () =>
+        import('./analytics').then((m) => m.startAnalytics(engine, { apiKey: config.apiKey, version: next.version, nextCampaign: analytics.nextCampaign }));
+      (window.requestIdleCallback ?? setTimeout)(() => void start());
+    }
   };
 
   engine.on('error', (e) => {

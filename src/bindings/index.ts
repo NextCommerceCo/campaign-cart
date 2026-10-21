@@ -5,6 +5,7 @@ import { bindCartControls } from './cart-controls';
 import { bindCartSummary } from './cart-summary';
 import { BindContext, type Render } from './context';
 import { bindDisplay } from './display';
+import { bindLinks } from './links';
 import { bindPackageToggles } from './package-toggle';
 
 export interface Bindings {
@@ -26,6 +27,7 @@ export function bindAll(
       ...bindPackageToggles(node, context),
       ...bindAddToCart(node, context, navigate),
       ...bindCartControls(node, context),
+      ...bindLinks(node, context),
       ...bindCartSummary(node, context),
       ...bindDisplay(node, context),
     ];

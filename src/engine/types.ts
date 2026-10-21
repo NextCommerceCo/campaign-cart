@@ -1,3 +1,5 @@
+import type { Visit } from './attribution';
+
 export interface Package {
   ref_id: number;
   external_id: number;
@@ -81,6 +83,7 @@ export interface CartState {
 }
 
 export interface State {
+  visit?: Visit;
   campaign?: Campaign;
   cart: CartState;
   selections: Record<string, string>;
@@ -99,7 +102,7 @@ export interface EventMap {
   'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
   'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };
-  'ready': Record<string, never>;
+  'ready': { lines: Array<{ package_id: number; quantity: number }> };
   'exit-intent.shown': ExitIntentDetail;
   'exit-intent.clicked': ExitIntentDetail;
   'exit-intent.dismissed': ExitIntentDetail;

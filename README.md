@@ -9,8 +9,8 @@ analytics and debug tools subscribe to its events. Design:
 ```
 
 **Status:** landing and cart features are built (display, show/hide, bundle selector,
-order bumps, add to cart, cart summary, coupon, quantity, `?forcePackageId`). Checkout,
-upsell, receipt and analytics are not built yet, so this is not a drop-in replacement for
+order bumps, add to cart, cart summary, coupon, quantity, `?forcePackageId`), plus
+analytics and attribution. Checkout, upsell and receipt are not built yet, so this is not a drop-in replacement for
 the 0.4.x SDK on those pages. See the status column in
 [design.md §4](docs/architecture/design.md#4-html-api).
 

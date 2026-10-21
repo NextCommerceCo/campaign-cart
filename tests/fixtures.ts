@@ -80,6 +80,7 @@ export interface MakeEngine {
   fetch?: typeof fetch;
   campaign?: Promise<Campaign>;
   params?: Record<string, string>;
+  visit?: import('../src/engine/attribution').Visit;
   now?: () => number;
 }
 
@@ -95,6 +96,7 @@ export function makeEngine(opts: MakeEngine = {}) {
     storagePrefix: 'next:test',
     storage: { local, session },
     params: opts.params,
+    visit: opts.visit,
     now: opts.now,
   });
   return { engine, api, local, session };

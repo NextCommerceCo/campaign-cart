@@ -4,6 +4,8 @@ import { gzipSync } from 'node:zlib';
 const BUDGETS = [
   { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
   { match: /^core-.*\.js$/, name: 'core', kb: 25 },
+  { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
+  { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
 ];
 
 const files = readdirSync('dist');
@@ -18,6 +20,6 @@ for (const budget of BUDGETS) {
   const kb = gzipSync(readFileSync(`dist/${matches[0]}`)).length / 1024;
   const ok = kb <= budget.kb;
   failed ||= !ok;
-  console.log(`${ok ? 'ok  ' : 'OVER'} ${budget.name.padEnd(7)} ${kb.toFixed(1)} KB / ${budget.kb} KB  ${matches[0]}`);
+  console.log(`${ok ? 'ok  ' : 'OVER'} ${budget.name.padEnd(11)} ${kb.toFixed(1)} KB / ${budget.kb} KB  ${matches[0]}`);
 }
 process.exit(failed ? 1 : 0);
