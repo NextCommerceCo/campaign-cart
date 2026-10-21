@@ -52,6 +52,35 @@ describe('bundle selector', () => {
     expect(engine.cart.lines()).toEqual([]);
   });
 
+  it('steps the quantity from a row outside the selector and from inside the card', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="b" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-quantity="1" data-next-min-quantity="1" data-next-max-quantity="3">
+          <div data-next-bundle-qty-for="main">
+            <button id="inner-up" data-next-quantity-increase>+</button>
+          </div>
+        </div>
+      </div>
+      <div data-next-bundle-qty-for="main">
+        <button id="down" data-next-quantity-decrease>-</button>
+        <span id="qty" data-next-quantity-display></span>
+        <button id="up" data-next-quantity-increase>+</button>
+      </div>`);
+    expect($('#qty').textContent).toBe('1');
+    expect(($('#down') as HTMLButtonElement).disabled).toBe(true);
+    $('#inner-up').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect($('#qty').textContent).toBe('2');
+    $('#up').click();
+    await flush();
+    expect($('#up').classList.contains('next-disabled')).toBe(true);
+    $('#down').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+  });
+
   it('only records the pick in select mode and on upsell pages', async () => {
     const select = await mount(
       SELECTOR.replace(

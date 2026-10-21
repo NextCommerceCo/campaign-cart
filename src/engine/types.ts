@@ -102,12 +102,16 @@ export type SelectorMode = 'swap' | 'select' | 'offer';
 export interface SelectorCard extends CartGroup {
   id: string;
   shippingId?: number;
+  quantity?: number;
+  min?: number;
+  max?: number;
 }
 
 export interface Selector {
   mode: SelectorMode;
   cards: SelectorCard[];
   picked?: string;
+  quantities?: Record<string, number>;
   quotes?: Record<string, CartSummary>;
   quoting?: boolean;
 }

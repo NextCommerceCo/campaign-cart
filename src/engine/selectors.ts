@@ -1,11 +1,34 @@
 import { type CartActions, lineKey, mergeLines } from './cart';
 import type { Context } from './engine';
-import type { CartGroup, Selector, SelectorCard, SelectorMode } from './types';
+import type { CartGroup, CartLine, Selector, SelectorCard, SelectorMode } from './types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
 
+const clamp = (card: SelectorCard, quantity: number) =>
+  Math.min(Math.max(Math.round(quantity), card.min ?? 1), card.max ?? 999);
+
+export const cardQuantity = (selector: Selector, card: SelectorCard) =>
+  selector.quantities?.[card.id] ?? clamp(card, card.quantity ?? 1);
+
+export function cardLines(selector: Selector, card: SelectorCard): CartLine[] {
+  const times = cardQuantity(selector, card);
+  return times === 1 ? card.lines : card.lines.map((l) => ({ ...l, quantity: l.quantity * times }));
+}
+
+export function pickedCard(selector: Selector | undefined): SelectorCard | undefined {
+  return selector?.cards.find((c) => c.id === selector.picked);
+}
+
 const groupKey = (g: CartGroup) =>
   [...g.lines.map((l) => `${lineKey(l)}x${l.quantity}`).sort(), ...[...g.vouchers].sort()].join(',');
+
+function quantityIn(card: SelectorCard, group: CartGroup): number | undefined {
+  const first = card.lines[0];
+  const times = first && (group.lines.find((l) => lineKey(l) === lineKey(first))?.quantity ?? 0) / first.quantity;
+  if (!times || !Number.isInteger(times)) return undefined;
+  const scaled = { lines: card.lines.map((l) => ({ ...l, quantity: l.quantity * times })), vouchers: card.vouchers };
+  return groupKey(scaled) === groupKey(group) ? times : undefined;
+}
 
 export function createSelectors(ctx: Context, cart: CartActions) {
   const inFlight = new Map<string, AbortController>();
@@ -15,9 +38,9 @@ export function createSelectors(ctx: Context, cart: CartActions) {
 
   const addToCart = async (id: string): Promise<void> => {
     const selector = get(id);
-    const card = selector?.cards.find((c) => c.id === selector.picked);
-    if (!card) return;
-    const group = { lines: card.lines, vouchers: card.vouchers };
+    const card = pickedCard(selector);
+    if (!selector || !card) return;
+    const group = { lines: cardLines(selector, card), vouchers: card.vouchers };
     const current = ctx.getState().cart.groups[bundleGroup(id)];
     const write = current && groupKey(current) === groupKey(group) ? undefined : cart.setGroup(bundleGroup(id), group);
     if (card.shippingId) void cart.setShipping(card.shippingId);
@@ -30,7 +53,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     if (!selector || !card) return Promise.resolve();
     if (selector.picked !== cardId) {
       set(id, { picked: cardId });
-      ctx.emit('selection.changed', { selectorId: id, cardId, items: card.lines });
+      ctx.emit('selection.changed', { selectorId: id, cardId, items: cardLines(selector, card) });
     }
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
@@ -47,7 +70,11 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const summaries = await Promise.all(
         selector.cards.map((card) =>
           ctx.api.calculate(
-            { lines: mergeLines({ [card.id]: card }), vouchers: card.vouchers, currency },
+            {
+              lines: mergeLines({ [card.id]: { ...card, lines: cardLines(selector, card) } }),
+              vouchers: card.vouchers,
+              currency,
+            },
             { signal: controller.signal, upsell: true },
           ),
         ),
@@ -67,17 +94,27 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     register(id: string, cards: SelectorCard[], mode: SelectorMode, preferred?: string): Promise<void> {
       const previous = get(id)?.picked;
       const inCart = ctx.getState().cart.groups[bundleGroup(id)];
+      const restored = inCart && cards.find((c) => quantityIn(c, inCart));
       const initial =
-        cards.find((c) => c.id === previous) ??
-        (inCart && cards.find((c) => groupKey(c) === groupKey(inCart))) ??
-        cards.find((c) => c.id === preferred) ??
-        cards[0];
-      ctx.update('selectors', { [id]: { mode, cards } });
+        cards.find((c) => c.id === previous) ?? restored ?? cards.find((c) => c.id === preferred) ?? cards[0];
+      const quantities = restored && inCart ? { [restored.id]: quantityIn(restored, inCart)! } : undefined;
+      ctx.update('selectors', { [id]: { mode, cards, quantities } });
       if (mode === 'offer') void quote(id);
       return initial ? pick(id, initial.id) : Promise.resolve();
     },
     pick,
     addToCart,
+    setQuantity(id: string, quantity: number): Promise<void> {
+      const selector = get(id);
+      const card = pickedCard(selector);
+      if (!selector || !card) return Promise.resolve();
+      const next = clamp(card, quantity);
+      if (next === cardQuantity(selector, card)) return Promise.resolve();
+      set(id, { quantities: { ...selector.quantities, [card.id]: next } });
+      ctx.emit('selection.changed', { selectorId: id, cardId: card.id, items: cardLines(get(id)!, card) });
+      if (selector.mode === 'offer') return quote(id);
+      return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
+    },
     campaignLoaded(): void {
       for (const [id, selector] of Object.entries(ctx.getState().selectors)) {
         if (selector.mode === 'offer' && !selector.quotes && !inFlight.has(id)) void quote(id);

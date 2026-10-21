@@ -58,6 +58,36 @@ describe('selectors', () => {
     expect(api.calls).toHaveLength(calls);
   });
 
+  it('multiplies the picked card by its quantity, within its limits, and keeps it across a reload', async () => {
+    const session = new MemoryStorage();
+    const { engine, api } = makeEngine({ session });
+    await engine.start();
+    const card = { id: 'one', lines: [{ packageId: 1, quantity: 1 }], vouchers: [], quantity: 2, min: 1, max: 3 };
+    await engine.selectors.register('main', [card], 'swap');
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    await engine.selectors.setQuantity('main', 9);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 3 }]);
+    expect(price(engine, 'bundle.main.price')).toBe('$147.00');
+    await engine.selectors.setQuantity('main', 0);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
+    await engine.selectors.setQuantity('main', 3);
+
+    const next = makeEngine({ session, fetch: api.fetch }).engine;
+    await next.selectors.register('main', [card], 'swap');
+    expect(next.cart.lines()).toEqual([{ package_id: 1, quantity: 3 }]);
+  });
+
+  it('re-prices an offer when its quantity changes', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    await engine.selectors.register('offer', [{ ...CARDS[0]!, max: 5 }], 'offer');
+    await flush();
+    await engine.selectors.setQuantity('offer', 2);
+    await flush();
+    expect(api.calls.at(-1)?.body.lines).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(price(engine, 'bundle.offer.price')).toBe('$49.00');
+  });
+
   it('prices offer cards with the upsell quote, not the package price', async () => {
     const { engine, api } = makeEngine();
     await engine.start();
