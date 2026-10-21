@@ -61,6 +61,10 @@ function sitePages(server: () => ViteDevServer): Plugin {
           res.writeHead(200, { 'content-type': 'text/javascript' });
           return res.end(stub);
         }
+        if (pathname === '/src/campaign-cart.css') {
+          res.writeHead(200, { 'content-type': 'text/css' });
+          return res.end(readFileSync(join(import.meta.dirname, '../public/campaign-cart.css')));
+        }
         if (/^\/(src|dev|node_modules|@)/.test(pathname)) return next();
         const file = pageFile(pathname);
         if (!file) return next();

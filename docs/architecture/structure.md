@@ -29,10 +29,11 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    with its replacement. Dropping 0.4.x support = deleting those files.
 7. **Comments are rare.** Code says what it does; `docs/` says why.
 8. **Build output is never committed.** CI builds `dist/`.
-9. **Pages own their CSS.** The SDK sets classes and attributes and ships no stylesheet. (0.4.x
-   built `campaign-cart.css`, but neither its loader nor any live page loaded it; pages carry
-   their own `next-core.css`.) UI the SDK creates itself, like the checkout overlay, carries
-   inline styles.
+9. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
+   attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
+   skeleton, button spinners, `.hide` utilities, radio and validation styles), so
+   `public/campaign-cart.css` is a verbatim copy that the loader links from its own folder.
+   New CSS never goes there; trimming it is a decision for after the 0.4.x pages move.
 
 ## Repository
 
@@ -41,6 +42,7 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 docs/
   architecture/            design.md · engine.md · structure.md
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
+public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
 dev/                       bun dev: campaign pages + SDK from source + mock API (server, mock, client)
 src/  tests/               below

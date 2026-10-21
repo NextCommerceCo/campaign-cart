@@ -34,6 +34,20 @@ export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: b
   return { debug: params.get('debugger') === 'true', reset: params.get('reset') === 'true' };
 }
 
+declare const __VERSION__: string;
+
+/** @deprecated The 0.4.x loader created `window.nextReady` and `window.dataLayer`; pages that push to them early keep working. */
+export function legacyGlobals(win: Window): void {
+  const globals = win as unknown as { nextReady?: unknown[]; dataLayer?: unknown[] };
+  globals.nextReady ??= [];
+  globals.dataLayer ??= [];
+}
+
+/** @deprecated `window` event `next:ready`, fired when the SDK code has loaded. Use `next.on('ready')`. */
+export function announceLegacyLoaded(win: Window): void {
+  win.dispatchEvent(new CustomEvent('next:ready', { detail: { version: __VERSION__, mode: 'production' } }));
+}
+
 export function readConfig(doc: Document, win: Window): BootConfig {
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);

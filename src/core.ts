@@ -102,6 +102,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const bindings = bindAll(document, engine);
   const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
   const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
+  if (checkoutForm) {
+    for (const href of ['https://payments.29next.com', 'https://core.spreedly.com']) {
+      document.head.append(Object.assign(document.createElement('link'), { rel: 'preconnect', href, crossOrigin: '' }));
+    }
+  }
 
   const next: NextApi = {
     version: __VERSION__,
