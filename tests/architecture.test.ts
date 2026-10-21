@@ -15,9 +15,8 @@ const ALLOWED: Record<string, string[]> = {
   analytics: ['engine'],
   'exit-intent': ['engine'],
   debug: ['engine'],
-  core: ['engine', 'bindings', 'legacy', 'styles'],
+  core: ['engine', 'bindings', 'legacy'],
   legacy: ['engine'],
-  styles: [],
   loader: ['config'],
   config: [],
 };

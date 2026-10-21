@@ -29,8 +29,10 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    with its replacement. Dropping 0.4.x support = deleting those files.
 7. **Comments are rare.** Code says what it does; `docs/` says why.
 8. **Build output is never committed.** CI builds `dist/`.
-9. **Pages own their CSS.** The SDK sets classes and attributes; the only CSS it ships is the
-   handful of rules 0.4.x pages rely on (`styles.ts`, injected once by core).
+9. **Pages own their CSS.** The SDK sets classes and attributes and ships no stylesheet. (0.4.x
+   built `campaign-cart.css`, but neither its loader nor any live page loaded it; pages carry
+   their own `next-core.css`.) UI the SDK creates itself, like the checkout overlay, carries
+   inline styles.
 
 ## Repository
 
@@ -56,7 +58,6 @@ src/
   config.ts            loader      page setup; @deprecated readers for nextConfig / meta tags
   core.ts              core        boot: Engine, bindings, window.next, ready
   legacy.ts            core        @deprecated API for 0.4.x page scripts
-  styles.ts            core        the few CSS rules 0.4.x pages rely on
   engine/              headless    no DOM; the only code that calls the API or storage
     engine.ts types.ts                          core
     cart.ts selectors.ts values.ts condition.ts core
@@ -97,15 +98,15 @@ src/
 
 ## Imports
 
-| File                                         | May import                                                                          |
-| -------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `engine/*`                                   | `engine/*` only, and no browser globals                                             |
-| `bindings/*`                                 | `engine/*` (core files), `bindings/*`, `legacy.ts`                                  |
-| `checkout/*`                                 | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`                  |
-| `order/*`                                    | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`                     |
-| `analytics.ts`, `exit-intent.ts`, `debug.ts` | `engine/*`                                                                          |
-| `core.ts`, `legacy.ts`                       | `engine/*` (core files), `bindings/*`, `styles.ts`; lazy chunks only via `import()` |
-| `loader.ts`                                  | `config.ts`; `core.ts` only via `import()`                                          |
+| File                                         | May import                                                             |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `engine/*`                                   | `engine/*` only, and no browser globals                                |
+| `bindings/*`                                 | `engine/*` (core files), `bindings/*`, `legacy.ts`                     |
+| `checkout/*`                                 | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`     |
+| `order/*`                                    | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`        |
+| `analytics.ts`, `exit-intent.ts`, `debug.ts` | `engine/*`                                                             |
+| `core.ts`, `legacy.ts`                       | `engine/*` (core files), `bindings/*`; lazy chunks only via `import()` |
+| `loader.ts`                                  | `config.ts`; `core.ts` only via `import()`                             |
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
 chunk; a static path from `core.ts` to `engine/checkout|order|rules|errors.ts`; a browser global
