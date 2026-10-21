@@ -199,8 +199,18 @@ export class Engine {
       this.session.set('order', { refId, order: saved, loadedAt, accepted });
     }
     if (slice === 'checkout' && checkout) {
-      const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved } = checkout;
-      this.session.set('checkout', { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved });
+      const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } =
+        checkout;
+      this.session.set('checkout', {
+        fields,
+        phoneE164,
+        sameAsShipping,
+        paymentMethod,
+        step,
+        prospectSaved,
+        pendingRef,
+        failurePath,
+      });
     }
   }
 

@@ -82,7 +82,12 @@ const byStatus = (status: number) =>
 export function orderError(err: unknown): CheckoutError {
   if (!(err instanceof ApiError)) return { code: 'failed' };
   const body = (err.body && typeof err.body === 'object' ? err.body : {}) as ErrorBody;
-  if (Array.isArray(body.message)) return { code: 'rejected', message: body.message.join('. ') };
+  if (Array.isArray(body.message)) {
+    const texts = (body.message as unknown[]).map((m) =>
+      typeof m === 'string' ? m : String((m as { message?: unknown })?.message ?? ''),
+    );
+    return { code: 'rejected', message: texts.filter(Boolean).join('. ') };
+  }
   if (typeof body.message === 'string') return { code: 'rejected', message: body.message };
   if (body.payment_response_code || body.payment_details) {
     return { code: 'declined', decline: body.payment_response_code, message: body.payment_details };

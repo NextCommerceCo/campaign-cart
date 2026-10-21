@@ -287,9 +287,9 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
           if (country && geo.rules) set({ rules: { ...state().rules, [country]: geo.rules } });
         } catch {}
       }
-      country ??= listed('US') ?? countries[0]?.code;
+      country = state().fields.country || (country ?? listed('US') ?? countries[0]?.code);
       if (country && country !== state().fields.country) set({ fields: { ...state().fields, country } });
-      if (country) await loadCountry(country);
+      await Promise.all([country && loadCountry(country), loadCountry(state().fields.billing_country ?? '')]);
     },
 
     async placeOrder(input: PlaceOrder): Promise<Order | undefined> {
@@ -333,8 +333,13 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
           }),
         );
         ctx.emit('order.placed', { order });
-        if (order.payment_complete_url) set({ status: 'placed' });
-        else {
+        if (order.payment_complete_url) {
+          set({
+            status: 'placed',
+            pendingRef: order.ref_id,
+            failurePath: new URL(input.failureUrl, input.pageUrl).pathname,
+          });
+        } else {
           cart.clearAfterOrder();
           set({ ...emptyCheckout(), status: 'placed' }, { silent: true });
         }

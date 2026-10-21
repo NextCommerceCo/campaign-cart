@@ -34,4 +34,14 @@ describe('storage adapter', () => {
     s.clear();
     expect([...local.data.keys()]).toEqual(['other']);
   });
+  it('never reads back an older copy after a full store falls back', () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    const adapter = new StorageAdapter({ prefix: 'p', version: 1, backends: [local, session] });
+    adapter.set('reported', ['A']);
+    local.failWrites = 'after-probe';
+    adapter.set('reported', ['A', 'B']);
+    const fresh = new StorageAdapter({ prefix: 'p', version: 1, backends: [local, session] });
+    expect(fresh.get('reported')).toEqual(['A', 'B']);
+  });
 });

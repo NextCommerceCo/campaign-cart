@@ -98,6 +98,34 @@ describe('selectors', () => {
     expect(next.cart.lines()).toEqual(engine.cart.lines());
   });
 
+  it('restores the exact bundle the shopper picked, not a smaller one times a quantity', async () => {
+    const session = new MemoryStorage();
+    const tiers = [1, 2, 3].map((n) => ({ id: `buy${n}`, lines: [{ packageId: 1, quantity: n }], vouchers: [] }));
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.selectors.register('main', tiers, 'swap', 'buy3');
+    const next = makeEngine({ session }).engine;
+    await next.selectors.register('main', tiers, 'swap', 'buy1');
+    expect(next.getState().selectors.main).toMatchObject({ picked: 'buy3', quantities: { buy3: 1 } });
+  });
+
+  it('never shows a quote for another quantity', async () => {
+    let fail = false;
+    const api = fakeApi();
+    const send = ((url: string, init: RequestInit) =>
+      fail ? Promise.resolve(new Response('{}', { status: 500 })) : api.fetch(url, init)) as typeof fetch;
+    const { engine } = makeEngine({ fetch: send });
+    await engine.start();
+    await engine.selectors.register('offer', [{ ...CARDS[0]!, max: 5 }], 'offer');
+    await flush();
+    expect(price(engine, 'bundle.offer.price')).toBe('$24.50');
+    fail = true;
+    const requote = engine.selectors.setQuantity('offer', 3);
+    expect(price(engine, 'bundle.offer.price')).toBe('');
+    await requote;
+    expect(price(engine, 'bundle.offer.price')).toBe('$147.00');
+  });
+
   it('re-prices an offer when its quantity changes', async () => {
     const { engine, api } = makeEngine();
     await engine.start();

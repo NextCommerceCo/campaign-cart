@@ -136,4 +136,26 @@ describe('cart', () => {
       { package_id: 9, quantity: 1, is_upsell: true },
     ]);
   });
+  it('sets a package to the total the shopper sees, wherever its lines live', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 2 }], vouchers: [] });
+    await engine.cart.addItem(1, 1);
+    await engine.cart.setQuantity(1, 4);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 4 }]);
+    await engine.cart.setQuantity(1, 1);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
+    expect(Object.keys(engine.getState().cart.groups)).toEqual(['bundle:main']);
+    await engine.cart.removeItem(1);
+    expect(engine.cart.lines()).toEqual([]);
+  });
+
+  it('leaves no totals behind after a paid order', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    await engine.cart.setShipping(2);
+    engine.cart.clearAfterOrder();
+    expect(engine.getState().cart).toMatchObject({ summary: undefined, shippingId: undefined, groups: {} });
+  });
 });

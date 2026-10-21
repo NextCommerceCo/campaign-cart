@@ -118,7 +118,8 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     register(id: string, cards: SelectorCard[], mode: SelectorMode, preferred?: string): Promise<void> {
       const previous = get(id)?.picked;
       const inCart = ctx.getState().cart.groups[bundleGroup(id)];
-      const restored = inCart && cards.find((c) => quantityIn(c, inCart));
+      const restored =
+        inCart && (cards.find((c) => quantityIn(c, inCart) === 1) ?? cards.find((c) => quantityIn(c, inCart)));
       const initial =
         cards.find((c) => c.id === previous) ?? restored ?? cards.find((c) => c.id === preferred) ?? cards[0];
       const quantities = restored && inCart ? { [restored.id]: quantityIn(restored, inCart)! } : undefined;

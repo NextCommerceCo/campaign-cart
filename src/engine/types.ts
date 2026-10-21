@@ -176,6 +176,8 @@ export interface CheckoutState {
   countries: CountryOption[];
   rules: Record<string, CountryRules>;
   prospectSaved: boolean;
+  pendingRef?: string;
+  failurePath?: string;
 }
 
 export interface State {

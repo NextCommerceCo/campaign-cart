@@ -1,4 +1,5 @@
 import type { Engine } from './engine';
+import { mergeLines } from './cart';
 import { cardLines } from './selectors';
 import type { CartLine, CartSummary, Discount, Package, State, SummaryLine } from './types';
 
@@ -238,8 +239,15 @@ export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value |
   const selector = engine.getState().selectors[ref.selectorId];
   const card = selector?.cards.find((c) => c.id === ref.cardId);
   if (!selector || !card) return notLoaded(linesValue(engine, [], prop, false));
-  const quote = selector.quotes?.[card.id];
-  const v = linesValue(engine, cardLines(selector, card), prop, selector.picked === card.id, quote);
+  const lines = cardLines(selector, card);
+  const key = (pairs: Array<{ package_id: number; quantity: number }>) =>
+    pairs
+      .map((l) => `${l.package_id}x${l.quantity}`)
+      .sort()
+      .join();
+  const quoted = selector.quotes?.[card.id];
+  const quote = quoted && key(quoted.lines) === key(mergeLines({ card: { lines, vouchers: [] } })) ? quoted : undefined;
+  const v = linesValue(engine, lines, prop, selector.picked === card.id, quote);
   return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
 }
 

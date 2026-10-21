@@ -2,7 +2,7 @@ import { orderError } from './api';
 import { type CartActions, mergeLines } from './cart';
 import type { Context } from './engine';
 import { cardLines, pickedCard } from './selectors';
-import type { CartLine, Order, OrderAddress, OrderLine, OrderState, State } from './types';
+import type { CartLine, CheckoutState, Order, OrderAddress, OrderLine, OrderState, State } from './types';
 import { bool, cents, money, type Value } from './values';
 
 const ORDER_TTL = 15 * 60 * 1000;
@@ -147,13 +147,15 @@ export function createOrder(ctx: Context, cart: CartActions) {
 
   const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
 
-  const settle = (order: Order) => {
+  const settle = (order: Order, page?: string) => {
     const paid = !order.payment_complete_url;
-    if (paid && cart.lines().length) {
+    const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
+    const failed = ctx.getState().visit.params.payment_failed === 'true' || (!!page && page === checkout?.failurePath);
+    if (failed) return ctx.emit('order.loaded', { order });
+    if (paid && checkout?.pendingRef === order.ref_id) {
       cart.clearAfterOrder();
       ctx.forget('checkout');
     }
-    if (ctx.getState().visit.params.payment_failed === 'true') return ctx.emit('order.loaded', { order });
     const done = reported();
     const purchase = paid && !done.includes(purchaseId(order)) ? purchaseId(order) : undefined;
     const upsells = (order.lines ?? [])
@@ -164,24 +166,24 @@ export function createOrder(ctx: Context, cart: CartActions) {
   };
 
   return {
-    async load(refId: string): Promise<void> {
+    async load(refId: string, page?: string): Promise<void> {
       const current = ++seq;
       const { order, loadedAt } = state();
       if (order && state().refId === refId && loadedAt && Date.now() - loadedAt < ORDER_TTL) {
         set({ status: 'ready' });
-        return settle(order);
+        return settle(order, page);
       }
       set({
         refId,
         status: 'loading',
         error: undefined,
-        ...(state().refId !== refId && { order: undefined, accepted: [] }),
+        ...(state().refId !== refId && { order: undefined }),
       });
       try {
         const loaded = await ctx.api.getOrder(refId);
         if (current !== seq) return;
         set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
-        settle(loaded);
+        settle(loaded, page);
       } catch (err) {
         if (current !== seq) return;
         set({ status: 'failed', error: orderError(err) });
@@ -221,7 +223,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
           currency: ctx.getState().campaign?.currency ?? order.currency,
           ...(card?.vouchers.length && { vouchers: card.vouchers }),
         });
-        set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key] });
+        set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
         ctx.emit('upsell.accepted', { refId, lines: body });
         return 'accepted';
       } catch (err) {

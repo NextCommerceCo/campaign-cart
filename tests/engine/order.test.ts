@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createCheckout } from '../../src/engine/checkout';
 import { createOrder, orderValue, purchaseId } from '../../src/engine/order';
 import { format } from '../../src/engine/values';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { makeEngine, type MakeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
+import { fakeRules } from '../fixtures/rules';
 import { MemoryStorage } from '../fixtures/storage';
 
 const OFFER = [{ id: 'up', lines: [{ packageId: 2, quantity: 1 }], vouchers: ['UP50'], max: 5 }];
@@ -52,13 +54,48 @@ describe('order', () => {
     expect(failed.loaded.mock.calls[0]![0].purchase).toBeUndefined();
   });
 
-  it('clears a cart kept for the payment gateway once the order is paid', async () => {
+  it('clears only the cart kept for that order’s gateway, and never on the failure landing', async () => {
+    const gatewayOrder = async (session: MemoryStorage, failureUrl: string) => {
+      const api = fakeApi({ order: () => json({ ref_id: 'R1', payment_complete_url: 'https://pay.test/R1' }) });
+      const { engine } = makeEngine({ session, fetch: api.fetch });
+      await engine.start();
+      await engine.cart.addItem(1);
+      const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+      ['email', 'first_name', 'last_name'].forEach((f, i) =>
+        checkout.setField(f, ['jane@example.com', 'Jane', 'Doe'][i]!),
+      );
+      await checkout.placeOrder({ method: 'paypal', failureUrl, pageUrl: 'https://shop.test/checkout/' });
+    };
+
+    const paid = new MemoryStorage();
+    await gatewayOrder(paid, 'https://shop.test/checkout/?payment_failed=true');
+    const next = await setup({ session: paid });
+    expect(next.engine.cart.lines()).toHaveLength(1);
+    await next.order.load('R1', '/upsell/');
+    expect(next.engine.cart.lines()).toEqual([]);
+
+    const failed = new MemoryStorage();
+    await gatewayOrder(failed, 'https://shop.test/oops/');
+    const landing = await setup({ session: failed });
+    await landing.order.load('R1', '/oops/');
+    expect(landing.engine.cart.lines()).toHaveLength(1);
+    expect(landing.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+
+    const other = await setup();
+    await other.engine.cart.addItem(2);
+    await other.order.load('R1', '/receipt/');
+    expect(other.engine.cart.lines()).toHaveLength(1);
+  });
+
+  it('does not charge an offer twice when another order was loaded in between', async () => {
     const session = new MemoryStorage();
-    const { engine, order } = await setup({ session });
-    await engine.cart.addItem(1);
-    await order.load('R1');
-    expect(engine.cart.lines()).toEqual([]);
-    expect(makeEngine({ session }).engine.cart.lines()).toEqual([]);
+    const first = await setup({ session });
+    await first.order.load('R1');
+    expect(await first.order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/up-1/')).toBe('accepted');
+    await first.order.load('R2');
+    await first.order.load('R1');
+    expect(await first.order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/up-1/')).toBe('repeat');
+    expect(first.upsells()).toHaveLength(1);
   });
 
   it('accepts the picked offer × quantity once per page, with its vouchers', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout, orderBody, paymentCode, redirectFor } from '../../src/engine/checkout';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
-import { flush, makeEngine, type MakeEngine } from '../fixtures/engine';
+import { flush, makeEngine, type MakeEngine, wait } from '../fixtures/engine';
 import { fakeRules } from '../fixtures/rules';
 import { MemoryStorage } from '../fixtures/storage';
 
@@ -17,11 +17,13 @@ const SHIPPING = {
 };
 const URLS = { failureUrl: 'https://shop.test/checkout?payment_failed=true', pageUrl: 'https://shop.test/checkout' };
 
-async function setup(opts: MakeEngine & { api?: FakeApiOptions; geo?: string; rulesDown?: boolean } = {}) {
+async function setup(
+  opts: MakeEngine & { api?: FakeApiOptions; geo?: string; rulesDown?: boolean; geoDelay?: number } = {},
+) {
   const api = fakeApi(opts.api);
   const made = makeEngine({ ...opts, fetch: api.fetch });
   await made.engine.start();
-  const rules = fakeRules({ geo: opts.geo, down: opts.rulesDown });
+  const rules = fakeRules({ geo: opts.geo, down: opts.rulesDown, geoDelay: opts.geoDelay });
   const checkout = made.engine.attach((ctx) => createCheckout(ctx, made.engine.cart, rules.api));
   const fill = (fields: Record<string, string>) => Object.entries(fields).forEach(([k, v]) => checkout.setField(k, v));
   const posts = (path: string) => api.calls.filter((c) => c.url.endsWith(path));
@@ -319,5 +321,36 @@ describe('checkout', () => {
       message: 'Credit card tokenization timed out',
     });
     expect(posts('/orders/')).toHaveLength(0);
+  });
+  it('loads the billing country’s rules after a reload, and keeps a country picked during geo lookup', async () => {
+    const session = new MemoryStorage();
+    const first = await setup({ session });
+    first.fill({ country: 'US' });
+    first.checkout.setSameAsShipping(false);
+    first.fill({ billing_country: 'GB' });
+    const next = await setup({ session });
+    await next.checkout.loadCountries();
+    expect(Object.keys(next.engine.getState().checkout!.rules).sort()).toEqual(['GB', 'US']);
+
+    const racing = await setup({ geoDelay: 30 });
+    const loading = racing.checkout.loadCountries();
+    await wait(5);
+    racing.fill({ country: 'US', state: 'CA' });
+    await loading;
+    expect(racing.engine.getState().checkout!.fields).toMatchObject({ country: 'US', state: 'CA' });
+  });
+
+  it('reads a list of error objects from the API', async () => {
+    const { engine, checkout, fill } = await setup({
+      api: { order: () => json({ message: [{ message: 'Address is incomplete' }, 'Try again'] }, 400) },
+    });
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect(engine.getState().checkout!.errors.form).toEqual({
+      code: 'rejected',
+      message: 'Address is incomplete. Try again',
+    });
   });
 });

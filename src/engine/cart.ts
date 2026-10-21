@@ -119,12 +119,31 @@ export function createCart(ctx: Context) {
   };
 
   const setQuantity = (packageId: number, quantity: number) => {
-    const groups: Record<string, CartGroup> = {};
-    for (const [id, group] of Object.entries(state().groups)) {
-      const kept = group.lines
-        .map((l) => (l.packageId === packageId ? { ...l, quantity } : l))
-        .filter((l) => l.quantity > 0);
-      if (kept.length) groups[id] = { ...group, lines: kept };
+    const total = lines().reduce((n, l) => n + (l.package_id === packageId ? l.quantity : 0), 0);
+    let delta = Math.max(0, quantity) - total;
+    if (!delta) return Promise.resolve();
+    const groups = Object.fromEntries(
+      Object.entries(state().groups).map(([id, g]) => [id, { ...g, lines: g.lines.map((l) => ({ ...l })) }]),
+    );
+    if (delta > 0) {
+      const id = ['items', ...Object.keys(groups)].find((g) => groups[g]?.lines.some((l) => l.packageId === packageId));
+      const group = (groups[id ?? 'items'] ??= { lines: [], vouchers: [] });
+      const line = group.lines.find((l) => l.packageId === packageId);
+      if (line) line.quantity += delta;
+      else group.lines.push({ packageId, quantity: delta });
+    } else {
+      for (const group of Object.values(groups).reverse()) {
+        for (const line of [...group.lines].reverse()) {
+          if (line.packageId !== packageId || !delta) continue;
+          const take = Math.min(line.quantity, -delta);
+          line.quantity -= take;
+          delta += take;
+        }
+      }
+    }
+    for (const [id, group] of Object.entries(groups)) {
+      group.lines = group.lines.filter((l) => l.quantity > 0);
+      if (!group.lines.length) delete groups[id];
     }
     return commit({ groups });
   };
@@ -138,7 +157,7 @@ export function createCart(ctx: Context) {
     clearAfterOrder() {
       seq++;
       abort?.abort();
-      ctx.update('cart', { ...emptyCart(), frozen: true }, { silent: true });
+      ctx.update('cart', { ...emptyCart(), summary: undefined, shippingId: undefined, frozen: true }, { silent: true });
     },
     campaignLoaded(): Promise<void> {
       const groups = knownOnly(state().groups);

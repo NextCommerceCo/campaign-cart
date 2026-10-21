@@ -18,7 +18,7 @@ export async function bindOrder(
 
   const { params } = engine.getState().visit;
   const refId = params.ref_id || params.order_ref_id;
-  if (refId) await order.load(refId);
+  if (refId) await order.load(refId, location.pathname);
   render();
   return order;
 }

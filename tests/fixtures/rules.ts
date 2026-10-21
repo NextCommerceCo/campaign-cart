@@ -25,7 +25,7 @@ const COUNTRIES = [
   { code: 'FR', name: 'France' },
 ];
 
-export function fakeRules(options: { geo?: string; down?: boolean } = {}) {
+export function fakeRules(options: { geo?: string; down?: boolean; geoDelay?: number } = {}) {
   const calls: string[] = [];
   const send = async (url: string, init: RequestInit) => {
     const path = url.replace(/^https:\/\/[^/]+/, '');
@@ -36,6 +36,7 @@ export function fakeRules(options: { geo?: string; down?: boolean } = {}) {
     if (path.startsWith('/v1/countries/GB')) return json(GB);
     if (path.startsWith('/v1/countries/')) return json({ country: { code: 'FR', name: 'France' }, fields: {} });
     if (path.startsWith('/v1/geo')) {
+      if (options.geoDelay) await new Promise((r) => setTimeout(r, options.geoDelay));
       const code = options.geo ?? 'GB';
       return json({ country: { code, name: code }, rules: code === 'GB' ? GB : US });
     }

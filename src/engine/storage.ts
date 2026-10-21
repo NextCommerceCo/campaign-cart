@@ -54,6 +54,9 @@ export class StorageAdapter {
         return;
       } catch (err) {
         this.options.onDegrade?.(err instanceof Error ? err.name : 'write failed');
+        try {
+          store.removeItem(key);
+        } catch {}
       }
     }
   }
