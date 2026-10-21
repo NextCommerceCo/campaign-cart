@@ -40,6 +40,7 @@ docs/
   architecture/            design.md · engine.md · structure.md
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 scripts/size.mjs           gzip budget per chunk; fails the build
+dev/                       bun dev: campaign pages + SDK from source + mock API (server, mock, client)
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
 README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .prettierrc.json

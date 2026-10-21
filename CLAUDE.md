@@ -6,7 +6,9 @@ structure.
 
 ## Commands
 
-`npm test` · `npm run typecheck` · `npm run build` (fails over a gzip budget) · `npm run format`
+`npm test` · `npm run typecheck` · `npm run build` (fails over a gzip budget) · `npm run format` ·
+`bun dev` (campaign pages with the SDK from source and a mock API; never run `--live` for the
+user: it calls the live Campaigns API)
 
 ## Rules
 

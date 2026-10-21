@@ -5,6 +5,7 @@
   "description": "NEXT Campaign SDK: one headless Engine, everything else subscribes",
   "type": "module",
   "scripts": {
+    "dev": "bun dev/server.ts",
     "build": "vite build && node scripts/size.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
