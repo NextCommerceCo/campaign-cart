@@ -49,6 +49,7 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 | `data-next-default-property="<name>"`                                                                    | A page-wide personalisation added to every line…                              |
 | `data-next-exclude-property="<name,…\|*>"`                                                               | …except on this card                                                          |
 | `data-next-upsell-context`                                                                               | Cards priced as a post-purchase offer (`?upsell=true`)                        |
+| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts; the cards are then priced on the server, as in 0.4.x   |
 
 ## Order bumps and cart
 
