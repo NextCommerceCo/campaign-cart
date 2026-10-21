@@ -1,7 +1,8 @@
 import { Api, type ApiLine } from './api';
 import { Events, type EngineEvent } from './events';
+import { keptParams } from './params';
 import { StorageAdapter } from './storage';
-import type { Campaign, CartGroup, CartState, EventName, Package, State } from './types';
+import type { Campaign, CartGroup, CartLine, CartState, EventName, Package, State } from './types';
 
 export interface EngineOptions {
   apiKey: string;
@@ -9,16 +10,15 @@ export interface EngineOptions {
   fetch: typeof fetch;
   campaign: Promise<Campaign>;
   storagePrefix: string;
-  storage: Array<Storage | null | undefined>;
+  storage: { local: Storage | null; session: Storage | null };
   currency?: string;
   params?: Record<string, string>;
   now?: () => number;
 }
 
-const CART_MAX_AGE = 7 * 24 * 3600 * 1000;
-const SNAPSHOT_MAX_AGE = 24 * 3600 * 1000;
+const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
 
-type SavedCart = Pick<CartState, 'groups' | 'coupons' | 'dismissed' | 'shippingId' | 'summary'>;
+type SavedCart = Pick<CartState, 'groups' | 'coupons' | 'dismissed' | 'shippingId'>;
 
 const emptyCart = (): CartState => ({ groups: {}, coupons: [], dismissed: [], calculating: false });
 
@@ -35,7 +35,8 @@ const normalizeCode = (code: string) => code.trim().toUpperCase();
 export class Engine {
   readonly events = new Events();
   private api: Api;
-  private storage: StorageAdapter;
+  private session: StorageAdapter;
+  private persistent: StorageAdapter;
   private state: State;
   private calcSeq = 0;
   private calcAbort?: AbortController;
@@ -43,13 +44,16 @@ export class Engine {
 
   constructor(private options: EngineOptions) {
     this.api = new Api(options.apiKey, options.fetch, options.apiBase);
-    this.storage = new StorageAdapter({
-      prefix: options.storagePrefix,
-      version: 1,
-      backends: options.storage,
-      now: options.now,
-      onDegrade: (reason) => this.events.emit('storage.degraded', { reason }),
-    });
+    const adapter = (name: string, backends: Array<Storage | null>) =>
+      new StorageAdapter({
+        prefix: options.storagePrefix,
+        version: 1,
+        backends,
+        now: options.now,
+        onDegrade: (reason) => this.events.emit('storage.degraded', { reason: `${name}: ${reason}` }),
+      });
+    this.session = adapter('session', [options.storage.session]);
+    this.persistent = adapter('local', [options.storage.local, options.storage.session]);
     this.state = { cart: emptyCart(), selections: {}, params: options.params ?? {} };
   }
 
@@ -57,7 +61,7 @@ export class Engine {
     return this.state;
   }
 
-  on(name: EventName | '*', fn: (event: EngineEvent) => void, options?: { replay?: boolean }): () => void {
+  on<K extends EventName>(name: K | '*', fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void {
     return this.events.on(name, fn, options);
   }
 
@@ -70,9 +74,12 @@ export class Engine {
   }
 
   restore(): boolean {
-    const cart = this.storage.get<SavedCart>('cart', CART_MAX_AGE);
+    const cart = this.session.get<SavedCart>('cart');
     if (cart) this.state = { ...this.state, cart: { ...emptyCart(), ...cart } };
-    const campaign = this.storage.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
+    const params = { ...this.session.get<Record<string, string>>('params'), ...keptParams(this.state.params) };
+    this.session.set('params', params);
+    this.state = { ...this.state, params: { ...params, ...this.state.params } };
+    const campaign = this.persistent.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
     if (campaign) {
       this.state = { ...this.state, campaign };
       this.events.emit('campaign.loaded', { campaign, fromCache: true });
@@ -88,7 +95,7 @@ export class Engine {
       return this.fail('load', err);
     }
     this.state = { ...this.state, campaign };
-    this.storage.set(this.campaignKey(), campaign);
+    this.persistent.set(this.campaignKey(), campaign);
     this.events.emit('campaign.loaded', { campaign, fromCache: false });
     const groups = this.knownPackagesOnly(this.state.cart.groups);
     if (groups !== this.state.cart.groups) void this.commit({ groups });
@@ -96,7 +103,8 @@ export class Engine {
   }
 
   reset(): void {
-    this.storage.clear();
+    this.session.clear();
+    this.persistent.clear();
   }
 
   setGroup(id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}): Promise<void> {
@@ -137,6 +145,10 @@ export class Engine {
     return this.commit({ groups: {}, coupons: [], dismissed: [] });
   }
 
+  setGroups(groups: Record<string, CartGroup>): Promise<void> {
+    return this.commit({ groups });
+  }
+
   applyCoupon(code: string): Promise<void> {
     const normalized = normalizeCode(code);
     if (!normalized || this.state.cart.coupons.includes(normalized)) return Promise.resolve();
@@ -149,13 +161,16 @@ export class Engine {
   }
 
   setShipping(shippingId: number | undefined): Promise<void> {
-    return this.commit({ shippingId });
+    if (shippingId === this.state.cart.shippingId) return Promise.resolve();
+    const done = this.commit({ shippingId });
+    this.events.emit('shipping.changed', { methodId: shippingId });
+    return done;
   }
 
-  select(selectorId: string, cardId: string): void {
+  select(selectorId: string, cardId: string, items: CartLine[]): void {
     if (this.state.selections[selectorId] === cardId) return;
     this.state = { ...this.state, selections: { ...this.state.selections, [selectorId]: cardId } };
-    this.events.emit('selection.changed', { selectorId, cardId });
+    this.events.emit('selection.changed', { selectorId, cardId, items });
   }
 
   private campaignKey(): string {
@@ -186,8 +201,8 @@ export class Engine {
   }
 
   private save(): void {
-    const { groups, coupons, dismissed, shippingId, summary } = this.state.cart;
-    this.storage.set<SavedCart>('cart', { groups, coupons, dismissed, shippingId, summary });
+    const { groups, coupons, dismissed, shippingId } = this.state.cart;
+    this.session.set<SavedCart>('cart', { groups, coupons, dismissed, shippingId });
   }
 
   private scheduleCalculate(): Promise<void> {
@@ -220,7 +235,6 @@ export class Engine {
       );
       if (seq !== this.calcSeq) return;
       this.setCart({ summary, calculating: false });
-      this.save();
       this.events.emit('cart.calculated', { summary });
     } catch (err) {
       if (seq !== this.calcSeq) return;

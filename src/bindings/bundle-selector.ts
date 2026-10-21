@@ -41,7 +41,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
 
     const inCart = () => b.engine.getState().cart.groups[bundleGroup(selectorId)];
     const choose = (card: Card) => {
-      b.engine.select(selectorId, card.cardId);
+      b.engine.select(selectorId, card.cardId, card.lines);
       const current = inCart();
       if (writesCart && !(current && sameLines(current.lines, card.lines))) putInCart(b, card);
     };

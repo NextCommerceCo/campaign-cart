@@ -50,18 +50,15 @@ describe('Engine', () => {
   });
 
   it('does not bring a summary back when the cart is emptied mid-request', async () => {
-    const local = new MemoryStorage();
     const api = fakeApi({ delays: [20] });
-    const { engine } = makeEngine({ fetch: api.fetch, local });
+    const { engine } = makeEngine({ fetch: api.fetch });
     await engine.load();
     void engine.setGroup('toggle:9', toggle(9));
     await flush();
     void engine.setGroup('toggle:9', null, { dismiss: true });
     await wait(40);
     expect(engine.getState().cart.summary).toBeUndefined();
-    const next = makeEngine({ local }).engine;
-    next.restore();
-    expect(next.getState().cart.summary).toBeUndefined();
+    expect(engine.getState().cart.calculating).toBe(false);
   });
 
   it('reports calculating through cart.updated', async () => {
@@ -103,43 +100,71 @@ describe('Engine', () => {
     expect(errors).toHaveLength(1);
   });
 
-  it('restores cart and campaign synchronously on the next page', async () => {
+  it('restores the cart from this tab and the campaign snapshot on the next page', async () => {
     const local = new MemoryStorage();
-    const first = makeEngine({ local }).engine;
+    const session = new MemoryStorage();
+    const first = makeEngine({ local, session }).engine;
     await first.load();
     await first.addItem(2);
-    const second = makeEngine({ local }).engine;
+    const second = makeEngine({ local, session }).engine;
     expect(second.restore()).toBe(true);
     expect(second.getState().campaign?.name).toBe('Olympus');
-    expect(second.getState().cart.summary?.total).toBe('89.00');
+    expect(second.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+    expect(second.getState().cart.summary).toBeUndefined();
   });
 
-  it('does not restore a campaign snapshot older than a day', async () => {
+  it('starts a new tab with an empty cart', async () => {
+    const local = new MemoryStorage();
+    const first = makeEngine({ local }).engine;
+    await first.addItem(2);
+    const newTab = makeEngine({ local }).engine;
+    newTab.restore();
+    expect(newTab.lines()).toEqual([]);
+  });
+
+  it('does not restore a campaign snapshot older than 10 minutes', async () => {
     const local = new MemoryStorage();
     let now = 0;
     await makeEngine({ local, now: () => now }).engine.load();
-    now = 25 * 3600 * 1000;
+    now = 11 * 60 * 1000;
     expect(makeEngine({ local, now: () => now }).engine.restore()).toBe(false);
   });
 
-  it('falls back to sessionStorage on quota errors and reads it back', async () => {
+  it('keeps the snapshot in sessionStorage when localStorage is full, and reads it back', async () => {
     const local = new MemoryStorage('after-probe');
     const session = new MemoryStorage();
     const first = makeEngine({ local, session });
     const degraded: unknown[] = [];
     first.engine.on('storage.degraded', (e) => degraded.push(e.data));
-    await first.engine.addItem(1);
-    expect(degraded[0]).toEqual({ reason: 'QuotaExceededError' });
-    const second = makeEngine({ local, session }).engine;
-    second.restore();
-    expect(second.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
+    await first.engine.load();
+    expect(degraded).toEqual([{ reason: 'local: QuotaExceededError' }]);
+    expect(makeEngine({ local, session }).engine.restore()).toBe(true);
   });
 
   it('reports blocked storage at boot to late subscribers', () => {
-    const { engine } = makeEngine({ local: new MemoryStorage('always') });
+    const { engine } = makeEngine({ session: new MemoryStorage('always') });
     const degraded: unknown[] = [];
     engine.on('storage.degraded', (e) => degraded.push(e.data), { replay: true });
-    expect(degraded).toEqual([{ reason: 'unavailable' }]);
+    expect(degraded).toEqual([{ reason: 'session: unavailable' }, { reason: 'local: unavailable' }]);
+  });
+
+  it('keeps URL params for the session but not one-shot ones', () => {
+    const session = new MemoryStorage();
+    makeEngine({ session, params: { utm_source: 'fb', banner: 'n', reset: '1' } }).engine.restore();
+    const next = makeEngine({ session, params: { step: '2' } }).engine;
+    next.restore();
+    expect(next.getState().params).toEqual({ utm_source: 'fb', banner: 'n', step: '2' });
+  });
+
+  it('announces shipping and selection changes with their data', async () => {
+    const { engine } = makeEngine();
+    const seen: unknown[] = [];
+    engine.on('shipping.changed', (e) => seen.push(e.data));
+    engine.on('selection.changed', (e) => seen.push(e.data));
+    await engine.setShipping(2);
+    await engine.setShipping(2);
+    engine.select('main', 'two', [{ packageId: 2, quantity: 1 }]);
+    expect(seen).toEqual([{ methodId: 2 }, { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] }]);
   });
 
   it('keeps working in memory when every storage is blocked', async () => {
@@ -176,7 +201,7 @@ describe('events', () => {
     const order: string[] = [];
     engine.on('selection.changed', () => engine.events.emit('ready', {}));
     engine.on('*', (e) => order.push(e.name));
-    engine.select('main', 'one');
+    engine.select('main', 'one', []);
     expect(order).toEqual(['selection.changed', 'ready']);
   });
 

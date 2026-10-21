@@ -102,16 +102,21 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 
 ## 6. Data and storage
 
-- **Keys:** everything is stored under the campaign key, e.g. `next:pk_live_xxx:cart`,
-  never under the URL path. Two campaigns on `abc.com/campaigns/...` never share a cart.
-  Two pages with the same key share one cart, which is how one funnel's pages stay
-  connected.
-- **localStorage:** cart, visitor id, attribution.
-- **sessionStorage:** checkout draft, current order.
-- **Never stored:** personal data in cookies, or anything about the card.
-- **Session:** ends after 30 minutes of inactivity. The current order always comes from
-  `ref_id` in the URL.
-- **Reset:** `?reset=1` clears this campaign's keys.
+- **Keys:** `next:<scope>:<name>`, where scope = hash(campaign key + funnel). The funnel
+  comes from `data-funnel`, else `<meta name="next-funnel">`, else the top folder when the
+  path has one (`/helloweenA/landing` → `helloweena`). Two funnels on one domain never
+  share a cart; every page of one funnel does.
+- **sessionStorage:** the cart and URL params. A cart lives as long as its tab, so tabs
+  never overwrite each other and a finished order is not restored next week.
+- **localStorage:** the campaign snapshot, for 10 minutes. It paints prices before the
+  campaign request returns.
+- **Never stored:** totals (they come from the server on each page), personal data in
+  cookies, anything about the card. The old SDK's `next_user_data` cookie is deleted.
+- **Storage blocked** (private mode, in-app webviews): everything keeps working in memory
+  and `storage.degraded` is emitted.
+- **Back button:** a page restored from the back-forward cache reloads, so it never acts
+  on a stale cart.
+- **Reset:** `?reset=1` clears this funnel's keys once and is removed from the URL.
 
 ## 7. Tracking
 

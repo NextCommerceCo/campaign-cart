@@ -3,8 +3,8 @@ import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import { funnelFromPath, storageScope } from './engine/scope';
-import type { Campaign, EventName } from './engine/types';
-import { announceLegacyReady, legacyApi, type LegacyApi } from './legacy';
+import type { Campaign, EventMap, EventName } from './engine/types';
+import { announceLegacyReady, LEGACY_EVENTS, legacyApi, type LegacyApi, removeLegacyPersonalData } from './legacy';
 
 declare const __VERSION__: string;
 
@@ -25,9 +25,14 @@ export function parseForcePackages(raw: string | null): Array<{ packageId: numbe
     .map(([id, qty]) => ({ packageId: id!, quantity: qty && qty > 0 ? qty : 1 }));
 }
 
+const EVENT_NAMES: EventName[] = [
+  'campaign.loaded', 'cart.updated', 'cart.calculated', 'selection.changed',
+  'shipping.changed', 'storage.degraded', 'ready', 'error',
+];
+
 export interface NextApi extends LegacyApi {
   version: string;
-  on(name: EventName | '*', fn: (event: EngineEvent) => void): () => void;
+  on<K extends EventName>(name: K | '*', fn: (data: EventMap[K], event: EngineEvent) => void): () => void;
   getState: Engine['getState'];
   bind(root: ParentNode): void;
   actions: {
@@ -53,7 +58,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     fetch: window.fetch.bind(window),
     campaign,
     storagePrefix: `next:${scope}`,
-    storage: [browserStorage(() => localStorage), browserStorage(() => sessionStorage)],
+    storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
     currency: config.currency,
     params: Object.fromEntries(params),
   });
@@ -82,7 +87,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   let ready = false;
   const next: NextApi = {
     version: __VERSION__,
-    on: (name, fn) => engine.on(name, fn, { replay: name === 'ready' && ready }),
+    on: (name, fn) => {
+      const event = (LEGACY_EVENTS[name] ?? name) as EventName | '*';
+      if (event !== '*' && !EVENT_NAMES.includes(event)) {
+        console.warn(`[next] next.on: unknown event "${name}"`);
+        return () => {};
+      }
+      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' && ready });
+    },
     getState: () => engine.getState(),
     bind: (root) => bindings.bind(root),
     actions: {
@@ -107,12 +119,19 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     announceLegacyReady(next);
   };
 
+  engine.on('error', (e) => {
+    if (e.data.action === 'load') html.setAttribute('data-next-error', 'campaign');
+  });
   const loading = engine.load();
   if (hasSnapshot) markReady();
   void loading.then(() => {
     if (engine.getState().campaign) markReady();
-    else html.setAttribute('data-next-error', 'campaign');
   });
+
+  addEventListener('pageshow', (e) => {
+    if (e.persisted) location.reload();
+  });
+  removeLegacyPersonalData();
 
   return next;
 }

@@ -86,7 +86,8 @@ export interface EventMap {
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   'cart.updated': { cart: CartState };
   'cart.calculated': { summary: CartSummary };
-  'selection.changed': { selectorId: string; cardId: string };
+  'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
+  'shipping.changed': { methodId: number | undefined };
   'storage.degraded': { reason: string };
   'ready': Record<string, never>;
   'error': { action: string; message: string };

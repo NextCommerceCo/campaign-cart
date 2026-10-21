@@ -22,15 +22,16 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       return qty;
     };
     const add = () => engine.setGroup(group, { lines: [{ packageId, quantity: quantity() }], vouchers: [] });
-    const isOn = () => !!engine.getState().cart.groups[group];
+    const isOn = () => engine.lines().some((l) => l.package_id === packageId);
 
     const { cart } = engine.getState();
     if (el.getAttribute('data-next-selected') === 'true' && !isOn() && !cart.dismissed.includes(group)) void add();
 
     el.addEventListener('click', (e) => {
       if (isFormControl(e.target)) return;
-      if (isOn()) void engine.setGroup(group, null, { dismiss: true });
-      else void add();
+      if (!isOn()) void add();
+      else if (engine.getState().cart.groups[group]) void engine.setGroup(group, null, { dismiss: true });
+      else void engine.removeItem(packageId);
     });
 
     if (sync.length) {

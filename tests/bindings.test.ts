@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../src/bindings';
-import { nextUrl } from '../src/bindings/add-to-cart';
 import { fakeApi, flush, makeEngine, MemoryStorage } from './fixtures';
 
-async function setup(html: string, opts: { params?: Record<string, string>; local?: Storage; fetch?: typeof fetch } = {}) {
+async function setup(html: string, opts: { params?: Record<string, string>; session?: Storage; fetch?: typeof fetch } = {}) {
   document.body.innerHTML = html;
-  const made = makeEngine({ local: opts.local, fetch: opts.fetch });
-  Object.assign(made.engine.getState().params, opts.params);
+  const made = makeEngine({ session: opts.session, fetch: opts.fetch, params: opts.params });
   made.engine.restore();
   await made.engine.load();
   const navigate = vi.fn();
@@ -113,10 +111,10 @@ describe('bundle selector', () => {
   });
 
   it('does not re-send a cart that already matches the restored pick', async () => {
-    const local = new MemoryStorage();
-    await setup(SELECTOR, { local });
+    const session = new MemoryStorage();
+    await setup(SELECTOR, { session });
     const api = fakeApi();
-    await setup(SELECTOR, { local, fetch: api.fetch });
+    await setup(SELECTOR, { session, fetch: api.fetch });
     expect(api.calls).toHaveLength(1);
   });
 
@@ -148,14 +146,26 @@ describe('order bump', () => {
   });
 
   it('does not re-add a pre-selected bump the shopper switched off', async () => {
-    const local = new MemoryStorage();
+    const session = new MemoryStorage();
     const html = `<div id="bump" data-next-toggle-card data-next-package-id="9" data-next-selected="true"></div>`;
-    const first = await setup(html, { local });
+    const first = await setup(html, { session });
     expect(first.engine.getState().cart.groups['toggle:9']).toBeDefined();
     first.$('#bump').click();
     await flush();
-    const second = await setup(html, { local });
+    const second = await setup(html, { session });
     expect(second.engine.getState().cart.groups['toggle:9']).toBeUndefined();
+  });
+
+  it('counts a package already in the cart as on and never adds it twice', async () => {
+    const html = `<div id="bump" data-next-toggle-card data-next-package-id="9" data-next-selected="true"></div>`;
+    document.body.innerHTML = html;
+    const { engine } = makeEngine();
+    await engine.load();
+    await engine.addItem(9);
+    bindAll(document, engine, vi.fn());
+    await flush();
+    expect(engine.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
+    expect(document.querySelector('#bump')!.classList.contains('next-in-cart')).toBe(true);
   });
 
   it('follows the synced quantity and prices it', async () => {
@@ -193,20 +203,15 @@ describe('next.bind', () => {
 
 describe('add to cart', () => {
   it('adds and goes to the next page right away with attribution params', async () => {
-    history.replaceState(null, '', '/lp?utm_source=fb&forcePackageId=2');
     const { engine, navigate, $ } = await setup(
       `<a id="buy" href="#" data-next-action="add-to-cart" data-next-package-id="1" data-next-quantity="2" data-next-url="/checkout"></a>`,
+      { params: { utm_source: 'fb', forcePackageId: '2' } },
     );
     $('#buy').click();
     expect(engine.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
     expect(navigate).toHaveBeenCalledWith(`${location.origin}/checkout?utm_source=fb`);
     $('#buy').click();
     expect(engine.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
-    history.replaceState(null, '', '/');
   });
 
-  it('drops one-shot params from the next URL', () => {
-    const url = nextUrl('/checkout', new URL('https://shop.test/lp?utm_source=fb&forcePackageId=2&reset=1&debug=1'));
-    expect(url).toBe('https://shop.test/checkout?utm_source=fb');
-  });
 });

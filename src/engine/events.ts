@@ -33,12 +33,13 @@ export class Events {
     }
   }
 
-  on(name: EventName | '*', fn: Listener, options: { replay?: boolean } = {}): () => void {
+  on<K extends EventName>(name: K | '*', fn: (event: EngineEvent<K>) => void, options: { replay?: boolean } = {}): () => void {
+    const listener = fn as Listener;
     let set = this.listeners.get(name);
     if (!set) this.listeners.set(name, (set = new Set()));
-    set.add(fn);
-    if (options.replay) this.buffer.filter((e) => name === '*' || e.name === name).forEach((e) => deliver(fn, e));
-    return () => set.delete(fn);
+    set.add(listener);
+    if (options.replay) this.buffer.filter((e) => name === '*' || e.name === name).forEach((e) => deliver(listener, e));
+    return () => set.delete(listener);
   }
 }
 

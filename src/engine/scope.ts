@@ -1,6 +1,5 @@
 export function funnelFromPath(pathname: string): string {
-  const segments = pathname.split('/').filter(Boolean);
-  return segments.length >= 2 ? (segments[0] ?? '').toLowerCase() : '';
+  return /^\/([^/]+)\//.exec(pathname)?.[1]?.toLowerCase() ?? '';
 }
 
 export function hash(value: string): string {

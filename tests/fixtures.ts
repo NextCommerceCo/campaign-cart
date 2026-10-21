@@ -64,6 +64,7 @@ export interface MakeEngine {
   session?: Storage;
   fetch?: typeof fetch;
   campaign?: Promise<Campaign>;
+  params?: Record<string, string>;
   now?: () => number;
 }
 
@@ -77,7 +78,8 @@ export function makeEngine(opts: MakeEngine = {}) {
     fetch: opts.fetch ?? api.fetch,
     campaign: opts.campaign ?? Promise.resolve(campaign),
     storagePrefix: 'next:test',
-    storage: [local, session],
+    storage: { local, session },
+    params: opts.params,
     now: opts.now,
   });
   return { engine, api, local, session };

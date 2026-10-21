@@ -7,13 +7,16 @@ import { funnelFromPath, storageScope } from '../src/engine/scope';
 import { StorageAdapter } from '../src/engine/storage';
 import { format, resolve } from '../src/engine/values';
 import { parseForcePackages } from '../src/core';
+import { nextUrl } from '../src/engine/params';
 import { makeEngine, MemoryStorage } from './fixtures';
 
 describe('storage scope', () => {
   it('keeps a funnel together at any depth and separates top folders', () => {
     expect(funnelFromPath('/helloweenA/landing')).toBe('helloweena');
     expect(funnelFromPath('/helloweenA/checkout/step2')).toBe('helloweena');
+    expect(funnelFromPath('/sleep/')).toBe('sleep');
     expect(funnelFromPath('/landing')).toBe('');
+    expect(funnelFromPath('/presell.html')).toBe('');
   });
 
   it('gives two funnels on one key different scopes', () => {
@@ -107,6 +110,19 @@ describe('forcePackageId', () => {
       { packageId: 5, quantity: 1 },
     ]);
     expect(parseForcePackages('abc')).toEqual([]);
+  });
+});
+
+describe('next page URL', () => {
+  const params = { utm_source: 'fb', gclid: 'G1', email: 'jane@x.com', debugger: 'true', reset: '1' };
+  const here = new URL('https://shop.test/lp');
+
+  it('carries every kept param to the same site', () => {
+    expect(nextUrl('/checkout', here, params)).toBe('https://shop.test/checkout?utm_source=fb&gclid=G1&email=jane%40x.com');
+  });
+
+  it('carries only attribution params to another site', () => {
+    expect(nextUrl('https://partner.test/checkout', here, params)).toBe('https://partner.test/checkout?utm_source=fb&gclid=G1');
   });
 });
 

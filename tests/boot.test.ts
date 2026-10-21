@@ -19,6 +19,7 @@ afterEach(() => {
   document.documentElement.removeAttribute('data-next-error');
   delete (window as { nextReady?: unknown }).nextReady;
   localStorage.clear();
+  sessionStorage.clear();
   history.replaceState(null, '', '/');
 });
 
@@ -74,10 +75,43 @@ describe('boot', () => {
     expect(next.getState().cart.summary?.total).toBe('49.00');
   });
 
-  it('marks the page when the campaign cannot load and there is no snapshot', async () => {
+  it('marks the page when the campaign cannot load, even with a snapshot', async () => {
+    boot(config, Promise.resolve(campaign));
+    await flush();
     boot(config, Promise.reject(new Error('down')));
     await flush();
+    expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true);
     expect(document.documentElement.getAttribute('data-next-error')).toBe('campaign');
+  });
+
+  it('maps old next.on names to the new events and passes the payload', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
+      <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div>
+      <div id="two" data-next-bundle-card data-next-bundle-id="two" data-next-bundle-items='[{"packageId":2,"quantity":1}]'></div></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    const changed = vi.fn();
+    next.on('bundle:selection-changed' as never, changed);
+    next.on('fomo:shown' as never, vi.fn());
+    document.querySelector<HTMLElement>('#two')!.click();
+    expect(changed).toHaveBeenCalledWith({ selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] }, expect.anything());
+    expect(warn).toHaveBeenCalledWith('[next] next.on: unknown event "fomo:shown"');
+  });
+
+  it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await next.actions.applyCoupon('SAVE10');
+    await next.addItem({ packageId: 1 });
+    await next.clearCart();
+    expect(next.getState().cart.coupons).toEqual(['SAVE10']);
+    await next.swapCart([{ packageId: 2, quantity: 2 }]);
+    expect(next.getState().cart.groups).toEqual({ items: { lines: [{ packageId: 2, quantity: 2 }], vouchers: [] } });
+  });
+
+  it('removes the old SDK’s plain-text personal-data cookie', () => {
+    document.cookie = 'next_user_data=%7B%22email%22%3A%22a%40b.c%22%7D; path=/';
+    boot(config, Promise.resolve(campaign));
+    expect(document.cookie).not.toContain('next_user_data');
   });
 
   it('clears storage once on ?reset=1 and removes it from the URL', async () => {

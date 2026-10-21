@@ -1,15 +1,6 @@
+import { nextUrl } from '../engine/params';
 import { putInCart } from './bundle-selector';
 import type { BindContext, Render } from './context';
-
-const ONE_SHOT_PARAMS = ['reset', 'forcePackageId', 'debug', 'debugger'];
-
-export function nextUrl(target: string, current: URL): string {
-  const url = new URL(target, current);
-  current.searchParams.forEach((value, key) => {
-    if (!ONE_SHOT_PARAMS.includes(key) && !url.searchParams.has(key)) url.searchParams.set(key, value);
-  });
-  return url.toString();
-}
 
 export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: string) => void): Render[] {
   b.each(root, 'data-next-action', (el) => {
@@ -31,7 +22,7 @@ export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: 
       if (!url) return;
       el.setAttribute('aria-busy', 'true');
       el.classList.add('next-loading');
-      navigate(nextUrl(url, new URL(location.href)));
+      navigate(nextUrl(url, new URL(location.href), b.engine.getState().params));
     });
   });
   return [];
