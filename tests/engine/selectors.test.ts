@@ -168,6 +168,32 @@ describe('selectors', () => {
     expect(engine.getState().selectors.offer?.quoting).toBe(false);
   });
 
+  it('prices swap cards with the server’s offers and the shopper’s coupons, like 0.4.x', async () => {
+    const api = fakeApi({ offers: { 1: 0.5 } });
+    const { engine } = makeEngine({ fetch: api.fetch });
+    await engine.start();
+    await engine.selectors.register('main', CARDS, 'swap', 'two');
+    await flush();
+    expect(price(engine, 'bundle.one.price')).toBe('$24.50');
+    expect(price(engine, 'bundle.one.originalPrice')).toBe('$49.00');
+    expect(resolve(engine, 'bundle.one.hasDiscount')).toEqual({ type: 'bool', value: true });
+    const before = api.calls.length;
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    const quotes = api.calls.slice(before).filter((c) => c.body.lines.length === 1 && !('shipping_method' in c.body));
+    expect(quotes.map((c) => c.body.vouchers)).toEqual([['SAVE10'], ['BUNDLE', 'SAVE10']]);
+  });
+
+  it('reads bundle.<id> from a card with that id before a selector with that id', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.selectors.register('upsell-1x', [{ ...CARDS[1]!, id: 'upsell-1x-card', vouchers: [] }], 'select');
+    await engine.selectors.register('offer', [{ ...CARDS[0]!, id: 'upsell-1x' }], 'offer');
+    await flush();
+    expect(price(engine, 'bundle.upsell-1x.price')).toBe('$24.50');
+    expect(price(engine, 'bundle.offer.price')).toBe('$24.50');
+  });
+
   it('falls back to package prices when the quote fails', async () => {
     const failing = (async () => new Response('{}', { status: 500 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing });

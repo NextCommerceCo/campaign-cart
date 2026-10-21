@@ -7,6 +7,7 @@ import { type EngineEvent, Events } from './events';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './selectors';
 import { StorageAdapter } from './storage';
+import { createToggles, type ToggleActions } from './toggles';
 import type { Campaign, EventMap, EventName, Package, Send, State } from './types';
 
 export interface EngineOptions {
@@ -44,6 +45,7 @@ export class Engine {
   readonly events = new Events();
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
+  readonly toggles: ToggleActions;
   checkout?: CheckoutActions;
   order?: OrderActions;
   private state: State;
@@ -70,6 +72,7 @@ export class Engine {
     this.state = {
       cart: emptyCart(),
       selectors: {},
+      toggles: {},
       visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0 },
     };
     this.context = {
@@ -90,6 +93,7 @@ export class Engine {
     };
     this.cart = createCart(this.context);
     this.selectors = createSelectors(this.context, this.cart);
+    this.toggles = createToggles(this.context);
 
     if (options.reset) {
       this.session.clear();

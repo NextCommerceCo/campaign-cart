@@ -6,6 +6,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 import { bindAll } from '../../src/bindings';
+import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 
@@ -18,6 +19,33 @@ describe('order bump', () => {
       expect(el.classList.contains('next-in-cart')).toBe(true);
       expect(el.classList.contains('next-active')).toBe(true);
     }
+  });
+
+  it('shows the bump at the server’s price, before and after it is added, like 0.4.x', async () => {
+    const api = fakeApi({ offers: { 9: 0.5 } });
+    const { engine, $ } = await mount(
+      `<div id="bump" data-next-toggle-card data-next-package-id="9">
+        <span id="price" data-next-toggle-display="price"></span>
+        <span id="was" data-next-toggle-display="originalPrice"></span>
+        <span id="off" data-next-toggle-display="discountPercentage" data-next-format="percentage"></span>
+      </div>`,
+      { fetch: api.fetch },
+    );
+    await flush();
+    expect([$('#price').textContent, $('#was').textContent, $('#off').textContent]).toEqual(['$4.50', '$9.00', '50%']);
+    const quotes = api.calls.length;
+    await engine.cart.addItem(1);
+    await flush();
+    expect(api.calls).toHaveLength(quotes + 1);
+    $('#bump').click();
+    await flush();
+    expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 1 });
+    expect($('#price').textContent).toBe('$4.50');
+    await engine.cart.applyCoupon('SAVE10');
+    $('#bump').click();
+    await flush();
+    const requoted = api.calls.filter((c) => c.body.lines.some((l: { package_id: number }) => l.package_id === 9));
+    expect(requoted.at(-1)?.body).toMatchObject({ vouchers: ['SAVE10'] });
   });
 
   it('ignores clicks in form fields inside the card', async () => {
@@ -84,7 +112,7 @@ describe('order bump', () => {
     await engine.cart.addItem(1, 1);
     await engine.cart.addItem(2, 2);
     await flush();
-    expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 3 });
+    expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 5 });
     expect($('#warranty').classList).toContain('os--active');
     expect($('#warranty').getAttribute('data-next-in-cart')).toBe('true');
     expect($('#warranty img').getAttribute('src')).toBe('https://cdn.test/9.png');

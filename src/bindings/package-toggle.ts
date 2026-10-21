@@ -22,7 +22,9 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       if (!sync.length && !products.length) return baseQty;
       let qty = 0;
       for (const [id, g] of Object.entries(engine.getState().cart.groups)) {
-        if (id !== group) for (const l of g.lines) if (synced(l.packageId)) qty += l.quantity;
+        if (id !== group)
+          for (const l of g.lines)
+            if (synced(l.packageId)) qty += l.quantity * (engine.getPackage(l.packageId)?.qty ?? 1);
       }
       return qty;
     };
@@ -76,6 +78,7 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
 
     const image = el.querySelector<HTMLImageElement>('img[data-next-toggle-image]');
     renders.push(() => {
+      engine.toggles.price(packageId, quantity() || 1);
       const on = isOn();
       setState(el, on);
       el.classList.toggle('os--active', on);

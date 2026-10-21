@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bindAll } from '../src/bindings';
 import { bindSlots } from '../src/slots';
+import { fakeApi } from './fixtures/api';
 import { flush, makeEngine } from './fixtures/engine';
 
-async function mount() {
+async function mount(fetch?: typeof globalThis.fetch) {
   const file = 'tests/fixtures/pages/olympus-multi-variant/checkout.html';
   const doc = new DOMParser().parseFromString(readFileSync(file, 'utf8'), 'text/html');
   document.body.innerHTML = doc.body.innerHTML;
-  const { engine } = makeEngine();
+  const { engine } = makeEngine({ fetch });
   await engine.start();
   bindAll(document, engine, () => {});
   bindSlots(engine);
@@ -90,6 +91,15 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     const row = slot.querySelector<HTMLElement>('[data-next-discounts="voucher"]')!;
     expect(row.textContent).toContain('+10% extra');
     expect(row.style.display).toBe('');
+  });
+
+  it('marks a unit discounted when the server’s offer prices the bundle lower', async () => {
+    const plain = await mount();
+    const row = () => plain.slots()[0]!.querySelector<HTMLElement>('[data-next-discounts="offer"]')!;
+    expect(row().style.display).toBe('none');
+    document.body.innerHTML = '';
+    const offer = await mount(fakeApi({ offers: { 1: 0.5 } }).fetch);
+    expect(offer.slots()[0]!.querySelector<HTMLElement>('[data-next-discounts="offer"]')!.style.display).toBe('');
   });
 
   it('keeps focus on the variant select the shopper is using', async () => {

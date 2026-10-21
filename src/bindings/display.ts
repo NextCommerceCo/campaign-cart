@@ -1,5 +1,5 @@
 import { parseCondition } from '../engine/condition';
-import { resolve, resolveCard, resolveLines, toggleGroup, type Value } from '../engine/values';
+import { resolve, resolveCard, resolveToggle, type Value } from '../engine/values';
 import { type BindContext, type Render } from './context';
 import { conditionMet, setVisible, writeValue } from './dom';
 
@@ -36,8 +36,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
     const baseQty = Number(cardEl?.getAttribute('data-next-quantity') || 1);
     if (!packageId) return b.warn('data-next-toggle-display outside a [data-next-toggle-card]');
     renders.push(() => {
-      const line = b.engine.getState().cart.groups[toggleGroup(packageId)]?.lines[0];
-      const v = resolveLines(b.engine, [{ packageId, quantity: line?.quantity ?? baseQty }], prop, !!line);
+      const v = resolveToggle(b.engine, packageId, prop, baseQty);
       if (!v) return b.warn(`unknown toggle-display property "${prop}"`);
       write(el, v, b);
     });

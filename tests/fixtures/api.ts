@@ -15,6 +15,7 @@ export interface FakeApiOptions {
   order?: (body: any) => Response;
   getOrder?: (ref: string) => Response;
   upsell?: (ref: string, body: any) => Response;
+  offers?: Record<number, number>;
 }
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -37,7 +38,8 @@ export function fakeApi(options: FakeApiOptions = {}) {
     }
     if (url.endsWith('/carts/')) return json({ id: 7, checkout_url: 'https://shop.test/c/7' });
     const lines = body.lines as Array<{ package_id: number; quantity: number }>;
-    const offer = url.includes('upsell=true') ? 0.5 : 1;
+    const upsellPrice = url.includes('upsell=true');
+    const rate = (packageId: number) => (upsellPrice ? 0.5 : 1 - (options.offers?.[packageId] ?? 0));
     const subtotal = lines.reduce(
       (n, l) => n + Number(campaign.packages.find((p) => p.ref_id === l.package_id)!.price_total) * l.quantity,
       0,
@@ -55,8 +57,8 @@ export function fakeApi(options: FakeApiOptions = {}) {
           package_price: p.price_total,
           original_package_price: p.price_retail_total ?? p.price_total,
           subtotal: gross.toFixed(2),
-          total_discount: (gross * (1 - offer)).toFixed(2),
-          total: (gross * offer).toFixed(2),
+          total_discount: (gross * (1 - rate(l.package_id))).toFixed(2),
+          total: (gross * rate(l.package_id)).toFixed(2),
           discounts: discount ? [{ offer_id: 10, name: 'SAVE10', amount: '1.00', percentage: '10.00' }] : [],
         };
       }),

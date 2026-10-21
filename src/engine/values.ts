@@ -90,7 +90,7 @@ function linesValue(
   lines: CartLine[],
   prop: string,
   selected: boolean,
-  quote?: CartSummary,
+  quoted?: SummaryLine[],
 ): Value | undefined {
   if (lines.some((l) => !engine.getPackage(l.packageId))) return notLoaded(linesValue(engine, [], prop, selected));
   let total = 0;
@@ -102,9 +102,9 @@ function linesValue(
     retail += cents(pkg.price_retail_total ?? pkg.price_total) * line.quantity;
     units += pkg.qty * line.quantity;
   }
-  if (quote) {
-    total = quote.lines.reduce((n, l) => n + cents(l.total), 0);
-    retail = quote.lines.reduce((n, l) => n + cents(l.subtotal), 0);
+  if (quoted) {
+    total = quoted.reduce((n, l) => n + cents(l.total), 0);
+    retail = quoted.reduce((n, l) => n + cents(l.subtotal), 0);
   }
   const first = lines[0] ? engine.getPackage(lines[0].packageId) : undefined;
   switch (prop) {
@@ -227,12 +227,11 @@ function shippingValue(state: State, prop: string): Value | undefined {
 export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 
 function findCard(state: State, id: string): CardRef | undefined {
-  const picked = state.selectors[id]?.picked;
-  if (picked) return { selectorId: id, cardId: picked };
   for (const [selectorId, selector] of Object.entries(state.selectors)) {
     if (selector.cards.some((c) => c.id === id)) return { selectorId, cardId: id };
   }
-  return undefined;
+  const picked = state.selectors[id]?.picked;
+  return picked ? { selectorId: id, cardId: picked } : undefined;
 }
 
 const lineKey = (pairs: Array<{ package_id: number; quantity: number }>) =>
@@ -253,7 +252,7 @@ export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value |
   if (!selector || !card) return notLoaded(linesValue(engine, [], prop, false));
   const lines = cardLines(selector, card);
   const quote = cardQuote(selector, card);
-  const v = linesValue(engine, lines, prop, selector.picked === card.id, quote);
+  const v = linesValue(engine, lines, prop, selector.picked === card.id, quote?.lines);
   return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
 }
 
@@ -289,11 +288,8 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}): Value 
       const ref = findCard(state, second);
       return ref ? resolveCard(engine, ref, rest.join('.')) : { type: 'text', value: undefined };
     }
-    case 'toggle': {
-      const id = Number(second);
-      const line = state.cart.groups[toggleGroup(id)]?.lines[0];
-      return linesValue(engine, [{ packageId: id, quantity: line?.quantity ?? 1 }], rest.join('.'), !!line);
-    }
+    case 'toggle':
+      return resolveToggle(engine, Number(second), rest.join('.'));
     default:
       if (parts.length === 1 && ctx.card) return resolveCard(engine, ctx.card, root);
       if (parts.length === 1 && ctx.packageId !== undefined)
@@ -303,8 +299,13 @@ export function resolve(engine: Engine, path: string, ctx: Context = {}): Value 
   }
 }
 
-export function resolveLines(engine: Engine, lines: CartLine[], prop: string, selected: boolean): Value | undefined {
-  return linesValue(engine, lines, prop, selected);
+export function resolveToggle(engine: Engine, packageId: number, prop: string, quantity = 1): Value | undefined {
+  const { cart, toggles } = engine.getState();
+  const inCart = cart.groups[toggleGroup(packageId)]?.lines[0];
+  const qty = inCart?.quantity ?? toggles[packageId]?.quantity ?? quantity;
+  const quoted = inCart ? cart.summary?.lines.find((l) => l.package_id === packageId) : toggles[packageId]?.line;
+  const line = quoted?.quantity === qty ? quoted : undefined;
+  return linesValue(engine, [{ packageId, quantity: qty }], prop, !!inCart, line && [line]);
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();

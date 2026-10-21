@@ -1,7 +1,7 @@
 import type { Engine } from './engine/engine';
 import { cardSlots, pickedCard } from './engine/selectors';
-import type { Discount, Package, SelectorCard, Slot } from './engine/types';
-import { cents, format } from './engine/values';
+import type { Discount, Package, Selector, SelectorCard, Slot, SummaryLine } from './engine/types';
+import { cardQuote, cents, format } from './engine/values';
 import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './bindings/dom';
 
 const escape = (text: string) =>
@@ -12,14 +12,21 @@ const fill = (html: string, values: Record<string, string>) =>
     key in values ? escape(values[key]!) : raw,
   );
 
-function itemValues(engine: Engine, pkg: Package | undefined, index: number): Record<string, string> {
+function itemValues(
+  engine: Engine,
+  pkg: Package | undefined,
+  index: number,
+  line?: SummaryLine,
+): Record<string, string> {
   const { campaign } = engine.getState();
   const money = (c: number) => format({ type: 'money', value: c / 100 }, campaign?.currency, campaign?.language);
-  const unit = cents(pkg?.price);
-  const retail = cents(pkg?.price_retail ?? pkg?.price);
-  const total = cents(pkg?.price_total);
-  const retailTotal = cents(pkg?.price_retail_total ?? pkg?.price_total);
+  const unit = line ? cents(line.package_price) : cents(pkg?.price);
+  const retail = line ? cents(line.original_package_price) : cents(pkg?.price_retail ?? pkg?.price);
+  const total = line ? unit : cents(pkg?.price_total);
+  const retailTotal = line ? retail : cents(pkg?.price_retail_total ?? pkg?.price_total);
   const saved = Math.max(0, retailTotal - total);
+  const off = line ? Math.max(0, cents(line.total_discount)) : saved;
+  const base = line ? cents(line.subtotal) : retailTotal;
   return {
     'slot.index': String(index),
     'slot.unitIndex': String(index),
@@ -36,8 +43,8 @@ function itemValues(engine: Engine, pkg: Package | undefined, index: number): Re
     'item.unitPrice': money(unit),
     'item.originalUnitPrice': money(retail),
     'item.discountAmount': money(saved),
-    'item.discountPercentage': retailTotal ? `${Math.round((saved / retailTotal) * 100)}%` : '0%',
-    'item.hasDiscount': saved > 0 ? 'show' : 'hide',
+    'item.discountPercentage': base ? `${Math.round((off / base) * 100)}%` : '0%',
+    'item.hasDiscount': off > 0 ? 'show' : 'hide',
     'item.currency': campaign?.currency ?? '',
   };
 }
@@ -109,7 +116,20 @@ function renderStage(
   cards: Map<string, Element>,
 ) {
   let shown = '';
-  const rendered: Array<{ el: HTMLElement; slot: Slot; boxes: Array<{ box: HTMLElement; tpl: string }> }> = [];
+  const rendered: Array<{
+    el: HTMLElement;
+    slot: Slot;
+    values: Record<string, string>;
+    boxes: Array<{ box: HTMLElement; tpl: string }>;
+  }> = [];
+
+  const valuesOf = (selector: Selector, card: SelectorCard, slot: Slot, index: number) =>
+    itemValues(
+      engine,
+      engine.getPackage(slot.packageId),
+      index,
+      cardQuote(selector, card)?.lines.find((l) => l.package_id === slot.packageId),
+    );
 
   const apply = (card: SelectorCard, index: number, patch: Partial<Slot>) =>
     engine.selectors.setSlot(selectorId, card.id, index, patch);
@@ -135,10 +155,14 @@ function renderStage(
     applyValues(el, engine);
   };
 
-  const renderSlot = (card: SelectorCard, slot: Slot, index: number): (typeof rendered)[number] => {
+  const renderSlot = (
+    card: SelectorCard,
+    slot: Slot,
+    index: number,
+    values: Record<string, string>,
+  ): (typeof rendered)[number] => {
     const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
     Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
-    const values = itemValues(engine, engine.getPackage(slot.packageId), index);
     el.innerHTML = fill(template, values);
     for (const attr of ['data-next-show', 'data-next-hide'] as const) {
       for (const node of el.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)) {
@@ -159,7 +183,7 @@ function renderStage(
       input.value = slot.properties?.[name] ?? '';
       input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
     }
-    const entry = { el, slot, boxes };
+    const entry = { el, slot, values, boxes };
     refresh(entry);
     return entry;
   };
@@ -179,14 +203,19 @@ function renderStage(
     const key = `${card.id}:${slots.length}:${engine.getState().campaign ? 1 : 0}`;
     if (key !== shown) {
       shown = key;
-      rendered.splice(0, rendered.length, ...slots.map((slot, i) => renderSlot(card, slot, i)));
+      rendered.splice(
+        0,
+        rendered.length,
+        ...slots.map((slot, i) => renderSlot(card, slot, i, valuesOf(selector, card, slot, i))),
+      );
       stage.replaceChildren(...rendered.map((r) => r.el));
       return;
     }
     slots.forEach((slot, i) => {
       const old = rendered[i];
       if (!old) return;
-      if (old.slot.packageId === slot.packageId) {
+      const values = valuesOf(selector, card, slot, i);
+      if (old.slot.packageId === slot.packageId && JSON.stringify(old.values) === JSON.stringify(values)) {
         old.slot = slot;
         return refresh(old);
       }
@@ -194,7 +223,7 @@ function renderStage(
         (document.activeElement as HTMLElement | null)?.closest('.next-bundle-slot') === old.el
           ? (document.activeElement as HTMLElement).getAttribute('data-next-variant-code')
           : null;
-      const next = renderSlot(card, slot, i);
+      const next = renderSlot(card, slot, i, values);
       old.el.replaceWith(next.el);
       rendered[i] = next;
       if (code) next.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();

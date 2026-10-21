@@ -83,8 +83,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
     if (!cards.length) return;
 
     const preferred = [...els].find(([, el]) => el.getAttribute('data-next-selected') === 'true')?.[0];
-    const priced = [...els.values()].some((el) => el.querySelector('[data-next-discounts]'));
-    void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred, priced);
+    void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred);
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {

@@ -19,9 +19,11 @@ describe('display', () => {
   });
 
   it('shows or hides on boolean values and keeps the children', async () => {
-    const { $ } = await mount(SELECTOR);
+    const { $ } = await mount(
+      SELECTOR.replace('data-next-selector-id="main"', 'data-next-selector-id="main" data-next-upsell-context'),
+    );
     expect($('#two-badge').style.display).toBe('');
-    expect($('#two-badge').textContent).toBe('Save 55%');
+    expect($('#two-badge').textContent).toBe('Save 50%');
   });
 
   it('keeps children and hides booleans before the campaign arrives', async () => {

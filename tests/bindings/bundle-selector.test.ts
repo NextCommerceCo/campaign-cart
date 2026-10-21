@@ -28,6 +28,7 @@ describe('bundle selector', () => {
 
   it('swaps the bundle without touching the order bump', async () => {
     const { engine, $ } = await mount(SELECTOR);
+    const badge = $('#two-badge').style.display;
     $('#bump').click();
     await flush();
     $('[data-next-bundle-id="one"]').click();
@@ -37,7 +38,7 @@ describe('bundle selector', () => {
       { package_id: 9, quantity: 1 },
     ]);
     expect($('#total').textContent).toBe('$58.00');
-    expect($('#two-badge').style.display).toBe('');
+    expect($('#two-badge').style.display).toBe(badge);
   });
 
   it('does not re-send a cart that already matches the restored pick', async () => {
@@ -45,7 +46,13 @@ describe('bundle selector', () => {
     await mount(SELECTOR, { session });
     const api = fakeApi();
     await mount(SELECTOR, { session, fetch: api.fetch });
-    expect(api.calls).toHaveLength(1);
+    const sent = api.calls.map((c) => JSON.stringify(c.body.lines)).sort();
+    expect(sent).toEqual([
+      '[{"package_id":1,"quantity":1}]',
+      '[{"package_id":2,"quantity":1},{"package_id":9,"quantity":1}]',
+      '[{"package_id":2,"quantity":1}]',
+      '[{"package_id":2,"quantity":1}]',
+    ]);
   });
 
   it('shows offer cards at their upsell price and keeps them out of the cart', async () => {

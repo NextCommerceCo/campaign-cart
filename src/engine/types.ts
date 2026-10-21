@@ -126,7 +126,6 @@ export interface Selector {
   cards: SelectorCard[];
   picked?: string;
   quantities?: Record<string, number>;
-  priced?: boolean;
   slots?: Record<string, Slot[]>;
   quotes?: Record<string, CartSummary>;
   quoting?: boolean;
@@ -182,10 +181,17 @@ export interface CheckoutState {
   failurePath?: string;
 }
 
+export interface Toggle {
+  key: string;
+  quantity: number;
+  line?: SummaryLine;
+}
+
 export interface State {
   campaign?: Campaign;
   cart: CartState;
   selectors: Record<string, Selector>;
+  toggles: Record<number, Toggle>;
   visit: VisitState;
   checkout?: CheckoutState;
   order?: OrderState;
