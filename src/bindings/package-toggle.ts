@@ -12,13 +12,17 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
     const group = toggleGroup(packageId);
     const container = el.closest('[data-next-toggle-container]');
     const baseQty = Number(el.getAttribute('data-next-quantity') || 1);
-    const sync = (el.getAttribute('data-next-package-sync') ?? '').split(',').map(Number).filter(Boolean);
+    const ids = (attr: string) => (el.getAttribute(attr) ?? '').split(',').map(Number).filter(Boolean);
+    const sync = ids('data-next-package-sync');
+    const products = ids('data-next-product-sync');
+    const synced = (packageId: number) =>
+      sync.includes(packageId) || products.includes(engine.getPackage(packageId)?.product_id ?? 0);
 
     const quantity = (): number => {
-      if (!sync.length) return baseQty;
+      if (!sync.length && !products.length) return baseQty;
       let qty = 0;
       for (const [id, g] of Object.entries(engine.getState().cart.groups)) {
-        if (id !== group) for (const l of g.lines) if (sync.includes(l.packageId)) qty += l.quantity;
+        if (id !== group) for (const l of g.lines) if (synced(l.packageId)) qty += l.quantity;
       }
       return qty;
     };
@@ -30,8 +34,14 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       });
     const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
 
-    const { cart } = engine.getState();
-    if (el.getAttribute('data-next-selected') === 'true' && !isOn() && !cart.dismissed.includes(group)) void add();
+    let preselected =
+      el.getAttribute('data-next-selected') === 'true' && !engine.getState().cart.dismissed.includes(group);
+    const addPreselected = () => {
+      if (!preselected || isOn() || quantity() <= 0) return;
+      preselected = false;
+      void add();
+    };
+    addPreselected();
 
     el.addEventListener('click', (e) => {
       if (isFormControl(e.target)) return;
@@ -40,16 +50,27 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       else void engine.cart.removeItem(packageId);
     });
 
-    if (sync.length) {
+    if (sync.length || products.length) {
       engine.on('cart.updated', () => {
+        addPreselected();
         const current = engine.getState().cart.groups[group]?.lines[0]?.quantity;
         if (current !== undefined && current !== quantity()) void add();
       });
     }
 
+    const image = el.querySelector<HTMLImageElement>('img[data-next-toggle-image]');
     renders.push(() => {
-      setState(el, isOn());
-      if (container) setState(container, isOn());
+      const on = isOn();
+      setState(el, on);
+      el.classList.toggle('os--active', on);
+      el.setAttribute('data-in-cart', String(on));
+      el.setAttribute('data-next-in-cart', String(on));
+      if (container) setState(container, on);
+      const pkg = engine.getPackage(packageId);
+      if (image && pkg?.image && image.getAttribute('src') !== pkg.image) {
+        image.src = pkg.image;
+        if (!image.alt) image.alt = pkg.name;
+      }
     });
   });
 

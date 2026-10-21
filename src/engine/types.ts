@@ -16,6 +16,7 @@ export interface Package {
   product_name?: string;
   product_variant_name?: string;
   product_sku?: string | null;
+  product_id?: number;
 }
 
 export interface ShippingOption {

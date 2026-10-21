@@ -8,6 +8,7 @@ export const campaign: Campaign = {
   packages: [
     {
       ref_id: 1,
+      product_id: 400,
       external_id: 11,
       name: 'Earbuds ×1',
       price: '49.00',
@@ -20,6 +21,7 @@ export const campaign: Campaign = {
     },
     {
       ref_id: 2,
+      product_id: 400,
       external_id: 12,
       name: 'Earbuds ×2',
       price: '44.50',
@@ -32,6 +34,7 @@ export const campaign: Campaign = {
     },
     {
       ref_id: 9,
+      product_id: 900,
       external_id: 19,
       name: 'Protection plan',
       price: '9.00',

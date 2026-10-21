@@ -74,4 +74,20 @@ describe('order bump', () => {
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1, is_upsell: true }]);
   });
+  it('follows the quantity of a whole product, shows its image and marks itself the 0.4.x way', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-package-toggle>
+        <div id="warranty" data-next-toggle-card data-next-package-id="9" data-next-product-sync="400" data-next-selected="true">
+          <img data-next-toggle-image alt="">
+        </div>
+      </div>`);
+    await engine.cart.addItem(1, 1);
+    await engine.cart.addItem(2, 2);
+    await flush();
+    expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 3 });
+    expect($('#warranty').classList).toContain('os--active');
+    expect($('#warranty').getAttribute('data-next-in-cart')).toBe('true');
+    expect($('#warranty img').getAttribute('src')).toBe('https://cdn.test/9.png');
+    expect($('#warranty img').getAttribute('alt')).toBe('Protection plan');
+  });
 });
