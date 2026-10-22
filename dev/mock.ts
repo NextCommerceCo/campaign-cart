@@ -23,6 +23,12 @@ interface Package {
   price_total: string;
   price_retail?: string;
   price_retail_total?: string;
+  image?: string;
+  product_id?: number;
+  product_name?: string;
+  product_variant_id?: number;
+  product_variant_name?: string;
+  product_sku?: string | null;
 }
 interface Campaign {
   currency: string;
@@ -127,13 +133,21 @@ function orderLines(campaign: Campaign | undefined, lines: Line[], upsell = fals
   return lines.map((l, i) => {
     const pkg = campaign?.packages.find((p) => p.ref_id === l.package_id);
     const total = (Number(pkg?.price_total ?? 0) * l.quantity).toFixed(2);
+    const listed = (Number(pkg?.price_retail_total || pkg?.price_total || 0) * l.quantity).toFixed(2);
     return {
       id: Date.now() + i,
-      product_title: pkg?.name ?? `Package ${l.package_id}`,
-      product_sku: `PKG-${l.package_id}`,
+      package: l.package_id,
+      product_id: pkg?.product_id ?? null,
+      variant_id: pkg?.product_variant_id ?? null,
+      product_title: pkg?.product_name ?? pkg?.name ?? `Package ${l.package_id}`,
+      variant_title: pkg?.product_variant_name,
+      product_sku: pkg?.product_sku ?? null,
+      image: pkg?.image ?? '',
       quantity: l.quantity,
       price_excl_tax: total,
       price_incl_tax: total,
+      price_excl_tax_excl_discounts: Number(listed) > Number(total) ? listed : total,
+      price_incl_tax_excl_discounts: Number(listed) > Number(total) ? listed : total,
       is_upsell: upsell,
     };
   });
