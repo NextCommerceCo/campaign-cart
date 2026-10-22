@@ -47,7 +47,7 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
     if (!checkout) return;
     for (const prefix of ['', 'billing_'] as const) {
       const country = fields.get(`${prefix}country`);
-      const code = checkout.fields[`${prefix}country`];
+      const code = checkout.fields[`${prefix}country`] || (prefix ? checkout.fields.country : undefined);
       if (country instanceof HTMLSelectElement)
         fill(country, checkout.countries, code, { blank: !country.closest('[data-next-address]') });
 

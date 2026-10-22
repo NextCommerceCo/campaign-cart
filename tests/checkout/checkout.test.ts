@@ -474,6 +474,14 @@ describe('SDK-built address blocks (starter templates, data-next-address)', () =
 
   it('opens the billing block on the shipping country once billing differs, and sends that address', async () => {
     const { fill, card, submit, orders, $, field } = await mount('starter/olympus-checkout.html');
+    $<HTMLSelectElement>('[data-next-checkout-field="country"]').value = 'GB';
+    field('country').dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect($<HTMLSelectElement>('[data-next-checkout-field="billing-country"]').value).toBe('GB');
+    await submit();
+    $<HTMLSelectElement>('[data-next-checkout-field="country"]').value = 'US';
+    field('country').dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
     fill(SHIPPING);
     const same = $('input[name="use_shipping_address"]');
     same.checked = false;

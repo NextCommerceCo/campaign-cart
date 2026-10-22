@@ -1,5 +1,6 @@
 import type { CheckoutActions } from '../engine/checkout';
 import type { Engine } from '../engine/engine';
+import type { CheckoutState } from '../engine/types';
 import { FIELD_ATTRS, LEGACY_FIELDS } from './legacy';
 import { showField } from './messages';
 import { fieldText } from './texts';
@@ -44,9 +45,10 @@ export const phoneRequired = (fields: Fields) => {
   return !!phone && (phone.required || phone.getAttribute('data-next-required') === 'true');
 };
 
-export function syncFields(fields: Fields, checkout: CheckoutActions, current: Record<string, string>): void {
+export function syncFields(fields: Fields, checkout: CheckoutActions, state: CheckoutState | undefined): void {
   for (const [name, el] of fields) {
-    if (!valueOf(el) && current[name]) continue;
+    if (state?.sameAsShipping && name.startsWith('billing_')) continue;
+    if (!valueOf(el) && state?.fields[name]) continue;
     checkout.setField(name, valueOf(el));
   }
 }

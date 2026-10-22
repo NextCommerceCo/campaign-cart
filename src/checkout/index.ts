@@ -94,7 +94,7 @@ export function bindCheckout(
   };
 
   const pay = async (method?: string): Promise<void> => {
-    syncFields(fields, checkout, engine.getState().checkout?.fields ?? {});
+    syncFields(fields, checkout, engine.getState().checkout);
     box =
       method && EXPRESS_METHODS.includes(method) ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
     const successUrl = meta('next-success-url', 'next-next-url', 'os-next-page');
@@ -116,7 +116,7 @@ export function bindCheckout(
   };
 
   const advance = () => {
-    syncFields(fields, checkout, engine.getState().checkout?.fields ?? {});
+    syncFields(fields, checkout, engine.getState().checkout);
     const step = Number(form.getAttribute('data-next-step-number')) || 1;
     if (!checkout.validate('shipping', step === 1 && phoneRequired(fields))) return focusFirstError();
     checkout.setStep(step + 1);
