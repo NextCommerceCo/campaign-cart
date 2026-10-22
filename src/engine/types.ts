@@ -339,6 +339,7 @@ export interface OrderState {
   status: 'idle' | 'loading' | 'ready' | 'failed' | 'accepting';
   error?: CheckoutError;
   accepted: string[];
+  coupon?: { refId: string; code: string };
 }
 
 export interface ExitIntentDetail {
@@ -360,7 +361,12 @@ export interface EventMap {
   'checkout.payment-added': { method: string };
   'prospect.saved': { cart: unknown; email: string; phone?: string };
   'order.placed': { order: Order };
-  'order.loaded': { order: Order; purchase?: string; upsells?: Array<{ id: string; number: number; line: OrderLine }> };
+  'order.loaded': {
+    order: Order;
+    purchase?: string;
+    coupon?: string;
+    upsells?: Array<{ id: string; number: number; line: OrderLine }>;
+  };
   'upsell.viewed': { refId: string; page: string };
   'upsell.accepted': { refId: string; lines: ApiLine[] };
   'upsell.skipped': { refId: string; packageId?: number };

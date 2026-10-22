@@ -136,7 +136,12 @@ export class Engine {
 
   attribution(): Attribution {
     const { visit, campaign } = this.state;
-    return buildAttribution(visit.params, visit.landing, this.options.funnel || campaign?.name);
+    return buildAttribution(
+      visit.params,
+      visit.landing,
+      this.options.funnel || campaign?.name,
+      (this.options.now ?? Date.now)(),
+    );
   }
 
   noteExitIntentShown(): void {
@@ -208,8 +213,8 @@ export class Engine {
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
     if (slice === 'order' && order) {
-      const { refId, order: saved, loadedAt, accepted } = order;
-      this.session.set('order', { refId, order: saved, loadedAt, accepted });
+      const { refId, order: saved, loadedAt, accepted, coupon } = order;
+      this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
     }
     if (slice === 'checkout' && checkout) {
       const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } =

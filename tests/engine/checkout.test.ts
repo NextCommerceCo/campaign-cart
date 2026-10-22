@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout, orderBody, paymentCode, redirectFor } from '../../src/engine/checkout';
+import { createOrder } from '../../src/engine/order';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { flush, makeEngine, type MakeEngine, wait } from '../fixtures/engine';
 import { fakeRules } from '../fixtures/rules';
@@ -264,6 +265,23 @@ describe('checkout', () => {
     expect(next.getState().cart.groups).toEqual({});
     const reloaded = await setup({ session });
     expect(reloaded.engine.getState().checkout!.fields).toEqual({});
+  });
+
+  it('remembers the coupon of a placed order for its purchase report on the next page, like 0.4.x', async () => {
+    const session = new MemoryStorage();
+    const { engine, checkout, fill } = await setup({ session });
+    await engine.cart.addItem(1);
+    await engine.cart.applyCoupon('SAVE10');
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    const next = makeEngine({ session, fetch: fakeApi().fetch }).engine;
+    await next.start();
+    next.order = next.attach((ctx) => createOrder(ctx, next.cart));
+    const loaded = vi.fn();
+    next.on('order.loaded', (e) => loaded(e.data));
+    await next.order.load('R1');
+    expect(loaded).toHaveBeenCalledWith(expect.objectContaining({ purchase: '1001', coupon: 'SAVE10' }));
   });
 
   it('keeps the cart when the gateway takes over, so a failed payment can retry', async () => {

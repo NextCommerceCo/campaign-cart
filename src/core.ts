@@ -28,6 +28,10 @@ const browserStorage = (get: () => Storage): Storage | null => {
 
 const cookie = (name: string) => document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1];
 
+const pixelId = () =>
+  document.querySelector<HTMLMetaElement>('meta[name="os-facebook-pixel"], meta[name="facebook-pixel-id"]')?.content ||
+  [...document.scripts].map((s) => s.text.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/)?.[1]).find(Boolean);
+
 const EVENT_NAMES: EventName[] = [
   'campaign.loaded',
   'cart.updated',
@@ -93,6 +97,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       deviceType: matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop',
       fbp: cookie('_fbp'),
       fbc: cookie('_fbc'),
+      domain: location.hostname,
+      pixelId: pixelId(),
     },
     funnel: config.funnel || undefined,
     reset: config.reset,

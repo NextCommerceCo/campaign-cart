@@ -61,6 +61,13 @@ describe('boot', () => {
     window.removeEventListener('next:initialized', onWindow);
   });
 
+  it('notes the domain and the page’s Meta pixel for order attribution, like 0.4.x', async () => {
+    document.head.innerHTML = `<script>!function(){}(); fbq('init', '1234567890'); fbq('track', 'PageView');</script>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    expect(next.getState().visit.landing).toMatchObject({ domain: location.hostname, pixelId: '1234567890' });
+  });
+
   it('is ready from the snapshot before the campaign request returns', async () => {
     boot(config, Promise.resolve(campaign));
     await flush();

@@ -172,7 +172,13 @@ export function createOrder(ctx: Context, cart: CartActions) {
       .filter((l) => l.is_upsell)
       .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
       .filter((u) => !done.includes(u.id));
-    ctx.emit('order.loaded', { order, ...(purchase && { purchase }), ...(upsells.length && { upsells }) });
+    const { coupon } = state();
+    ctx.emit('order.loaded', {
+      order,
+      ...(purchase && { purchase }),
+      ...(purchase && coupon?.refId === order.ref_id && { coupon: coupon.code }),
+      ...(upsells.length && { upsells }),
+    });
   };
 
   return {

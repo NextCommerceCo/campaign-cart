@@ -1,3 +1,5 @@
+declare const __VERSION__: string;
+
 export interface Visit {
   landingPage: string;
   referrer: string;
@@ -5,6 +7,8 @@ export interface Visit {
   deviceType: 'mobile' | 'desktop';
   fbp?: string;
   fbc?: string;
+  domain?: string;
+  pixelId?: string;
 }
 
 export interface Attribution {
@@ -29,6 +33,7 @@ export function buildAttribution(
   params: Record<string, string>,
   visit: Visit | undefined,
   funnel: string | undefined,
+  now: number,
 ): Attribution {
   const pick = (...keys: string[]) => keys.map((k) => params[k]).find(Boolean);
   const sub = (n: number) => pick(`subaffiliate${n}`, `sub${n}`)?.slice(0, 225);
@@ -55,6 +60,10 @@ export function buildAttribution(
       device_type: visit?.deviceType ?? 'desktop',
       fb_fbp: visit?.fbp ?? '',
       fb_fbc: visit?.fbc ?? '',
+      domain: visit?.domain ?? '',
+      fb_pixel_id: visit?.pixelId ?? '',
+      sdk_version: __VERSION__,
+      conversion_timestamp: now,
       ...(params.fbclid && { fbclid: params.fbclid }),
       ...(params.clickid && { clickid: params.clickid }),
       ...(evclid && { everflow_transaction_id: evclid }),

@@ -12,12 +12,15 @@ describe('attribution', () => {
       deviceType: 'mobile' as const,
       fbp: 'fb.1',
       fbc: '',
+      domain: 'shop.test',
+      pixelId: '123456',
     };
     expect(
       buildAttribution(
         { aff: 'A1', sub2: 'x'.repeat(300), utm_source: 'fb', fbclid: 'F', evclid: 'E', other: 'y' },
         visit,
         'Olympus',
+        1000,
       ),
     ).toEqual({
       affiliate: 'A1',
@@ -32,6 +35,10 @@ describe('attribution', () => {
         device_type: 'mobile',
         fb_fbp: 'fb.1',
         fb_fbc: '',
+        domain: 'shop.test',
+        fb_pixel_id: '123456',
+        sdk_version: expect.any(String),
+        conversion_timestamp: 1000,
         fbclid: 'F',
         everflow_transaction_id: 'E',
       },

@@ -156,6 +156,53 @@ describe('analytics', () => {
     expect(payment).toMatchObject({ event: 'dl_add_payment_info', payment_type: 'Credit Card' });
   });
 
+  it('names the coupon and the shipping cost on cart-level events, like 0.4.x', async () => {
+    const engine = await ready('', {}, (e) => void e.cart.addItem(2));
+    startAnalytics(engine, options);
+    await flush();
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
+    const updated = win.NextDataLayer!.filter((e) => e.event === 'dl_cart_updated').at(-1);
+    const begin = win.NextDataLayer!.at(-1);
+    expect(updated.ecommerce).toMatchObject({ coupon: 'SAVE10', shipping: 0 });
+    expect(updated.cart).toEqual({
+      currency: 'USD',
+      items: [{ package_id: 2, quantity: 1, price: 89 }],
+      total_items: 1,
+      total_value: 89,
+    });
+    expect(begin.ecommerce).toMatchObject({ coupon: 'SAVE10', shipping: 0 });
+  });
+
+  it('fills purchase items from the campaign package and names the coupon, like 0.4.x', async () => {
+    const order = {
+      ...ORDER,
+      lines: [
+        {
+          id: 31,
+          package: 9,
+          product_title: 'Protection plan',
+          quantity: 1,
+          price_excl_tax: '9.00',
+          price_incl_tax: '9.00',
+          is_upsell: false,
+        },
+      ],
+    };
+    const engine = await ready();
+    startAnalytics(engine, options);
+    engine.events.emit('order.loaded', { order, purchase: '1001', coupon: 'SAVE10' });
+    const purchase = win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!;
+    expect(purchase.ecommerce.coupon).toBe('SAVE10');
+    expect(purchase.ecommerce.items[0]).toMatchObject({
+      item_id: 'SKU-31',
+      item_brand: 'Olympus',
+      item_product_id: '900',
+      item_image: 'https://cdn.test/9.png',
+    });
+  });
+
   it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
     const local = new MemoryStorage();
     const run = async () => {

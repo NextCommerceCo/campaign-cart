@@ -333,16 +333,18 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       }
 
       try {
+        const vouchers = cart.vouchers();
         const order = await ctx.api.createOrder(
           orderBody(ctx.getState(), {
             method,
             token,
             lines: cart.lines(),
-            vouchers: cart.vouchers(),
+            vouchers,
             attribution: ctx.attribution(),
             urls: input,
           }),
         );
+        if (vouchers[0]) ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0] } }, { silent: true });
         ctx.emit('order.placed', { order });
         if (order.payment_complete_url) {
           set({

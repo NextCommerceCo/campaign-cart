@@ -138,6 +138,31 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   const cartTotal = () => engine.getState().cart.summary?.total ?? '0';
 
+  const legacyCart = () => {
+    const summary = engine.getState().cart.summary;
+    const items = engine.cart.lines().map((l) => {
+      const line = summary?.lines.find((s) => s.package_id === l.package_id);
+      const price = Number(line?.package_price ?? engine.getPackage(l.package_id)?.price_total ?? 0);
+      return { package_id: l.package_id, quantity: l.quantity, price };
+    });
+    return {
+      currency: currency(),
+      items,
+      total_items: items.reduce((n, i) => n + i.quantity, 0),
+      total_value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
+    };
+  };
+
+  const cartEcommerce = () => {
+    const [coupon] = engine.cart.vouchers();
+    const method = engine.getState().cart.summary?.shipping_method;
+    return {
+      ...ecommerce(engine.cart.lines()),
+      ...(coupon && { coupon }),
+      ...(method && { shipping: Number(method.price) }),
+    };
+  };
+
   const exitIntent = (name: string, { imageUrl, template }: ExitIntentDetail) =>
     send(`dl_exit_intent_${name}`, {
       event_category: 'engagement',
@@ -161,8 +186,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
     if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(viewed) });
     if (viewed.length > 1) {
+      const { value: _, ...list } = ecommerce(viewed);
       send('dl_view_item_list', {
-        ecommerce: { ...ecommerce(viewed), item_list_id: 'product_list', item_list_name: 'Product List' },
+        ecommerce: { ...list, item_list_id: 'product_list', item_list_name: 'Product List' },
       });
     }
   };
@@ -213,14 +239,20 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     const qty = line.quantity || 1;
     const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
     const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;
+    const pkg = line.package ? engine.getPackage(line.package) : undefined;
+    const campaign = engine.getState().campaign?.name;
+    const sku = line.product_sku || pkg?.product_sku;
+    const variant = line.variant_title || pkg?.product_variant_name;
+    const image = line.image || pkg?.image;
     return {
-      item_id: line.product_sku || String(line.product_id ?? line.id),
+      item_id: sku || `SKU-${line.product_id || line.id}`,
       item_name: line.product_title,
-      item_category: engine.getState().campaign?.name,
-      ...(line.variant_title && { item_variant: line.variant_title }),
-      ...ids(line.product_id, line.variant_id),
-      ...(line.product_sku && { item_sku: line.product_sku }),
-      ...(line.image && { item_image: line.image }),
+      item_brand: pkg?.product_name || campaign,
+      item_category: campaign,
+      ...(variant && { item_variant: variant }),
+      ...ids(line.product_id ?? pkg?.product_id, line.variant_id ?? pkg?.product_variant_id),
+      ...(sku && { item_sku: sku }),
+      ...(image && { item_image: image }),
       price: cents(paid),
       ...(listed > paid && { discount: cents(listed - paid) }),
       quantity: line.quantity,
@@ -229,7 +261,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     };
   };
 
-  const onOrder = ({ order, purchase, upsells }: EventMap['order.loaded']) => {
+  const onOrder = ({ order, purchase, coupon, upsells }: EventMap['order.loaded']) => {
     const reported: string[] = [];
     if (purchase) {
       const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
@@ -247,6 +279,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
           affiliation: 'Online Store',
           items,
+          ...(coupon && { coupon }),
           ...(discount > 0 && { discount }),
         },
       });
@@ -284,13 +317,13 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
-      const cart = ecommerce(engine.cart.lines());
+      const cart = cartEcommerce();
       const value = Number(cartTotal());
       switch (e.name) {
         case 'cart.updated':
           return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
         case 'cart.calculated':
-          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart });
+          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart, cart: legacyCart() });
         case 'checkout.started':
           return send('dl_begin_checkout', { cart_total: cartTotal(), ecommerce: cart });
         case 'checkout.shipping-added': {
