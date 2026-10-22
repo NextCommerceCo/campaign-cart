@@ -7,13 +7,18 @@ import { legacyHiddenStates } from './legacy';
 const WRAPPER =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';
 
-function fill(select: HTMLSelectElement, options: CountryOption[], value: string | undefined, placeholder?: string) {
+function fill(
+  select: HTMLSelectElement,
+  options: CountryOption[],
+  value: string | undefined,
+  { placeholder, blank = true }: { placeholder?: string; blank?: boolean } = {},
+) {
   const first = select.options[0]?.value === '' ? select.options[0] : undefined;
   const key = options.map((o) => o.code).join(',');
   if (select.dataset.nextOptions !== key) {
     select.dataset.nextOptions = key;
-    const blank = first ?? option('', '');
-    select.replaceChildren(blank, ...options.map((o) => option(o.name, o.code)));
+    const blanks = first ? [first] : blank ? [option('', '')] : [];
+    select.replaceChildren(...blanks, ...options.map((o) => option(o.name, o.code)));
   }
   if (placeholder && select.options[0]) select.options[0].text = placeholder;
   if (value !== undefined && select.value !== value) select.value = value;
@@ -43,7 +48,8 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
     for (const prefix of ['', 'billing_'] as const) {
       const country = fields.get(`${prefix}country`);
       const code = checkout.fields[`${prefix}country`];
-      if (country instanceof HTMLSelectElement) fill(country, checkout.countries, code);
+      if (country instanceof HTMLSelectElement)
+        fill(country, checkout.countries, code, { blank: !country.closest('[data-next-address]') });
 
       const rules = checkout.rules[code ?? ''];
       const state = fields.get(`${prefix}state`);
@@ -52,7 +58,7 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
           (s) => code !== 'US' || !(US_TERRITORIES.test(s.code) || hidden.includes(s.code)),
         );
         const label = rules.fields.state?.label;
-        fill(state, states, checkout.fields[`${prefix}state`] ?? '', label && `Select ${label}`);
+        fill(state, states, checkout.fields[`${prefix}state`] ?? '', { placeholder: label && `Select ${label}` });
         const wrapper = state.closest<HTMLElement>(WRAPPER) ?? state;
         wrapper.style.display = states.length || rules.fields.state?.required ? '' : 'none';
       }

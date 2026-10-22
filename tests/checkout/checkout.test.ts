@@ -412,6 +412,8 @@ describe('SDK-built address blocks (starter templates, data-next-address)', () =
       postal.closest('.form-group.next-address-field')!.querySelector('label.next-address-label')!.textContent,
     ).toBe('ZIP Code');
     expect($<HTMLSelectElement>('[data-next-checkout-field="province"]').options.length).toBe(3);
+    const countries = [...$<HTMLSelectElement>('[data-next-checkout-field="country"]').options].map((o) => o.value);
+    expect(countries).toEqual(['US', 'GB']);
     expect(rows('billing')[1]).toEqual(['billing-fname', 'billing-lname']);
   });
 
@@ -450,6 +452,33 @@ describe('SDK-built address blocks (starter templates, data-next-address)', () =
       state: 'CA',
       postcode: '90210',
       country: 'US',
+    });
+  });
+
+  it('opens the billing block on the shipping country once billing differs, and sends that address', async () => {
+    const { fill, card, submit, orders, $, field } = await mount('starter/olympus-checkout.html');
+    fill(SHIPPING);
+    const same = $('input[name="use_shipping_address"]');
+    same.checked = false;
+    same.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect($<HTMLSelectElement>('[data-next-checkout-field="billing-country"]').value).toBe('US');
+    expect($<HTMLSelectElement>('[data-next-checkout-field="billing-province"]').options.length).toBe(3);
+    fill({
+      'billing-fname': 'John',
+      'billing-lname': 'Roe',
+      'billing-address1': '2 Side St',
+      'billing-city': 'Dallas',
+      'billing-province': 'NY',
+      'billing-postal': '10001',
+    });
+    expect(field('billing-fname').classList).not.toContain('next-error-field');
+    card();
+    await submit();
+    await flush();
+    expect(orders()[0]!.body).toMatchObject({
+      billing_same_as_shipping_address: false,
+      billing_address: { first_name: 'John', line1: '2 Side St', line4: 'Dallas', state: 'NY', country: 'US' },
     });
   });
 
