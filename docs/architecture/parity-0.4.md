@@ -2,16 +2,20 @@
 
 October 2026. Every attribute, `window.next` member, event, config key, meta tag, URL
 parameter, display path and `dl_*` event the 0.4.43 source reads or writes, checked against
-this SDK and against what the live pages in `my-campaigns/_site` use (74 pages, HTML comments
-stripped, page scripts included). Limos still pins 0.4.28; its only extra feature, FOMO, left
-in 0.4.37 and its pages never reach the call.
+this SDK and against two sets of pages, HTML comments stripped and page scripts included: the
+live pages in `my-campaigns/_site` (74 pages) and
+[campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)
+(82 pages at `ba5604c`), which every new campaign is copied from and `bun dev` serves. The
+"Live pages" column counts `my-campaigns`; a note names starter use. Limos still pins 0.4.28;
+its only extra feature, FOMO, left in 0.4.37 and its pages never reach the call.
 
 How to read the status column:
 
 - **Supported**: same markup, same result.
 - **Removed (documented)**: listed in [migrating-from-0.4.md](../guides/migrating-from-0.4.md).
-- **Removed (no live use)**: nothing in `my-campaigns` uses it; it is not coming back unless a
-  page needs it.
+- **Removed (no live use)**: neither `my-campaigns` nor the starter templates use it; it is not
+  coming back unless a page needs it.
+- **Deprecated**: still read, from the chunk's `legacy.ts`; the note says what replaces it.
 - **Ignored**: read by 0.4.x, harmless to leave on a page.
 
 ## Found by this check and fixed
@@ -29,12 +33,24 @@ How to read the status column:
 | NextCommerce address autocomplete (`addressConfig.enableAutocomplete: true` in every config.js) missing                                                                                                        | 15 checkouts                               | `a3363781` |
 | A coupon the server gives nothing for was kept (and `cart.hasCoupon()` turned true); the field was cleared either way                                                                                          | 4 coupon fields, 6 `cart.hasCoupon()`      | `2a515169` |
 | `providers.gtm.enabled: false` ignored; `?debug=true` ignored                                                                                                                                                  | 7 configs                                  | `2a515169` |
+| Starter: `data-next-address` blocks stayed empty, so checkouts had no address fields                                                                                                                           | 9 starter checkouts                        | `2f8cce89` |
+| Starter: `data-next-timer` countdowns never ran                                                                                                                                                                | 16 starter upsells                         | `2f8cce89` |
+| Starter: an offer whose selector sits beside it (`data-next-bundle-selector-id`) was added without the selector's voucher                                                                                      | 5 starter upsells                          | `2f8cce89` |
+| Starter: `data-next-phone-e164` never written, so the forwarder sent no E.164 phone from field entry                                                                                                           | 8 forwarders                               | `2f8cce89` |
+| US territories (AS, GU, MP, PR, VI, UM) offered as states; 0.4.x always hid them                                                                                                                               | every US checkout                          | `ee870a2a` |
 
 `bun run e2e` now also checks the autocomplete and a floating label in Chromium. A sweep of
 all 72 pages in `bun dev` shows no SDK warning other than the intended "facebook/rudderstack
 provider is no longer built in" on apollo-multi-variant. Two page bugs exist in 0.4.43 too:
 `next.fomo()` on shop-single-step/checkout and shop-three-step (FOMO left in 0.4.37), and
 `initBundleQtyToggle()` on olympus-multi-variant-two-step/upsell-mv (its script is not loaded).
+
+The starter templates were swept side by side: each of the 82 pages under 0.4.43 (its own CDN
+tag) and under this SDK, both on the `bun dev` mock with production hosts blocked, comparing
+every display value, shown or hidden element, card class, form field and select. No page logs
+an error or an SDK warning. What still differs is listed under "Kept different on purpose", or
+is the mock campaign lacking package 77 (MV pages). `bun run e2e` runs the olympus funnel on
+the starter pages by default.
 
 ## Open decision
 
@@ -60,6 +76,10 @@ GET (backend ask B5), or keep USD.
 | Coupon applied-code list and messages (`[data-next-coupon="display"]`, `.coupon-messages`)                          | Not drawn (no live page has the hosts); `coupon.refused` fires instead                                           |
 | Bundle selectors on upsell pages written into the (finished) cart                                                   | Recorded only                                                                                                    |
 | MOCK mode in `bun dev`                                                                                              | Applies no campaign offers; check offer prices with `--api live`                                                 |
+| `order.number` with a thousands separator (`1,003`)                                                                 | As the API sends it (`1003`)                                                                                     |
+| Phone field widget: country flag, per-country typing mask, rules placeholder                                        | The page's own input; the E.164 number still goes on the order and in `data-next-phone-e164`                     |
+| Expiry selects relabelled `Month` / `Year`                                                                          | The page's own first option (`Exp. Month`)                                                                       |
+| Bundle cards on upsell pages without `next-in-cart`                                                                 | `next-in-cart` set (no page CSS or script reads it there)                                                        |
 
 ## Attributes (145 names in the 0.4.43 source)
 
@@ -71,12 +91,12 @@ GET (backend ask B5), or keep USD.
 | `data-next-accordion-trigger`            |         14 | Supported             |                                                                                             |
 | `data-next-action`                       |          1 | Supported             |                                                                                             |
 | `data-next-active`                       |          0 | Supported             |                                                                                             |
-| `data-next-address`                      |          1 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
-| `data-next-address-api`                  |          0 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
-| `data-next-address-field`                |          0 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
-| `data-next-address-lang`                 |          0 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
-| `data-next-address-row`                  |          0 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
-| `data-next-address-state`                |          0 | Removed (documented)  | SDK-drawn address form; apollo-multi-variant switches to written fields when it moves       |
+| `data-next-address`                      |          1 | Supported             | fields built per country (`checkout/address-form.ts`); 9 starter checkouts                  |
+| `data-next-address-api`                  |          0 | Ignored               | the rules host is fixed; no page sets it                                                    |
+| `data-next-address-field`                |          0 | Supported             | written on each built field                                                                 |
+| `data-next-address-lang`                 |          0 | Ignored               | the campaign language is used; no page sets it                                              |
+| `data-next-address-row`                  |          0 | Supported             | written on each built row                                                                   |
+| `data-next-address-state`                |          0 | Supported             | `loading` until the country’s rules arrive, then `ready`                                    |
 | `data-next-bump`                         |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
 | `data-next-bump-section`                 |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
 | `data-next-bundle-card`                  |         40 | Supported             |                                                                                             |
@@ -87,7 +107,7 @@ GET (backend ask B5), or keep USD.
 | `data-next-bundle-price`                 |          0 | Removed (no live use) | old alias of `data-next-bundle-display`                                                     |
 | `data-next-bundle-qty-for`               |         10 | Supported             |                                                                                             |
 | `data-next-bundle-selector`              |         40 | Supported             |                                                                                             |
-| `data-next-bundle-selector-id`           |          0 | Removed (no live use) | offer pointing at a selector by id; offers use the selector inside them                     |
+| `data-next-bundle-selector-id`           |          0 | Deprecated            | selector beside the offer (5 starter upsells); put it inside                                |
 | `data-next-bundle-slot-template`         |          0 | Supported             |                                                                                             |
 | `data-next-bundle-slot-template-id`      |          6 | Supported             |                                                                                             |
 | `data-next-bundle-slots`                 |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
@@ -150,7 +170,7 @@ GET (backend ask B5), or keep USD.
 | `data-next-payment-method`               |          9 | Supported             |                                                                                             |
 | `data-next-payment-state`                |          0 | Supported             |                                                                                             |
 | `data-next-phone-country`                |          0 | Removed (documented)  | phone flag widget                                                                           |
-| `data-next-phone-e164`                   |          0 | Removed (documented)  | phone flag widget                                                                           |
+| `data-next-phone-e164`                   |          0 | Supported             | set from the i18n-rules check; the starter forwarder reads it                               |
 | `data-next-product-sync`                 |          3 | Supported             | counts units, like 0.4.x (fixed in this pass)                                               |
 | `data-next-property`                     |          4 | Supported             |                                                                                             |
 | `data-next-property-container`           |          0 | Removed (no live use) |                                                                                             |
@@ -173,9 +193,9 @@ GET (backend ask B5), or keep USD.
 | `data-next-show`                         |         20 | Supported             |                                                                                             |
 | `data-next-slot-index`                   |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
 | `data-next-step-number`                  |          2 | Supported             |                                                                                             |
-| `data-next-timer`                        |          0 | Removed (no live use) | countdown; pages run their own timer script                                                 |
-| `data-next-timer-display`                |          0 | Removed (no live use) | countdown; pages run their own timer script                                                 |
-| `data-next-timer-expired`                |          0 | Removed (no live use) | countdown; pages run their own timer script                                                 |
+| `data-next-timer`                        |          0 | Supported             | countdown, widgets chunk; 16 starter upsells                                                |
+| `data-next-timer-display`                |          0 | Supported             | countdown, widgets chunk                                                                    |
+| `data-next-timer-expired`                |          0 | Supported             | countdown, widgets chunk                                                                    |
 | `data-next-toggle`                       |          2 | n/a                   | only the 0.4.x debug overlay read it                                                        |
 | `data-next-toggle-card`                  |          9 | Supported             |                                                                                             |
 | `data-next-toggle-container`             |          0 | Supported             |                                                                                             |
