@@ -36,6 +36,20 @@ afterEach(() => {
 
 const NEXT = `${location.origin}/apollo/upsell-bundle-tier-pills/?ref_id=R1`;
 
+describe('upsell page (starter upsell-single, selector beside the offer)', () => {
+  it('adds the card of the selector named by data-next-bundle-selector-id, with its voucher', async () => {
+    history.replaceState(null, '', '/olympus/upsell-single/?ref_id=R1');
+    const { $, upsells, navigate } = await mount('starter/olympus-upsell-single.html');
+    $('[data-next-upsell-action="add"]').click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(upsells()[0]!.body).toEqual({
+      lines: [{ package_id: 12, quantity: 1 }],
+      currency: 'USD',
+      vouchers: ['LIFE50'],
+    });
+  });
+});
+
 describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
   it('prices the offer for the stepped quantity and adds it once', async () => {
     const { $, upsells, navigate, events } = await mount('apollo/upsell-bundle-stepper.html');

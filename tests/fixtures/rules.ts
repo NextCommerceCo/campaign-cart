@@ -4,19 +4,40 @@ import { json } from './api';
 
 export const US: CountryRules = {
   country: { code: 'US', name: 'United States' },
+  address: {
+    layout: [
+      ['country'],
+      ['first_name', 'last_name'],
+      ['line1'],
+      ['line2'],
+      ['city', 'state', 'postcode'],
+      ['phone_number'],
+    ],
+  },
   fields: {
-    state: { required: true, errors: { not_selected: 'Select a state' } },
-    postcode: { required: true, format: { pattern: '^[0-9]{5}([0-9]{4})?$' }, errors: { invalid: 'Enter a ZIP Code' } },
+    state: { required: true, label: 'State', input: { type: 'select' }, errors: { not_selected: 'Select a state' } },
+    postcode: {
+      required: true,
+      label: 'ZIP Code',
+      format: { pattern: '^[0-9]{5}([0-9]{4})?$' },
+      errors: { invalid: 'Enter a ZIP Code' },
+    },
   },
   states: [
     { code: 'CA', name: 'California' },
     { code: 'NY', name: 'New York' },
+    { code: 'PR', name: 'Puerto Rico' },
   ],
 };
 
 export const GB: CountryRules = {
   country: { code: 'GB', name: 'United Kingdom' },
-  fields: { postcode: { required: true, format: { pattern: '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$' } } },
+  address: {
+    layout: [['country'], ['first_name', 'last_name'], ['line1'], ['line2'], ['city', 'postcode'], ['phone_number']],
+  },
+  fields: {
+    postcode: { required: true, label: 'Postcode', format: { pattern: '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$' } },
+  },
 };
 
 const COUNTRIES = [

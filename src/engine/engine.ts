@@ -73,7 +73,7 @@ export class Engine {
       cart: emptyCart(),
       selectors: {},
       toggles: {},
-      visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0 },
+      visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0, timers: {} },
     };
     this.context = {
       getState: () => this.state,
@@ -143,6 +143,14 @@ export class Engine {
     this.update('visit', { exitIntentShown: this.state.visit.exitIntentShown + 1 });
   }
 
+  timerStart(id: string, durationMs: number): number {
+    const now = (this.options.now ?? Date.now)();
+    const { [id]: start, ...others } = this.state.visit.timers;
+    if (start === undefined) this.update('visit', { timers: { ...others, [id]: now } });
+    else if (start + durationMs <= now) this.update('visit', { timers: others });
+    return start ?? now;
+  }
+
   private restore(): void {
     const cart = this.session.get<Partial<State['cart']>>('cart');
     const visit = this.session.get<Partial<State['visit']>>('visit');
@@ -152,6 +160,7 @@ export class Engine {
       params: { ...visit?.params, ...this.state.visit.params },
       landing: visit?.landing ?? this.state.visit.landing,
       exitIntentShown: visit?.exitIntentShown ?? 0,
+      timers: visit?.timers ?? {},
     });
     if (campaign) this.events.emit('campaign.loaded', { campaign, fromCache: true });
   }

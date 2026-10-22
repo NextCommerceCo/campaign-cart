@@ -76,6 +76,7 @@ src/
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     form.ts address.ts billing.ts  fields, country/state/location, same-as-shipping and cloned rows
+    address-form.ts                [data-next-address]: the country's fields from its i18n-rules layout
     payment.ts express.ts logos.ts payment radios and panels, payment.js card, express buttons
     review.ts                      [data-next-checkout-review]
     messages.ts                    field and payment error display
@@ -86,21 +87,21 @@ src/
   analytics.ts         analytics   subscriber, loaded on idle
   exit-intent.ts       exit-intent loaded on the first next.exitIntent() call
   slots.ts             slots       loaded when a bundle selector has a slot template (multi-variant pages)
-  widgets.ts           widgets     accordion and tooltip 0.4.x pages rely on; loaded when present
+  widgets.ts           widgets     accordion, tooltip, scroll hint and countdown 0.4.x pages rely on; loaded when present
   debug.ts             debug       loaded with ?debug=1
 ```
 
-| Chunk       | Loaded when                                      | Budget (gzip) |
-| ----------- | ------------------------------------------------ | ------------- |
-| loader      | always, inline                                   | 2.5 KB        |
-| core        | always                                           | 25 KB         |
-| checkout    | `form[data-next-checkout]`                       | 30 KB         |
-| order       | `[data-next-upsell]` or `order.*`                | 10 KB         |
-| analytics   | idle after ready                                 | 8 KB          |
-| exit-intent | first `next.exitIntent()`                        | 3 KB          |
-| slots       | a bundle selector with a slot template           | 6 KB          |
-| widgets     | `[data-next-accordion]` or `[data-next-tooltip]` | 3 KB          |
-| debug       | `?debug=1`                                       | 3 KB          |
+| Chunk       | Loaded when                                                         | Budget (gzip) |
+| ----------- | ------------------------------------------------------------------- | ------------- |
+| loader      | always, inline                                                      | 2.5 KB        |
+| core        | always                                                              | 25 KB         |
+| checkout    | `form[data-next-checkout]`                                          | 30 KB         |
+| order       | `[data-next-upsell]` or `order.*`                                   | 10 KB         |
+| analytics   | idle after ready                                                    | 8 KB          |
+| exit-intent | first `next.exitIntent()`                                           | 3 KB          |
+| slots       | a bundle selector with a slot template                              | 6 KB          |
+| widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
+| debug       | `?debug=1`                                                          | 3 KB          |
 
 ## Imports
 

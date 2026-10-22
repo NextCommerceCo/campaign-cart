@@ -138,6 +138,7 @@ describe('checkout', () => {
     const down = await setup({ campaign, rulesDown: true });
     await down.checkout.loadCountries(['GB']);
     expect(down.engine.getState().checkout!.countries).toEqual([{ code: 'GB', name: 'UK' }]);
+    expect(down.engine.getState().checkout!.rulesDown).toBe(true);
   });
 
   it('checks a field when it is left, clears it when typed in, and checks phone and postcode remotely', async () => {

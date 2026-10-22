@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from '../engine/order';
 import { nextUrl } from '../engine/params';
 import { selectorIdOf } from '../bindings/dom';
-import { ACCEPT_WORDS, NEXT_URL_ATTRS } from './legacy';
+import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from './legacy';
 
 const FEEDBACK_MS = 1000;
 const SUCCESS_MS = 100;
@@ -23,7 +23,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
   const page = location.pathname;
   return [...document.querySelectorAll<HTMLElement>('[data-next-upsell]')].map((offer) => {
     const selectorEl = offer.querySelector('[data-next-bundle-selector]');
-    const selectorId = selectorEl ? selectorIdOf(selectorEl) : undefined;
+    const selectorId = selectorEl ? selectorIdOf(selectorEl) : legacyOfferSelector(offer);
     const packageId = Number(offer.getAttribute('data-next-package-id'));
     const quantity = Number(offer.getAttribute('data-next-quantity')) || 1;
     const buttons = [...offer.querySelectorAll<HTMLElement>('[data-next-upsell-action]')];

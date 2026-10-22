@@ -74,6 +74,8 @@ the campaign's package prices show until the quote arrives.
 | `data-next-required="true"` / `required`                                                                   | On the phone field: make it required                                                                                                                                                                                                |
 | `input[name="use_shipping_address"]`, `data-next-component="different-billing-address"` / `"billing-form"` | Same-as-shipping toggle, billing section, rows cloned from `shipping-field-row`                                                                                                                                                     |
 | `data-next-component="location"`                                                                           | Shown once a street address is typed                                                                                                                                                                                                |
+| `data-next-address="shipping" / "billing"`                                                                 | The country's address fields, built from i18n-rules in its order (`.next-address-row` › `.form-group.next-address-field` › control + `label.next-address-label`); skips fields the form writes itself; `data-next-address-state`    |
+| `data-next-phone-e164` (set by the SDK)                                                                    | On the phone field while i18n-rules reads the number as valid: the number in E.164                                                                                                                                                  |
 | `nextConfig.addressConfig.enableAutocomplete: true`                                                        | Address suggestions under the street field (NextCommerce lookup)                                                                                                                                                                    |
 | `.form-group label.label-checkout`                                                                         | Floating label: gets `has-value` (and `is-focused` with `data-label-behavior="placeholder"`)                                                                                                                                        |
 | `input[name="payment_method"]`, `data-next-payment-method`, `data-next-payment-form`                       | Payment choice and its panels                                                                                                                                                                                                       |
@@ -89,10 +91,15 @@ the campaign's package prices show until the quote arrives.
 | Attribute                                          | Meaning                                                                                                  |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `data-next-upsell="offer"`                         | An offer; its first bundle selector supplies the lines (or `data-next-package-id`)                       |
+| `data-next-bundle-selector-id` on the offer        | _0.4.x:_ the selector supplying the lines sits outside the offer                                         |
 | `data-next-upsell-action="add\|skip"`              | Accept or decline; `data-next-url` or `<meta name="next-upsell-accept-url">` / `-decline-url`            |
 | `[data-next-order-items]`, `data-item-template-id` | Order lines from a template with `{item.name}`, `{item.quantity}`, `{item.lineTotal}`, `{item.image}`, … |
 
 ## Page widgets
+
+`data-next-timer` with `data-duration` (seconds), `data-persistence-id` and `data-format`
+(`mm:ss`, `hh:mm:ss`, `ss`): counts down in `[data-next-timer-display]` from where the tab left it,
+then hides itself and shows `[data-next-timer-expired][data-persistence-id]`.
 
 `data-next-accordion` (with `-trigger`, `-panel`, `-text`), `data-next-tooltip`, and
 `data-next-component="scroll-hint"` (`data-next-scroll-target`, `data-next-scroll-threshold`):

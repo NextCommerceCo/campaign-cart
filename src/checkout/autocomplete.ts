@@ -195,10 +195,13 @@ function attach(
   });
 }
 
+const attached = new WeakSet<HTMLInputElement>();
+
 export function bindAutocomplete(fields: Fields, checkout: CheckoutActions): void {
   for (const prefix of ['', 'billing_'] as const) {
     const input = fields.get(`${prefix}line1`);
-    if (!(input instanceof HTMLInputElement)) continue;
+    if (!(input instanceof HTMLInputElement) || attached.has(input)) continue;
+    attached.add(input);
     const country = () => fields.get(`${prefix}country`)?.value || 'US';
     attach(input, country, checkout.suggestAddresses, (s) => fill(fields, prefix, s));
   }

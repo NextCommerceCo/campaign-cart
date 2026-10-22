@@ -30,6 +30,26 @@ describe('page widgets', () => {
     expect(container.classList).not.toContain('next-expanded');
   });
 
+  it('counts the starter upsell timer down from where the tab left it, then hides it', () => {
+    vi.useFakeTimers({ now: 0 });
+    const doc = new DOMParser().parseFromString(
+      readFileSync('tests/fixtures/pages/starter/olympus-upsell-single.html', 'utf8'),
+      'text/html',
+    );
+    document.body.innerHTML = `${doc.body.innerHTML}<p id="gone" data-next-timer-expired data-persistence-id="upsell-single" style="display:none"></p>`;
+    const timerStart = vi.fn(() => -60_000);
+    bindWidgets(document, { timerStart });
+    const timer = document.querySelector<HTMLElement>('[data-next-timer]')!;
+    const display = timer.querySelector('[data-next-timer-display]')!;
+    expect(timerStart).toHaveBeenCalledWith('upsell-single', 1_800_000);
+    expect(display.textContent).toBe('29:00');
+    vi.advanceTimersByTime(61_000);
+    expect(display.textContent).toBe('27:59');
+    vi.advanceTimersByTime(28 * 60_000);
+    expect(timer.style.display).toBe('none');
+    expect(document.getElementById('gone')!.style.display).toBe('');
+  });
+
   it('shows a tooltip after a pause and hides it when the pointer leaves', () => {
     vi.useFakeTimers();
     document.body.innerHTML = `<span id="lock" data-next-tooltip="All transactions are secure and encrypted."></span>`;

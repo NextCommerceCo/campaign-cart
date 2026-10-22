@@ -368,6 +368,17 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('[data-next-component="credit-error"]').style.display).toBe('none');
   });
 
+  it('puts the phone in E.164 on its field for page forwarders while the number checks out', async () => {
+    const { type, field } = await mount('olympus/checkout.html');
+    type('phone', '(415) 555-2671');
+    await flush();
+    expect(field('phone').getAttribute('data-next-phone-e164')).toBe('+14155552671');
+    field('phone').value = '(415) 555-26';
+    field('phone').dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    expect(field('phone').hasAttribute('data-next-phone-e164')).toBe(false);
+  });
+
   it('tells page scripts about the prospect cart, once', async () => {
     const { fill, form } = await mount('olympus/checkout.html');
     const created = vi.fn();
@@ -378,6 +389,91 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await flush();
     expect(created).toHaveBeenCalledTimes(1);
     expect(created.mock.calls[0]![0].prospectCart).toMatchObject({ id: 7, email: 'jane@example.com' });
+  });
+});
+
+describe('SDK-built address blocks (starter templates, data-next-address)', () => {
+  const rows = (block: string) =>
+    [...document.querySelectorAll(`[data-next-address="${block}"] .next-address-row`)].map((row) =>
+      [...row.querySelectorAll('[data-next-checkout-field]')].map((el) => el.getAttribute('data-next-checkout-field')),
+    );
+
+  it('builds the fields the country asks for, in its order, minus those the page writes itself', async () => {
+    const { $ } = await mount('starter/olympus-checkout.html');
+    expect(rows('shipping')).toEqual([['country'], ['address1'], ['address2'], ['city', 'province', 'postal']]);
+    const block = $<HTMLElement>('[data-next-address="shipping"]');
+    expect(block.getAttribute('data-next-address-state')).toBe('ready');
+    expect(block.querySelector('[data-next-component="location"]')).toBe(
+      block.querySelectorAll('.next-address-row')[3],
+    );
+    const postal = $('[data-next-checkout-field="postal"]');
+    expect(postal.placeholder).toBe('ZIP Code');
+    expect(
+      postal.closest('.form-group.next-address-field')!.querySelector('label.next-address-label')!.textContent,
+    ).toBe('ZIP Code');
+    expect($<HTMLSelectElement>('[data-next-checkout-field="province"]').options.length).toBe(3);
+    expect(rows('billing')[1]).toEqual(['billing-fname', 'billing-lname']);
+  });
+
+  it('never offers the US territories as states, like 0.4.x', async () => {
+    const { $ } = await mount('starter/olympus-checkout.html');
+    const codes = [...$<HTMLSelectElement>('[data-next-checkout-field="province"]').options].map((o) => o.value);
+    expect(codes).toEqual(['', 'CA', 'NY']);
+  });
+
+  it('rebuilds for a new country and keeps what the shopper typed', async () => {
+    const { type, field, $ } = await mount('starter/olympus-checkout.html');
+    type('address1', '10 Downing St');
+    type('city', 'London');
+    $<HTMLSelectElement>('[data-next-checkout-field="country"]').value = 'GB';
+    field('country').dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    await flush();
+    expect(rows('shipping')).toEqual([['country'], ['address1'], ['address2'], ['city', 'postal']]);
+    expect(field('address1').value).toBe('10 Downing St');
+    expect(field('city').value).toBe('London');
+    expect(field('postal').placeholder).toBe('Postcode');
+    type('postal', 'SW1A 2AA');
+    expect(field('postal').classList).not.toContain('next-error-field');
+  });
+
+  it('places a card order from the built fields', async () => {
+    const { fill, card, submit, orders } = await mount('starter/olympus-checkout.html');
+    fill(SHIPPING);
+    card();
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.shipping_address).toMatchObject({
+      first_name: 'Jane',
+      line1: '1 Main St',
+      line4: 'Austin',
+      state: 'CA',
+      postcode: '90210',
+      country: 'US',
+    });
+  });
+
+  it('falls back to a built-in layout when the address rules cannot be reached', async () => {
+    const { field } = await mount('starter/olympus-checkout.html', { rulesDown: true });
+    await flush();
+    expect(rows('shipping')).toEqual([['country'], ['address1'], ['address2'], ['city', 'province', 'postal']]);
+    expect(field('city').placeholder).toBe('City');
+  });
+
+  it('builds the step-one address block of a three-step checkout and moves on', async () => {
+    history.replaceState(null, '', '/shop-three-step/information/');
+    const { fill, submit, navigate } = await mount('starter/shop-three-step-information.html');
+    expect(rows('shipping')).toEqual([
+      ['country'],
+      ['fname', 'lname'],
+      ['address1'],
+      ['address2'],
+      ['city', 'province', 'postal'],
+      ['phone'],
+    ]);
+    fill(SHIPPING);
+    await submit();
+    expect(navigate).toHaveBeenCalledWith(`${location.origin}/shop-three-step/shipping/`);
   });
 });
 

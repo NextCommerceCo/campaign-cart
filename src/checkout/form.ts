@@ -22,8 +22,8 @@ export function fieldName(el: Element): string | undefined {
 const isControl = (el: Element): el is Control =>
   el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement;
 
-export function scanFields(form: HTMLFormElement): Fields {
-  const fields: Fields = new Map();
+export function scanFields(form: HTMLFormElement, fields: Fields = new Map()): Fields {
+  fields.clear();
   form.querySelectorAll(FIELD_ATTRS.map((a) => `[${a}]`).join(', ')).forEach((el) => {
     const name = fieldName(el);
     if (name && isControl(el) && !fields.has(name)) fields.set(name, el);
@@ -51,24 +51,41 @@ export function syncFields(fields: Fields, checkout: CheckoutActions, current: R
   }
 }
 
-export function bindFields(engine: Engine, checkout: CheckoutActions, fields: Fields): () => void {
+export function bindFields(
+  engine: Engine,
+  checkout: CheckoutActions,
+  form: HTMLFormElement,
+  fields: Fields,
+): () => void {
   const saved = engine.getState().checkout?.fields ?? {};
   const left = new Set(Object.keys(saved).filter((name) => saved[name]?.trim()));
-  for (const [name, el] of fields) {
-    el.addEventListener('input', () => {
-      left.delete(name);
-      checkout.setField(name, valueOf(el));
-    });
-    el.addEventListener('change', () => {
-      left.add(name);
-      checkout.setField(name, valueOf(el));
-      void checkout.leave(name);
-    });
-  }
+  const listen = (type: string, fn: (name: string, el: Control) => void) =>
+    form.addEventListener(
+      type,
+      (e) => {
+        const el = e.target;
+        if (!(el instanceof Element) || !isControl(el)) return;
+        const name = fieldName(el);
+        if (name && fields.get(name) === el) fn(name, el);
+      },
+      true,
+    );
+  listen('input', (name, el) => {
+    left.delete(name);
+    checkout.setField(name, valueOf(el));
+  });
+  listen('change', (name, el) => {
+    left.add(name);
+    checkout.setField(name, valueOf(el));
+    void checkout.leave(name);
+  });
 
   return () => {
     const { checkout: state } = engine.getState();
     if (!state) return;
+    const phone = fields.get('phone_number');
+    if (state.phoneE164) phone?.setAttribute('data-next-phone-e164', state.phoneE164);
+    else phone?.removeAttribute('data-next-phone-e164');
     for (const [name, el] of fields) {
       const value = state.fields[name];
       if (value !== undefined && !(el instanceof HTMLSelectElement)) setValue(el, value);

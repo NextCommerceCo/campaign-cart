@@ -13,6 +13,9 @@ export const LEGACY_FIELDS: Record<string, string> = {
 
 const API_TO_LEGACY = Object.fromEntries(Object.entries(LEGACY_FIELDS).map(([page, api]) => [api, page]));
 
+/** @deprecated The page name of an API field (`line1` → `address1`). Fields built by `data-next-address` keep 0.4.x names, which page CSS selects. */
+export const pageFieldName = (name: string) => API_TO_LEGACY[name] ?? name;
+
 /** @deprecated `os-checkout-field`. Use `data-next-checkout-field`. */
 export const FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
 

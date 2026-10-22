@@ -26,16 +26,15 @@ function reveal(boxes: HTMLElement[], shown: boolean): void {
   }
 }
 
+const US_TERRITORIES = /^(AS|GU|MP|PR|VI|UM(-\d+)?)$/;
+
+const BOXES = {
+  '': '[data-next-component="location"], [data-next-component-location="location"]',
+  billing_: '[data-next-component="billing-location"]',
+};
+
 export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Fields): () => void {
   const hidden = legacyHiddenStates();
-  const boxes = {
-    '': [
-      ...form.querySelectorAll<HTMLElement>(
-        '[data-next-component="location"], [data-next-component-location="location"]',
-      ),
-    ],
-    billing_: [...form.querySelectorAll<HTMLElement>('[data-next-component="billing-location"]')],
-  };
   const revealed = { '': false, billing_: false };
 
   return () => {
@@ -49,7 +48,9 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
       const rules = checkout.rules[code ?? ''];
       const state = fields.get(`${prefix}state`);
       if (state instanceof HTMLSelectElement && rules) {
-        const states = (rules.states ?? []).filter((s) => code !== 'US' || !hidden.includes(s.code));
+        const states = (rules.states ?? []).filter(
+          (s) => code !== 'US' || !(US_TERRITORIES.test(s.code) || hidden.includes(s.code)),
+        );
         const label = rules.fields.state?.label;
         fill(state, states, checkout.fields[`${prefix}state`] ?? '', label && `Select ${label}`);
         const wrapper = state.closest<HTMLElement>(WRAPPER) ?? state;
@@ -57,7 +58,7 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
       }
 
       revealed[prefix] ||= !!checkout.fields[`${prefix}line1`]?.trim();
-      reveal(boxes[prefix], revealed[prefix]);
+      reveal([...form.querySelectorAll<HTMLElement>(BOXES[prefix])], revealed[prefix]);
     }
   };
 }

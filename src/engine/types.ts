@@ -150,6 +150,7 @@ export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
   exitIntentShown: number;
+  timers: Record<string, number>;
 }
 
 export interface AddressSuggestion {
@@ -177,7 +178,16 @@ export type FieldError =
 export interface FieldRule {
   required: boolean;
   label?: string;
-  input?: { max_length?: number };
+  label_optional?: string;
+  autocomplete?: string;
+  input?: {
+    type?: string;
+    placeholder?: string;
+    max_length?: number;
+    input_mode?: string;
+    auto_capitalize?: string;
+    span?: number;
+  };
   format?: { pattern?: string; masks?: unknown };
   errors?: Partial<Record<FieldError, string>>;
 }
@@ -186,6 +196,7 @@ export interface CountryRules {
   country: CountryOption;
   fields: Partial<Record<string, FieldRule>>;
   states?: CountryOption[];
+  address?: { layout: string[][] };
 }
 
 export interface CheckoutError {
@@ -205,6 +216,7 @@ export interface CheckoutState {
   status: 'idle' | 'placing' | 'placed';
   countries: CountryOption[];
   rules: Record<string, CountryRules>;
+  rulesDown?: boolean;
   prospectSaved: boolean;
   pendingRef?: string;
   failurePath?: string;

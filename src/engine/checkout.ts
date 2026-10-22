@@ -149,6 +149,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const rules = await rulesApi.country(code);
       set({ rules: { ...state().rules, [code]: rules } });
     } catch (err) {
+      set({ rulesDown: true });
       ctx.fail('country', err);
     }
   };

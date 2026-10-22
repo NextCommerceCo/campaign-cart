@@ -147,8 +147,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const orderPage = document.querySelector(ORDER_MARKUP);
   const orderChunk = orderPage ? import('./order') : undefined;
-  if (document.querySelector('[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"]'))
-    void import('./widgets').then((m) => m.bindWidgets());
+  if (
+    document.querySelector(
+      '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
+    )
+  )
+    void import('./widgets').then((m) =>
+      m.bindWidgets(document, { timerStart: (id, ms) => engine.timerStart(id, ms) }),
+    );
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
   const slotsChunk = slotsPage ? import('./slots') : undefined;
 

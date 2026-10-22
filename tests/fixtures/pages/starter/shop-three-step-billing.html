@@ -1,0 +1,1087 @@
+<!-- campaign-cart-starter-templates@ba5604c _site/shop-three-step/billing/index.html, built 2026-10-22 (SDK 0.4.43) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Shop Three Step — Billing</title>
+    
+    <meta property="og:type" content="website">
+<meta property="og:title" content="Shop Three Step — Billing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shop Three Step — Billing">
+
+
+<meta property="og:description" content="Shop three-step checkout funnel (information → shipping → billing)">
+<meta name="twitter:description" content="Shop three-step checkout funnel (information → shipping → billing)">
+
+
+
+
+<meta property="og:site_name" content="Next Commerce">
+
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://campaigns.apps.29next.com" crossorigin>
+    <link rel="dns-prefetch" href="//cdn-countries.muddy-wind-c7ca.workers.dev">
+    <link rel="dns-prefetch" href="//i18n-rules.nextcommerce.com">
+    <link rel="prefetch" href="/shop-three-step/upsell-bundle-stepper/" as="document">
+    
+
+    
+    <script src="/shop-three-step/config.js"></script>
+
+    
+    
+    <meta name="next-funnel" content="Shop Three Step">
+    <meta name="next-success-url" content="/shop-three-step/upsell-bundle-stepper/">
+    <meta name="next-upsell-accept-url" content="/shop-three-step/upsell-bundle-stepper/">
+    
+    <meta name="next-page-type" content="checkout">
+    
+    
+
+    
+    <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.43/dist/loader.js" type="module"></script>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <link href="/shop-three-step/css/next-core.css" rel="stylesheet" type="text/css">
+    
+
+    <link href="/shop-three-step/images/favicon.png" rel="shortcut icon" type="image/x-icon">
+    <link href="/shop-three-step/images/webclip.png" rel="apple-touch-icon">
+  </head>
+  <body>
+    
+
+
+
+
+    <script>
+window.CHECKOUT_CONFIG = {
+  currentStep: 3,
+  redirectUrl: "/shop-three-step/information/",
+  stepUrls: {
+    1: "/shop-three-step/information/",
+    2: "/shop-three-step/shipping/",
+    3: "/shop-three-step/billing/"
+  }
+};
+</script>
+<div class="page-wrapper checkout--shop checkout--shop-column-logo">
+
+      <div class="main-wrapper">
+        
+        <div class="checkout-content">
+          <div class="checkout__content">
+            <div class="checkout__layout">
+              <div class="checkout__column checkout__column--left">
+                <div class="checkout__form-container checkout__form-container--main">
+                  <div class="checkout-header__brand justify-center"><img src="/shop-three-step/images/next-dark.svg" loading="eager" alt="Next Commerce" class="brand-logo"></div>
+                  <div class="order-summary-mobile">
+                    <div data-initial-state="closed" data-next-accordion="order-summary" data-open-text="Hide Order Summary" data-close-text="Show Order Summary" data-toggle-class="next-expanded" class="order-summary-mobile__accordion">
+                      <div data-next-accordion-trigger="order-summary" class="order-summary__trigger">
+                        <div class="order-summary__inner">
+                          <div class="order-summary__mobile-left">
+                            <div class="summary-toggle">
+                              <div data-next-accordion-text="order-summary" class="summary-toggle__text show_text">Show Order Summary</div><img os-summary-icon="" loading="lazy" alt="" src="/shop-three-step/images/arrow-down.svg" class="summary-toggle__icon">
+                            </div>
+                          </div>
+                          <div data-next-show="cart.hasItems" class="order-summary__mobile-right">
+                            <div data-next-show="cart.hasDiscounts" class="summary_price price--crossed cc-sm"><span data-next-display="cart.subtotal"></span></div>
+                            <div data-next-display="cart.total" class="summary_price price--total"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div data-next-accordion-panel="order-summary" class="accordion__panel payment-method__form--expanded">
+                        <div data-next-catalog-component="order-summary" class="summary-wrapper" data-next-cart-summary>
+  <template>
+    <div class="order-summary">
+      <h4 class="order-summary__title">Order Summary</h4>
+      <div class="order-summary__content">
+
+    <div class="cart-items cart-items__list">
+      <div data-next-component="scroll-hint" class="cart-items__scroll-hint cart-items__scroll-hint--active">
+        <div>Scroll for more items</div>
+        <div class="icon__view-more">
+          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ic" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"></path>
+          </svg>
+        </div>
+      </div>
+      <div data-summary-lines>
+        <template>
+          <div data-package-id="{item.packageId}" class="cart-item">
+            <div class="cart-item__wrapper">
+              <div class="cart-item__image-container">
+                <div class="cart-item__quantity-badge">
+                  <div class="cart-item__quantity">{item.quantity}</div>
+                </div>
+                <img src="{item.image}" alt="{item.name}" class="cart-item__image">
+              </div>
+              <div class="cart-item__details">
+                <div class="cart-item__content">
+                  <div class="cart-item__description">
+                    <div class="cart-item__header">
+                      <div class="cart-item__title">{item.name}</div>
+                    </div>
+                    <div class="cart-item__frequency">
+                      <span data-next-show="item.isRecurring" style="display:none">{item.frequency}</span>
+                      <span data-next-hide="item.isRecurring">One-time purchase</span>
+                    </div>
+                    <div class="hide">
+                      <div class="text-2xs text-muted text-weight-normal diagonal-strike {item.hasDiscount}">{item.originalUnitPrice}/ea</div>
+                      <div class="text-2xs text-muted text-weight-normal">{item.unitPrice}/ea</div>
+                    </div>
+                    
+                    <div data-next-item-properties class="cart-item__properties text-2xs text-muted">
+                      <template>
+                        <div class="cart-item__property"><span class="os-bold">{property.key}:</span> {property.value}</div>
+                      </template>
+                    </div>
+                  </div>
+                  <div class="cart-item__pricing">
+                    <div class="cart-price price--original {item.hasDiscount}">{item.originalPrice}</div>
+                    <div class="checkout__line-item__final-price">{item.price}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div class="order-totals os-cart-summary-totals">
+
+      <div class="order-totals__section">
+        <div class="order-totals__line">
+          <div class="order-totals__label">Subtotal</div>
+          <div class="order-totals__value">{subtotal}</div>
+        </div>
+      </div>
+
+      
+      <div class="order-totals__section">
+        <ul class="order-totals__discount-list" data-next-discounts="offer" aria-label="Offer discounts">
+          <template>
+            <li class="order-totals__line">
+              <div class="order-totals__label text-muted">{discount.name} - Save {discount.percentage}</div>
+              <div class="order-totals__value text-muted">−{discount.amount}</div>
+            </li>
+          </template>
+        </ul>
+        <ul class="order-totals__discount-list" data-next-discounts="voucher" aria-label="Coupon discounts">
+          <template>
+            <li class="order-totals__line">
+              <div class="order-totals__label text-muted">{discount.name} - Save {discount.percentage}</div>
+              <div class="order-totals__value text-muted">−{discount.amount}</div>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <div class="order-totals__section">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Shipping</div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__value">{shipping}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="order-totals__section os-cart-summary-row--discount">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Today You Saved</div>
+            <div class="badge badge--small">
+              <div class="label__wrapper cc-sm">
+                <div class="badge__text">{totalDiscountPercentage} OFF</div>
+              </div>
+            </div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__label">Discount:</div>
+            <div class="order-totals__value">{discounts}</div>
+          </div>
+        </div>
+        
+      </div>
+
+      
+      <div class="order-totals__section hide">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Estimated taxes</div>
+            <div data-checkout-tooltip-position="top" data-checkout-tooltip="The final tax amount and total will be confirmed by email or text after your place your order." class="info-icons">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" focusable="false" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="7" cy="7" r="5.6" stroke="currentColor"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.6 5.1c.2-1.3 2.6-1.3 2.8 0S6.95 6.4 6.95 7.45m.055 2.35H7v.005h.005z"></path>
+                <circle cx="7" cy="9.7" r="0.1" fill="currentColor"></circle>
+              </svg>
+            </div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__value">Calculated at checkout</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="order-totals__section cc-total">
+        <div class="order-totals__line order-totals__line--total">
+          <div class="order-totals__label order-totals__label--total">Grand Total:</div>
+          <div class="order-totals__value-group">
+            <div class="summary-total__coin">{currency}</div>
+            <div class="order-totals__value order-totals__value--total">{total}</div>
+          </div>
+        </div>
+        <div data-next-show="cart.hasDiscounts" style="display:none" class="order-totals__savings">
+          <div class="order-totals__savings-content">
+            <div class="order-totals__savings-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 18 18" focusable="false" aria-hidden="true" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m10.802 15.686 5.367-5.368a.15.15 0 0 0 .046-.109V4.144m-2.998-.95h-5.67a.16.16 0 0 0-.11.046L1.779 8.897a.154.154 0 0 0 0 .219l5.594 5.593c.06.06.158.06.218 0l5.658-5.657a.15.15 0 0 0 .045-.11v-5.67a.077.077 0 0 0-.077-.077Zm-3.06 3.749a.643.643 0 1 1-1.286 0 .643.643 0 0 1 1.286 0m-.648-.005h.01v.01h-.01z"></path>
+              </svg>
+            </div>
+            <div class="order-totals__savings-text">TODAY YOU SAVED <span>{discounts}</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+      </div>
+    </div>
+
+  </template>
+
+  
+  <div data-next-hide="cart.isEmpty" class="coupon-section" data-next-await>
+    <div class="coupon-form">
+      <div data-auto-apply="true" data-next-coupon="input" data-placeholder="Promo code (optional)" data-button-text="Apply" class="coupon-form__row">
+        <div class="form-group">
+          <div class="form-input">
+            <input name="coupon" data-name="Coupon Code" type="text" placeholder="Promo code (optional)" class="input-flds">
+          </div>
+        </div>
+        <button class="coupon-button next-disabled">
+          <div>APPLY</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+                      </div>
+                    </div>
+                  </div>
+                  <div class="checkout__header-steps">
+                    <div class="steps-text">Information<br></div>
+                    <div class="steps-arrow"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" focusable="false" aria-hidden="true">
+                        <path stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" d="m4.75 2 4.646 4.646a.5.5 0 0 1 0 .708L4.75 12"></path>
+                      </svg></div>
+                    <div class="steps-text">Shipping<br></div>
+                    <div class="steps-arrow"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" focusable="false" aria-hidden="true">
+                        <path stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" d="m4.75 2 4.646 4.646a.5.5 0 0 1 0 .708L4.75 12"></path>
+                      </svg></div>
+                    <div class="steps-text steps-text--active">Payment<br></div>
+                  </div>
+                  <div class="checkout-form">
+                    <form data-next-checkout="form" id="combo_form" method="post">
+                      <div class="form-content">
+                        <div class="form-sections">
+                          <div class="form-section">
+                            <div data-next-await="" data-next-enhancer="checkout-review" class="checkout__form-review">
+                              <div class="checkout__form-row">
+                                <div class="checkout__form-row-line">
+                                  <div class="checkout__form-row-text">Contact</div>
+                                  <div data-next-checkout-review="email"></div>
+                                </div>
+                                <div class="checkout__form-row-change">
+                                  <a href="/shop-three-step/information/" class="checkout__form-review--link">
+                                    <div>Change</div>
+                                  </a>
+                                </div>
+                              </div>
+                              <div class="checkout__form-row">
+                                <div class="checkout__form-row-line">
+                                  <div class="checkout__form-row-text">Ship to<br></div>
+                                  <div data-next-format="address" data-next-checkout-review="address"></div>
+                                </div>
+                                <div class="checkout__form-row-change">
+                                  <a href="/shop-three-step/information/" class="checkout__form-review--link">
+                                    <div>Change</div>
+                                  </a>
+                                </div>
+                              </div>
+                              <div class="checkout__form-row">
+                                <div class="checkout__form-row-line">
+                                  <div class="checkout__form-row-text">Phone<br></div>
+                                  <div data-next-format="phone" data-next-checkout-review="phone" class="grid-cell"></div>
+                                </div>
+                                <div class="checkout__form-row-change">
+                                  <a href="/shop-three-step/information/" class="checkout__form-review--link">
+                                    <div>Change</div>
+                                  </a>
+                                </div>
+                              </div>
+                              <div class="checkout__form-row checkout__form-row--last">
+                                <div class="checkout__form-row-line">
+                                  <div class="checkout__form-row-text grid-cell">Shipping Method<br></div>
+                                  <div class="grid-cell"><span data-next-checkout-review="shippingMethod.name"></span> Shipping · <span data-next-display="cart.shipping" class="checkout__form-row-bold"></span></div>
+                                </div>
+                                <div class="checkout__form-row-change">
+                                  <a href="/shop-three-step/shipping/" class="checkout__form-review--link">
+                                    <div>Change</div>
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="next-hidden-form">
+                            <div class="form-section">
+                              <h1 class="form-section__title">Shipping</h1>
+                              <div data-next-component="shipping-form">
+                                
+                                <div data-next-address="shipping" class="cc-ungated"></div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="form-section form-section--last">
+                            <div class="form-section__header">
+                              <h1 class="form-section__title">Payment</h1>
+                              <div class="form-section__subtitle">All transactions are secure and encrypted.<br></div>
+                            </div>
+                            
+
+
+
+
+
+
+
+
+
+
+
+
+<div data-next-catalog-component="payment-method-presentation" class="payment-methods">
+<div data-next-payment-method="credit" class="payment-method next-selected">
+    <div class="payment-method__header"><label for="combo_mode_credit" combo_mode="credit" class="payment-method__label"><input type="radio" name="payment_method" id="combo_mode_credit" data-name="Combo Mode" class="payment-method__input" checked="" value="credit">
+        <div class="payment-method__title">Credit Card</div>
+        <div class="payment-method__icons"><img loading="lazy" src="/shop-three-step/images/cc-visa.svg" alt="" class="payment-method__icon payment-method__icon--visa"><img loading="lazy" src="/shop-three-step/images/cc_master.svg" alt="" class="payment-method__icon payment-method__icon--mastercard"><img loading="lazy" src="/shop-three-step/images/cc_amex.svg" alt="" class="payment-method__icon payment-method__icon--amex"><img loading="lazy" src="/shop-three-step/images/cc_discover.svg" alt="" class="payment-method__icon payment-method__icon--discover"></div>
+      </label></div>
+    <div data-next-payment-form="credit" os-checkout-element="credit-form" os-shipping-method-same="true" class="payment-method__form payment-method__form--expanded">
+      <div class="payment-method__content">
+        <div data-next-component="credit-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="credit-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-grid__row">
+            <div class="form-group">
+              <div class="form-input">
+                <div data-next-tooltip="All transactions are secure and encrypted." class="form-input-icon"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" focusable="false" aria-hidden="true" class="a8x1wuy a8x1wux *1fragem32 *1fragempm *1fragemlo *1fragemle _1fragemot">
+                    <path fill="none" stroke="currentColor" stroke-width="1" d="M2.5 7c0-.966.784-1.75 1.75-1.75h5.5c.966 0 1.75.784 1.75 1.75v3.5a1.75 1.75 0 0 1-1.75 1.75h-5.5A1.75 1.75 0 0 1 2.5 10.5zm7-1.75V4.22c0-1.364-1.12-2.47-2.5-2.47S4.5 2.856 4.5 4.22v1.03"></path>
+                  </svg></div>
+                <div data-next-checkout-field="cc-number" class="input-flds spreedly-field"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-grid__row">
+            <div class="form-group">
+              <div class="form-input">
+                <div class="select-form-wrapper"><select autocomplete="cc-exp-month" data-placeholder="Exp. Month" placeholder="Exp. Month" name="credit_card_exp_month" id="credit_card_exp_month" data-name="Credit Card Exp. Month" data-next-checkout-field="exp-month" class="input-flds select-field">
+                    <option value="">Exp. Month</option>
+                  </select>
+                  <div class="caret-down">
+                    <div class="select-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="2 4.75 7 9.25 12 4.75"></polyline>
+                      </svg></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="form-input">
+                <div class="select-form-wrapper"><select autocomplete="cc-exp-year" data-placeholder="Exp. Year" placeholder="Exp. Year" name="credit_card_exp_year" id="credit_card_exp_year" data-name="Credit Card Exp. Year" data-next-checkout-field="exp-year" class="input-flds select-field">
+                    <option value="">Exp. Year</option>
+                  </select>
+                  <div class="caret-down">
+                    <div class="select-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="2 4.75 7 9.25 12 4.75"></polyline>
+                      </svg></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="form-input">
+                <div data-next-tooltip="3-digit security code usually found on the back of your card. American Express cards have a 4-digit code located on the front." class="form-input-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="100%" height="100%" focusable="false" aria-hidden="true" class="a8x1wuy a8x1wux *1fragem32 *1fragempm *1fragemlo *1fragemle _1fragemot">
+                    <g clip-path="url(#a)">
+                      <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1"></circle>
+                      <path stroke-linejoin="round" fill="none" stroke="currentColor" stroke-width="1" d="M6.99 10.24h.02v.02h-.02z"></path>
+                      <path stroke-linecap="round" fill="none" stroke="currentColor" stroke-width="1" d="M5.5 5.25a1.5 1.5 0 1 1 2.428 1.179C7.494 6.77 7 7.198 7 7.75"></path>
+                    </g>
+                    <defs>
+                      <clipPath id="a">
+                        <path fill="#fff" d="M0 0h14v14H0z"></path>
+                      </clipPath>
+                    </defs>
+                  </svg></div>
+                <div data-next-checkout-field="cvv" class="input-flds spreedly-field"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+<div data-next-catalog-component="billing-address-form" class="billing-address">
+  <div os-input-field="use-shipping-address" class="checkbox-wrapper"><label class="checkout__checkbox"><input type="checkbox" name="use_shipping_address" id="use_shipping_address" data-name="Use Shipping Address" class="checkbox__input" checked="">
+      <div class="checkbox__label">Use shipping address as billing address</div>
+    </label></div>
+  <div os-checkout-element="different-billing-address" class="billing-address__form">
+    <h2 class="form-section__title cc-billing">Billing Address</h2>
+    <div data-next-address="billing"></div>
+  </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="paypal" class="payment-method">
+    <div class="payment-method__header"><label for="combo_mode_paypal" combo_mode="paypal" class="payment-method__label"><input type="radio" name="payment_method" id="combo_mode_paypal" data-name="Combo Mode" class="payment-method__input" value="paypal">
+        <div class="payment-method__title">PayPal</div>
+        <div class="payment-method__icons"><img loading="lazy" src="/shop-three-step/images/paypal-logo.svg" alt="" class="payment-method__icon--paypal-logo"><img loading="lazy" src="/shop-three-step/images/paypal-txt.svg" alt="" class="payment-method__icon--paypal-txt"></div>
+      </label></div>
+    <div data-next-payment-form="paypal" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="paypal-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="paypal-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info"><img loading="lazy" src="/shop-three-step/images/paypal.svg" alt="" class="payment-method__info-image">
+          <h4 class="payment-method__info-title">Complete your purchase with PayPal</h4>
+          <div class="payment-method__info-text">
+            <p class="checkout-form-secure">After clicking "Complete Purchase", you'll be sent to PayPal to finish paying.<br></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="klarna" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_klarna" combo_mode="klarna" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_klarna" data-name="Combo Mode" class="payment-method__input" value="klarna">
+        <div class="payment-method__title">Klarna - Flexible Payments</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/klarna-logo.svg" alt="" class="payment-method__icon--klarna-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="klarna" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="klarna-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="klarna-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Klarna.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="apple_pay" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_apple_pay" combo_mode="apple_pay" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_apple_pay" data-name="Combo Mode" class="payment-method__input" value="apple_pay">
+        <div class="payment-method__title">Apple Pay</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/apple-pay-logo.svg" alt="" class="payment-method__icon--apple-pay-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="apple_pay" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="apple_pay-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="apple_pay-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Apple Pay.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="google_pay" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_google_pay" combo_mode="google_pay" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_google_pay" data-name="Combo Mode" class="payment-method__input" value="google_pay">
+        <div class="payment-method__title">Google Pay</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/google-pay-logo.svg" alt="" class="payment-method__icon--google-pay-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="google_pay" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="google_pay-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="google_pay-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Google Pay.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="twint" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_twint" combo_mode="twint" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_twint" data-name="Combo Mode" class="payment-method__input" value="twint">
+        <div class="payment-method__title">TWINT</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/twint-logo.svg" alt="" class="payment-method__icon--twint-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="twint" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="twint-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="twint-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with TWINT.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="affirm" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_affirm" combo_mode="affirm" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_affirm" data-name="Combo Mode" class="payment-method__input" value="affirm">
+        <div class="payment-method__title">Affirm - Flexible Payments</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/affirm-logo.svg" alt="" class="payment-method__icon--affirm-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="affirm" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="affirm-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="affirm-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Affirm.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="bancontact" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_bancontact" combo_mode="bancontact" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_bancontact" data-name="Combo Mode" class="payment-method__input" value="bancontact">
+        <div class="payment-method__title">Bancontact</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/bancontact-logo.svg" alt="" class="payment-method__icon--bancontact-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="bancontact" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="bancontact-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="bancontact-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Bancontact.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="ideal" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_ideal" combo_mode="ideal" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_ideal" data-name="Combo Mode" class="payment-method__input" value="ideal">
+        <div class="payment-method__title">iDEAL</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/ideal-logo.svg" alt="" class="payment-method__icon--ideal-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="ideal" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="ideal-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="ideal-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with iDEAL.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="sepa_debit" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_sepa_debit" combo_mode="sepa_debit" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_sepa_debit" data-name="Combo Mode" class="payment-method__input" value="sepa_debit">
+        <div class="payment-method__title">SEPA Direct Debit</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/sepa-logo.svg" alt="" class="payment-method__icon--sepa-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="sepa_debit" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="sepa_debit-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="sepa_debit-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to authorize your SEPA Direct Debit payment.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="link" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_link" combo_mode="link" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_link" data-name="Combo Mode" class="payment-method__input" value="link">
+        <div class="payment-method__title">Link</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/link-logo.svg" alt="" class="payment-method__icon--link-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="link" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="link-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="link-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Link.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-next-payment-method="shop_pay" class="payment-method">
+    <div class="payment-method__header">
+      <label for="combo_mode_shop_pay" combo_mode="shop_pay" class="payment-method__label">
+        <input type="radio" name="payment_method" id="combo_mode_shop_pay" data-name="Combo Mode" class="payment-method__input" value="shop_pay">
+        <div class="payment-method__title">Shop Pay</div>
+        <div class="payment-method__icons">
+          <img loading="lazy" src="/shop-three-step/images/shop-pay-logo.svg" alt="" class="payment-method__icon--shop-pay-logo">
+        </div>
+      </label>
+    </div>
+    <div data-next-payment-form="shop_pay" os-checkout-element="credit-form" class="payment-method__form payment-method__form--collapsed">
+      <div class="payment-method__content">
+        <div data-next-component="shop_pay-error" class="next-toast-handler">
+          <div class="tip1_bar is-warning">
+            <div data-next-component="shop_pay-error-text" class="text-sm">Error message</div>
+          </div>
+        </div>
+        <div class="payment-method__info">
+          <div class="payment-method__info-image">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-252.3 356.1 163 80.9" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="zjrzY">
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-108.9 404.1v30c0 1.1-.9 2-2 2H-231c-1.1 0-2-.9-2-2v-75c0-1.1.9-2 2-2h120.1c1.1 0 2 .9 2 2v37m-124.1-29h124.1"></path>
+              <circle cx="-227.8" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-222.2" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <circle cx="-216.6" cy="361.9" r="1.8" fill="currentColor"></circle>
+              <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" d="M-128.7 400.1H-92m-3.6-4.1 4 4.1-4 4.1"></path>
+            </svg>
+          </div>
+          <h4 class="payment-method__info-title">
+            After clicking "Complete Purchase", you'll be taken to a secure page to finish paying with Shop Pay.
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+                          </div>
+                          <div class="submit-section cc-shop__three">
+                            <div>
+                              <a href="/shop-three-step/shipping/" class="checkout__button-prev">
+                                <div class="checkout__button-prev-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="100%" height="100%" focusable="false" aria-hidden="true">
+                                    <path stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M9.25 12 4.604 7.354a.5.5 0 0 1 0-.708L9.25 2"></path>
+                                  </svg></div>
+                                <div>Return to shipping</div>
+                              </a>
+                            </div>
+                            <div class="submit-section__button"><button os-checkout-payment="combo" data-action="submit" type="submit" class="submit-button cc-shop__three">
+                                <div data-pb-element="checkout-button-spinner" class="submit-button__loader">
+                                  <div class="three-quarter-spinner black"></div>
+                                </div>
+                                <div data-pb-element="checkout-button-info" class="submit-button__content">
+                                  <div class="submit-button__text">
+                                    <div class="submit-button__main-text cc-shop__three">Pay now</div>
+                                  </div>
+                                </div>
+                              </button></div>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="checkout-footer-links">
+  <a href="https://demo.29next.com/returns/" target="_blank" class="link">
+    <div>Return policy</div>
+  </a>
+  <a href="https://demo.29next.com/privacy-policy/" target="_blank" class="link">
+    <div>Privacy policy</div>
+  </a>
+  <a href="https://demo.29next.com/terms-conditions/" target="_blank" class="link">
+    <div>Terms of service</div>
+  </a>
+</div>
+
+                </div>
+              </div>
+              <div class="checkout__column checkout__column--right">
+                <div class="checkout__summary">
+                  <div class="summary-desktop">
+                    <div class="summary-wrap">
+                      <div class="summary-holder">
+                        <div data-next-catalog-component="order-summary" class="summary-wrapper" data-next-cart-summary>
+  <template>
+    <div class="order-summary">
+      <h4 class="order-summary__title">Order Summary</h4>
+      <div class="order-summary__content">
+
+    <div class="cart-items cart-items__list">
+      <div data-next-component="scroll-hint" class="cart-items__scroll-hint cart-items__scroll-hint--active">
+        <div>Scroll for more items</div>
+        <div class="icon__view-more">
+          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--ic" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"></path>
+          </svg>
+        </div>
+      </div>
+      <div data-summary-lines>
+        <template>
+          <div data-package-id="{item.packageId}" class="cart-item">
+            <div class="cart-item__wrapper">
+              <div class="cart-item__image-container">
+                <div class="cart-item__quantity-badge">
+                  <div class="cart-item__quantity">{item.quantity}</div>
+                </div>
+                <img src="{item.image}" alt="{item.name}" class="cart-item__image">
+              </div>
+              <div class="cart-item__details">
+                <div class="cart-item__content">
+                  <div class="cart-item__description">
+                    <div class="cart-item__header">
+                      <div class="cart-item__title">{item.name}</div>
+                    </div>
+                    <div class="cart-item__frequency">
+                      <span data-next-show="item.isRecurring" style="display:none">{item.frequency}</span>
+                      <span data-next-hide="item.isRecurring">One-time purchase</span>
+                    </div>
+                    <div class="hide">
+                      <div class="text-2xs text-muted text-weight-normal diagonal-strike {item.hasDiscount}">{item.originalUnitPrice}/ea</div>
+                      <div class="text-2xs text-muted text-weight-normal">{item.unitPrice}/ea</div>
+                    </div>
+                    
+                    <div data-next-item-properties class="cart-item__properties text-2xs text-muted">
+                      <template>
+                        <div class="cart-item__property"><span class="os-bold">{property.key}:</span> {property.value}</div>
+                      </template>
+                    </div>
+                  </div>
+                  <div class="cart-item__pricing">
+                    <div class="cart-price price--original {item.hasDiscount}">{item.originalPrice}</div>
+                    <div class="checkout__line-item__final-price">{item.price}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div class="order-totals os-cart-summary-totals">
+
+      <div class="order-totals__section">
+        <div class="order-totals__line">
+          <div class="order-totals__label">Subtotal</div>
+          <div class="order-totals__value">{subtotal}</div>
+        </div>
+      </div>
+
+      
+      <div class="order-totals__section">
+        <ul class="order-totals__discount-list" data-next-discounts="offer" aria-label="Offer discounts">
+          <template>
+            <li class="order-totals__line">
+              <div class="order-totals__label text-muted">{discount.name} - Save {discount.percentage}</div>
+              <div class="order-totals__value text-muted">−{discount.amount}</div>
+            </li>
+          </template>
+        </ul>
+        <ul class="order-totals__discount-list" data-next-discounts="voucher" aria-label="Coupon discounts">
+          <template>
+            <li class="order-totals__line">
+              <div class="order-totals__label text-muted">{discount.name} - Save {discount.percentage}</div>
+              <div class="order-totals__value text-muted">−{discount.amount}</div>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <div class="order-totals__section">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Shipping</div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__value">{shipping}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="order-totals__section os-cart-summary-row--discount">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Today You Saved</div>
+            <div class="badge badge--small">
+              <div class="label__wrapper cc-sm">
+                <div class="badge__text">{totalDiscountPercentage} OFF</div>
+              </div>
+            </div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__label">Discount:</div>
+            <div class="order-totals__value">{discounts}</div>
+          </div>
+        </div>
+        
+      </div>
+
+      
+      <div class="order-totals__section hide">
+        <div class="order-totals__line">
+          <div class="order-totals__label-group">
+            <div class="order-totals__label">Estimated taxes</div>
+            <div data-checkout-tooltip-position="top" data-checkout-tooltip="The final tax amount and total will be confirmed by email or text after your place your order." class="info-icons">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" focusable="false" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="7" cy="7" r="5.6" stroke="currentColor"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.6 5.1c.2-1.3 2.6-1.3 2.8 0S6.95 6.4 6.95 7.45m.055 2.35H7v.005h.005z"></path>
+                <circle cx="7" cy="9.7" r="0.1" fill="currentColor"></circle>
+              </svg>
+            </div>
+          </div>
+          <div class="order-totals__value-group">
+            <div class="order-totals__value">Calculated at checkout</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="order-totals__section cc-total">
+        <div class="order-totals__line order-totals__line--total">
+          <div class="order-totals__label order-totals__label--total">Grand Total:</div>
+          <div class="order-totals__value-group">
+            <div class="summary-total__coin">{currency}</div>
+            <div class="order-totals__value order-totals__value--total">{total}</div>
+          </div>
+        </div>
+        <div data-next-show="cart.hasDiscounts" style="display:none" class="order-totals__savings">
+          <div class="order-totals__savings-content">
+            <div class="order-totals__savings-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 18 18" focusable="false" aria-hidden="true" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m10.802 15.686 5.367-5.368a.15.15 0 0 0 .046-.109V4.144m-2.998-.95h-5.67a.16.16 0 0 0-.11.046L1.779 8.897a.154.154 0 0 0 0 .219l5.594 5.593c.06.06.158.06.218 0l5.658-5.657a.15.15 0 0 0 .045-.11v-5.67a.077.077 0 0 0-.077-.077Zm-3.06 3.749a.643.643 0 1 1-1.286 0 .643.643 0 0 1 1.286 0m-.648-.005h.01v.01h-.01z"></path>
+              </svg>
+            </div>
+            <div class="order-totals__savings-text">TODAY YOU SAVED <span>{discounts}</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+      </div>
+    </div>
+
+  </template>
+
+  
+  <div data-next-hide="cart.isEmpty" class="coupon-section" data-next-await>
+    <div class="coupon-form">
+      <div data-auto-apply="true" data-next-coupon="input" data-placeholder="Promo code (optional)" data-button-text="Apply" class="coupon-form__row">
+        <div class="form-group">
+          <div class="form-input">
+            <input name="coupon" data-name="Coupon Code" type="text" placeholder="Promo code (optional)" class="input-flds">
+          </div>
+        </div>
+        <button class="coupon-button next-disabled">
+          <div>APPLY</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <script defer src="/shop-three-step/js/checkout.js"></script>
+    
+    <script defer src="/shop-three-step/js/checkout-shop-three-billing.js"></script>
+    
+  </body>
+</html>

@@ -153,7 +153,40 @@ function bindScrollHint(hint: HTMLElement): void {
   update();
 }
 
-export function bindWidgets(root: ParentNode = document): void {
+type TimerStart = (id: string, durationMs: number) => number;
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+function clock(seconds: number, format: string): string {
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60];
+  if (format === 'hh:mm:ss') return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  return format === 'ss' ? pad(s) : `${pad(m)}:${pad(s)}`;
+}
+
+function bindTimer(timer: HTMLElement, timerStart: TimerStart): void {
+  const duration = Number(timer.getAttribute('data-duration'));
+  if (!duration) return console.warn('[next] data-next-timer needs data-duration (seconds)');
+  const id = timer.getAttribute('data-persistence-id') || 'default-timer';
+  const format = timer.getAttribute('data-format') || 'mm:ss';
+  const display = timer.querySelector('[data-next-timer-display]') ?? timer;
+  const start = timerStart(id, duration * 1000);
+  const tick = () => {
+    const left = Math.max(0, duration - Math.floor((Date.now() - start) / 1000));
+    if (left) return void (display.textContent = clock(left, format));
+    clearInterval(interval);
+    timer.style.display = 'none';
+    document
+      .querySelectorAll<HTMLElement>(`[data-next-timer-expired][data-persistence-id="${id}"]`)
+      .forEach((el) => (el.style.display = ''));
+  };
+  const interval = setInterval(tick, 1000);
+  tick();
+}
+
+const startNow: TimerStart = () => Date.now();
+
+export function bindWidgets(root: ParentNode = document, { timerStart = startNow } = {}): void {
+  root.querySelectorAll<HTMLElement>('[data-next-timer]').forEach((timer) => bindTimer(timer, timerStart));
   root.querySelectorAll<HTMLElement>('[data-next-accordion]').forEach(bindAccordion);
   root.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]').forEach(bindScrollHint);
   const tips = root.querySelectorAll<HTMLElement>('[data-next-tooltip]');

@@ -141,4 +141,15 @@ describe('Engine', () => {
     const next = makeEngine({ session }).engine;
     expect(next.getState().visit.exitIntentShown).toBe(1);
   });
+
+  it('keeps a countdown running across pages of the tab, and starts it over once it has run out', () => {
+    const session = new MemoryStorage();
+    let now = 1000;
+    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
+    now = 31_000;
+    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
+    now = 61_000;
+    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
+    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(61_000);
+  });
 });
