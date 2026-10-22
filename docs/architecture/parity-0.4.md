@@ -38,6 +38,12 @@ How to read the status column:
 | Starter: an offer whose selector sits beside it (`data-next-bundle-selector-id`) was added without the selector's voucher                                                                                      | 5 starter upsells                          | `2f8cce89` |
 | Starter: `data-next-phone-e164` never written, so the forwarder sent no E.164 phone from field entry                                                                                                           | 8 forwarders                               | `2f8cce89` |
 | US territories (AS, GU, MP, PR, VI, UM) offered as states; 0.4.x always hid them                                                                                                                               | every US checkout                          | `ee870a2a` |
+| A bump kept the price quoted for the cart before the bundle changed; 0.4.x quoted it again                                                                                                                     | every checkout with a bump                 | `66641889` |
+| The cart was priced without a shipping method until a card chose one, while the order was sent with the campaign's first method                                                                                | shop checkouts                             | `66641889` |
+| Cart events without `ecommerce.coupon` / `shipping`, `dl_cart_updated` without `cart`, purchase items without `item_brand` and the package's sku, ids and image, purchase without `coupon`                     | every funnel                               | `791533a9` |
+| `attribution.metadata` on orders and events without `domain`, `sdk_version`, `fb_pixel_id`, `conversion_timestamp`                                                                                             | every order                                | `791533a9` |
+| Card errors only after the address passed (0.4.x showed both on the first submit), in other words than 0.4.x; the error box listed hidden fields out of form order                                             | every card checkout                        | `ba8955e1` |
+| A hidden billing country showed the first country, and a submit wrote it to the order state, so unticking “same as shipping” later kept it                                                                     | every checkout with a billing block        | `5b84bd1f` |
 
 `bun run e2e` now also checks the autocomplete and a floating label in Chromium. A sweep of
 all 72 pages in `bun dev` shows no SDK warning other than the intended "facebook/rudderstack
@@ -52,6 +58,14 @@ an error or an SDK warning. What still differs is listed under "Kept different o
 is the mock campaign lacking package 77 (MV pages). `bun run e2e` runs the olympus funnel on
 the starter pages by default.
 
+The money paths were then compared request by request: the same funnel (bundle change, a bump,
+card order, each upsell accepted or skipped, receipt) in every starter family under both SDKs,
+recording each API request and every `NextDataLayer` / `dataLayer` push. Prospect, order and
+upsell bodies match in every family; a declined card, PayPal chosen in the form and the PayPal
+express button send the same body and land on the same page, and an empty submit shows the same
+errors in the same words. The MV upsell could not be
+compared on the mock (0.4.43 stops there without package 77).
+
 ## Open decision
 
 **`nextConfig.currencyBehavior: 'auto'`** (every config.js). 0.4.x looked up the visitor's
@@ -60,6 +74,17 @@ currency when the campaign offers it; the live campaign offers USD, AUD, CAD, EU
 SDK shows the campaign currency unless the URL has `?currency=`. Options: geo lookup after the
 first paint and a re-price (flicker for non-US visitors), server-side currency on the campaign
 GET (backend ask B5), or keep USD.
+
+**Personal data in `user_properties`.** 0.4.x put the shopper's email, names, phone and billing
+address on every event once known (Elevar's format; Elevar and GTM tags read it from
+`dataLayer`), with `visitor_type: 'logged_in'` after the order. This SDK sends
+`{ visitor_type: 'guest' }` only. Options: send the 0.4.x fields again, or keep them out and give
+those tags another source.
+
+**A bundle tier change on the same package** (1x → 2x) sends `dl_add_to_cart` for the extra
+units; 0.4.x sent nothing for it (it sent `dl_package_swapped` only when the package changed).
+Page forwarders turn `dl_add_to_cart` into AddToCart for ad platforms. Options: keep it, or send
+nothing like 0.4.x.
 
 ## Kept different on purpose
 
@@ -72,6 +97,13 @@ GET (backend ask B5), or keep USD.
 | 0.4.x storage keys (`next-cart-state__…`)                                                                           | Not migrated: a cart open at the switch is lost, a receipt reloaded right after it may report the purchase again |
 | `link` express button                                                                                               | Not drawn (the live campaign offers PayPal and Apple Pay only)                                                   |
 | Upsell offer marked `next-hidden` without `ref_id`                                                                  | Left as written (no CSS reads it)                                                                                |
+| Bump items in events looked up by `ref_id` or `external_id` (package 7 reported as the camera lens)                 | The package the card names                                                                                       |
+| `dl_cart_updated` for an empty cart on upsell and receipt pages                                                     | Not sent                                                                                                         |
+| `dl_user_data` on a checkout reported an empty cart before the selector filled it                                   | The pre-selected bundle                                                                                          |
+| `is_upsell: false` on every main line of calculate and order requests                                               | Left out (the API's default)                                                                                     |
+| `dl_upsell_purchase` items without `item_brand`                                                                     | With it, as on `dl_purchase`                                                                                     |
+| `shipping_tier`: the shipping radio's code, else `Standard`                                                         | The method name the API returns                                                                                  |
+| `dl_add_shipping_info` on the information and billing steps of a three-step checkout                                | On each step page                                                                                                |
 | Cart quantity `decrease` could reach 0                                                                              | Stops at 1; use `data-next-remove-item`                                                                          |
 | Coupon applied-code list and messages (`[data-next-coupon="display"]`, `.coupon-messages`)                          | Not drawn (no live page has the hosts); `coupon.refused` fires instead                                           |
 | Bundle selectors on upsell pages written into the (finished) cart                                                   | Recorded only                                                                                                    |
