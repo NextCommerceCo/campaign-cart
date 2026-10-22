@@ -24,8 +24,10 @@ the 0.4.x SDK on those pages.
 
 ## Local development
 
-`bun dev` serves the campaign pages built in `../my-campaigns/_site` (or `SITE=/path/to/_site`)
-with their `loader.js` tag swapped for this repo's SDK. Open http://localhost:5173/ for a list
+`bun dev` serves the campaign pages of
+[campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates),
+cloned and built into `.campaigns/` on the first run (`--update` pulls and rebuilds; the clone
+cannot push), or any built site with `SITE=/path/to/_site`, with their `loader.js` tag swapped for this repo's SDK. Open http://localhost:5173/ for a list
 of every campaign page. Every page shows a badge with the mode it runs in.
 
 | Command                               | API                                                                             |
@@ -63,5 +65,5 @@ backend. Takes the same `--api` / `--key` options, e.g. `bun run qa --api full -
 
 `bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
 receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production
-host, and fails on a console error. It needs `../my-campaigns/_site` and a Chromium
+host, and fails on a console error. It needs the campaign pages above and a Chromium
 (`bunx playwright-core install chromium`, or `CHROME=/path/to/chrome`).

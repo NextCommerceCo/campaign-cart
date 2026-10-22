@@ -1,10 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 import { apiTarget, hasLocalRules, mockApi } from './mock';
 
-const SITE = resolve(process.env.SITE ?? join(import.meta.dirname, '../../my-campaigns/_site'));
+const STARTER = join(import.meta.dirname, '../.campaigns');
+const STARTER_REPO = 'https://github.com/NextCommerceCo/campaign-cart-starter-templates.git';
+const SITE = resolve(process.env.SITE ?? join(STARTER, '_site'));
 const DIST = join(import.meta.dirname, '../dist');
 const LOADER = /<script\b[^>]*\bsrc=["'][^"']*\/loader\.js(?:\?[^"']*)?["'][^>]*>\s*<\/script>/;
 const LEFTOVER_SDK = /<script\b[^>]*campaign-cart[^>]*>\s*<\/script>/g;
@@ -18,6 +21,7 @@ export interface DevOptions {
   token?: string;
   port?: number;
   quiet?: boolean;
+  update?: boolean;
 }
 
 const TYPES: Record<string, string> = {
@@ -211,9 +215,26 @@ function sitePages(server: () => ViteDevServer, options: DevOptions): Plugin {
   };
 }
 
+function starterPages({ update, quiet }: DevOptions) {
+  if (process.env.SITE) return;
+  const step = (what: string, cmd: string, ...args: string[]) => {
+    if (!quiet) console.log(`[dev] ${what}`);
+    execFileSync(cmd, args, { cwd: STARTER, stdio: ['ignore', 'ignore', 'inherit'] });
+  };
+  const cloned = existsSync(join(STARTER, '.git'));
+  if (!cloned) {
+    if (!quiet) console.log(`[dev] cloning ${STARTER_REPO} into .campaigns/`);
+    execFileSync('git', ['clone', '--quiet', '--depth', '1', STARTER_REPO, STARTER], { stdio: 'inherit' });
+    step('making .campaigns/ pull-only', 'git', 'remote', 'set-url', '--push', 'origin', 'no-push');
+  } else if (update) step('pulling the starter templates', 'git', 'pull', '--ff-only');
+  if (!cloned || update) step('installing the page kit', 'npm', 'ci', '--no-audit', '--no-fund');
+  if (!cloned || update || !existsSync(SITE)) step('building the campaign pages', 'npx', 'campaign-build');
+}
+
 export async function startDev(options: DevOptions = {}) {
+  starterPages(options);
   if (!existsSync(SITE))
-    throw new Error(`no campaign pages at ${SITE}. Build my-campaigns, or set SITE=/path/to/_site`);
+    throw new Error(`no campaign pages at ${SITE}. Delete .campaigns/, or set SITE=/path/to/_site`);
   if (options.api === 'full' && !options.key) {
     throw new Error('--api full creates real orders: pass --key pk_… of a test campaign');
   }
@@ -240,6 +261,7 @@ export function readArgs(argv: string[]): DevOptions {
     key: value('--key'),
     dist: argv.includes('--dist'),
     port: Number(value('--port')) || undefined,
+    update: argv.includes('--update'),
   };
 }
 
