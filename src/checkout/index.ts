@@ -106,7 +106,11 @@ export function bindCheckout(
       tokenize: card?.tokenize,
       phoneRequired: phoneRequired(fields),
     });
-    if (!order) return focusFirstError();
+    if (!order) {
+      const errors = Object.keys(engine.getState().checkout?.errors ?? {});
+      if (!method && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
+      return focusFirstError();
+    }
     clearStepGuard();
     navigate(redirectFor(order, successUrl, current(), engine.getState().visit.params));
   };
@@ -129,11 +133,14 @@ export function bindCheckout(
   const renderErrors = () => {
     const state = engine.getState().checkout;
     if (!state) return;
-    const unshown = Object.keys(state.errors).filter((name) => {
-      if (name === 'form' || state.errors[name]?.warning) return false;
-      const el = fields.get(name);
-      return !el || !shown(el);
-    });
+    const order = [...fields.keys()];
+    const unshown = Object.keys(state.errors)
+      .filter((name) => {
+        if (name === 'form' || state.errors[name]?.warning) return false;
+        const el = fields.get(name);
+        return !el || !shown(el);
+      })
+      .sort((a, b) => (order.indexOf(a) + 1 || order.length + 1) - (order.indexOf(b) + 1 || order.length + 1));
     const parts = [];
     if (state.errors.form) parts.push(formText(state.errors.form));
     if (unshown.length) parts.push(formText({ code: 'unshown' }, { fields: unshown.map((n) => label(n)).join(', ') }));

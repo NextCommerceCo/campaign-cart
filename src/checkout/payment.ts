@@ -2,7 +2,7 @@ import { type CheckoutActions, paymentCode } from '../engine/checkout';
 import type { Engine } from '../engine/engine';
 import { FIELD_ATTRS } from './legacy';
 import { option, showField } from './messages';
-import { label } from './texts';
+import { cardText, label } from './texts';
 
 declare const __VERSION__: string;
 
@@ -86,6 +86,7 @@ function fillExpiry(month: HTMLSelectElement | null, year: HTMLSelectElement | n
 
 export interface Card {
   tokenize(): Promise<string>;
+  check(): void;
   render(): void;
 }
 
@@ -210,16 +211,27 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     });
   }
 
+  const checkExpiry = () => {
+    const now = new Date();
+    if (!month?.value) errors.set('month', cardText('month'));
+    if (!year?.value) errors.set('year', cardText('year'));
+    if (month?.value && Number(year?.value) === now.getFullYear() && Number(month.value) < now.getMonth() + 1) {
+      errors.set('month', cardText('expired'));
+    }
+  };
+
   return {
     render,
+    check() {
+      errors.clear();
+      if (!valid.number) errors.set('number', cardText('number'));
+      if (!valid.cvv) errors.set('cvv', cardText('cvv'));
+      checkExpiry();
+      render();
+    },
     tokenize() {
       errors.clear();
-      const now = new Date();
-      if (!month?.value) errors.set('month', 'Expiration month is required');
-      if (!year?.value) errors.set('year', 'Expiration year is required');
-      if (month?.value && Number(year?.value) === now.getFullYear() && Number(month.value) < now.getMonth() + 1) {
-        errors.set('month', 'Card has expired');
-      }
+      checkExpiry();
       render();
       if (errors.size) return Promise.reject(new Error([...errors.values()].join('. ')));
       if (!instance || stale()) {

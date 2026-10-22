@@ -210,7 +210,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     const { fill, card, submit, $, orders } = await mount('olympus/checkout.html');
     fill(SHIPPING);
     await submit();
-    expect($('.next-error-label[data-next-error-for="month"]').textContent).toBe('Expiration month is required');
+    expect($('.next-error-label[data-next-error-for="month"]').textContent).toBe('Select an expiry month');
     expect(FakeNextPayment.submitted).toHaveLength(0);
     card();
     FakeNextPayment.fail = 'Card number is invalid';
@@ -415,6 +415,23 @@ describe('SDK-built address blocks (starter templates, data-next-address)', () =
     const countries = [...$<HTMLSelectElement>('[data-next-checkout-field="country"]').options].map((o) => o.value);
     expect(countries).toEqual(['US', 'GB']);
     expect(rows('billing')[1]).toEqual(['billing-fname', 'billing-lname']);
+  });
+
+  it('shows the card’s problems with the address’s on the first submit, like 0.4.x', async () => {
+    const { submit, orders, $ } = await mount('starter/olympus-checkout.html');
+    await submit();
+    expect(orders()).toHaveLength(0);
+    const text = (name: string) => $(`.next-error-label[data-next-error-for="${name}"]`)?.textContent;
+    expect([text('first_name'), text('number'), text('cvv'), text('month'), text('year')]).toEqual([
+      'First name is required',
+      'Enter a valid card number',
+      'Enter a valid security code',
+      'Select an expiry month',
+      'Select an expiry year',
+    ]);
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe(
+      'Please check the following fields: City, State or province, Postal code',
+    );
   });
 
   it('never offers the US territories as states, like 0.4.x', async () => {

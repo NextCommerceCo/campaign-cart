@@ -27,6 +27,14 @@ const FIELD: Record<string, string> = {
   expired: 'Card has expired',
 };
 
+const CARD: Record<string, string> = {
+  number: 'Enter a valid card number',
+  cvv: 'Enter a valid security code',
+  month: 'Select an expiry month',
+  year: 'Select an expiry year',
+  expired: 'This card has expired. Check the expiry date',
+};
+
 const FORM: Record<string, string> = {
   declined: 'Your card couldn’t be processed. Try again.',
   too_many_requests: 'Too many requests. Please wait a moment and try again.',
@@ -60,5 +68,7 @@ export function formText(error: CheckoutError, fill: Record<string, string> = {}
   const text = error.message ?? FORM[error.code] ?? FORM.failed!;
   return Object.entries(fill).reduce((t, [k, v]) => t.replace(`{${k}}`, v), text);
 }
+
+export const cardText = (problem: string) => CARD[problem]!;
 
 export const expressText = (message: string) => FORM.express!.replace('{message}', message.replace(/\.$/, ''));
