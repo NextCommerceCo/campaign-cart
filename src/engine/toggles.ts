@@ -10,14 +10,14 @@ export function createToggles(ctx: Context) {
       const { campaign, cart, toggles } = ctx.getState();
       const group = toggleGroup(packageId);
       if (!campaign || !ctx.getPackage(packageId) || cart.groups[group]) return;
-      const key = `${quantity}|${campaign.currency}|${[...cart.coupons].sort().join()}`;
+      const others = Object.fromEntries(Object.entries(cart.groups).filter(([id]) => id !== group));
+      const lines = mergeLines({ ...others, [group]: { lines: [{ packageId, quantity }], vouchers: [] } });
+      const key = `${JSON.stringify(lines)}|${campaign.currency}|${[...cart.coupons].sort().join()}`;
       if (toggles[packageId]?.key === key) return;
       inFlight.get(packageId)?.abort();
       const controller = new AbortController();
       inFlight.set(packageId, controller);
       ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
-      const others = Object.fromEntries(Object.entries(cart.groups).filter(([id]) => id !== group));
-      const lines = mergeLines({ ...others, [group]: { lines: [{ packageId, quantity }], vouchers: [] } });
       ctx.api
         .calculate({ lines, vouchers: cart.coupons, currency: campaign.currency }, { signal: controller.signal })
         .then((summary) => {

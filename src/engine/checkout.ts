@@ -1,6 +1,6 @@
 import type { Attribution } from './attribution';
 import { orderError } from './api';
-import type { CartActions } from './cart';
+import { type CartActions, shippingMethodOf } from './cart';
 import type { Context } from './engine';
 import { nextUrl } from './params';
 import { fieldError, formErrors, type RulesApi, type Scope, validEmail } from './rules';
@@ -74,7 +74,7 @@ export function orderBody(
     vouchers: order.vouchers,
     attribution: order.attribution,
     currency: campaign.currency,
-    shipping_method: state.cart.shippingId ?? campaign.shipping_methods[0]?.ref_id ?? 1,
+    shipping_method: shippingMethodOf(state) ?? 1,
     payment_detail: { payment_method: method, ...(token && { card_token: token }) },
     success_url: new URL(urls.successUrl ?? '/success', urls.pageUrl).href,
     payment_failed_url: urls.failureUrl,

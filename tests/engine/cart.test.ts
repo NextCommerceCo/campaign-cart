@@ -18,6 +18,13 @@ describe('cart', () => {
     expect(api.calls[0]!.body.vouchers).toEqual(['SAVE10']);
     expect(engine.getState().cart.summary?.total).toBe('48.00');
   });
+  it('prices the cart with the shipping method the order will use, like 0.4.x', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    expect(api.calls.at(-1)!.body.shipping_method).toBe(1);
+  });
+
   it('keeps a code only when the server gives a discount for it, like 0.4.x', async () => {
     const { engine, api } = makeEngine();
     await engine.start();

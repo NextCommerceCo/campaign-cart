@@ -36,7 +36,7 @@ describe('order bump', () => {
     const quotes = api.calls.length;
     await engine.cart.addItem(1);
     await flush();
-    expect(api.calls).toHaveLength(quotes + 1);
+    expect(api.calls).toHaveLength(quotes + 2);
     $('#bump').click();
     await flush();
     expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 1 });
@@ -102,6 +102,25 @@ describe('order bump', () => {
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1, is_upsell: true }]);
   });
+  it('prices the bump again when the rest of the cart changes, like 0.4.x', async () => {
+    const api = fakeApi();
+    const { engine } = await mount(
+      `<div data-next-toggle-card data-next-package-id="9"><span data-next-toggle-display="price"></span></div>`,
+      { fetch: api.fetch },
+    );
+    await engine.cart.addItem(1, 1);
+    await flush();
+    await engine.cart.addItem(1, 1);
+    await flush();
+    const quotes = api.calls.filter(
+      (c) => c.url.includes('calculate') && c.body.lines.some((l: any) => l.package_id === 9),
+    );
+    expect(quotes.at(-1)!.body.lines).toEqual([
+      { package_id: 1, quantity: 2 },
+      { package_id: 9, quantity: 1 },
+    ]);
+  });
+
   it('follows the quantity of a whole product, shows its image and marks itself the 0.4.x way', async () => {
     const { engine, $ } = await mount(`
       <div data-next-package-toggle>

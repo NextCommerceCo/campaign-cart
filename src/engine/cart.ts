@@ -1,5 +1,5 @@
 import type { Context } from './engine';
-import type { ApiLine, CartGroup, CartLine, CartState, CartSummary } from './types';
+import type { ApiLine, CartGroup, CartLine, CartState, CartSummary, State } from './types';
 
 export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
@@ -36,6 +36,8 @@ function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
   return [...ids(withCode)].some((id) => !before.has(id)) || cents(withCode.total) < cents(without.total);
 }
 
+export const shippingMethodOf = (state: State) => state.cart.shippingId ?? state.campaign?.shipping_methods[0]?.ref_id;
+
 export function emptyCart(): CartState {
   return { groups: {}, coupons: [], dismissed: [], calculating: false, frozen: false };
 }
@@ -63,7 +65,7 @@ export function createCart(ctx: Context) {
       lines: lines(),
       vouchers: codes,
       currency: ctx.getState().campaign!.currency,
-      shipping_method: state().shippingId,
+      shipping_method: shippingMethodOf(ctx.getState()),
     });
 
   const refuse = (code: string) => {
@@ -94,7 +96,12 @@ export function createCart(ctx: Context) {
     const controller = (abort = new AbortController());
     try {
       const summary = await ctx.api.calculate(
-        { lines: lines(), vouchers: vouchers(), currency: campaign.currency, shipping_method: state().shippingId },
+        {
+          lines: lines(),
+          vouchers: vouchers(),
+          currency: campaign.currency,
+          shipping_method: shippingMethodOf(ctx.getState()),
+        },
         { signal: controller.signal },
       );
       if (current !== seq) return;
