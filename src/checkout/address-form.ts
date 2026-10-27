@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { CountryRules, FieldRule } from '../engine/types';
 import { type Control, type Fields, scanFields } from './form';
-import { pageFieldName } from './legacy';
+import { pageFieldName } from '../compat/checkout';
 
 interface Block {
   el: HTMLElement;

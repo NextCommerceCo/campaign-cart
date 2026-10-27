@@ -3,7 +3,7 @@ import { gzipSync } from 'node:zlib';
 
 const BUDGETS = [
   { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
-  { match: /^core-.*\.js$/, name: 'core', kb: 25 },
+  { match: /^boot-.*\.js$/, name: 'boot', kb: 25 },
   { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
   { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
   { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },

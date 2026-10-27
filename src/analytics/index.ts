@@ -1,6 +1,7 @@
-import { mergeLines } from './engine/cart';
-import type { Engine } from './engine/engine';
-import type { CartState, EventMap, ExitIntentDetail, Order, OrderLine, SummaryLine } from './engine/types';
+import { mergeLines } from '../engine/cart';
+import type { Engine } from '../engine/engine';
+import type { CartState, EventMap, ExitIntentDetail } from '../engine/types';
+import { cartEcommerce, cents, currency, ecommerce, legacyCart, type Line, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -8,8 +9,6 @@ export interface AnalyticsOptions {
   nextCampaign: boolean;
   dataLayer?: boolean;
 }
-
-type Line = { package_id: number; quantity: number };
 
 const withoutQuery = (url: string) => {
   try {
@@ -35,7 +34,6 @@ const EXIT_INTENT = {
 } as const;
 
 const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/';
-const cents = (n: number) => Math.round(n * 100) / 100;
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
@@ -93,75 +91,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     if (event) deliver(event);
   };
 
-  const currency = () => engine.getState().cart.summary?.currency ?? engine.getState().campaign?.currency ?? 'USD';
-
-  const ids = (product?: number, variant?: number) => ({
-    ...(product != null && { item_product_id: String(product) }),
-    ...(variant != null && { item_variant_id: String(variant) }),
-  });
-
-  const item = (packageId: number, count: number, index: number, line?: SummaryLine) => {
-    const pkg = engine.getPackage(packageId);
-    if (!pkg) return undefined;
-    const price = Number(line?.unit_price ?? pkg.price);
-    const before = Number(line?.original_unit_price) || Number(pkg.price_retail) || 0;
-    return {
-      item_id: pkg.product_sku || String(pkg.external_id),
-      item_name: pkg.product_name || pkg.name,
-      item_category: engine.getState().campaign?.name,
-      ...(pkg.product_variant_name && { item_variant: pkg.product_variant_name }),
-      ...ids(pkg.product_id, pkg.product_variant_id),
-      ...(pkg.product_sku && { item_sku: pkg.product_sku }),
-      item_image: pkg.image,
-      price,
-      ...(before > price && { discount: cents(before - price) }),
-      quantity: pkg.qty * count,
-      currency: currency(),
-      index,
-    };
-  };
-
-  const ecommerce = (lines: Line[]) => {
-    const summary = engine.getState().cart.summary;
-    const items = lines
-      .map((l, i) =>
-        item(
-          l.package_id,
-          l.quantity,
-          i,
-          summary?.lines.find((s) => s.package_id === l.package_id),
-        ),
-      )
-      .filter((i): i is NonNullable<typeof i> => !!i);
-    return { currency: currency(), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
-  };
-
   const cartTotal = () => engine.getState().cart.summary?.total ?? '0';
-
-  const legacyCart = () => {
-    const summary = engine.getState().cart.summary;
-    const items = engine.cart.lines().map((l) => {
-      const line = summary?.lines.find((s) => s.package_id === l.package_id);
-      const price = Number(line?.package_price ?? engine.getPackage(l.package_id)?.price_total ?? 0);
-      return { package_id: l.package_id, quantity: l.quantity, price };
-    });
-    return {
-      currency: currency(),
-      items,
-      total_items: items.reduce((n, i) => n + i.quantity, 0),
-      total_value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
-    };
-  };
-
-  const cartEcommerce = () => {
-    const [coupon] = engine.cart.vouchers();
-    const method = engine.getState().cart.summary?.shipping_method;
-    return {
-      ...ecommerce(engine.cart.lines()),
-      ...(coupon && { coupon }),
-      ...(method && { shipping: Number(method.price) }),
-    };
-  };
 
   const exitIntent = (name: string, { imageUrl, template }: ExitIntentDetail) =>
     send(`dl_exit_intent_${name}`, {
@@ -175,7 +105,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   const onReady = (lines: Line[]) => {
     baseline = lines;
-    send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine.cart.lines()) });
+    send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine, engine.cart.lines()) });
     const ids = [
       ...new Set(
         [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
@@ -184,9 +114,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       ),
     ];
     const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
-    if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(viewed) });
+    if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(engine, viewed) });
     if (viewed.length > 1) {
-      const { value: _, ...list } = ecommerce(viewed);
+      const { value: _, ...list } = ecommerce(engine, viewed);
       send('dl_view_item_list', {
         ecommerce: { ...list, item_list_id: 'product_list', item_list_name: 'Product List' },
       });
@@ -206,8 +136,8 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
     baseline = lines;
     if (added.length && removed.length) {
-      const a = ecommerce(added);
-      const r = ecommerce(removed);
+      const a = ecommerce(engine, added);
+      const r = ecommerce(engine, removed);
       send('dl_package_swapped', {
         ecommerce: {
           currency: a.currency,
@@ -217,62 +147,24 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         },
       });
     } else if (added.length) {
-      send('dl_add_to_cart', { ecommerce: ecommerce(added) });
+      send('dl_add_to_cart', { ecommerce: ecommerce(engine, added) });
     } else if (removed.length) {
-      send('dl_remove_from_cart', { ecommerce: ecommerce(removed) });
+      send('dl_remove_from_cart', { ecommerce: ecommerce(engine, removed) });
     }
-  };
-
-  const taxIncluded = (order: Order) => {
-    for (const line of order.lines ?? []) {
-      const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
-      const qty = line.quantity || 1;
-      const incl = Number(line.price_incl_tax_excl_discounts) / qty;
-      const excl = Number(line.price_excl_tax_excl_discounts) / qty;
-      if (!(catalog > 0) || !Number.isFinite(incl) || !Number.isFinite(excl) || Math.abs(incl - excl) <= 0.02) continue;
-      return Math.abs(incl - catalog) < Math.abs(excl - catalog);
-    }
-    return false;
-  };
-
-  const orderItem = (order: Order, line: OrderLine, index: number, incl: boolean) => {
-    const qty = line.quantity || 1;
-    const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
-    const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;
-    const pkg = line.package ? engine.getPackage(line.package) : undefined;
-    const campaign = engine.getState().campaign?.name;
-    const sku = line.product_sku || pkg?.product_sku;
-    const variant = line.variant_title || pkg?.product_variant_name;
-    const image = line.image || pkg?.image;
-    return {
-      item_id: sku || `SKU-${line.product_id || line.id}`,
-      item_name: line.product_title,
-      item_brand: pkg?.product_name || campaign,
-      item_category: campaign,
-      ...(variant && { item_variant: variant }),
-      ...ids(line.product_id ?? pkg?.product_id, line.variant_id ?? pkg?.product_variant_id),
-      ...(sku && { item_sku: sku }),
-      ...(image && { item_image: image }),
-      price: cents(paid),
-      ...(listed > paid && { discount: cents(listed - paid) }),
-      quantity: line.quantity,
-      currency: order.currency ?? currency(),
-      index,
-    };
   };
 
   const onOrder = ({ order, purchase, coupon, upsells }: EventMap['order.loaded']) => {
     const reported: string[] = [];
     if (purchase) {
       const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
-      const incl = taxIncluded(order);
-      const items = lines.map((l, i) => orderItem(order, l, i, incl));
+      const incl = taxIncluded(engine, order);
+      const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
       const discount = Number(order.total_discounts ?? 0);
       send('dl_purchase', {
         event_id: purchase,
         pageType: 'purchase',
         ecommerce: {
-          currency: order.currency ?? currency(),
+          currency: order.currency ?? currency(engine),
           transaction_id: purchase,
           value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
           tax: Number(order.total_tax ?? 0),
@@ -286,7 +178,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       reported.push(purchase);
     }
     for (const { id, number, line } of upsells ?? []) {
-      const item = orderItem(order, line, 0, taxIncluded(order));
+      const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
       const transaction = `${order.ref_id}-US${number}`;
       send('dl_upsell_purchase', {
         event_id: transaction,
@@ -317,13 +209,13 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
-      const cart = cartEcommerce();
+      const cart = cartEcommerce(engine);
       const value = Number(cartTotal());
       switch (e.name) {
         case 'cart.updated':
           return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
         case 'cart.calculated':
-          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart, cart: legacyCart() });
+          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart, cart: legacyCart(engine) });
         case 'checkout.started':
           return send('dl_begin_checkout', { cart_total: cartTotal(), ecommerce: cart });
         case 'checkout.shipping-added': {
@@ -343,7 +235,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           return send('dl_viewed_upsell', {
             order_id: refId,
             page_path: page,
-            upsell: { package_id: 'page_view', package_name: 'Upsell Page View', currency: currency() },
+            upsell: { package_id: 'page_view', package_name: 'Upsell Page View', currency: currency(engine) },
           });
         }
         case 'upsell.skipped': {

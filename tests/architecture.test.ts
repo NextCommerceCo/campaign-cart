@@ -2,25 +2,32 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const LAZY = ['analytics', 'exit-intent', 'checkout', 'order', 'slots', 'widgets', 'debug'];
+const LAZY: Record<string, string[]> = {
+  analytics: [],
+  checkout: [],
+  order: [],
+  debug: [],
+  'bindings/slots': [],
+  'bindings/widgets': [],
+  'compat/exit-intent': [],
+  'compat/checkout': ['checkout'],
+  'compat/order': ['order'],
+};
 const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules'];
 const BROWSER_GLOBALS =
   /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
 
 const ALLOWED: Record<string, string[]> = {
   engine: ['engine'],
-  bindings: ['engine', 'bindings', 'legacy'],
-  checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom'],
-  order: ['engine', 'order', 'bindings/context', 'bindings/dom'],
+  bindings: ['engine', 'bindings', 'compat/legacy'],
+  checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
+  order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine'],
-  slots: ['engine', 'bindings/dom'],
-  widgets: [],
-  'exit-intent': ['engine'],
   debug: ['engine'],
-  core: ['engine', 'bindings', 'legacy'],
-  legacy: ['engine'],
-  loader: ['config'],
-  config: [],
+  compat: ['engine'],
+  boot: ['engine', 'bindings', 'compat/legacy'],
+  loader: ['config', 'compat/config'],
+  config: ['compat/config'],
 };
 
 const files = (dir: string): string[] =>
@@ -60,11 +67,16 @@ describe('architecture', () => {
   });
 
   it('lazy chunks are only loaded with import()', () => {
-    const eager = sources.flatMap(({ file, top, code }) =>
-      imports(code, file)
-        .statics.filter((target) => LAZY.includes(target.split('/')[0]!) && target.split('/')[0] !== top)
-        .map((target) => `${top} → ${target}`),
-    );
+    const unit = (path: string) => Object.keys(LAZY).find((lazy) => path === lazy || path.startsWith(`${lazy}/`));
+    const eager = sources.flatMap(({ file, path, code }) => {
+      const own = unit(path);
+      return imports(code, file)
+        .statics.filter((target) => {
+          const lazy = unit(target);
+          return lazy && lazy !== own && !LAZY[lazy]!.some((owner) => own === owner);
+        })
+        .map((target) => `${path} → ${target}`);
+    });
     expect(eager).toEqual([]);
   });
 
@@ -76,7 +88,7 @@ describe('architecture', () => {
       if (source) imports(source.code, source.file).statics.forEach((next) => reach(next, seen));
       return seen;
     };
-    expect([...reach('core')].filter((path) => LAZY_ENGINE.includes(path))).toEqual([]);
+    expect([...reach('boot')].filter((path) => LAZY_ENGINE.includes(path))).toEqual([]);
   });
 
   it('the Engine never touches the DOM or browser globals', () => {

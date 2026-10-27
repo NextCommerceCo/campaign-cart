@@ -1,8 +1,8 @@
-import type { Engine } from './engine/engine';
-import { cardSlots, pickedCard } from './engine/selectors';
-import type { Discount, Package, Selector, SelectorCard, Slot, SummaryLine } from './engine/types';
-import { cardQuote, cents, discountPercent, format } from './engine/values';
-import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './bindings/dom';
+import type { Engine } from '../engine/engine';
+import { cardSlots, pickedCard } from '../engine/selectors';
+import type { Discount, Package, Selector, SelectorCard, Slot, SummaryLine } from '../engine/types';
+import { cardQuote, cents, discountPercent, format } from '../engine/values';
+import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './dom';
 
 const escape = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);

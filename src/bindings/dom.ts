@@ -2,7 +2,7 @@ import { type Condition, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
 import type { SelectorLine } from '../engine/types';
 import { format, resolve, type Tokens, truthy, type Value } from '../engine/values';
-import { legacySelectorId } from '../legacy';
+import { legacySelectorId } from '../compat/legacy';
 
 export function selectorIdOf(el: Element): string {
   return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';

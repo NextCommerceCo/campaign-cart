@@ -16,24 +16,26 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 
 ## Rules
 
-1. **`engine/` is the headless layer; every other folder is a chunk.** Inside a folder, one file
-   per domain or attribute family.
+1. **`engine/` is the headless layer; every other folder except `compat/` is a chunk.** Inside a
+   folder, one file per domain or attribute family.
 2. **Two levels at most:** `src/<area>/<file>.ts`.
 3. **Split by domain, never by kind of code.** No `managers/`, `services/`, `utils/`,
    `helpers/`. When a file passes ~300 lines, split it by domain.
 4. **Imports go one way** (table below), enforced by `tests/architecture.test.ts`.
 5. **Named exports only.** `index.ts` only as a chunk entry, never a re-export barrel.
    Enforced by the same test.
-6. **Compat code is one file per chunk.** `legacy.ts` (core), `checkout/legacy.ts`,
-   `order/legacy.ts`, plus the `legacy*` readers in `config.ts`. Each item is `@deprecated`
-   with its replacement. Dropping 0.4.x support = deleting those files.
-7. **Comments are rare.** Code says what it does; `docs/` says why.
-8. **Build output is never committed.** CI builds `dist/`.
-9. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
-   attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
-   skeleton, button spinners, `.hide` utilities, radio and validation styles), so
-   `public/campaign-cart.css` is a verbatim copy that the loader links from its own folder.
-   New CSS never goes there; trimming it is a decision for after the 0.4.x pages move.
+6. **Compat code lives in `compat/`, one file per chunk that uses it.** Each item is
+   `@deprecated` with its replacement. A file there still ships in the chunk that imports it,
+   so the folder decides ownership, not loading. Dropping 0.4.x support = deleting `compat/`.
+7. **`src/` root holds the entries** `loader.ts`, `boot.ts`, `config.ts` and the one-file
+   `debug.ts` chunk. Every other feature is a folder or a file inside one.
+8. **Comments are rare.** Code says what it does; `docs/` says why.
+9. **Build output is never committed.** CI builds `dist/`.
+10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
+    attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
+    skeleton, button spinners, `.hide` utilities, radio and validation styles), so
+    `public/campaign-cart.css` is a verbatim copy that the loader links from its own folder.
+    New CSS never goes there; trimming it is a decision for after the 0.4.x pages move.
 
 ## Repository
 
@@ -56,23 +58,24 @@ A `docs/architecture/decisions/` folder is added with the first decision worth i
 
 ```
 src/
-  loader.ts            loader      reads the page setup, starts the campaign GET, imports core
-  config.ts            loader      page setup; @deprecated readers for nextConfig / meta tags
-  core.ts              core        boot: Engine, bindings, window.next, ready
-  legacy.ts            core        @deprecated API for 0.4.x page scripts
+  loader.ts            loader      reads the page setup, starts the campaign GET, imports boot
+  config.ts            loader      page setup from the script tag and URL
+  boot.ts              boot        boot: Engine, bindings, window.next, ready
   engine/              headless    no DOM; the only code that calls the API or storage
-    engine.ts types.ts                          core
-    cart.ts selectors.ts values.ts condition.ts core
-    api.ts storage.ts events.ts                 core (api.ts also maps order errors: one request less per lazy chunk)
-    attribution.ts params.ts scope.ts           core
+    engine.ts types.ts                          boot
+    cart.ts selectors.ts values.ts condition.ts boot
+    api.ts storage.ts events.ts                 boot (api.ts also maps order errors: one request less per lazy chunk)
+    attribution.ts params.ts scope.ts           boot
     checkout.ts rules.ts                        loaded by the checkout chunk
     order.ts                                    loaded by the order chunk
-  bindings/            core        DOM, one file per attribute family
+  bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
     dom.ts                         setText, setVisible, setState, parse helpers
     display.ts bundle-selector.ts variants.ts package-toggle.ts add-to-cart.ts
     cart-summary.ts cart-controls.ts links.ts
+    slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
+    widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     form.ts address.ts billing.ts  fields, country/state/location, same-as-shipping and cloned rows
@@ -81,20 +84,24 @@ src/
     review.ts                      [data-next-checkout-review]
     messages.ts                    field and payment error display
     texts.ts                       English texts by code; i18n-rules' translated messages first
-    legacy.ts                      page field names, os-* names, old config, step guard, prospect DOM event
   order/               order       loaded when the page has an upsell offer or order.* values
-    index.ts upsell.ts receipt.ts legacy.ts
-  analytics.ts         analytics   subscriber, loaded on idle
-  exit-intent.ts       exit-intent loaded on the first next.exitIntent() call
-  slots.ts             slots       loaded when a bundle selector has a slot template (multi-variant pages)
-  widgets.ts           widgets     accordion, tooltip, scroll hint and countdown 0.4.x pages rely on; loaded when present
+    index.ts upsell.ts receipt.ts
+  analytics/           analytics   subscriber, loaded on idle
+    index.ts                       startAnalytics: data layer delivery and event mapping
+    ecommerce.ts                   item, cart and order ecommerce payloads
   debug.ts             debug       loaded with ?debug=1
+  compat/                          @deprecated 0.4.x support; each file ships with its importer
+    config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
+    legacy.ts          boot        window.next 0.4.x API, selector ids, event names
+    exit-intent.ts     exit-intent loaded on the first next.exitIntent() call
+    checkout.ts        checkout    page field names, os-* names, old config, step guard, prospect DOM event
+    order.ts           order       accept / decline words, old next-url and offer attributes
 ```
 
 | Chunk       | Loaded when                                                         | Budget (gzip) |
 | ----------- | ------------------------------------------------------------------- | ------------- |
 | loader      | always, inline                                                      | 2.5 KB        |
-| core        | always                                                              | 25 KB         |
+| boot        | always                                                              | 25 KB         |
 | checkout    | `form[data-next-checkout]`                                          | 30 KB         |
 | order       | `[data-next-upsell]` or `order.*`                                   | 10 KB         |
 | analytics   | idle after ready                                                    | 8 KB          |
@@ -105,20 +112,24 @@ src/
 
 ## Imports
 
-| File                                         | May import                                                             |
-| -------------------------------------------- | ---------------------------------------------------------------------- |
-| `engine/*`                                   | `engine/*` only, and no browser globals                                |
-| `bindings/*`                                 | `engine/*` (core files), `bindings/*`, `legacy.ts`                     |
-| `checkout/*`                                 | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`     |
-| `order/*`                                    | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`        |
-| `analytics.ts`, `exit-intent.ts`, `debug.ts` | `engine/*`                                                             |
-| `slots.ts`                                   | `engine/*`, `bindings/dom.ts`                                          |
-| `widgets.ts`                                 | nothing (pure page UI)                                                 |
-| `core.ts`, `legacy.ts`                       | `engine/*` (core files), `bindings/*`; lazy chunks only via `import()` |
-| `loader.ts`                                  | `config.ts`; `core.ts` only via `import()`                             |
+| File                      | May import                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| `engine/*`                | `engine/*` only, and no browser globals                                                    |
+| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                  |
+| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`   |
+| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`         |
+| `analytics/*`, `debug.ts` | `engine/*`                                                                                 |
+| `compat/*`                | `engine/*`, `compat/*`                                                                     |
+| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()` |
+| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                             |
+| `config.ts`               | `compat/config.ts`                                                                         |
+
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug.ts`, `bindings/slots.ts`,
+`bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts` and `compat/order.ts`,
+which only their own chunk may import statically.
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
-chunk; a static path from `core.ts` to `engine/checkout|order|rules.ts`; a browser global
+chunk; a static path from `boot.ts` to `engine/checkout|order|rules.ts`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) inside `engine/`; a folder deeper
 than two levels; a default export or a re-export barrel.
@@ -128,8 +139,8 @@ than two levels; a default export or a re-export barrel.
 ```
 tests/
   engine/          one file per engine module, runs in Node — proves the Engine is headless
-  bindings/ checkout/ order/   one file per binding, happy-dom
-  analytics.test.ts · legacy.test.ts · boot.test.ts · architecture.test.ts
+  bindings/ checkout/ order/ analytics/ compat/   one file per module, happy-dom
+  boot.test.ts · loader.test.ts · debug.test.ts · pages.test.ts · architecture.test.ts
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts
     pages/<campaign>/<page>.html   real template pages copied verbatim, source commit on line 1
@@ -148,9 +159,9 @@ cannot drift silently.
 
 ## Recipes
 
-| Adding           | Where                                                                                                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md` |
-| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `types.ts` and `docs/guides/events.md`                                                       |
-| A lazy feature   | `src/<feature>.ts` or `src/<feature>/index.ts`; `import()` from core; a budget row in `scripts/size.mjs`                                                  |
-| A deprecation    | the old name in that chunk's `legacy.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                           |
+| Adding           | Where                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                 |
+| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `types.ts` and `docs/guides/events.md`                                                                       |
+| A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs` |
+| A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                            |

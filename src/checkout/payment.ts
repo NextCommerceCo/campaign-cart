@@ -1,6 +1,6 @@
 import { type CheckoutActions, paymentCode } from '../engine/checkout';
 import type { Engine } from '../engine/engine';
-import { FIELD_ATTRS } from './legacy';
+import { FIELD_ATTRS } from '../compat/checkout';
 import { option, showField } from './messages';
 import { cardText, label } from './texts';
 

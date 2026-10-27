@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { boot } from '../src/core';
+import { boot } from '../src/boot';
 import { fakeApi } from './fixtures/api';
 import { campaign } from './fixtures/campaign';
 

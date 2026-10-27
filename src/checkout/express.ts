@@ -1,6 +1,6 @@
 import { EXPRESS_METHODS } from '../engine/checkout';
 import type { Engine } from '../engine/engine';
-import { legacyExpressOrder } from './legacy';
+import { legacyExpressOrder } from '../compat/checkout';
 import { EXPRESS_BUTTONS } from './logos';
 
 function button(method: string): HTMLButtonElement {

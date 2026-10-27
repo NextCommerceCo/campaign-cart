@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { CheckoutState } from '../engine/types';
-import { LEGACY_FIELDS } from './legacy';
+import { LEGACY_FIELDS } from '../compat/checkout';
 
 const phone = (value: string) => {
   const digits = value.replace(/\D/g, '');

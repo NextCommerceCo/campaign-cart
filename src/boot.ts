@@ -11,7 +11,7 @@ import {
   legacyApi,
   type LegacyApi,
   removeLegacyPersonalData,
-} from './legacy';
+} from './compat/legacy';
 
 declare const __VERSION__: string;
 
@@ -158,11 +158,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
     )
   )
-    void import('./widgets').then((m) =>
+    void import('./bindings/widgets').then((m) =>
       m.bindWidgets(document, { timerStart: (id, ms) => engine.timerStart(id, ms) }),
     );
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
-  const slotsChunk = slotsPage ? import('./slots') : undefined;
+  const slotsChunk = slotsPage ? import('./bindings/slots') : undefined;
 
   const reveal = () => {
     try {

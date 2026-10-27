@@ -16,7 +16,7 @@ import {
   legacyCountries,
   stepUrlOf,
   writeStepGuard,
-} from './legacy';
+} from '../compat/checkout';
 import { errorBox, showBox, shown } from './messages';
 import { bindCard, bindPayment } from './payment';
 import { bindReview } from './review';

@@ -1,5 +1,5 @@
-import type { Engine } from './engine/engine';
-import type { Campaign, CartLine, EventName, Package, ShippingOption } from './engine/types';
+import type { Engine } from '../engine/engine';
+import type { Campaign, CartLine, EventName, Package, ShippingOption } from '../engine/types';
 import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */

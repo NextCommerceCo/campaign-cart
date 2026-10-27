@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
-import { boot } from '../src/core';
+import { boot } from '../src/boot';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi } from './fixtures/api';
 import { campaign } from './fixtures/campaign';

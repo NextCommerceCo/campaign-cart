@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { option } from './messages';
 import type { CountryOption } from '../engine/types';
 import type { Fields } from './form';
-import { legacyHiddenStates } from './legacy';
+import { legacyHiddenStates } from '../compat/checkout';
 
 const WRAPPER =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';

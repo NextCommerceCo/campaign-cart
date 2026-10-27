@@ -1,7 +1,7 @@
 # Migrating from 0.4.x
 
 Pages built for 0.4.x keep working: old attribute names, `nextConfig` keys and `window.next`
-methods are read by each chunk's `legacy.ts` and marked `@deprecated` with their replacement.
+methods are read by the SDK's `compat/` files and marked `@deprecated` with their replacement.
 This page lists what changes for a page builder. Every 0.4.43 attribute, method, event and
 config key, with its live usage, is in [parity-0.4.md](../architecture/parity-0.4.md).
 

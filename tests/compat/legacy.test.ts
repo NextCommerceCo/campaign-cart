@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { boot } from '../src/core';
-import { fakeApi } from './fixtures/api';
-import { campaign } from './fixtures/campaign';
-import { flush } from './fixtures/engine';
+import { boot } from '../../src/boot';
+import { fakeApi } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
+import { flush } from '../fixtures/engine';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
 

@@ -1,4 +1,5 @@
-import { announceLegacyLoaded, campaignUrl, legacyGlobals, readConfig } from './config';
+import { announceLegacyLoaded, legacyGlobals } from './compat/config';
+import { campaignUrl, readConfig } from './config';
 
 const STYLESHEET = 'campaign-cart.css';
 
@@ -22,7 +23,7 @@ if (!config.apiKey) {
       ? new Promise((done) => document.addEventListener('DOMContentLoaded', done, { once: true }))
       : undefined;
 
-  import('./core')
+  import('./boot')
     .then(async ({ boot }) => {
       announceLegacyLoaded(window);
       await parsed;

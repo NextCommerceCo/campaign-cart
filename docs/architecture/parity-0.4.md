@@ -15,7 +15,7 @@ How to read the status column:
 - **Removed (documented)**: listed in [migrating-from-0.4.md](../guides/migrating-from-0.4.md).
 - **Removed (no live use)**: neither `my-campaigns` nor the starter templates use it; it is not
   coming back unless a page needs it.
-- **Deprecated**: still read, from the chunk's `legacy.ts`; the note says what replaces it.
+- **Deprecated**: still read, from `src/compat/<chunk>.ts`; the note says what replaces it.
 - **Ignored**: read by 0.4.x, harmless to leave on a page.
 
 ## Found by this check and fixed

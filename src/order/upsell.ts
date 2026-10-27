@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from '../engine/order';
 import { nextUrl } from '../engine/params';
 import { selectorIdOf } from '../bindings/dom';
-import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from './legacy';
+import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from '../compat/order';
 
 const FEEDBACK_MS = 1000;
 const SUCCESS_MS = 100;

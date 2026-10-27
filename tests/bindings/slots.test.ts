@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { bindAll } from '../src/bindings';
-import { bindSlots } from '../src/slots';
-import { fakeApi } from './fixtures/api';
-import { flush, makeEngine } from './fixtures/engine';
+import { bindAll } from '../../src/bindings';
+import { bindSlots } from '../../src/bindings/slots';
+import { fakeApi } from '../fixtures/api';
+import { flush, makeEngine } from '../fixtures/engine';
 
 async function mount(fetch?: typeof globalThis.fetch) {
   const file = 'tests/fixtures/pages/olympus-multi-variant/checkout.html';
