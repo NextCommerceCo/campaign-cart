@@ -4,6 +4,7 @@ import { type CartActions, createCart, emptyCart } from './cart';
 import type { CheckoutActions } from './checkout';
 import type { OrderActions } from './order';
 import { type EngineEvent, Events } from './events';
+import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './selectors';
 import { StorageAdapter } from './storage';
@@ -23,6 +24,7 @@ export interface EngineOptions {
   funnel?: string;
   reset?: boolean;
   now?: () => number;
+  logLevel?: LogLevel;
 }
 
 export interface Context {
@@ -31,6 +33,7 @@ export interface Context {
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
   on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void): () => void;
   fail(action: string, err: unknown): void;
+  log: Logger;
   getPackage(id: number): Package | undefined;
   attribution(): Attribution;
   saved<T>(slice: keyof State): T | undefined;
@@ -42,7 +45,8 @@ export interface Context {
 const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
 
 export class Engine {
-  readonly events = new Events();
+  readonly log: Logger;
+  readonly events: Events;
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
   readonly toggles: ToggleActions;
@@ -58,6 +62,8 @@ export class Engine {
   private context: Context;
 
   constructor(private options: EngineOptions) {
+    this.log = new Logger(options.logLevel, options.now);
+    this.events = new Events(this.log);
     this.api = new Api(options.apiKey, options.send, options.apiBase);
     const adapter = (name: string, backends: Array<Storage | null>) =>
       new StorageAdapter({
@@ -81,6 +87,7 @@ export class Engine {
       emit: (name, data) => this.events.emit(name, data),
       on: (name, fn) => this.events.on(name, fn),
       fail: (action, err) => this.fail(action, err),
+      log: this.log,
       getPackage: (id) => this.getPackage(id),
       attribution: () => this.attribution(),
       saved: (slice) => this.session.get(slice),
@@ -237,6 +244,8 @@ export class Engine {
   }
 
   private fail(action: string, err: unknown): void {
-    this.events.emit('error', { action, message: err instanceof Error ? err.message : String(err) });
+    const message = err instanceof Error ? err.message : String(err);
+    this.log.info(`${action} failed: ${message}`);
+    this.events.emit('error', { action, message });
   }
 }

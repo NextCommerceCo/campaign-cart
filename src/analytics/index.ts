@@ -55,7 +55,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     try {
       return fn(event) || undefined;
     } catch (err) {
-      console.error('[next] NextDataLayerTransformFn failed', err);
+      engine.log.error('NextDataLayerTransformFn failed', err);
       return undefined;
     }
   };

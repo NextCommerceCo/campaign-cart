@@ -10,7 +10,7 @@ const CSS = `.next-debug{position:fixed;right:12px;bottom:12px;z-index:214748364
 .next-debug__bar button[aria-pressed=true]{background:#111;color:#fff}
 .next-debug pre{margin:0;padding:8px;white-space:pre-wrap;word-break:break-word}`;
 
-const TABS = ['state', 'events', 'storage'] as const;
+const TABS = ['state', 'events', 'logs', 'storage'] as const;
 type Tab = (typeof TABS)[number];
 
 export function startDebug(engine: Engine, info: { scope: string; funnel: string; reset: () => void }): void {
@@ -24,26 +24,39 @@ export function startDebug(engine: Engine, info: { scope: string; funnel: string
   document.body.append(root);
   const pre = root.querySelector('pre')!;
 
+  const time = (at: number) => new Date(at).toLocaleTimeString();
+  const views: Record<Tab, () => string> = {
+    state: () => {
+      const { campaign, ...state } = engine.getState();
+      return JSON.stringify(
+        { campaign: campaign && { name: campaign.name, currency: campaign.currency }, ...state },
+        null,
+        2,
+      );
+    },
+    events: () =>
+      events
+        .slice(-50)
+        .reverse()
+        .map((e) => `${time(e.at)} ${e.name} ${JSON.stringify(e.data).slice(0, 200)}`)
+        .join('\n'),
+    logs: () =>
+      engine.log
+        .entries()
+        .slice(-100)
+        .reverse()
+        .map((e) => `${time(e.at)} ${e.level.padEnd(5)} ${e.message}`)
+        .join('\n'),
+    storage: () =>
+      `scope   ${info.scope}\nfunnel  ${info.funnel || '(none)'}\n\nreset clears this funnel's saved cart, form and order.`,
+  };
+
   const render = () => {
     if (!root.classList.contains('next-debug--open')) return;
     root
       .querySelectorAll<HTMLElement>('[data-tab]')
       .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
-    const { campaign, ...state } = engine.getState();
-    pre.textContent =
-      tab === 'state'
-        ? JSON.stringify(
-            { campaign: campaign && { name: campaign.name, currency: campaign.currency }, ...state },
-            null,
-            2,
-          )
-        : tab === 'events'
-          ? events
-              .slice(-50)
-              .reverse()
-              .map((e) => `${new Date(e.at).toLocaleTimeString()} ${e.name} ${JSON.stringify(e.data).slice(0, 200)}`)
-              .join('\n')
-          : `scope   ${info.scope}\nfunnel  ${info.funnel || '(none)'}\n\nreset clears this funnel's saved cart, form and order.`;
+    pre.textContent = views[tab]();
   };
 
   root.querySelector('.next-debug__toggle')!.addEventListener('click', () => {
@@ -62,9 +75,10 @@ export function startDebug(engine: Engine, info: { scope: string; funnel: string
     (e) => {
       events.push(e);
       if (events.length > 200) events.shift();
-      console.debug('[next]', e.name, e.data);
+      engine.log.debug(`event ${e.name}`, e.data);
     },
     { replay: true },
   );
   engine.subscribe(render);
+  engine.log.stream(() => tab === 'logs' && render());
 }

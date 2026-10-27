@@ -41,6 +41,6 @@ export class BindContext {
   warn(message: string): void {
     if (this.warned.has(message)) return;
     this.warned.add(message);
-    console.warn(`[next] ${message}`);
+    this.engine.log.warn(message);
   }
 }

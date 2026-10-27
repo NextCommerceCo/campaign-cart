@@ -1,3 +1,5 @@
+import { Logger } from '../engine/log';
+
 const TOOLTIP_CSS = `.next-tooltip{position:fixed;top:0;left:0;z-index:99999;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease,transform .2s ease;transform:scale(.95);pointer-events:none}
 .next-tooltip--visible{opacity:1;visibility:visible;transform:scale(1);pointer-events:auto}
 .next-tooltip__content{background:#333;color:#fff;padding:8px 12px;border-radius:6px;font-size:13px;line-height:1.4;font-weight:400;text-align:center;word-wrap:break-word;box-shadow:0 4px 12px rgba(0,0,0,.15);max-width:200px;white-space:normal}
@@ -163,9 +165,9 @@ function clock(seconds: number, format: string): string {
   return format === 'ss' ? pad(s) : `${pad(m)}:${pad(s)}`;
 }
 
-function bindTimer(timer: HTMLElement, timerStart: TimerStart): void {
+function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger): void {
   const duration = Number(timer.getAttribute('data-duration'));
-  if (!duration) return console.warn('[next] data-next-timer needs data-duration (seconds)');
+  if (!duration) return log.warn('data-next-timer needs data-duration (seconds)');
   const id = timer.getAttribute('data-persistence-id') || 'default-timer';
   const format = timer.getAttribute('data-format') || 'mm:ss';
   const display = timer.querySelector('[data-next-timer-display]') ?? timer;
@@ -185,8 +187,8 @@ function bindTimer(timer: HTMLElement, timerStart: TimerStart): void {
 
 const startNow: TimerStart = () => Date.now();
 
-export function bindWidgets(root: ParentNode = document, { timerStart = startNow } = {}): void {
-  root.querySelectorAll<HTMLElement>('[data-next-timer]').forEach((timer) => bindTimer(timer, timerStart));
+export function bindWidgets(root: ParentNode = document, { timerStart = startNow, log = new Logger() } = {}): void {
+  root.querySelectorAll<HTMLElement>('[data-next-timer]').forEach((timer) => bindTimer(timer, timerStart, log));
   root.querySelectorAll<HTMLElement>('[data-next-accordion]').forEach(bindAccordion);
   root.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]').forEach(bindScrollHint);
   const tips = root.querySelectorAll<HTMLElement>('[data-next-tooltip]');

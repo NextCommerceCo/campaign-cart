@@ -1,4 +1,5 @@
 import type { Engine } from '../engine/engine';
+import type { Logger } from '../engine/log';
 import type { Campaign, CartLine, EventName, Package, ShippingOption } from '../engine/types';
 import type { ExitIntentOptions } from './exit-intent';
 
@@ -105,7 +106,7 @@ export function legacyApi(engine: Engine): LegacyApi {
 }
 
 /** @deprecated Use `next.on('ready', fn)` and `html[data-next-ready]`. */
-export function announceLegacyReady(next: { version: string }): void {
+export function announceLegacyReady(next: { version: string }, log: Logger): void {
   document.documentElement.classList.add('next-display-ready');
   document.dispatchEvent(new CustomEvent('next:initialized', { bubbles: true, detail: { version: next.version } }));
   const win = window as unknown as { nextReady?: unknown };
@@ -113,7 +114,7 @@ export function announceLegacyReady(next: { version: string }): void {
     try {
       fn(next);
     } catch (err) {
-      console.error('[next] nextReady callback failed', err);
+      log.error('nextReady callback failed', err);
     }
   };
   if (Array.isArray(win.nextReady)) win.nextReady.forEach(run);
@@ -126,12 +127,12 @@ interface LegacyAnalyticsConfig {
 }
 
 /** @deprecated `nextConfig.analytics`. GTM reads `dataLayer`; other vendors use GTM or the page's forwarder. */
-export function legacyAnalytics(): { enabled: boolean; nextCampaign: boolean; dataLayer: boolean } {
+export function legacyAnalytics(log: Logger): { enabled: boolean; nextCampaign: boolean; dataLayer: boolean } {
   const config = (window as unknown as { nextConfig?: { analytics?: LegacyAnalyticsConfig } }).nextConfig?.analytics;
   const providers = config?.providers ?? {};
   for (const name of ['facebook', 'rudderstack', 'custom']) {
     if (providers[name]?.enabled)
-      console.warn(`[next] analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
+      log.warn(`analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
   }
   return {
     enabled: config?.enabled !== false,

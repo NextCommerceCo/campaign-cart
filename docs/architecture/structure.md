@@ -68,6 +68,7 @@ src/
     engine.ts types.ts                          boot
     cart.ts selectors.ts values.ts condition.ts boot
     api.ts storage.ts events.ts                 boot (api.ts also maps order errors: one request less per lazy chunk)
+    log.ts                                      boot: the one logger; levels, last 200 entries, stream
     attribution.ts params.ts scope.ts           boot
     checkout.ts rules.ts                        loaded by the checkout chunk
     order.ts                                    loaded by the order chunk
@@ -135,7 +136,8 @@ which only their own chunk may import statically.
 chunk; a static path from `boot.ts` to `engine/checkout|order|rules.ts`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) inside `engine/`; a folder deeper
-than two levels; a default export or a re-export barrel.
+than two levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
+`loader.ts`.
 
 ## Tests
 

@@ -3,6 +3,7 @@ import { makeEngine } from '../fixtures/engine';
 
 describe('events', () => {
   it('replays buffered events and survives a throwing subscriber', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const { engine } = makeEngine();
     await engine.start();
     const seen: string[] = [];
@@ -15,6 +16,9 @@ describe('events', () => {
     );
     engine.on('campaign.loaded', (e) => seen.push(e.name), { replay: true });
     expect(seen).toEqual(['campaign.loaded']);
+    expect(engine.log.entries()).toContainEqual(
+      expect.objectContaining({ level: 'error', message: 'subscriber failed on campaign.loaded' }),
+    );
   });
 
   it('delivers events emitted inside a listener after the current one', () => {

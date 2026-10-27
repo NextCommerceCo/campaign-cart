@@ -27,4 +27,6 @@ publish a public link
   one file per chunk that uses it, each `@deprecated`.
 - Tests mirror `src/` under `tests/`; `tests/engine/**` runs in Node. Every bug fix adds a test
   that fails without it.
+- Log through `engine.log` (`src/engine/log.ts`); only it and `loader.ts`, which runs before an
+  Engine exists, touch `console`. Log data never carries payment details.
 - `dist/` is built by CI and never committed.

@@ -81,7 +81,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
       }
       popup.append(img);
     } else {
-      return console.warn('[next] exitIntent needs an image or a template');
+      return engine.log.warn('exitIntent needs an image or a template');
     }
 
     if (o.showCloseButton) {

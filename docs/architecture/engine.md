@@ -212,7 +212,7 @@ same URL; skip → `order.skip()` and navigate.
 
 `src/engine/`: `engine.ts`, `types.ts`, `cart.ts`, `selectors.ts` (boot); `checkout.ts`,
 `order.ts`, `rules.ts` (loaded by their chunks); shared `api.ts` (with the order error mapping), `storage.ts`,
-`events.ts`, `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`. See
+`events.ts`, `log.ts`, `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`. See
 [structure.md](structure.md).
 
 ## 6. Migration

@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe('debug panel', () => {
-  it('opens with ?debug=1 and shows state, events and the storage scope', async () => {
+  it('opens with ?debug=1 and shows state, events, logs and the storage scope', async () => {
     vi.stubGlobal('fetch', fakeApi().fetch);
     vi.spyOn(console, 'debug').mockImplementation(() => {});
     vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -24,6 +24,9 @@ describe('debug panel', () => {
     expect(JSON.parse(pre()).cart.groups.items.lines).toEqual([{ packageId: 1, quantity: 1 }]);
     document.querySelector<HTMLElement>('[data-tab="events"]')!.click();
     expect(pre()).toContain('cart.updated');
+    document.querySelector<HTMLElement>('[data-tab="logs"]')!.click();
+    expect(pre()).toContain('info  storage scope');
+    expect(pre()).toContain('debug event cart.updated');
     document.querySelector<HTMLElement>('[data-tab="storage"]')!.click();
     expect(pre()).toContain('funnel  f1');
   });

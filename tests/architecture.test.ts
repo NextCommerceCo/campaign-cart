@@ -103,6 +103,13 @@ describe('architecture', () => {
     expect(sources.filter((s) => s.path.split('/').length > 2).map((s) => s.path)).toEqual([]);
   });
 
+  it('only the logger writes to the console', () => {
+    const direct = sources
+      .filter((s) => !['engine/log', 'loader'].includes(s.path) && /\bconsole\./.test(s.code))
+      .map((s) => s.path);
+    expect(direct).toEqual([]);
+  });
+
   it('no default exports and no re-export barrels', () => {
     const bad = sources
       .filter((s) => /^export default|^export \* from|^export \{[^}]*\} from/m.test(s.code))

@@ -2,6 +2,7 @@ import { bindAll } from './bindings';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
+import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { Campaign, CartLine, EventMap, EventName } from './engine/types';
 import {
@@ -62,6 +63,7 @@ export interface NextApi extends LegacyApi {
   version: string;
   on<K extends EventName>(name: K | '*', fn: (data: EventMap[K], event: EngineEvent) => void): () => void;
   getState: Engine['getState'];
+  log: Pick<Logger, 'level' | 'entries' | 'stream'>;
   bind(root: ParentNode): void;
   actions: {
     addItem(packageId: number, quantity?: number): Promise<void>;
@@ -102,10 +104,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     },
     funnel: config.funnel || undefined,
     reset: config.reset,
+    logLevel: config.debug ? 'debug' : 'warn',
   });
 
   if (config.debug) {
-    console.info(`[next] storage scope ${scope} (funnel "${funnel || '(none)'}")`);
+    engine.log.info(`storage scope ${scope} (funnel "${funnel || '(none)'}")`);
     const reset = () => location.assign(`${location.pathname}?reset=1`);
     void import('./debug').then((m) => m.startDebug(engine, { scope, funnel, reset }));
   }
@@ -129,12 +132,13 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     on: (name, fn) => {
       const event = (LEGACY_EVENTS[name] ?? name) as EventName | '*';
       if (event !== '*' && !EVENT_NAMES.includes(event)) {
-        console.warn(`[next] next.on: unknown event "${name}"`);
+        engine.log.warn(`next.on: unknown event "${name}"`);
         return () => {};
       }
       return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' });
     },
     getState: () => engine.getState(),
+    log: engine.log,
     bind: (root) => bindings.bind(root),
     actions: {
       addItem: (packageId, quantity) => engine.cart.addItem(packageId, quantity),
@@ -159,7 +163,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     )
   )
     void import('./bindings/widgets').then((m) =>
-      m.bindWidgets(document, { timerStart: (id, ms) => engine.timerStart(id, ms) }),
+      m.bindWidgets(document, { timerStart: (id, ms) => engine.timerStart(id, ms), log: engine.log }),
     );
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
   const slotsChunk = slotsPage ? import('./bindings/slots') : undefined;
@@ -170,8 +174,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     } finally {
       html.setAttribute('data-next-ready', '');
     }
-    announceLegacyReady(next);
-    const analytics = legacyAnalytics();
+    announceLegacyReady(next, engine.log);
+    const analytics = legacyAnalytics(engine.log);
     if (analytics.enabled) {
       const start = () =>
         import('./analytics').then((m) =>

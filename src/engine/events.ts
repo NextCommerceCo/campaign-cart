@@ -1,3 +1,4 @@
+import type { Logger } from './log';
 import type { EventMap, EventName } from './types';
 
 export interface EngineEvent<K extends EventName = EventName> {
@@ -16,6 +17,8 @@ export class Events {
   private queue: EngineEvent[] = [];
   private emitting = false;
 
+  constructor(private log: Logger) {}
+
   emit<K extends EventName>(name: K, data: EventMap[K]): void {
     const event: EngineEvent = { name, data, at: Date.now() };
     this.buffer.push(event);
@@ -31,7 +34,7 @@ export class Events {
       for (let next = this.queue.shift(); next; next = this.queue.shift()) {
         const current = next;
         for (const key of [current.name, '*'])
-          [...(this.listeners.get(key) ?? [])].forEach((fn) => deliver(fn, current));
+          [...(this.listeners.get(key) ?? [])].forEach((fn) => this.deliver(fn, current));
       }
     } finally {
       this.emitting = false;
@@ -47,15 +50,16 @@ export class Events {
     let set = this.listeners.get(name);
     if (!set) this.listeners.set(name, (set = new Set()));
     set.add(listener);
-    if (options.replay) this.buffer.filter((e) => name === '*' || e.name === name).forEach((e) => deliver(listener, e));
+    if (options.replay)
+      this.buffer.filter((e) => name === '*' || e.name === name).forEach((e) => this.deliver(listener, e));
     return () => set.delete(listener);
   }
-}
 
-function deliver(fn: Listener, event: EngineEvent): void {
-  try {
-    fn(event);
-  } catch (err) {
-    console.error('[next] subscriber failed on', event.name, err);
+  private deliver(fn: Listener, event: EngineEvent): void {
+    try {
+      fn(event);
+    } catch (err) {
+      this.log.error(`subscriber failed on ${event.name}`, err);
+    }
   }
 }

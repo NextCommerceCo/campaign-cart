@@ -115,6 +115,18 @@ describe('boot', () => {
     expect(warn).toHaveBeenCalledWith('[next] next.on: unknown event "fomo:shown"');
   });
 
+  it('lets page scripts quiet the console and read the log stream', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const next = boot(config, Promise.resolve(campaign));
+    const streamed: string[] = [];
+    next.log.stream((e) => streamed.push(e.message));
+    next.log.level = 'silent';
+    next.on('fomo:shown' as never, vi.fn());
+    expect(warn).not.toHaveBeenCalled();
+    expect(streamed).toEqual(['next.on: unknown event "fomo:shown"']);
+    expect(next.log.entries().at(-1)).toMatchObject({ level: 'warn', message: 'next.on: unknown event "fomo:shown"' });
+  });
+
   it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {
     const next = boot(config, Promise.resolve(campaign));
     await next.actions.applyCoupon('SAVE10');
