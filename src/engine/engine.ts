@@ -1,14 +1,14 @@
 import { Api } from './api';
 import { type Attribution, buildAttribution, type Visit } from './attribution';
-import { type CartActions, createCart, emptyCart } from './cart';
-import type { CheckoutActions } from './checkout';
-import type { OrderActions } from './order';
+import { type CartActions, createCart, emptyCart } from './cart/cart';
+import type { CheckoutActions } from '../checkout/state/checkout';
+import type { OrderActions } from '../order/state';
 import { type EngineEvent, Events } from './events';
 import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
-import { createSelectors, type SelectorActions } from './selectors';
+import { createSelectors, type SelectorActions } from './cart/selectors';
 import { StorageAdapter } from './storage';
-import { createToggles, type ToggleActions } from './toggles';
+import { createToggles, type ToggleActions } from './cart/toggles';
 import type { Campaign, EventMap, EventName, Package, Send, State } from './types';
 
 export interface EngineOptions {

@@ -13,7 +13,9 @@ const LAZY: Record<string, string[]> = {
   'compat/checkout': ['checkout'],
   'compat/order': ['order'],
 };
-const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules', 'engine/phone'];
+const LAZY_STATE = ['checkout/state', 'order/state'];
+const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
+const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
 const BROWSER_GLOBALS =
   /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
 
@@ -80,7 +82,18 @@ describe('architecture', () => {
     expect(eager).toEqual([]);
   });
 
-  it('landing pages never load checkout or order engine code', () => {
+  it("headless code imports only the engine and its own feature's state", () => {
+    const wrong = sources
+      .filter((s) => headless(s.path))
+      .flatMap(({ file, path, top, code }) =>
+        imports(code, file)
+          .statics.filter((target) => !within(target, 'engine') && !within(target, `${top}/state`))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(wrong).toEqual([]);
+  });
+
+  it('landing pages never load checkout or order state', () => {
     const reach = (path: string, seen = new Set<string>()): Set<string> => {
       if (seen.has(path)) return seen;
       seen.add(path);
@@ -88,19 +101,19 @@ describe('architecture', () => {
       if (source) imports(source.code, source.file).statics.forEach((next) => reach(next, seen));
       return seen;
     };
-    expect([...reach('boot')].filter((path) => LAZY_ENGINE.includes(path))).toEqual([]);
+    expect([...reach('boot')].filter((path) => LAZY_STATE.some((area) => within(path, area)))).toEqual([]);
   });
 
-  it('the Engine never touches the DOM or browser globals', () => {
+  it('the engine and every feature state never touch the DOM or browser globals', () => {
     const dom = sources
-      .filter((s) => s.top === 'engine')
+      .filter((s) => headless(s.path))
       .filter((s) => BROWSER_GLOBALS.test(s.code.replace(/'[^']*'|`[^`]*`/g, '')))
       .map((s) => s.path);
     expect(dom).toEqual([]);
   });
 
-  it('folders are at most two levels deep', () => {
-    expect(sources.filter((s) => s.path.split('/').length > 2).map((s) => s.path)).toEqual([]);
+  it('folders are at most three levels deep', () => {
+    expect(sources.filter((s) => s.path.split('/').length > 3).map((s) => s.path)).toEqual([]);
   });
 
   it('only the logger writes to the console', () => {

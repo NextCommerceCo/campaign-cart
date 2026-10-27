@@ -1,4 +1,4 @@
-import { RulesApi } from '../../src/engine/rules';
+import { RulesApi } from '../../src/checkout/state/rules';
 import type { CountryRules } from '../../src/engine/types';
 import { json } from './api';
 

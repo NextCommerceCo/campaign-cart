@@ -1,8 +1,8 @@
-import { type CheckoutActions, paymentCode } from '../engine/checkout';
-import type { Engine } from '../engine/engine';
-import { FIELD_ATTRS } from '../compat/checkout';
-import { option, showField } from './messages';
-import { cardText, label } from './texts';
+import { type CheckoutActions, paymentCode } from '../state/checkout';
+import type { Engine } from '../../engine/engine';
+import { FIELD_ATTRS } from '../../compat/checkout';
+import { option, showField } from '../form/errors';
+import { cardText, label } from '../form/texts';
 
 declare const __VERSION__: string;
 

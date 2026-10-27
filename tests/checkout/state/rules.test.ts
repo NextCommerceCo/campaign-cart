@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fieldError, formatPostcode, formErrors, requiredFields, validEmail } from '../../src/engine/rules';
-import type { CheckoutState } from '../../src/engine/types';
-import { CA, GB, HK, SG, US } from '../fixtures/rules';
+import { fieldError, formatPostcode, formErrors, requiredFields, validEmail } from '../../../src/checkout/state/rules';
+import type { CheckoutState } from '../../../src/engine/types';
+import { CA, GB, HK, SG, US } from '../../fixtures/rules';
 
 const checkout = (fields: Record<string, string>, patch: Partial<CheckoutState> = {}): CheckoutState => ({
   fields,

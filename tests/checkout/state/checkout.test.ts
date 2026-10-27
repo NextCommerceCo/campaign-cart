@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCheckout, orderBody, paymentCode, redirectFor } from '../../src/engine/checkout';
-import { createOrder } from '../../src/engine/order';
-import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
-import { flush, makeEngine, type MakeEngine, wait } from '../fixtures/engine';
-import { fakeRules } from '../fixtures/rules';
-import { MemoryStorage } from '../fixtures/storage';
+import { createCheckout, orderBody, paymentCode, redirectFor } from '../../../src/checkout/state/checkout';
+import { createOrder } from '../../../src/order/state';
+import { fakeApi, type FakeApiOptions, json } from '../../fixtures/api';
+import { flush, makeEngine, type MakeEngine, wait } from '../../fixtures/engine';
+import { fakeRules } from '../../fixtures/rules';
+import { MemoryStorage } from '../../fixtures/storage';
 
 const SHIPPING = {
   country: 'US',
@@ -124,7 +124,7 @@ describe('checkout', () => {
         { code: 'US', label: 'USA' },
       ],
     };
-    const campaign = Promise.resolve({ ...(await import('../fixtures/campaign')).campaign, ...offered });
+    const campaign = Promise.resolve({ ...(await import('../../fixtures/campaign')).campaign, ...offered });
     const located = await setup({ campaign });
     await located.checkout.loadCountries();
     expect(located.engine.getState().checkout!.countries.map((c) => c.code)).toEqual(['US', 'GB']);

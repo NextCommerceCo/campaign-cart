@@ -1,6 +1,6 @@
 import { mergeLines } from './cart';
-import type { Context } from './engine';
-import { toggleGroup } from './values';
+import type { Context } from '../engine';
+import { toggleGroup } from '../values';
 
 export function createToggles(ctx: Context) {
   const inFlight = new Map<number, AbortController>();

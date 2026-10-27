@@ -1,14 +1,14 @@
-import { RulesApi } from '../engine/rules';
-import { type CheckoutActions, createCheckout, EXPRESS_METHODS, redirectFor } from '../engine/checkout';
+import { RulesApi } from './state/rules';
+import { type CheckoutActions, createCheckout, EXPRESS_METHODS, redirectFor } from './state/checkout';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
-import { bindAddress } from './address';
-import { bindAddressForms } from './address-form';
-import { bindAutocomplete } from './autocomplete';
-import { bindBilling, cloneBillingRows } from './billing';
-import { bindExpress } from './express';
-import { bindFields, phoneRequired, scanFields, syncFields } from './form';
-import { bindLabels } from './labels';
+import { bindAddress } from './address/country';
+import { bindAddressForms } from './address/block';
+import { bindAutocomplete } from './address/autocomplete';
+import { bindBilling, cloneBillingRows } from './address/billing';
+import { bindExpress } from './payment/express';
+import { bindFields, phoneRequired, scanFields, syncFields } from './form/fields';
+import { bindLabels } from './form/labels';
 import {
   announceProspect,
   clearStepGuard,
@@ -17,11 +17,11 @@ import {
   stepUrlOf,
   writeStepGuard,
 } from '../compat/checkout';
-import { errorBox, showBox, shown } from './messages';
-import { bindCard, bindPayment } from './payment';
-import { bindPhones } from './phone';
+import { errorBox, showBox, shown } from './form/errors';
+import { bindCard, bindPayment } from './payment/card';
+import { bindPhones } from './address/phone';
 import { bindReview } from './review';
-import { expressText, formText, label } from './texts';
+import { expressText, formText, label } from './form/texts';
 
 const RULES = 'https://i18n-rules.nextcommerce.com';
 const SUBMIT = 'button[type="submit"], input[type="submit"], [data-next-checkout-submit], [os-checkout-submit]';

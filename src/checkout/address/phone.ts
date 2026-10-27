@@ -1,8 +1,8 @@
-import { type CheckoutActions, PHONES } from '../engine/checkout';
-import type { Engine } from '../engine/engine';
-import { asciiDigits, formatPhone } from '../engine/phone';
-import type { Fields } from './form';
-import { reformat } from './reformat';
+import { type CheckoutActions, PHONES } from '../state/checkout';
+import type { Engine } from '../../engine/engine';
+import { asciiDigits, formatPhone } from '../state/phone';
+import type { Fields } from '../form/fields';
+import { reformat } from '../form/reformat';
 
 const FLAG_WIDTH = 20;
 const FLAG_HEIGHT = 15;

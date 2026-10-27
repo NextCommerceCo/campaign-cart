@@ -1,10 +1,10 @@
-import type { Engine } from '../engine/engine';
-import { BY_COUNTRY, formatPostcode } from '../engine/rules';
-import { option } from './messages';
-import type { CountryOption, CountryRules, FieldRule } from '../engine/types';
-import { type Control, fieldName, type Fields } from './form';
-import { legacyHiddenStates } from '../compat/checkout';
-import { reformat } from './reformat';
+import type { Engine } from '../../engine/engine';
+import { BY_COUNTRY, formatPostcode } from '../state/rules';
+import { option } from '../form/errors';
+import type { CountryOption, CountryRules, FieldRule } from '../../engine/types';
+import { type Control, fieldName, type Fields } from '../form/fields';
+import { legacyHiddenStates } from '../../compat/checkout';
+import { reformat } from '../form/reformat';
 
 const WRAPPER =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';

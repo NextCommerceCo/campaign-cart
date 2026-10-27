@@ -1,4 +1,4 @@
-import type { FieldFormat } from './types';
+import type { FieldFormat } from '../../engine/types';
 
 const MIN_DIGITS = 4;
 const MAX_DIGITS = 15;

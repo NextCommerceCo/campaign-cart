@@ -1,6 +1,6 @@
-import type { CheckoutActions } from '../engine/checkout';
-import type { Engine } from '../engine/engine';
-import { component, FIELD_ATTRS } from '../compat/checkout';
+import type { CheckoutActions } from '../state/checkout';
+import type { Engine } from '../../engine/engine';
+import { component, FIELD_ATTRS } from '../../compat/checkout';
 
 function renameField(el: Element): void {
   for (const attr of FIELD_ATTRS) {

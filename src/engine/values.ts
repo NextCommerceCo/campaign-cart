@@ -1,6 +1,6 @@
 import type { Engine } from './engine';
-import { mergeLines } from './cart';
-import { cardLines } from './selectors';
+import { mergeLines } from './cart/cart';
+import { cardLines } from './cart/selectors';
 import type { CartLine, CartSummary, Discount, Package, Selector, SelectorCard, State, SummaryLine } from './types';
 
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';

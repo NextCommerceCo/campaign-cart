@@ -1,8 +1,8 @@
-import type { CheckoutActions } from '../engine/checkout';
-import type { Engine } from '../engine/engine';
-import type { CheckoutState } from '../engine/types';
-import { FIELD_ATTRS, LEGACY_FIELDS } from '../compat/checkout';
-import { showField } from './messages';
+import type { CheckoutActions } from '../state/checkout';
+import type { Engine } from '../../engine/engine';
+import type { CheckoutState } from '../../engine/types';
+import { FIELD_ATTRS, LEGACY_FIELDS } from '../../compat/checkout';
+import { showField } from './errors';
 import { fieldText } from './texts';
 
 export type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { SelectorCard } from '../../src/engine/types';
-import { format, resolve } from '../../src/engine/values';
-import { fakeApi } from '../fixtures/api';
-import { flush, makeEngine, wait } from '../fixtures/engine';
-import { MemoryStorage } from '../fixtures/storage';
+import type { SelectorCard } from '../../../src/engine/types';
+import { format, resolve } from '../../../src/engine/values';
+import { fakeApi } from '../../fixtures/api';
+import { flush, makeEngine, wait } from '../../fixtures/engine';
+import { MemoryStorage } from '../../fixtures/storage';
 
 const CARDS: SelectorCard[] = [
   { id: 'one', lines: [{ packageId: 1, quantity: 1 }], vouchers: [] },

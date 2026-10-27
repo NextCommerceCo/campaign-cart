@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { asciiDigits, formatPhone, phoneKey, plausiblePhone } from '../../src/engine/phone';
-import { TH, US } from '../fixtures/rules';
+import { asciiDigits, formatPhone, phoneKey, plausiblePhone } from '../../../src/checkout/state/phone';
+import { TH, US } from '../../fixtures/rules';
 
 const us = US.fields.phone_number!.format;
 const th = TH.fields.phone_number!.format;

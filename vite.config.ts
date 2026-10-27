@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { transformWithEsbuild } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+const HEADLESS = ['tests/engine/**/*.test.ts', 'tests/*/state/**/*.test.ts', 'tests/*/state.test.ts'];
+
 const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
 
 export default defineConfig({
@@ -47,10 +49,10 @@ export default defineConfig({
       },
     },
     projects: [
-      { extends: true, test: { name: 'engine', include: ['tests/engine/**/*.test.ts'], environment: 'node' } },
+      { extends: true, test: { name: 'headless', include: HEADLESS, environment: 'node' } },
       {
         extends: true,
-        test: { name: 'dom', include: ['tests/**/*.test.ts'], exclude: ['tests/engine/**'], environment: 'happy-dom' },
+        test: { name: 'dom', include: ['tests/**/*.test.ts'], exclude: HEADLESS, environment: 'happy-dom' },
       },
     ],
   },

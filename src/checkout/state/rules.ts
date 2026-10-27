@@ -1,5 +1,5 @@
 import { asciiDigits, plausiblePhone } from './phone';
-import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, Send } from './types';
+import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, Send } from '../../engine/types';
 
 export interface RemoteCheck {
   valid: boolean | null;

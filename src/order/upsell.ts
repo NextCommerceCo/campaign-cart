@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { Accepted, OrderActions } from '../engine/order';
+import type { Accepted, OrderActions } from './state';
 import { nextUrl } from '../engine/params';
 import { selectorIdOf } from '../bindings/dom';
 import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from '../compat/order';

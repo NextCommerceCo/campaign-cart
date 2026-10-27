@@ -1,4 +1,4 @@
-import { mergeLines } from '../engine/cart';
+import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
 import type { CartState, EventMap, ExitIntentDetail } from '../engine/types';
 import { cartEcommerce, cents, currency, ecommerce, legacyCart, type Line, orderItem, taxIncluded } from './ecommerce';

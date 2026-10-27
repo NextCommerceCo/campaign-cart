@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { createOrder, type OrderActions, orderValue } from '../engine/order';
+import { createOrder, type OrderActions, orderValue } from './state';
 import { registerValues } from '../engine/values';
 import { bindReceipt } from './receipt';
 import { bindUpsells } from './upsell';

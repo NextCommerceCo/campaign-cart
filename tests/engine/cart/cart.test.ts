@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fakeApi } from '../fixtures/api';
-import { flush, makeEngine, wait } from '../fixtures/engine';
-import { MemoryStorage } from '../fixtures/storage';
+import { fakeApi } from '../../fixtures/api';
+import { flush, makeEngine, wait } from '../../fixtures/engine';
+import { MemoryStorage } from '../../fixtures/storage';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
 

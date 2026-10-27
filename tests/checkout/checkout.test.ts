@@ -346,7 +346,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
       <label class="label-checkout label-checkout--floating">Email</label>
       <input data-next-checkout-field="email" data-label-behavior="placeholder" placeholder="Email*">
     </div></div></form>`;
-    const { bindLabels } = await import('../../src/checkout/labels');
+    const { bindLabels } = await import('../../src/checkout/form/labels');
     bindLabels(document.querySelector('form')!);
     const input = document.querySelector('input')!;
     const label = document.querySelector('label')!;

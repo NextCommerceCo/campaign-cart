@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import type { Engine } from '../../src/engine/engine';
-import { createOrder } from '../../src/engine/order';
+import { createOrder } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';

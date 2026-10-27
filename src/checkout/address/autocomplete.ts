@@ -1,6 +1,6 @@
-import type { CheckoutActions } from '../engine/checkout';
-import type { AddressSuggestion } from '../engine/types';
-import type { Fields } from './form';
+import type { CheckoutActions } from '../state/checkout';
+import type { AddressSuggestion } from '../../engine/types';
+import type { Fields } from '../form/fields';
 
 const DEBOUNCE = 300;
 const searchable = (text: string) => /\S\s+\S/.test(text);

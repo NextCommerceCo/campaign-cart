@@ -1,4 +1,4 @@
-import { cardQuantity, pickedCard } from '../engine/selectors';
+import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorMode } from '../engine/types';
 import { type BindContext, type Render } from './context';
 import { isFormControl, parseJson, parseLines, selectorIdOf, setState, stamp } from './dom';
