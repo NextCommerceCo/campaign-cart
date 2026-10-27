@@ -13,7 +13,7 @@ const LAZY: Record<string, string[]> = {
   'compat/checkout': ['checkout'],
   'compat/order': ['order'],
 };
-const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules'];
+const LAZY_ENGINE = ['engine/checkout', 'engine/order', 'engine/rules', 'engine/phone'];
 const BROWSER_GLOBALS =
   /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
 

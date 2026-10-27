@@ -120,6 +120,11 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
   say; phone only when the page marks it. Express checks only email and names.
 - **Remote checks** (`/v1/validate`) give the phone in E.164 for the order and show a
   postcode outside its state as a warning. They never block, and never on our failure.
+  The phone (shipping and billing, each against its own address country) is read after a
+  400 ms pause in typing, on leaving the field, when the address country changes, and before
+  an order (waiting up to 2 s); one request per number and country. Its message shows only
+  after the field is left. The loose check before that is the country's `format.pattern`,
+  or 4–15 digits; digits from other scripts count as ASCII.
 - **After a paid order** (no `payment_complete_url`) the cart and form are cleared from state
   and storage **without a re-render**, so the page does not flash an empty cart while it
   navigates. With a gateway URL the cart is kept for a retry after a failed payment.

@@ -1,8 +1,12 @@
+import { plausiblePhone } from './phone';
 import type { CheckoutState, CountryOption, CountryRules, FieldError, Send } from './types';
 
 export interface RemoteCheck {
   valid: boolean | null;
   value?: string;
+  country?: string;
+  national?: string;
+  international?: string;
   error?: { code: string; message: string };
 }
 
@@ -90,10 +94,7 @@ export function fieldError(
   if (field === 'postcode' && rule?.format?.pattern) {
     return new RegExp(rule.format.pattern).test(v.toUpperCase().replace(/[\s-]/g, '')) ? undefined : 'invalid';
   }
-  if (field === 'phone_number') {
-    const digits = v.replace(/\D/g, '').length;
-    return digits >= 4 && digits <= 15 ? undefined : 'invalid';
-  }
+  if (field === 'phone_number') return plausiblePhone(v, rule?.format) ? undefined : 'invalid';
   return undefined;
 }
 
@@ -122,6 +123,7 @@ export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired 
     const billing = name.startsWith('billing_');
     if (billing && (sameAsShipping || scope !== 'all')) continue;
     if (scope === 'express' && !required.includes(name)) continue;
+    if (checkout.phones[name]) continue;
     const country = billing ? fields.billing_country : fields.country;
     const error = fieldError(name, fields[name] ?? '', required.includes(name), rules[country ?? '']);
     if (error) errors[name] = error;

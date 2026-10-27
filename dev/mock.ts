@@ -245,6 +245,14 @@ export function mockApi(api: string) {
       return res.end();
     }
 
+    const flag = url.pathname.match(/^\/__rules\/v1\/flags\/([a-z-]+\.svg)$/)?.[1];
+    if (flag) {
+      const file = join(RULES_REPO, 'public/v1/flags', flag);
+      if (!existsSync(file)) return send(res, 404, { error: 'no such flag' });
+      res.writeHead(200, { 'content-type': 'image/svg+xml' });
+      return res.end(readFileSync(file));
+    }
+
     if (url.pathname.startsWith('/__rules/')) {
       const app = await rulesApp();
       if (!app) return send(res, 503, { error: 'no local i18n-rules' });

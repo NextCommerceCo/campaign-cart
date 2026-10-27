@@ -40,6 +40,16 @@ if (dev.stubPayments) {
   });
 }
 
+if (dev.rules) {
+  const image = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')!;
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {
+    ...image,
+    set(this: HTMLImageElement, value: string) {
+      image.set!.call(this, value.startsWith(RULES) ? value.replace(RULES, '/__rules') : value);
+    },
+  });
+}
+
 const src = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src')!;
 Object.defineProperty(HTMLScriptElement.prototype, 'src', {
   ...src,

@@ -19,6 +19,7 @@ import {
 } from '../compat/checkout';
 import { errorBox, showBox, shown } from './messages';
 import { bindCard, bindPayment } from './payment';
+import { bindPhones } from './phone';
 import { bindReview } from './review';
 import { expressText, formText, label } from './texts';
 
@@ -77,6 +78,7 @@ export function bindCheckout(
   const labels = bindLabels(form);
   autocomplete();
   const card = bindCard(engine, checkout, form);
+  const phones = bindPhones(engine, checkout, form, fields, RULES);
   const stepUrl = stepUrlOf(form);
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
   const wasDisabled = !!submit?.disabled;
@@ -166,6 +168,7 @@ export function bindCheckout(
   const renders = [
     addressForms,
     bindFields(engine, checkout, form, fields),
+    phones,
     labels,
     bindAddress(engine, form, fields),
     bindBilling(engine, checkout, form),

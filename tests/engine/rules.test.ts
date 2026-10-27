@@ -5,6 +5,7 @@ import { GB, US } from '../fixtures/rules';
 
 const checkout = (fields: Record<string, string>, patch: Partial<CheckoutState> = {}): CheckoutState => ({
   fields,
+  phones: {},
   sameAsShipping: true,
   paymentMethod: 'card_token',
   step: 0,

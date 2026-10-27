@@ -224,11 +224,10 @@ export class Engine {
       this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
     }
     if (slice === 'checkout' && checkout) {
-      const { fields, phoneE164, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } =
-        checkout;
+      const { fields, phones, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } = checkout;
       this.session.set('checkout', {
         fields,
-        phoneE164,
+        phones,
         sameAsShipping,
         paymentMethod,
         step,

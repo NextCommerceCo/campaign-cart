@@ -109,7 +109,7 @@ nothing like 0.4.x.
 | Bundle selectors on upsell pages written into the (finished) cart                                                   | Recorded only                                                                                                    |
 | MOCK mode in `bun dev`                                                                                              | Applies no campaign offers; check offer prices with `--api live`                                                 |
 | `order.number` with a thousands separator (`1,003`)                                                                 | As the API sends it (`1003`)                                                                                     |
-| Phone field widget: country flag, per-country typing mask, rules placeholder                                        | The page's own input; the E.164 number still goes on the order and in `data-next-phone-e164`                     |
+| Phone placeholder replaced with `Phone*` / `Phone (Optional)`                                                       | The page's own placeholder; the flag, mask and E.164 number work as in 0.4.43                                    |
 | Expiry selects relabelled `Month` / `Year`                                                                          | The page's own first option (`Exp. Month`)                                                                       |
 | Bundle cards on upsell pages without `next-in-cart`                                                                 | `next-in-cart` set (no page CSS or script reads it there)                                                        |
 
@@ -201,7 +201,7 @@ nothing like 0.4.x.
 | `data-next-payment-form`                 |          9 | Supported             |                                                                                             |
 | `data-next-payment-method`               |          9 | Supported             |                                                                                             |
 | `data-next-payment-state`                |          0 | Supported             |                                                                                             |
-| `data-next-phone-country`                |          0 | Removed (documented)  | phone flag widget                                                                           |
+| `data-next-phone-country`                |          0 | Supported             | set by the SDK: the flag's country                                                          |
 | `data-next-phone-e164`                   |          0 | Supported             | set from the i18n-rules check; the starter forwarder reads it                               |
 | `data-next-product-sync`                 |          3 | Supported             | counts units, like 0.4.x (fixed in this pass)                                               |
 | `data-next-property`                     |          4 | Supported             |                                                                                             |

@@ -156,7 +156,7 @@ describe('checkout', () => {
     fill({ state: 'CA', phone_number: '(415) 555-2671' });
     await Promise.all([checkout.leave('state'), checkout.leave('phone_number')]);
     expect(engine.getState().checkout).toMatchObject({
-      phoneE164: '+14155552671',
+      phones: { phone_number: { value: '+14155552671', country: 'US' } },
       errors: { postcode: { code: 'not_in_state', message: 'Enter a valid ZIP Code for California', warning: true } },
     });
   });
@@ -370,6 +370,104 @@ describe('checkout', () => {
     expect(engine.getState().checkout!.errors.form).toEqual({
       code: 'rejected',
       message: 'Address is incomplete. Try again',
+    });
+  });
+});
+
+describe('checkout phone', () => {
+  const reads = (rules: { calls: string[] }) => rules.calls.filter((c) => c.startsWith('POST /v1/validate')).length;
+
+  it('asks i18n-rules once per number and country, however many triggers ask', async () => {
+    const { checkout, rules, fill } = await setup();
+    fill({ country: 'US', phone_number: '(415) 555-2671' });
+    await Promise.all([
+      checkout.readPhone('phone_number'),
+      checkout.readPhone('phone_number'),
+      checkout.leave('phone_number'),
+    ]);
+    checkout.setField('phone_number', '415 555 2671');
+    await checkout.readPhone('phone_number');
+    expect(reads(rules)).toBe(1);
+  });
+
+  it("shows the service's message only once the shopper leaves the field", async () => {
+    const { engine, checkout, fill } = await setup();
+    fill({ country: 'US' });
+    await flush();
+    fill({ phone_number: '(201) 555-0123' });
+    await checkout.readPhone('phone_number');
+    expect(engine.getState().checkout!.errors).toEqual({});
+    await checkout.leave('phone_number');
+    expect(engine.getState().checkout!.errors.phone_number).toEqual({
+      code: 'invalid',
+      message: 'Enter a valid phone number, like (201) 555-0123',
+      warning: true,
+    });
+    checkout.setField('phone_number', '(201) 555-012');
+    expect(engine.getState().checkout!.errors).toEqual({});
+  });
+
+  it('keeps its own loose check for a number too short to be one', async () => {
+    const { engine, checkout, fill } = await setup();
+    await checkout.loadCountries();
+    fill({ country: 'US', phone_number: '555-2671' });
+    await flush();
+    await checkout.leave('phone_number');
+    expect(engine.getState().checkout!.errors.phone_number).toEqual({ code: 'invalid' });
+  });
+
+  it('reads the number again when the address country changes', async () => {
+    const { engine, checkout, fill } = await setup();
+    fill({ country: 'US', phone_number: '081 234 5678' });
+    await checkout.leave('phone_number');
+    expect(engine.getState().checkout!.errors.phone_number?.warning).toBe(true);
+    checkout.setField('country', 'TH');
+    expect(engine.getState().checkout!.errors.phone_number).toBeUndefined();
+    await flush();
+    expect(engine.getState().checkout!.phones.phone_number).toMatchObject({ value: '+66812345678', country: 'TH' });
+  });
+
+  it('forgets the E.164 number when its digits change, not when only its spacing does', async () => {
+    const { engine, checkout, fill } = await setup();
+    fill({ country: 'US', phone_number: '4155552671' });
+    await checkout.readPhone('phone_number');
+    checkout.setField('phone_number', '(415) 555-2671');
+    expect(engine.getState().checkout!.phones.phone_number?.value).toBe('+14155552671');
+    checkout.setField('phone_number', '(415) 555-267');
+    expect(engine.getState().checkout!.phones).toEqual({});
+  });
+
+  it('writes a read number the way its country does: at home nationally, from abroad internationally', async () => {
+    const { engine, checkout, fill } = await setup();
+    fill({ country: 'US', phone_number: '4155552671' });
+    await checkout.readPhone('phone_number');
+    checkout.writePhone('phone_number');
+    expect(engine.getState().checkout!.fields.phone_number).toBe('(415) 555-2671');
+    fill({ phone_number: '+66812345678' });
+    await checkout.readPhone('phone_number');
+    checkout.writePhone('phone_number');
+    expect(engine.getState().checkout!.fields.phone_number).toBe('+66 81 234 5678');
+    expect(engine.getState().checkout!.phones.phone_number).toMatchObject({ value: '+66812345678', country: 'TH' });
+  });
+
+  it('reads a number typed with Thai digits and sends it in E.164', async () => {
+    const { engine, checkout, fill, posts } = await setup();
+    await engine.cart.addItem(1);
+    fill({ ...SHIPPING, country: 'TH', state: '', postcode: '', phone_number: '๐๘๑ ๒๓๔ ๕๖๗๘' });
+    await flush();
+    expect(await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' })).toMatchObject({ ref_id: 'R1' });
+    expect(posts('/orders/')[0]!.body.shipping_address.phone_number).toBe('+66812345678');
+  });
+
+  it('reads the billing phone against the billing country', async () => {
+    const { engine, checkout, fill } = await setup();
+    fill({ country: 'US' });
+    checkout.setSameAsShipping(false);
+    fill({ billing_country: 'TH', billing_phone_number: '0812345678' });
+    await checkout.leave('billing_phone_number');
+    expect(engine.getState().checkout!.phones.billing_phone_number).toMatchObject({
+      value: '+66812345678',
+      country: 'TH',
     });
   });
 });

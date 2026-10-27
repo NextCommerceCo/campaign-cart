@@ -85,9 +85,6 @@ export function bindFields(
   return () => {
     const { checkout: state } = engine.getState();
     if (!state) return;
-    const phone = fields.get('phone_number');
-    if (state.phoneE164) phone?.setAttribute('data-next-phone-e164', state.phoneE164);
-    else phone?.removeAttribute('data-next-phone-e164');
     for (const [name, el] of fields) {
       const value = state.fields[name];
       if (value !== undefined && !(el instanceof HTMLSelectElement)) setValue(el, value);

@@ -379,6 +379,70 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(field('phone').hasAttribute('data-next-phone-e164')).toBe(false);
   });
 
+  it("shows the phone's flag from i18n-rules inside the field and keeps the page's placeholder", async () => {
+    const { field } = await mount('olympus/checkout.html');
+    const phone = field('phone');
+    const flag = phone.previousElementSibling as HTMLImageElement;
+    expect(flag.className).toBe('next-phone-flag');
+    expect(flag.getAttribute('aria-hidden')).toBe('true');
+    expect(flag.src).toBe('https://i18n-rules.nextcommerce.com/v1/flags/us.svg');
+    expect(flag.hidden).toBe(false);
+    expect(phone.getAttribute('data-next-phone-country')).toBe('US');
+    expect(phone.classList).toContain('next-phone-input');
+    expect(phone.parentElement!.classList).toContain('next-phone-field');
+    expect(phone.style.paddingRight).toBe('44px');
+    expect(phone.placeholder).toBe('201-555-0123');
+  });
+
+  it("masks the number in its country's format as it is typed, keeping the caret after the same digit", async () => {
+    const { field } = await mount('olympus/checkout.html');
+    const phone = field('phone');
+    phone.focus();
+    const typeText = (value: string, caret = value.length) => {
+      phone.value = value;
+      phone.setSelectionRange(caret, caret);
+      phone.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    };
+    typeText('415555');
+    expect(phone.value).toBe('(415) 555');
+    expect(phone.selectionStart).toBe(9);
+    typeText('(415) 5558', 4);
+    expect(phone.value).toBe('(415) 555-8');
+    expect(phone.selectionStart).toBe(4);
+    typeText('๐๘๑');
+    expect(phone.value).toBe('(081');
+  });
+
+  it('reads the number after a pause in typing, and on leaving writes it the way its country does', async () => {
+    const { field } = await mount('olympus/checkout.html');
+    const phone = field('phone');
+    const flag = phone.previousElementSibling as HTMLImageElement;
+    phone.focus();
+    phone.value = '+66812345678';
+    phone.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    await new Promise((done) => setTimeout(done, 450));
+    expect(phone.getAttribute('data-next-phone-e164')).toBe('+66812345678');
+    expect(phone.getAttribute('data-next-phone-country')).toBe('TH');
+    expect(flag.src).toBe('https://i18n-rules.nextcommerce.com/v1/flags/th.svg');
+    expect(phone.value).toBe('+66812345678');
+    phone.blur();
+    await flush();
+    await flush();
+    expect(phone.value).toBe('+66 81 234 5678');
+    expect(phone.getAttribute('data-next-phone-e164')).toBe('+66812345678');
+  });
+
+  it("shows the service's message under the phone once the shopper leaves it", async () => {
+    const { field, type } = await mount('olympus/checkout.html');
+    type('phone', '2015550123');
+    await flush();
+    await flush();
+    expect(field('phone').value).toBe('(201) 555-0123');
+    expect(field('phone').closest('.form-group')!.textContent).toContain(
+      'Enter a valid phone number, like (201) 555-0123',
+    );
+  });
+
   it('tells page scripts about the prospect cart, once', async () => {
     const { fill, form } = await mount('olympus/checkout.html');
     const created = vi.fn();

@@ -1,4 +1,5 @@
 import type { Attribution, Visit } from './attribution';
+import type { PhoneFormat } from './phone';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -188,7 +189,7 @@ export interface FieldRule {
     auto_capitalize?: string;
     span?: number;
   };
-  format?: { pattern?: string; masks?: unknown };
+  format?: PhoneFormat;
   errors?: Partial<Record<FieldError, string>>;
 }
 
@@ -206,9 +207,16 @@ export interface CheckoutError {
   warning?: boolean;
 }
 
+export interface PhoneRead {
+  value: string;
+  country: string;
+  national?: string;
+  international?: string;
+}
+
 export interface CheckoutState {
   fields: Record<string, string>;
-  phoneE164?: string;
+  phones: Record<string, PhoneRead>;
   sameAsShipping: boolean;
   paymentMethod: string;
   step: number;

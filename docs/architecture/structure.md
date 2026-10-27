@@ -70,7 +70,7 @@ src/
     api.ts storage.ts events.ts                 boot (api.ts also maps order errors: one request less per lazy chunk)
     log.ts                                      boot: the one logger; levels, last 200 entries, stream
     attribution.ts params.ts scope.ts           boot
-    checkout.ts rules.ts                        loaded by the checkout chunk
+    checkout.ts rules.ts phone.ts               loaded by the checkout chunk
     order.ts                                    loaded by the order chunk
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
@@ -85,6 +85,7 @@ src/
     form.ts address.ts billing.ts  fields, country/state/location, same-as-shipping and cloned rows
     address-form.ts                [data-next-address]: the country's fields from its i18n-rules layout
     payment.ts express.ts logos.ts payment radios and panels, payment.js card, express buttons
+    phone.ts                       flag from i18n-rules, typing mask, when the number is read
     review.ts                      [data-next-checkout-review]
     messages.ts                    field and payment error display
     texts.ts                       English texts by code; i18n-rules' translated messages first
@@ -133,7 +134,7 @@ Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug.ts`, `bindings/slots
 which only their own chunk may import statically.
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
-chunk; a static path from `boot.ts` to `engine/checkout|order|rules.ts`; a browser global
+chunk; a static path from `boot.ts` to `engine/checkout|order|rules|phone.ts`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) inside `engine/`; a folder deeper
 than two levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
