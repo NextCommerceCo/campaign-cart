@@ -116,8 +116,10 @@ phone_number, line1, line2, city, state, postcode, country, accepts_marketing`, 
   mapped by the checkout chunk.
 - **Validation codes** are i18n-rules' (`blank, not_selected, invalid, invalid_characters,
 contains_emoji, too_long`), so its translated `fields.<name>.errors` show as they are.
-  Required: email, names, line1, city, country; postcode and state where the country's rules
-  say; phone only when the page marks it. Express checks only email and names.
+  Required: email, names, line1, country; city, state and postcode where the country's rules
+  say (city everywhere while the rules have not loaded); phone only when the page marks it.
+  Express checks only email and names. A city, state or postcode the country does not have
+  (Singapore has no city, Hong Kong no postcode) is neither checked nor sent.
 - **Remote checks** (`/v1/validate`) give the phone in E.164 for the order and show a
   postcode outside its state as a warning. They never block, and never on our failure.
   The phone (shipping and billing, each against its own address country) is read after a

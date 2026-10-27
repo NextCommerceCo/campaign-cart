@@ -1,5 +1,5 @@
-import { plausiblePhone } from './phone';
-import type { CheckoutState, CountryOption, CountryRules, FieldError, Send } from './types';
+import { asciiDigits, plausiblePhone } from './phone';
+import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, Send } from './types';
 
 export interface RemoteCheck {
   valid: boolean | null;
@@ -77,6 +77,28 @@ export function validEmail(value: string): boolean {
 
 const base = (name: string) => name.replace(/^billing_/, '');
 
+const ALWAYS_REQUIRED = ['first_name', 'last_name', 'line1'];
+export const BY_COUNTRY = ['city', 'state', 'postcode'];
+
+export const hasField = (rules: CountryRules | undefined, name: string) =>
+  !rules || !BY_COUNTRY.includes(base(name)) || !!rules.fields[base(name)];
+
+const significant = (text: string) =>
+  asciiDigits(text)
+    .toUpperCase()
+    .replace(/[^\p{L}\p{N}]/gu, '');
+
+export function formatPostcode(text: string, format?: FieldFormat): string {
+  const clean = significant(text);
+  for (const mask of format?.masks ?? []) {
+    if (typeof mask !== 'string' || mask.split('#').length - 1 !== clean.length) continue;
+    if (format?.pattern && !new RegExp(format.pattern).test(clean)) continue;
+    let i = 0;
+    return [...mask].map((char) => (char === '#' ? clean[i++] : char)).join('');
+  }
+  return asciiDigits(text).toUpperCase();
+}
+
 export function fieldError(
   name: string,
   value: string,
@@ -92,16 +114,15 @@ export function fieldError(
   if (field === 'email') return validEmail(v) ? undefined : 'invalid';
   if (field === 'first_name' || field === 'last_name') return NAME.test(v) ? undefined : 'invalid_characters';
   if (field === 'postcode' && rule?.format?.pattern) {
-    return new RegExp(rule.format.pattern).test(v.toUpperCase().replace(/[\s-]/g, '')) ? undefined : 'invalid';
+    return new RegExp(rule.format.pattern).test(significant(v)) ? undefined : 'invalid';
   }
   if (field === 'phone_number') return plausiblePhone(v, rule?.format) ? undefined : 'invalid';
   return undefined;
 }
 
 function addressFields(prefix: '' | 'billing_', rules: CountryRules | undefined): string[] {
-  const names = ['first_name', 'last_name', 'line1', 'city', 'country'];
-  if (rules?.fields.postcode?.required) names.push('postcode');
-  if (rules?.fields.state?.required) names.push('state');
+  const byCountry = BY_COUNTRY.filter((name) => (rules ? rules.fields[name]?.required : name === 'city'));
+  const names = [...ALWAYS_REQUIRED, ...byCountry, 'country'];
   return names.map((n) => prefix + n);
 }
 
@@ -124,8 +145,9 @@ export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired 
     if (billing && (sameAsShipping || scope !== 'all')) continue;
     if (scope === 'express' && !required.includes(name)) continue;
     if (checkout.phones[name]) continue;
-    const country = billing ? fields.billing_country : fields.country;
-    const error = fieldError(name, fields[name] ?? '', required.includes(name), rules[country ?? '']);
+    const country = rules[(billing ? fields.billing_country : fields.country) ?? ''];
+    if (!hasField(country, name)) continue;
+    const error = fieldError(name, fields[name] ?? '', required.includes(name), country);
     if (error) errors[name] = error;
   }
   return errors;

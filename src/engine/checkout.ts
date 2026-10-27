@@ -4,7 +4,7 @@ import { type CartActions, shippingMethodOf } from './cart';
 import type { Context } from './engine';
 import { nextUrl } from './params';
 import { asciiDigits, phoneKey } from './phone';
-import { fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
+import { fieldError, formErrors, hasField, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
 import type {
   Address,
   AddressSuggestion,
@@ -59,8 +59,10 @@ export interface OrderUrls {
   pageUrl: string;
 }
 
-function address(fields: Record<string, string>, prefix: '' | 'billing_', phone?: string): Address {
-  const get = (name: string) => fields[prefix + name]?.trim() || undefined;
+function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: string): Address {
+  const { fields, rules } = checkout;
+  const country = rules[fields[`${prefix}country`] ?? ''];
+  const get = (name: string) => (hasField(country, name) && fields[prefix + name]?.trim()) || undefined;
   const optional = { line2: get('line2'), state: get('state'), postcode: get('postcode'), phone_number: phone };
   return {
     first_name: get('first_name') ?? '',
@@ -109,10 +111,10 @@ export function orderBody(
       ...(phone && { phone_number: phone }),
       accepts_marketing: f.accepts_marketing !== 'false',
     },
-    shipping_address: address(f, '', phone),
+    shipping_address: address(checkout, '', phone),
     billing_same_as_shipping_address: checkout.sameAsShipping,
     ...(!checkout.sameAsShipping && {
-      billing_address: address(f, 'billing_', phoneOf(checkout, 'billing_phone_number')),
+      billing_address: address(checkout, 'billing_', phoneOf(checkout, 'billing_phone_number')),
     }),
   };
 }

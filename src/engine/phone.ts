@@ -1,10 +1,4 @@
-export interface PhoneFormat {
-  calling_code?: string;
-  national_prefix?: string;
-  masks?: { start?: string; mask: string }[];
-  pattern?: string;
-  example?: string;
-}
+import type { FieldFormat } from './types';
 
 const MIN_DIGITS = 4;
 const MAX_DIGITS = 15;
@@ -39,8 +33,10 @@ function startOf(text: string): '+' | '00' | undefined {
   return digitsOf(typed).startsWith('00') ? '00' : undefined;
 }
 
-const maskFor = (digits: string, format: PhoneFormat) =>
-  format.masks?.find((entry) => !entry.start || regex(`^(?:${entry.start})`).test(digits))?.mask;
+const maskFor = (digits: string, format: FieldFormat) =>
+  format.masks
+    ?.map((entry) => (typeof entry === 'string' ? { mask: entry } : entry))
+    .find((entry) => !entry.start || regex(`^(?:${entry.start})`).test(digits))?.mask;
 
 function masked(digits: string, mask: string): string | undefined {
   if (digits.length > mask.split('#').length - 1) return undefined;
@@ -61,7 +57,7 @@ function asWritten(text: string): string {
   return kept.charAt(0) + kept.slice(1).replace(/\+/g, '');
 }
 
-export function formatPhone(text: string, format?: PhoneFormat): string {
+export function formatPhone(text: string, format?: FieldFormat): string {
   const start = startOf(text);
   if (start) return asWritten(text);
   const digits = digitsOf(text);
@@ -78,7 +74,7 @@ export function formatPhone(text: string, format?: PhoneFormat): string {
   return (mask && masked(digits, mask)) ?? digits;
 }
 
-export function plausiblePhone(text: string, format?: PhoneFormat): boolean {
+export function plausiblePhone(text: string, format?: FieldFormat): boolean {
   const digits = digitsOf(text);
   if (format?.pattern === undefined) return digits.length >= MIN_DIGITS && digits.length <= MAX_DIGITS;
   const start = startOf(text);

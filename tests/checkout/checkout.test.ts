@@ -57,14 +57,22 @@ const SHIPPING = {
   postal: '90210',
 };
 
-async function mount(file: string, options: { order?: (body: any) => Response; rulesDown?: boolean } = {}) {
+async function mount(
+  file: string,
+  options: {
+    order?: (body: any) => Response;
+    rulesDown?: boolean;
+    countries?: Campaign['available_shipping_countries'];
+  } = {},
+) {
   const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
   vi.stubGlobal('fetch', fakeRules({ geo: 'US', down: options.rulesDown }).send);
   (window as unknown as { NextPayment: unknown }).NextPayment = FakeNextPayment;
   const api = fakeApi({ order: options.order });
-  const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(CAMPAIGN), session: sessionStorage });
+  const campaign = { ...CAMPAIGN, ...(options.countries && { available_shipping_countries: options.countries }) };
+  const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(campaign), session: sessionStorage });
   await engine.start();
   await engine.cart.addItem(2);
   const navigate = vi.fn();
@@ -441,6 +449,86 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(field('phone').closest('.form-group')!.textContent).toContain(
       'Enter a valid phone number, like (201) 555-0123',
     );
+  });
+
+  it("relabels the page's postcode, state and city for the country, keeping its required marker", async () => {
+    const { field, type } = await mount('olympus/checkout.html');
+    const postal = field('postal');
+    const city = field('city');
+    expect(postal.labels![0]!.textContent).toBe('ZIP Code');
+    expect(postal.placeholder).toBe('ZIP Code*');
+    expect(postal.getAttribute('maxlength')).toBe('64');
+    expect(postal.getAttribute('inputmode')).toBe('numeric');
+    expect(postal.getAttribute('autocapitalize')).toBe('characters');
+    expect((field('province') as unknown as HTMLSelectElement).options[0]!.text).toBe('Choose…');
+    type('country', 'GB');
+    await flush();
+    expect(postal.labels![0]!.textContent).toBe('Postcode');
+    expect(postal.placeholder).toBe('Postcode*');
+    expect(postal.hasAttribute('inputmode')).toBe(false);
+    expect(city.labels![0]!.textContent).toBe('Town/City');
+    expect(city.placeholder).toBe('Town/City*');
+    expect(field('province').closest<HTMLElement>('.form-group')!.style.display).toBe('none');
+  });
+
+  it("writes the postcode in its country's mask as it is typed", async () => {
+    const { field, type } = await mount('olympus/checkout.html', {
+      countries: [
+        { code: 'US', label: 'United States' },
+        { code: 'CA', label: 'Canada' },
+      ],
+    });
+    type('country', 'CA');
+    await flush();
+    const postal = field('postal');
+    postal.focus();
+    postal.value = 'k1a0b1';
+    postal.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    expect(postal.value).toBe('K1A 0B1');
+  });
+
+  it('turns the state select into a text field where the country asks for a typed region, and hides the postcode it lacks', async () => {
+    const { field, type, fill, card, submit, orders } = await mount('olympus/checkout.html', {
+      countries: [
+        { code: 'US', label: 'United States' },
+        { code: 'HK', label: 'Hong Kong' },
+      ],
+    });
+    const select = field('province');
+    fill({ ...SHIPPING, country: 'HK' });
+    await flush();
+    const region = field('province');
+    expect(region).toBeInstanceOf(HTMLInputElement);
+    expect(region.id).toBe(select.id);
+    expect(region.labels![0]!.textContent).toBe('Region');
+    expect(field('postal').closest<HTMLElement>('.form-group')!.style.display).toBe('none');
+    type('country', 'US');
+    await flush();
+    expect(field('province')).toBe(select);
+    type('country', 'HK');
+    await flush();
+    type('province', 'Kowloon City');
+    card();
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.shipping_address).toMatchObject({ country: 'HK', state: 'Kowloon City' });
+    expect(orders()[0]!.body.shipping_address).not.toHaveProperty('postcode');
+  });
+
+  it('hides the city a Singapore address has none of, and places the order without it', async () => {
+    const { field, fill, card, submit, orders } = await mount('olympus/checkout.html', {
+      countries: [
+        { code: 'US', label: 'United States' },
+        { code: 'SG', label: 'Singapore' },
+      ],
+    });
+    fill({ ...SHIPPING, country: 'SG', city: '', postal: '018956' });
+    await flush();
+    expect(field('city').closest<HTMLElement>('.form-group')!.style.display).toBe('none');
+    card();
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.shipping_address).toMatchObject({ country: 'SG', postcode: '018956' });
   });
 
   it('tells page scripts about the prospect cart, once', async () => {

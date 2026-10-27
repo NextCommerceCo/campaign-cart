@@ -110,6 +110,8 @@ nothing like 0.4.x.
 | MOCK mode in `bun dev`                                                                                              | Applies no campaign offers; check offer prices with `--api live`                                                 |
 | `order.number` with a thousands separator (`1,003`)                                                                 | As the API sends it (`1003`)                                                                                     |
 | Phone placeholder replaced with `Phone*` / `Phone (Optional)`                                                       | The page's own placeholder; the flag, mask and E.164 number work as in 0.4.43                                    |
+| Postcode label always marked required (` *`), billing labels prefixed `Billing`                                     | State, postcode and city labels from the country's rules, required marker only where required, no prefix         |
+| City required everywhere; a state `<select>` left empty where the country asks for a typed region (HK)              | City, state and postcode follow the country's rules; the state select becomes a text field there                 |
 | Expiry selects relabelled `Month` / `Year`                                                                          | The page's own first option (`Exp. Month`)                                                                       |
 | Bundle cards on upsell pages without `next-in-cart`                                                                 | `next-in-cart` set (no page CSS or script reads it there)                                                        |
 

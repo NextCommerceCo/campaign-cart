@@ -15,11 +15,18 @@ export const US: CountryRules = {
     ],
   },
   fields: {
-    state: { required: true, label: 'State', input: { type: 'select' }, errors: { not_selected: 'Select a state' } },
+    city: { required: true, label: 'City' },
+    state: {
+      required: true,
+      label: 'State',
+      input: { type: 'select', placeholder: 'Choose…' },
+      errors: { not_selected: 'Select a state' },
+    },
     postcode: {
       required: true,
       label: 'ZIP Code',
-      format: { pattern: '^[0-9]{5}([0-9]{4})?$' },
+      input: { type: 'text', auto_capitalize: 'characters', max_length: 64 },
+      format: { pattern: '^[0-9]{5}([0-9]{4})?$', example: '90210', masks: ['#####', '#####-####'] },
       errors: { invalid: 'Enter a ZIP Code' },
     },
     phone_number: {
@@ -47,13 +54,62 @@ export const GB: CountryRules = {
     layout: [['country'], ['first_name', 'last_name'], ['line1'], ['line2'], ['city', 'postcode'], ['phone_number']],
   },
   fields: {
-    postcode: { required: true, label: 'Postcode', format: { pattern: '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$' } },
+    city: { required: true, label: 'Town/City' },
+    postcode: {
+      required: true,
+      label: 'Postcode',
+      format: { pattern: '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$', example: 'SW1A 1AA' },
+    },
   },
+};
+
+export const HK: CountryRules = {
+  country: { code: 'HK', name: 'Hong Kong' },
+  fields: {
+    city: { required: true, label: 'City', label_optional: 'City (optional)' },
+    state: {
+      required: true,
+      label: 'Region',
+      label_optional: 'Region (optional)',
+      input: { type: 'text', auto_capitalize: 'words', max_length: 255 },
+    },
+  },
+};
+
+export const SG: CountryRules = {
+  country: { code: 'SG', name: 'Singapore' },
+  fields: {
+    postcode: {
+      required: true,
+      label: 'Postal code',
+      input: { type: 'text', auto_capitalize: 'characters', max_length: 64 },
+      format: { pattern: '^([0-9]{2}|[0-9]{4}|[0-9]{6})$', example: '018956' },
+    },
+  },
+};
+
+export const CA: CountryRules = {
+  country: { code: 'CA', name: 'Canada' },
+  fields: {
+    city: { required: true, label: 'City' },
+    state: { required: true, label: 'Province', input: { type: 'select', placeholder: 'Choose…' } },
+    postcode: {
+      required: true,
+      label: 'Postal code',
+      input: { type: 'text', auto_capitalize: 'characters', max_length: 64 },
+      format: { pattern: '^[A-Z][0-9][A-Z][0-9][A-Z][0-9]$', example: 'K1A 0B1', masks: ['### ###'] },
+    },
+  },
+  states: [
+    { code: 'AB', name: 'Alberta' },
+    { code: 'BC', name: 'British Columbia' },
+  ],
 };
 
 export const TH: CountryRules = {
   country: { code: 'TH', name: 'Thailand' },
   fields: {
+    city: { required: true, label: 'District' },
     phone_number: {
       required: false,
       label: 'Phone number',
@@ -100,6 +156,9 @@ const COUNTRIES = [
   { code: 'US', name: 'United States' },
   { code: 'GB', name: 'United Kingdom' },
   { code: 'FR', name: 'France' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'HK', name: 'Hong Kong' },
+  { code: 'SG', name: 'Singapore' },
 ];
 
 export function fakeRules(options: { geo?: string; down?: boolean; geoDelay?: number } = {}) {
@@ -112,6 +171,9 @@ export function fakeRules(options: { geo?: string; down?: boolean; geoDelay?: nu
     if (path.startsWith('/v1/countries/US')) return json(US);
     if (path.startsWith('/v1/countries/GB')) return json(GB);
     if (path.startsWith('/v1/countries/TH')) return json(TH);
+    if (path.startsWith('/v1/countries/HK')) return json(HK);
+    if (path.startsWith('/v1/countries/SG')) return json(SG);
+    if (path.startsWith('/v1/countries/CA')) return json(CA);
     if (path.startsWith('/v1/countries/')) return json({ country: { code: 'FR', name: 'France' }, fields: {} });
     if (path.startsWith('/v1/geo')) {
       if (options.geoDelay) await new Promise((r) => setTimeout(r, options.geoDelay));

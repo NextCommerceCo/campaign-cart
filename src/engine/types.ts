@@ -1,5 +1,4 @@
 import type { Attribution, Visit } from './attribution';
-import type { PhoneFormat } from './phone';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -176,6 +175,14 @@ export interface CountryOption {
 export type FieldError =
   'blank' | 'not_selected' | 'invalid' | 'invalid_characters' | 'contains_emoji' | 'too_long' | 'not_in_state';
 
+export interface FieldFormat {
+  pattern?: string;
+  example?: string;
+  masks?: Array<string | { start?: string; mask: string }>;
+  calling_code?: string;
+  national_prefix?: string;
+}
+
 export interface FieldRule {
   required: boolean;
   label?: string;
@@ -189,7 +196,7 @@ export interface FieldRule {
     auto_capitalize?: string;
     span?: number;
   };
-  format?: PhoneFormat;
+  format?: FieldFormat;
   errors?: Partial<Record<FieldError, string>>;
 }
 

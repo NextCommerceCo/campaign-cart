@@ -2,38 +2,20 @@ import { type CheckoutActions, PHONES } from '../engine/checkout';
 import type { Engine } from '../engine/engine';
 import { asciiDigits, formatPhone } from '../engine/phone';
 import type { Fields } from './form';
+import { reformat } from './reformat';
 
 const FLAG_WIDTH = 20;
 const FLAG_HEIGHT = 15;
 const FLAG_INSET = 12;
 const FLAG_ROOM = `${FLAG_INSET + FLAG_WIDTH + FLAG_INSET}px`;
 const READ_PAUSE = 400;
+const DIGIT = /\p{Nd}/u;
 
 interface Bound {
   input: HTMLInputElement;
   flag: HTMLImageElement;
   layout?: ResizeObserver;
   maskedFor?: string;
-}
-
-const isDigit = (char: string | undefined) => !!char && char >= '0' && char <= '9';
-
-function digitsBefore(text: string, offset: number): number {
-  let count = 0;
-  for (let i = 0; i < offset && i < text.length; i++) if (isDigit(text[i])) count++;
-  return count;
-}
-
-function caretOffset(text: string, count: number, forward: boolean): number {
-  const beforeNext = forward || count === 0;
-  let seen = 0;
-  for (let i = 0; i < text.length; i++) {
-    if (!isDigit(text[i])) continue;
-    if (beforeNext && seen === count) return i;
-    seen++;
-    if (!beforeNext && seen === count) return i + 1;
-  }
-  return text.length;
 }
 
 function placeFlag({ input, flag }: Bound): void {
@@ -83,13 +65,7 @@ export function bindPhones(
   const mask = (name: string, input: HTMLInputElement, forward = false) => {
     const typed = asciiDigits(input.value);
     const format = formatOf(name);
-    const text = format?.masks?.length ? formatPhone(typed, format) : typed;
-    if (text === input.value) return;
-    const count = document.activeElement === input ? digitsBefore(typed, input.selectionStart ?? 0) : undefined;
-    input.value = text;
-    if (count === undefined) return;
-    const at = caretOffset(text, count, forward);
-    input.setSelectionRange(at, at);
+    reformat(input, format?.masks?.length ? formatPhone(typed, format) : typed, DIGIT, forward);
   };
 
   const listen = (type: string, fn: (name: string, input: HTMLInputElement, e: Event) => void) =>

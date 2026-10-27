@@ -471,3 +471,22 @@ describe('checkout phone', () => {
     });
   });
 });
+
+describe('checkout country rules', () => {
+  it('places a Singapore order with no city, and drops a postcode Hong Kong does not have', async () => {
+    const { engine, checkout, fill, posts } = await setup();
+    await engine.cart.addItem(1);
+    fill({ ...SHIPPING, country: 'SG', city: '', state: '', postcode: '018956' });
+    await flush();
+    expect(await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' })).toMatchObject({ ref_id: 'R1' });
+    expect(posts('/orders/')[0]!.body.shipping_address).toMatchObject({ country: 'SG', postcode: '018956', line4: '' });
+
+    const hk = await setup();
+    await hk.engine.cart.addItem(1);
+    hk.fill({ ...SHIPPING, country: 'US', postcode: '90210' });
+    hk.fill({ country: 'HK', city: 'Kowloon', state: 'Kowloon City' });
+    await flush();
+    expect(await hk.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' })).toMatchObject({ ref_id: 'R1' });
+    expect(hk.posts('/orders/')[0]!.body.shipping_address).not.toHaveProperty('postcode');
+  });
+});

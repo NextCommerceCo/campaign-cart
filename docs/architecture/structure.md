@@ -82,7 +82,8 @@ src/
     widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
-    form.ts address.ts billing.ts  fields, country/state/location, same-as-shipping and cloned rows
+    form.ts address.ts billing.ts  fields, country rules on the page's own fields, same-as-shipping and cloned rows
+    reformat.ts                    rewrite a field's value and keep the caret (phone and postcode masks)
     address-form.ts                [data-next-address]: the country's fields from its i18n-rules layout
     payment.ts express.ts logos.ts payment radios and panels, payment.js card, express buttons
     phone.ts                       flag from i18n-rules, typing mask, when the number is read

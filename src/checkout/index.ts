@@ -79,6 +79,7 @@ export function bindCheckout(
   autocomplete();
   const card = bindCard(engine, checkout, form);
   const phones = bindPhones(engine, checkout, form, fields, RULES);
+  const address = bindAddress(engine, form, fields);
   const stepUrl = stepUrlOf(form);
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
   const wasDisabled = !!submit?.disabled;
@@ -170,7 +171,7 @@ export function bindCheckout(
     bindFields(engine, checkout, form, fields),
     phones,
     labels,
-    bindAddress(engine, form, fields),
+    address,
     bindBilling(engine, checkout, form),
     bindPayment(engine, checkout, form),
     bindExpress(engine, pay),
