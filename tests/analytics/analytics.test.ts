@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import type { Engine } from '../../src/engine/engine';
+import type { AnalyticsEvent } from '../../src/engine/types';
 import { createOrder } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -333,5 +334,75 @@ describe('analytics', () => {
     expect(event).toHaveBeenCalledWith('page_view', expect.objectContaining({ url: location.href }));
     startAnalytics(engine, { ...options, nextCampaign: true });
     expect(document.querySelectorAll('script[src*="js/v1/campaign"]')).toHaveLength(1);
+  });
+});
+
+describe('analytics events (GA4 names)', () => {
+  const listen = (engine: Engine) => {
+    const seen: AnalyticsEvent[] = [];
+    engine.on('analytics', (e) => void seen.push(e.data));
+    return seen;
+  };
+
+  it('sends each event under its GA4 name with flat GA4 params, and the dl_* event mirrors it id for id', async () => {
+    const engine = await ready();
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
+    await flush();
+    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
+    engine.events.emit('checkout.shipping-added', { tier: 'Standard' });
+    engine.events.emit('checkout.payment-added', { method: 'card_token' });
+    expect(seen.map((e) => e.name)).toEqual([
+      'page_view',
+      'add_to_cart',
+      'update_cart',
+      'begin_checkout',
+      'add_shipping_info',
+      'add_payment_info',
+    ]);
+    expect(names()).toEqual([
+      'dl_user_data',
+      'dl_add_to_cart',
+      'dl_cart_updated',
+      'dl_begin_checkout',
+      'dl_add_shipping_info',
+      'dl_add_payment_info',
+    ]);
+    expect(win.NextDataLayer!.map((e) => e.event_id)).toEqual(seen.map((e) => e.id));
+    const add = seen.find((e) => e.name === 'add_to_cart')!;
+    expect(add.params).toEqual({
+      currency: 'USD',
+      value: expect.any(Number),
+      items: [expect.objectContaining({ item_id: '11' })],
+    });
+    expect(add.context).toMatchObject({ campaign_name: 'Olympus', page_location: location.origin + location.pathname });
+    expect(seen.at(-2)!.params).toMatchObject({ shipping_tier: 'Standard' });
+    expect(seen.at(-1)!.params).toMatchObject({ payment_type: 'Credit Card' });
+  });
+
+  it('keys a purchase and an upsell by their transaction ids, with the upsell details nested', async () => {
+    const fetch = fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch;
+    const { engine } = makeEngine({ local: new MemoryStorage(), fetch });
+    await engine.start();
+    engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    await engine.order.load('R1');
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    const [, purchase, upsell] = seen;
+    expect(purchase).toMatchObject({ name: 'purchase', id: '1001', params: { transaction_id: '1001', value: 89 } });
+    expect(upsell).toMatchObject({
+      name: 'upsell_purchase',
+      id: 'R1-US1',
+      params: { transaction_id: 'R1-US1', upsell: { original_order_id: 'R1', upsell_number: 1 } },
+    });
+  });
+
+  it('keeps sending GA4-named events when the page turned the dl_* data layer off', async () => {
+    const engine = await ready();
+    const seen = listen(engine);
+    startAnalytics(engine, { ...options, dataLayer: false });
+    expect(seen.map((e) => e.name)).toEqual(['page_view']);
+    expect(win.dataLayer).toBeUndefined();
   });
 });

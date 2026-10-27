@@ -3,7 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const LAZY: Record<string, string[]> = {
-  analytics: [],
+  analytics: ['compat/analytics'],
   checkout: [],
   order: [],
   debug: [],
@@ -12,6 +12,7 @@ const LAZY: Record<string, string[]> = {
   'compat/exit-intent': [],
   'compat/checkout': ['checkout'],
   'compat/order': ['order'],
+  'compat/analytics': ['analytics'],
 };
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
@@ -24,9 +25,9 @@ const ALLOWED: Record<string, string[]> = {
   bindings: ['engine', 'bindings', 'compat/legacy'],
   checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
-  analytics: ['engine'],
+  analytics: ['engine', 'compat/analytics'],
   debug: ['engine'],
-  compat: ['engine'],
+  compat: ['engine', 'analytics/context', 'analytics/ecommerce'],
   boot: ['engine', 'bindings', 'compat/legacy'],
   loader: ['config', 'compat/config'],
   config: ['compat/config'],

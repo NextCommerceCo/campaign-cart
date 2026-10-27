@@ -57,6 +57,7 @@ const EVENT_NAMES: EventName[] = [
   'exit-intent.dismissed',
   'exit-intent.closed',
   'exit-intent.action',
+  'analytics',
 ];
 
 export interface NextApi extends LegacyApi {
@@ -135,7 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         engine.log.warn(`next.on: unknown event "${name}"`);
         return () => {};
       }
-      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' });
+      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' || event === 'analytics' });
     },
     getState: () => engine.getState(),
     log: engine.log,

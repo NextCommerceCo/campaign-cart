@@ -50,21 +50,6 @@ export const ecommerce = (engine: Engine, lines: Line[]) => {
   return { currency: currency(engine), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
 };
 
-export const legacyCart = (engine: Engine) => {
-  const summary = engine.getState().cart.summary;
-  const items = engine.cart.lines().map((l) => {
-    const line = summary?.lines.find((s) => s.package_id === l.package_id);
-    const price = Number(line?.package_price ?? engine.getPackage(l.package_id)?.price_total ?? 0);
-    return { package_id: l.package_id, quantity: l.quantity, price };
-  });
-  return {
-    currency: currency(engine),
-    items,
-    total_items: items.reduce((n, i) => n + i.quantity, 0),
-    total_value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
-  };
-};
-
 export const cartEcommerce = (engine: Engine) => {
   const [coupon] = engine.cart.vouchers();
   const method = engine.getState().cart.summary?.shipping_method;

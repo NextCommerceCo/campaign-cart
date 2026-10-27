@@ -91,7 +91,8 @@ src/
   order/               order       loaded when the page has an upsell offer or order.* values
     index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
   analytics/           analytics   subscriber, loaded on idle
-    index.ts                       startAnalytics: data layer delivery and event mapping
+    index.ts                       startAnalytics: engine events → GA4-named `analytics` events
+    context.ts ecommerce.ts        page context and event ids; GA4 items and payloads
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug.ts             debug       loaded with ?debug=1
   compat/                          @deprecated 0.4.x support; each file ships with its importer
@@ -100,6 +101,7 @@ src/
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call
     checkout.ts        checkout    page field names, os-* names, old config, step guard, prospect DOM event
     order.ts           order       accept / decline words, old next-url and offer attributes
+    analytics.ts       analytics   dl_* events (Elevar format) into NextDataLayer / dataLayer, built from `analytics`
 ```
 
 | Chunk       | Loaded when                                                         | Budget (gzip) |
@@ -116,21 +118,22 @@ src/
 
 ## Imports
 
-| File                      | May import                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                          |
-| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                  |
-| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`   |
-| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`         |
-| `analytics/*`, `debug.ts` | `engine/*`                                                                                 |
-| `compat/*`                | `engine/*`, `compat/*`                                                                     |
-| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()` |
-| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                             |
-| `config.ts`               | `compat/config.ts`                                                                         |
+| File                      | May import                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                   |
+| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                           |
+| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`            |
+| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                  |
+| `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                   |
+| `debug.ts`                | `engine/*`                                                                                          |
+| `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/context.ts`, `analytics/ecommerce.ts` |
+| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`          |
+| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                      |
+| `config.ts`               | `compat/config.ts`                                                                                  |
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug.ts`, `bindings/slots.ts`,
-`bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts` and `compat/order.ts`,
-which only their own chunk may import statically.
+`bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
+`compat/analytics.ts`, which only their own chunk may import statically.
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
 chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a browser global

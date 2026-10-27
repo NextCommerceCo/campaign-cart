@@ -115,6 +115,18 @@ describe('boot', () => {
     expect(warn).toHaveBeenCalledWith('[next] next.on: unknown event "fomo:shown"');
   });
 
+  it('lets page scripts listen to analytics events under GA4 names, including ones sent before they listened', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    const next = boot(config, Promise.resolve(campaign));
+    const early: string[] = [];
+    next.on('analytics', (e) => void early.push(e.name));
+    await vi.waitFor(() => expect(early).toContain('page_view'));
+    const late: string[] = [];
+    next.on('analytics', (e) => void late.push(e.name));
+    expect(late).toEqual(early);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('lets page scripts quiet the console and read the log stream', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));

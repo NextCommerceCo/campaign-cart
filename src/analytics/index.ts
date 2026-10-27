@@ -1,7 +1,9 @@
 import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
-import type { CartState, EventMap, ExitIntentDetail } from '../engine/types';
-import { cartEcommerce, cents, currency, ecommerce, legacyCart, type Line, orderItem, taxIncluded } from './ecommerce';
+import type { AnalyticsName, CartState, EventMap } from '../engine/types';
+import { startLegacyDataLayer } from '../compat/analytics';
+import { eventIds, pageContext } from './context';
+import { cartEcommerce, cents, currency, ecommerce, type Line, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -10,102 +12,29 @@ export interface AnalyticsOptions {
   dataLayer?: boolean;
 }
 
-const withoutQuery = (url: string) => {
-  try {
-    const u = new URL(url);
-    return u.origin + u.pathname;
-  } catch {
-    return '';
-  }
-};
-type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
 type Win = Window & {
-  NextDataLayer?: DataLayerEvent[];
-  dataLayer?: unknown[];
-  NextDataLayerTransformFn?: (event: DataLayerEvent) => DataLayerEvent | null | undefined | false;
   nextCampaign?: { config(o: { apiKey: string }): void; event(name: string, data: object): void };
 };
-
-const EXIT_INTENT = {
-  'exit-intent.shown': 'shown',
-  'exit-intent.clicked': 'accepted',
-  'exit-intent.dismissed': 'dismissed',
-  'exit-intent.closed': 'closed',
-} as const;
 
 const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/';
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
-  win.NextDataLayer ??= [];
-  if (options.dataLayer !== false) win.dataLayer ??= [];
-  const page = Math.random().toString(36).slice(2, 10);
-  let seq = 0;
+  const nextId = eventIds();
+  startLegacyDataLayer(engine, { version: options.version, dataLayer: options.dataLayer, nextId });
 
-  const deliver = (event: DataLayerEvent) => {
-    win.NextDataLayer!.push(event);
-    if (options.dataLayer === false) return;
-    win.dataLayer!.push({ ecommerce: null });
-    win.dataLayer!.push(event);
+  const emit = (name: AnalyticsName, params: Record<string, unknown>, id?: string) => {
+    const generated = nextId();
+    const context = pageContext(engine);
+    engine.events.emit('analytics', { name, id: id ?? generated, time: new Date().toISOString(), params, context });
   };
-
-  const transform = (event: DataLayerEvent): DataLayerEvent | undefined => {
-    const fn = win.NextDataLayerTransformFn;
-    if (typeof fn !== 'function') return event;
-    try {
-      return fn(event) || undefined;
-    } catch (err) {
-      engine.log.error('NextDataLayerTransformFn failed', err);
-      return undefined;
-    }
-  };
-
-  const attribution = () => {
-    const a = engine.attribution();
-    const metadata = Object.fromEntries(
-      Object.entries(a.metadata).map(([k, v]) => [
-        k,
-        typeof v === 'string' && /^https?:/.test(v) ? withoutQuery(v) : v,
-      ]),
-    );
-    return { ...a, metadata };
-  };
-
-  const send = (name: string, data: object) => {
-    const { campaign } = engine.getState();
-    const event = transform({
-      event: name,
-      event_id: `${page}_${++seq}`,
-      event_time: new Date().toISOString(),
-      user_properties: { visitor_type: 'guest' },
-      page_location: location.origin + location.pathname,
-      page_title: document.title,
-      page_referrer: withoutQuery(document.referrer),
-      campaign_name: campaign?.name,
-      campaign_currency: campaign?.currency,
-      campaign_language: campaign?.language,
-      attribution: attribution(),
-      _metadata: { source: 'NextDataLayer', version: options.version },
-      ...data,
-    });
-    if (event) deliver(event);
-  };
-
-  const cartTotal = () => engine.getState().cart.summary?.total ?? '0';
-
-  const exitIntent = (name: string, { imageUrl, template }: ExitIntentDetail) =>
-    send(`dl_exit_intent_${name}`, {
-      event_category: 'engagement',
-      event_action: `exit_intent_${name}`,
-      event_label: imageUrl || template || 'exit-intent',
-      exit_intent: { image_url: imageUrl || '', template: template || '' },
-    });
 
   let baseline: Line[] | undefined;
 
   const onReady = (lines: Line[]) => {
     baseline = lines;
-    send('dl_user_data', { cart_total: cartTotal(), ecommerce: ecommerce(engine, engine.cart.lines()) });
+    const { page_location, page_title, page_referrer } = pageContext(engine);
+    emit('page_view', { page_location, page_title, page_referrer });
     const ids = [
       ...new Set(
         [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
@@ -114,12 +43,10 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       ),
     ];
     const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
-    if (viewed.length === 1) send('dl_view_item', { ecommerce: ecommerce(engine, viewed) });
+    if (viewed.length === 1) emit('view_item', ecommerce(engine, viewed));
     if (viewed.length > 1) {
       const { value: _, ...list } = ecommerce(engine, viewed);
-      send('dl_view_item_list', {
-        ecommerce: { ...list, item_list_id: 'product_list', item_list_name: 'Product List' },
-      });
+      emit('view_item_list', { ...list, item_list_id: 'product_list', item_list_name: 'Product List' });
     }
   };
 
@@ -138,18 +65,16 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     if (added.length && removed.length) {
       const a = ecommerce(engine, added);
       const r = ecommerce(engine, removed);
-      send('dl_package_swapped', {
-        ecommerce: {
-          currency: a.currency,
-          value_change: cents(a.value - r.value),
-          items_removed: r.items,
-          items_added: a.items,
-        },
+      emit('swap_items', {
+        currency: a.currency,
+        value_change: cents(a.value - r.value),
+        items_removed: r.items,
+        items_added: a.items,
       });
     } else if (added.length) {
-      send('dl_add_to_cart', { ecommerce: ecommerce(engine, added) });
+      emit('add_to_cart', ecommerce(engine, added));
     } else if (removed.length) {
-      send('dl_remove_from_cart', { ecommerce: ecommerce(engine, removed) });
+      emit('remove_from_cart', ecommerce(engine, removed));
     }
   };
 
@@ -160,10 +85,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       const incl = taxIncluded(engine, order);
       const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
       const discount = Number(order.total_discounts ?? 0);
-      send('dl_purchase', {
-        event_id: purchase,
-        pageType: 'purchase',
-        ecommerce: {
+      emit(
+        'purchase',
+        {
           currency: order.currency ?? currency(engine),
           transaction_id: purchase,
           value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
@@ -174,16 +98,16 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           ...(coupon && { coupon }),
           ...(discount > 0 && { discount }),
         },
-      });
+        purchase,
+      );
       reported.push(purchase);
     }
     for (const { id, number, line } of upsells ?? []) {
       const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
       const transaction = `${order.ref_id}-US${number}`;
-      send('dl_upsell_purchase', {
-        event_id: transaction,
-        pageType: 'upsell',
-        ecommerce: {
+      emit(
+        'upsell_purchase',
+        {
           currency: item.currency,
           transaction_id: transaction,
           value: cents(item.price * item.quantity),
@@ -191,14 +115,15 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           shipping: 0,
           affiliation: 'Upsell',
           items: [item],
+          upsell: {
+            original_order_id: order.ref_id,
+            upsell_number: number,
+            package_id: String(line.package ?? line.product_id ?? line.id),
+            package_name: line.product_title,
+          },
         },
-        upsell_metadata: {
-          original_order_id: order.ref_id,
-          upsell_number: number,
-          package_id: String(line.package ?? line.product_id ?? line.id),
-          package_name: line.product_title,
-        },
-      });
+        transaction,
+      );
       reported.push(id);
     }
     if (reported.length) engine.order?.markReported(reported);
@@ -209,68 +134,37 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
-      const cart = cartEcommerce(engine);
-      const value = Number(cartTotal());
       switch (e.name) {
         case 'cart.updated':
           return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
         case 'cart.calculated':
-          return send('dl_cart_updated', { cart_total: cartTotal(), ecommerce: cart, cart: legacyCart(engine) });
+          return emit('update_cart', cartEcommerce(engine));
         case 'checkout.started':
-          return send('dl_begin_checkout', { cart_total: cartTotal(), ecommerce: cart });
+          return emit('begin_checkout', cartEcommerce(engine));
         case 'checkout.shipping-added': {
           const { tier } = e.data as EventMap['checkout.shipping-added'];
-          const shipping = { ...cart, currencyCode: cart.currency, shipping_tier: tier };
-          return send('dl_add_shipping_info', {
-            ecommerce: shipping,
-            event_category: 'ecommerce',
-            event_value: value,
-            shipping_tier: tier,
+          return emit('add_shipping_info', { ...cartEcommerce(engine), shipping_tier: tier });
+        }
+        case 'checkout.payment-added': {
+          const { method } = e.data as EventMap['checkout.payment-added'];
+          return emit('add_payment_info', {
+            ...cartEcommerce(engine),
+            payment_type: method === 'card_token' ? 'Credit Card' : method,
           });
         }
         case 'order.loaded':
           return onOrder(e.data as EventMap['order.loaded']);
         case 'upsell.viewed': {
           const { refId, page } = e.data as EventMap['upsell.viewed'];
-          return send('dl_viewed_upsell', {
-            order_id: refId,
-            page_path: page,
-            upsell: { package_id: 'page_view', package_name: 'Upsell Page View', currency: currency(engine) },
-          });
+          return emit('view_upsell', { order_id: refId, page_path: page, currency: currency(engine) });
         }
         case 'upsell.skipped': {
           const { refId, packageId } = e.data as EventMap['upsell.skipped'];
-          const pkg = packageId ? engine.getPackage(packageId) : undefined;
-          return send('dl_skipped_upsell', {
+          const name = packageId ? engine.getPackage(packageId)?.name : undefined;
+          return emit('skip_upsell', {
             order_id: refId,
-            upsell: {
-              package_id: packageId ? String(packageId) : 'unknown',
-              package_name: pkg?.name ?? (packageId ? `Package ${packageId}` : 'Unknown Package'),
-            },
-          });
-        }
-        case 'exit-intent.shown':
-        case 'exit-intent.clicked':
-        case 'exit-intent.dismissed':
-        case 'exit-intent.closed':
-          return exitIntent(EXIT_INTENT[e.name], e.data as ExitIntentDetail);
-        case 'exit-intent.action': {
-          const { action, couponCode } = e.data as EventMap['exit-intent.action'];
-          return send('dl_exit_intent_action', {
-            event_category: 'engagement',
-            event_action: `exit_intent_${action}`,
-            event_label: couponCode || action,
-            exit_intent: { action, coupon_code: couponCode || '' },
-          });
-        }
-        case 'checkout.payment-added': {
-          const { method } = e.data as EventMap['checkout.payment-added'];
-          const type = method === 'card_token' ? 'Credit Card' : method;
-          return send('dl_add_payment_info', {
-            ecommerce: { ...cart, payment_type: type },
-            event_category: 'ecommerce',
-            event_value: value,
-            payment_type: type,
+            ...(packageId && { package_id: packageId }),
+            ...(name && { package_name: name }),
           });
         }
       }

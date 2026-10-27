@@ -362,6 +362,40 @@ export interface ExitIntentDetail {
   template?: string;
 }
 
+export type AnalyticsName =
+  | 'page_view'
+  | 'view_item'
+  | 'view_item_list'
+  | 'add_to_cart'
+  | 'remove_from_cart'
+  | 'swap_items'
+  | 'update_cart'
+  | 'begin_checkout'
+  | 'add_shipping_info'
+  | 'add_payment_info'
+  | 'purchase'
+  | 'upsell_purchase'
+  | 'view_upsell'
+  | 'skip_upsell';
+
+export interface AnalyticsContext {
+  page_location: string;
+  page_title: string;
+  page_referrer: string;
+  campaign_name?: string;
+  campaign_currency?: string;
+  campaign_language?: string;
+  attribution: Attribution;
+}
+
+export interface AnalyticsEvent {
+  name: AnalyticsName;
+  id: string;
+  time: string;
+  params: Record<string, unknown>;
+  context: AnalyticsContext;
+}
+
 export interface EventMap {
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   'cart.updated': { cart: CartState };
@@ -391,6 +425,7 @@ export interface EventMap {
   'exit-intent.closed': ExitIntentDetail;
   'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
   error: { action: string; message: string };
+  analytics: AnalyticsEvent;
 }
 
 export type EventName = keyof EventMap;
