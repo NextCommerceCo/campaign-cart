@@ -16,9 +16,11 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 
 ## Rules
 
-1. **`engine/` is the headless layer; every other folder except `compat/` is a chunk.** Inside a
-   folder, one file per domain or attribute family.
-2. **Two levels at most:** `src/<area>/<file>.ts`.
+1. **Folders are features.** Everything about one thing sits together: `checkout/address/`
+   holds every address file. Every top-level folder except `engine/` and `compat/` is a chunk.
+2. **Headless code is `engine/` and each feature's `state`** (`checkout/state/`,
+   `order/state.ts`): no browser globals, and the only code that calls the API or storage.
+   Three levels at most: `src/<feature>/<part>/<file>.ts`.
 3. **Split by domain, never by kind of code.** No `managers/`, `services/`, `utils/`,
    `helpers/`. When a file passes ~300 lines, split it by domain.
 4. **Imports go one way** (table below), enforced by `tests/architecture.test.ts`.
@@ -64,14 +66,12 @@ src/
   loader.ts            loader      reads the page setup, starts the campaign GET, imports boot
   config.ts            loader      page setup from the script tag and URL
   boot.ts              boot        boot: Engine, bindings, window.next, ready
-  engine/              headless    no DOM; the only code that calls the API or storage
-    engine.ts types.ts                          boot
-    cart.ts selectors.ts values.ts condition.ts boot
-    api.ts storage.ts events.ts                 boot (api.ts also maps order errors: one request less per lazy chunk)
-    log.ts                                      boot: the one logger; levels, last 200 entries, stream
-    attribution.ts params.ts scope.ts           boot
-    checkout.ts rules.ts phone.ts               loaded by the checkout chunk
-    order.ts                                    loaded by the order chunk
+  engine/              boot        headless core every page needs
+    engine.ts types.ts events.ts log.ts         the Engine, its state types, events, the one logger
+    api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
+    values.ts condition.ts                      paths and formatting for display, conditions
+    attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
+    cart/                                       cart.ts selectors.ts toggles.ts: cart actions, bundle selectors, toggles
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
@@ -82,16 +82,14 @@ src/
     widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
-    form.ts address.ts billing.ts  fields, country rules on the page's own fields, same-as-shipping and cloned rows
-    reformat.ts                    rewrite a field's value and keep the caret (phone and postcode masks)
-    address-form.ts                [data-next-address]: the country's fields from its i18n-rules layout
-    payment.ts express.ts logos.ts payment radios and panels, payment.js card, express buttons
-    phone.ts                       flag from i18n-rules, typing mask, when the number is read
+    state/                         headless: checkout.ts (actions, order body), rules.ts (i18n-rules API, checks), phone.ts
+    address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
+                                   autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
+    payment/                       card.ts (payment radios and panels, payment.js), express.ts, logos.ts
+    form/                          fields.ts, labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
     review.ts                      [data-next-checkout-review]
-    messages.ts                    field and payment error display
-    texts.ts                       English texts by code; i18n-rules' translated messages first
   order/               order       loaded when the page has an upsell offer or order.* values
-    index.ts upsell.ts receipt.ts
+    index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
   analytics/           analytics   subscriber, loaded on idle
     index.ts                       startAnalytics: data layer delivery and event mapping
     ecommerce.ts                   item, cart and order ecommerce payloads
@@ -120,7 +118,7 @@ src/
 
 | File                      | May import                                                                                 |
 | ------------------------- | ------------------------------------------------------------------------------------------ |
-| `engine/*`                | `engine/*` only, and no browser globals                                                    |
+| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                          |
 | `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                  |
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`   |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`         |
@@ -135,18 +133,18 @@ Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug.ts`, `bindings/slots
 which only their own chunk may import statically.
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
-chunk; a static path from `boot.ts` to `engine/checkout|order|rules|phone.ts`; a browser global
+chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
-`fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) inside `engine/`; a folder deeper
-than two levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
+`fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) in headless code; a folder deeper
+than three levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
 `loader.ts`.
 
 ## Tests
 
 ```
 tests/
-  engine/          one file per engine module, runs in Node — proves the Engine is headless
-  bindings/ checkout/ order/ analytics/ compat/   one file per module, happy-dom
+  engine/ checkout/state/ order/state.test.ts   headless code, runs in Node — proves it never needs a DOM
+  bindings/ checkout/ order/ analytics/ compat/   the rest, happy-dom
   boot.test.ts · loader.test.ts · debug.test.ts · pages.test.ts · architecture.test.ts
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts

@@ -13,10 +13,12 @@ publish a public link
 
 ## Rules
 
-- `src/engine/` is the headless layer: no browser globals, and the only code that calls the
-  API or storage. Every other folder except `compat/` is a chunk (`bindings/` boot,
-  `checkout/`, `order/`, `analytics/` lazy). Two levels at most under `src/`. No `managers/`,
+- Folders are features: everything about one thing sits together (`checkout/address/`).
+  Every top-level folder except `engine/` and `compat/` is a chunk (`bindings/` boot,
+  `checkout/`, `order/`, `analytics/` lazy). Three levels at most under `src/`. No `managers/`,
   `services/`, `utils/` folders.
+- Headless code is `src/engine/` and each feature's `state` (`checkout/state/`,
+  `order/state.ts`): no browser globals, and the only code that calls the API or storage.
 - Imports go one way; `tests/architecture.test.ts` enforces the table in `structure.md`.
 - Every state change goes through an Engine action and `update()`. Bindings never call the
   network.
@@ -25,8 +27,8 @@ publish a public link
   every other feature lives in a folder.
 - Code over comments; explanations go in `docs/`. 0.4.x compatibility lives only in `src/compat/`,
   one file per chunk that uses it, each `@deprecated`.
-- Tests mirror `src/` under `tests/`; `tests/engine/**` runs in Node. Every bug fix adds a test
-  that fails without it.
+- Tests mirror `src/` under `tests/`; headless tests (`tests/engine/**`, `tests/*/state*`) run in
+  Node. Every bug fix adds a test that fails without it.
 - Log through `engine.log` (`src/engine/log.ts`); only it and `loader.ts`, which runs before an
   Engine exists, touch `console`. Log data never carries payment details.
 - `dist/` is built by CI and never committed.
