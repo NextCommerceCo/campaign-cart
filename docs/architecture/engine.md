@@ -32,7 +32,7 @@ that degrades to memory; scope = key + funnel; no card data stored.
 | P5  | `readSession` / `writeSession`                                                     | Storage keys outside the Engine's schema                                                                |
 | P6  | Async actions return `Promise<void>`, errors only as a string event                | Place order and accept offer cannot hand back what happened                                             |
 | P7  | No single-flight                                                                   | A double click could place two orders or two upsells                                                    |
-| P8  | Boot split between `core.ts` and the Engine                                        | restore → load → ready ordered in two places                                                            |
+| P8  | Boot split between `boot.ts` and the Engine                                        | restore → load → ready ordered in two places                                                            |
 | P9  | Lines have no `properties` / `isUpsell`; `mergeLines` keys on package id           | Personalised lines and upsell bumps (all 8 campaigns) cannot be sent; two lines of one package collapse |
 | P10 | `ref_id` is kept as a session param                                                | A stale `ref_id` rides on every later same-site link                                                    |
 
@@ -44,7 +44,7 @@ subscribes. Changed:
 1. **One `update(slice, patch)` path.** It saves the slice if persisted and schedules one change
    notification. No action assigns state directly.
 2. **State in slices** with declared persistence (3.1).
-3. **Actions grouped by domain**, one file each. `cart` and `selectors` are in the core chunk;
+3. **Actions grouped by domain**, one file each. `cart` and `selectors` are in the boot chunk;
    `checkout` and `order` are attached by their lazy chunks, so landing pages do not download
    them (`engine.checkout = createCheckout(context)`).
 4. **Two kinds of notification.** `subscribe(fn)` — state changed, once per tick, for
@@ -73,9 +73,9 @@ Lines are merged for the API by `packageId + isUpsell + properties`, not by pack
 
 | Action                                                                                                  | Chunk    | Notes                                                                                                                                                                                                                                                                                | API                                              | Domain events                                         |
 | ------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ----------------------------------------------------- |
-| `cart.addItem / setQuantity / removeItem / setGroup / clear / applyCoupon / removeCoupon / setShipping` | core     | no-ops while `cart.frozen`; recalculation latest-wins; `clear` also cancels a running calculation                                                                                                                                                                                    | `POST /carts/calculate/`                         | `cart.updated`, `cart.calculated`, `shipping.changed` |
-| `selectors.register(id, cards, mode, preferred?) / pick(id, cardId) / addToCart(id)`                    | core     | first pick: the card already in the cart, else the page's pre-selected one, else the first; `pick` in `swap` mode and `addToCart` set the cart group and shipping, skipped when the cart already has it                                                                              | —                                                | `selection.changed`                                   |
-| card quotes (internal)                                                                                  | core     | every card of an `offer` selector (`?upsell=true`), or of a selector whose cards show `[data-next-discounts]`; on register, quantity or slot change and when the campaign arrives; latest-wins; a quote counts only while it matches the card's lines, otherwise package prices show | `POST /carts/calculate/`                         | —                                                     |
+| `cart.addItem / setQuantity / removeItem / setGroup / clear / applyCoupon / removeCoupon / setShipping` | boot     | no-ops while `cart.frozen`; recalculation latest-wins; `clear` also cancels a running calculation                                                                                                                                                                                    | `POST /carts/calculate/`                         | `cart.updated`, `cart.calculated`, `shipping.changed` |
+| `selectors.register(id, cards, mode, preferred?) / pick(id, cardId) / addToCart(id)`                    | boot     | first pick: the card already in the cart, else the page's pre-selected one, else the first; `pick` in `swap` mode and `addToCart` set the cart group and shipping, skipped when the cart already has it                                                                              | —                                                | `selection.changed`                                   |
+| card quotes (internal)                                                                                  | boot     | every card of an `offer` selector (`?upsell=true`), or of a selector whose cards show `[data-next-discounts]`; on register, quantity or slot change and when the campaign arrives; latest-wins; a quote counts only while it matches the card's lines, otherwise package prices show | `POST /carts/calculate/`                         | —                                                     |
 | `checkout.begin()`                                                                                      | checkout | once, when the form is bound with a non-empty cart                                                                                                                                                                                                                                   | —                                                | `checkout.started`                                    |
 | `checkout.setField / setSameAsShipping / setPaymentMethod / setStep`                                    | checkout | payment words → API codes (`credit` → `card_token`); `setField` fires the prospect cart when email is valid and both names have 2+ characters                                                                                                                                        | `POST /carts/` once                              | `checkout.shipping-added` once, `prospect.saved`      |
 | `checkout.loadCountries() / loadCountry(code)`                                                          | checkout | list filtered by `campaign.available_shipping_countries`; rules cached 1 h                                                                                                                                                                                                           | i18n-rules `/v1/countries`, `/v1/countries/{cc}` | —                                                     |
@@ -165,7 +165,7 @@ chunk never uses them up. Nothing is queued across a redirect.
 | `order.placed`                                                            | order                                                                                                | analytics                                                                |
 | `order.loaded`                                                            | order, purchase? (id), upsells? ({id, number, line})                                                 | analytics, then `order.markReported`                                     |
 | `upsell.viewed` / `upsell.accepted` / `upsell.skipped`                    | refId, lines                                                                                         | analytics                                                                |
-| `ready`                                                                   | lines; once, when a campaign is available (snapshot or fresh); emitted by `start()`                  | core (`html[data-next-ready]`, legacy announce, analytics), page scripts |
+| `ready`                                                                   | lines; once, when a campaign is available (snapshot or fresh); emitted by `start()`                  | boot (`html[data-next-ready]`, legacy announce, analytics), page scripts |
 | `storage.degraded`, `error`, `exit-intent.*`                              | as today                                                                                             |                                                                          |
 
 ### 3.6 Engine core
@@ -190,8 +190,8 @@ cards use their quote).
 
 ## 4. Main flows
 
-**Boot.** `new Engine()` restores the tab's state → core binds the page (selectors register and
-put their pick in the cart) → `engine.start()` → `ready` → core sets `html[data-next-ready]` and
+**Boot.** `new Engine()` restores the tab's state → boot binds the page (selectors register and
+put their pick in the cart) → `engine.start()` → `ready` → boot sets `html[data-next-ready]` and
 loads analytics on idle.
 
 **Landing → add to cart.** binding → `cart.addItem` → `update(cart)` → save + notify →
@@ -210,7 +210,7 @@ same URL; skip → `order.skip()` and navigate.
 
 ## 5. Files
 
-`src/engine/`: `engine.ts`, `types.ts`, `cart.ts`, `selectors.ts` (core); `checkout.ts`,
+`src/engine/`: `engine.ts`, `types.ts`, `cart.ts`, `selectors.ts` (boot); `checkout.ts`,
 `order.ts`, `rules.ts` (loaded by their chunks); shared `api.ts` (with the order error mapping), `storage.ts`,
 `events.ts`, `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`. See
 [structure.md](structure.md).
@@ -224,9 +224,9 @@ One commit per step, tests green, size checked each time:
 2. Bindings render on `subscribe`; `cart.updated` stops firing for the calculating flag.
 3. `selectors` slice + `quote`; bindings register cards; `CardLookup` and
    `BindContext.selectors` go away.
-4. `start()` takes restore → load out of `core.ts`; `visit.exitIntentShown` replaces
+4. `start()` takes restore → load out of `boot.ts`; `visit.exitIntentShown` replaces
    `readSession` / `writeSession`.
-5. Checkout chunk on top (with `checkout/legacy.ts`: the shop-three-step guard key, the
+5. Checkout chunk on top (with `compat/checkout.ts`: the shop-three-step guard key, the
    `next:prospect-cart-created` event, old field and payment names), then the order chunk.
 
 ## 7. Decisions
@@ -234,6 +234,6 @@ One commit per step, tests green, size checked each time:
 1. Checkout fields (email, name, address) stay in sessionStorage for the tab, as in 0.4.x, so a
    3-step checkout and a reload keep them; cleared after the order.
 2. The shop-three-step guard key `sessionStorage['next-checkout-store']` is written in its old
-   shape by `checkout/legacy.ts` (templates are copied into live campaigns and cannot all be
+   shape by `compat/checkout.ts` (templates are copied into live campaigns and cannot all be
    updated).
 3. The receipt reads `order.*`; `cart.*` on a receipt is empty after a paid order, as before.

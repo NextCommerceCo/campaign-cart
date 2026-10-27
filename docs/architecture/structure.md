@@ -54,6 +54,9 @@ README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .
 
 A `docs/architecture/decisions/` folder is added with the first decision worth its own page.
 
+The SDK ships from the CDN only (`loader.js` on a script tag): no npm entry, `exports` or
+`.d.ts`, so the Engine API is not a public contract.
+
 ## Source
 
 ```
