@@ -320,6 +320,15 @@ describe('analytics', () => {
     ]);
   });
 
+  it('keeps dl_user_data first when the exit-intent popup showed before analytics loaded', async () => {
+    const engine = await ready();
+    engine.events.emit('exit-intent.shown', { imageUrl: 'https://cdn.test/exit.png' });
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
+    startAnalytics(engine, options);
+    expect(names()).toEqual(['dl_user_data', 'dl_exit_intent_shown', 'dl_add_to_cart', 'dl_cart_updated']);
+    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '3', '4']);
+  });
+
   it('loads the NextCampaign script once and sends one page_view', async () => {
     const engine = await ready();
     const config = vi.fn();

@@ -1,6 +1,7 @@
 import { pageContext } from '../analytics/context';
 import { cents, currency, ecommerce } from '../analytics/ecommerce';
 import type { Engine } from '../engine/engine';
+import type { EngineEvent } from '../engine/events';
 import type { AnalyticsContext, AnalyticsEvent, AnalyticsName, EventMap, ExitIntentDetail } from '../engine/types';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
@@ -52,12 +53,12 @@ const legacyCart = (engine: Engine) => {
 /**
  * @deprecated 0.4.x `dl_*` events (Elevar format) on `window.NextDataLayer` and `window.dataLayer`,
  * with `window.NextDataLayerTransformFn`. Listen with `next.on('analytics', fn)`: the same events
- * under GA4 names.
+ * under GA4 names. Returns the exit-intent handler, for the caller to run in event order.
  */
 export function startLegacyDataLayer(
   engine: Engine,
   options: { version: string; dataLayer?: boolean; nextId: () => string },
-): void {
+): (e: EngineEvent) => void {
   const win = window as Win;
   win.NextDataLayer ??= [];
   if (options.dataLayer !== false) win.dataLayer ??= [];
@@ -163,30 +164,23 @@ export function startLegacyDataLayer(
       ...data,
     });
 
-  let ready = false;
-  engine.on(
-    '*',
-    (e) => {
-      if (e.name === 'ready') ready = true;
-      if (!ready) return;
-      if (e.name in EXIT_INTENT) {
-        const name = EXIT_INTENT[e.name as keyof typeof EXIT_INTENT];
-        const { imageUrl, template } = e.data as ExitIntentDetail;
-        exitIntent(name, {
-          event_action: `exit_intent_${name}`,
-          event_label: imageUrl || template || 'exit-intent',
-          exit_intent: { image_url: imageUrl || '', template: template || '' },
-        });
-      }
-      if (e.name === 'exit-intent.action') {
-        const { action, couponCode } = e.data as EventMap['exit-intent.action'];
-        exitIntent('action', {
-          event_action: `exit_intent_${action}`,
-          event_label: couponCode || action,
-          exit_intent: { action, coupon_code: couponCode || '' },
-        });
-      }
-    },
-    { replay: true },
-  );
+  return (e) => {
+    if (e.name in EXIT_INTENT) {
+      const name = EXIT_INTENT[e.name as keyof typeof EXIT_INTENT];
+      const { imageUrl, template } = e.data as ExitIntentDetail;
+      exitIntent(name, {
+        event_action: `exit_intent_${name}`,
+        event_label: imageUrl || template || 'exit-intent',
+        exit_intent: { image_url: imageUrl || '', template: template || '' },
+      });
+    }
+    if (e.name === 'exit-intent.action') {
+      const { action, couponCode } = e.data as EventMap['exit-intent.action'];
+      exitIntent('action', {
+        event_action: `exit_intent_${action}`,
+        event_label: couponCode || action,
+        exit_intent: { action, coupon_code: couponCode || '' },
+      });
+    }
+  };
 }

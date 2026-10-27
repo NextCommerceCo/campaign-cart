@@ -21,7 +21,11 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
   const nextId = eventIds();
-  startLegacyDataLayer(engine, { version: options.version, dataLayer: options.dataLayer, nextId });
+  const legacyExitIntent = startLegacyDataLayer(engine, {
+    version: options.version,
+    dataLayer: options.dataLayer,
+    nextId,
+  });
 
   const emit = (name: AnalyticsName, params: Record<string, unknown>, id?: string) => {
     const generated = nextId();
@@ -134,6 +138,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
       if (!baseline) return;
+      legacyExitIntent(e);
       switch (e.name) {
         case 'cart.updated':
           return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
