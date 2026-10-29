@@ -1,5 +1,6 @@
 import { type CartActions, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
+import { forcedBundle } from '../params';
 import type { CartGroup, CartLine, Selector, SelectorCard, SelectorMode, Slot } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
@@ -128,11 +129,15 @@ export function createSelectors(ctx: Context, cart: CartActions) {
   return {
     register(id: string, cards: SelectorCard[], mode: SelectorMode, preferred?: string): Promise<void> {
       const previous = get(id)?.picked;
+      const forcedId = forcedBundle(ctx.getState().visit.params.forceBundleId, id);
+      const forced = forcedId ? cards.find((c) => c.id === forcedId) : undefined;
+      if (forcedId && !forced) ctx.log.warn(`forceBundleId "${forcedId}" matches no card in selector "${id}"`);
       const inCart = ctx.getState().cart.groups[bundleGroup(id)];
-      const restored =
+      const found =
         inCart && (cards.find((c) => quantityIn(c, inCart) === 1) ?? cards.find((c) => quantityIn(c, inCart)));
+      const restored = forced && found !== forced ? undefined : found;
       const initial =
-        cards.find((c) => c.id === previous) ?? restored ?? cards.find((c) => c.id === preferred) ?? cards[0];
+        cards.find((c) => c.id === previous) ?? forced ?? restored ?? cards.find((c) => c.id === preferred) ?? cards[0];
       const quantities = restored && inCart ? { [restored.id]: quantityIn(restored, inCart)! } : undefined;
       const slots = restored && inCart && slotsIn(restored, inCart);
       ctx.update('selectors', {

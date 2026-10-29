@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SelectorCard } from '../../../src/engine/types';
 import { format, resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
@@ -30,6 +30,37 @@ describe('selectors', () => {
     const fresh = makeEngine().engine;
     await fresh.selectors.register('main', CARDS, 'select');
     expect(fresh.getState().selectors.main?.picked).toBe('one');
+  });
+
+  it('picks the ?forceBundleId card over the cart and the preferred one, on that page only', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.selectors.register('main', CARDS, 'swap', 'one');
+
+    const forced = makeEngine({ session, params: { forceBundleId: 'two' } }).engine;
+    await forced.start();
+    await forced.selectors.register('main', CARDS, 'swap', 'one');
+    expect(forced.getState().selectors.main?.picked).toBe('two');
+    expect(forced.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+
+    const next = makeEngine({ session }).engine;
+    expect(next.getState().visit.params.forceBundleId).toBeUndefined();
+    await next.selectors.register('main', CARDS, 'swap', 'one');
+    expect(next.getState().selectors.main?.picked).toBe('two');
+  });
+
+  it('reads ?forceBundleId per selector, and falls back with a warning when no card matches', async () => {
+    const { engine } = makeEngine({ params: { forceBundleId: 'side:two,missing' } });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await engine.selectors.register('side', CARDS, 'select', 'one');
+    await engine.selectors.register('main', CARDS, 'select', 'two');
+    await engine.selectors.register('gift', CARDS, 'select');
+    expect(engine.getState().selectors.side?.picked).toBe('two');
+    expect(engine.getState().selectors.main?.picked).toBe('two');
+    expect(engine.getState().selectors.gift?.picked).toBe('one');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('forceBundleId "missing" matches no card'));
+    warn.mockRestore();
   });
 
   it('puts the pick in the cart with its vouchers and shipping in swap mode only', async () => {

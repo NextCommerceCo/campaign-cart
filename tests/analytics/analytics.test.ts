@@ -146,6 +146,23 @@ describe('analytics', () => {
     ]);
   });
 
+  it('sends add_to_cart for the ?forceBundleId card, not the preferred one', async () => {
+    const cards = [
+      { id: '1x', lines: [{ packageId: 1, quantity: 1 }], vouchers: [] },
+      { id: '3x', lines: [{ packageId: 1, quantity: 3 }], vouchers: [] },
+    ];
+    const engine = await ready('', { forceBundleId: '3x' }, (e) => {
+      void e.selectors.register('main', cards, 'swap', '1x');
+    });
+    startAnalytics(engine, options);
+    await flush();
+    const add = win.NextDataLayer!.find((e) => e.event === 'dl_add_to_cart');
+    expect(add).toMatchObject({ first_in_session: true, ecommerce: { items: [{ item_id: '11' }] } });
+    const updated = win.NextDataLayer!.find((e) => e.event === 'dl_cart_updated');
+    expect(add.ecommerce.items).toEqual(updated.ecommerce.items);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 3 }]);
+  });
+
   it('sends the add on the next page when the page that filled the cart left before analytics ran', async () => {
     const session = new MemoryStorage();
     const page = async (fill?: (engine: Engine) => Promise<void>, analytics = true) => {

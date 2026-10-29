@@ -320,10 +320,10 @@ unknown name logs a warning. DOM events kept: `next:initialized`, `next:ready`,
 | `next-funnel`, `next-success-url`, `next-next-url`, `os-next-page`, `next-failure-url`, `next-upsell-accept-url`, `next-upsell-decline-url`, `next-api-key` | Supported                                                                                                |
 | `next-page-type`                                                                                                                                            | Not needed: offers mark the upsell page themselves                                                       |
 | `next-campaign-id`, `next-debug`, `next-clear-cart`, `next-storage-scope`, `os-tracking-tag`, `next-analytics-*`                                            | Removed (no live use)                                                                                    |
-| `?ref_id`, `?forcePackageId`, `?payment_failed`, `?currency`, `?funnel`, `utm_*` and click ids, `param.*` conditions                                        | Supported                                                                                                |
+| `?ref_id`, `?forcePackageId`, `?forceBundleId`, `?payment_failed`, `?currency`, `?funnel`, `utm_*` and click ids, `param.*` conditions                      | Supported                                                                                                |
 | `?debug=true`, `?debugger=true`, `?reset=true`                                                                                                              | Supported (also `?debug=1`, `?reset=1`)                                                                  |
 | `?country`                                                                                                                                                  | Sets the checkout country; no currency switch                                                            |
-| `?forceShippingId`, `?forceBundleId`, `?test`, `?ignore`                                                                                                    | Removed (no live use)                                                                                    |
+| `?forceShippingId`, `?test`, `?ignore`                                                                                                                      | Removed (no live use)                                                                                    |
 
 ## Display paths and conditions
 

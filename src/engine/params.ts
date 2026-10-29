@@ -1,6 +1,7 @@
 export const ONE_SHOT_PARAMS = [
   'reset',
   'forcePackageId',
+  'forceBundleId',
   'debug',
   'debugger',
   'payment_failed',
@@ -18,6 +19,19 @@ export function parseForcePackages(raw: string | undefined): Array<{ packageId: 
     .map((part) => part.split(':').map(Number))
     .filter(([id]) => id && id > 0)
     .map(([id, qty]) => ({ packageId: id!, quantity: qty && qty > 0 ? qty : 1 }));
+}
+
+export function forcedBundle(raw: string | undefined, selectorId: string): string | undefined {
+  const specs = (raw ?? '')
+    .split(',')
+    .map((part) => {
+      const at = part.indexOf(':');
+      return at < 0
+        ? { selector: '', card: part.trim() }
+        : { selector: part.slice(0, at).trim(), card: part.slice(at + 1).trim() };
+    })
+    .filter((s) => s.card);
+  return (specs.find((s) => s.selector === selectorId) ?? specs.find((s) => !s.selector))?.card;
 }
 
 export function keptParams(params: Record<string, string>): Record<string, string> {

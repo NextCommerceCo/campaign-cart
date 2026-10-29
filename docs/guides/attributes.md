@@ -32,24 +32,24 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 
 ## Bundles
 
-| Attribute                                                                                                | Meaning                                                                       |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `data-next-bundle-selector`, `data-next-selector-id`                                                     | A group of cards; one is picked. _0.4.x:_ `data-next-id`                      |
-| `data-next-selection-mode="swap\|select"`                                                                | `swap` (default) puts the pick in the cart; `select` only records it          |
-| `data-next-bundle-card`, `data-next-bundle-id`                                                           | A card                                                                        |
-| `data-next-bundle-items='[{"packageId":1,"quantity":2,"configurable":true}]'`                            | The card's lines; `configurable` makes one slot per unit                      |
-| `data-next-bundle-vouchers`, `data-next-shipping-id`                                                     | Vouchers and shipping method that come with the card                          |
-| `data-next-selected="true"`                                                                              | The card picked first (the cart's own pick wins after a reload)               |
-| `data-next-quantity`, `data-next-min-quantity`, `data-next-max-quantity`                                 | Card quantity and its limits                                                  |
-| `data-next-bundle-qty-for="<selector id>"` with `data-next-quantity-increase` / `-decrease` / `-display` | Quantity stepper                                                              |
-| `data-next-bundle-display="<prop>"`                                                                      | A card's own value (price, originalPrice, discountPercentage, hasDiscount, …) |
-| `data-next-bundle-slot-template-id`, `data-next-bundle-slots-for`                                        | Multi-variant slots: template and where they are drawn                        |
-| `data-next-variant-selectors`                                                                            | Inside a slot template: variant `<select>`s are drawn here                    |
-| `data-next-property="<name>"`                                                                            | Inside a slot or bump: a personalisation sent with that line                  |
-| `data-next-default-property="<name>"`                                                                    | A page-wide personalisation added to every line…                              |
-| `data-next-exclude-property="<name,…\|*>"`                                                               | …except on this card                                                          |
-| `data-next-upsell-context`                                                                               | Cards priced as a post-purchase offer (`?upsell=true`)                        |
-| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts                                                         |
+| Attribute                                                                                                | Meaning                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-next-bundle-selector`, `data-next-selector-id`                                                     | A group of cards; one is picked. _0.4.x:_ `data-next-id`                                                                                          |
+| `data-next-selection-mode="swap\|select"`                                                                | `swap` (default) puts the pick in the cart; `select` only records it                                                                              |
+| `data-next-bundle-card`, `data-next-bundle-id`                                                           | A card                                                                                                                                            |
+| `data-next-bundle-items='[{"packageId":1,"quantity":2,"configurable":true}]'`                            | The card's lines; `configurable` makes one slot per unit                                                                                          |
+| `data-next-bundle-vouchers`, `data-next-shipping-id`                                                     | Vouchers and shipping method that come with the card                                                                                              |
+| `data-next-selected="true"`                                                                              | The card picked first (the cart's own pick wins after a reload; `?forceBundleId=<card>` or `<selector>:<card>` wins over both, on that page only) |
+| `data-next-quantity`, `data-next-min-quantity`, `data-next-max-quantity`                                 | Card quantity and its limits                                                                                                                      |
+| `data-next-bundle-qty-for="<selector id>"` with `data-next-quantity-increase` / `-decrease` / `-display` | Quantity stepper                                                                                                                                  |
+| `data-next-bundle-display="<prop>"`                                                                      | A card's own value (price, originalPrice, discountPercentage, hasDiscount, …)                                                                     |
+| `data-next-bundle-slot-template-id`, `data-next-bundle-slots-for`                                        | Multi-variant slots: template and where they are drawn                                                                                            |
+| `data-next-variant-selectors`                                                                            | Inside a slot template: variant `<select>`s are drawn here                                                                                        |
+| `data-next-property="<name>"`                                                                            | Inside a slot or bump: a personalisation sent with that line                                                                                      |
+| `data-next-default-property="<name>"`                                                                    | A page-wide personalisation added to every line…                                                                                                  |
+| `data-next-exclude-property="<name,…\|*>"`                                                               | …except on this card                                                                                                                              |
+| `data-next-upsell-context`                                                                               | Cards priced as a post-purchase offer (`?upsell=true`)                                                                                            |
+| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts                                                                                                                             |
 
 Every card is priced on the server with its vouchers and the shopper's coupons, as in 0.4.x;
 the campaign's package prices show until the quote arrives.
