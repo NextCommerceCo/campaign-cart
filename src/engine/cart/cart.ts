@@ -1,5 +1,5 @@
 import type { Context } from '../engine';
-import type { ApiLine, CartGroup, CartLine, CartState, CartSummary, State } from '../types';
+import type { ApiLine, CartGroup, CartLine, CartState, CartSummary, ReportedLine, State } from '../types';
 
 export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
@@ -202,7 +202,14 @@ export function createCart(ctx: Context) {
     clearAfterOrder() {
       seq++;
       abort?.abort();
-      ctx.update('cart', { ...emptyCart(), summary: undefined, shippingId: undefined, frozen: true }, { silent: true });
+      ctx.update(
+        'cart',
+        { ...emptyCart(), summary: undefined, shippingId: undefined, frozen: true, reported: [] },
+        { silent: true },
+      );
+    },
+    markReported(reported: ReportedLine[], added: boolean) {
+      ctx.update('cart', { reported, added: state().added || added }, { silent: true });
     },
     campaignLoaded(): Promise<void> {
       const groups = knownOnly(state().groups);

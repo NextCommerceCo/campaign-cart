@@ -131,9 +131,10 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   Each one goes through `window.NextDataLayerTransformFn` first (a falsy return drops it),
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
-- **Events today:** `dl_user_data` and `dl_view_item(_list)` on ready; `dl_add_to_cart`,
-  `dl_remove_from_cart`, `dl_package_swapped` from cart changes the shopper makes;
-  `dl_cart_updated` after each server calculation. Checkout and upsell events come with
+- **Events today:** `dl_user_data` and `dl_view_item(_list)` on ready; `dl_add_to_cart` and
+  `dl_remove_from_cart` from the priced cart against what was already reported in the tab, so a
+  cart filled before the page loaded is reported once; `dl_cart_updated` after each server
+  calculation. Checkout and upsell events come with
   their chunks.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
   `page_location` has no query string.

@@ -214,8 +214,8 @@ export class Engine {
   private save(slice: keyof State): void {
     const { cart, visit, campaign, checkout, order } = this.state;
     if (slice === 'cart') {
-      const { groups, coupons, dismissed, shippingId } = cart;
-      this.session.set('cart', { groups, coupons, dismissed, shippingId });
+      const { groups, coupons, dismissed, shippingId, reported, added } = cart;
+      this.session.set('cart', { groups, coupons, dismissed, shippingId, reported, added });
     }
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);

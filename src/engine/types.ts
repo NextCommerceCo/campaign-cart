@@ -114,6 +114,14 @@ export interface CartState {
   summary?: CartSummary;
   calculating: boolean;
   frozen: boolean;
+  reported?: ReportedLine[];
+  added?: boolean;
+}
+
+export interface ReportedLine {
+  package_id: number;
+  quantity: number;
+  price: number;
 }
 
 export type SelectorMode = 'swap' | 'select' | 'offer';
@@ -368,7 +376,6 @@ export type AnalyticsName =
   | 'view_item_list'
   | 'add_to_cart'
   | 'remove_from_cart'
-  | 'swap_items'
   | 'update_cart'
   | 'begin_checkout'
   | 'add_shipping_info'

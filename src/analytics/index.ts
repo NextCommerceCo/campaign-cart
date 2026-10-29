@@ -1,6 +1,6 @@
 import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
-import type { AnalyticsName, CartState, EventMap } from '../engine/types';
+import type { AnalyticsName, EventMap, SummaryLine } from '../engine/types';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { eventIds, pageContext } from './context';
 import { cartEcommerce, cents, currency, ecommerce, type Line, orderItem, taxIncluded } from './ecommerce';
@@ -33,10 +33,11 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     engine.events.emit('analytics', { name, id: id ?? generated, time: new Date().toISOString(), params, context });
   };
 
-  let baseline: Line[] | undefined;
+  let ready = false;
+  let priced: SummaryLine[] | undefined;
 
-  const onReady = (lines: Line[]) => {
-    baseline = lines;
+  const onReady = () => {
+    ready = true;
     const { page_location, page_title, page_referrer } = pageContext(engine);
     emit('page_view', { page_location, page_title, page_referrer });
     const ids = [
@@ -54,32 +55,36 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     }
   };
 
-  const onCartUpdated = (previous: Line[], cart: CartState) => {
-    const lines = mergeLines(cart.groups);
-    const before = new Map(previous.map((l) => [l.package_id, l.quantity]));
-    const after = new Map(lines.map((l) => [l.package_id, l.quantity]));
+  const reportCart = (lines: SummaryLine[]) => {
+    const { reported = [], added: addedBefore } = engine.getState().cart;
+    const before = new Map(reported.map((l) => [l.package_id, l]));
+    const after = new Map<number, { quantity: number; line: SummaryLine }>();
+    for (const line of lines) {
+      const seen = after.get(line.package_id);
+      after.set(line.package_id, { quantity: (seen?.quantity ?? 0) + line.quantity, line: seen?.line ?? line });
+    }
     const added: Line[] = [];
     const removed: Line[] = [];
     for (const id of new Set([...before.keys(), ...after.keys()])) {
-      const diff = (after.get(id) ?? 0) - (before.get(id) ?? 0);
+      const diff = (after.get(id)?.quantity ?? 0) - (before.get(id)?.quantity ?? 0);
       if (diff > 0) added.push({ package_id: id, quantity: diff });
       if (diff < 0) removed.push({ package_id: id, quantity: -diff });
     }
-    baseline = lines;
-    if (added.length && removed.length) {
-      const a = ecommerce(engine, added);
-      const r = ecommerce(engine, removed);
-      emit('swap_items', {
-        currency: a.currency,
-        value_change: cents(a.value - r.value),
-        items_removed: r.items,
-        items_added: a.items,
+    if (!added.length && !removed.length) return;
+    engine.cart.markReported(
+      [...after].map(([package_id, { quantity, line }]) => ({ package_id, quantity, price: Number(line.unit_price) })),
+      added.length > 0,
+    );
+    if (removed.length)
+      emit(
+        'remove_from_cart',
+        ecommerce(engine, removed, (id) => ({ unit_price: String(before.get(id)!.price) })),
+      );
+    if (added.length)
+      emit('add_to_cart', {
+        ...ecommerce(engine, added, (id) => after.get(id)!.line),
+        first_in_session: !addedBefore,
       });
-    } else if (added.length) {
-      emit('add_to_cart', ecommerce(engine, added));
-    } else if (removed.length) {
-      emit('remove_from_cart', ecommerce(engine, removed));
-    }
   };
 
   const onOrder = ({ order, purchase, coupon, upsells }: EventMap['order.loaded']) => {
@@ -136,13 +141,22 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   engine.on(
     '*',
     (e) => {
-      if (e.name === 'ready') return onReady((e.data as EventMap['ready']).lines);
-      if (!baseline) return;
+      if (e.name === 'ready') {
+        onReady();
+        if (!(e.data as EventMap['ready']).lines.length) return reportCart([]);
+        return priced && reportCart(priced);
+      }
+      if (!ready) {
+        if (e.name === 'cart.updated') priced = undefined;
+        if (e.name === 'cart.calculated') priced = (e.data as EventMap['cart.calculated']).summary.lines;
+        return;
+      }
       legacyExitIntent(e);
       switch (e.name) {
         case 'cart.updated':
-          return onCartUpdated(baseline, (e.data as EventMap['cart.updated']).cart);
+          return mergeLines((e.data as EventMap['cart.updated']).cart.groups).length ? undefined : reportCart([]);
         case 'cart.calculated':
+          reportCart((e.data as EventMap['cart.calculated']).summary.lines);
           return emit('update_cart', cartEcommerce(engine));
         case 'checkout.started':
           return emit('begin_checkout', cartEcommerce(engine));

@@ -17,7 +17,6 @@ const NAMES: Record<AnalyticsName, string> = {
   view_item_list: 'dl_view_item_list',
   add_to_cart: 'dl_add_to_cart',
   remove_from_cart: 'dl_remove_from_cart',
-  swap_items: 'dl_package_swapped',
   update_cart: 'dl_cart_updated',
   begin_checkout: 'dl_begin_checkout',
   add_shipping_info: 'dl_add_shipping_info',
@@ -107,6 +106,10 @@ export function startLegacyDataLayer(
     switch (name) {
       case 'page_view':
         return { cart_total: cartTotal(), ecommerce: ecommerce(engine, engine.cart.lines()) };
+      case 'add_to_cart': {
+        const { first_in_session, ...cart } = params;
+        return { ecommerce: cart, first_in_session };
+      }
       case 'update_cart':
         return { cart_total: cartTotal(), ecommerce: params, cart: legacyCart(engine) };
       case 'begin_checkout':

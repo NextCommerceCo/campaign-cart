@@ -97,7 +97,7 @@ describe('analytics', () => {
     delete win.NextDataLayerTransformFn;
   });
 
-  it('turns cart changes after ready into add, swap, remove and cart-updated events', async () => {
+  it('turns cart changes into add and remove events, a bundle change into both, never a swap', async () => {
     const engine = await ready('', {}, (e) => {
       void e.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     });
@@ -110,33 +110,71 @@ describe('analytics', () => {
     await flush();
     expect(names()).toEqual([
       'dl_user_data',
+      'dl_add_to_cart',
       'dl_cart_updated',
       'dl_add_to_cart',
       'dl_cart_updated',
-      'dl_package_swapped',
+      'dl_remove_from_cart',
+      'dl_add_to_cart',
       'dl_cart_updated',
       'dl_remove_from_cart',
       'dl_cart_updated',
     ]);
-    const swap = win.NextDataLayer!.find((e) => e.event === 'dl_package_swapped');
-    expect(swap.ecommerce).toMatchObject({
-      value_change: 40,
-      items_removed: [{ item_id: '11' }],
-      items_added: [{ item_id: '12' }],
-    });
+    const events = (name: string) => win.NextDataLayer!.filter((e) => e.event === name);
+    expect(events('dl_add_to_cart').map((e) => [e.ecommerce.items[0].item_id, e.first_in_session])).toEqual([
+      ['11', true],
+      ['19', false],
+      ['12', false],
+    ]);
+    const [removedBundle] = events('dl_remove_from_cart');
+    expect(removedBundle.ecommerce).toEqual(events('dl_add_to_cart')[0].ecommerce);
     expect(error).not.toHaveBeenCalled();
     error.mockRestore();
   });
 
-  it('ignores cart changes made before ready, such as a forced cart', async () => {
+  it('sends add_to_cart at the cart price for a cart filled before ready, such as a forced cart', async () => {
     const engine = await ready('', { forcePackageId: '2' });
     startAnalytics(engine, options);
     await flush();
-    expect(names()).toEqual(['dl_user_data', 'dl_cart_updated']);
+    expect(names()).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
     expect(win.NextDataLayer![0].ecommerce.items).toMatchObject([{ item_id: '12' }]);
-    expect(win.NextDataLayer![1].ecommerce.items).toEqual([
+    const [, add, updated] = win.NextDataLayer!;
+    expect(add).toMatchObject({ first_in_session: true, ecommerce: { currency: 'USD', value: 89 } });
+    expect(add.ecommerce.items).toEqual(updated.ecommerce.items);
+    expect(updated.ecommerce.items).toEqual([
       expect.objectContaining({ item_id: '12', item_product_id: '400', price: 44.5, discount: 54.5, quantity: 2 }),
     ]);
+  });
+
+  it('sends the add on the next page when the page that filled the cart left before analytics ran', async () => {
+    const session = new MemoryStorage();
+    const page = async (fill?: (engine: Engine) => Promise<void>, analytics = true) => {
+      delete win.NextDataLayer;
+      const { engine } = makeEngine({ session });
+      await engine.start();
+      if (analytics) startAnalytics(engine, options);
+      await fill?.(engine);
+      await flush();
+      return names();
+    };
+    await page((e) => e.cart.addItem(2), false);
+    expect(await page()).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
+    expect(win.NextDataLayer![1].first_in_session).toBe(true);
+    expect(await page()).toEqual(['dl_user_data', 'dl_cart_updated']);
+    expect(await page((e) => e.cart.addItem(9))).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
+    expect(win.NextDataLayer![1]).toMatchObject({ first_in_session: false, ecommerce: { items: [{ item_id: '19' }] } });
+  });
+
+  it('reports an emptied cart as removed, at the price it was added', async () => {
+    const engine = await ready('', { forcePackageId: '2' });
+    startAnalytics(engine, options);
+    await flush();
+    await engine.cart.clear();
+    await flush();
+    const add = win.NextDataLayer!.find((e) => e.event === 'dl_add_to_cart');
+    const removed = win.NextDataLayer!.at(-1);
+    expect(removed).toMatchObject({ event: 'dl_remove_from_cart' });
+    expect(removed.ecommerce).toEqual(add.ecommerce);
   });
 
   it('reports checkout steps in the 0.4.x shape', async () => {
@@ -384,6 +422,7 @@ describe('analytics events (GA4 names)', () => {
       currency: 'USD',
       value: expect.any(Number),
       items: [expect.objectContaining({ item_id: '11' })],
+      first_in_session: true,
     });
     expect(add.context).toMatchObject({ campaign_name: 'Olympus', page_location: location.origin + location.pathname });
     expect(seen.at(-2)!.params).toMatchObject({ shipping_tier: 'Standard' });

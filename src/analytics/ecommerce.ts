@@ -13,7 +13,9 @@ const ids = (product?: number, variant?: number) => ({
   ...(variant != null && { item_variant_id: String(variant) }),
 });
 
-const item = (engine: Engine, packageId: number, count: number, index: number, line?: SummaryLine) => {
+type Priced = Pick<SummaryLine, 'unit_price'> & Partial<Pick<SummaryLine, 'original_unit_price'>>;
+
+const item = (engine: Engine, packageId: number, count: number, index: number, line?: Priced) => {
   const pkg = engine.getPackage(packageId);
   if (!pkg) return undefined;
   const price = Number(line?.unit_price ?? pkg.price);
@@ -34,18 +36,14 @@ const item = (engine: Engine, packageId: number, count: number, index: number, l
   };
 };
 
-export const ecommerce = (engine: Engine, lines: Line[]) => {
-  const summary = engine.getState().cart.summary;
+export const ecommerce = (
+  engine: Engine,
+  lines: Line[],
+  priced: (packageId: number) => Priced | undefined = (id) =>
+    engine.getState().cart.summary?.lines.find((s) => s.package_id === id),
+) => {
   const items = lines
-    .map((l, i) =>
-      item(
-        engine,
-        l.package_id,
-        l.quantity,
-        i,
-        summary?.lines.find((s) => s.package_id === l.package_id),
-      ),
-    )
+    .map((l, i) => item(engine, l.package_id, l.quantity, i, priced(l.package_id)))
     .filter((i): i is NonNullable<typeof i> => !!i);
   return { currency: currency(engine), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
 };
