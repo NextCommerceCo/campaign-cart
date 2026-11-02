@@ -32,11 +32,12 @@ export function scanFields(form: HTMLFormElement, fields: Fields = new Map()): F
   return fields;
 }
 
-export const valueOf = (el: Control) =>
-  el instanceof HTMLInputElement && el.type === 'checkbox' ? String(el.checked) : el.value;
+const isCheckbox = (el: Control): el is HTMLInputElement => el instanceof HTMLInputElement && el.type === 'checkbox';
+
+export const valueOf = (el: Control) => (isCheckbox(el) ? String(el.checked) : el.value);
 
 export function setValue(el: Control, value: string): void {
-  if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = value === 'true';
+  if (isCheckbox(el)) el.checked = value === 'true';
   else if (el.value !== value && document.activeElement !== el) el.value = value;
 }
 
@@ -81,6 +82,8 @@ export function bindFields(
     checkout.setField(name, valueOf(el));
     void checkout.leave(name);
   });
+  for (const [name, el] of fields)
+    if (isCheckbox(el) && saved[name] === undefined) checkout.setField(name, valueOf(el));
 
   return () => {
     const { checkout: state } = engine.getState();
@@ -88,7 +91,7 @@ export function bindFields(
     for (const [name, el] of fields) {
       const value = state.fields[name];
       if (value !== undefined && !(el instanceof HTMLSelectElement)) setValue(el, value);
-      if (el instanceof HTMLInputElement && el.type === 'checkbox') continue;
+      if (isCheckbox(el)) continue;
       const error = state.errors[name];
       const rules =
         state.rules[(name.startsWith('billing_') ? state.fields.billing_country : state.fields.country) ?? ''];

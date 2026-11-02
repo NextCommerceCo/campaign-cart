@@ -63,11 +63,13 @@ async function mount(
     order?: (body: any) => Response;
     rulesDown?: boolean;
     countries?: Campaign['available_shipping_countries'];
+    markup?: (body: HTMLElement) => void;
   } = {},
 ) {
   const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
+  options.markup?.(document.body);
   vi.stubGlobal('fetch', fakeRules({ geo: 'US', down: options.rulesDown }).send);
   (window as unknown as { NextPayment: unknown }).NextPayment = FakeNextPayment;
   const api = fakeApi({ order: options.order });
@@ -541,6 +543,19 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await flush();
     expect(created).toHaveBeenCalledTimes(1);
     expect(created.mock.calls[0]![0].prospectCart).toMatchObject({ id: 7, email: 'jane@example.com' });
+  });
+
+  it('sends the marketing checkbox as the page left it on the prospect cart, like 0.4.x', async () => {
+    const { fill, api } = await mount('olympus/checkout.html', {
+      markup: (body) =>
+        body
+          .querySelector('form[data-next-checkout]')!
+          .insertAdjacentHTML('beforeend', '<input type="checkbox" data-next-checkout-field="accepts_marketing">'),
+    });
+    fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
+    await flush();
+    const prospect = api.calls.find((c) => c.url.endsWith('/carts/'))!;
+    expect(prospect.body.user.accepts_marketing).toBe(false);
   });
 });
 

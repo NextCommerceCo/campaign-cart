@@ -130,8 +130,9 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
 - **After a paid order** (no `payment_complete_url`) the cart and form are cleared from state
   and storage **without a re-render**, so the page does not flash an empty cart while it
   navigates. With a gateway URL the cart is kept for a retry after a failed payment.
-- **Unchanged from 0.4.x on purpose:** `user.language: 'en'`, `accepts_marketing` defaults to
-  true, 400 `errors{}` are joined into the general message rather than mapped to fields.
+- **Unchanged from 0.4.x on purpose:** `user.language: 'en'`, `accepts_marketing` is the
+  checkbox as the page left it (true when the page has none), 400 `errors{}` are joined into
+  the general message rather than mapped to fields.
 
 ### 3.4 Purchases (once, and only when paid)
 
