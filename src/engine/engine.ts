@@ -9,7 +9,8 @@ import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
 import { StorageAdapter } from './storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
-import type { Campaign, EventMap, EventName, Package, Send, State } from './types';
+import type { EventMap, EventName } from './events';
+import type { Campaign, Package, Send, State } from './types';
 
 export interface EngineOptions {
   apiKey: string;

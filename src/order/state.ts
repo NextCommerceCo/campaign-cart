@@ -2,8 +2,20 @@ import { orderError } from '../engine/api';
 import { type CartActions, mergeLines } from '../engine/cart/cart';
 import type { Context } from '../engine/engine';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
-import type { CartLine, CheckoutState, Order, OrderAddress, OrderLine, OrderState, State } from '../engine/types';
 import { bool, cents, money, type Value } from '../engine/format';
+import type { CartLine } from '../engine/cart/types';
+import type { CheckoutError, Order, OrderAddress, OrderLine, State } from '../engine/types';
+import type { CheckoutState } from '../checkout/state/types';
+
+export interface OrderState {
+  refId?: string;
+  order?: Order;
+  loadedAt?: number;
+  status: 'idle' | 'loading' | 'ready' | 'failed' | 'accepting';
+  error?: CheckoutError;
+  accepted: string[];
+  coupon?: { refId: string; code: string };
+}
 
 const ORDER_TTL = 15 * 60 * 1000;
 const LOAD_TIMEOUT = 10_000;

@@ -1,6 +1,7 @@
 import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
-import type { AnalyticsName, AnalyticsTrace, EventMap, EventName, SummaryLine } from '../engine/types';
+import type { SummaryLine } from '../engine/cart/types';
+import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { eventIds, pageContext } from './context';
 import { cartEcommerce, cents, currency, ecommerce, type Line, orderItem, taxIncluded } from './ecommerce';

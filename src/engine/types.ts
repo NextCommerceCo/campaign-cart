@@ -1,4 +1,7 @@
-import type { Attribution, Visit } from './attribution';
+import type { CheckoutState } from '../checkout/state/types';
+import type { OrderState } from '../order/state';
+import type { Visit } from './attribution';
+import type { CartState, Selector, Toggle } from './cart/types';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -43,117 +46,6 @@ export interface Campaign {
   available_express_payment_methods?: Array<{ code: string; label: string }>;
 }
 
-export interface Discount {
-  offer_id?: number;
-  name?: string;
-  description?: string;
-  percentage?: string;
-  amount: string;
-}
-
-export interface SummaryLine {
-  package_id: number;
-  quantity: number;
-  unit_price: string;
-  original_unit_price: string;
-  package_price: string;
-  original_package_price: string;
-  subtotal: string;
-  total_discount: string;
-  total: string;
-  discounts: Discount[];
-  is_recurring?: boolean;
-  interval?: 'day' | 'month' | null;
-  interval_count?: number | null;
-  price_recurring?: string | null;
-  original_recurring_price?: string | null;
-}
-
-export interface CartSummary {
-  lines: SummaryLine[];
-  shipping_method?: {
-    id: number;
-    name: string;
-    code: string;
-    price: string;
-    original_price: string;
-    discounts?: Discount[];
-  };
-  offer_discounts: Discount[];
-  voucher_discounts: Discount[];
-  subtotal: string;
-  total_discount: string;
-  total: string;
-  currency: string;
-}
-
-export interface CartLine {
-  packageId: number;
-  quantity: number;
-  isUpsell?: boolean;
-  properties?: Record<string, string>;
-}
-
-export interface ApiLine {
-  package_id: number;
-  quantity: number;
-  is_upsell?: boolean;
-  properties?: Record<string, string>;
-}
-
-export interface CartGroup {
-  lines: CartLine[];
-  vouchers: string[];
-}
-
-export interface CartState {
-  groups: Record<string, CartGroup>;
-  coupons: string[];
-  dismissed: string[];
-  shippingId?: number;
-  summary?: CartSummary;
-  calculating: boolean;
-  frozen: boolean;
-  reported?: ReportedLine[];
-  added?: boolean;
-}
-
-export interface ReportedLine {
-  package_id: number;
-  quantity: number;
-  price: number;
-}
-
-export type SelectorMode = 'swap' | 'select' | 'offer';
-
-export interface SelectorLine extends CartLine {
-  configurable?: boolean;
-}
-
-export interface Slot {
-  packageId: number;
-  properties?: Record<string, string>;
-}
-
-export interface SelectorCard extends CartGroup {
-  id: string;
-  lines: SelectorLine[];
-  shippingId?: number;
-  quantity?: number;
-  min?: number;
-  max?: number;
-}
-
-export interface Selector {
-  mode: SelectorMode;
-  cards: SelectorCard[];
-  picked?: string;
-  quantities?: Record<string, number>;
-  slots?: Record<string, Slot[]>;
-  quotes?: Record<string, CartSummary>;
-  quoting?: boolean;
-}
-
 export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
@@ -161,147 +53,11 @@ export interface VisitState {
   timers: Record<string, number>;
 }
 
-export interface AddressSuggestion {
-  label: string;
-  address: {
-    line1: string;
-    line2?: string;
-    city: string;
-    state: string;
-    state_code: string;
-    postcode: string;
-    country: string;
-    country_code: string;
-  };
-}
-
-export interface CountryOption {
-  code: string;
-  name: string;
-}
-
-export type FieldError =
-  'blank' | 'not_selected' | 'invalid' | 'invalid_characters' | 'contains_emoji' | 'too_long' | 'not_in_state';
-
-export interface FieldFormat {
-  pattern?: string;
-  example?: string;
-  masks?: Array<string | { start?: string; mask: string }>;
-  calling_code?: string;
-  national_prefix?: string;
-}
-
-export interface FieldRule {
-  required: boolean;
-  label?: string;
-  label_optional?: string;
-  autocomplete?: string;
-  input?: {
-    type?: string;
-    placeholder?: string;
-    max_length?: number;
-    input_mode?: string;
-    auto_capitalize?: string;
-    span?: number;
-  };
-  format?: FieldFormat;
-  errors?: Partial<Record<FieldError, string>>;
-}
-
-export interface CountryRules {
-  country: CountryOption;
-  fields: Partial<Record<string, FieldRule>>;
-  states?: CountryOption[];
-  address?: { layout: string[][] };
-}
-
 export interface CheckoutError {
   code: string;
   message?: string;
   decline?: string;
   warning?: boolean;
-}
-
-export interface PhoneRead {
-  value: string;
-  country: string;
-  national?: string;
-  international?: string;
-}
-
-export interface CheckoutState {
-  fields: Record<string, string>;
-  phones: Record<string, PhoneRead>;
-  sameAsShipping: boolean;
-  paymentMethod: string;
-  step: number;
-  errors: Record<string, CheckoutError>;
-  status: 'idle' | 'placing' | 'placed';
-  countries: CountryOption[];
-  rules: Record<string, CountryRules>;
-  rulesDown?: boolean;
-  prospectSaved: boolean;
-  pendingRef?: string;
-  failurePath?: string;
-}
-
-export interface Toggle {
-  key: string;
-  quantity: number;
-  line?: SummaryLine;
-}
-
-export interface State {
-  campaign?: Campaign;
-  cart: CartState;
-  selectors: Record<string, Selector>;
-  toggles: Record<number, Toggle>;
-  visit: VisitState;
-  checkout?: CheckoutState;
-  order?: OrderState;
-}
-
-export interface Address {
-  first_name: string;
-  last_name: string;
-  line1: string;
-  line2?: string;
-  line4: string;
-  state?: string;
-  postcode?: string;
-  country: string;
-  phone_number?: string;
-}
-
-export interface OrderUser {
-  email: string;
-  first_name: string;
-  last_name: string;
-  language: string;
-  phone_number?: string;
-  accepts_marketing: boolean;
-}
-
-export interface OrderBody {
-  lines: ApiLine[];
-  shipping_address?: Address;
-  billing_same_as_shipping_address?: boolean;
-  billing_address?: Address;
-  shipping_method: number;
-  payment_detail: { payment_method: string; card_token?: string };
-  user?: OrderUser;
-  vouchers: string[];
-  attribution: Attribution;
-  currency: string;
-  success_url: string;
-  payment_failed_url: string;
-}
-
-export interface ProspectBody {
-  lines: ApiLine[];
-  user: OrderUser;
-  currency: string;
-  attribution: Attribution;
 }
 
 export interface OrderLine {
@@ -355,93 +111,12 @@ export interface Order {
   order_status_url?: string;
 }
 
-export interface OrderState {
-  refId?: string;
-  order?: Order;
-  loadedAt?: number;
-  status: 'idle' | 'loading' | 'ready' | 'failed' | 'accepting';
-  error?: CheckoutError;
-  accepted: string[];
-  coupon?: { refId: string; code: string };
+export interface State {
+  campaign?: Campaign;
+  cart: CartState;
+  selectors: Record<string, Selector>;
+  toggles: Record<number, Toggle>;
+  visit: VisitState;
+  checkout?: CheckoutState;
+  order?: OrderState;
 }
-
-export interface ExitIntentDetail {
-  imageUrl?: string;
-  template?: string;
-}
-
-export type AnalyticsName =
-  | 'page_view'
-  | 'view_item'
-  | 'view_item_list'
-  | 'add_to_cart'
-  | 'remove_from_cart'
-  | 'update_cart'
-  | 'begin_checkout'
-  | 'add_shipping_info'
-  | 'add_payment_info'
-  | 'purchase'
-  | 'upsell_purchase'
-  | 'view_upsell'
-  | 'skip_upsell';
-
-export interface AnalyticsContext {
-  page_location: string;
-  page_title: string;
-  page_referrer: string;
-  campaign_name?: string;
-  campaign_currency?: string;
-  campaign_language?: string;
-  attribution: Attribution;
-}
-
-export interface AnalyticsEvent {
-  name: AnalyticsName;
-  id: string;
-  time: string;
-  params: Record<string, unknown>;
-  context: AnalyticsContext;
-}
-
-export interface AnalyticsTrace {
-  trace: 'analytics';
-  trigger: EventName;
-  name: string;
-  sent: boolean;
-  reason: string;
-  id?: string;
-}
-
-export interface EventMap {
-  'campaign.loaded': { campaign: Campaign; fromCache: boolean };
-  'cart.updated': { cart: CartState };
-  'cart.calculated': { summary: CartSummary };
-  'coupon.refused': { code: string };
-  'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
-  'shipping.changed': { methodId: number | undefined };
-  'storage.degraded': { reason: string };
-  ready: { lines: ApiLine[] };
-  'checkout.started': { lines: ApiLine[] };
-  'checkout.shipping-added': { tier: string };
-  'checkout.payment-added': { method: string };
-  'prospect.saved': { cart: unknown; email: string; phone?: string };
-  'order.placed': { order: Order };
-  'order.loaded': {
-    order: Order;
-    purchase?: string;
-    coupon?: string;
-    upsells?: Array<{ id: string; number: number; line: OrderLine }>;
-  };
-  'upsell.viewed': { refId: string; page: string };
-  'upsell.accepted': { refId: string; lines: ApiLine[] };
-  'upsell.skipped': { refId: string; packageId?: number };
-  'exit-intent.shown': ExitIntentDetail;
-  'exit-intent.clicked': ExitIntentDetail;
-  'exit-intent.dismissed': ExitIntentDetail;
-  'exit-intent.closed': ExitIntentDetail;
-  'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
-  error: { action: string; message: string };
-  analytics: AnalyticsEvent;
-}
-
-export type EventName = keyof EventMap;

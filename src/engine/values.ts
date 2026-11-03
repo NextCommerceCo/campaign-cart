@@ -3,7 +3,8 @@ import { mergeLines } from './cart/cart';
 import { cardLines } from './cart/selectors';
 import { toggleGroup } from './cart/toggles';
 import { bool, cents, money, pct, type Value } from './format';
-import type { CartLine, CartSummary, Package, Selector, SelectorCard, State, SummaryLine } from './types';
+import type { CartLine, CartSummary, Selector, SelectorCard, SummaryLine } from './cart/types';
+import type { Package, State } from './types';
 
 export interface CardRef {
   selectorId: string;

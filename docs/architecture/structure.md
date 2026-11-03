@@ -68,11 +68,11 @@ src/
   config.ts            loader      page setup from the script tag and URL
   boot.ts              boot        boot: Engine, bindings, window.next, ready
   engine/              boot        headless core every page needs
-    engine.ts types.ts events.ts log.ts         the Engine, its state types, events, the one logger
+    engine.ts types.ts events.ts log.ts         the Engine, shared types and State, events and their payloads, the one logger
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
-    cart/                                       cart.ts selectors.ts toggles.ts: cart actions, bundle selectors, toggles
+    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors, toggles, their types
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
@@ -84,7 +84,7 @@ src/
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), order-body.ts (order body, payment codes),
-                                   rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields)
+                                   rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
     payment/                       card.ts (payment radios and panels, payment.js), express.ts, logos.ts
@@ -144,6 +144,11 @@ Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.t
 `bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics.ts`, which only their own chunk may import statically.
 
+A type used by one domain sits in that domain's `types.ts` (`engine/cart/`, `checkout/state/`) or
+beside its actions (`OrderState` in `order/state.ts`); one that several domains share stays in
+`engine/types.ts`. `import type` is erased at build, so the table does not apply to it: `State`
+names the checkout and order slices without loading their chunks.
+
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
 chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
@@ -184,6 +189,6 @@ cannot drift silently.
 | Adding           | Where                                                                                                                                                                     |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                 |
-| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `types.ts` and `docs/guides/events.md`                                                                       |
+| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `events.ts` and `docs/guides/events.md`                                                                      |
 | A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs` |
 | A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                            |

@@ -1,6 +1,6 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
-import type { CheckoutState } from '../../engine/types';
+import type { CheckoutState } from '../state/types';
 import { FIELD_ATTRS, LEGACY_FIELDS } from '../../compat/checkout';
 import { showField } from './errors';
 import { fieldText } from './texts';

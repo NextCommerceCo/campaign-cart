@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SelectorCard } from '../../../src/engine/types';
+import type { SelectorCard } from '../../../src/engine/cart/types';
 import { format } from '../../../src/engine/format';
 import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';

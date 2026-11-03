@@ -1,6 +1,6 @@
 import type { Engine } from './engine';
 import { cents, discountPercent, format, money, pct } from './format';
-import type { Discount, SummaryLine } from './types';
+import type { Discount, SummaryLine } from './cart/types';
 
 export type Tokens = Record<string, string>;
 

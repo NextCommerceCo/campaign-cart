@@ -1,5 +1,5 @@
 import { RulesApi } from '../../src/checkout/state/rules';
-import type { CountryRules } from '../../src/engine/types';
+import type { CountryRules } from '../../src/checkout/state/types';
 import { json } from './api';
 
 export const US: CountryRules = {

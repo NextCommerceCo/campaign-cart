@@ -1,4 +1,5 @@
-import type { CheckoutError, CountryRules } from '../../engine/types';
+import type { CheckoutError } from '../../engine/types';
+import type { CountryRules } from '../state/types';
 
 const LABELS: Record<string, string> = {
   email: 'Email',

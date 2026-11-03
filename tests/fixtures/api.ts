@@ -1,4 +1,4 @@
-import type { CartSummary } from '../../src/engine/types';
+import type { CartSummary } from '../../src/engine/cart/types';
 import { campaign } from './campaign';
 import { ORDER, withUpsell } from './order';
 

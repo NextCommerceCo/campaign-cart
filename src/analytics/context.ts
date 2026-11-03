@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { AnalyticsContext } from '../engine/types';
+import type { AnalyticsContext } from '../engine/events';
 
 const withoutQuery = (url: string) => {
   try {

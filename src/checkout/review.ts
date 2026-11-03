@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { CheckoutState } from '../engine/types';
+import type { CheckoutState } from './state/types';
 import { LEGACY_FIELDS } from '../compat/checkout';
 
 const phone = (value: string) => {

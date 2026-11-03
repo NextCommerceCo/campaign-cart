@@ -13,14 +13,9 @@ import {
   type Scope,
   validEmail,
 } from './rules';
-import type {
-  AddressSuggestion,
-  CheckoutError,
-  CheckoutState,
-  CountryOption,
-  EventMap,
-  Order,
-} from '../../engine/types';
+import type { EventMap } from '../../engine/events';
+import type { CheckoutError, Order } from '../../engine/types';
+import type { AddressSuggestion, CheckoutState, CountryOption } from './types';
 
 const PHONE_WAIT = 2000;
 

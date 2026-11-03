@@ -4,7 +4,7 @@ import { EXIT_INTENT, NAMES } from '../../src/compat/analytics';
 import { analyticsFlow } from '../../src/debug/analytics';
 import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
-import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/types';
+import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/events';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
 

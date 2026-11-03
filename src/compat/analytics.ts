@@ -10,7 +10,7 @@ import type {
   EventMap,
   EventName,
   ExitIntentDetail,
-} from '../engine/types';
+} from '../engine/events';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
 type Win = Window & {

@@ -1,4 +1,4 @@
-import type { CheckoutState, FieldFormat } from '../../engine/types';
+import type { CheckoutState, FieldFormat } from './types';
 
 const MIN_DIGITS = 4;
 const MAX_DIGITS = 15;

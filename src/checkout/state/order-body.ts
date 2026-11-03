@@ -1,6 +1,8 @@
 import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/cart';
-import type { Address, ApiLine, CheckoutState, OrderBody, OrderUser, State } from '../../engine/types';
+import type { ApiLine } from '../../engine/cart/types';
+import type { State } from '../../engine/types';
+import type { Address, CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
 

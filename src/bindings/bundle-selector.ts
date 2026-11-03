@@ -1,5 +1,5 @@
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
-import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/types';
+import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
 import { isFormControl, selectorIdOf, setState, stamp } from './dom';
 import { discountTokens } from '../engine/tokens';

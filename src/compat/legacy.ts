@@ -1,6 +1,8 @@
 import type { Engine } from '../engine/engine';
 import type { Logger } from '../engine/log';
-import type { Campaign, CartLine, EventName, Package, ShippingOption } from '../engine/types';
+import type { CartLine } from '../engine/cart/types';
+import type { EventName } from '../engine/events';
+import type { Campaign, Package, ShippingOption } from '../engine/types';
 import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */

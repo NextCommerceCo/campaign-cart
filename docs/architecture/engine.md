@@ -220,8 +220,9 @@ same URL; skip → `order.skip()` and navigate.
 
 `src/engine/` (boot): `engine.ts`, `types.ts`, `api.ts` (with the order error mapping),
 `storage.ts`, `events.ts`, `log.ts`, `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`,
-`scope.ts`, and `cart/` (`cart.ts`, `selectors.ts`, `toggles.ts`). Loaded by their chunks:
-`checkout/state/` (`checkout.ts`, `rules.ts`, `phone.ts`) and `order/state.ts`. See
+`scope.ts`, `format.ts`, `tokens.ts`, and `cart/` (`cart.ts`, `selectors.ts`, `toggles.ts`, `types.ts`). Loaded by
+their chunks: `checkout/state/` (`checkout.ts`, `order-body.ts`, `rules.ts`, `phone.ts`, `types.ts`) and
+`order/state.ts`. See
 [structure.md](structure.md).
 
 ## 6. Migration

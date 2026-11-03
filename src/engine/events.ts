@@ -1,5 +1,88 @@
 import type { Logger } from './log';
-import type { EventMap, EventName } from './types';
+import type { Attribution } from './attribution';
+import type { ApiLine, CartLine, CartState, CartSummary } from './cart/types';
+import type { Campaign, Order, OrderLine } from './types';
+
+export interface ExitIntentDetail {
+  imageUrl?: string;
+  template?: string;
+}
+
+export type AnalyticsName =
+  | 'page_view'
+  | 'view_item'
+  | 'view_item_list'
+  | 'add_to_cart'
+  | 'remove_from_cart'
+  | 'update_cart'
+  | 'begin_checkout'
+  | 'add_shipping_info'
+  | 'add_payment_info'
+  | 'purchase'
+  | 'upsell_purchase'
+  | 'view_upsell'
+  | 'skip_upsell';
+
+export interface AnalyticsContext {
+  page_location: string;
+  page_title: string;
+  page_referrer: string;
+  campaign_name?: string;
+  campaign_currency?: string;
+  campaign_language?: string;
+  attribution: Attribution;
+}
+
+export interface AnalyticsEvent {
+  name: AnalyticsName;
+  id: string;
+  time: string;
+  params: Record<string, unknown>;
+  context: AnalyticsContext;
+}
+
+export interface AnalyticsTrace {
+  trace: 'analytics';
+  trigger: EventName;
+  name: string;
+  sent: boolean;
+  reason: string;
+  id?: string;
+}
+
+export interface EventMap {
+  'campaign.loaded': { campaign: Campaign; fromCache: boolean };
+  'cart.updated': { cart: CartState };
+  'cart.calculated': { summary: CartSummary };
+  'coupon.refused': { code: string };
+  'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
+  'shipping.changed': { methodId: number | undefined };
+  'storage.degraded': { reason: string };
+  ready: { lines: ApiLine[] };
+  'checkout.started': { lines: ApiLine[] };
+  'checkout.shipping-added': { tier: string };
+  'checkout.payment-added': { method: string };
+  'prospect.saved': { cart: unknown; email: string; phone?: string };
+  'order.placed': { order: Order };
+  'order.loaded': {
+    order: Order;
+    purchase?: string;
+    coupon?: string;
+    upsells?: Array<{ id: string; number: number; line: OrderLine }>;
+  };
+  'upsell.viewed': { refId: string; page: string };
+  'upsell.accepted': { refId: string; lines: ApiLine[] };
+  'upsell.skipped': { refId: string; packageId?: number };
+  'exit-intent.shown': ExitIntentDetail;
+  'exit-intent.clicked': ExitIntentDetail;
+  'exit-intent.dismissed': ExitIntentDetail;
+  'exit-intent.closed': ExitIntentDetail;
+  'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
+  error: { action: string; message: string };
+  analytics: AnalyticsEvent;
+}
+
+export type EventName = keyof EventMap;
 
 export interface EngineEvent<K extends EventName = EventName> {
   name: K;

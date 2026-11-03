@@ -1,14 +1,7 @@
 import type { Logger } from './log';
-import type {
-  AddressSuggestion,
-  ApiLine,
-  CartSummary,
-  CheckoutError,
-  Order,
-  OrderBody,
-  ProspectBody,
-  Send,
-} from './types';
+import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
+import type { ApiLine, CartSummary } from './cart/types';
+import type { CheckoutError, Order, Send } from './types';
 
 export class ApiError extends Error {
   constructor(

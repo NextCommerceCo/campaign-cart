@@ -1,6 +1,6 @@
 import type { EngineEvent } from '../engine/events';
 import type { LogEntry } from '../engine/log';
-import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../engine/types';
+import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../engine/events';
 import { format } from '../engine/format';
 import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win, WIRING } from './providers';
 import { type Child, empty, expandable, h, time, tree } from './view';

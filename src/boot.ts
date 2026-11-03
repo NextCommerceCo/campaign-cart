@@ -4,7 +4,9 @@ import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
-import type { Campaign, CartLine, EventMap, EventName } from './engine/types';
+import type { CartLine } from './engine/cart/types';
+import type { EventMap, EventName } from './engine/events';
+import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
   legacyAnalytics,

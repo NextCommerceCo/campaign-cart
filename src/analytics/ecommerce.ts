@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/engine';
-import type { Order, OrderLine, SummaryLine } from '../engine/types';
+import type { SummaryLine } from '../engine/cart/types';
+import type { Order, OrderLine } from '../engine/types';
 
 export type Line = { package_id: number; quantity: number };
 
