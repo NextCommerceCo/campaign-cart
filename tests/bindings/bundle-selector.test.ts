@@ -107,6 +107,18 @@ describe('bundle selector', () => {
     expect(api.calls.some((c) => c.url.endsWith('/carts/calculate/') && c.body.vouchers.includes('SAVE10'))).toBe(true);
   });
 
+  it('skips a card whose items are not a JSON list, and reads vouchers only from a list of codes', async () => {
+    const { engine } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="object" data-next-bundle-items='{"packageId":1}'></div>
+        <div data-next-bundle-card data-next-bundle-id="nulls" data-next-bundle-items='[null]'></div>
+        <div data-next-bundle-card data-next-bundle-id="ok" data-next-bundle-items='[{"packageId":2}]'
+             data-next-bundle-vouchers='{"code":"SAVE10"}'></div>
+      </div>`);
+    expect(engine.getState().selectors.main?.cards.map((c) => [c.id, c.vouchers])).toEqual([['ok', []]]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+  });
+
   it('only records the pick in select mode and on upsell pages', async () => {
     const select = await mount(
       SELECTOR.replace(

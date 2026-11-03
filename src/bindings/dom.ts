@@ -8,17 +8,22 @@ export function selectorIdOf(el: Element): string {
   return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';
 }
 
-export function parseJson<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
+function parseList(raw: string | null): unknown[] {
+  if (!raw) return [];
   try {
-    return JSON.parse(raw) as T;
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
+export const parseCodes = (raw: string | null): string[] =>
+  parseList(raw).filter((code): code is string => typeof code === 'string');
+
 export function parseLines(raw: string | null): SelectorLine[] {
-  return parseJson<SelectorLine[]>(raw, [])
+  return parseList(raw)
+    .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
     .map((i) => ({
       packageId: Number(i.packageId),
       quantity: Number(i.quantity ?? 1),

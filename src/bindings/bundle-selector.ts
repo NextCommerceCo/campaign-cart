@@ -1,7 +1,7 @@
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorMode } from '../engine/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, parseJson, parseLines, selectorIdOf, setState, stamp } from './dom';
+import { isFormControl, parseCodes, parseLines, selectorIdOf, setState, stamp } from './dom';
 import { cardQuote, discountTokens } from '../engine/values';
 
 function modeOf(el: Element, upsellPage: boolean): SelectorMode {
@@ -68,7 +68,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
       cards.push({
         id,
         lines,
-        vouchers: parseJson<string[]>(el.getAttribute('data-next-bundle-vouchers'), []),
+        vouchers: parseCodes(el.getAttribute('data-next-bundle-vouchers')),
         shippingId: Number(el.getAttribute('data-next-shipping-id')) || undefined,
         quantity: Number(el.getAttribute('data-next-quantity')) || undefined,
         min: Number(el.getAttribute('data-next-min-quantity')) || undefined,
