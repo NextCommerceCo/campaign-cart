@@ -48,8 +48,8 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--line)}
 .icon:hover{background:var(--hover);color:var(--fg)}
 .icon svg{width:16px;height:16px}
 .search{padding:8px;border-bottom:1px solid var(--line)}
-input{width:100%;padding:6px 10px;font:inherit;color:var(--fg);background:var(--raised);border:1px solid var(--line);border-radius:8px;outline:0}
-input:focus{border-color:var(--blue)}
+input[type=search]{width:100%;padding:6px 10px;font:inherit;color:var(--fg);background:var(--raised);border:1px solid var(--line);border-radius:8px;outline:0}
+input[type=search]:focus{border-color:var(--blue)}
 .body{flex:1;overflow:auto;padding:8px 12px 12px;font:12px/1.6 var(--mono)}
 h3{margin:14px 0 6px;font:600 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .summary{margin:2px 0 8px;font-family:var(--sans);color:var(--muted)}
@@ -121,6 +121,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let stopPicking: (() => void) | undefined;
   let right = false;
   let queued = false;
+  let painted: Tab | undefined;
 
   const host = document.createElement('next-debug');
   const box = highlighter();
@@ -169,7 +170,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   document.body.append(host);
 
   const query = () => filter.value.trim().toLowerCase();
-  const flow = eventFlow(engine, { open, idOf, render: () => render() });
+  const flow = eventFlow({ open, idOf, render: () => render() });
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);
@@ -287,10 +288,15 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     if (view !== 'panel') return;
     tabs.forEach((el) => el.setAttribute('aria-selected', String(el.dataset.tab === tab)));
     search.hidden = !FILTERED.includes(tab);
+    const atEnd = body.scrollHeight - body.scrollTop - body.clientHeight < 24;
+    const fresh = painted !== tab;
+    painted = tab;
     body.replaceChildren(...nodes(views[tab]()));
+    if (tab === 'events' && (atEnd || fresh)) body.scrollTop = body.scrollHeight;
   };
   const setView = (next: typeof view) => {
     view = next;
+    if (next !== 'panel') painted = undefined;
     render();
   };
   const show = (next: Tab) => {

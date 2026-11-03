@@ -97,7 +97,7 @@ src/
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, events, logs), window.nextDebug
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    events.ts                      GA4 funnel, SDK event → analytics → data layer timeline, GA4 field checks
+    events.ts                      GA4 funnel; one card per shopper action with the GA4 events it sent, field checks, data layer delivery
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names
@@ -117,7 +117,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 10 KB         |
+| debug       | `?debug=1`                                                          | 12 KB         |
 
 ## Imports
 
