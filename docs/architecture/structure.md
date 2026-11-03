@@ -76,7 +76,7 @@ src/
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
-    dom.ts                         setText, setVisible, setState, parse helpers
+    dom.ts                         setText, setVisible, setState, token stamping
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-summary.ts cart-controls.ts links.ts
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)

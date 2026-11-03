@@ -1,6 +1,3 @@
-export const option = (text: string, value: string) =>
-  Object.assign(document.createElement('option'), { textContent: text, value });
-
 const WRAPPERS =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';
 

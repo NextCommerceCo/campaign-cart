@@ -1,8 +1,7 @@
 import type { Engine } from '../../engine/engine';
 import { BY_COUNTRY, formatPostcode } from '../state/rules';
-import { option } from '../form/errors';
 import type { CountryOption, CountryRules, FieldRule } from '../../engine/types';
-import { type Control, fieldName, type Fields } from '../form/fields';
+import { type Control, fieldName, type Fields, option } from '../form/fields';
 import { legacyHiddenStates } from '../../compat/checkout';
 import { reformat } from '../form/reformat';
 

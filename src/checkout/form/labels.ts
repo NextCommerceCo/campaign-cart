@@ -1,8 +1,8 @@
+import { FIELD_ATTRS } from '../../compat/checkout';
+
 type Field = HTMLInputElement | HTMLSelectElement;
 
-const FIELD = ['data-next-checkout-field', 'os-checkout-field']
-  .flatMap((a) => [`input[${a}]`, `select[${a}]`])
-  .join(', ');
+const FIELD = FIELD_ATTRS.flatMap((a) => [`input[${a}]`, `select[${a}]`]).join(', ');
 
 const filled = (field: Field) =>
   field instanceof HTMLSelectElement

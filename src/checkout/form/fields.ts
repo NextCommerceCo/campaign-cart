@@ -8,6 +8,9 @@ import { fieldText } from './texts';
 export type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 export type Fields = Map<string, Control>;
 
+export const option = (text: string, value: string) =>
+  Object.assign(document.createElement('option'), { textContent: text, value });
+
 const NOT_ADDRESS = ['cc-number', 'cvv', 'exp-month', 'exp-year', 'cc-month', 'cc-year', 'payment-method'];
 
 export const rawName = (el: Element) => FIELD_ATTRS.map((a) => el.getAttribute(a)).find(Boolean) ?? '';

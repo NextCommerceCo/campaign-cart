@@ -2,7 +2,8 @@ import type { CheckoutActions } from '../state/checkout';
 import { paymentCode } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
 import { FIELD_ATTRS } from '../../compat/checkout';
-import { option, showField } from '../form/errors';
+import { showField } from '../form/errors';
+import { option } from '../form/fields';
 import { cardText, label } from '../form/texts';
 
 declare const __VERSION__: string;
@@ -264,8 +265,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   };
 }
 
-const RADIOS =
-  'input[name="payment_method"], [data-next-checkout-field="payment-method"], [os-checkout-field="payment-method"]';
+const RADIOS = ['input[name="payment_method"]', ...FIELD_ATTRS.map((a) => `[${a}="payment-method"]`)].join(', ');
 
 export function bindPayment(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): () => void {
   const radios = [...form.querySelectorAll<HTMLInputElement>(RADIOS)].filter((r) => r.type === 'radio');

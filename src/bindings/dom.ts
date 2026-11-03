@@ -1,6 +1,5 @@
 import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
-import type { SelectorLine } from '../engine/types';
 import { format, truthy, type Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
 import { resolve } from '../engine/values';
@@ -8,30 +7,6 @@ import { legacySelectorId } from '../compat/legacy';
 
 export function selectorIdOf(el: Element): string {
   return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';
-}
-
-function parseList(raw: string | null): unknown[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export const parseCodes = (raw: string | null): string[] =>
-  parseList(raw).filter((code): code is string => typeof code === 'string');
-
-export function parseLines(raw: string | null): SelectorLine[] {
-  return parseList(raw)
-    .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
-    .map((i) => ({
-      packageId: Number(i.packageId),
-      quantity: Number(i.quantity ?? 1),
-      ...(i.configurable === true && { configurable: true }),
-    }))
-    .filter((l) => l.packageId > 0 && l.quantity > 0);
 }
 
 export function ownProperties(el: Element): Record<string, string> {

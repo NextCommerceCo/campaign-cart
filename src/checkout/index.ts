@@ -13,9 +13,12 @@ import { bindLabels } from './form/labels';
 import {
   announceProspect,
   clearStepGuard,
+  FAILURE_URL_META,
   legacyAutocomplete,
   legacyCountries,
   stepUrlOf,
+  SUBMIT_ATTRS,
+  SUCCESS_URL_META,
   writeStepGuard,
 } from '../compat/checkout';
 import { errorBox, showBox, shown } from './form/errors';
@@ -25,7 +28,7 @@ import { bindReview } from './review';
 import { expressText, formText, label } from './form/texts';
 
 const RULES = 'https://i18n-rules.nextcommerce.com';
-const SUBMIT = 'button[type="submit"], input[type="submit"], [data-next-checkout-submit], [os-checkout-submit]';
+const SUBMIT = ['button[type="submit"]', 'input[type="submit"]', ...SUBMIT_ATTRS.map((a) => `[${a}]`)].join(', ');
 
 const meta = (...names: string[]) =>
   names.map((n) => document.querySelector<HTMLMetaElement>(`meta[name="${n}"]`)?.content).find(Boolean);
@@ -33,7 +36,7 @@ const meta = (...names: string[]) =>
 function failureUrl(): string {
   const url = new URL(location.href);
   url.searchParams.set('payment_failed', 'true');
-  return meta('next-failure-url', 'os-failure-url') ?? url.href;
+  return meta(...FAILURE_URL_META) ?? url.href;
 }
 
 function overlay(): (busy: boolean) => void {
@@ -101,7 +104,7 @@ export function bindCheckout(
     syncFields(fields, checkout, engine.getState().checkout);
     box =
       method && EXPRESS_METHODS.includes(method) ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
-    const successUrl = meta('next-success-url', 'next-next-url', 'os-next-page');
+    const successUrl = meta(...SUCCESS_URL_META);
     const order = await checkout.placeOrder({
       method,
       successUrl,

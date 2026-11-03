@@ -1,9 +1,33 @@
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
-import type { SelectorCard, SelectorMode } from '../engine/types';
+import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, parseCodes, parseLines, selectorIdOf, setState, stamp } from './dom';
+import { isFormControl, selectorIdOf, setState, stamp } from './dom';
 import { discountTokens } from '../engine/tokens';
 import { cardQuote } from '../engine/values';
+
+function parseList(raw: string | null): unknown[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const parseCodes = (raw: string | null): string[] =>
+  parseList(raw).filter((code): code is string => typeof code === 'string');
+
+function parseLines(raw: string | null): SelectorLine[] {
+  return parseList(raw)
+    .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
+    .map((i) => ({
+      packageId: Number(i.packageId),
+      quantity: Number(i.quantity ?? 1),
+      ...(i.configurable === true && { configurable: true }),
+    }))
+    .filter((l) => l.packageId > 0 && l.quantity > 0);
+}
 
 function modeOf(el: Element, upsellPage: boolean): SelectorMode {
   if (el.hasAttribute('data-next-upsell-context')) return 'offer';

@@ -19,6 +19,15 @@ export const pageFieldName = (name: string) => API_TO_LEGACY[name] ?? name;
 /** @deprecated `os-checkout-field`. Use `data-next-checkout-field`. */
 export const FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
 
+/** @deprecated `os-checkout-submit`. Use `data-next-checkout-submit`. */
+export const SUBMIT_ATTRS = ['data-next-checkout-submit', 'os-checkout-submit'];
+
+/** @deprecated `<meta name="os-failure-url">`. Use `next-failure-url`. */
+export const FAILURE_URL_META = ['next-failure-url', 'os-failure-url'];
+
+/** @deprecated `<meta name="next-next-url">` / `os-next-page`. Use `next-success-url`. */
+export const SUCCESS_URL_META = ['next-success-url', 'next-next-url', 'os-next-page'];
+
 /** @deprecated `os-checkout-step`. Use `data-next-checkout-step`. */
 export const stepUrlOf = (form: Element) =>
   form.getAttribute('data-next-checkout-step') ?? form.getAttribute('os-checkout-step');
