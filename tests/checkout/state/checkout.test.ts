@@ -206,6 +206,20 @@ describe('checkout', () => {
     expect(seen).toEqual(['checkout.started', 'checkout.shipping-added', 'checkout.payment-added']);
   });
 
+  it('reports shipping once the fields the country requires are filled, for a country with no city', async () => {
+    const { engine, checkout, fill } = await setup();
+    const seen: string[] = [];
+    engine.on('checkout.shipping-added', (e) => seen.push(e.name));
+    await engine.cart.addItem(1);
+    checkout.begin();
+    checkout.setField('country', 'SG');
+    await flush();
+    fill({ line1: '1 Raffles Pl' });
+    expect(seen).toEqual([]);
+    fill({ postcode: '048616' });
+    expect(seen).toEqual(['checkout.shipping-added']);
+  });
+
   it('stops before posting when the form is incomplete, and lets the shopper fix it', async () => {
     const { engine, checkout, posts } = await setup();
     await engine.cart.addItem(1);

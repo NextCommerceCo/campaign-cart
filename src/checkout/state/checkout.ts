@@ -4,7 +4,16 @@ import { type CartActions, shippingMethodOf } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
 import { nextUrl } from '../../engine/params';
 import { asciiDigits, phoneKey } from './phone';
-import { fieldError, formErrors, hasField, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
+import {
+  addressRequired,
+  fieldError,
+  formErrors,
+  hasField,
+  type RemoteCheck,
+  type RulesApi,
+  type Scope,
+  validEmail,
+} from './rules';
 import type {
   Address,
   AddressSuggestion,
@@ -208,8 +217,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   const shippingComplete = () => {
     const { fields, rules } = state();
-    const stateRequired = rules[fields.country ?? '']?.fields.state?.required;
-    return !!fields.line1?.trim() && !!fields.city?.trim() && (!stateRequired || !!fields.state);
+    return addressRequired(rules[fields.country ?? '']).every((name) => !!fields[name]?.trim());
   };
 
   const verifyPostcode = async (): Promise<void> => {

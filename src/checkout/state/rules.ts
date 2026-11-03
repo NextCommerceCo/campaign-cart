@@ -77,7 +77,6 @@ export function validEmail(value: string): boolean {
 
 const base = (name: string) => name.replace(/^billing_/, '');
 
-const ALWAYS_REQUIRED = ['first_name', 'last_name', 'line1'];
 export const BY_COUNTRY = ['city', 'state', 'postcode'];
 
 export const hasField = (rules: CountryRules | undefined, name: string) =>
@@ -120,9 +119,13 @@ export function fieldError(
   return undefined;
 }
 
+export const addressRequired = (rules: CountryRules | undefined): string[] => [
+  'line1',
+  ...BY_COUNTRY.filter((name) => (rules ? rules.fields[name]?.required : name === 'city')),
+];
+
 function addressFields(prefix: '' | 'billing_', rules: CountryRules | undefined): string[] {
-  const byCountry = BY_COUNTRY.filter((name) => (rules ? rules.fields[name]?.required : name === 'city'));
-  const names = [...ALWAYS_REQUIRED, ...byCountry, 'country'];
+  const names = ['first_name', 'last_name', ...addressRequired(rules), 'country'];
   return names.map((n) => prefix + n);
 }
 
