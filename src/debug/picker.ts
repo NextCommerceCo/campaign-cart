@@ -34,7 +34,7 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
       h(
         'div',
         {},
-        h('header', {}, h('h2', {}, 'Add products'), title),
+        h('header', {}, h('h2', {}, 'Add packages'), title),
         h('section', {}, search, list),
         h(
           'footer',

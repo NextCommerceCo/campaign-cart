@@ -6,17 +6,18 @@ import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
+import { checkoutView } from './checkout';
 import { type IconName, icon } from './icons';
 import { journeyView } from './journey';
 import type { ProviderConfig } from './providers';
 import { createDebug, type PageKind } from './state';
-import { ANALYTICS_CSS, CART_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
+import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { badge, type Child, empty, h, nodes, time, tree, tsugi } from './view';
 
 const TABS = {
   journey: 'Journey',
   issues: 'Issues',
-  cart: 'Cart',
+  checkout: 'Checkout',
   analytics: 'Analytics',
   elements: 'Elements',
   state: 'State',
@@ -140,7 +141,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const root = h('div', 'root', panel, menu, fab, hint);
   host
     .attachShadow({ mode: 'open' })
-    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, JOURNEY_CSS), box.el, root);
+    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS), box.el, root);
   document.body.append(host);
   const scheme = matchMedia('(prefers-color-scheme: dark)');
   const theme = () => host.classList.toggle('dark', scheme.matches);
@@ -151,6 +152,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
+  const checkout = checkoutView(engine, cart, { render: () => render() });
   root.append(cart.dialog);
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
@@ -196,7 +198,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         ...logged.map(logRow),
       ];
     },
-    cart: () => cart.view(),
+    checkout: () => checkout.view(),
     state: () => Object.entries(engine.getState()).map(([k, v]) => tree(h('span', 'key', k), v, k, open)),
     elements: () => {
       const found = inspect(engine, picked).filter((i) => matches(i, query()));
@@ -238,7 +240,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         show('issues'),
       ),
       item('Journey', `${debug.state().pages.length} pages in this tab`, () => show('journey')),
-      item('Cart', cartText(), () => show('cart')),
+      item('Checkout', `${cartText()} · ${checkout.summary()}`, () => show('checkout')),
       item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
       item('Logs', String(engine.log.entries().length), () => show('logs')),

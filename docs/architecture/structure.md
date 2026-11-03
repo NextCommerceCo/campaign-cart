@@ -101,15 +101,19 @@ src/
     context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, cart, analytics, elements, state, logs), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics, elements, state, logs), window.nextDebug
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
                                    session under next:debug, outside the storage scope
     journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
     icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    cart.ts                        the cart as the dashboard draws it: lines with variant selects (a bundle slot's variant
-                                   changes through its selector), totals, coupons, shipping
-    picker.ts                      Add products: tsugi's dialog listing the campaign's packages by product, as the
+    cart.ts                        the cart part of Checkout, as campaign-client draws it: lines with their variant,
+                                   stepper and price, a line opened for its discounts and variant selects (a bundle slot
+                                   changes through its selector), vouchers, shipping, totals and the math that checks them
+    checkout.ts                    the Checkout tab: what stands between the shopper and the order, the cart, the
+                                   customer and payment as the checkout holds them; Check form and Fill test details
+                                   call engine.checkout
+    picker.ts                      Add packages: tsugi's dialog listing the campaign's packages by product, as the
                                    dashboard's product picker
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
                                    analytics chunk's decision traces
@@ -135,7 +139,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 36 KB         |
+| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 40 KB         |
 
 ## Imports
 

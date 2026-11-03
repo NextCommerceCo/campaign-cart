@@ -14,6 +14,12 @@ export const ICONS = {
   cart: lucide(
     '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
   ),
+  card: lucide('<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>'),
+  chevron: lucide('<path d="m6 9 6 6 6-6"/>'),
+  plus: lucide('<path d="M5 12h14"/><path d="M12 5v14"/>'),
+  fail: lucide('<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'),
+  wait: lucide('<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'),
+  warn: lucide('<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'),
   search: lucide('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
 };
 

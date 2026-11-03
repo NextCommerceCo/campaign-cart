@@ -34,37 +34,6 @@ export const tsugiCard = (className: string, ...children: Child[]) =>
 export const badge = (text: Child, variant: string, ...rest: Child[]) =>
   tsugi(h('span', 'badge', text, ...rest), { variant });
 
-export function hoverCard(trigger: HTMLElement, fill: () => Child[]): HTMLElement {
-  const card = h('div', 'hovercard');
-  card.dataset.popover = '';
-  card.dataset.side = 'bottom';
-  card.setAttribute('role', 'tooltip');
-  card.setAttribute('aria-hidden', 'true');
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const show = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      card.replaceChildren(...nodes(fill()));
-      const { top, bottom, right } = trigger.getBoundingClientRect();
-      const below = bottom + card.offsetHeight <= document.documentElement.clientHeight;
-      card.dataset.side = below ? 'bottom' : 'top';
-      Object.assign(card.style, {
-        top: `${below ? bottom : top - card.offsetHeight}px`,
-        right: `${document.documentElement.clientWidth - right}px`,
-      });
-      card.setAttribute('aria-hidden', 'false');
-    }, 200);
-  };
-  const hide = () => {
-    clearTimeout(timer);
-    card.setAttribute('aria-hidden', 'true');
-  };
-  trigger.addEventListener('mouseenter', show);
-  trigger.addEventListener('mouseleave', hide);
-  trigger.append(card);
-  return trigger;
-}
-
 export const nodes = (children: Child[]) => children.filter((c): c is Node | string => !!c);
 
 export const time = (at: number) => {

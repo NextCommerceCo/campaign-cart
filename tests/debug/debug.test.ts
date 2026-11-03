@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS, CART_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
+import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -40,7 +40,7 @@ describe('debug tools', () => {
     $('.fab').click();
     expect(view()).toBe('menu');
     const menu = $('.menu').textContent!;
-    expect(menu).toMatch(/Cart1 item · \$[\d.]+/);
+    expect(menu).toMatch(/Checkout1 item · \$[\d.]+ · cart only/);
     expect(menu).toContain('CampaignOlympus · USD');
     expect(menu).toContain('APIapi.test');
     expect(menu).toContain('Funnelf1');
@@ -70,10 +70,10 @@ describe('debug tools', () => {
   it('follows the shopper to the next page of the tab, open where it was left, until ?debug=0', async () => {
     await start();
     $('.fab').click();
-    menuItem('Cart').click();
+    menuItem('Checkout').click();
     await start('', {});
     expect(view()).toBe('panel');
-    expect($('[data-tab="cart"]').getAttribute('aria-selected')).toBe('true');
+    expect($('[data-tab="checkout"]').getAttribute('aria-selected')).toBe('true');
     tab('journey');
     expect(shadow().querySelectorAll('.journey > ol > li')).toHaveLength(2);
     $('[aria-label="Close"]').click();
@@ -92,9 +92,9 @@ describe('debug tools', () => {
   it('switches tabs from a select when the panel is too narrow for the tab row', async () => {
     await start('<span data-next-display="cart.nope"></span>');
     $('.fab').click();
-    menuItem('Cart').click();
+    menuItem('Checkout').click();
     const pick = $<HTMLSelectElement>('select.tabpick');
-    expect([pick.value, pick.options[1]!.text]).toEqual(['cart', 'Issues · 1']);
+    expect([pick.value, pick.options[1]!.text]).toEqual(['checkout', 'Issues · 1']);
     pick.value = 'logs';
     pick.dispatchEvent(new Event('change'));
     expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
@@ -105,8 +105,8 @@ describe('debug tools', () => {
   it('keeps the panel open on Esc while the product picker is open', async () => {
     await start();
     $('.fab').click();
-    menuItem('Cart').click();
-    [...shadow().querySelectorAll<HTMLElement>('.body button')].find((b) => b.textContent === 'Add products')!.click();
+    menuItem('Checkout').click();
+    [...shadow().querySelectorAll<HTMLElement>('.body button')].find((b) => b.textContent === 'Add packages')!.click();
     expect($<HTMLDialogElement>('dialog.picker').open).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(view()).toBe('panel');
@@ -115,7 +115,7 @@ describe('debug tools', () => {
   it('keeps expanded nodes open when the state changes', async () => {
     const next = await start();
     $('.fab').click();
-    menuItem('Cart').click();
+    menuItem('Checkout').click();
     tab('state');
     details('visit').open = true;
     await vi.waitFor(() => expect(details('visit').textContent).toContain('params'));
@@ -241,18 +241,29 @@ describe('debug tools', () => {
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
     expect(shadow().querySelector('style')!.textContent).toBe(
-      TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS + JOURNEY_CSS,
+      TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
     const analytics = classes(ANALYTICS_CSS);
     const cart = classes(CART_CSS);
     const journey = classes(JOURNEY_CSS);
+    const checkout = classes(CHECKOUT_CSS);
     expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
     expect([...cart].filter((name) => panel.has(name) || analytics.has(name))).toEqual([]);
     expect([...journey].filter((name) => panel.has(name) || analytics.has(name) || cart.has(name))).toEqual([]);
+    expect(
+      [...checkout].filter((name) => panel.has(name) || analytics.has(name) || cart.has(name) || journey.has(name)),
+    ).toEqual([]);
+    const rules = [
+      ...(PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm),
+    ];
+    const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
+    expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
-    expect([...panel, ...analytics, ...cart, ...journey].filter((name) => components.includes(name!))).toEqual([]);
+    expect(
+      [...panel, ...analytics, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!)),
+    ).toEqual([]);
   });
 
   it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
@@ -268,10 +279,10 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + JOURNEY_CSS;
+    const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });
