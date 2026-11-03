@@ -216,6 +216,9 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).toContain(':host(.dark){');
     expect(TSUGI_CSS).toMatch(/@layer properties\{\*,/);
     expect(TSUGI_CSS).not.toContain('@property');
+    const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
+    const tokens = defined(TSUGI_CSS);
+    expect([...defined(PANEL_CSS + ANALYTICS_CSS + CART_CSS)].filter((name) => tokens.has(name))).toEqual([]);
     expect(CART_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
