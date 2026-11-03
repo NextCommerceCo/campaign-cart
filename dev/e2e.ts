@@ -130,7 +130,7 @@ try {
 } catch (err) {
   code = 1;
   steps.push(`FAIL ${err instanceof Error ? err.message.split('\n')[0] : err}`);
-  await page.screenshot({ path: 'e2e-failure.png' }).catch(() => {});
+  await page.screenshot({ path: 'test-results/e2e-failure.png' }).catch(() => {});
 } finally {
   console.log(steps.join('\n'));
   await browser.close();

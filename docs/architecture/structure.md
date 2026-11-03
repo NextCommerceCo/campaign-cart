@@ -44,7 +44,8 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 ```
 .github/workflows/ci.yml   format check · typecheck · test · build with size budgets
 docs/
-  architecture/            design.md · engine.md · structure.md
+  architecture/            design.md · engine.md · structure.md · parity-0.4.md (what 0.4.43 pages use,
+                           and how each is supported) · redesign-review.md (research before the rewrite)
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
@@ -76,7 +77,7 @@ src/
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
     dom.ts                         setText, setVisible, setState, parse helpers
-    display.ts bundle-selector.ts variants.ts package-toggle.ts add-to-cart.ts
+    display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-summary.ts cart-controls.ts links.ts
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
     widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
@@ -92,7 +93,7 @@ src/
     index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
   analytics/           analytics   subscriber, loaded on idle
     index.ts                       startAnalytics: engine events → GA4-named `analytics` events
-    context.ts ecommerce.ts        page context and event ids; GA4 items and payloads
+    context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, analytics, logs), window.nextDebug
@@ -154,12 +155,17 @@ tests/
   bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
   fixtures/
-    campaign.ts api.ts storage.ts engine.ts pages.ts
-    pages/<campaign>/<page>.html   real template pages copied verbatim, source commit on line 1
-  e2e/             Playwright on the built dist/ with the network stubbed — lands with checkout
+    campaign.ts api.ts storage.ts engine.ts pages.ts order.ts rules.ts
+    pages/<campaign>/<page>.html           my-campaigns pages, copied verbatim, source on line 1
+    pages/starter/<campaign>-<page>.html   starter-template pages, copied verbatim, source commit on line 1
 ```
 
-A test file mirrors the module it covers. Every bug fix adds a test that fails without the fix.
+The Playwright run on the built `dist/` is `bun run e2e` in `dev/`, not part of `npm test`.
+
+A test file mirrors the module it covers, and a chunk entry's test is named after the chunk
+(`tests/checkout/checkout.test.ts` covers `src/checkout/index.ts`). Checkout's DOM parts
+(`address/`, `form/`, `payment/`) are tested through that entry, on real template pages. Every
+bug fix adds a test that fails without the fix.
 One test binds each real template page and fails on any `[next]` warning, so templates and SDK
 cannot drift silently.
 
