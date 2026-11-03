@@ -4,19 +4,20 @@ import { cartView } from '../../src/debug/cart';
 import { checkoutView } from '../../src/debug/checkout';
 import { nodes } from '../../src/debug/view';
 import { fakeApi } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
 import { makeEngine } from '../fixtures/engine';
 import { fakeRules } from '../fixtures/rules';
 
-async function setup(withCheckout = true) {
+async function setup(withCheckout = true, offers: Partial<typeof campaign> = {}) {
   const api = fakeApi();
-  const { engine } = makeEngine({ fetch: api.fetch });
+  const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve({ ...campaign, ...offers }) });
   await engine.start();
   if (withCheckout) {
     engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
     await engine.checkout.loadCountries();
   }
   const root = document.createElement('div');
-  const ui = { open: new Set<string>(), render: () => paint(), showState: vi.fn() };
+  const ui = { open: new Set<string>(), render: () => paint(), showState: vi.fn(), paymentIcons: vi.fn() };
   const view = checkoutView(engine, cartView(engine, ui), ui);
   const paint = () => root.replaceChildren(...nodes(view.view()));
   paint();
@@ -32,7 +33,7 @@ async function setup(withCheckout = true) {
     [...block(title).querySelectorAll('.krows dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]);
   const button = (text: string) =>
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
-  return { engine, api, root, view, paint, steps, block, rows, button };
+  return { engine, api, root, view, paint, steps, block, rows, button, ui };
 }
 
 describe('checkout tab', () => {
@@ -91,5 +92,48 @@ describe('checkout tab', () => {
       ['postcode', '78701'],
       ['Address', 'Same as shipping'],
     ]);
+  });
+
+  it('shows payment as the checkout offers it, and switches the method for the page', async () => {
+    document.body.innerHTML =
+      '<div data-next-payment-method="credit"></div><div data-next-payment-method="paypal"></div>';
+    const { engine, block, root, ui } = await setup(true, {
+      available_express_payment_methods: [{ code: 'apple_pay', label: 'Apple Pay' }],
+      available_payment_methods: [
+        { code: 'bankcard', label: 'Bankcard' },
+        { code: 'paypal', label: 'PayPal' },
+        { code: 'klarna', label: 'Klarna' },
+      ],
+    });
+    const payment = block('Payment');
+    expect(ui.paymentIcons).toHaveBeenCalled();
+    expect(payment.querySelector('.ktile')!.getAttribute('aria-label')).toBe('Apple Pay');
+    const methods = () =>
+      [...payment.querySelectorAll('.kmrow')].map((r) => [
+        r.querySelector('b')!.textContent,
+        r.classList.contains('on'),
+      ]);
+    expect(methods()).toEqual([
+      ['Card', true],
+      ['PayPal', false],
+      ['Klarna', false],
+    ]);
+    expect([...payment.querySelectorAll('.kmethod .badge')].map((b) => b.textContent)).toEqual(['not on this page']);
+    expect([...payment.querySelectorAll('.kmrow.on .payment-icon')].map((i) => i.className)).toEqual([
+      'payment-icon payment-icon-visa',
+      'payment-icon payment-icon-mastercard',
+      'payment-icon payment-icon-american-express',
+      'payment-icon payment-icon-discover',
+    ]);
+    expect(payment.querySelector('.kpanel')!.textContent).toContain(
+      'Missing: no cc-number and cvv fields on this page',
+    );
+    [...payment.querySelectorAll<HTMLElement>('.kmethod')][1]!.click();
+    expect(engine.getState().checkout!.paymentMethod).toBe('paypal');
+    expect(block('Payment').querySelector('.kpanel')!.textContent).toBe(
+      'PayPal opens after the order is placed, then sends the shopper back to the next page.',
+    );
+    document.body.innerHTML = '';
+    root.remove();
   });
 });

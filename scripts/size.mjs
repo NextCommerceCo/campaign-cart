@@ -11,6 +11,7 @@ const BUDGETS = [
   { match: /^slots-.*\.js$/, name: 'slots', kb: 6 },
   { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
   { match: /^debug-.*\.js$/, name: 'debug', kb: 40 },
+  { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
 ];
 
@@ -27,5 +28,11 @@ for (const budget of BUDGETS) {
   const ok = kb <= budget.kb;
   failed ||= !ok;
   console.log(`${ok ? 'ok  ' : 'OVER'} ${budget.name.padEnd(11)} ${kb.toFixed(1)} KB / ${budget.kb} KB  ${matches[0]}`);
+}
+for (const file of files.filter((f) => f.endsWith('.js') && !BUDGETS.some((b) => b.match.test(f)))) {
+  console.log(
+    `UNBUDGETED ${file}: a chunk with no budget, often a module two lazy chunks share; give it a home or a budget`,
+  );
+  failed = true;
 }
 process.exit(failed ? 1 : 0);

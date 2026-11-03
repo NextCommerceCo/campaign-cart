@@ -16,13 +16,32 @@ const COMPONENTS = [
   'journey',
   'label',
   'native-select',
+  'payment-icon',
   'popover',
   'scrollbar',
   'stat',
   'tabs',
   'timeline',
 ];
+const PAYMENT_ICONS = [
+  'american-express',
+  'discover',
+  'mastercard',
+  'visa',
+  'affirm',
+  'afterpay',
+  'apple-pay',
+  'google-pay',
+  'ideal',
+  'klarna',
+  'link',
+  'paypal',
+  'shop-pay',
+];
 const OUT = 'vendor/tsugi/tsugi.css';
+const ICONS_OUT = 'vendor/tsugi/payment-icons.css';
+const ICON_RULE =
+  /\n\s*\.payment-icon-([\w-]+)\s*\{\s*background-image:\s*url\("\.\/payment-icons\/([\w.-]+)"\);\s*\}/g;
 
 const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').match(/^\/\*! tsugi ([^\s:]+)/)?.[1] : undefined;
 const tag = process.argv[2] ?? current;
@@ -31,13 +50,24 @@ if (!tag) {
   process.exit(1);
 }
 
-const source = (path) =>
+const file = (path) =>
   Buffer.from(
-    execFileSync('gh', ['api', `repos/${REPO}/contents/src/css/${path}?ref=${tag}`, '--jq', '.content'], {
+    execFileSync('gh', ['api', `repos/${REPO}/contents/src/${path}?ref=${tag}`, '--jq', '.content'], {
       encoding: 'utf8',
     }),
     'base64',
-  ).toString('utf8');
+  );
+const source = (path) => file(`css/${path}`).toString('utf8');
+const dataUri = (name) =>
+  name.endsWith('.svg')
+    ? `data:image/svg+xml,${file(`payment-icons/${name}`)
+        .toString('utf8')
+        .replace(/\s+/g, ' ')
+        .replace(/> </g, '><')
+        .replace(/"/g, "'")
+        .replace(/[%#<>]/g, encodeURIComponent)
+        .trim()}`
+    : `data:image/png;base64,${file(`payment-icons/${name}`).toString('base64')}`;
 
 const replace = (text, pattern, value, what) => {
   if (!pattern.test(text)) throw new Error(`tsugi ${tag}: no longer has ${what}; update scripts/tsugi.mjs`);
@@ -56,7 +86,25 @@ base = replace(base, /^@theme \{/m, '@theme static {', 'a @theme block for fonts
 const dir = mkdtempSync(join('node_modules', '.tsugi-'));
 try {
   writeFileSync(join(dir, 'base.css'), base);
-  for (const name of COMPONENTS) writeFileSync(join(dir, `${name}.css`), source(`components/${name}.css`));
+  const icons = [];
+  for (const name of COMPONENTS) {
+    let css = source(`components/${name}.css`);
+    if (name === 'payment-icon') {
+      const rules = [...css.matchAll(ICON_RULE)];
+      const missing = PAYMENT_ICONS.filter((icon) => !rules.some(([, n]) => n === icon));
+      if (missing.length)
+        throw new Error(`tsugi ${tag}: no payment icon ${missing.join(', ')}; update scripts/tsugi.mjs`);
+      for (const [, icon, image] of rules)
+        if (PAYMENT_ICONS.includes(icon))
+          icons.push(`.payment-icon-${icon}{background-image:url("${dataUri(image)}")}`);
+      css = css.replace(ICON_RULE, '');
+    }
+    writeFileSync(join(dir, `${name}.css`), css);
+  }
+  writeFileSync(
+    ICONS_OUT,
+    `/*! tsugi ${tag}: payment icons ${PAYMENT_ICONS.join(', ')}, inlined by scripts/tsugi.mjs. Do not edit; run npm run tsugi -- <tag>. */\n${icons.join('\n')}\n`,
+  );
   writeFileSync(
     join(dir, 'entry.css'),
     [

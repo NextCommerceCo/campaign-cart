@@ -21,6 +21,10 @@ const METHODS: Record<string, string> = {
   google_pay: 'Google Pay',
   shop_pay: 'Shop Pay',
 };
+const CARD_BRANDS = ['visa', 'mastercard', 'american-express', 'discover'];
+const REDIRECTS = ['paypal', 'klarna', 'ideal', 'afterpay', 'affirm', 'link'];
+const iconOf = (code: string) => (code === 'card_token' ? CARD_BRANDS : [code.replace(/_/g, '-')]);
+const paymentIcon = (name: string) => h('span', `payment-icon payment-icon-${name}`);
 const DETAILS = ['email', 'first_name', 'last_name', 'line1', 'city', 'country'];
 const ADDRESS = ['line1', 'line2', 'city', 'state', 'postcode'];
 const TEST_DETAILS: Record<string, string> = {
@@ -39,7 +43,11 @@ const label = (name: string) => name.replace(/^billing_/, '').replace(/_/g, ' ')
 type Tone = 'done' | 'todo' | 'bad' | 'warn';
 const MARKS = { done: 'check', todo: 'wait', bad: 'fail', warn: 'warn' } as const;
 
-export function checkoutView(engine: Engine, cart: ReturnType<typeof cartView>, ui: { render: () => void }) {
+export function checkoutView(
+  engine: Engine,
+  cart: ReturnType<typeof cartView>,
+  ui: { render: () => void; paymentIcons: () => void },
+) {
   const button = (text: string, onclick: () => void) =>
     tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), { variant: 'outline', size: 'sm' });
 
@@ -137,29 +145,88 @@ export function checkoutView(engine: Engine, cart: ReturnType<typeof cartView>, 
   };
 
   const payment = (state: CheckoutState) => {
+    ui.paymentIcons();
     const { campaign } = engine.getState();
     const express = campaign?.available_express_payment_methods ?? [];
-    const methods = campaign?.available_payment_methods ?? [];
-    const card = document.getElementById('spreedly-number') ? 'card fields ready' : 'no card fields on this page';
+    const methods = (campaign?.available_payment_methods ?? []).map((m) => {
+      const code = m.code === 'bankcard' ? 'card_token' : m.code;
+      return { code, label: METHODS[code] ?? m.label };
+    });
+    const onPage = (code: string) =>
+      code === 'card_token' ||
+      [...document.querySelectorAll('[data-next-payment-method]')].some(
+        (el) => el.getAttribute('data-next-payment-method')?.replace(/-/g, '_') === code,
+      );
+    const cardFields = !!document.getElementById('spreedly-number');
+    const panel = (code: string, name: string) =>
+      code === 'card_token'
+        ? rows([
+            [
+              'Card fields',
+              cardFields
+                ? 'Ready: the number and CVV are Spreedly fields'
+                : 'Missing: no cc-number and cvv fields on this page',
+            ],
+            ['Payment key', campaign?.payment_env_key ? 'Set' : 'Missing: the card cannot be tokenized'],
+          ])
+        : h(
+            'p',
+            'kredirect',
+            REDIRECTS.includes(code)
+              ? `${name} opens after the order is placed, then sends the shopper back to the next page.`
+              : `${name} pays with the order.`,
+          );
     return block(
       'Payment',
       'How the shopper pays, as this checkout offers it.',
       express.length > 0 &&
-        h('div', 'kexpress', h('small', {}, 'Express'), ...express.map((m) => badge(m.label, 'outline'))),
-      h(
-        'ul',
-        'kmethods',
-        ...methods.map((m) =>
+        h(
+          'div',
+          'kpay',
+          h('p', 'ksublabel', 'Express checkout'),
           h(
-            'li',
-            m.code === state.paymentMethod ? 'on' : '',
-            h('span', 'kdot'),
-            h('b', {}, m.label),
-            m.code === 'card_token' && h('small', {}, card),
+            'div',
+            'kexpress',
+            ...express.map((m) => {
+              const tile = h('span', 'ktile', ...iconOf(m.code).map(paymentIcon));
+              tile.title = `${m.label}: its button on the page starts the order`;
+              tile.setAttribute('role', 'img');
+              tile.setAttribute('aria-label', m.label);
+              return tile;
+            }),
           ),
+          h('div', 'kor', 'OR'),
+        ),
+      h(
+        'div',
+        'kpay',
+        h('p', 'ksublabel', 'Payment method'),
+        h(
+          'div',
+          'kmethods',
+          ...methods.map((m) => {
+            const on = m.code === state.paymentMethod;
+            const row = h(
+              'button',
+              {
+                type: 'button',
+                className: 'kmethod',
+                onclick: () => {
+                  engine.checkout!.setPaymentMethod(m.code);
+                  ui.render();
+                },
+              },
+              h('span', 'kdot'),
+              h('b', {}, m.label),
+              !onPage(m.code) && badge('not on this page', 'outline'),
+              h('span', 'kicons', ...iconOf(m.code).map(paymentIcon)),
+            );
+            row.setAttribute('role', 'radio');
+            row.setAttribute('aria-checked', String(on));
+            return h('div', on ? 'kmrow on' : 'kmrow', row, on && h('div', 'kpanel', panel(m.code, m.label)));
+          }),
         ),
       ),
-      rows([['Payment key', campaign?.payment_env_key ? 'Set' : 'Missing: card payments cannot be tokenized']]),
     );
   };
 

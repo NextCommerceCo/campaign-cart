@@ -1,6 +1,5 @@
-import { bundleGroup, cardSlots, pickedCard } from '../engine/cart/selectors';
+import { bundleGroup, cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
 import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
-import { variantChoices } from '../engine/cart/variants';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import type { Package } from '../engine/types';

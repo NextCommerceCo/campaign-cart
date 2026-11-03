@@ -139,9 +139,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  host
-    .attachShadow({ mode: 'open' })
-    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS), box.el, root);
+  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS);
+  let paymentIcons: Promise<void> | undefined;
+  const loadPaymentIcons = () =>
+    (paymentIcons ??= import('../../vendor/tsugi/payment-icons.css?raw').then((m) => style.append(m.default)));
+  host.attachShadow({ mode: 'open' }).append(style, box.el, root);
   document.body.append(host);
   const scheme = matchMedia('(prefers-color-scheme: dark)');
   const theme = () => host.classList.toggle('dark', scheme.matches);
@@ -152,7 +154,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
-  const checkout = checkoutView(engine, cart, { render: () => render() });
+  const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog);
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {

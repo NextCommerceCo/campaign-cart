@@ -48,10 +48,11 @@ docs/
                            and how each is supported) · redesign-review.md (research before the rewrite)
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
-scripts/size.mjs           gzip budget per chunk; fails the build
+scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
+vendor/tsugi/payment-icons.css  tsugi's payment icons the payment card shows, inlined; a chunk of its own
 dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
@@ -75,8 +76,8 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
-    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors, toggles, their types;
-                                                variants.ts: a package's variant choices, for slots and debug
+    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors (and a package's
+                                                variant choices, for slots and debug), toggles, their types
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
@@ -140,21 +141,22 @@ src/
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
 | debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 40 KB         |
+| debug icons | the Checkout tab's payment card                                     | 16 KB         |
 
 ## Imports
 
-| File                      | May import                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------- |
-| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                   |
-| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                           |
-| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`            |
-| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                  |
-| `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                   |
-| `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`                                                     |
-| `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/context.ts`, `analytics/ecommerce.ts` |
-| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`          |
-| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                      |
-| `config.ts`               | `compat/config.ts`                                                                                  |
+| File                      | May import                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                     |
+| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                             |
+| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`              |
+| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                    |
+| `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                     |
+| `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
+| `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/context.ts`, `analytics/ecommerce.ts`   |
+| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`            |
+| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
+| `config.ts`               | `compat/config.ts`                                                                                    |
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`,
 `bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts`, `compat/order.ts` and

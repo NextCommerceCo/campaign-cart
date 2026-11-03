@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { variantChoices } from '../../../src/engine/cart/variants';
+import { variantChoices } from '../../../src/engine/cart/selectors';
 import type { Package } from '../../../src/engine/types';
 
 const tee = (ref_id: number, size: string, color: string, availability = 'available'): Package => ({
