@@ -409,8 +409,11 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
       let token: string | undefined;
       if (method === 'card_token') {
+        if (!input.tokenize) {
+          ctx.log.warn('card payment needs cc-number and cvv fields and a campaign payment_env_key');
+          return stop({ form: { code: 'card' } });
+        }
         try {
-          if (!input.tokenize) throw new Error('no card form');
           token = await input.tokenize();
         } catch (err) {
           return stop({ form: { code: 'card', message: err instanceof Error ? err.message : undefined } });

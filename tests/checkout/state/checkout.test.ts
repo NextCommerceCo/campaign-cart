@@ -220,6 +220,18 @@ describe('checkout', () => {
     expect(seen).toEqual(['checkout.shipping-added']);
   });
 
+  it('shows the card message and warns the author when a card order has no card form', async () => {
+    const { engine, checkout, fill, posts } = await setup();
+    const warn = vi.spyOn(engine.log, 'warn');
+    await engine.cart.addItem(1);
+    fill(SHIPPING);
+    await flush();
+    expect(await checkout.placeOrder({ ...URLS })).toBeUndefined();
+    expect(engine.getState().checkout?.errors.form).toEqual({ code: 'card' });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('payment_env_key'));
+    expect(posts('/orders/')).toHaveLength(0);
+  });
+
   it('stops before posting when the form is incomplete, and lets the shopper fix it', async () => {
     const { engine, checkout, posts } = await setup();
     await engine.cart.addItem(1);
