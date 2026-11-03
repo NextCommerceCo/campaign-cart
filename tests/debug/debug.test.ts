@@ -89,6 +89,16 @@ describe('debug tools', () => {
     expect(document.querySelector('next-debug')).toBeNull();
   });
 
+  it('keeps the panel open on Esc while the product picker is open', async () => {
+    await start();
+    $('.fab').click();
+    menuItem('Cart').click();
+    [...shadow().querySelectorAll<HTMLElement>('.body button')].find((b) => b.textContent === 'Add products')!.click();
+    expect($<HTMLDialogElement>('dialog.picker').open).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(view()).toBe('panel');
+  });
+
   it('keeps expanded nodes open when the state changes', async () => {
     const next = await start();
     $('.fab').click();

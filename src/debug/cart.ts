@@ -1,6 +1,9 @@
+import { bundleGroup, cardSlots, pickedCard } from '../engine/cart/selectors';
 import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
+import { variantChoices } from '../engine/cart/variants';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
+import { avatar, productPicker } from './picker';
 import { badge, type Child, empty, expandable, h, time, tsugi, tsugiCard } from './view';
 
 const source = (group: string) =>
@@ -11,6 +14,27 @@ const source = (group: string) =>
       : group.startsWith('toggle:')
         ? 'toggle'
         : group;
+
+export function swapPackage(engine: Engine, from: number, to: number): Promise<void> {
+  const { cart, selectors } = engine.getState();
+  const swaps = Object.entries(cart.groups).flatMap(([groupId, group]) => {
+    if (!group.lines.some((l) => l.packageId === from)) return [];
+    const selectorId = Object.keys(selectors).find((id) => bundleGroup(id) === groupId);
+    const selector = selectorId ? selectors[selectorId] : undefined;
+    const card = pickedCard(selector);
+    const slots =
+      selector && card ? cardSlots(selector, card).flatMap((s, i) => (s.packageId === from ? [i] : [])) : [];
+    if (!slots.length) {
+      const lines = group.lines.map((l) => (l.packageId === from ? { ...l, packageId: to } : l));
+      return [engine.cart.setGroup(groupId, { ...group, lines })];
+    }
+    const written = Promise.all(
+      slots.map((i) => engine.selectors.setSlot(selectorId!, card!.id, i, { packageId: to })),
+    );
+    return [selector!.mode === 'swap' ? written : written.then(() => engine.selectors.addToCart(selectorId!))];
+  });
+  return Promise.all(swaps).then(() => undefined);
+}
 
 const button = (label: Child, onclick: () => void, data: Record<string, string>, title = '') =>
   tsugi(h('button', { type: 'button', className: 'btn', title, onclick }, label), data);
@@ -25,8 +49,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     className: 'select',
     onchange: () => act(engine.cart.setShipping(Number(shipping.value))),
   });
-  const pkg = h('select', { className: 'select' });
-  const quantity = h('input', { type: 'number', min: '1', value: '1', className: 'input' });
+  const picker = productPicker(engine, ui);
+  const addProducts = (data: Record<string, string>) =>
+    tsugi(h('button', { type: 'button', className: 'btn', onclick: () => picker.open() }, 'Add products'), data);
 
   const money = (amount: string | number | undefined) => {
     const { campaign, cart } = engine.getState();
@@ -73,34 +98,44 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     const recurring = (priced?.is_recurring ?? p?.is_recurring) && (priced?.price_recurring ?? p?.price_recurring);
     const every =
       p?.interval_count && p.interval_count > 1 ? `${p.interval_count} ${p.interval}s` : (p?.interval ?? 'month');
-    const attributes = p?.product_variant_attribute_values ?? [];
     const set = (n: number) => () => act(engine.cart.setQuantity(packageId, n));
     const step = { variant: 'outline', size: 'icon-xs' };
-    return tsugiCard(
+    const variant = ({ code, name, value, options }: ReturnType<typeof variantChoices>[number]) => {
+      const id = `variant-${packageId}-${code}`;
+      const select = h(
+        'select',
+        { id, className: 'select' },
+        ...options.map((o) => h('option', { value: o.value, disabled: !o.packageId }, o.value)),
+      );
+      select.value = value ?? '';
+      select.onchange = () => {
+        const to = options.find((o) => o.value === select.value)?.packageId;
+        if (to) act(swapPackage(engine, packageId, to));
+      };
+      return h('div', 'field', h('label', { htmlFor: id }, name), select);
+    };
+    const variants = variantChoices(engine.getState().campaign?.packages ?? [], packageId);
+    return h(
+      'div',
       'cline',
       !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => discount(d, codes))),
       h(
         'div',
         'cmain',
+        avatar(p?.image, count),
         h(
           'div',
-          'cthumb',
-          p?.image ? h('img', { src: p.image, alt: '' }) : h('span', 'cnoimg'),
-          h('span', 'cbubble', String(count)),
-        ),
-        h(
-          'div',
-          {},
-          h('div', 'cname', p?.name ?? `Package ${packageId}`),
+          'cinfo',
+          h('b', {}, p?.name ?? `Package ${packageId}`),
+          h('span', 'cunit', `${money(priced?.package_price ?? p?.price_total)} × ${count}`),
+          h('small', {}, `#${packageId} · from ${from.join(', ')}`),
           h(
             'div',
-            'cunit',
-            `${money(priced?.package_price ?? p?.price_total)} ×`,
+            'cact',
             button('−', set(count - 1), step, 'One less'),
-            h('span', {}, String(count)),
             button('+', set(count + 1), step, 'One more'),
+            button('Remove', set(0), { variant: 'link', size: 'sm' }),
           ),
-          h('div', 'csource', `#${packageId} · from ${from.join(', ')}`),
         ),
         h(
           'div',
@@ -109,21 +144,8 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
           h('b', {}, money(total)),
           !priced && h('small', {}, 'estimate'),
         ),
-        button('✕', set(0), { variant: 'ghost', size: 'icon-xs' }, 'Remove'),
       ),
-      attributes.length > 0 &&
-        h(
-          'div',
-          'cvars',
-          ...attributes.map((a) =>
-            h(
-              'label',
-              'cvar',
-              a.name,
-              h('input', { type: 'text', className: 'input', value: a.value, readOnly: true }),
-            ),
-          ),
-        ),
+      variants.length > 0 && h('div', 'cvars', ...variants.map(variant)),
       recurring && h('div', 'crecur', `Then ${money(String(recurring))} every ${every}`),
     );
   };
@@ -210,13 +232,6 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       ...methods.map((m) => h('option', { value: String(m.ref_id) }, `${m.code} · ${money(m.price)}`)),
     );
     shipping.value = String(cart.shippingId ?? summary?.shipping_method?.id ?? methods[0]?.ref_id ?? '');
-    const chosen = pkg.value;
-    pkg.replaceChildren(
-      ...(campaign?.packages ?? []).map((p) =>
-        h('option', { value: String(p.ref_id) }, `#${p.ref_id} · ${p.name} · ${money(p.price_total)}`),
-      ),
-    );
-    if (chosen) pkg.value = chosen;
 
     return [
       h(
@@ -236,6 +251,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
             { type: 'button', className: 'link danger', onclick: () => act(engine.cart.clear()) },
             'Clear cart',
           ),
+        lines.length > 0 && addProducts({ variant: 'outline', size: 'sm' }),
       ),
       ...(lines.length
         ? lines.map((l) =>
@@ -246,7 +262,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
               codes,
             ),
           )
-        : [empty('Cart is empty', 'Add a package below, or use the page.', 'cart')]),
+        : [emptyCart()]),
       summary && lines.length > 0 && totals(summary),
       tsugiCard(
         'cctl',
@@ -270,21 +286,15 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
         ),
         message && h('div', `cmsg ${message.tone}`, message.text),
         methods.length > 0 && h('div', 'crow', h('span', 'clabel', 'Shipping'), shipping),
-        h(
-          'div',
-          'crow',
-          h('span', 'clabel', 'Add'),
-          pkg,
-          quantity,
-          button(
-            'Add to cart',
-            () => act(engine.cart.addItem(Number(pkg.value), Math.max(1, Number(quantity.value) || 1))),
-            { variant: 'outline' },
-          ),
-        ),
       ),
     ];
   };
 
-  return { view };
+  const emptyCart = () => {
+    const el = empty('Cart is empty', 'Pick packages from the campaign, or use the page.', 'cart');
+    el.append(h('footer', {}, addProducts({})));
+    return el;
+  };
+
+  return { view, dialog: picker.dialog };
 }

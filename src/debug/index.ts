@@ -144,6 +144,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
+  root.append(cart.dialog);
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), badge(e.level, LEVELS[e.level]), ' ', e.message);
@@ -309,7 +310,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed') setView('closed');
+    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open) setView('closed');
   });
   document.addEventListener('click', (e) => {
     if (view === 'menu' && !e.composedPath().includes(host)) setView('closed');

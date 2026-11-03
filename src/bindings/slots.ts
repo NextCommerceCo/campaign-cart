@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard } from '../engine/cart/selectors';
 import type { Discount, Selector, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
+import { variantChoices } from '../engine/cart/variants';
 import type { Package } from '../engine/types';
 import { cents, discountPercent, format } from '../engine/format';
 import { cardQuote } from '../engine/values';
@@ -61,22 +62,9 @@ function discounts(engine: Engine, packageId: number, kind: string): Discount[] 
 }
 
 function variantSelects(engine: Engine, host: Element, slot: Slot, choose: (packageId: number) => void): void {
-  const packages = engine.getState().campaign?.packages ?? [];
-  const current = packages.find((p) => p.ref_id === slot.packageId);
-  const own = current?.product_variant_attribute_values ?? [];
-  if (!current?.product_id || !own.length) return;
-  const family = packages.filter((p) => p.product_id === current.product_id);
-  const codes = new Map(family.flatMap((p) => p.product_variant_attribute_values ?? []).map((a) => [a.code, a.name]));
-  const selected = Object.fromEntries(own.map((a) => [a.code, a.value]));
-  const matching = (wanted: Record<string, string>) =>
-    family.find(
-      (p) =>
-        p.product_purchase_availability !== 'unavailable' &&
-        Object.entries(wanted).every(([code, value]) =>
-          p.product_variant_attribute_values?.some((a) => a.code === code && a.value === value),
-        ),
-    );
-  const fields = [...codes].map(([code, name]) => {
+  const choices = variantChoices(engine.getState().campaign?.packages ?? [], slot.packageId);
+  if (!choices.length) return;
+  const fields = choices.map(({ code, name, value, options }) => {
     const field = Object.assign(document.createElement('div'), { className: 'next-slot-variant-field' });
     Object.assign(field.dataset, { nextVariantCode: code, nextVariantName: name });
     const label = Object.assign(document.createElement('label'), {
@@ -85,23 +73,15 @@ function variantSelects(engine: Engine, host: Element, slot: Slot, choose: (pack
     });
     const select = Object.assign(document.createElement('select'), { className: 'next-slot-variant-select' });
     select.dataset.nextVariantCode = code;
-    const values = [
-      ...new Set(
-        family
-          .flatMap((p) => p.product_variant_attribute_values ?? [])
-          .filter((a) => a.code === code)
-          .map((a) => a.value),
-      ),
-    ];
-    for (const value of values) {
-      const option = Object.assign(document.createElement('option'), { value, textContent: value });
-      option.selected = value === selected[code];
-      option.disabled = !matching({ ...selected, [code]: value });
-      select.append(option);
+    for (const option of options) {
+      const el = Object.assign(document.createElement('option'), { value: option.value, textContent: option.value });
+      el.selected = option.value === value;
+      el.disabled = !option.packageId;
+      select.append(el);
     }
     select.addEventListener('change', () => {
-      const pkg = matching({ ...selected, [code]: select.value });
-      if (pkg) choose(pkg.ref_id);
+      const packageId = options.find((o) => o.value === select.value)?.packageId;
+      if (packageId) choose(packageId);
     });
     if (!host.hasAttribute('next-render-no-label')) field.append(label);
     field.append(select);

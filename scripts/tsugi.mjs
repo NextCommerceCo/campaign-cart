@@ -4,12 +4,17 @@ import { join } from 'node:path';
 
 const REPO = 'NextCommerceCo/tsugi';
 const COMPONENTS = [
+  'avatar',
   'badge',
   'button',
   'card',
+  'checkbox',
+  'dialog',
   'empty',
+  'field',
   'input',
   'journey',
+  'label',
   'native-select',
   'stat',
   'tabs',

@@ -108,27 +108,27 @@ th{font:600 11px var(--font-sans);color:var(--muted-foreground)}
 .flow{margin:3px 0 3px 14px;font:12px var(--font-sans)}
 .flow code{font:12px var(--font-mono)}`;
 
-export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:2px 0 10px;font:13px var(--font-sans);color:var(--muted-foreground)}
+export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:2px 0 14px;font:13px var(--font-sans);color:var(--muted-foreground)}
 .chead b{font-weight:600;color:var(--foreground)}
 .chead>span{margin-right:auto}
 .chead .link{margin-left:0}
-.cline,.ctotals,.cctl{margin-bottom:10px;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
-.cbadges{display:flex;justify-content:flex-end;gap:6px;margin-bottom:6px}
-.cmain{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:12px;align-items:center}
-.cthumb{position:relative;width:44px;height:44px}
-.cthumb img,.cnoimg{display:block;width:44px;height:44px;border-radius:var(--radius-md);background:var(--muted-foreground);box-shadow:0 0 0 1px var(--border);object-fit:contain}
-.cbubble{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--muted-foreground);box-shadow:0 0 0 2px var(--card);font-size:11px;font-weight:600}
-.cname{overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
-.cunit{display:flex;align-items:center;gap:4px;color:var(--muted-foreground)}
-.cunit span{min-width:18px;color:var(--foreground);text-align:center}
-.csource{font-size:11px;color:var(--muted-foreground)}
-.cprice{display:flex;flex-direction:column;align-items:flex-end}
-.cprice s{font-size:13px;color:var(--muted-foreground)}
+.cline,.ctotals,.cctl{margin-bottom:14px;font-family:var(--font-sans);font-size:14px;font-variant-numeric:tabular-nums}
+.cline{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md)}
+.cbadges{position:absolute;top:-10px;right:12px;display:flex;gap:6px}
+.cbadges .badge{background:var(--card)}
+.cmain{display:flex;align-items:center;gap:16px;padding:16px}
+.cinfo{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.cinfo>b{overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.cunit,.cinfo>small{color:var(--muted-foreground)}
+.cinfo>small{font-size:12px}
+.cact{display:flex;align-items:center;gap:4px;margin-top:6px}
+.cprice{display:flex;flex-direction:column;align-items:flex-end;gap:4px;align-self:flex-start}
+.cprice s{color:var(--muted-foreground)}
 .cprice b{font-weight:600}
-.cprice small{font-size:11px;color:var(--warning)}
-.cvars{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
-.cvar{display:flex;flex-direction:column;gap:6px}
-.crecur{margin-top:8px;font-size:12px;color:var(--muted-foreground)}
+.cprice small{font-size:12px;color:var(--warning)}
+.cvars{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:16px;border-top:1px solid var(--border)}
+.cvars .select{width:100%}
+.crecur{padding:10px 16px;border-top:1px solid var(--border);font-size:13px;color:var(--muted-foreground)}
 .trow,.tmore>summary{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-radius:0}
 .trow small,.tmore small{display:block;font-size:12px;font-weight:400;color:var(--muted-foreground)}
 .trow s,.tmore s{margin-right:6px;color:var(--muted-foreground)}
@@ -144,8 +144,21 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .clabel{min-width:64px;font-size:12px;color:var(--muted-foreground)}
 .cmsg{margin:6px 0 0 70px;font-size:12px}
 .cctl .input{width:140px}
-.cctl .input[type=number]{width:64px}
-.cctl select{max-width:260px}`;
+.cctl select{max-width:260px}
+.picker{font-family:var(--font-sans)}
+.picker>div{height:min(40rem,calc(100vh - 4rem))}
+.picker section{display:flex;flex-direction:column;gap:12px;min-height:0}
+.plist{flex:1;min-height:0;margin:0 -8px;overflow-y:auto}
+.plist label{display:flex;align-items:center;gap:12px;padding:8px;border-radius:var(--radius-md);cursor:pointer}
+.plist label:hover{background:var(--muted)}
+.plist .pvariant{padding-left:60px}
+.pname{display:flex;flex:1;flex-direction:column;min-width:0}
+.pname>span{font-weight:500}
+.pvariant .pname>span{font-weight:400}
+.pname .badge{margin-left:8px}
+.pname small{font-size:12px;color:var(--muted-foreground)}
+.pprice{font-variant-numeric:tabular-nums}
+.pempty{padding:24px 8px;text-align:center;color:var(--muted-foreground)}`;
 
 export const JOURNEY_CSS = `.jhead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:2px 0 12px;font:13px var(--font-sans);color:var(--muted-foreground)}
 .jhead b{color:var(--foreground)}

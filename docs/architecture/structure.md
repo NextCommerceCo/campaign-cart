@@ -75,7 +75,8 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
-    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors, toggles, their types
+    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors, toggles, their types;
+                                                variants.ts: a package's variant choices, for slots and debug
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
@@ -106,7 +107,10 @@ src/
     journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
     icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    cart.ts                        the cart as a shopper sees it, with controls that call engine.cart
+    cart.ts                        the cart as the dashboard draws it: lines with variant selects (a bundle slot's variant
+                                   changes through its selector), totals, coupons, shipping
+    picker.ts                      Add products: tsugi's dialog listing the campaign's packages by product, as the
+                                   dashboard's product picker
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
                                    analytics chunk's decision traces
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
@@ -131,7 +135,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 32 KB         |
+| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 36 KB         |
 
 ## Imports
 
