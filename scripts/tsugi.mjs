@@ -16,6 +16,7 @@ const COMPONENTS = [
   'journey',
   'label',
   'native-select',
+  'scrollbar',
   'stat',
   'tabs',
   'timeline',

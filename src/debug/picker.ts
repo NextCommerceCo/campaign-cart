@@ -19,7 +19,7 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
   const picked = new Set<number>();
   const search = h('input', { type: 'search', className: 'input', placeholder: 'Search packages' });
   search.setAttribute('aria-label', 'Search packages');
-  const list = h('ul', 'plist');
+  const list = h('ul', 'plist scrollbar-sm');
   const add = h('button', { type: 'button', className: 'btn' }, 'Add to cart');
   const close = tsugi(h('button', { type: 'button', className: 'btn', onclick: () => dialog.close() }, icon('close')), {
     variant: 'ghost',

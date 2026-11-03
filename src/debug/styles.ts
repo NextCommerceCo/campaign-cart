@@ -43,6 +43,7 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .body>.empty{height:100%;font-family:var(--font-sans)}
 .summary{margin:2px 0 8px;font-family:var(--font-sans);color:var(--muted-foreground)}
 .link{margin-left:8px;color:var(--info)}
+.link.danger{color:var(--destructive)}
 .row,summary{padding:3px 6px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
 summary{list-style:none;cursor:pointer}
 summary::-webkit-details-marker{display:none}
@@ -112,17 +113,20 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .chead b{font-weight:600;color:var(--foreground)}
 .chead>span{margin-right:auto}
 .chead .link{margin-left:0}
-.cline,.ctotals,.cctl{margin-bottom:14px;font-family:var(--font-sans);font-size:14px;font-variant-numeric:tabular-nums}
-.cline{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md)}
+.cline,.ctotals,.cctl{margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:14px;font-variant-numeric:tabular-nums}
+.cline{position:relative}
 .cbadges{position:absolute;top:-10px;right:12px;display:flex;gap:6px}
 .cbadges .badge{background:var(--card)}
-.cmain{display:flex;align-items:center;gap:16px;padding:16px}
-.cinfo{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.cmain{display:flex;align-items:flex-start;gap:16px;padding:16px}
+.cinfo{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
 .cinfo>b{overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
 .cunit,.cinfo>small{color:var(--muted-foreground)}
 .cinfo>small{font-size:12px}
-.cact{display:flex;align-items:center;gap:4px;margin-top:6px}
-.cprice{display:flex;flex-direction:column;align-items:flex-end;gap:4px;align-self:flex-start}
+.cunit{display:flex;align-items:center;gap:6px}
+.cstep{display:inline-flex;align-items:center}
+.cstep>span{min-width:24px;text-align:center;color:var(--foreground)}
+.cprice{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.cprice .btn{margin-right:-10px}
 .cprice s{color:var(--muted-foreground)}
 .cprice b{font-weight:600}
 .cprice small{font-size:12px;color:var(--warning)}
@@ -138,13 +142,13 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .tmore[open] .chev{transform:rotate(180deg)}
 .tpart{display:flex;justify-content:space-between;align-items:center;padding:2px 0 4px 10px;font-size:13px;color:var(--muted-foreground)}
 .tpart .badge{margin-right:6px}
-.tgrand{margin-top:4px;padding-top:10px;border-top:1px solid var(--border);font-weight:600}
+.tlist{padding:10px 16px}
+.tgrand{padding:16px;border-top:1px solid var(--border);font-weight:600}
+.cctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px}
 .crow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.crow+.crow,.cmsg+.crow{margin-top:8px}
-.clabel{min-width:64px;font-size:12px;color:var(--muted-foreground)}
-.cmsg{margin:6px 0 0 70px;font-size:12px}
-.cctl .input{width:140px}
-.cctl select{max-width:260px}
+.cctl .input{flex:1;min-width:0}
+.cctl .select{width:100%}
+.cmsg{font-size:12px}
 .picker{font-family:var(--font-sans)}
 .picker>div{height:min(40rem,calc(100vh - 4rem))}
 .picker section{display:flex;flex-direction:column;gap:12px;min-height:0}

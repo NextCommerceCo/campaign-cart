@@ -257,6 +257,7 @@ describe('debug tools', () => {
     const tokens = defined(TSUGI_CSS);
     const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + JOURNEY_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
+    expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
     expect(CART_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();

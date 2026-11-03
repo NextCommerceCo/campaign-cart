@@ -13,7 +13,7 @@ async function setup() {
   paint();
   const lines = () =>
     [...root.querySelectorAll('.cline')].map((l) =>
-      ['.cinfo > b', '.cinfo > small', '.avatar-count', '.cprice'].map((q) => l.querySelector(q)!.textContent),
+      ['.cinfo > b', '.cinfo > small', '.avatar-count', '.cprice > b'].map((q) => l.querySelector(q)!.textContent),
     );
   const button = (text: string) =>
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
@@ -53,7 +53,7 @@ describe('cart tab', () => {
     expect(view.dialog.open).toBe(false);
     await vi.waitFor(() => expect(head()).toMatch(/^1 item · \$[\d,.]+ · priced at \d\d:\d\d:\d\d$/));
     expect(lines()).toEqual([['Earbuds ×2', '#2 · from added', '1', expect.stringMatching(/^\$/)]]);
-    expect(root.querySelector('.cunit')!.textContent).toMatch(/^\$[\d.]+ × 1$/);
+    expect(root.querySelector('.cunit')!.textContent).toMatch(/^\$[\d.]+ ×−1\+$/);
     const totals = [...root.querySelectorAll('.trow')].map((r) => r.firstChild!.textContent);
     expect(totals).toEqual(['Subtotal', 'ShippingStandard', 'Total']);
   });
@@ -120,10 +120,10 @@ describe('cart tab', () => {
   });
 
   it('marks a line an estimate until the server prices it', async () => {
-    const { engine, paint, lines, head } = await setup();
+    const { engine, root, paint, lines, head } = await setup();
     const adding = engine.cart.addItem(1);
     paint();
-    expect(lines()[0]![3]).toBe('$49.00estimate');
+    expect([lines()[0]![3], root.querySelector('.cprice small')!.textContent]).toEqual(['$49.00', 'estimate']);
     expect(head()).toBe('1 item · pricing…');
     await adding;
   });
