@@ -49,11 +49,13 @@ export interface FieldRule {
   errors?: Partial<Record<FieldError, string>>;
 }
 
+export type FormatPart = { field: string } | { text: string };
+
 export interface CountryRules {
   country: CountryOption;
   fields: Partial<Record<string, FieldRule>>;
   states?: CountryOption[];
-  address?: { layout: string[][] };
+  address?: { layout: string[][]; format?: FormatPart[][]; format_latin?: FormatPart[][] };
 }
 
 export interface PhoneRead {

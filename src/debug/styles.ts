@@ -206,38 +206,21 @@ export const CHECKOUT_CSS = `.ksteps>.kstep+.kstep{border-top:1px solid var(--bo
 .kstep>.icon{grid-row:span 2;width:20px;height:20px;margin-top:1px}
 .kstep>b{font-weight:500}
 .kstep>small{font-size:13px;color:var(--muted-foreground)}
+.kstep>small>span{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
 .kstep.done>.icon{color:var(--success)}
 .kstep.bad>.icon,.kstep.bad>small{color:var(--destructive)}
 .kstep.warn>.icon,.kstep.warn>small{color:var(--warning)}
 .kstep.todo>.icon{color:var(--muted-foreground)}
+.kicons{display:inline-flex;gap:3px}
+.kicons .payment-icon{height:18px}
 .krows{display:grid;grid-template-columns:minmax(116px,30%) minmax(0,1fr)}
-.krows>*{padding:8px 16px;border-top:1px solid var(--border)}
+.krows>*{padding:8px 16px;border-bottom:1px solid var(--border)}
 .krows>dd{overflow-wrap:anywhere}
-.krows>:nth-child(-n+2){border-top:0}
-.krows>dt{color:var(--muted-foreground);text-transform:capitalize}
+.krows>dt{color:var(--muted-foreground)}
 .krows dd .badge{margin-left:8px}
-.ksub{padding:12px 16px 4px;border-top:1px solid var(--border);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
-.kpay{padding:14px 16px 0}
-.kpay:last-child{padding-bottom:16px}
-.ksublabel{margin-bottom:8px;font-size:13px;font-weight:500}
-.kexpress{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px}
-.ktile{display:flex;align-items:center;justify-content:center;height:44px;overflow:hidden;background:var(--color-white);border:1px solid var(--border);border-radius:var(--radius-md)}
-.ktile .payment-icon{height:40px;background-size:125%}
-.kor{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12px;color:var(--muted-foreground)}
-.kor::before,.kor::after{content:'';flex:1;height:1px;background:var(--border)}
-.kmethods{overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-lg)}
-.kmrow+.kmrow{border-top:1px solid var(--border)}
-.kmrow.on{background:color-mix(in oklab,var(--primary) 5%,transparent)}
-.kmethod{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;text-align:left}
-.kmethod:hover{background:var(--accent)}
-.kmethod>b{flex:1;min-width:0;font-weight:500}
-.kicons{display:flex;gap:4px}
-.kicons .payment-icon{height:20px}
-.kdot{display:grid;place-items:center;width:16px;height:16px;border:1px solid var(--input);border-radius:50%}
-.on .kdot{border-color:var(--primary)}
-.on .kdot::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--primary)}
-.kpanel{border-top:1px solid var(--border);background:var(--background)}
-.kpanel .krows{font-size:13px}
-.kredirect{padding:12px 16px;font-size:13px;color:var(--muted-foreground)}
-@container panel (max-width:420px){.kicons{display:none}}
+.kaddrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:12px 16px 16px}
+.kaddr{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.kaddr address{font-style:normal}
+.ksub{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
+.kerrs{display:flex;flex-wrap:wrap;gap:4px}
 .knote{margin:-4px 2px 14px;font:13px var(--font-sans);color:var(--muted-foreground)}`;

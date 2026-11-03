@@ -52,7 +52,7 @@ scripts/size.mjs           gzip budget per chunk; fails the build over one, or o
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
-vendor/tsugi/payment-icons.css  tsugi's payment icons the payment card shows, inlined; a chunk of its own
+vendor/tsugi/payment-icons.css  tsugi's payment icons the payment step shows, inlined; a chunk of its own
 dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
@@ -111,9 +111,9 @@ src/
     cart.ts                        the cart part of Checkout, as campaign-client draws it: lines with their variant,
                                    stepper and price, a line opened for its discounts and variant selects (a bundle slot
                                    changes through its selector), vouchers, shipping, totals and the math that checks them
-    checkout.ts                    the Checkout tab: what stands between the shopper and the order, the cart, the
-                                   customer and payment as the checkout holds them; Check form and Fill test details
-                                   call engine.checkout
+    checkout.ts address.ts         the Checkout tab: whether the order can go through and each step, the cart, the
+                                   customer with addresses written by the country's i18n-rules format; Check form and
+                                   Fill test details call engine.checkout
     picker.ts                      Add packages: tsugi's dialog listing the campaign's packages by product, as the
                                    dashboard's product picker
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
@@ -141,7 +141,7 @@ src/
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
 | debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 40 KB         |
-| debug icons | the Checkout tab's payment card                                     | 16 KB         |
+| debug icons | the Checkout tab's payment step                                     | 16 KB         |
 
 ## Imports
 

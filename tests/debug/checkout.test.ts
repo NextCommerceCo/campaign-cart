@@ -33,7 +33,13 @@ async function setup(withCheckout = true, offers: Partial<typeof campaign> = {})
     [...block(title).querySelectorAll('.krows dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]);
   const button = (text: string) =>
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
-  return { engine, api, root, view, paint, steps, block, rows, button, ui };
+  const verdict = () => block('Order').querySelector('.bhead p')!.textContent;
+  const written = (title: string) =>
+    [...root.querySelectorAll('.kaddr')]
+      .find((a) => a.querySelector('.ksub')!.textContent === title)!
+      .querySelector('address')
+      ?.innerHTML.split('<br>');
+  return { engine, api, root, view, paint, steps, block, rows, button, ui, verdict, written };
 }
 
 describe('checkout tab', () => {
@@ -45,37 +51,39 @@ describe('checkout tab', () => {
     expect(view.summary()).toBe('cart only');
   });
 
-  it('lists what stands between the shopper and the order, then the cart, customer and payment', async () => {
-    const { engine, root, paint, steps, view } = await setup();
+  it('says whether the order can go through, then lists each step, the cart and the customer', async () => {
+    const { engine, root, paint, steps, view, verdict } = await setup();
     await engine.cart.addItem(1);
     paint();
-    expect(view.summary()).toBe('step 1 · not placed yet');
-    expect([...root.querySelectorAll('.bhead h4')].map((h) => h.textContent)).toEqual([
-      'Order',
-      'Cart',
-      'Customer',
-      'Payment',
-    ]);
+    expect(view.summary()).toBe('step 1');
+    expect(verdict()).toBe('Blocked: payment');
+    expect([...root.querySelectorAll('.bhead h4')].map((h) => h.textContent)).toEqual(['Order', 'Cart', 'Customer']);
     expect(steps()).toEqual([
       ['Cart', '1 item', 'done'],
-      ['Details', 'Not filled in yet: email, first name, last name, line1, city', 'todo'],
+      ['Details', 'Not filled in yet: Email, First name, Last name, Address, Town/City', 'todo'],
       ['Shipping', 'Standard', 'done'],
-      ['Payment', "Card needs cc-number and cvv fields and the campaign's payment_env_key", 'bad'],
+      ['Payment', 'Card · no cc-number and cvv fields on the page', 'bad'],
       ['Prospect', 'Saved once the email is filled in', 'todo'],
-      ['Address rules', 'GB loaded', 'done'],
       ['Order', 'Not placed yet', 'todo'],
+    ]);
+    expect([...root.querySelectorAll('.kstep.bad .payment-icon')].map((i) => i.className.split('-').pop())).toEqual([
+      'visa',
+      'mastercard',
+      'express',
+      'discover',
     ]);
   });
 
   it('checks the form like a submit would, and names each field the order would refuse', async () => {
-    const { button, steps, rows } = await setup();
+    const { button, steps, rows, root } = await setup();
     button('Check form').click();
-    expect(steps()[1]).toEqual(['Details', expect.stringMatching(/^email: Missing, /), 'bad']);
+    expect(steps()[1]).toEqual(['Details', expect.stringMatching(/^Email: Missing, /), 'bad']);
     expect(rows('Customer')[0]).toEqual(['Email', '—Missing']);
+    expect([...root.querySelectorAll('.kaddr .kerrs .badge')].map((b) => b.textContent)).toContain('Address: Missing');
   });
 
-  it('fills test details through the checkout, as typing would', async () => {
-    const { engine, button, rows } = await setup();
+  it('fills test details through the checkout, and writes the address as the country does', async () => {
+    const { engine, button, rows, written, paint } = await setup();
     await engine.cart.addItem(1);
     button('Fill test details').click();
     expect(engine.getState().checkout!.fields).toMatchObject({
@@ -83,57 +91,32 @@ describe('checkout tab', () => {
       city: 'Austin',
       state: 'TX',
     });
-    expect(rows('Customer').slice(4)).toEqual([
-      ['Country', 'United States (US)'],
-      ['line1', '1 Test Street'],
-      ['line2', '—'],
-      ['city', 'Austin'],
-      ['state', 'TX'],
-      ['postcode', '78701'],
-      ['Address', 'Same as shipping'],
+    await vi.waitFor(() => {
+      paint();
+      expect(written('Ship to')).toEqual(['Test Shopper', '1 Test Street', 'Austin, TX 78701', 'United States']);
+    });
+    engine.checkout!.setField('state', 'CA');
+    paint();
+    expect(written('Ship to')![2]).toBe('Austin, California 78701');
+    expect(rows('Customer')).toEqual([
+      ['Email', 'test@example.com'],
+      ['Phone', expect.stringMatching(/2015550123|201/)],
+      ['Marketing', 'Accepted'],
     ]);
+    expect(written('Bill to')).toBeUndefined();
   });
 
-  it('shows payment as the checkout offers it, and switches the method for the page', async () => {
-    document.body.innerHTML =
-      '<div data-next-payment-method="credit"></div><div data-next-payment-method="paypal"></div>';
-    const { engine, block, root, ui } = await setup(true, {
-      available_express_payment_methods: [{ code: 'apple_pay', label: 'Apple Pay' }],
+  it('names the payment method the checkout holds, with its icon', async () => {
+    const { engine, paint, steps, root, ui } = await setup(true, {
       available_payment_methods: [
         { code: 'bankcard', label: 'Bankcard' },
-        { code: 'paypal', label: 'PayPal' },
         { code: 'klarna', label: 'Klarna' },
       ],
     });
-    const payment = block('Payment');
     expect(ui.paymentIcons).toHaveBeenCalled();
-    expect(payment.querySelector('.ktile')!.getAttribute('aria-label')).toBe('Apple Pay');
-    const methods = () =>
-      [...payment.querySelectorAll('.kmrow')].map((r) => [
-        r.querySelector('b')!.textContent,
-        r.classList.contains('on'),
-      ]);
-    expect(methods()).toEqual([
-      ['Card', true],
-      ['PayPal', false],
-      ['Klarna', false],
-    ]);
-    expect([...payment.querySelectorAll('.kmethod .badge')].map((b) => b.textContent)).toEqual(['not on this page']);
-    expect([...payment.querySelectorAll('.kmrow.on .payment-icon')].map((i) => i.className)).toEqual([
-      'payment-icon payment-icon-visa',
-      'payment-icon payment-icon-mastercard',
-      'payment-icon payment-icon-american-express',
-      'payment-icon payment-icon-discover',
-    ]);
-    expect(payment.querySelector('.kpanel')!.textContent).toContain(
-      'Missing: no cc-number and cvv fields on this page',
-    );
-    [...payment.querySelectorAll<HTMLElement>('.kmethod')][1]!.click();
-    expect(engine.getState().checkout!.paymentMethod).toBe('paypal');
-    expect(block('Payment').querySelector('.kpanel')!.textContent).toBe(
-      'PayPal opens after the order is placed, then sends the shopper back to the next page.',
-    );
-    document.body.innerHTML = '';
-    root.remove();
+    engine.checkout!.setPaymentMethod('klarna');
+    paint();
+    expect(steps()[3]).toEqual(['Payment', 'Klarna', 'done']);
+    expect(root.querySelector('.kstep.done .payment-icon')!.className).toBe('payment-icon payment-icon-klarna');
   });
 });

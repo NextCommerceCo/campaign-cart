@@ -1,6 +1,7 @@
 import type { CheckoutState } from '../checkout/state/types';
 import type { Engine } from '../engine/engine';
 import type { CheckoutError } from '../engine/types';
+import { writtenAddress } from './address';
 import type { cartView } from './cart';
 import { icon } from './icons';
 import { badge, type Child, h, tsugi } from './view';
@@ -22,11 +23,10 @@ const METHODS: Record<string, string> = {
   shop_pay: 'Shop Pay',
 };
 const CARD_BRANDS = ['visa', 'mastercard', 'american-express', 'discover'];
-const REDIRECTS = ['paypal', 'klarna', 'ideal', 'afterpay', 'affirm', 'link'];
 const iconOf = (code: string) => (code === 'card_token' ? CARD_BRANDS : [code.replace(/_/g, '-')]);
 const paymentIcon = (name: string) => h('span', `payment-icon payment-icon-${name}`);
 const DETAILS = ['email', 'first_name', 'last_name', 'line1', 'city', 'country'];
-const ADDRESS = ['line1', 'line2', 'city', 'state', 'postcode'];
+const CONTACT = ['email', 'phone_number'];
 const TEST_DETAILS: Record<string, string> = {
   email: 'test@example.com',
   first_name: 'Test',
@@ -38,7 +38,24 @@ const TEST_DETAILS: Record<string, string> = {
   postcode: '78701',
 };
 
-const label = (name: string) => name.replace(/^billing_/, '').replace(/_/g, ' ');
+const LABELS: Record<string, string> = {
+  email: 'Email',
+  first_name: 'First name',
+  last_name: 'Last name',
+  line1: 'Address',
+  line2: 'Apartment, suite',
+  city: 'City',
+  state: 'State',
+  postcode: 'Postcode',
+  country: 'Country',
+  phone_number: 'Phone',
+};
+
+const label = (state: CheckoutState, name: string) => {
+  const field = name.replace(/^billing_/, '');
+  const country = name.startsWith('billing_') ? state.fields.billing_country : state.fields.country;
+  return state.rules[country ?? '']?.fields[field]?.label ?? LABELS[field] ?? field.replace(/_/g, ' ');
+};
 
 type Tone = 'done' | 'todo' | 'bad' | 'warn';
 const MARKS = { done: 'check', todo: 'wait', bad: 'fail', warn: 'warn' } as const;
@@ -74,159 +91,132 @@ export function checkoutView(
       ...pairs.flatMap(([name, value, error]) => [h('dt', {}, name), h('dd', {}, value || '—', problem(error))]),
     );
 
-  const block = (title: string, description: string, ...children: Child[]) =>
+  const block = (title: string, description: Child, ...children: Child[]) =>
     h('div', 'block', h('div', 'bhead', h('div', {}, h('h4', {}, title), h('p', {}, description))), ...children);
 
-  const step = (title: string, detail: string, tone: Tone) =>
-    h('div', `kstep ${tone}`, icon(MARKS[tone]), h('b', {}, title), h('small', {}, detail));
+  interface Step {
+    title: string;
+    detail: Child;
+    tone: Tone;
+  }
 
-  const steps = (state: CheckoutState) => {
+  const payment = (state: CheckoutState): Step => {
+    ui.paymentIcons();
+    const { campaign } = engine.getState();
+    const method = state.paymentMethod;
+    const offered = campaign?.available_payment_methods?.find(
+      (m) => (m.code === 'bankcard' ? 'card_token' : m.code) === method,
+    );
+    const name = METHODS[method] ?? offered?.label ?? method;
+    const icons = h('span', 'kicons', ...iconOf(method).map(paymentIcon));
+    if (method !== 'card_token') return { title: 'Payment', detail: h('span', {}, icons, name), tone: 'done' };
+    const fields = !!document.getElementById('spreedly-number');
+    const key = !!campaign?.payment_env_key;
+    const detail =
+      fields && key
+        ? 'fields ready'
+        : !fields
+          ? 'no cc-number and cvv fields on the page'
+          : 'no payment_env_key on the campaign';
+    return {
+      title: 'Payment',
+      detail: h('span', {}, icons, `${name} · ${detail}`),
+      tone: fields && key ? 'done' : 'bad',
+    };
+  };
+
+  const steps = (state: CheckoutState): Step[] => {
     const { campaign, cart: basket } = engine.getState();
     const units = engine.cart.lines().reduce((n, l) => n + l.quantity, 0);
     const fieldErrors = Object.entries(state.errors).filter(([name]) => name !== 'form');
     const missing = DETAILS.filter((name) => !state.fields[name]?.trim());
-    const method = state.paymentMethod;
-    const cardReady = !!document.getElementById('spreedly-number') && !!campaign?.payment_env_key;
-    const country = state.fields.country ?? '';
     const shipping =
       basket.summary?.shipping_method?.name ??
       campaign?.shipping_methods.find((m) => m.ref_id === basket.shippingId)?.code;
     const form = state.errors.form;
+    const order: Step = form
+      ? {
+          title: 'Order',
+          detail: `Refused: ${form.message ?? form.code}${form.decline ? ` (${form.decline})` : ''}`,
+          tone: 'bad',
+        }
+      : state.status === 'placing'
+        ? { title: 'Order', detail: 'Placing…', tone: 'todo' }
+        : state.pendingRef
+          ? { title: 'Order', detail: `Waiting for the payment to complete for ${state.pendingRef}`, tone: 'todo' }
+          : state.status === 'placed'
+            ? { title: 'Order', detail: 'Placed', tone: 'done' }
+            : { title: 'Order', detail: 'Not placed yet', tone: 'todo' };
     return [
       units
-        ? step('Cart', `${units} item${units === 1 ? '' : 's'}`, 'done')
-        : step('Cart', 'Empty: an order needs at least one line', 'bad'),
+        ? { title: 'Cart', detail: `${units} item${units === 1 ? '' : 's'}`, tone: 'done' }
+        : { title: 'Cart', detail: 'Empty: an order needs at least one line', tone: 'bad' },
       fieldErrors.length
-        ? step(
-            'Details',
-            fieldErrors.map(([name, error]) => `${label(name)}: ${PROBLEMS[error.code] ?? error.code}`).join(', '),
-            fieldErrors.every(([, error]) => error.warning) ? 'warn' : 'bad',
-          )
+        ? {
+            title: 'Details',
+            detail: fieldErrors
+              .map(([name, error]) => `${label(state, name)}: ${PROBLEMS[error.code] ?? error.code}`)
+              .join(', '),
+            tone: fieldErrors.every(([, error]) => error.warning) ? 'warn' : 'bad',
+          }
         : missing.length
-          ? step('Details', `Not filled in yet: ${missing.map(label).join(', ')}`, 'todo')
-          : step('Details', 'Contact and shipping filled in', 'done'),
-      shipping ? step('Shipping', shipping, 'done') : step('Shipping', 'No method yet', 'todo'),
-      method !== 'card_token'
-        ? step('Payment', METHODS[method] ?? method, 'done')
-        : cardReady
-          ? step('Payment', 'Card fields ready', 'done')
-          : step('Payment', "Card needs cc-number and cvv fields and the campaign's payment_env_key", 'bad'),
+          ? {
+              title: 'Details',
+              detail: `Not filled in yet: ${missing.map((name) => label(state, name)).join(', ')}`,
+              tone: 'todo',
+            }
+          : { title: 'Details', detail: 'Contact and shipping filled in', tone: 'done' },
+      shipping
+        ? { title: 'Shipping', detail: shipping, tone: 'done' }
+        : { title: 'Shipping', detail: 'No method yet', tone: 'todo' },
+      payment(state),
       state.prospectSaved
-        ? step('Prospect', 'Saved: abandoned-cart emails can go out', 'done')
-        : step('Prospect', 'Saved once the email is filled in', 'todo'),
-      state.rulesDown
-        ? step('Address rules', 'Service down: fields fall back to basic checks', 'warn')
-        : state.rules[country]
-          ? step('Address rules', `${country} loaded`, 'done')
-          : step('Address rules', 'Load with the country', 'todo'),
-      form
-        ? step('Order', `Refused: ${form.message ?? form.code}${form.decline ? ` (${form.decline})` : ''}`, 'bad')
-        : state.status === 'placing'
-          ? step('Order', 'Placing…', 'todo')
-          : state.pendingRef
-            ? step('Order', `Waiting for the payment to complete for ${state.pendingRef}`, 'todo')
-            : state.status === 'placed'
-              ? step('Order', 'Placed', 'done')
-              : step('Order', 'Not placed yet', 'todo'),
+        ? { title: 'Prospect', detail: 'Saved: abandoned-cart emails can go out', tone: 'done' }
+        : { title: 'Prospect', detail: 'Saved once the email is filled in', tone: 'todo' },
+      ...(state.rulesDown
+        ? [{ title: 'Address rules', detail: 'Service down: fields fall back to basic checks', tone: 'warn' } as Step]
+        : []),
+      order,
     ];
   };
 
-  const address = (state: CheckoutState, prefix: '' | 'billing_') => {
-    const country = state.fields[`${prefix}country`];
-    const name = state.countries.find((c) => c.code === country)?.name;
-    return rows([
-      ['Country', country && `${name ?? country} (${country})`, state.errors[`${prefix}country`]],
-      ...ADDRESS.map((field): [string, Child, CheckoutError?] => [
-        label(field),
-        state.fields[prefix + field],
-        state.errors[prefix + field],
-      ]),
-    ]);
+  const verdict = (state: CheckoutState, all: Step[]) => {
+    const needed = all.filter((s) => ['Cart', 'Details', 'Shipping', 'Payment', 'Order'].includes(s.title));
+    const bad = needed.filter((s) => s.tone === 'bad').map((s) => s.title.toLowerCase());
+    const todo = needed.filter((s) => s.tone === 'todo' && s.title !== 'Order').map((s) => s.title.toLowerCase());
+    if (state.status === 'placed') return h('span', 'green', 'Placed');
+    if (bad.length) return h('span', 'red', `Blocked: ${bad.join(', ')}`);
+    if (todo.length) return h('span', 'amber', `Not ready yet: ${todo.join(', ')}`);
+    return h('span', 'green', 'Ready: nothing stops the order');
   };
 
-  const payment = (state: CheckoutState) => {
-    ui.paymentIcons();
-    const { campaign } = engine.getState();
-    const express = campaign?.available_express_payment_methods ?? [];
-    const methods = (campaign?.available_payment_methods ?? []).map((m) => {
-      const code = m.code === 'bankcard' ? 'card_token' : m.code;
-      return { code, label: METHODS[code] ?? m.label };
-    });
-    const onPage = (code: string) =>
-      code === 'card_token' ||
-      [...document.querySelectorAll('[data-next-payment-method]')].some(
-        (el) => el.getAttribute('data-next-payment-method')?.replace(/-/g, '_') === code,
-      );
-    const cardFields = !!document.getElementById('spreedly-number');
-    const panel = (code: string, name: string) =>
-      code === 'card_token'
-        ? rows([
-            [
-              'Card fields',
-              cardFields
-                ? 'Ready: the number and CVV are Spreedly fields'
-                : 'Missing: no cc-number and cvv fields on this page',
-            ],
-            ['Payment key', campaign?.payment_env_key ? 'Set' : 'Missing: the card cannot be tokenized'],
-          ])
-        : h(
-            'p',
-            'kredirect',
-            REDIRECTS.includes(code)
-              ? `${name} opens after the order is placed, then sends the shopper back to the next page.`
-              : `${name} pays with the order.`,
-          );
-    return block(
-      'Payment',
-      'How the shopper pays, as this checkout offers it.',
-      express.length > 0 &&
+  const address = (state: CheckoutState, prefix: '' | 'billing_', title: string) => {
+    const errors = Object.entries(state.errors).filter(
+      ([name]) =>
+        name.startsWith(prefix) &&
+        !CONTACT.includes(name) &&
+        name !== 'form' &&
+        (prefix || !name.startsWith('billing_')),
+    );
+    const lines = writtenAddress(state, prefix);
+    return h(
+      'div',
+      'kaddr',
+      h('p', 'ksub', title),
+      lines.length
+        ? h('address', {}, ...lines.flatMap((line, i) => (i ? [h('br'), line] : [line])))
+        : h('p', 'dim', 'Not filled in yet'),
+      errors.length > 0 &&
         h(
           'div',
-          'kpay',
-          h('p', 'ksublabel', 'Express checkout'),
-          h(
-            'div',
-            'kexpress',
-            ...express.map((m) => {
-              const tile = h('span', 'ktile', ...iconOf(m.code).map(paymentIcon));
-              tile.title = `${m.label}: its button on the page starts the order`;
-              tile.setAttribute('role', 'img');
-              tile.setAttribute('aria-label', m.label);
-              return tile;
-            }),
+          'kerrs',
+          ...errors.map(([name, error]) =>
+            badge(
+              `${label(state, name)}: ${PROBLEMS[error.code] ?? error.code}`,
+              error.warning ? 'warning' : 'destructive',
+            ),
           ),
-          h('div', 'kor', 'OR'),
         ),
-      h(
-        'div',
-        'kpay',
-        h('p', 'ksublabel', 'Payment method'),
-        h(
-          'div',
-          'kmethods',
-          ...methods.map((m) => {
-            const on = m.code === state.paymentMethod;
-            const row = h(
-              'button',
-              {
-                type: 'button',
-                className: 'kmethod',
-                onclick: () => {
-                  engine.checkout!.setPaymentMethod(m.code);
-                  ui.render();
-                },
-              },
-              h('span', 'kdot'),
-              h('b', {}, m.label),
-              !onPage(m.code) && badge('not on this page', 'outline'),
-              h('span', 'kicons', ...iconOf(m.code).map(paymentIcon)),
-            );
-            row.setAttribute('role', 'radio');
-            row.setAttribute('aria-checked', String(on));
-            return h('div', on ? 'kmrow on' : 'kmrow', row, on && h('div', 'kpanel', panel(m.code, m.label)));
-          }),
-        ),
-      ),
     );
   };
 
@@ -235,7 +225,7 @@ export function checkoutView(
       ? 'placing the order…'
       : state.status === 'placed'
         ? 'order placed'
-        : `step ${state.step || 1} · ${Object.keys(state.errors).length ? 'needs fixing' : 'not placed yet'}`;
+        : `step ${state.step || 1}`;
 
   const view = (): Child[] => {
     const state = engine.getState().checkout;
@@ -246,6 +236,7 @@ export function checkoutView(
         h('p', 'knote', 'Customer, address and payment show on the page with form[data-next-checkout].'),
       ];
     const phone = state.phones.phone_number;
+    const all = steps(state);
     return [
       h(
         'div',
@@ -254,27 +245,35 @@ export function checkoutView(
         button('Check form', check),
         button('Fill test details', fill),
       ),
-      block('Order', 'What stands between the shopper and the order.', h('div', 'ksteps', ...steps(state))),
+      block(
+        'Order',
+        verdict(state, all),
+        h(
+          'div',
+          'ksteps',
+          ...all.map((s) =>
+            h('div', `kstep ${s.tone}`, icon(MARKS[s.tone]), h('b', {}, s.title), h('small', {}, s.detail)),
+          ),
+        ),
+      ),
       ...cart.view(),
       block(
         'Customer',
-        'Who orders and where it goes, as the checkout holds it.',
+        'Who orders and where it goes, written as the country writes an address.',
         rows([
           ['Email', state.fields.email, state.errors.email],
-          [
-            'Name',
-            [state.fields.first_name, state.fields.last_name].filter(Boolean).join(' '),
-            state.errors.first_name ?? state.errors.last_name,
-          ],
           ['Phone', phone?.international ?? state.fields.phone_number, state.errors.phone_number],
-          ['Marketing', state.fields.accepts_marketing === 'false' ? 'No' : 'Yes'],
+          ['Marketing', state.fields.accepts_marketing === 'false' ? 'Declined' : 'Accepted'],
         ]),
-        h('p', 'ksub', 'Ship to'),
-        address(state, ''),
-        h('p', 'ksub', 'Bill to'),
-        state.sameAsShipping ? rows([['Address', 'Same as shipping']]) : address(state, 'billing_'),
+        h(
+          'div',
+          'kaddrs',
+          address(state, '', 'Ship to'),
+          state.sameAsShipping
+            ? h('div', 'kaddr', h('p', 'ksub', 'Bill to'), h('p', {}, 'Same as shipping'))
+            : address(state, 'billing_', 'Bill to'),
+        ),
       ),
-      payment(state),
     ];
   };
 

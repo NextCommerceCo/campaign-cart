@@ -13,6 +13,13 @@ export const US: CountryRules = {
       ['city', 'state', 'postcode'],
       ['phone_number'],
     ],
+    format: [
+      [{ field: 'first_name' }, { text: ' ' }, { field: 'last_name' }],
+      [{ field: 'line1' }],
+      [{ field: 'line2' }],
+      [{ field: 'city' }, { text: ', ' }, { field: 'state' }, { text: ' ' }, { field: 'postcode' }],
+      [{ field: 'country' }],
+    ],
   },
   fields: {
     city: { required: true, label: 'City' },
