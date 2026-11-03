@@ -52,7 +52,9 @@ quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, 
 | `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts                                                                                                                             |
 
 Every card is priced on the server with its vouchers and the shopper's coupons, as in 0.4.x;
-the campaign's package prices show until the quote arrives.
+the campaign's package prices show until the quote arrives. A card's quote is kept for 10
+minutes, so the next page, a reload or a quantity a shopper picked before shows it without
+asking the server again; a coupon or a new quantity prices that card again.
 
 ## Order bumps and cart
 

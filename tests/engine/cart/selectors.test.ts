@@ -226,6 +226,33 @@ describe('selectors', () => {
     expect(price(engine, 'bundle.offer.price')).toBe('$24.50');
   });
 
+  it('prices each card once: a later page reuses the quotes for 10 minutes, a new quantity prices only its card', async () => {
+    const local = new MemoryStorage();
+    const page = async () => {
+      const api = fakeApi();
+      const { engine } = makeEngine({ fetch: api.fetch, local });
+      await engine.start();
+      await engine.selectors.register('main', CARDS, 'swap', 'one');
+      await flush();
+      const quotes = () => api.calls.filter((c) => !('shipping_method' in c.body)).length;
+      return { engine, quotes };
+    };
+    const landing = await page();
+    expect(landing.quotes()).toBe(2);
+    const checkout = await page();
+    expect(checkout.quotes()).toBe(0);
+    expect(price(checkout.engine, 'bundle.two.price')).toBe(price(landing.engine, 'bundle.two.price'));
+    await checkout.engine.selectors.setQuantity('main', 2);
+    await flush();
+    expect(checkout.quotes()).toBe(1);
+    vi.useFakeTimers({ now: Date.now() + 10 * 60 * 1000 + 1, toFake: ['Date'] });
+    try {
+      expect((await page()).quotes()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('falls back to package prices when the quote fails', async () => {
     const failing = (async () => new Response('{}', { status: 500 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing });

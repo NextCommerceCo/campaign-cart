@@ -1,10 +1,15 @@
 import { type CartActions, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
 import { forcedBundle } from '../params';
-import type { CartGroup, CartLine, Selector, SelectorCard, SelectorMode, Slot } from './types';
+import type { CartGroup, CartLine, CartSummary, Selector, SelectorCard, SelectorMode, Slot } from './types';
 import type { Package } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
+
+const QUOTES = 'quotes';
+const QUOTE_MAX_AGE = 10 * 60 * 1000;
+const QUOTE_LIMIT = 24;
+type SavedQuotes = Record<string, { at: number; summary: CartSummary }>;
 
 const clamp = (card: SelectorCard, quantity: number) =>
   Math.min(Math.max(Math.round(quantity), card.min ?? 1), card.max ?? 999);
@@ -93,25 +98,44 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     if (!selector || !currency) return;
     const own = new Set(selector.cards.flatMap((c) => c.vouchers));
     const extra = ctx.getState().cart.coupons.filter((c) => !own.has(c));
+    const upsell = selector.mode === 'offer';
+    const requests = selector.cards.map((card) => {
+      const lines = mergeLines({ [card.id]: { ...card, lines: cardLines(selector, card) } });
+      const vouchers = [...new Set([...card.vouchers, ...extra])];
+      return {
+        card,
+        body: { lines, vouchers, currency },
+        key: JSON.stringify([lines, [...vouchers].sort(), currency, upsell]),
+      };
+    });
+    const now = Date.now();
+    const saved = Object.fromEntries(
+      Object.entries(ctx.local.get<SavedQuotes>(QUOTES) ?? {}).filter(([, q]) => now - q.at < QUOTE_MAX_AGE),
+    );
+    const settle = () =>
+      set(id, {
+        quotes: Object.fromEntries(requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary])),
+        quoting: false,
+      });
+    const missing = requests.filter((r) => !saved[r.key]);
     inFlight.get(id)?.abort();
+    if (!missing.length) {
+      inFlight.delete(id);
+      return settle();
+    }
     const controller = new AbortController();
     inFlight.set(id, controller);
     set(id, { quoting: true });
     try {
       const summaries = await Promise.all(
-        selector.cards.map((card) =>
-          ctx.api.calculate(
-            {
-              lines: mergeLines({ [card.id]: { ...card, lines: cardLines(selector, card) } }),
-              vouchers: [...new Set([...card.vouchers, ...extra])],
-              currency,
-            },
-            { signal: controller.signal, upsell: selector.mode === 'offer' },
-          ),
-        ),
+        missing.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
       );
       if (inFlight.get(id) !== controller) return;
-      set(id, { quotes: Object.fromEntries(selector.cards.map((c, i) => [c.id, summaries[i]!])), quoting: false });
+      const at = Date.now();
+      missing.forEach((r, i) => (saved[r.key] = { at, summary: summaries[i]! }));
+      const newest = Object.entries(saved).sort(([, a], [, b]) => b.at - a.at);
+      ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
+      settle();
     } catch (err) {
       if (inFlight.get(id) !== controller) return;
       set(id, { quoting: false });
