@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS, PANEL_CSS } from '../../src/debug/styles';
+import { ANALYTICS_CSS, CART_CSS, PANEL_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -70,6 +70,7 @@ describe('debug tools', () => {
     const next = await start();
     $('.fab').click();
     menuItem('Cart').click();
+    tab('state');
     details('visit').open = true;
     await vi.waitFor(() => expect(details('visit').textContent).toContain('params'));
     await next.actions.addItem(1);
@@ -191,13 +192,15 @@ describe('debug tools', () => {
     expect(menuItem('Position').textContent).toBe('PositionRight');
   });
 
-  it('styles the panel and the analytics view with separate class names', async () => {
+  it('styles the panel, the analytics view and the cart view with separate class names', async () => {
     await start();
-    expect(shadow().querySelector('style')!.textContent).toBe(PANEL_CSS + ANALYTICS_CSS);
+    expect(shadow().querySelector('style')!.textContent).toBe(PANEL_CSS + ANALYTICS_CSS + CART_CSS);
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
-    const analytics = classes(ANALYTICS_CSS);
     const panel = classes(PANEL_CSS);
+    const analytics = classes(ANALYTICS_CSS);
+    const cart = classes(CART_CSS);
     expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
+    expect([...cart].filter((name) => panel.has(name) || analytics.has(name))).toEqual([]);
   });
 
   it('explains an element from the console', async () => {

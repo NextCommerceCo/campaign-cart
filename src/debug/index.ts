@@ -4,8 +4,9 @@ import { format } from '../engine/format';
 import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
+import { cartView } from './cart';
 import type { ProviderConfig } from './providers';
-import { ANALYTICS_CSS, PANEL_CSS } from './styles';
+import { ANALYTICS_CSS, CART_CSS, PANEL_CSS } from './styles';
 import { type Child, empty, h, nodes, time, tree } from './view';
 
 const LOGO =
@@ -15,7 +16,14 @@ const PICK =
 const CLOSE =
   '<svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
-const TABS = { issues: 'Issues', state: 'State', elements: 'Elements', analytics: 'Analytics', logs: 'Logs' };
+const TABS = {
+  issues: 'Issues',
+  cart: 'Cart',
+  state: 'State',
+  elements: 'Elements',
+  analytics: 'Analytics',
+  logs: 'Logs',
+};
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'logs'];
 const LIMIT = 200;
@@ -92,11 +100,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  host.attachShadow({ mode: 'open' }).append(h('style', {}, PANEL_CSS, ANALYTICS_CSS), box.el, root);
+  host.attachShadow({ mode: 'open' }).append(h('style', {}, PANEL_CSS, ANALYTICS_CSS, CART_CSS), box.el, root);
   document.body.append(host);
 
   const query = () => filter.value.trim().toLowerCase();
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
+  const cart = cartView(engine, { render: () => render(), showState: () => show('state') });
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);
@@ -142,6 +151,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         ...logged.map(logRow),
       ];
     },
+    cart: () => cart.view(),
     state: () => Object.entries(engine.getState()).map(([k, v]) => tree(h('span', 'key', k), v, k, open)),
     elements: () => {
       const found = inspect(engine, picked).filter((i) => matches(i, query()));
@@ -182,7 +192,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       item('Issues', h('span', `count ${count ? tone : 'green'}`, count ? String(count) : 'None'), () =>
         show('issues'),
       ),
-      item('Cart', cartText(), () => show('state')),
+      item('Cart', cartText(), () => show('cart')),
       item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
       item('Logs', String(engine.log.entries().length), () => show('logs')),

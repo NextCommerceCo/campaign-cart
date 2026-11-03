@@ -117,3 +117,36 @@ th{font:600 11px var(--sans);color:var(--muted)}
 .more>summary{font:12px var(--sans);color:var(--muted)}
 .flow{margin:3px 0 3px 14px;font:12px var(--sans)}
 .flow code{font:12px var(--mono)}`;
+
+export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:2px 0 10px;font:13px var(--sans);color:var(--muted)}
+.chead b{font-weight:600;color:var(--fg)}
+.chead .link{margin-left:0}
+.chead span{margin-right:auto}
+.lines{overflow:hidden;background:var(--raised);border:1px solid var(--line);border-radius:10px;font-family:var(--sans)}
+.cline{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px}
+.cline+.cline{border-top:1px solid var(--line)}
+.cline img,.noimg{display:block;width:44px;height:44px;border-radius:8px;background:var(--hover);object-fit:cover}
+.cname{font-weight:600}
+.cmeta{font-size:11px;color:var(--muted)}
+.cprice{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.cprice s,.cprice small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.cprice small{color:var(--amber)}
+.qty{display:inline-flex;align-items:center;gap:2px;margin-top:4px}
+.qty button{width:22px;height:22px;border:1px solid var(--line);border-radius:6px}
+.qty button:hover{background:var(--hover)}
+.qty span{min-width:24px;text-align:center}
+.qty .remove{margin-left:6px;border:0;color:var(--muted)}
+.totals{margin:10px 0;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font:13px var(--sans);font-variant-numeric:tabular-nums}
+.trow{display:flex;justify-content:space-between;gap:12px;padding:2px 0}
+.trow.disc span:last-child{color:var(--green)}
+.trow.grand{margin-top:4px;padding-top:6px;border-top:1px solid var(--line);font-weight:600}
+.crow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0;font:13px var(--sans)}
+.clabel{min-width:64px;font-size:12px;color:var(--muted)}
+.cin,.cqty,select{padding:3px 8px;font:inherit;color:var(--fg);background:var(--raised);border:1px solid var(--line);border-radius:6px}
+.cin{width:140px}.cqty{width:56px}
+select{max-width:280px}
+.btn{padding:3px 10px;border:1px solid var(--line);border-radius:6px}
+.btn:hover{background:var(--hover)}
+.cmsg{margin:-2px 0 8px 70px;font:12px var(--sans)}
+.coupon{padding:0 8px;border:1px solid var(--green);border-radius:999px;color:var(--green);font:12px var(--sans)}
+.coupon button{color:inherit}`;

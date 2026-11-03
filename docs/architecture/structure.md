@@ -97,8 +97,9 @@ src/
     context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, analytics, logs), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (issues, cart, state, elements, analytics, logs), window.nextDebug
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
+    cart.ts                        the cart as a shopper sees it, with controls that call engine.cart
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
                                    analytics chunk's decision traces
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
@@ -123,7 +124,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 12 KB         |
+| debug       | `?debug=1`                                                          | 14 KB         |
 
 ## Imports
 
