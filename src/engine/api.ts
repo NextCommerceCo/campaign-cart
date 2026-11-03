@@ -1,3 +1,4 @@
+import type { Logger } from './log';
 import type {
   AddressSuggestion,
   ApiLine,
@@ -25,6 +26,7 @@ export class Api {
     private apiKey: string,
     private send: Send,
     private base: string,
+    private log: Logger,
   ) {}
 
   calculate(
@@ -63,10 +65,16 @@ export class Api {
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
+    const call = `api ${init.method ?? 'GET'} ${url.slice(this.base.length).split('?')[0]}`;
+    const started = Date.now();
     const res = await this.send(url, {
       ...init,
       headers: { Authorization: this.apiKey, 'Content-Type': 'application/json', ...init.headers },
+    }).catch((err: unknown) => {
+      this.log.debug(`${call} failed`, err);
+      throw err;
     });
+    this.log.debug(`${call} → ${res.status} in ${Date.now() - started} ms`);
     const text = await res.text();
     let body: unknown = text;
     try {

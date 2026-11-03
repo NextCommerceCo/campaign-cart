@@ -1,7 +1,7 @@
-import { parseCondition } from '../engine/condition';
+import { conditionMet, parseCondition } from '../engine/condition';
 import { resolve, resolveCard, resolveToggle, type Value } from '../engine/values';
 import { type BindContext, type Render } from './context';
-import { conditionMet, setVisible, writeValue } from './dom';
+import { setVisible, writeValue } from './dom';
 
 const write = (el: HTMLElement, v: Value, b: BindContext) => writeValue(el, v, b.engine);
 

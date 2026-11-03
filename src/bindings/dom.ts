@@ -1,4 +1,4 @@
-import { type Condition, parseCondition } from '../engine/condition';
+import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
 import type { SelectorLine } from '../engine/types';
 import { format, resolve, type Tokens, truthy, type Value } from '../engine/values';
@@ -77,11 +77,6 @@ export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
   }
   setText(el, format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format')));
 }
-
-export const conditionMet = (condition: Condition, v: Value) =>
-  condition.kind === 'compare'
-    ? (String(v.value ?? '') === condition.literal) === (condition.op === '==')
-    : truthy(v) !== condition.negate;
 
 export const tokenValue =
   (tokens: Record<string, string>) =>

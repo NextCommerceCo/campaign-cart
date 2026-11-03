@@ -1,0 +1,160 @@
+import { conditionMet, parseCondition } from '../engine/condition';
+import type { Engine } from '../engine/engine';
+import { format, resolve, truthy } from '../engine/values';
+import { h } from './view';
+
+const PREFIX = 'data-next-';
+const LIMIT = 200;
+
+export interface Note {
+  attr: string;
+  value: string;
+  note?: string;
+  bad?: boolean;
+}
+
+export interface Box {
+  el: HTMLElement;
+  show(target: Element): void;
+  hide(): void;
+}
+
+const sdkAttrs = (el: Element) => el.getAttributeNames().filter((a) => a.startsWith(PREFIX));
+
+const isSdkElement = (el: Element) => el !== document.documentElement && sdkAttrs(el).length > 0;
+
+const lineage = (el: Element | null): Element[] => (el ? [el, ...lineage(el.parentElement)] : []);
+
+const describe = (el: Element) =>
+  `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${[...el.classList]
+    .filter((c) => !c.startsWith('next-'))
+    .slice(0, 2)
+    .map((c) => `.${c}`)
+    .join('')}`;
+
+function noteFor(engine: Engine, el: Element, attr: string, value: string): Omit<Note, 'attr' | 'value'> {
+  const { campaign } = engine.getState();
+  if (attr === 'data-next-package-id') {
+    const pkg = engine.getPackage(Number(value));
+    if (!campaign) return {};
+    return pkg ? { note: `${pkg.name} · ${pkg.price}` } : { note: 'not in this campaign', bad: true };
+  }
+  const toggle = attr === 'data-next-show' || attr === 'data-next-hide';
+  if (!toggle && attr !== 'data-next-display') return {};
+  const condition = toggle ? parseCondition(value) : undefined;
+  if (condition === null) return { note: 'cannot read', bad: true };
+  const path = condition?.path ?? value;
+  if (!path.includes('.') && el.closest('[data-next-bundle-card]')) return {};
+  const packageId = Number(el.closest('[data-next-package-id]')?.getAttribute('data-next-package-id'));
+  const v = resolve(engine, path, packageId ? { packageId } : {});
+  if (!v) return { note: 'unknown path', bad: true };
+  if (condition) {
+    const shown = conditionMet(condition, v) === (attr === 'data-next-show');
+    return { note: `${JSON.stringify(v.value) ?? 'undefined'} → ${shown ? 'shown' : 'hidden'}` };
+  }
+  if (v.type === 'bool') return { note: truthy(v) ? 'shown' : 'hidden' };
+  return {
+    note: JSON.stringify(format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format'))),
+  };
+}
+
+export function explain(engine: Engine, el: Element): Note[] {
+  return sdkAttrs(el).map((attr) => {
+    const value = el.getAttribute(attr) ?? '';
+    return { attr, value, ...noteFor(engine, el, attr, value) };
+  });
+}
+
+export function highlighter(): Box {
+  const label = h('span');
+  const el = h('div', 'box', label);
+  return {
+    el,
+    show(target) {
+      const r = target.getBoundingClientRect();
+      label.textContent = `${describe(target)}${r.width || r.height ? '' : ' (not visible)'}`;
+      Object.assign(el.style, {
+        display: 'block',
+        top: `${r.top}px`,
+        left: `${r.left}px`,
+        width: `${r.width}px`,
+        height: `${r.height}px`,
+      });
+    },
+    hide() {
+      el.style.display = 'none';
+    },
+  };
+}
+
+export function elementsView(engine: Engine, box: Box, query: string, picked?: Element, unpick?: () => void): Node[] {
+  const rows = (picked ? lineage(picked) : [...document.body.querySelectorAll('*')])
+    .filter(isSdkElement)
+    .map((el) => ({ el, notes: explain(engine, el) }))
+    .filter(({ el, notes }) =>
+      [describe(el), ...notes.map((n) => `${n.attr}="${n.value}"`)].join(' ').toLowerCase().includes(query),
+    );
+  const bad = rows.filter((r) => r.notes.some((n) => n.bad)).length;
+  const summary = h(
+    'div',
+    'row dim',
+    picked ? 'picked element and its SDK parents ' : `${rows.length} elements`,
+    bad > 0 && h('span', 'bad', ` · ${bad} with problems`),
+    picked && h('button', { type: 'button', onclick: unpick }, 'show all'),
+    rows.length > LIMIT && ` · first ${LIMIT}, filter to narrow`,
+  );
+  return [
+    summary,
+    ...rows.slice(0, LIMIT).map(({ el, notes }) => {
+      const row = h(
+        'div',
+        'el',
+        h(
+          'div',
+          {},
+          h('b', {}, describe(el)),
+          ...[...el.classList].filter((c) => c.startsWith('next-')).map((c) => h('span', 'tag', c)),
+        ),
+        ...notes.map((n) =>
+          h('div', n.bad ? 'attr bad' : 'attr', `${n.attr}="${n.value}"`, n.note && h('span', 'note', ` → ${n.note}`)),
+        ),
+      );
+      row.onmouseenter = () => box.show(el);
+      row.onmouseleave = () => box.hide();
+      row.onclick = () => {
+        el.scrollIntoView({ block: 'center' });
+        box.show(el);
+      };
+      return row;
+    }),
+  ];
+}
+
+export function pick(host: Element, box: Box, done: (el?: Element) => void): () => void {
+  const inside = (e: Event) => e.composedPath().includes(host);
+  const target = (e: Event) => lineage(e.target as Element).find(isSdkElement);
+  const over = (e: Event) => {
+    const el = !inside(e) && target(e);
+    if (el) box.show(el);
+    else box.hide();
+  };
+  const click = (e: Event) => {
+    if (inside(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = target(e);
+    if (el) finish(el);
+  };
+  const key = (e: KeyboardEvent) => e.key === 'Escape' && finish();
+  const finish = (el?: Element) => {
+    document.removeEventListener('mouseover', over, true);
+    document.removeEventListener('click', click, true);
+    document.removeEventListener('keydown', key, true);
+    box.hide();
+    done(el);
+  };
+  document.addEventListener('mouseover', over, true);
+  document.addEventListener('click', click, true);
+  document.addEventListener('keydown', key, true);
+  return () => finish();
+}

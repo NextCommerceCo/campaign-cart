@@ -152,4 +152,18 @@ describe('Engine', () => {
     expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
     expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(61_000);
   });
+
+  it('logs every API call by method, path and status, without the query or body', async () => {
+    const { engine } = makeEngine({
+      fetch: (url) => Promise.resolve(new Response('{}', { status: String(url).includes('/orders/') ? 500 : 200 })),
+    });
+    await engine.attach((ctx) => ctx.api.autocomplete('1 Main St', 'US'));
+    await engine.attach((ctx) => ctx.api.createOrder({} as never)).catch(() => {});
+    const calls = engine.log.entries().filter((e) => e.message.startsWith('api '));
+    expect(calls.map((e) => e.message.replace(/\d+ ms/, 'N ms'))).toEqual([
+      'api GET /api/v1/addresses/autocomplete/ → 200 in N ms',
+      'api POST /api/v1/orders/ → 500 in N ms',
+    ]);
+    expect(calls.every((e) => e.level === 'debug' && e.data === undefined)).toBe(true);
+  });
 });

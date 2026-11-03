@@ -111,7 +111,9 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   if (config.debug) {
     engine.log.info(`storage scope ${scope} (funnel "${funnel || '(none)'}")`);
     const reset = () => location.assign(`${location.pathname}?reset=1`);
-    void import('./debug').then((m) => m.startDebug(engine, { scope, funnel, reset }));
+    void import('./debug').then((m) =>
+      m.startDebug(engine, { version: __VERSION__, apiBase: config.apiBase, scope, funnel, reset }),
+    );
   }
 
   if (config.reset) {

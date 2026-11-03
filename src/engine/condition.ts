@@ -1,3 +1,5 @@
+import { truthy, type Value } from './values';
+
 export type Condition =
   { kind: 'path'; path: string; negate: boolean } | { kind: 'compare'; path: string; op: '==' | '!='; literal: string };
 
@@ -12,3 +14,8 @@ export function parseCondition(source: string): Condition | null {
   if (path) return { kind: 'path', path: path[2]!, negate: path[1] === '!' };
   return null;
 }
+
+export const conditionMet = (condition: Condition, v: Value) =>
+  condition.kind === 'compare'
+    ? (String(v.value ?? '') === condition.literal) === (condition.op === '==')
+    : truthy(v) !== condition.negate;

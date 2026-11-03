@@ -27,3 +27,23 @@ Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 
 The other 0.4.x members are gone; no live page calls them. [parity-0.4.md](../architecture/parity-0.4.md)
 lists each one with what to use instead.
+
+## Debugging with `?debug=1`
+
+`?debug=1` on the page URL sends every SDK log line to the console and adds a **next** button
+that opens a panel. Its badge counts warnings and errors (red once there is an error).
+
+| Tab      | Shows                                                                                                                                                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| state    | `next.getState()` as a tree; open branches stay open as the state changes                                                                                                                                                                 |
+| events   | Every [event](events.md) with its data, newest first                                                                                                                                                                                      |
+| logs     | Every log line, including each API call: `api POST /api/v1/carts/calculate/ → 200 in 140 ms`                                                                                                                                              |
+| elements | Every element with a `data-next-*` attribute and what it resolves to now: a display's text, the value behind a show / hide and whether it shows, a package's name and price. Unknown paths and packages missing from the campaign are red |
+| setup    | SDK version, API, campaign, storage scope and funnel; **reset** clears this funnel's saved cart, form and order                                                                                                                           |
+
+Hovering an element row outlines it on the page; clicking scrolls to it. **pick**, then a click on
+the page, shows that element and its SDK parents; the click does not reach the page, and Esc
+cancels. The filter narrows events, logs and elements.
+
+From the console, `nextDebug.explain(el)` gives the same for one element; with an element
+selected in DevTools, `nextDebug.explain($0)`.

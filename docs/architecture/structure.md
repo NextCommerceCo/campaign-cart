@@ -29,8 +29,8 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 6. **Compat code lives in `compat/`, one file per chunk that uses it.** Each item is
    `@deprecated` with its replacement. A file there still ships in the chunk that imports it,
    so the folder decides ownership, not loading. Dropping 0.4.x support = deleting `compat/`.
-7. **`src/` root holds the entries** `loader.ts`, `boot.ts`, `config.ts` and the one-file
-   `debug.ts` chunk. Every other feature is a folder or a file inside one.
+7. **`src/` root holds the entries** `loader.ts`, `boot.ts` and `config.ts`. Every other
+   feature is a folder or a file inside one.
 8. **Comments are rare.** Code says what it does; `docs/` says why.
 9. **Build output is never committed.** CI builds `dist/`.
 10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
@@ -94,7 +94,9 @@ src/
     index.ts                       startAnalytics: engine events → GA4-named `analytics` events
     context.ts ecommerce.ts        page context and event ids; GA4 items and payloads
     ecommerce.ts                   item, cart and order ecommerce payloads
-  debug.ts             debug       loaded with ?debug=1
+  debug/               debug       loaded with ?debug=1
+    index.ts                       startDebug: panel tabs (state, events, logs, elements, setup), warning badge, window.nextDebug
+    elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names
@@ -114,7 +116,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 3 KB          |
+| debug       | `?debug=1`                                                          | 5 KB          |
 
 ## Imports
 
@@ -125,13 +127,13 @@ src/
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`            |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                  |
 | `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                   |
-| `debug.ts`                | `engine/*`                                                                                          |
+| `debug/*`                 | `engine/*`, `debug/*`                                                                               |
 | `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/context.ts`, `analytics/ecommerce.ts` |
 | `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`          |
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                      |
 | `config.ts`               | `compat/config.ts`                                                                                  |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug.ts`, `bindings/slots.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`,
 `bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics.ts`, which only their own chunk may import statically.
 
@@ -147,8 +149,8 @@ than three levels; a default export or a re-export barrel; `console` outside `en
 ```
 tests/
   engine/ checkout/state/ order/state.test.ts   headless code, runs in Node — proves it never needs a DOM
-  bindings/ checkout/ order/ analytics/ compat/   the rest, happy-dom
-  boot.test.ts · loader.test.ts · debug.test.ts · pages.test.ts · architecture.test.ts
+  bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
+  boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts
     pages/<campaign>/<page>.html   real template pages copied verbatim, source commit on line 1

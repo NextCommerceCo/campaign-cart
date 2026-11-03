@@ -23,8 +23,7 @@ publish a public link
 - Every state change goes through an Engine action and `update()`. Bindings never call the
   network.
 - Named exports only; `index.ts` only as a chunk entry.
-- `src/` root holds `loader.ts`, `boot.ts`, `config.ts` and the one-file `debug.ts` chunk;
-  every other feature lives in a folder.
+- `src/` root holds `loader.ts`, `boot.ts` and `config.ts`; every other feature lives in a folder.
 - Code over comments; explanations go in `docs/`. 0.4.x compatibility lives only in `src/compat/`,
   one file per chunk that uses it, each `@deprecated`.
 - Tests mirror `src/` under `tests/`; headless tests (`tests/engine/**`, `tests/*/state*`) run in
