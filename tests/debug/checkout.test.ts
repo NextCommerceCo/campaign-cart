@@ -60,7 +60,7 @@ describe('checkout tab', () => {
     expect([...root.querySelectorAll('.bhead h4')].map((h) => h.textContent)).toEqual(['Order', 'Cart', 'Customer']);
     expect(steps()).toEqual([
       ['Cart', '1 item', 'done'],
-      ['Details', 'Not filled in yet: Email, First name, Last name, Address, Town/City', 'todo'],
+      ['Details', 'Not filled in yet: Email, First name, Last name, Address, Town/City, Postcode', 'todo'],
       ['Shipping', 'Standard', 'done'],
       ['Payment', 'Card · no cc-number and cvv fields on the page', 'bad'],
       ['Order', 'Not placed yet', 'todo'],
@@ -76,7 +76,7 @@ describe('checkout tab', () => {
   it('checks the form like a submit would, and names each field the order would refuse', async () => {
     const { button, steps, rows, root } = await setup();
     button('Check form').click();
-    expect(steps()[1]).toEqual(['Details', expect.stringMatching(/^Email: Missing, /), 'bad']);
+    expect(steps()[1]).toEqual(['Details', expect.stringMatching(/^Email: Missing · First name: Missing · /), 'bad']);
     expect(rows('Customer')[0]).toEqual(['Email', '—Missing']);
     expect([...root.querySelectorAll('.kaddr .kerrs .badge')].map((b) => b.textContent)).toContain('Address: Missing');
   });
@@ -104,6 +104,19 @@ describe('checkout tab', () => {
       ['Open cart', 'Saved: it is in Open Carts on the dashboard, for abandoned-cart emails'],
     ]);
     expect(written('Bill to')).toBeUndefined();
+  });
+
+  it('asks the checkout which fields the country requires, so a missing state is never called ready', async () => {
+    const { engine, button, paint, steps, verdict } = await setup();
+    await engine.cart.addItem(1);
+    button('Fill test details').click();
+    await vi.waitFor(() => expect(engine.getState().checkout!.rules.US).toBeDefined());
+    engine.checkout!.setField('state', '');
+    engine.checkout!.setPaymentMethod('paypal');
+    paint();
+    expect(steps()[1]).toEqual(['Details', expect.stringMatching(/^Not filled in yet: State( · |$)/), 'todo']);
+    expect(verdict()).toBe('Not ready yet: details');
+    expect(engine.getState().checkout!.errors.state).toBeUndefined();
   });
 
   it('names the payment method the checkout holds, with its icon', async () => {

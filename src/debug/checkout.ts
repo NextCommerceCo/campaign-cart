@@ -25,7 +25,6 @@ const METHODS: Record<string, string> = {
 const CARD_BRANDS = ['visa', 'mastercard', 'american-express', 'discover'];
 const iconOf = (code: string) => (code === 'card_token' ? CARD_BRANDS : [code.replace(/_/g, '-')]);
 const paymentIcon = (name: string) => h('span', `payment-icon payment-icon-${name}`);
-const DETAILS = ['email', 'first_name', 'last_name', 'line1', 'city', 'country'];
 const CONTACT = ['email', 'phone_number'];
 const TEST_DETAILS: Record<string, string> = {
   email: 'test@example.com',
@@ -125,11 +124,28 @@ export function checkoutView(
     };
   };
 
+  const details = (state: CheckoutState, errors: Array<[string, CheckoutError]>, missing: string[]): Step => {
+    const said = (list: Array<[string, CheckoutError]>) =>
+      list.map(([name, error]) => `${label(state, name)}: ${PROBLEMS[error.code] ?? error.code}`);
+    const hard = errors.filter(([, error]) => !error.warning);
+    const warnings = said(errors.filter(([, error]) => error.warning));
+    const blank = missing.length ? [`Not filled in yet: ${missing.map((name) => label(state, name)).join(', ')}`] : [];
+    const tone: Tone = hard.length ? 'bad' : missing.length ? 'todo' : warnings.length ? 'warn' : 'done';
+    const detail = [...said(hard), ...blank, ...warnings].join(' · ');
+    return { title: 'Details', detail: detail || 'Contact and shipping filled in', tone };
+  };
+
   const steps = (state: CheckoutState): Step[] => {
     const { campaign, cart: basket } = engine.getState();
     const units = engine.cart.lines().reduce((n, l) => n + l.quantity, 0);
-    const fieldErrors = Object.entries(state.errors).filter(([name]) => name !== 'form');
-    const missing = DETAILS.filter((name) => !state.fields[name]?.trim());
+    const shown = Object.entries(state.errors).filter(([name]) => name !== 'form');
+    const checked = Object.entries(engine.checkout!.problems()).filter(([name]) => !state.errors[name]);
+    const empty = (code: string) => code === 'blank' || code === 'not_selected';
+    const missing = checked.filter(([, code]) => empty(code)).map(([name]) => name);
+    const fieldErrors = [
+      ...shown,
+      ...checked.filter(([, code]) => !empty(code)).map(([name, code]): [string, CheckoutError] => [name, { code }]),
+    ];
     const shipping =
       basket.summary?.shipping_method?.name ??
       campaign?.shipping_methods.find((m) => m.ref_id === basket.shippingId)?.code;
@@ -151,21 +167,7 @@ export function checkoutView(
       units
         ? { title: 'Cart', detail: `${units} item${units === 1 ? '' : 's'}`, tone: 'done' }
         : { title: 'Cart', detail: 'Empty: an order needs at least one line', tone: 'bad' },
-      fieldErrors.length
-        ? {
-            title: 'Details',
-            detail: fieldErrors
-              .map(([name, error]) => `${label(state, name)}: ${PROBLEMS[error.code] ?? error.code}`)
-              .join(', '),
-            tone: fieldErrors.every(([, error]) => error.warning) ? 'warn' : 'bad',
-          }
-        : missing.length
-          ? {
-              title: 'Details',
-              detail: `Not filled in yet: ${missing.map((name) => label(state, name)).join(', ')}`,
-              tone: 'todo',
-            }
-          : { title: 'Details', detail: 'Contact and shipping filled in', tone: 'done' },
+      details(state, fieldErrors, missing),
       shipping
         ? { title: 'Shipping', detail: shipping, tone: 'done' }
         : { title: 'Shipping', detail: 'No method yet', tone: 'todo' },

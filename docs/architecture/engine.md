@@ -86,7 +86,8 @@ Lines are merged for the API by `packageId + isUpsell + properties`, not by pack
 | `order.markReported(ids)`                                                                               | order    | called by analytics after it pushed the events                                                                                                                                                                                                                                       | —                                                | —                                                     |
 
 Validation is pure (`rules.ts`); remote checks (`/v1/validate`: postcode ↔ state, phone E.164)
-run inside `placeOrder` and step advance, 4 s, and never block on failure.
+run inside `placeOrder` and step advance, 4 s, and never block on failure. `checkout.problems()`
+runs the same checks without showing them, for the debug panel.
 
 ### 3.3 Placing an order
 

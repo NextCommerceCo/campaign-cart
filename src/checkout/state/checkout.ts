@@ -15,7 +15,7 @@ import {
 } from './rules';
 import type { EventMap } from '../../engine/events';
 import type { CheckoutError, Order } from '../../engine/types';
-import type { AddressSuggestion, CheckoutState, CountryOption } from './types';
+import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
 const PHONE_WAIT = 2000;
 
@@ -239,6 +239,10 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
     setStep(step: number): void {
       set({ step });
+    },
+
+    problems(scope: Scope = 'all'): Record<string, FieldError> {
+      return formErrors(state(), scope);
     },
 
     validate(scope: Scope, phoneRequired = false): boolean {
