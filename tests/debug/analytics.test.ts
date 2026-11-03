@@ -289,15 +289,15 @@ describe('analytics workflow', () => {
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items }, 'atc');
     paint();
     expect(chips()).toEqual([
-      '✓ NextDataLayer · 1 event',
-      '✓ GTM dataLayer · GTM-ABC123',
-      '✓ NEXT analytics · own page_view',
+      'NextDataLayer · 1 event',
+      'GTM dataLayer · GTM-ABC123',
+      'NEXT analytics · own page_view',
     ]);
     expect(notes()).toEqual([]);
     expect(rows()[0]![2]).toBe('Cart priced · + Earbuds (Black) ×1');
     expect(open('add_to_cart')).toEqual([
       ['Why', 'reason for add_to_cartCart priced: cart.calculated'],
-      ['Reached', 'dl_add_to_cart✓ NextDataLayer✓ GTM dataLayer'],
+      ['Reached', 'dl_add_to_cartNextDataLayerGTM dataLayer'],
       ['Params', 'currency USDvalue 49'],
     ]);
     expect(flow.dialog.querySelector('.aitems')!.textContent).toBe('Items · 1itemvariantidqtypriceEarbudsBlack11149');
@@ -354,7 +354,7 @@ describe('analytics workflow', () => {
   });
 
   it('puts missing GA4 fields and a push that did not arrive in the verdict, the funnel and the row', () => {
-    const { engine, paint, send, rows, verdict, steps, open } = setup();
+    const { engine, flow, paint, send, rows, verdict, steps, open } = setup();
     engine.events.emit('order.loaded', { order: ORDER });
     send('order.loaded', 'purchase', { value: 89, shipping: 9.99, tax: 7.12, items: [] }, 'p1', false);
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
@@ -369,7 +369,11 @@ describe('analytics workflow', () => {
     ]);
     const detail = Object.fromEntries(open('purchase'));
     expect(detail.Problems).toBe('⚠ items is empty⚠ value is set without currency⚠ transaction_id is missing');
-    expect(detail.Reached).toBe('dl_purchase✓ NextDataLayer⚠ GTM dataLayer: not pushed');
+    expect(detail.Reached).toBe('dl_purchaseNextDataLayerGTM dataLayer: not pushed');
+    expect([...flow.dialog.querySelectorAll('.adetail .chip')].map((c) => c.className)).toEqual([
+      'chip ok',
+      'chip warn',
+    ]);
   });
 
   it('checks update_cart against the cart lines, and a voucher GA4 takes as coupon', () => {
@@ -421,7 +425,7 @@ describe('analytics workflow', () => {
   it('shows GTM reading a push, and a GA4 request that left the page after an event', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
-    const { engine, paint, send, chips, steps, open, tabs, tab } = setup();
+    const { engine, flow, paint, send, chips, steps, open, tabs, tab } = setup();
     engine.events.emit('cart.calculated', { summary: {} as never });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     (win.dataLayer![0] as Record<string, unknown>)['gtm.uniqueEventId'] = 7;
@@ -435,16 +439,34 @@ describe('analytics workflow', () => {
       { name: 'https://cdn.test/app.js', startTime: 0 },
     ] as never);
     paint();
-    expect(chips()).toContain('✓ GA4 · G-TEST1');
+    expect(chips()).toContain('GA4 · G-TEST1');
     expect(steps().find(([, name]) => name === 'add_to_cart')).toEqual([
       'done',
       'add_to_cart',
       'This page · reached GA4',
     ]);
     expect(Object.fromEntries(open('add_to_cart')).Reached).toBe(
-      'dl_add_to_cart✓ NextDataLayer✓ GTM dataLayer✓ GTM read it✓ GA4 G-TEST1',
+      'dl_add_to_cartNextDataLayerGTM dataLayer · read by GTMGA4 G-TEST1',
     );
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer', 'GA4']);
+    expect(
+      [...flow.dialog.querySelectorAll('.adetail .chip')].map((c) => [
+        c.className,
+        c.textContent,
+        c.querySelector('svg')!.getAttribute('fill'),
+      ]),
+    ).toEqual([
+      ['chip ok', 'NextDataLayer', 'currentColor'],
+      ['chip ok', 'GTM dataLayer · read by GTM', '#246FDB'],
+      ['chip ok', 'GA4 G-TEST1', '#E37400'],
+    ]);
+    expect([...flow.dialog.querySelectorAll('[role=tab]')].map((t) => !!t.querySelector('svg'))).toEqual([
+      false,
+      false,
+      true,
+      true,
+      true,
+    ]);
     expect(tab('GTM dataLayer').querySelector('.ajhead small')!.textContent).toBe(
       'The push in window.dataLayer, read by GTM',
     );
@@ -459,10 +481,10 @@ describe('analytics workflow', () => {
     engine.events.emit('ready', { lines: [] });
     send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
     paint();
-    expect(chips()).toEqual(['✓ NextDataLayer · 1 event', '○ GTM dataLayer · off', '✓ NEXT analytics · own page_view']);
+    expect(chips()).toEqual(['NextDataLayer · 1 event', 'GTM dataLayer · off', 'NEXT analytics · own page_view']);
     expect(verdict()).toBe('GTM tags get none of these events: GTM dataLayer is off');
     expect(notes()).toEqual(['Off in nextConfig: analytics.providers.gtm.enabled is false.']);
-    expect(Object.fromEntries(open('page_view'))['Reached']).toBe('dl_user_data✓ NextDataLayer');
+    expect(Object.fromEntries(open('page_view'))['Reached']).toBe('dl_user_dataNextDataLayer');
   });
 
   it('runs the exit popup straight to the data layer, and names a provider that cannot deliver', () => {
@@ -476,7 +498,7 @@ describe('analytics workflow', () => {
     expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Exit popup shown · data layer only']);
     expect(open('dl_exit_intent_shown')).toEqual([
       ['Why', 'Data layer only: there is no analytics eventExit popup shown: exit-intent.shown'],
-      ['Reached', 'dl_exit_intent_shown✓ NextDataLayer✓ GTM dataLayer'],
+      ['Reached', 'dl_exit_intent_shownNextDataLayerGTM dataLayer'],
     ]);
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);
   });

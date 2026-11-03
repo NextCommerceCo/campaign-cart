@@ -87,7 +87,9 @@ export const ANALYTICS_CSS = `.afunnel>.kstep{display:flex;flex-wrap:wrap;align-
 .afunnel code{font:500 13px var(--font-mono)}
 .adest{display:flex;flex-direction:column;gap:6px;padding:10px 16px 12px;border-top:1px solid var(--border);font:12px/1.5 var(--font-sans);color:var(--muted-foreground)}
 .chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.chip{padding:0 8px;border:1px solid var(--border);border-radius:999px;font:12px var(--font-sans);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:0 8px;border:1px solid var(--border);border-radius:999px;font:12px var(--font-sans);white-space:nowrap}
+.chip>.icon{width:12px;height:12px}
+.chip.off>.icon{opacity:.5;filter:grayscale(1)}
 .chip.ok{color:var(--success);border-color:var(--success)}
 .chip.warn{color:var(--warning);border-color:var(--warning)}
 .chip.off{color:var(--muted-foreground);border-style:dashed}
@@ -113,6 +115,7 @@ export const ANALYTICS_CSS = `.afunnel>.kstep{display:flex;flex-wrap:wrap;align-
 .aevent>div>header{padding:16px 48px 10px 16px}
 .atabs{padding:0 16px;border-bottom:1px solid var(--border)}
 .atabs>[role=tablist]{max-width:100%;overflow-x:auto}
+.atabs .icon{width:14px;height:14px}
 .aevent>div>section{min-height:0;overflow-y:auto}
 .aevent>div>footer{flex-direction:row;padding:10px 12px;border-top:1px solid var(--border)}
 .aevent>div>footer>.btn:last-child{margin-left:auto}

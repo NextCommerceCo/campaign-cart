@@ -3,7 +3,7 @@ import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { format } from '../engine/format';
 import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win, WIRING } from './providers';
-import { icon } from './icons';
+import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
 import type { PageVisit } from './state';
 import { type Child, h, nodes, time, tsugi } from './view';
@@ -11,7 +11,7 @@ import { type Child, h, nodes, time, tsugi } from './view';
 type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
 type Hit = { id: string; name: string; at: number; host: string; params: Array<[string, string]> };
-type Tab = { id: string; label: string; body: () => Child[] };
+type Tab = { id: string; label: string; logo?: IconName; body: () => Child[] };
 type Sum = { ok: boolean; text: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
@@ -158,8 +158,10 @@ const itemsTable = (items: Item[]) => {
   );
 };
 
-const chip = (state: State, text: string, title = '') =>
-  h('span', { className: `chip ${state}`, title }, `${ICON[state]} ${text}`);
+const LOGOS: Record<string, IconName> = { NextDataLayer: 'logo', dataLayer: 'gtm', nextCampaign: 'logo', ga4: 'ga4' };
+
+const chip = (state: State, text: string, title = '', logo?: IconName) =>
+  h('span', { className: `chip ${state}`, title }, logo ? icon(logo) : `${ICON[state]} `, text);
 
 export function analyticsFlow(ui: {
   open: Set<string>;
@@ -264,14 +266,16 @@ export function analyticsFlow(ui: {
     const items = event ? itemsOf(event.params) : [];
     const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
       const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-      return pushedTo(layer, run.id) ? chip('ok', name) : chip('warn', `${name}: not pushed`, NOT_PUSHED[layer]);
+      const push = pushedTo(layer, run.id);
+      if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
+      return push['gtm.uniqueEventId'] !== undefined
+        ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
+        : chip('ok', name, '', LOGOS[layer]);
     });
     const hit = snap.seen(run);
     const reached = [
       ...layers,
-      pushedTo('dataLayer', run.id)?.['gtm.uniqueEventId'] !== undefined &&
-        chip('ok', 'GTM read it', 'GTM marked this push with gtm.uniqueEventId.'),
-      hit && chip('ok', `GA4 ${hit.id}`, `A Google Analytics request named ${hit.name} left the page after it.`),
+      hit && chip('ok', `GA4 ${hit.id}`, `A Google Analytics request named ${hit.name} left the page after it.`, 'ga4'),
     ];
     const adds = snap.sum(run);
     const rows: Array<[string, ...Child[]]> = [
@@ -313,10 +317,16 @@ export function analyticsFlow(ui: {
           trigger && json(run.trigger, `What triggered it: ${label(run.trigger)}`, trigger.data),
         ],
       },
-      next && { id: 'next', label: 'NextDataLayer', body: () => [json(dl, 'The push in window.NextDataLayer', next)] },
+      next && {
+        id: 'next',
+        label: 'NextDataLayer',
+        logo: 'logo',
+        body: () => [json(dl, 'The push in window.NextDataLayer', next)],
+      },
       gtm && {
         id: 'gtm',
         label: 'GTM dataLayer',
+        logo: 'gtm',
         body: () => [
           json(
             dl,
@@ -330,6 +340,7 @@ export function analyticsFlow(ui: {
       hit && {
         id: 'ga4',
         label: 'GA4',
+        logo: 'ga4',
         body: () => [
           h(
             'div',
@@ -436,7 +447,12 @@ export function analyticsFlow(ui: {
     if (!tabs.some((t) => t.id === tab)) tab = 'summary';
     strip.replaceChildren(
       ...tabs.map((t) => {
-        const el = h('button', { type: 'button', onclick: () => ((tab = t.id), fill(snapshot(ui.config()))) }, t.label);
+        const el = h(
+          'button',
+          { type: 'button', onclick: () => ((tab = t.id), fill(snapshot(ui.config()))) },
+          t.logo && icon(t.logo),
+          t.label,
+        );
         el.setAttribute('role', 'tab');
         el.setAttribute('aria-selected', String(t.id === tab));
         return el;
@@ -535,12 +551,13 @@ export function analyticsFlow(ui: {
         'div',
         'chips',
         'Pushed to',
-        ...list.map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail)),
+        ...list.map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail, LOGOS[p.id])),
         snap.ga4.length > 0 &&
           chip(
             'ok',
             `GA4 · ${snap.ga4.join(', ')}`,
             'Google Analytics requests seen leaving this page. An event batched into another request does not show by name.',
+            'ga4',
           ),
       ),
       ...notes.map((note) => h('p', {}, note)),
