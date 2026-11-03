@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS } from '../../src/debug/analytics';
+import { ANALYTICS_CSS, PANEL_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -193,9 +193,10 @@ describe('debug tools', () => {
 
   it('styles the panel and the analytics view with separate class names', async () => {
     await start();
+    expect(shadow().querySelector('style')!.textContent).toBe(PANEL_CSS + ANALYTICS_CSS);
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const analytics = classes(ANALYTICS_CSS);
-    const panel = classes(shadow().querySelector('style')!.textContent!.replace(ANALYTICS_CSS, ''));
+    const panel = classes(PANEL_CSS);
     expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
   });
 

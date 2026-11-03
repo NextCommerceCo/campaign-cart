@@ -100,7 +100,10 @@ src/
     index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, analytics, logs), window.nextDebug
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
-                                   analytics chunk's decision traces; workflows checked against compat/analytics.ts
+                                   analytics chunk's decision traces
+    providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
+                                   compat/analytics.ts), parameter checks
+    styles.ts                      the panel and analytics stylesheets
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names

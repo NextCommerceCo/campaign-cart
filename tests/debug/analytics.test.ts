@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import { EXIT_INTENT, NAMES } from '../../src/compat/analytics';
-import { analyticsFlow, checks, type ProviderConfig, providers, WIRING } from '../../src/debug/analytics';
+import { analyticsFlow } from '../../src/debug/analytics';
+import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
 import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/types';
 import { flush, makeEngine } from '../fixtures/engine';
