@@ -70,7 +70,7 @@ src/
   engine/              boot        headless core every page needs
     engine.ts types.ts events.ts log.ts         the Engine, its state types, events, the one logger
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
-    values.ts condition.ts                      paths and formatting for display, conditions
+    values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     cart/                                       cart.ts selectors.ts toggles.ts: cart actions, bundle selectors, toggles
   bindings/            boot        DOM, one file per attribute family

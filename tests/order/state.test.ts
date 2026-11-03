@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { createOrder, orderValue, purchaseId } from '../../src/order/state';
-import { format } from '../../src/engine/values';
+import { format } from '../../src/engine/format';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { makeEngine, type MakeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';

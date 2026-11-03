@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { CardRef, Context } from '../engine/values';
+import type { CardRef, ValueScope } from '../engine/values';
 
 export type Render = () => void;
 
@@ -29,8 +29,8 @@ export class BindContext {
     return cardEl ? this.cards.get(cardEl) : undefined;
   }
 
-  contextOf(el: Element): Context {
-    const ctx: Context = {};
+  contextOf(el: Element): ValueScope {
+    const ctx: ValueScope = {};
     const card = this.cardOf(el);
     if (card) ctx.card = card;
     const id = Number(el.closest('[data-next-package-id]')?.getAttribute('data-next-package-id'));

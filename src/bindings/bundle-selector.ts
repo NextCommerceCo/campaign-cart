@@ -2,7 +2,8 @@ import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorMode } from '../engine/types';
 import { type BindContext, type Render } from './context';
 import { isFormControl, parseCodes, parseLines, selectorIdOf, setState, stamp } from './dom';
-import { cardQuote, discountTokens } from '../engine/values';
+import { discountTokens } from '../engine/tokens';
+import { cardQuote } from '../engine/values';
 
 function modeOf(el: Element, upsellPage: boolean): SelectorMode {
   if (el.hasAttribute('data-next-upsell-context')) return 'offer';

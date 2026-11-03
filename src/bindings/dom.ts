@@ -1,7 +1,9 @@
 import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
 import type { SelectorLine } from '../engine/types';
-import { format, resolve, type Tokens, truthy, type Value } from '../engine/values';
+import { format, truthy, type Value } from '../engine/format';
+import type { Tokens } from '../engine/tokens';
+import { resolve } from '../engine/values';
 import { legacySelectorId } from '../compat/legacy';
 
 export function selectorIdOf(el: Element): string {

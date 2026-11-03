@@ -1,7 +1,7 @@
 import type { EngineEvent } from '../engine/events';
 import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsName, AnalyticsTrace, EventName } from '../engine/types';
-import { format } from '../engine/values';
+import { format } from '../engine/format';
 import { type Child, empty, expandable, h, time, tree } from './view';
 
 export const ANALYTICS_CSS = `.wf-sum{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 8px;font:13px var(--sans);color:var(--muted)}

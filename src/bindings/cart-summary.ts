@@ -1,4 +1,4 @@
-import { cartTokens, discountTokens, lineTokens } from '../engine/values';
+import { cartTokens, discountTokens, lineTokens } from '../engine/tokens';
 import type { BindContext, Render } from './context';
 import { applyValues, fillTokens, stamp, tokenValue } from './dom';
 

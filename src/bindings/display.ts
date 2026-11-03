@@ -1,5 +1,6 @@
 import { conditionMet, parseCondition } from '../engine/condition';
-import { resolve, resolveCard, resolveToggle, type Value } from '../engine/values';
+import type { Value } from '../engine/format';
+import { resolve, resolveCard, resolveToggle } from '../engine/values';
 import { type BindContext, type Render } from './context';
 import { setVisible, writeValue } from './dom';
 

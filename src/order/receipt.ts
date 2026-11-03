@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { cents, format } from '../engine/values';
+import { cents, format } from '../engine/format';
 import type { OrderLine } from '../engine/types';
 
 const DEFAULT_TEMPLATE =

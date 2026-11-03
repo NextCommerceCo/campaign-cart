@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { discountPercent, format, resolve } from '../../src/engine/values';
+import { discountPercent, format } from '../../src/engine/format';
+import { resolve } from '../../src/engine/values';
 import { makeEngine } from '../fixtures/engine';
 
 describe('display values', () => {

@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
-import { format, resolve } from '../engine/values';
+import { format } from '../engine/format';
+import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { ANALYTICS_CSS, analyticsFlow, type ProviderConfig } from './analytics';
 import { type Child, empty, h, nodes, time, tree } from './view';

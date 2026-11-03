@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SelectorCard } from '../../../src/engine/types';
-import { format, resolve } from '../../../src/engine/values';
+import { format } from '../../../src/engine/format';
+import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';

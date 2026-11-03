@@ -1,7 +1,8 @@
 import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard } from '../engine/cart/selectors';
 import type { Discount, Package, Selector, SelectorCard, Slot, SummaryLine } from '../engine/types';
-import { cardQuote, cents, discountPercent, format } from '../engine/values';
+import { cents, discountPercent, format } from '../engine/format';
+import { cardQuote } from '../engine/values';
 import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './dom';
 
 const escape = (text: string) =>

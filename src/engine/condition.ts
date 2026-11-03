@@ -1,4 +1,4 @@
-import { truthy, type Value } from './values';
+import { truthy, type Value } from './format';
 
 export type Condition =
   { kind: 'path'; path: string; negate: boolean } | { kind: 'compare'; path: string; op: '==' | '!='; literal: string };

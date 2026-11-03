@@ -1,32 +1,20 @@
 import type { Engine } from './engine';
 import { mergeLines } from './cart/cart';
 import { cardLines } from './cart/selectors';
-import type { CartLine, CartSummary, Discount, Package, Selector, SelectorCard, State, SummaryLine } from './types';
-
-export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
-
-export interface Value {
-  type: ValueType;
-  value: string | number | boolean | undefined;
-}
+import { toggleGroup } from './cart/toggles';
+import { bool, cents, money, pct, type Value } from './format';
+import type { CartLine, CartSummary, Package, Selector, SelectorCard, State, SummaryLine } from './types';
 
 export interface CardRef {
   selectorId: string;
   cardId: string;
 }
 
-export interface Context {
+export interface ValueScope {
   packageId?: number;
   card?: CardRef;
 }
 
-export const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
-export const money = (c: number | undefined): Value => ({
-  type: 'money',
-  value: c === undefined ? undefined : c / 100,
-});
-const pct = (part: number, whole: number): Value => ({ type: 'percent', value: whole > 0 ? (part / whole) * 100 : 0 });
-export const bool = (value: boolean): Value => ({ type: 'bool', value });
 const notLoaded = (v: Value | undefined): Value | undefined =>
   v && (v.type === 'bool' ? v : { type: v.type, value: undefined });
 
@@ -224,8 +212,6 @@ function shippingValue(state: State, prop: string): Value | undefined {
   }
 }
 
-export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
-
 function findCard(state: State, id: string): CardRef | undefined {
   for (const [selectorId, selector] of Object.entries(state.selectors)) {
     if (selector.cards.some((c) => c.id === id)) return { selectorId, cardId: id };
@@ -234,7 +220,7 @@ function findCard(state: State, id: string): CardRef | undefined {
   return picked ? { selectorId: id, cardId: picked } : undefined;
 }
 
-const lineKey = (pairs: Array<{ package_id: number; quantity: number }>) =>
+const quantitiesKey = (pairs: Array<{ package_id: number; quantity: number }>) =>
   pairs
     .map((l) => `${l.package_id}x${l.quantity}`)
     .sort()
@@ -243,7 +229,7 @@ const lineKey = (pairs: Array<{ package_id: number; quantity: number }>) =>
 export function cardQuote(selector: Selector, card: SelectorCard): CartSummary | undefined {
   const quoted = selector.quotes?.[card.id];
   const current = mergeLines({ card: { lines: cardLines(selector, card), vouchers: [] } });
-  return quoted && lineKey(quoted.lines) === lineKey(current) ? quoted : undefined;
+  return quoted && quantitiesKey(quoted.lines) === quantitiesKey(current) ? quoted : undefined;
 }
 
 export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value | undefined {
@@ -262,7 +248,7 @@ const roots = new Map<string, Resolver>();
 
 export const registerValues = (root: string, resolver: Resolver) => void roots.set(root, resolver);
 
-export function resolve(engine: Engine, path: string, ctx: Context = {}): Value | undefined {
+export function resolve(engine: Engine, path: string, ctx: ValueScope = {}): Value | undefined {
   const state = engine.getState();
   const parts = path.split('.');
   const [root = '', second = '', ...rest] = parts;
@@ -306,142 +292,4 @@ export function resolveToggle(engine: Engine, packageId: number, prop: string, q
   const quoted = inCart ? cart.summary?.lines.find((l) => l.package_id === packageId) : toggles[packageId]?.line;
   const line = quoted?.quantity === qty ? quoted : undefined;
   return linesValue(engine, [{ packageId, quantity: qty }], prop, !!inCart, line && [line]);
-}
-
-const formatters = new Map<string, Intl.NumberFormat>();
-
-function formatter(locale: string | undefined, options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const key = `${locale}|${JSON.stringify(options)}`;
-  let f = formatters.get(key);
-  if (!f) {
-    try {
-      f = new Intl.NumberFormat(locale, options);
-    } catch {
-      f = new Intl.NumberFormat(undefined, options);
-    }
-    formatters.set(key, f);
-  }
-  return f;
-}
-
-export function format(v: Value, currency: string | undefined, locale?: string, override?: string | null): string {
-  if (v.value === undefined || v.value === null) return '';
-  const type = override === 'currency' ? 'money' : override === 'percentage' ? 'percent' : v.type;
-  const n = Number(v.value);
-  switch (type) {
-    case 'money':
-      return currency
-        ? formatter(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(n)
-        : n.toFixed(2);
-    case 'percent':
-      return formatter(locale, { style: 'percent', maximumFractionDigits: 0 }).format(n / 100);
-    case 'int':
-      return formatter(locale, { maximumFractionDigits: 0 }).format(n);
-    case 'bool':
-      return v.value ? 'true' : 'false';
-    default:
-      return String(v.value);
-  }
-}
-
-export function truthy(v: Value | undefined): boolean {
-  if (!v || v.value === undefined || v.value === null) return false;
-  if (typeof v.value === 'boolean') return v.value;
-  if (typeof v.value === 'number') return v.value !== 0;
-  return v.value !== '' && v.value !== 'false' && v.value !== '0';
-}
-
-export type Tokens = Record<string, string>;
-
-export function cartTokens(engine: Engine): Tokens {
-  const { cart, campaign } = engine.getState();
-  const s = cart.summary;
-  const currency = s?.currency ?? campaign?.currency;
-  const locale = campaign?.language;
-  const m = (amount: string | undefined) => (s ? format(money(cents(amount)), currency, locale) : '');
-  const shipping = s?.shipping_method;
-  const free = !shipping || cents(shipping.price) === 0;
-  const discounted = !!shipping && cents(shipping.original_price) > cents(shipping.price);
-  const lines = engine.cart.lines();
-  return {
-    subtotal: m(s?.subtotal),
-    total: m(s?.total),
-    shipping: free ? 'Free' : m(shipping?.price),
-    shippingName: shipping?.name ?? '',
-    shippingCode: shipping?.code ?? '',
-    shippingOriginal: discounted ? m(shipping?.original_price) : '',
-    totalDiscount: m(s?.total_discount),
-    discounts: m(s?.total_discount),
-    totalDiscountPercentage: s ? format(pct(cents(s.total_discount), cents(s.subtotal)), currency, locale) : '',
-    currency: currency ?? '',
-    isCalculating: String(cart.calculating),
-    isEmpty: String(!lines.length),
-    itemCount: String(lines.length),
-    totalQuantity: String(lines.reduce((n, l) => n + l.quantity, 0)),
-    isFreeShipping: String(free),
-    hasShippingDiscount: String(discounted),
-    hasDiscounts: String(!!s && cents(s.total_discount) > 0),
-  };
-}
-
-function frequency(interval: string | null | undefined, count: number | null | undefined): string {
-  const n = count ?? 1;
-  if (interval === 'day') return n === 1 ? 'Daily' : `Every ${n} days`;
-  if (interval === 'month') return n === 1 ? 'Monthly' : `Every ${n} months`;
-  return '';
-}
-
-export function lineTokens(engine: Engine, line: SummaryLine, currency: string | undefined): Tokens {
-  const pkg = engine.getPackage(line.package_id);
-  const locale = engine.getState().campaign?.language;
-  const m = (amount: string) => format(money(cents(amount)), currency, locale);
-  const unit = cents(line.unit_price);
-  const original = cents(line.original_unit_price);
-  const interval = line.interval ?? pkg?.interval;
-  const count = line.interval_count ?? pkg?.interval_count;
-  const recurring = line.price_recurring ?? pkg?.price_recurring;
-  const tokens: Tokens = {
-    packageId: String(line.package_id),
-    name: pkg?.name ?? '',
-    image: pkg?.image ?? '',
-    quantity: String(line.quantity),
-    variantName: pkg?.product_variant_name ?? '',
-    productName: pkg?.product_name ?? '',
-    sku: pkg?.product_sku ?? '',
-    price: m(line.total),
-    originalPrice: m(line.subtotal),
-    unitPrice: m(line.unit_price),
-    originalUnitPrice: m(line.original_unit_price),
-    discountAmount: m(line.total_discount),
-    discountPercentage: format(pct(Math.max(0, original - unit), original), currency, locale),
-    hasDiscount: cents(line.total_discount) > 0 ? 'show' : 'hide',
-    currency: currency ?? '',
-    isRecurring: String(!!(line.is_recurring ?? pkg?.is_recurring)),
-    interval: interval ?? '',
-    intervalCount: count != null ? String(count) : '',
-    frequency: frequency(interval, count),
-    recurringPrice: recurring != null ? m(recurring) : '',
-    originalRecurringPrice: line.original_recurring_price != null ? m(line.original_recurring_price) : '',
-  };
-  return Object.fromEntries(
-    Object.entries(tokens).flatMap(([k, v]) => [
-      [`item.${k}`, v],
-      [`line.${k}`, v],
-    ]),
-  );
-}
-
-export function discountTokens(discount: Discount, currency: string | undefined, locale?: string): Tokens {
-  return {
-    'discount.name': discount.name ?? '',
-    'discount.description': discount.description ?? '',
-    'discount.amount': format(money(cents(discount.amount)), currency, locale),
-    'discount.percentage': discountPercent(discount.percentage, locale),
-  };
-}
-
-export function discountPercent(value: string | undefined, locale?: string): string {
-  const n = Number(value);
-  if (!value || !Number.isFinite(n)) return '';
-  return formatter(locale, { style: 'percent', maximumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n / 100);
 }

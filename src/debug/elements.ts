@@ -1,6 +1,7 @@
 import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
-import { format, resolve, truthy } from '../engine/values';
+import { format, truthy } from '../engine/format';
+import { resolve } from '../engine/values';
 import { h } from './view';
 
 const PREFIX = 'data-next-';
