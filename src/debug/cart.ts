@@ -60,7 +60,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     className: 'select',
     onchange: () => act(engine.cart.setShipping(Number(shipping.value))),
   });
-  const picker = productPicker(engine, ui);
+  const picker = productPicker(engine);
 
   const money = (amount: string | number | undefined) => {
     const { campaign, cart } = engine.getState();

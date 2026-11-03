@@ -4,6 +4,16 @@ import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { badge, h, tsugi } from './view';
 
+type Filter = 'all' | 'purchasable' | 'recurring' | 'selected';
+
+const FILTERS: Array<[Filter, string]> = [
+  ['all', 'All'],
+  ['purchasable', 'Purchasable'],
+  ['recurring', 'Recurring'],
+  ['selected', 'Selected'],
+];
+const SHOWN = 200;
+
 export const avatar = (image: string | undefined, count?: number) =>
   tsugi(
     h(
@@ -15,18 +25,37 @@ export const avatar = (image: string | undefined, count?: number) =>
     { size: 'lg' },
   );
 
-export function productPicker(engine: Engine, ui: { render: () => void }) {
-  const picked = new Set<number>();
-  const search = h('input', { type: 'search', className: 'input', placeholder: 'Search packages' });
-  search.setAttribute('aria-label', 'Search packages');
-  const list = h('ul', 'plist scrollbar-sm');
-  const add = h('button', { type: 'button', className: 'btn' }, 'Add to cart');
+const purchasable = (p: Package) =>
+  !/unavail|out_of_stock|out-of-stock|sold/i.test(p.product_purchase_availability ?? '');
+
+export const matches = (p: Package, query: string) => {
+  const words = `${p.name} ${p.product_name ?? ''} ${p.product_sku ?? ''} ${p.ref_id}`.toLowerCase();
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => (/^#\d+$/.test(term) ? `#${p.ref_id}` === term : words.includes(term)));
+};
+
+export function productPicker(engine: Engine) {
+  let filter: Filter = 'purchasable';
+  let active = 0;
+  const search = h('input', { type: 'search', className: 'input' });
+  const filters = h('div', 'button-group');
+  filters.setAttribute('role', 'group');
+  filters.setAttribute('aria-label', 'Filter packages');
+  const list = h('div', 'plist scrollbar-sm');
+  list.setAttribute('role', 'listbox');
+  const summary = h('span', 'psum');
+  const button = (label: string, onclick: () => void, data: Record<string, string> = {}) =>
+    tsugi(h('button', { type: 'button', className: 'btn', onclick }, label), data);
+  const clear = button('Clear', () => void engine.cart.clear(), { variant: 'ghost' });
   const close = tsugi(h('button', { type: 'button', className: 'btn', onclick: () => dialog.close() }, icon('close')), {
     variant: 'ghost',
     size: 'icon-sm',
   });
   close.setAttribute('aria-label', 'Close dialog');
-  const title = h('p', {});
+  const kbd = (key: string) => h('kbd', 'kbd', key);
   const dialog = tsugi(
     h(
       'dialog',
@@ -34,15 +63,19 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
       h(
         'div',
         {},
-        h('header', {}, h('h2', {}, 'Add packages'), title),
-        h('section', {}, search, list),
+        h(
+          'header',
+          {},
+          h('h2', {}, 'Add packages to the cart'),
+          h('p', {}, 'Search the whole catalog and set quantities. Totals recalculate as you go.'),
+        ),
+        h('section', {}, h('div', 'ptools', search, filters), list),
         h(
           'footer',
           {},
-          tsugi(h('button', { type: 'button', className: 'btn', onclick: () => dialog.close() }, 'Close'), {
-            variant: 'outline',
-          }),
-          add,
+          h('p', 'pfoot', summary, h('span', 'phint', kbd('↑'), kbd('↓'), ' move · ', kbd('Enter'), ' add')),
+          clear,
+          button('Done', () => dialog.close()),
         ),
         close,
       ),
@@ -51,111 +84,137 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
   );
   dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
 
-  const money = (p: Package) => {
+  const quantities = () => {
+    const byPackage = new Map<number, number>();
+    for (const l of engine.cart.lines()) byPackage.set(l.package_id, (byPackage.get(l.package_id) ?? 0) + l.quantity);
+    return byPackage;
+  };
+  const money = (amount: number | string | undefined) => {
     const { campaign } = engine.getState();
-    return format({ type: 'money', value: Number(p.price_total) }, campaign?.currency, campaign?.language);
+    return format({ type: 'money', value: Number(amount) }, campaign?.currency, campaign?.language);
   };
-  const words = (p: Package) =>
-    [
-      p.name,
-      p.product_name,
-      p.product_sku,
-      `#${p.ref_id}`,
-      ...(p.product_variant_attribute_values ?? []).map((a) => a.value),
-    ]
-      .join(' ')
-      .toLowerCase();
-
-  const refresh = () => {
-    add.disabled = !picked.size;
-    add.textContent = picked.size ? `Add ${picked.size} to cart` : 'Add to cart';
+  const shown = () => {
+    const inCart = quantities();
+    return (engine.getState().campaign?.packages ?? []).filter(
+      (p) =>
+        matches(p, search.value) &&
+        (filter === 'purchasable'
+          ? purchasable(p)
+          : filter === 'recurring'
+            ? p.is_recurring
+            : filter === 'selected'
+              ? inCart.has(p.ref_id)
+              : true),
+    );
   };
+  const set = (p: Package, n: number) => void engine.cart.setQuantity(p.ref_id, n);
 
   const fill = () => {
+    if (!dialog.open) return;
     const packages = engine.getState().campaign?.packages ?? [];
-    const inCart = new Map(engine.cart.lines().map((l) => [l.package_id, l.quantity]));
-    const query = search.value.trim().toLowerCase();
-    const shown = packages.filter((p) => words(p).includes(query));
-    const products = new Map<string, Package[]>();
-    for (const p of shown) {
-      const key = p.product_id ? `product ${p.product_id}` : `package ${p.ref_id}`;
-      products.set(key, [...(products.get(key) ?? []), p]);
-    }
-    const box = (ids: number[]) => {
-      const input = h('input', { type: 'checkbox', className: 'input' });
-      const ticked = ids.filter((id) => picked.has(id)).length;
-      input.checked = ticked === ids.length;
-      input.indeterminate = ticked > 0 && ticked < ids.length;
-      input.onchange = () => {
-        for (const id of ids) input.checked ? picked.add(id) : picked.delete(id);
-        fill();
-      };
-      return input;
-    };
-    const row = (p: Package, own: boolean) =>
-      h(
-        'li',
-        {},
-        h(
-          'label',
-          { className: own ? '' : 'pvariant', title: `Package #${p.ref_id}` },
-          own && avatar(p.image),
+    const inCart = quantities();
+    const rows = shown();
+    active = Math.min(active, Math.max(0, rows.length - 1));
+    search.placeholder = `Search ${packages.length} packages by name, ref_id or SKU`;
+    filters.replaceChildren(
+      ...FILTERS.map(([value, label]) => {
+        const el = button(
+          value === 'selected' && inCart.size ? `${label} (${inCart.size})` : label,
+          () => {
+            filter = value;
+            active = 0;
+            fill();
+          },
+          { variant: 'outline', size: 'sm' },
+        );
+        el.setAttribute('aria-pressed', String(value === filter));
+        return el;
+      }),
+    );
+    list.replaceChildren(
+      ...rows.slice(0, SHOWN).map((p, i) => {
+        const n = inCart.get(p.ref_id) ?? 0;
+        const retail = Number(p.price_retail_total) > Number(p.price_total) && h('s', {}, money(p.price_retail_total));
+        const row = h(
+          'div',
+          `prow${n ? ' on' : ''}${i === active ? ' active' : ''}`,
+          h('span', 'pthumb', p.image ? h('img', { src: p.image, alt: '', loading: 'lazy' }) : icon('cart')),
           h(
             'span',
-            'pname',
+            'pinfo',
             h(
               'span',
               {},
-              p.name,
-              p.product_purchase_availability === 'unavailable' && badge('Unavailable', 'outline'),
-              inCart.has(p.ref_id) && badge(`In cart ×${inCart.get(p.ref_id)}`, 'secondary'),
+              h('b', {}, p.name),
+              p.is_recurring && badge('Recurring', 'outline'),
+              !purchasable(p) && badge('Unavailable', 'destructive'),
             ),
-            !!p.product_variant_attribute_values?.length &&
-              h('small', {}, p.product_variant_attribute_values.map((a) => a.value).join(' · ')),
+            h('small', {}, `#${p.ref_id} · ${p.product_sku || 'no SKU'} · qty ${p.qty}`),
           ),
-          h('span', 'pprice', money(p)),
-          box([p.ref_id]),
-        ),
-      );
-    list.replaceChildren(
-      ...[...products.values()].flatMap((group) =>
-        group.length === 1
-          ? [row(group[0]!, true)]
-          : [
-              h(
-                'li',
-                {},
-                h(
-                  'label',
-                  {},
-                  avatar(group[0]!.image),
-                  h('span', 'pname', h('span', {}, group[0]!.product_name ?? group[0]!.name)),
-                  box(group.map((p) => p.ref_id)),
-                ),
-              ),
-              ...group.map((p) => row(p, false)),
-            ],
-      ),
-      ...(shown.length ? [] : [h('li', 'pempty', 'No packages match.')]),
+          h('span', 'pprice', money(p.price_total), retail),
+          n
+            ? h(
+                'span',
+                'qty',
+                h('button', { type: 'button', title: 'One less', onclick: () => set(p, n - 1) }, '−'),
+                h('span', {}, String(n)),
+                h('button', { type: 'button', title: 'One more', onclick: () => set(p, n + 1) }, '+'),
+              )
+            : button('Add', () => set(p, 1), { variant: 'outline', size: 'sm' }),
+        );
+        row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', String(i === active));
+        row.onmouseenter = () => {
+          active = i;
+          list.querySelector('.active')?.classList.remove('active');
+          row.classList.add('active');
+        };
+        return row;
+      }),
+      ...(rows.length ? [] : [h('p', 'pempty', 'No package matches. Try another filter.')]),
+      ...(rows.length > SHOWN
+        ? [h('p', 'pempty', `Showing ${SHOWN} of ${rows.length}. Type to narrow the list.`)]
+        : []),
     );
-    title.textContent = `${engine.getState().campaign?.name ?? 'Campaign'} · ${packages.length} packages`;
-    refresh();
+    const units = [...inCart.values()].reduce((a, b) => a + b, 0);
+    const total = [...inCart].reduce(
+      (sum, [id, q]) => sum + Number(packages.find((p) => p.ref_id === id)?.price_total ?? 0) * q,
+      0,
+    );
+    summary.replaceChildren(
+      `${inCart.size} package${inCart.size === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'} · `,
+      h('b', {}, money(total)),
+      ' before discounts',
+    );
+    clear.hidden = !inCart.size;
   };
 
-  search.oninput = fill;
-  add.onclick = () => {
-    const ids = [...picked];
-    picked.clear();
-    dialog.close();
-    void Promise.all(ids.map((id) => engine.cart.addItem(id))).then(ui.render);
+  search.oninput = () => {
+    active = 0;
+    fill();
   };
+  dialog.addEventListener('keydown', (e) => {
+    const rows = shown().slice(0, SHOWN);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      active = Math.max(0, Math.min(rows.length - 1, active + (e.key === 'ArrowDown' ? 1 : -1)));
+      fill();
+      list.querySelector('.active')?.scrollIntoView?.({ block: 'nearest' });
+    } else if (e.key === 'Enter' && e.target === search && rows[active]) {
+      e.preventDefault();
+      set(rows[active]!, (quantities().get(rows[active]!.ref_id) ?? 0) + 1);
+    }
+  });
+  engine.subscribe(fill);
 
   return {
     dialog,
     open() {
       search.value = '';
-      fill();
+      active = 0;
       dialog.showModal();
+      fill();
+      search.focus();
     },
   };
 }

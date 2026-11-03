@@ -175,19 +175,30 @@ export const CART_CSS = `.ctable{font-size:14px}
 .cmath{flex-basis:100%;text-align:right;font:11px var(--font-mono);color:var(--muted-foreground)}
 @container panel (max-width:560px){.cth{display:none}.cline{grid-template-columns:minmax(0,1fr) auto 28px;grid-template-areas:'pkg pkg x' 'qty price price'}.qty{justify-self:start;margin-left:52px}.cmore{padding-left:0}.csplit{grid-template-columns:minmax(0,1fr)}}
 .picker{font-family:var(--font-sans)}
-.picker>div{height:min(40rem,calc(100vh - 4rem))}
-.picker section{display:flex;flex-direction:column;gap:12px;min-height:0}
-.plist{flex:1;min-height:0;margin:0 -8px;overflow-y:auto}
-.plist label{display:flex;align-items:center;gap:12px;padding:8px;border-radius:var(--radius-md);cursor:pointer}
-.plist label:hover{background:var(--muted)}
-.plist .pvariant{padding-left:60px}
-.pname{display:flex;flex:1;flex-direction:column;min-width:0}
-.pname>span{font-weight:500}
-.pvariant .pname>span{font-weight:400}
-.pname .badge{margin-left:8px}
-.pname small{font-size:12px;color:var(--muted-foreground)}
-.pprice{font-variant-numeric:tabular-nums}
-.pempty{padding:24px 8px;text-align:center;color:var(--muted-foreground)}`;
+.picker>div{height:min(45rem,calc(100vh - 2rem));padding:0;gap:0}
+.picker>div>header{padding:16px;border-bottom:1px solid var(--border)}
+.picker section{display:flex;flex-direction:column;min-height:0}
+.ptools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.ptools>.input{flex:1;min-width:200px}
+.plist{flex:1;min-height:0;padding:6px;overflow-y:auto}
+.prow{display:grid;grid-template-columns:36px minmax(0,1fr) auto 112px;grid-template-areas:'thumb info price qty';align-items:center;gap:12px;padding:8px;border-radius:var(--radius-md)}
+.prow.on{background:color-mix(in oklab,var(--primary) 6%,transparent)}
+.prow.active{background:var(--accent)}
+.pthumb{grid-area:thumb;display:grid;place-items:center;width:36px;height:36px;overflow:hidden;background:var(--muted);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted-foreground)}
+.pthumb img{width:100%;height:100%;object-fit:cover;background:var(--color-white)}
+.pinfo{grid-area:info;display:flex;flex-direction:column;min-width:0}
+.pinfo>span{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+.pinfo b{font-weight:500}
+.pinfo small{overflow:hidden;font-size:12px;white-space:nowrap;text-overflow:ellipsis;color:var(--muted-foreground)}
+.pprice{grid-area:price;display:flex;flex-direction:column;align-items:flex-end;font-variant-numeric:tabular-nums}
+.pprice s{font-size:12px;color:var(--muted-foreground)}
+.prow>.qty,.prow>.btn{grid-area:qty;justify-self:end}
+.pempty{padding:24px 8px;text-align:center;color:var(--muted-foreground)}
+.picker>div>footer{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:10px 12px;border-top:1px solid var(--border)}
+.pfoot{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:13px;color:var(--muted-foreground)}
+.pfoot b{font-weight:500;color:var(--foreground)}
+.phint{display:inline-flex;align-items:center;gap:4px;font-size:12px}
+@media (max-width:560px){.prow{grid-template-columns:36px minmax(0,1fr) auto;grid-template-areas:'thumb info qty' 'thumb price qty';gap:2px 12px}.pprice{flex-direction:row;align-items:baseline;gap:6px}.pfoot{flex-basis:100%}.phint{display:none}}`;
 
 export const JOURNEY_CSS = `.jhead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:2px 0 12px;font:13px var(--font-sans);color:var(--muted-foreground)}
 .jhead b{color:var(--foreground)}

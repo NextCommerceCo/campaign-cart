@@ -114,8 +114,8 @@ src/
     checkout.ts address.ts         the Checkout tab: whether the order can go through and each step, the cart, the
                                    customer with addresses written by the country's i18n-rules format; Check form and
                                    Fill test details call engine.checkout
-    picker.ts                      Add packages: tsugi's dialog listing the campaign's packages by product, as the
-                                   dashboard's product picker
+    picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
+                                   Add and the stepper set the quantity through engine.cart
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
                                    analytics chunk's decision traces
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against

@@ -23,41 +23,64 @@ async function setup() {
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
   const head = () => root.querySelector('.bhead p')!.textContent;
   const picker = () =>
-    [...view.dialog.querySelectorAll('.plist li')].map(
-      (li) => li.querySelector('.pname')?.textContent ?? li.textContent,
-    );
-  const tick = (name: string) => {
-    const row = [...view.dialog.querySelectorAll('.plist label')].find((l) => l.textContent!.startsWith(name))!;
-    const box = row.querySelector<HTMLInputElement>('input[type=checkbox]')!;
-    box.checked = !box.checked;
-    box.dispatchEvent(new Event('change'));
-  };
+    [...view.dialog.querySelectorAll('.prow')].map((r) => [
+      r.querySelector('.pinfo b')!.textContent,
+      r.querySelector('.pinfo small')!.textContent,
+      r.querySelector('.qty > span')?.textContent ?? r.querySelector('.btn')!.textContent,
+    ]);
+  const row = (name: string) =>
+    [...view.dialog.querySelectorAll<HTMLElement>('.prow')].find(
+      (r) => r.querySelector('.pinfo b')!.textContent === name,
+    )!;
+  const filter = (label: string) =>
+    [...view.dialog.querySelectorAll<HTMLElement>('.button-group .btn')].find((b) => b.textContent!.startsWith(label))!;
+  const footer = () => view.dialog.querySelector('.psum')!.textContent;
   const rows = (selector: string) =>
     [...root.querySelectorAll(`${selector} dt`)].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]);
-  return { engine, root, view, paint, lines, button, head, picker, tick, rows, open, showState };
+  return { engine, root, view, paint, lines, button, head, picker, row, filter, footer, rows, open, showState };
 }
 
 describe('cart', () => {
-  it('shows an empty cart, and picks packages from the campaign grouped by product', async () => {
-    const { root, view, button, head, picker, tick } = await setup();
+  it('shows an empty cart, and picks packages from a flat list that adds straight to the cart', async () => {
+    const { engine, root, view, button, head, picker, row, filter, footer } = await setup();
     expect(head()).toBe('Empty');
     expect(root.textContent).toContain('The cart is empty');
     button('Add packages').click();
     expect(view.dialog.open).toBe(true);
-    expect(picker()).toEqual(expect.arrayContaining(['Earbuds ×1', 'Earbuds ×1Black', 'Earbuds ×2White']));
-    tick('Earbuds ×2');
-    expect(view.dialog.querySelector('footer .btn:last-child')!.textContent).toBe('Add 1 to cart');
-    tick('Earbuds ×1');
-    expect(view.dialog.querySelector<HTMLInputElement>('.plist li:first-child input')!.checked).toBe(true);
+    expect(filter('Purchasable').getAttribute('aria-pressed')).toBe('true');
+    expect(picker()).toEqual([
+      ['Earbuds ×1', '#1 · no SKU · qty 1', 'Add'],
+      ['Earbuds ×2', '#2 · no SKU · qty 2', 'Add'],
+      ['Protection plan', '#9 · no SKU · qty 1', 'Add'],
+      ['Earbuds case', '#3 · no SKU · qty 1', 'Add'],
+      ['Custom print', '#78 · no SKU · qty 1', 'Add'],
+    ]);
+    row('Earbuds ×2').querySelector<HTMLElement>('.btn')!.click();
+    await vi.waitFor(() => expect(row('Earbuds ×2').querySelector('.qty > span')?.textContent).toBe('1'));
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+    expect(footer()).toBe('1 package · 1 unit · $89.00 before discounts');
+    filter('Selected').click();
+    expect(filter('Selected').textContent).toBe('Selected (1)');
+    expect(picker().map(([name]) => name)).toEqual(['Earbuds ×2']);
+    filter('All').click();
+    const search = view.dialog.querySelector<HTMLInputElement>('input[type=search]')!;
+    search.value = '#9';
+    search.dispatchEvent(new Event('input'));
+    expect(picker().map(([name]) => name)).toEqual(['Protection plan']);
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await vi.waitFor(() => expect(engine.cart.lines()).toContainEqual({ package_id: 9, quantity: 1 }));
   });
 
   it('adds the picked packages, then shows the priced line, its variant and totals that add up', async () => {
-    const { root, view, lines, button, head, tick, rows } = await setup();
+    const { root, view, lines, button, head, row, paint, rows } = await setup();
     button('Add packages').click();
-    tick('Earbuds ×2');
-    (view.dialog.querySelector('footer .btn:last-child') as HTMLElement).click();
+    row('Earbuds ×2').querySelector<HTMLElement>('.btn')!.click();
+    [...view.dialog.querySelectorAll<HTMLElement>('footer .btn')].find((b) => b.textContent === 'Done')!.click();
     expect(view.dialog.open).toBe(false);
-    await vi.waitFor(() => expect(head()).toMatch(/^1 package · 1 unit · priced at \d\d:\d\d:\d\d$/));
+    await vi.waitFor(() => {
+      paint();
+      expect(head()).toMatch(/^1 package · 1 unit · priced at \d\d:\d\d:\d\d$/);
+    });
     expect(lines()).toEqual([['Earbuds ×2', '', '1', '$89.00']]);
     expect(root.querySelector('.cinfo > small')!.textContent).toBe('#2 · White');
     expect(rows('.ctot')).toEqual([
