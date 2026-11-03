@@ -73,7 +73,7 @@ details details,details>.row{margin-left:14px}
 .card:hover{border-color:var(--blue)}
 .card.bad{border-left:3px solid var(--red)}
 .tagname{font-weight:600;color:var(--blue)}
-.chip{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--hover);color:var(--muted);font-size:11px}
+.class-tag{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--hover);color:var(--muted);font-size:11px}
 .attr{margin-top:2px;word-break:break-word}
 .attr.bad .note{color:var(--red)}
 .hint{top:16px;left:50%;display:none;padding:8px 16px;border-radius:999px;background:#0a0a0a;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3);white-space:nowrap;transform:translateX(-50%)}

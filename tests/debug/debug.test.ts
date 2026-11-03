@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
+import { ANALYTICS_CSS } from '../../src/debug/analytics';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -188,6 +189,14 @@ describe('debug tools', () => {
     menuItem('Position').click();
     expect($('.root').classList.contains('right')).toBe(true);
     expect(menuItem('Position').textContent).toBe('PositionRight');
+  });
+
+  it('styles the panel and the analytics view with separate class names', async () => {
+    await start();
+    const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
+    const analytics = classes(ANALYTICS_CSS);
+    const panel = classes(shadow().querySelector('style')!.textContent!.replace(ANALYTICS_CSS, ''));
+    expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
   });
 
   it('explains an element from the console', async () => {

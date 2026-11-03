@@ -112,7 +112,7 @@ export function card({ el, notes, bad }: Inspected, box: Box): HTMLElement {
       'div',
       {},
       h('span', 'tagname', describe(el)),
-      ...[...el.classList].filter((c) => c.startsWith('next-')).map((c) => h('span', 'chip', c)),
+      ...[...el.classList].filter((c) => c.startsWith('next-')).map((c) => h('span', 'class-tag', c)),
     ),
     ...notes.map((n) =>
       h(
