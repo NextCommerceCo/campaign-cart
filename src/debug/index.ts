@@ -12,7 +12,7 @@ import { journeyView } from './journey';
 import type { ProviderConfig } from './providers';
 import { createDebug, type PageKind, type PageVisit } from './state';
 import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
-import { badge, type Child, empty, h, nodes, time, tree, tsugi } from './view';
+import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, time, tree } from './view';
 
 const TABS = {
   journey: 'Journey',
@@ -86,28 +86,20 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const issues = h('span', 'issues');
   const filter = h('input', { type: 'search', className: 'input', placeholder: 'Filter…', oninput: () => render() });
   const search = h('div', 'search', filter);
-  const button = (name: IconName, label: string, onclick: () => void) => {
-    const el = tsugi(h('button', { type: 'button', className: 'btn', title: label, onclick }, icon(name)), {
-      variant: 'ghost',
-      size: 'icon-sm',
-    });
-    el.setAttribute('aria-label', label);
-    return el;
-  };
+  const button = (name: IconName, label: string, onclick: () => void) => iconButton(name, label, onclick, 'icon-sm');
   const tabs = (Object.keys(TABS) as Tab[]).map((t) => {
-    const el = h('button', { type: 'button', onclick: () => show(t) }, TABS[t]);
+    const el = tabButton(false, () => show(t), TABS[t]);
     el.dataset.tab = t;
-    el.setAttribute('role', 'tab');
     return el;
   });
-  const tablist = tsugi(h('div', {}, ...tabs), { size: 'sm' });
+  const strip = tablist({ size: 'sm' });
+  strip.append(...tabs);
   const tabpick = h(
     'select',
     { className: 'select tabpick', onchange: () => show(tabpick.value as Tab) },
     ...(Object.keys(TABS) as Tab[]).map((t) => h('option', { value: t }, TABS[t])),
   );
   tabpick.setAttribute('aria-label', 'Panel tab');
-  tablist.setAttribute('role', 'tablist');
   const dock = button('dockRight', 'Move to the right', () => {
     right = !right;
     debug.setPanel({ right });
@@ -130,7 +122,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     h(
       'div',
       'head',
-      h('div', 'tabs', tablist),
+      h('div', 'tabs', strip),
       tabpick,
       button('pick', 'Pick an element', () => togglePick()),
       dock,
@@ -175,7 +167,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     const total = resolve(engine, 'cart.total');
     if (!units) return 'Empty';
     const price = total?.value === undefined ? '' : ` · ${format(total, campaign?.currency, campaign?.language)}`;
-    return `${units} item${units === 1 ? '' : 's'}${price}`;
+    return `${plural(units, 'item')}${price}`;
   };
   const item = (label: string, value: Child, onclick?: () => void, className = '') => {
     const content = [
@@ -223,7 +215,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         h(
           'p',
           'summary',
-          `Earlier pages in this tab had ${earlier} problem${earlier === 1 ? '' : 's'}. `,
+          `Earlier pages in this tab had ${plural(earlier, 'problem')}. `,
           h('button', { type: 'button', className: 'link', onclick: () => show('journey') }, 'Open Journey'),
         );
       const setup = [
@@ -313,11 +305,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       item('Issues', h('span', `count ${count ? tone : 'green'}`, count ? String(count) : 'None'), () =>
         show('issues'),
       ),
-      item(
-        'Journey',
-        `${debug.state().pages.length} page${debug.state().pages.length === 1 ? '' : 's'} in this tab`,
-        () => show('journey'),
-      ),
+      item('Journey', `${plural(debug.state().pages.length, 'page')} in this tab`, () => show('journey')),
       item('Checkout', `${cartText()} · ${checkout.summary()}`, () => show('checkout')),
       item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
@@ -348,7 +336,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
 
   const render = () => {
     const { count, tone } = findIssues();
-    issues.textContent = count ? `${count} Issue${count === 1 ? '' : 's'}` : '';
+    issues.textContent = count ? plural(count, 'Issue') : '';
     issues.className = `issues ${tone}`;
     root.dataset.view = view;
     root.classList.toggle('picking', !!stopPicking);

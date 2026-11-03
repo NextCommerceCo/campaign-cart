@@ -3,9 +3,9 @@ import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import type { Package } from '../engine/types';
-import { icon, type IconName } from './icons';
-import { avatar, productPicker } from './picker';
-import { badge, type Child, h, time, tsugi } from './view';
+import { icon } from './icons';
+import { productPicker, thumb } from './picker';
+import { badge, button, type Child, h, iconButton, plural, time, tsugi } from './view';
 
 const source = (group: string) =>
   group === 'items'
@@ -36,15 +36,6 @@ export function swapPackage(engine: Engine, from: number, to: number): Promise<v
   });
   return Promise.all(swaps).then(() => undefined);
 }
-
-const button = (label: Child, onclick: () => void, data: Record<string, string>, title = '') =>
-  tsugi(h('button', { type: 'button', className: 'btn', title, onclick }, label), data);
-
-const iconButton = (name: IconName, label: string, onclick: () => void) => {
-  const el = button(icon(name), onclick, { variant: 'ghost', size: 'icon-xs' }, label);
-  el.setAttribute('aria-label', label);
-  return el;
-};
 
 const lower = (before: string | undefined, now: string | undefined) =>
   before && now && Number(before) > Number(now) ? before : undefined;
@@ -193,7 +184,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       h(
         'div',
         'cpkg',
-        avatar(p?.image),
+        thumb(p?.image),
         h(
           'div',
           'cinfo',
@@ -317,9 +308,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
             h(
               'p',
               {},
-              lines.length
-                ? `${lines.length} package${lines.length === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'}`
-                : 'Empty',
+              lines.length ? `${plural(lines.length, 'package')} · ${plural(units, 'unit')}` : 'Empty',
               status && ` · ${status}`,
             ),
           ),

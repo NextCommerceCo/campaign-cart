@@ -36,10 +36,37 @@ export const badge = (text: Child, variant: string, ...rest: Child[]) =>
 
 export const nodes = (children: Child[]) => children.filter((c): c is Node | string => !!c);
 
+export const button = (label: Child, onclick: () => void, data: Record<string, string> = {}, title = '') =>
+  tsugi(h('button', { type: 'button', className: 'btn', title, onclick }, label), data);
+
+export const iconButton = (name: IconName, label: string, onclick: () => void, size = 'icon-xs') => {
+  const el = button(icon(name), onclick, { variant: 'ghost', size }, label);
+  el.setAttribute('aria-label', label);
+  return el;
+};
+
+export const tablist = (data: Record<string, string>, label = '') => {
+  const el = tsugi(h('div', {}), data);
+  el.setAttribute('role', 'tablist');
+  if (label) el.setAttribute('aria-label', label);
+  return el;
+};
+
+export const tab = (selected: boolean, onclick: () => void, ...label: Child[]) => {
+  const el = h('button', { type: 'button', onclick }, ...label);
+  el.setAttribute('role', 'tab');
+  el.setAttribute('aria-selected', String(selected));
+  return el;
+};
+
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export const time = (at: number) => {
   const d = new Date(at);
   return `${d.toTimeString().slice(0, 8)}.${String(d.getMilliseconds()).padStart(3, '0')}`;
 };
+
+export const clock = (at: number) => time(at).slice(0, 8);
 
 export const empty = (title: string, detail = '', figure: IconName = 'search') =>
   h(

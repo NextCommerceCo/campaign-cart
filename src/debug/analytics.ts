@@ -6,7 +6,7 @@ import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers,
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
 import type { PageVisit } from './state';
-import { type Child, h, nodes, time, tsugi } from './view';
+import { button, type Child, clock, h, iconButton, nodes, plural, tab as tabButton, tablist, tsugi } from './view';
 
 type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
@@ -58,7 +58,6 @@ const KEEP = 300;
 const label = (name: EventName) => LABELS[name] ?? name;
 const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
 const isTrace = (data: unknown): data is AnalyticsTrace => (data as AnalyticsTrace | undefined)?.trace === 'analytics';
-const clock = (at: number) => time(at).slice(0, 8);
 
 const what = ({ name, params }: AnalyticsEvent) => {
   const items = itemsOf(params)
@@ -394,15 +393,11 @@ export function analyticsFlow(ui: {
   const heading = h('h2', {});
   const subtitle = h('p', {});
   const body = h('section', 'scrollbar-sm');
-  const strip = tsugi(h('div', {}), { variant: 'line', size: 'sm' });
-  strip.setAttribute('role', 'tablist');
+  const strip = tablist({ variant: 'line', size: 'sm' });
   let tab = 'summary';
-  const button = (text: Child, onclick: () => void, data: Record<string, string> = {}) =>
-    tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), data);
   const newer = button('Newer', () => move(-1), { variant: 'outline', size: 'sm' });
   const older = button('Older', () => move(1), { variant: 'outline', size: 'sm' });
-  const close = button(icon('close'), () => dialog.close(), { variant: 'ghost', size: 'icon-sm' });
-  close.setAttribute('aria-label', 'Close dialog');
+  const close = iconButton('close', 'Close dialog', () => dialog.close(), 'icon-sm');
   const dialog = tsugi(
     h(
       'dialog',
@@ -446,17 +441,9 @@ export function analyticsFlow(ui: {
     const tabs = tabsOf(snap, run);
     if (!tabs.some((t) => t.id === tab)) tab = 'summary';
     strip.replaceChildren(
-      ...tabs.map((t) => {
-        const el = h(
-          'button',
-          { type: 'button', onclick: () => ((tab = t.id), fill(snapshot(ui.config()))) },
-          t.logo && icon(t.logo),
-          t.label,
-        );
-        el.setAttribute('role', 'tab');
-        el.setAttribute('aria-selected', String(t.id === tab));
-        return el;
-      }),
+      ...tabs.map((t) =>
+        tabButton(t.id === tab, () => ((tab = t.id), fill(snapshot(ui.config()))), t.logo && icon(t.logo), t.label),
+      ),
     );
     body.replaceChildren(...nodes(tabs.find((t) => t.id === tab)!.body()));
     newer.disabled = at <= 0;
@@ -481,11 +468,7 @@ export function analyticsFlow(ui: {
     const bad = runs.filter((r) => r.sent && snap.issues(r).length);
     const last = bad.at(-1);
     if (last)
-      return h(
-        'span',
-        'red',
-        `${bad.length} event${bad.length === 1 ? '' : 's'} with problems: ${last.name} ${snap.issues(last)[0]}`,
-      );
+      return h('span', 'red', `${plural(bad.length, 'event')} with problems: ${last.name} ${snap.issues(last)[0]}`);
     const warn = snap.providers.find((p) => p.status === 'warn');
     if (warn) return h('span', 'amber', warn.detail);
     if (!snap.config.dataLayer) return h('span', 'amber', 'GTM tags get none of these events: GTM dataLayer is off');

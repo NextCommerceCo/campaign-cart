@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
-import { badge, h, tsugi } from './view';
+import { badge, button, h, iconButton, plural, tab, tablist, tsugi } from './view';
 
 type Filter = 'all' | 'purchasable' | 'recurring' | 'selected';
 
@@ -14,16 +14,8 @@ const FILTERS: Array<[Filter, string]> = [
 ];
 const SHOWN = 200;
 
-export const avatar = (image: string | undefined, count?: number) =>
-  tsugi(
-    h(
-      'span',
-      'avatar',
-      image ? h('img', { src: image, alt: '' }) : h('span', {}, icon('cart')),
-      count !== undefined && h('span', 'avatar-count', String(count)),
-    ),
-    { size: 'lg' },
-  );
+export const thumb = (image: string | undefined) =>
+  h('span', 'pthumb', image ? h('img', { src: image, alt: '', loading: 'lazy' }) : icon('cart'));
 
 const purchasable = (p: Package) =>
   !/unavail|out_of_stock|out-of-stock|sold/i.test(p.product_purchase_availability ?? '');
@@ -41,20 +33,12 @@ export function productPicker(engine: Engine) {
   let filter: Filter = 'purchasable';
   let active = 0;
   const search = h('input', { type: 'search', className: 'input' });
-  const filters = h('div', 'button-group');
-  filters.setAttribute('role', 'group');
-  filters.setAttribute('aria-label', 'Filter packages');
+  const filters = tablist({ size: 'sm' }, 'Filter packages');
   const list = h('div', 'plist scrollbar-sm');
   list.setAttribute('role', 'listbox');
   const summary = h('span', 'psum');
-  const button = (label: string, onclick: () => void, data: Record<string, string> = {}) =>
-    tsugi(h('button', { type: 'button', className: 'btn', onclick }, label), data);
   const clear = button('Clear', () => void engine.cart.clear(), { variant: 'ghost' });
-  const close = tsugi(h('button', { type: 'button', className: 'btn', onclick: () => dialog.close() }, icon('close')), {
-    variant: 'ghost',
-    size: 'icon-sm',
-  });
-  close.setAttribute('aria-label', 'Close dialog');
+  const close = iconButton('close', 'Close dialog', () => dialog.close(), 'icon-sm');
   const kbd = (key: string) => h('kbd', 'kbd', key);
   const dialog = tsugi(
     h(
@@ -69,7 +53,7 @@ export function productPicker(engine: Engine) {
           h('h2', {}, 'Add packages to the cart'),
           h('p', {}, 'Search the whole catalog and set quantities. Totals recalculate as you go.'),
         ),
-        h('section', {}, h('div', 'ptools', search, filters), list),
+        h('section', {}, h('div', 'ptools', search, h('div', 'tabs', filters)), list),
         h(
           'footer',
           {},
@@ -117,19 +101,17 @@ export function productPicker(engine: Engine) {
     active = Math.min(active, Math.max(0, rows.length - 1));
     search.placeholder = `Search ${packages.length} packages by name, ref_id or SKU`;
     filters.replaceChildren(
-      ...FILTERS.map(([value, label]) => {
-        const el = button(
-          value === 'selected' && inCart.size ? `${label} (${inCart.size})` : label,
+      ...FILTERS.map(([value, label]) =>
+        tab(
+          value === filter,
           () => {
             filter = value;
             active = 0;
             fill();
           },
-          { variant: 'outline', size: 'sm' },
-        );
-        el.setAttribute('aria-pressed', String(value === filter));
-        return el;
-      }),
+          value === 'selected' && inCart.size ? `${label} (${inCart.size})` : label,
+        ),
+      ),
     );
     list.replaceChildren(
       ...rows.slice(0, SHOWN).map((p, i) => {
@@ -138,7 +120,7 @@ export function productPicker(engine: Engine) {
         const row = h(
           'div',
           `prow${n ? ' on' : ''}${i === active ? ' active' : ''}`,
-          h('span', 'pthumb', p.image ? h('img', { src: p.image, alt: '', loading: 'lazy' }) : icon('cart')),
+          thumb(p.image),
           h(
             'span',
             'pinfo',
@@ -182,7 +164,7 @@ export function productPicker(engine: Engine) {
       0,
     );
     summary.replaceChildren(
-      `${inCart.size} package${inCart.size === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'} · `,
+      `${plural(inCart.size, 'package')} · ${plural(units, 'unit')} · `,
       h('b', {}, money(total)),
       ' before discounts',
     );

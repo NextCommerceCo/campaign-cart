@@ -211,7 +211,7 @@ export const CART_CSS = `.ctable{font-size:14px}
 .prow{display:grid;grid-template-columns:36px minmax(0,1fr) auto 112px;grid-template-areas:'thumb info price qty';align-items:center;gap:12px;padding:8px;border-radius:var(--radius-md)}
 .prow.on{background:color-mix(in oklab,var(--primary) 6%,transparent)}
 .prow.active{background:var(--accent)}
-.pthumb{grid-area:thumb;display:grid;place-items:center;width:36px;height:36px;overflow:hidden;background:var(--muted);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted-foreground)}
+.pthumb{grid-area:thumb;flex-shrink:0;display:grid;place-items:center;width:36px;height:36px;overflow:hidden;background:var(--muted);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted-foreground)}
 .pthumb img{width:100%;height:100%;object-fit:cover;background:var(--color-white)}
 .pinfo{grid-area:info;display:flex;flex-direction:column;min-width:0}
 .pinfo>span{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}

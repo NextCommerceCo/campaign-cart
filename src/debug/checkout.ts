@@ -4,7 +4,7 @@ import type { CheckoutError } from '../engine/types';
 import { writtenAddress } from './address';
 import type { cartView } from './cart';
 import { icon } from './icons';
-import { badge, type Child, h, tsugi } from './view';
+import { badge, button, type Child, h, plural } from './view';
 
 const PROBLEMS: Record<string, string> = {
   blank: 'Missing',
@@ -57,6 +57,7 @@ const label = (state: CheckoutState, name: string) => {
 };
 
 type Tone = 'done' | 'todo' | 'bad' | 'warn';
+const OUTLINE = { variant: 'outline', size: 'sm' };
 const MARKS = { done: 'check', todo: 'wait', bad: 'fail', warn: 'warn' } as const;
 
 export function checkoutView(
@@ -75,9 +76,6 @@ export function checkoutView(
         : undefined;
 
   const refusal = (form: CheckoutError) => `${form.message ?? form.code}${form.decline ? ` (${form.decline})` : ''}`;
-
-  const button = (text: string, onclick: () => void) =>
-    tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), { variant: 'outline', size: 'sm' });
 
   const fill = () => {
     const actions = engine.checkout!;
@@ -171,7 +169,7 @@ export function checkoutView(
             : { title: 'Order', detail: 'Not placed yet', tone: 'todo' };
     return [
       units
-        ? { title: 'Cart', detail: `${units} item${units === 1 ? '' : 's'}`, tone: 'done' }
+        ? { title: 'Cart', detail: plural(units, 'item'), tone: 'done' }
         : { title: 'Cart', detail: 'Empty: an order needs at least one line', tone: 'bad' },
       details(state, fieldErrors, missing),
       shipping
@@ -247,8 +245,8 @@ export function checkoutView(
         'div',
         'vhead',
         h('span', {}, h('b', {}, 'Checkout'), ` · ${status(state)}`),
-        button('Check form', check),
-        button('Fill test details', fill),
+        button('Check form', check, OUTLINE),
+        button('Fill test details', fill, OUTLINE),
       ),
       block(
         'Order',

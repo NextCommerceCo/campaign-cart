@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import { icon } from './icons';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
-import { badge, type Child, empty, h, time, tsugi, tsugiCard } from './view';
+import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
 
 export const KINDS: Record<PageKind, string> = {
   product: 'Landing',
@@ -15,12 +15,10 @@ const SVG = 'http://www.w3.org/2000/svg';
 const GUTTER = 12;
 const RADIUS = 6;
 
-const clock = (at: number) => time(at).slice(0, 8);
 const stayed = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const problems = (p: PageVisit) => p.marks.filter((m) => m.tone === 'warn' || m.tone === 'error').length;
 
 export function drawLines(journey: HTMLElement) {

@@ -33,7 +33,7 @@ async function setup() {
       (r) => r.querySelector('.pinfo b')!.textContent === name,
     )!;
   const filter = (label: string) =>
-    [...view.dialog.querySelectorAll<HTMLElement>('.button-group .btn')].find((b) => b.textContent!.startsWith(label))!;
+    [...view.dialog.querySelectorAll<HTMLElement>('.ptools [role=tab]')].find((b) => b.textContent!.startsWith(label))!;
   const footer = () => view.dialog.querySelector('.psum')!.textContent;
   const rows = (selector: string) =>
     [...root.querySelectorAll(`${selector} dt`)].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]);
@@ -47,7 +47,7 @@ describe('cart', () => {
     expect(root.textContent).toContain('The cart is empty');
     button('Add packages').click();
     expect(view.dialog.open).toBe(true);
-    expect(filter('Purchasable').getAttribute('aria-pressed')).toBe('true');
+    expect(filter('Purchasable').getAttribute('aria-selected')).toBe('true');
     expect(picker()).toEqual([
       ['Earbuds ×1', '#1 · no SKU · qty 1', 'Add'],
       ['Earbuds ×2', '#2 · no SKU · qty 2', 'Add'],

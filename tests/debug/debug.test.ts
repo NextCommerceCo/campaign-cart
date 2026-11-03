@@ -335,6 +335,11 @@ describe('debug tools', () => {
     const unused = (names: Set<string | undefined>) =>
       [...names].filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(code));
     expect([panel, analytics, cart, journey, checkout].flatMap(unused)).toEqual([]);
+    const vendored = readFileSync('scripts/tsugi.mjs', 'utf8').match(/const COMPONENTS = \[([^\]]*)\]/)![1]!;
+    const CLASSES: Record<string, string> = { button: 'btn', 'native-select': 'select', scrollbar: 'scrollbar-sm' };
+    expect(unused(new Set([...vendored.matchAll(/'([\w-]+)'/g)].map(([, name]) => CLASSES[name!] ?? name)))).toEqual(
+      [],
+    );
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
     expect(
       [...panel, ...analytics, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!)),
