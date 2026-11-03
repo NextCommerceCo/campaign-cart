@@ -105,7 +105,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
 
   const query = () => filter.value.trim().toLowerCase();
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
-  const cart = cartView(engine, { render: () => render(), showState: () => show('state') });
+  const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);

@@ -1,7 +1,7 @@
-import type { CartSummary, SummaryLine } from '../engine/cart/types';
+import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
-import { type Child, empty, h, time } from './view';
+import { type Child, empty, expandable, h, time } from './view';
 
 const source = (group: string) =>
   group === 'items'
@@ -12,15 +12,18 @@ const source = (group: string) =>
         ? 'toggle'
         : group;
 
-export function cartView(engine: Engine, ui: { render: () => void; showState: () => void }) {
+export function cartView(engine: Engine, ui: { open: Set<string>; render: () => void; showState: () => void }) {
   let message: { text: string; tone: 'green' | 'amber' } | undefined;
   let pricedAt: number | undefined;
   engine.on('cart.calculated', (e) => (pricedAt = e.at), { replay: true });
 
   const coupon = h('input', { type: 'text', placeholder: 'Coupon code', className: 'cin' });
-  const shipping = h('select', { onchange: () => act(engine.cart.setShipping(Number(shipping.value))) });
-  const pkg = h('select');
-  const quantity = h('input', { type: 'number', min: '1', value: '1', className: 'cqty' });
+  const shipping = h('select', {
+    className: 'csel',
+    onchange: () => act(engine.cart.setShipping(Number(shipping.value))),
+  });
+  const pkg = h('select', { className: 'csel' });
+  const quantity = h('input', { type: 'number', min: '1', value: '1', className: 'cin cqty' });
 
   const money = (amount: string | number | undefined) => {
     const { campaign, cart } = engine.getState();
@@ -48,53 +51,138 @@ export function cartView(engine: Engine, ui: { render: () => void; showState: ()
   };
   coupon.onkeydown = (e) => e.key === 'Enter' && apply();
 
-  const line = (packageId: number, count: number, priced?: SummaryLine) => {
+  const badge = (d: Discount, codes: Set<string>) => {
+    const code = codes.has(d.name ?? '');
+    const percent = Math.round(Number(d.percentage));
+    const off = percent ? `${percent}% OFF` : `−${money(d.amount)}`;
+    return h(
+      'span',
+      { className: `cbadge ${code ? 'code' : 'offer'}`, title: d.name ?? '' },
+      code ? `Extra ${off}` : off,
+    );
+  };
+
+  const line = (packageId: number, count: number, priced: SummaryLine | undefined, codes: Set<string>) => {
     const p = engine.getPackage(packageId);
     const from = Object.entries(engine.getState().cart.groups)
       .filter(([, g]) => g.lines.some((l) => l.packageId === packageId))
       .map(([id]) => source(id));
     const total = priced ? priced.total : p && Number(p.price_total) * count;
     const before = priced && Number(priced.total_discount) > 0 ? priced.subtotal : undefined;
+    const recurring = (priced?.is_recurring ?? p?.is_recurring) && (priced?.price_recurring ?? p?.price_recurring);
+    const every =
+      p?.interval_count && p.interval_count > 1 ? `${p.interval_count} ${p.interval}s` : (p?.interval ?? 'month');
+    const attributes = p?.product_variant_attribute_values ?? [];
     const set = (n: number) => () => act(engine.cart.setQuantity(packageId, n));
     return h(
       'div',
-      'cline',
-      p?.image ? h('img', { src: p.image, alt: '' }) : h('span', 'noimg'),
+      'ccard cline',
+      !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => badge(d, codes))),
       h(
         'div',
-        {},
-        h('div', 'cname', p?.name ?? `Package ${packageId}`),
+        'cmain',
         h(
           'div',
-          'cmeta',
-          `#${packageId} · ${money(priced?.package_price ?? p?.price_total)} each · from ${from.join(', ')}`,
+          'cthumb',
+          p?.image ? h('img', { src: p.image, alt: '' }) : h('span', 'cnoimg'),
+          h('span', 'cbubble', String(count)),
         ),
         h(
-          'span',
-          'qty',
-          h('button', { type: 'button', title: 'One less', onclick: set(count - 1) }, '−'),
-          h('span', {}, String(count)),
-          h('button', { type: 'button', title: 'One more', onclick: set(count + 1) }, '+'),
-          h('button', { type: 'button', className: 'remove', title: 'Remove', onclick: set(0) }, '✕'),
+          'div',
+          'cinfo',
+          h('div', 'cname', p?.name ?? `Package ${packageId}`),
+          h(
+            'div',
+            'cunit',
+            `${money(priced?.package_price ?? p?.price_total)} × `,
+            h(
+              'span',
+              'cstep',
+              h('button', { type: 'button', title: 'One less', onclick: set(count - 1) }, '−'),
+              h('span', {}, String(count)),
+              h('button', { type: 'button', title: 'One more', onclick: set(count + 1) }, '+'),
+            ),
+          ),
+          h('div', 'csource', `#${packageId} · from ${from.join(', ')}`),
         ),
+        h(
+          'div',
+          'cprice',
+          before && h('s', {}, money(before)),
+          h('b', {}, money(total)),
+          !priced && h('small', {}, 'estimate'),
+        ),
+        h('button', { type: 'button', className: 'cremove', title: 'Remove', onclick: set(0) }, '✕'),
       ),
-      h('div', 'cprice', before && h('s', {}, money(before)), money(total), !priced && h('small', {}, 'estimate')),
+      attributes.length > 0 &&
+        h(
+          'div',
+          'cvars',
+          ...attributes.map((a) => h('div', 'cvar', h('span', {}, a.name), h('span', 'cfield', a.value))),
+        ),
+      recurring && h('div', 'crecur', `Then ${money(String(recurring))} every ${every}`),
     );
   };
 
   const totals = (s: CartSummary) => {
-    const row = (label: string, value: string, className = '') =>
+    const row = (label: Child, value: Child, className = '') =>
       h('div', `trow ${className}`, h('span', {}, label), h('span', {}, value));
+    const breakdown = (
+      key: string,
+      label: string,
+      sub: string | undefined,
+      value: Child,
+      parts: Array<[string, string, boolean]>,
+    ) =>
+      parts.length
+        ? expandable(
+            [h('span', {}, label, h('span', 'chev', '⌄'), sub && h('small', {}, sub)), h('span', {}, value)],
+            key,
+            ui.open,
+            () =>
+              parts.map(([name, amount, code]) =>
+                h(
+                  'div',
+                  'tpart',
+                  h('span', {}, code && h('span', 'ctag', 'code'), name),
+                  h('span', {}, `−${money(amount)}`),
+                ),
+              ),
+            'tmore',
+          )
+        : row(h('span', {}, label, sub && h('small', {}, sub)), value);
+    const codes = new Set(s.voucher_discounts.map((d) => d.name ?? ''));
+    const part = (d: Discount, fallback: string, code: boolean): [string, string, boolean] => [
+      d.name || fallback,
+      d.amount,
+      code,
+    ];
+    const discounts = [
+      ...s.offer_discounts.map((d) => part(d, 'This offer', false)),
+      ...s.voucher_discounts.map((d) => part(d, 'Coupon', true)),
+    ];
+    const ship = s.shipping_method;
+    const shipParts = (ship?.discounts ?? []).map((d) => part(d, 'Shipping discount', codes.has(d.name ?? '')));
     return h(
       'div',
-      'totals',
+      'ccard ctotals',
       row('Subtotal', money(s.subtotal)),
-      ...s.offer_discounts.map((d) =>
-        row(`Offer: ${d.name ?? d.description ?? 'discount'}`, `−${money(d.amount)}`, 'disc'),
-      ),
-      ...s.voucher_discounts.map((d) => row(`Coupon: ${d.name ?? 'code'}`, `−${money(d.amount)}`, 'disc')),
-      row(`Shipping${s.shipping_method ? `: ${s.shipping_method.name}` : ''}`, money(s.shipping_method?.price ?? 0)),
-      row('Total', money(s.total), 'grand'),
+      Number(s.total_discount) > 0 &&
+        breakdown('cart-discounts', 'Discounts', undefined, `−${money(s.total_discount)}`, discounts),
+      ship &&
+        breakdown(
+          'cart-shipping',
+          'Shipping',
+          ship.name,
+          h(
+            'span',
+            {},
+            Number(ship.original_price) > Number(ship.price) && h('s', {}, money(ship.original_price)),
+            money(ship.price),
+          ),
+          shipParts,
+        ),
+      row('Total', money(s.total), 'tgrand'),
     );
   };
 
@@ -103,6 +191,7 @@ export function cartView(engine: Engine, ui: { render: () => void; showState: ()
     const lines = engine.cart.lines();
     const units = lines.reduce((n, l) => n + l.quantity, 0);
     const summary = cart.summary;
+    const codes = new Set(summary?.voucher_discounts.map((d) => d.name ?? '') ?? []);
     const status = cart.frozen
       ? 'frozen after the order'
       : cart.calculating
@@ -145,55 +234,56 @@ export function cartView(engine: Engine, ui: { render: () => void; showState: ()
             'Clear cart',
           ),
       ),
-      lines.length
-        ? h(
-            'div',
-            'lines',
-            ...lines.map((l) =>
-              line(
-                l.package_id,
-                l.quantity,
-                summary?.lines.find((s) => s.package_id === l.package_id),
-              ),
+      ...(lines.length
+        ? lines.map((l) =>
+            line(
+              l.package_id,
+              l.quantity,
+              summary?.lines.find((s) => s.package_id === l.package_id),
+              codes,
             ),
           )
-        : empty('Cart is empty', 'Add a package below, or use the page.'),
+        : [empty('Cart is empty', 'Add a package below, or use the page.')]),
       summary && lines.length > 0 && totals(summary),
       h(
         'div',
-        'crow',
-        h('span', 'clabel', 'Coupons'),
-        ...cart.coupons.map((c) =>
-          h(
-            'span',
-            'coupon',
-            c,
+        'ccard cctl',
+        h(
+          'div',
+          'crow',
+          h('span', 'clabel', 'Coupons'),
+          ...cart.coupons.map((c) =>
             h(
-              'button',
-              { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
-              ' ✕',
+              'span',
+              'coupon',
+              c,
+              h(
+                'button',
+                { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
+                ' ✕',
+              ),
             ),
           ),
+          coupon,
+          h('button', { type: 'button', className: 'cbtn', onclick: apply }, 'Apply'),
         ),
-        coupon,
-        h('button', { type: 'button', className: 'btn', onclick: apply }, 'Apply'),
-      ),
-      message && h('div', `cmsg ${message.tone}`, message.text),
-      methods.length > 0 && h('div', 'crow', h('span', 'clabel', 'Shipping'), shipping),
-      h(
-        'div',
-        'crow',
-        h('span', 'clabel', 'Add'),
-        pkg,
-        quantity,
+        message && h('div', `cmsg ${message.tone}`, message.text),
+        methods.length > 0 && h('div', 'crow', h('span', 'clabel', 'Shipping'), shipping),
         h(
-          'button',
-          {
-            type: 'button',
-            className: 'btn',
-            onclick: () => act(engine.cart.addItem(Number(pkg.value), Math.max(1, Number(quantity.value) || 1))),
-          },
-          'Add to cart',
+          'div',
+          'crow',
+          h('span', 'clabel', 'Add'),
+          pkg,
+          quantity,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'cbtn',
+              onclick: () => act(engine.cart.addItem(Number(pkg.value), Math.max(1, Number(quantity.value) || 1))),
+            },
+            'Add to cart',
+          ),
         ),
       ),
     ];

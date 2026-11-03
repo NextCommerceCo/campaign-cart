@@ -8,12 +8,12 @@ async function setup() {
   await engine.start();
   const root = document.createElement('div');
   const showState = vi.fn();
-  const view = cartView(engine, { render: () => paint(), showState });
+  const view = cartView(engine, { open: new Set(), render: () => paint(), showState });
   const paint = () => root.replaceChildren(...nodes(view.view()));
   paint();
   const lines = () =>
     [...root.querySelectorAll('.cline')].map((l) =>
-      ['.cname', '.cmeta', '.qty span', '.cprice'].map((q) => l.querySelector(q)!.textContent),
+      ['.cname', '.csource', '.cstep span', '.cprice'].map((q) => l.querySelector(q)!.textContent),
     );
   const button = (text: string) =>
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
@@ -36,11 +36,11 @@ describe('cart tab', () => {
     root.querySelector<HTMLInputElement>('.cqty')!.value = '3';
     button('Add to cart').click();
     await vi.waitFor(() => expect(head()).toMatch(/^3 items · \$[\d,.]+ · priced at \d\d:\d\d:\d\d$/));
-    expect(lines()).toEqual([
-      ['Earbuds ×2', expect.stringMatching(/^#2 · \$[\d.]+ each · from added$/), '3', expect.stringMatching(/^\$/)],
-    ]);
+    expect(lines()).toEqual([['Earbuds ×2', '#2 · from added', '3', expect.stringMatching(/^\$/)]]);
+    expect(root.querySelector('.cunit')!.textContent).toMatch(/^\$[\d.]+ × −3\+$/);
+    expect(root.querySelector('.cvar')!.textContent).toBe('ColorWhite');
     const totals = [...root.querySelectorAll('.trow')].map((r) => r.firstChild!.textContent);
-    expect(totals).toEqual(['Subtotal', 'Shipping: Standard', 'Total']);
+    expect(totals).toEqual(['Subtotal', 'ShippingStandard', 'Total']);
   });
 
   it('changes the quantity, and removes the line', async () => {
@@ -70,7 +70,11 @@ describe('cart tab', () => {
     button('Apply').click();
     await vi.waitFor(() => expect(root.querySelector('.cmsg')!.textContent).toBe('SAVE10 applied'));
     expect(root.querySelector('.coupon')!.textContent).toBe('SAVE10 ✕');
-    expect(root.querySelector('.trow.disc')!.textContent).toBe('Coupon: SAVE10−$10.00');
+    expect(root.querySelector('.cbadge')!.textContent).toBe('Extra 10% OFF');
+    const discounts = root.querySelector<HTMLDetailsElement>('.tmore')!;
+    expect(discounts.querySelector('summary')!.textContent).toBe('Discounts⌄−$10.00');
+    discounts.open = true;
+    await vi.waitFor(() => expect(discounts.querySelector('.tpart')!.textContent).toBe('codeSAVE10−$10.00'));
     root.querySelector<HTMLElement>('.coupon button')!.click();
     await vi.waitFor(() => expect(engine.getState().cart.coupons).toEqual([]));
   });
