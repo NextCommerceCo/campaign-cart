@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
 import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
@@ -270,6 +271,13 @@ describe('debug tools', () => {
     ];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
+    const code = readdirSync('src/debug')
+      .filter((file) => file !== 'styles.ts')
+      .map((file) => readFileSync(`src/debug/${file}`, 'utf8'))
+      .join('\n');
+    const unused = (names: Set<string | undefined>) =>
+      [...names].filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(code));
+    expect([panel, analytics, cart, journey, checkout].flatMap(unused)).toEqual([]);
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
     expect(
       [...panel, ...analytics, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!)),

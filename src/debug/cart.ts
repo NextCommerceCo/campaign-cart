@@ -123,7 +123,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       const to = options.find((o) => o.value === select.value)?.packageId;
       if (to) act(swapPackage(engine, packageId, to));
     };
-    return h('div', 'field', h('label', { htmlFor: id }, name), select);
+    return h('div', 'cfield', h('label', { htmlFor: id }, name), select);
   };
 
   const details = (
@@ -374,7 +374,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
             'cform',
             h(
               'div',
-              'field',
+              'cfield',
               h('label', { htmlFor: 'cart-coupon' }, 'Vouchers'),
               h('div', 'cvoucher', coupon, button('Apply', apply, { variant: 'outline' })),
               cart.coupons.length > 0 &&
@@ -395,7 +395,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
                 ),
               message && h('p', `cmsg ${message.tone}`, message.text),
             ),
-            methods.length > 0 && h('div', 'field', h('label', { htmlFor: 'cart-shipping' }, 'Shipping'), shipping),
+            methods.length > 0 && h('div', 'cfield', h('label', { htmlFor: 'cart-shipping' }, 'Shipping'), shipping),
           ),
           summary ? totals(summary) : h('p', 'dim', 'Totals appear once the cart has packages.'),
         ),

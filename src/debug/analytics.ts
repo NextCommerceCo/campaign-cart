@@ -6,11 +6,12 @@ import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers,
 import { icon } from './icons';
 import { KINDS } from './journey';
 import type { PageVisit } from './state';
-import { type Child, h, nodes, time, tree, tsugi } from './view';
+import { type Child, h, nodes, time, tsugi } from './view';
 
 type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
-type Hit = { id: string; name: string; at: number };
+type Hit = { id: string; name: string; at: number; host: string; params: Array<[string, string]> };
+type Tab = { id: string; label: string; body: () => Child[] };
 type Sum = { ok: boolean; text: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
@@ -121,7 +122,15 @@ const ga4Hits = (): Hit[] =>
         const url = new URL(entry.name);
         const id = url.searchParams.get('tid') ?? '';
         return url.pathname.endsWith('/g/collect') && id.startsWith('G-')
-          ? [{ id, name: url.searchParams.get('en') ?? '', at: performance.timeOrigin + entry.startTime }]
+          ? [
+              {
+                id,
+                name: url.searchParams.get('en') ?? '',
+                at: performance.timeOrigin + entry.startTime,
+                host: url.host,
+                params: [...url.searchParams],
+              },
+            ]
           : [];
       } catch {
         return [];
@@ -230,13 +239,27 @@ export function analyticsFlow(ui: {
         .map(([k, v]) => h('span', {}, h('i', {}, k), ` ${v}`)),
     );
 
-  const detail = (snap: Snapshot, run: Run): Child[] => {
-    const wire = WIRING.find((w) => (w.ga ?? w.dl) === run.name);
-    const dl = wire?.dl ?? run.name;
+  const json = (title: string, note: string, value: unknown) => {
+    const text = JSON.stringify(value, null, 2);
+    const copy = button(
+      'Copy',
+      () => {
+        void navigator.clipboard?.writeText(text);
+        copy.textContent = 'Copied';
+      },
+      { variant: 'ghost', size: 'sm' },
+    );
+    return h(
+      'div',
+      'ajson',
+      h('div', 'ajhead', h('div', {}, h('b', {}, title), h('small', {}, note)), copy),
+      h('pre', {}, text),
+    );
+  };
+
+  const overview = (snap: Snapshot, run: Run): Child[] => {
+    const dl = WIRING.find((w) => (w.ga ?? w.dl) === run.name)?.dl ?? run.name;
     const event = snap.event(run.id)?.data;
-    const trigger = snap.trigger(run);
-    const pushed = pushedTo('NextDataLayer', run.id) ?? pushedTo('dataLayer', run.id);
-    const key = ui.idOf(run);
     const problems = event ? checks(event.name, event.params) : [];
     const items = event ? itemsOf(event.params) : [];
     const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
@@ -251,11 +274,6 @@ export function analyticsFlow(ui: {
       hit && chip('ok', `GA4 ${hit.id}`, `A Google Analytics request named ${hit.name} left the page after it.`),
     ];
     const adds = snap.sum(run);
-    const raw = [
-      event && tree(h('span', 'key', 'event'), event, `ae${key}`, ui.open),
-      pushed && tree(h('span', 'key', dl), pushed, `ap${key}`, ui.open),
-      trigger && tree(h('span', 'key', run.trigger), trigger.data, `at${key}`, ui.open),
-    ].filter(Boolean);
     const rows: Array<[string, ...Child[]]> = [
       ['Why', h('span', {}, run.reason), h('small', {}, `${label(run.trigger)}: `, h('code', {}, run.trigger))],
       ...(problems.length
@@ -271,10 +289,62 @@ export function analyticsFlow(ui: {
             ],
           ]
         : []),
-      ...(items.length ? [['Items', h('div', 'aitems', itemsTable(items))] as [string, ...Child[]]] : []),
-      ...(raw.length ? [['Raw', h('div', 'araw', ...raw)] as [string, ...Child[]]] : []),
     ];
-    return [h('dl', 'adetail', ...rows.flatMap(([title, ...value]) => [h('dt', {}, title), h('dd', {}, ...value)]))];
+    return [
+      h('dl', 'adetail', ...rows.flatMap(([title, ...value]) => [h('dt', {}, title), h('dd', {}, ...value)])),
+      items.length > 0 && h('div', 'aitems', h('p', {}, `Items · ${items.length}`), itemsTable(items)),
+    ];
+  };
+
+  const tabsOf = (snap: Snapshot, run: Run): Tab[] => {
+    const dl = WIRING.find((w) => (w.ga ?? w.dl) === run.name)?.dl ?? run.name;
+    const event = snap.event(run.id)?.data;
+    const trigger = snap.trigger(run);
+    const next = pushedTo('NextDataLayer', run.id);
+    const gtm = pushedTo('dataLayer', run.id);
+    const hit = snap.seen(run);
+    const tabs: Array<Tab | false | undefined> = [
+      { id: 'summary', label: 'Summary', body: () => overview(snap, run) },
+      (event || trigger) && {
+        id: 'event',
+        label: 'Event',
+        body: () => [
+          event && json('analytics', "The SDK's event, as page scripts get it with next.on('analytics')", event),
+          trigger && json(run.trigger, `What triggered it: ${label(run.trigger)}`, trigger.data),
+        ],
+      },
+      next && { id: 'next', label: 'NextDataLayer', body: () => [json(dl, 'The push in window.NextDataLayer', next)] },
+      gtm && {
+        id: 'gtm',
+        label: 'GTM dataLayer',
+        body: () => [
+          json(
+            dl,
+            gtm['gtm.uniqueEventId'] !== undefined
+              ? 'The push in window.dataLayer, read by GTM'
+              : 'The push in window.dataLayer, for GTM tags',
+            gtm,
+          ),
+        ],
+      },
+      hit && {
+        id: 'ga4',
+        label: 'GA4',
+        body: () => [
+          h(
+            'div',
+            'aga4',
+            h(
+              'p',
+              {},
+              `The request to ${hit.host} for ${hit.id} that left the page after it. A request that batches several events names only the first in its URL.`,
+            ),
+            h('table', {}, ...hit.params.map(([k, v]) => h('tr', {}, h('td', 'dim', k), h('td', {}, v)))),
+          ),
+        ],
+      },
+    ];
+    return tabs.filter((t): t is Tab => !!t);
   };
 
   const sub = (snap: Snapshot, run: Run) => {
@@ -313,6 +383,9 @@ export function analyticsFlow(ui: {
   const heading = h('h2', {});
   const subtitle = h('p', {});
   const body = h('section', 'scrollbar-sm');
+  const strip = tsugi(h('div', {}), { variant: 'line', size: 'sm' });
+  strip.setAttribute('role', 'tablist');
+  let tab = 'summary';
   const button = (text: Child, onclick: () => void, data: Record<string, string> = {}) =>
     tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), data);
   const newer = button('Newer', () => move(-1), { variant: 'outline', size: 'sm' });
@@ -327,6 +400,7 @@ export function analyticsFlow(ui: {
         'div',
         {},
         h('header', {}, heading, subtitle),
+        h('div', 'tabs atabs', strip),
         body,
         h(
           'footer',
@@ -358,7 +432,17 @@ export function analyticsFlow(ui: {
     subtitle.replaceChildren(
       [label(run.trigger), clock(run.at), event && amount(event.params), STATED[state]].filter(Boolean).join(' · '),
     );
-    body.replaceChildren(...nodes(detail(snap, run)));
+    const tabs = tabsOf(snap, run);
+    if (!tabs.some((t) => t.id === tab)) tab = 'summary';
+    strip.replaceChildren(
+      ...tabs.map((t) => {
+        const el = h('button', { type: 'button', onclick: () => ((tab = t.id), fill(snapshot(ui.config()))) }, t.label);
+        el.setAttribute('role', 'tab');
+        el.setAttribute('aria-selected', String(t.id === tab));
+        return el;
+      }),
+    );
+    body.replaceChildren(...nodes(tabs.find((t) => t.id === tab)!.body()));
     newer.disabled = at <= 0;
     older.disabled = at < 0 || at >= shown.length - 1;
   };

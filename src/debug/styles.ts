@@ -31,7 +31,7 @@ button.item:hover{background:var(--accent)}
 .danger{color:var(--destructive)}
 hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .count{font-weight:600}
-.red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.blue{color:var(--info)}.purple{color:var(--purple)}.dim,.time{color:var(--muted-foreground)}
+.red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.dim,.time{color:var(--muted-foreground)}
 .panel{flex-direction:column;width:min(600px,calc(100vw - 40px));height:min(640px,calc(100vh - 100px));container:panel/inline-size}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}
 .head .tabs{flex:1;min-width:0;margin-right:6px}
@@ -110,7 +110,9 @@ export const ANALYTICS_CSS = `.afunnel>.kstep{display:flex;flex-wrap:wrap;align-
 .aend b{font-size:13px;font-weight:500;color:var(--foreground)}
 .aevent{font-family:var(--font-sans)}
 .aevent>div{container:aevent/inline-size;padding:0;gap:0}
-.aevent>div>header{padding:16px 48px 14px 16px;border-bottom:1px solid var(--border)}
+.aevent>div>header{padding:16px 48px 10px 16px}
+.atabs{padding:0 16px;border-bottom:1px solid var(--border)}
+.atabs>[role=tablist]{max-width:100%;overflow-x:auto}
 .aevent>div>section{min-height:0;overflow-y:auto}
 .aevent>div>footer{flex-direction:row;padding:10px 12px;border-top:1px solid var(--border)}
 .aevent>div>footer>.btn:last-child{margin-left:auto}
@@ -124,15 +126,27 @@ export const ANALYTICS_CSS = `.afunnel>.kstep{display:flex;flex-wrap:wrap;align-
 @container aevent (max-width:480px){.adetail{grid-template-columns:minmax(0,1fr);gap:2px}.adetail>dd+dt{margin-top:10px}}
 .aparams{display:flex;flex-wrap:wrap;gap:2px 14px}
 .aparams i{font-style:normal;color:var(--muted-foreground)}
-.araw{width:100%;font:12px/1.6 var(--font-mono)}
+.ajson{display:flex;flex-direction:column;gap:8px;padding:14px 16px}
+.ajson+.ajson{border-top:1px solid var(--border)}
+.ajhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ajhead>div{display:flex;flex-direction:column}
+.ajhead b{font:500 13px var(--font-mono)}
+.ajhead small,.aga4>p,.aitems>p{font-size:12px;color:var(--muted-foreground)}
+.ajson pre{margin:0;padding:10px 12px;overflow-x:auto;background:var(--muted);border-radius:var(--radius-md);font:12px/1.5 var(--font-mono)}
+.aga4{display:flex;flex-direction:column;gap:8px;padding:14px 16px;overflow-wrap:anywhere;font-size:13px}
+.aga4 td{white-space:normal}
+.aga4 td:first-child{white-space:nowrap}
 .anone{padding:16px;text-align:center;font:13px var(--font-sans);color:var(--muted-foreground)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.aitems{width:100%;overflow-x:auto}
+.aitems{display:flex;flex-direction:column;gap:6px;padding:0 16px 16px;overflow-x:auto;font-size:13px}
 th,td{padding:2px 12px 2px 0;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)}
 th{font-size:12px;font-weight:500;color:var(--muted-foreground)}
 `;
 
 export const CART_CSS = `.ctable{font-size:14px}
+.cfield{display:flex;flex-direction:column;gap:8px;width:100%}
+.cfield>*{width:100%}
+.cfield>label{width:fit-content;font-size:14px;font-weight:500;line-height:1}
 .cth,.cline{display:grid;grid-template-columns:minmax(0,1fr) 104px 112px 28px;grid-template-areas:'pkg qty price x';align-items:center;gap:8px 12px;padding:10px 16px}
 .cth{padding-block:8px;background:var(--muted);border-bottom:1px solid var(--border);font-size:13px;color:var(--muted-foreground)}
 .cth>:nth-child(2){text-align:center}
