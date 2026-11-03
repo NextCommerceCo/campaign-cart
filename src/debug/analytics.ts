@@ -3,9 +3,11 @@ import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../engine/events';
 import { format } from '../engine/format';
 import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win, WIRING } from './providers';
-import { type Child, empty, expandable, h, time, tree } from './view';
+import { icon } from './icons';
+import { type Child, empty, expandable, h, nodes, time, tree, tsugi } from './view';
 
-type State = 'ok' | 'skip' | 'warn' | 'off';
+type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
+type Show = 'sent' | 'skipped' | 'problems';
 type Run = AnalyticsTrace & { at: number };
 
 const LABELS: Partial<Record<EventName, string>> = {
@@ -29,7 +31,19 @@ const NOT_PUSHED: Record<Layer, string> = {
   NextDataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.NextDataLayer',
   dataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.dataLayer',
 };
-const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: '○' };
+const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: '○', info: '•' };
+const MARK = { ok: 'check', warn: 'warn', skip: 'wait', off: 'wait', info: 'wait' } as const;
+const SHOWS: Array<[Show, string]> = [
+  ['sent', 'Sent'],
+  ['skipped', 'Not sent'],
+  ['problems', 'Problems'],
+];
+const STATED: Record<State, string> = { ok: 'Sent', warn: 'Sent with problems', skip: 'Not sent', off: '', info: '' };
+const NONE: Record<Show, string> = {
+  sent: 'Nothing sent yet: every decision so far stopped its event.',
+  skipped: 'Every decision so far sent its event.',
+  problems: 'No problems: every sent event has the fields GA4 requires and reached each data layer.',
+};
 const KEEP = 300;
 
 const label = (name: EventName) => LABELS[name] ?? name;
@@ -39,7 +53,10 @@ const clock = (at: number) => time(at).slice(0, 8);
 
 const what = ({ name, params }: AnalyticsEvent) => {
   const items = itemsOf(params)
-    .map((i) => `${i.item_name ?? i.item_id ?? '?'} ×${i.quantity ?? 1}`)
+    .map((i) => {
+      const name = i.item_name ?? i.item_id ?? '?';
+      return `${name}${i.item_variant && i.item_variant !== name ? ` (${i.item_variant})` : ''} ×${i.quantity ?? 1}`;
+    })
     .join(', ');
   if (name === 'add_to_cart') return `+ ${items}`;
   if (name === 'remove_from_cart') return `− ${items}`;
@@ -59,21 +76,19 @@ const pushedTo = (layer: Layer, id: string | undefined) =>
         (Record<string, unknown> & { event?: string }) | undefined)
     : undefined;
 
-const itemsTable = (items: Item[]) =>
-  h(
+const COLUMNS = { item_name: 'item', item_variant: 'variant', item_id: 'id', quantity: 'qty', price: 'price' };
+
+const itemsTable = (items: Item[]) => {
+  const columns = (Object.keys(COLUMNS) as Array<keyof typeof COLUMNS>).filter(
+    (c) => c !== 'item_variant' || items.some((i) => i.item_variant && i.item_variant !== i.item_name),
+  );
+  return h(
     'table',
     {},
-    h('tr', {}, ...['item', 'id', 'qty', 'price'].map((t) => h('th', {}, t))),
-    ...items.map((i) =>
-      h(
-        'tr',
-        {},
-        ...[i.item_name, i.item_id, i.quantity, i.price].map((v, col) =>
-          h('td', col === 1 ? 'dim' : {}, String(v ?? '')),
-        ),
-      ),
-    ),
+    h('tr', {}, ...columns.map((c) => h('th', {}, COLUMNS[c]))),
+    ...items.map((i) => h('tr', {}, ...columns.map((c) => h('td', c === 'item_id' ? 'dim' : {}, String(i[c] ?? ''))))),
   );
+};
 
 const chip = (state: State, text: string, title = '') =>
   h('span', { className: `chip ${state}`, title }, `${ICON[state]} ${text}`);
@@ -86,7 +101,6 @@ export function analyticsFlow(ui: {
 }) {
   const received: EngineEvent[] = [];
   const runs: Run[] = [];
-  let selected: Run | undefined;
 
   const record = (e: EngineEvent) => {
     received.push(e);
@@ -126,154 +140,176 @@ export function analyticsFlow(ui: {
     };
   };
   type Snapshot = ReturnType<typeof snapshot>;
+  let show: Show = 'sent';
 
-  const choose = (run: Run) => {
-    selected = run;
-    ui.render();
-  };
+  const stateOf = (snap: Snapshot, run: Run): State => (!run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok');
 
-  const groups = (list: Run[]) => {
-    const out: Array<{ trigger: EventName; at: number; runs: Run[] }> = [];
-    for (const run of list) {
-      const last = out.at(-1);
-      if (last && last.trigger === run.trigger && run.at - last.at <= 5) last.runs.push(run);
-      else out.push({ trigger: run.trigger, at: run.at, runs: [run] });
-    }
-    for (const g of out) g.runs.sort((a, b) => Number(b.sent) - Number(a.sent));
-    return out.reverse();
-  };
-
-  const runList = (snap: Snapshot, list: Run[]) =>
+  const params = (event: AnalyticsEvent) =>
     h(
       'div',
-      'runs',
-      ...groups(list).flatMap((g) => [
-        h('div', 'rhead', h('span', {}, label(g.trigger)), h('span', {}, clock(g.at))),
-        ...g.runs.map((run) => {
-          const state: State = !run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok';
-          const event = snap.event(run.id);
-          const sub = !run.sent
-            ? 'not sent'
-            : event
-              ? [what(event.data), amount(event.data.params)].filter(Boolean).join(' · ') || 'sent'
-              : 'data layer only';
-          return h(
-            'button',
-            { type: 'button', className: `run ${state}${run === selected ? ' on' : ''}`, onclick: () => choose(run) },
-            h('span', 'ricon', ICON[state]),
-            h('span', {}, h('code', {}, run.name), h('small', {}, sub)),
-          );
-        }),
-      ]),
+      'aparams',
+      ...Object.entries(event.params)
+        .filter(([, v]) => v === null || typeof v !== 'object')
+        .map(([k, v]) => h('span', {}, h('i', {}, k), ` ${v}`)),
     );
 
-  const step = (
-    state: State,
-    title: string,
-    code: string,
-    detail: Child,
-    extra?: Child,
-    data?: [string, () => Child[]],
-  ) =>
+  const detail = (snap: Snapshot, run: Run): Child[] => {
+    const wire = WIRING.find((w) => (w.ga ?? w.dl) === run.name);
+    const dl = wire?.dl ?? run.name;
+    const event = snap.event(run.id)?.data;
+    const trigger = snap.trigger(run);
+    const pushed = pushedTo('NextDataLayer', run.id) ?? pushedTo('dataLayer', run.id);
+    const key = ui.idOf(run);
+    const problems = event ? checks(event.name, event.params) : [];
+    const items = event ? itemsOf(event.params) : [];
+    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
+      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
+      return pushedTo(layer, run.id) ? chip('ok', name) : chip('warn', `${name}: not pushed`, NOT_PUSHED[layer]);
+    });
+    const raw = [
+      event && tree(h('span', 'key', 'event'), event, `ae${key}`, ui.open),
+      pushed && tree(h('span', 'key', dl), pushed, `ap${key}`, ui.open),
+      trigger && tree(h('span', 'key', run.trigger), trigger.data, `at${key}`, ui.open),
+    ].filter(Boolean);
+    const rows: Array<[string, ...Child[]]> = [
+      ['Why', h('span', {}, run.reason), h('small', {}, `${label(run.trigger)}: `, h('code', {}, run.trigger))],
+      ...(problems.length
+        ? [['Problems', ...problems.map((p) => h('span', 'amber', `⚠ ${p}`))] as [string, ...Child[]]]
+        : []),
+      ...(run.sent ? [['Pushed as', h('div', 'chips', h('code', {}, dl), ...layers)] as [string, ...Child[]]] : []),
+      ...(event ? [['Params', params(event)] as [string, ...Child[]]] : []),
+      ...(items.length ? [['Items', h('div', 'aitems', itemsTable(items))] as [string, ...Child[]]] : []),
+      ...(raw.length ? [['Raw', h('div', 'araw', ...raw)] as [string, ...Child[]]] : []),
+    ];
+    return [h('dl', 'adetail', ...rows.flatMap(([title, ...value]) => [h('dt', {}, title), h('dd', {}, ...value)]))];
+  };
+
+  const sub = (snap: Snapshot, run: Run) => {
+    const event = snap.event(run.id)?.data;
+    return !run.sent ? `Not sent: ${run.reason}` : event ? what(event) || 'sent' : 'data layer only';
+  };
+
+  const row = (snap: Snapshot, run: Run) => {
+    const event = snap.event(run.id)?.data;
+    return h(
+      'button',
+      { type: 'button', className: `arun ${stateOf(snap, run)}`, onclick: () => inspect(run) },
+      icon(MARK[stateOf(snap, run)]),
+      h('span', 'amain', h('code', {}, run.name), h('small', {}, `${label(run.trigger)} · ${sub(snap, run)}`)),
+      h('span', 'aend', event && amount(event.params) && h('b', {}, amount(event.params)), clock(run.at)),
+      icon('chevron'),
+    );
+  };
+
+  let shown: Run[] = [];
+  let current: Run | undefined;
+  const heading = h('h2', {});
+  const subtitle = h('p', {});
+  const body = h('section', 'scrollbar-sm');
+  const button = (text: Child, onclick: () => void, data: Record<string, string> = {}) =>
+    tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), data);
+  const newer = button('Newer', () => move(-1), { variant: 'outline', size: 'sm' });
+  const older = button('Older', () => move(1), { variant: 'outline', size: 'sm' });
+  const close = button(icon('close'), () => dialog.close(), { variant: 'ghost', size: 'icon-sm' });
+  close.setAttribute('aria-label', 'Close dialog');
+  const dialog = tsugi(
     h(
-      'div',
-      `step ${state}`,
-      h('span', 'dot', ICON[state]),
+      'dialog',
+      'dialog aevent',
       h(
         'div',
         {},
-        h('div', 'stitle', title, code && h('code', {}, code)),
-        detail && h('div', 'sdetail', detail),
-        extra,
-        data && expandable(['Data'], data[0], ui.open, data[1], 'sdata'),
+        h('header', {}, heading, subtitle),
+        body,
+        h(
+          'footer',
+          {},
+          newer,
+          older,
+          button('Done', () => dialog.close()),
+        ),
+        close,
       ),
+    ),
+    { size: 'lg' },
+  );
+  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    move(e.key === 'ArrowUp' ? -1 : 1);
+  });
+
+  const fill = (snap: Snapshot) => {
+    if (!current || !dialog.open) return;
+    const run = current;
+    const state = stateOf(snap, run);
+    const event = snap.event(run.id)?.data;
+    const at = shown.indexOf(run);
+    heading.replaceChildren(icon(MARK[state]), h('code', {}, run.name));
+    heading.className = `ahead ${state}`;
+    subtitle.replaceChildren(
+      [label(run.trigger), clock(run.at), event && amount(event.params), STATED[state]].filter(Boolean).join(' · '),
     );
-
-  const steps = (snap: Snapshot, run: Run) => {
-    const wire = WIRING.find((w) => (w.ga ?? w.dl) === run.name);
-    const dl = wire?.dl ?? run.name;
-    const direct = !wire?.ga;
-    const trigger = snap.trigger(run);
-    const event = snap.event(run.id);
-    const key = ui.idOf(run);
-    const fields = event ? checks(event.data.name, event.data.params) : [];
-    const notRun = (title: string) => step('skip', title, '', 'Not run');
-
-    const triggered = step(
-      'ok',
-      'Trigger',
-      run.trigger,
-      `${label(run.trigger)} at ${clock(run.at)}`,
-      undefined,
-      trigger && [`t${key}`, () => [tree(h('span', 'key', run.trigger), trigger.data, `td${key}`, ui.open)]],
-    );
-    const decided = step(run.sent ? 'ok' : 'skip', 'Decide', '', `${run.sent ? 'Send' : 'Stop'}: ${run.reason}`);
-    if (!run.sent) return [triggered, decided, notRun('Build'), notRun('Push'), notRun('Deliver')];
-
-    const built = direct
-      ? step('off', 'Build', '', 'No analytics event: the data layer gets this directly')
-      : step(
-          fields.length ? 'warn' : 'ok',
-          'Build',
-          run.name,
-          event && [what(event.data), amount(event.data.params)].filter(Boolean).join(' · '),
-          fields.length
-            ? h('div', 'amber', ...fields.map((f) => h('div', {}, `⚠ ${f}`)))
-            : h('div', 'green', '✓ Has every field GA4 requires'),
-          event && [
-            `b${key}`,
-            () => [
-              h(
-                'div',
-                'facts',
-                ...Object.entries(event.data.params)
-                  .filter(([, v]) => v === null || typeof v !== 'object')
-                  .map(([k, v]) => h('span', {}, h('span', 'key', k), ` ${v}`)),
-              ),
-              itemsOf(event.data.params).length > 0 && itemsTable(itemsOf(event.data.params)),
-              tree(h('span', 'key', 'raw'), event.data, `br${key}`, ui.open),
-            ],
-          ],
-        );
-
-    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).map((layer) => {
-      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-      if (!snap.enabled(layer)) return chip('off', `${name}: off`, snap.provider(layer).detail);
-      return pushedTo(layer, run.id) ? chip('ok', name) : chip('warn', `${name}: not pushed`, NOT_PUSHED[layer]);
-    });
-    const object = pushedTo('NextDataLayer', run.id) ?? pushedTo('dataLayer', run.id);
-    const pushed = step(
-      layers.some((c) => c.classList.contains('warn')) ? 'warn' : 'ok',
-      'Push',
-      dl,
-      null,
-      h('div', 'chips', ...layers),
-      object && [`p${key}`, () => [tree(h('span', 'key', dl), object, `pr${key}`, ui.open)]],
-    );
-
-    const status = (id: string, ok: string) => {
-      const p = snap.provider(id);
-      const state: State = p.status === 'ok' || p.status === 'info' ? 'ok' : p.status === 'warn' ? 'warn' : 'off';
-      return chip(state, state === 'ok' ? ok : `${p.name}: ${p.short}`, p.detail);
-    };
-    const receivers = [
-      !direct && status('listeners', "Page scripts (next.on('analytics'))"),
-      status('dataLayer', `GTM ${snap.provider('dataLayer').short} → GA4, Meta…`),
-      run.name === 'page_view' && status('nextCampaign', 'NEXT analytics (own page_view)'),
-    ].filter((c): c is HTMLSpanElement => !!c);
-    const delivered = step(
-      receivers.some((c) => c.classList.contains('warn')) ? 'warn' : 'ok',
-      'Deliver',
-      '',
-      null,
-      h('div', 'chips', ...receivers),
-    );
-    return [triggered, decided, built, pushed, delivered];
+    body.replaceChildren(...nodes(detail(snap, run)));
+    newer.disabled = at <= 0;
+    older.disabled = at < 0 || at >= shown.length - 1;
   };
+
+  const inspect = (run: Run) => {
+    current = run;
+    if (!dialog.open) dialog.showModal();
+    body.scrollTop = 0;
+    fill(snapshot(ui.config()));
+  };
+
+  const move = (by: number) => {
+    const next = shown[shown.indexOf(current!) + by];
+    if (next) inspect(next);
+  };
+
+  const filters = (counts: Record<Show, number>) => {
+    const group = h(
+      'div',
+      'button-group',
+      ...SHOWS.map(([value, text]) => {
+        const el = tsugi(
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'btn',
+              onclick: () => {
+                show = value;
+                ui.render();
+              },
+            },
+            `${text} ${counts[value]}`,
+          ),
+          { variant: 'outline', size: 'sm' },
+        );
+        el.setAttribute('aria-pressed', String(value === show));
+        return el;
+      }),
+    );
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', 'Show events');
+    return group;
+  };
+
+  const goesTo = (snap: Snapshot) =>
+    h(
+      'div',
+      'agoes',
+      h('span', {}, 'Goes to'),
+      ...snap.providers
+        .filter((p) => p.id !== 'listeners')
+        .map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail)),
+    );
 
   const flows = () =>
     expandable(
-      ['All workflows', h('span', 'n', String(WIRING.length))],
+      [`All workflows · ${WIRING.length}`],
       'flows',
       ui.open,
       () =>
@@ -293,29 +329,29 @@ export function analyticsFlow(ui: {
 
   const view = (query: string): Child[] => {
     const snap = snapshot(ui.config());
-    const list = runs.filter((r) =>
+    const matching = runs.filter((r) =>
       `${r.name} ${r.trigger} ${label(r.trigger)} ${r.reason}`.toLowerCase().includes(query),
     );
-    const sent = runs.filter((r) => r.sent);
-    const ga = sent.filter((r) => !r.name.startsWith('dl_')).length;
-    const problems = sent.filter((r) => snap.issues(r).length).length;
-    const off = snap.providers.filter((p) => p.status === 'off' && p.id !== 'listeners').length;
-    if (!list.includes(selected!)) selected = [...list].reverse().find((r) => r.sent) ?? list.at(-1);
+    const of: Record<Show, Run[]> = {
+      sent: matching.filter((r) => r.sent),
+      skipped: matching.filter((r) => !r.sent),
+      problems: matching.filter((r) => stateOf(snap, r) === 'warn'),
+    };
+    const list = [...of[show]].reverse();
+    shown = list;
+    fill(snap);
     return [
-      h(
-        'div',
-        'wf-sum',
-        h('span', {}, h('b', {}, String(ga)), ` GA4 event${ga === 1 ? '' : 's'} sent`),
-        h('span', problems ? 'bad' : '', h('b', {}, String(problems)), ` problem${problems === 1 ? '' : 's'}`),
-        off > 0 && h('span', {}, h('b', {}, String(off)), ` provider${off === 1 ? '' : 's'} off`),
-      ),
+      h('div', 'vhead', filters({ sent: of.sent.length, skipped: of.skipped.length, problems: of.problems.length })),
+      goesTo(snap),
       ...snap.providers.filter((p) => p.status === 'warn').map((p) => h('div', 'alert', `⚠ ${p.detail}`)),
-      selected
-        ? h('div', 'wf', runList(snap, list), h('div', 'steps', ...steps(snap, selected)))
-        : empty(
-            query ? 'Nothing matches' : 'Nothing sent yet',
-            snap.config.enabled ? 'Analytics starts once the page is idle.' : snap.provider('NextDataLayer').detail,
-          ),
+      list.length
+        ? h('div', 'alog', ...list.map((run) => row(snap, run)))
+        : runs.length
+          ? h('p', 'anone', query ? 'Nothing matches the filter.' : NONE[show])
+          : empty(
+              'Nothing sent yet',
+              snap.config.enabled ? 'Analytics starts once the page is idle.' : snap.provider('NextDataLayer').detail,
+            ),
       flows(),
     ];
   };
@@ -328,5 +364,5 @@ export function analyticsFlow(ui: {
     return `${ga} sent${problems ? ` · ⚠ ${problems}` : ''}`;
   };
 
-  return { record, note, view, summary };
+  return { record, note, view, summary, dialog };
 }

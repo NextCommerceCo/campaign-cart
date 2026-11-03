@@ -155,7 +155,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
-  root.append(cart.dialog);
+  root.append(cart.dialog, flow.dialog);
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), badge(e.level, LEVELS[e.level]), ' ', e.message);
@@ -323,7 +323,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open) setView('closed');
+    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open && !flow.dialog.open) setView('closed');
   });
   document.addEventListener('click', (e) => {
     if (view === 'menu' && !e.composedPath().includes(host)) setView('closed');

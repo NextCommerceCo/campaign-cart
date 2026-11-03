@@ -127,10 +127,11 @@ export function providers(config: ProviderConfig, started: boolean): Provider[] 
   }
   const idle = 'Starts once the page is idle.';
   const events = win.NextDataLayer?.length ?? 0;
+  const count = `${events} event${events === 1 ? '' : 's'}`;
   const containers = Object.keys(win.google_tag_manager ?? {}).filter((k) => k.startsWith('GTM-'));
   return [
     started
-      ? p('NextDataLayer', 'ok', 'NextDataLayer', `${events} events`, `window.NextDataLayer has ${events} dl_* events.`)
+      ? p('NextDataLayer', 'ok', 'NextDataLayer', count, `window.NextDataLayer has ${count} (dl_*).`)
       : p('NextDataLayer', 'off', 'NextDataLayer', 'waits for idle', idle),
     !config.dataLayer
       ? p('dataLayer', 'off', 'GTM dataLayer', 'off', 'Off in nextConfig: analytics.providers.gtm.enabled is false.')

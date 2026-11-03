@@ -116,8 +116,8 @@ src/
                                    Fill test details call engine.checkout
     picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
                                    Add and the stepper set the quantity through engine.cart
-    analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
-                                   analytics chunk's decision traces
+    analytics.ts                   the analytics chunk's decision traces as one list of events, sent or not; an event
+                                   opens in tsugi's dialog with why, the dl_* push, params, items and raw data
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
                                    compat/analytics.ts), parameter checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens

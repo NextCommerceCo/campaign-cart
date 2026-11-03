@@ -55,7 +55,7 @@ describe('debug tools', () => {
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toContain('GA4 events sent');
+    expect(body()).toContain('Goes to');
     expect(body()).toContain('All workflows');
     tab('logs');
     expect(body()).toContain('info storage scope');
@@ -161,7 +161,7 @@ describe('debug tools', () => {
     expect($('.issues').textContent).toBe('');
   });
 
-  it('shows the real analytics runs, and walks one from trigger to delivery', async () => {
+  it('shows the real analytics events, and opens one for why it was sent', async () => {
     const next = await start('<button data-next-package-id="1">Buy</button>');
     const layer = () => (window as unknown as { NextDataLayer?: Array<{ event: string }> }).NextDataLayer ?? [];
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_view_item'));
@@ -170,15 +170,17 @@ describe('debug tools', () => {
     $('.fab').click();
     menuItem('Analytics').click();
     const sent = [
-      ...new Set([...shadow().querySelectorAll('.run.ok code, .run.warn code')].map((c) => c.textContent)),
-    ].sort();
-    expect(sent).toEqual(['add_to_cart', 'page_view', 'update_cart', 'view_item']);
-    [...shadow().querySelectorAll<HTMLElement>('.run')].find((r) => r.textContent!.startsWith('✓add_to_cart'))!.click();
-    const steps = [...shadow().querySelectorAll('.step')].map((s) => s.querySelector('.stitle')!.textContent);
-    expect(steps).toEqual(['Triggercart.calculated', 'Decide', 'Buildadd_to_cart', 'Pushdl_add_to_cart', 'Deliver']);
-    expect(shadow().querySelectorAll('.step .sdetail')[1]!.textContent).toBe(
-      'Send: Added since the last report: Earbuds ×1 ×1',
+      ...new Set([...shadow().querySelectorAll('.arun.ok code, .arun.warn code')].map((c) => c.textContent)),
+    ];
+    expect(sent.sort()).toEqual(['add_to_cart', 'page_view', 'update_cart', 'view_item']);
+    [...shadow().querySelectorAll<HTMLElement>('.arun')]
+      .find((r) => r.querySelector('code')!.textContent === 'add_to_cart')!
+      .click();
+    expect(shadow().querySelector('.aevent .adetail dd')!.textContent).toBe(
+      'Added since the last report: Earbuds ×1 ×1Cart priced: cart.calculated',
     );
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(view()).toBe('panel');
   });
 
   it('lists every SDK element with what it resolves to', async () => {
@@ -282,7 +284,7 @@ describe('debug tools', () => {
     const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });
