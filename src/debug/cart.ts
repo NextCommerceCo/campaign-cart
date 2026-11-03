@@ -12,18 +12,29 @@ const source = (group: string) =>
         ? 'toggle'
         : group;
 
+const tsugi = <E extends HTMLElement>(el: E, data: Record<string, string>) => {
+  Object.assign(el.dataset, data);
+  return el;
+};
+
+const card = (className: string, ...children: Child[]) =>
+  tsugi(h('div', `card ${className}`, h('section', {}, ...children)), { size: 'sm' });
+
+const button = (label: Child, onclick: () => void, data: Record<string, string>, title = '') =>
+  tsugi(h('button', { type: 'button', className: 'btn', title, onclick }, label), data);
+
 export function cartView(engine: Engine, ui: { open: Set<string>; render: () => void; showState: () => void }) {
   let message: { text: string; tone: 'green' | 'amber' } | undefined;
   let pricedAt: number | undefined;
   engine.on('cart.calculated', (e) => (pricedAt = e.at), { replay: true });
 
-  const coupon = h('input', { type: 'text', placeholder: 'Coupon code', className: 'cin' });
+  const coupon = h('input', { type: 'text', placeholder: 'Coupon code', className: 'input' });
   const shipping = h('select', {
-    className: 'csel',
+    className: 'select',
     onchange: () => act(engine.cart.setShipping(Number(shipping.value))),
   });
-  const pkg = h('select', { className: 'csel' });
-  const quantity = h('input', { type: 'number', min: '1', value: '1', className: 'cin cqty' });
+  const pkg = h('select', { className: 'select' });
+  const quantity = h('input', { type: 'number', min: '1', value: '1', className: 'input' });
 
   const money = (amount: string | number | undefined) => {
     const { campaign, cart } = engine.getState();
@@ -55,11 +66,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     const code = codes.has(d.name ?? '');
     const percent = Math.round(Number(d.percentage));
     const off = percent ? `${percent}% OFF` : `−${money(d.amount)}`;
-    return h(
-      'span',
-      { className: `cbadge ${code ? 'code' : 'offer'}`, title: d.name ?? '' },
-      code ? `Extra ${off}` : off,
-    );
+    return tsugi(h('span', { className: 'badge', title: d.name ?? '' }, code ? `Extra ${off}` : off), {
+      variant: code ? 'info' : 'success',
+    });
   };
 
   const line = (packageId: number, count: number, priced: SummaryLine | undefined, codes: Set<string>) => {
@@ -74,9 +83,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       p?.interval_count && p.interval_count > 1 ? `${p.interval_count} ${p.interval}s` : (p?.interval ?? 'month');
     const attributes = p?.product_variant_attribute_values ?? [];
     const set = (n: number) => () => act(engine.cart.setQuantity(packageId, n));
-    return h(
-      'div',
-      'ccard cline',
+    const step = { variant: 'outline', size: 'icon-xs' };
+    return card(
+      'cline',
       !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => badge(d, codes))),
       h(
         'div',
@@ -89,19 +98,15 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
         ),
         h(
           'div',
-          'cinfo',
+          {},
           h('div', 'cname', p?.name ?? `Package ${packageId}`),
           h(
             'div',
             'cunit',
-            `${money(priced?.package_price ?? p?.price_total)} × `,
-            h(
-              'span',
-              'cstep',
-              h('button', { type: 'button', title: 'One less', onclick: set(count - 1) }, '−'),
-              h('span', {}, String(count)),
-              h('button', { type: 'button', title: 'One more', onclick: set(count + 1) }, '+'),
-            ),
+            `${money(priced?.package_price ?? p?.price_total)} ×`,
+            button('−', set(count - 1), step, 'One less'),
+            h('span', {}, String(count)),
+            button('+', set(count + 1), step, 'One more'),
           ),
           h('div', 'csource', `#${packageId} · from ${from.join(', ')}`),
         ),
@@ -112,13 +117,20 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
           h('b', {}, money(total)),
           !priced && h('small', {}, 'estimate'),
         ),
-        h('button', { type: 'button', className: 'cremove', title: 'Remove', onclick: set(0) }, '✕'),
+        button('✕', set(0), { variant: 'ghost', size: 'icon-xs' }, 'Remove'),
       ),
       attributes.length > 0 &&
         h(
           'div',
           'cvars',
-          ...attributes.map((a) => h('div', 'cvar', h('span', {}, a.name), h('span', 'cfield', a.value))),
+          ...attributes.map((a) =>
+            h(
+              'label',
+              'cvar',
+              a.name,
+              h('input', { type: 'text', className: 'input', value: a.value, readOnly: true }),
+            ),
+          ),
         ),
       recurring && h('div', 'crecur', `Then ${money(String(recurring))} every ${every}`),
     );
@@ -144,7 +156,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
                 h(
                   'div',
                   'tpart',
-                  h('span', {}, code && h('span', 'ctag', 'code'), name),
+                  h('span', {}, code && tsugi(h('span', 'badge', 'code'), { variant: 'outline' }), name),
                   h('span', {}, `−${money(amount)}`),
                 ),
               ),
@@ -163,9 +175,8 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     ];
     const ship = s.shipping_method;
     const shipParts = (ship?.discounts ?? []).map((d) => part(d, 'Shipping discount', codes.has(d.name ?? '')));
-    return h(
-      'div',
-      'ccard ctotals',
+    return card(
+      'ctotals',
       row('Subtotal', money(s.subtotal)),
       Number(s.total_discount) > 0 &&
         breakdown('cart-discounts', 'Discounts', undefined, `−${money(s.total_discount)}`, discounts),
@@ -245,27 +256,29 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
           )
         : [empty('Cart is empty', 'Add a package below, or use the page.')]),
       summary && lines.length > 0 && totals(summary),
-      h(
-        'div',
-        'ccard cctl',
+      card(
+        'cctl',
         h(
           'div',
           'crow',
           h('span', 'clabel', 'Coupons'),
           ...cart.coupons.map((c) =>
-            h(
-              'span',
-              'coupon',
-              c,
+            tsugi(
               h(
-                'button',
-                { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
-                ' ✕',
+                'span',
+                'badge',
+                c,
+                h(
+                  'button',
+                  { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
+                  '✕',
+                ),
               ),
+              { variant: 'success' },
             ),
           ),
           coupon,
-          h('button', { type: 'button', className: 'cbtn', onclick: apply }, 'Apply'),
+          button('Apply', apply, { variant: 'outline' }),
         ),
         message && h('div', `cmsg ${message.tone}`, message.text),
         methods.length > 0 && h('div', 'crow', h('span', 'clabel', 'Shipping'), shipping),
@@ -275,14 +288,10 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
           h('span', 'clabel', 'Add'),
           pkg,
           quantity,
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'cbtn',
-              onclick: () => act(engine.cart.addItem(Number(pkg.value), Math.max(1, Number(quantity.value) || 1))),
-            },
+          button(
             'Add to cart',
+            () => act(engine.cart.addItem(Number(pkg.value), Math.max(1, Number(quantity.value) || 1))),
+            { variant: 'outline' },
           ),
         ),
       ),

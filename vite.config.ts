@@ -38,6 +38,7 @@ export default defineConfig({
     },
   },
   test: {
+    css: { include: [/vendor\/tsugi\//] },
     environmentOptions: {
       happyDOM: {
         settings: {

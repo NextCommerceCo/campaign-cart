@@ -108,7 +108,7 @@ export const matches = ({ el, notes }: Inspected, query: string) =>
 export function card({ el, notes, bad }: Inspected, box: Box): HTMLElement {
   const row = h(
     'div',
-    bad ? 'card bad' : 'card',
+    bad ? 'ecard bad' : 'ecard',
     h(
       'div',
       {},

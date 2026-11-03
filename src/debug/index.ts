@@ -6,7 +6,7 @@ import { card, countElements, explain, highlighter, inspect, matches, pick } fro
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
 import type { ProviderConfig } from './providers';
-import { ANALYTICS_CSS, CART_CSS, PANEL_CSS } from './styles';
+import { ANALYTICS_CSS, CART_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { type Child, empty, h, nodes, time, tree } from './view';
 
 const LOGO =
@@ -100,8 +100,14 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  host.attachShadow({ mode: 'open' }).append(h('style', {}, PANEL_CSS, ANALYTICS_CSS, CART_CSS), box.el, root);
+  host
+    .attachShadow({ mode: 'open' })
+    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS), box.el, root);
   document.body.append(host);
+  const scheme = matchMedia('(prefers-color-scheme: dark)');
+  const theme = () => host.classList.toggle('dark', scheme.matches);
+  scheme.addEventListener('change', theme);
+  theme();
 
   const query = () => filter.value.trim().toLowerCase();
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });

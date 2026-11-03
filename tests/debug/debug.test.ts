@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS, CART_CSS, PANEL_CSS } from '../../src/debug/styles';
+import { ANALYTICS_CSS, CART_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -194,13 +194,31 @@ describe('debug tools', () => {
 
   it('styles the panel, the analytics view and the cart view with separate class names', async () => {
     await start();
-    expect(shadow().querySelector('style')!.textContent).toBe(PANEL_CSS + ANALYTICS_CSS + CART_CSS);
+    expect(shadow().querySelector('style')!.textContent).toBe(TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS);
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
     const analytics = classes(ANALYTICS_CSS);
     const cart = classes(CART_CSS);
     expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
     expect([...cart].filter((name) => panel.has(name) || analytics.has(name))).toEqual([]);
+    const components = ['badge', 'btn', 'card', 'input', 'select'];
+    expect([...panel, ...analytics, ...cart].filter((name) => components.includes(name!))).toEqual([]);
+  });
+
+  it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
+    const dark = vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: () => {},
+    } as unknown as MediaQueryList);
+    await start();
+    expect(TSUGI_CSS).toMatch(/^\/\*! tsugi \d+\.\d+\.\d+: /);
+    expect(TSUGI_CSS).toContain(':host{');
+    expect(TSUGI_CSS).toContain(':host(.dark){');
+    expect(TSUGI_CSS).toMatch(/@layer properties\{\*,/);
+    expect(TSUGI_CSS).not.toContain('@property');
+    expect(CART_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(shadow().host.classList.contains('dark')).toBe(true);
+    dark.mockRestore();
   });
 
   it('explains an element from the console', async () => {

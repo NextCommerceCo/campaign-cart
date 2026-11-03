@@ -26,7 +26,7 @@ const ALLOWED: Record<string, string[]> = {
   checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
-  debug: ['engine'],
+  debug: ['engine', '../vendor/tsugi'],
   compat: ['engine', 'analytics/context', 'analytics/ecommerce'],
   boot: ['engine', 'bindings', 'compat/legacy'],
   loader: ['config', 'compat/config'],

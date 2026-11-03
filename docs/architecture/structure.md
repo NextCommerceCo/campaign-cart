@@ -49,6 +49,8 @@ docs/
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
+scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
+vendor/tsugi/tsugi.css     tsugi base and components for the debug panel's shadow root; generated, never edited
 dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
@@ -104,7 +106,7 @@ src/
                                    analytics chunk's decision traces
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
                                    compat/analytics.ts), parameter checks
-    styles.ts                      the panel and analytics stylesheets
+    styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names
@@ -124,7 +126,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 14 KB         |
+| debug       | `?debug=1`                                                          | 22 KB         |
 
 ## Imports
 
@@ -135,7 +137,7 @@ src/
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`            |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                  |
 | `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                   |
-| `debug/*`                 | `engine/*`, `debug/*`                                                                               |
+| `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`                                                     |
 | `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/context.ts`, `analytics/ecommerce.ts` |
 | `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`          |
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                      |
