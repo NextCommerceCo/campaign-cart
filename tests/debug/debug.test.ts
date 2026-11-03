@@ -154,6 +154,63 @@ describe('debug tools', () => {
     expect(body()).not.toContain('unknown display path');
   });
 
+  it('lists what the journey, checkout and analytics found on this page, and opens the tab behind each', async () => {
+    const next = await start('<span data-next-display="campaign.name"></span>');
+    await next.actions.addItem(1);
+    await next.actions.applyCoupon('NOPE');
+    await vi.waitFor(() => expect($('.issues').textContent).toBe('1 Issue'));
+    $('.fab').click();
+    expect(menuItem('Issues').textContent).toBe('Issues1');
+    menuItem('Issues').click();
+    expect(body()).toContain('Problems · 1');
+    const row = [...shadow().querySelectorAll<HTMLElement>('.body .ecard')].find((c) =>
+      c.textContent!.includes('refused'),
+    )!;
+    expect(row.textContent).toBe('Journey Coupon NOPE refused by the server');
+    row.click();
+    expect($('[data-tab="journey"]').getAttribute('aria-selected')).toBe('true');
+    await start('<span data-next-display="campaign.name"></span>', {});
+    tab('issues');
+    expect(body()).toContain('No issues');
+    expect(body()).toContain('Earlier pages in this tab had 1 problem.');
+  });
+
+  it('keeps a filter to its own tab, and opens each tab at the top', async () => {
+    await start('<span data-next-display="campaign.name"></span>');
+    $('.fab').click();
+    menuItem('Logs').click();
+    const filter = $<HTMLInputElement>('.search input');
+    filter.value = 'api';
+    filter.dispatchEvent(new Event('input'));
+    $('.body').scrollTop = 120;
+    tab('elements');
+    expect(filter.value).toBe('');
+    expect($('.body').scrollTop).toBe(0);
+    expect(body()).toContain('data-next-display="campaign.name"');
+    tab('logs');
+    expect(filter.value).toBe('api');
+  });
+
+  it('names one page, says when a page has no SDK elements, and asks before clearing saved data', async () => {
+    await start();
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    $('.fab').click();
+    expect(menuItem('Journey').textContent).toBe('Journey1 page in this tab');
+    expect(menuItem('Reset saved data').textContent).toBe("Reset saved datathis funnel's cart, form and order");
+    menuItem('Reset saved data').click();
+    expect(assign).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(menuItem('Reset saved data').textContent).toBe(
+        "Reset saved dataclick again to clear this funnel's cart, form and order",
+      ),
+    );
+    expect(view()).toBe('menu');
+    menuItem('Reset saved data').click();
+    expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\?reset=1$/));
+    menuItem('Elements').click();
+    expect(body()).toContain('No element on this page has a data-next-* attribute.');
+  });
+
   it('says there are no issues on a clean page', async () => {
     await start('<span data-next-display="campaign.name"></span>');
     $('.fab').click();

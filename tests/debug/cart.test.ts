@@ -157,6 +157,18 @@ describe('cart', () => {
     await vi.waitFor(() => expect(engine.getState().cart.coupons).toEqual([]));
   });
 
+  it('takes typed keys in the voucher field, and applies the code on Enter', async () => {
+    const { engine, root, paint } = await setup();
+    await engine.cart.addItem(1);
+    paint();
+    const code = root.querySelector<HTMLInputElement>('#cart-coupon')!;
+    const typed = new KeyboardEvent('keydown', { key: 's', cancelable: true });
+    expect(code.onkeydown!.call(code, typed)).not.toBe(false);
+    code.value = 'save10';
+    code.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+    await vi.waitFor(() => expect(engine.getState().cart.coupons).toEqual(['SAVE10']));
+  });
+
   it('names every group a line comes from', async () => {
     const { engine, paint, lines } = await setup();
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });

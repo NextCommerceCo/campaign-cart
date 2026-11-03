@@ -619,13 +619,28 @@ export function analyticsFlow(ui: {
     return out;
   };
 
-  const summary = () => {
+  const problems = () => {
     const snap = snapshot(ui.config());
-    const ga = runs.filter((r) => r.sent && !r.name.startsWith('dl_')).length;
-    const problems =
-      runs.filter((r) => snap.issues(r).length).length + snap.providers.filter((p) => p.status === 'warn').length;
-    return `${ga} sent${problems ? ` · ⚠ ${problems}` : ''}`;
+    const byName = new Map<string, Run[]>();
+    for (const run of runs) if (snap.issues(run).length) byName.set(run.name, [...(byName.get(run.name) ?? []), run]);
+    return [...byName].map(([name, list]) => ({
+      text: `${name}: ${snap.issues(list.at(-1)!).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
+      error: true,
+    }));
   };
 
-  return { record, note, view, summary, dialog };
+  const notes = () =>
+    started()
+      ? snapshot(ui.config())
+          .providers.filter((p) => p.status === 'warn')
+          .map((p) => p.detail)
+      : [];
+
+  const summary = () => {
+    const ga = runs.filter((r) => r.sent && !r.name.startsWith('dl_')).length;
+    const n = problems().length;
+    return `${ga} sent${n ? ` · ⚠ ${n}` : ''}`;
+  };
+
+  return { record, note, view, summary, problems, notes, dialog };
 }

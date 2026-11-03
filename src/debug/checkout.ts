@@ -64,6 +64,18 @@ export function checkoutView(
   cart: ReturnType<typeof cartView>,
   ui: { render: () => void; paymentIcons: () => void },
 ) {
+  let cardEntered = false;
+  engine.on('checkout.payment-added', (e) => (cardEntered ||= e.data.method === 'card_token'), { replay: true });
+
+  const cardSetup = () =>
+    !document.getElementById('spreedly-number')
+      ? 'no cc-number and cvv fields on the page'
+      : !engine.getState().campaign?.payment_env_key
+        ? 'no payment_env_key on the campaign'
+        : undefined;
+
+  const refusal = (form: CheckoutError) => `${form.message ?? form.code}${form.decline ? ` (${form.decline})` : ''}`;
+
   const button = (text: string, onclick: () => void) =>
     tsugi(h('button', { type: 'button', className: 'btn', onclick }, text), { variant: 'outline', size: 'sm' });
 
@@ -109,18 +121,12 @@ export function checkoutView(
     const name = METHODS[method] ?? offered?.label ?? method;
     const icons = h('span', 'kicons', ...iconOf(method).map(paymentIcon));
     if (method !== 'card_token') return { title: 'Payment', detail: h('span', {}, icons, name), tone: 'done' };
-    const fields = !!document.getElementById('spreedly-number');
-    const key = !!campaign?.payment_env_key;
-    const detail =
-      fields && key
-        ? 'fields ready'
-        : !fields
-          ? 'no cc-number and cvv fields on the page'
-          : 'no payment_env_key on the campaign';
+    const broken = cardSetup();
+    const detail = broken ?? (cardEntered ? 'card details entered' : 'card details not entered yet');
     return {
       title: 'Payment',
       detail: h('span', {}, icons, `${name} · ${detail}`),
-      tone: fields && key ? 'done' : 'bad',
+      tone: broken ? 'bad' : cardEntered ? 'done' : 'todo',
     };
   };
 
@@ -153,7 +159,7 @@ export function checkoutView(
     const order: Step = form
       ? {
           title: 'Order',
-          detail: `Refused: ${form.message ?? form.code}${form.decline ? ` (${form.decline})` : ''}`,
+          detail: `Refused: ${refusal(form)}`,
           tone: 'bad',
         }
       : state.status === 'placing'
@@ -284,6 +290,19 @@ export function checkoutView(
 
   return {
     view,
+    problems: (): Array<{ text: string; error: boolean }> => {
+      const state = engine.getState().checkout;
+      if (!state || !engine.checkout) return [];
+      const broken = state.paymentMethod === 'card_token' && cardSetup();
+      const form = state.errors.form;
+      return [
+        ...(broken ? [{ text: `Payment: ${broken}`, error: true }] : []),
+        ...(state.rulesDown
+          ? [{ text: 'Address rules: service down, fields fall back to basic checks', error: false }]
+          : []),
+        ...(form ? [{ text: `Order refused: ${refusal(form)}`, error: false }] : []),
+      ];
+    },
     summary: () => {
       const state = engine.getState().checkout;
       return state ? status(state) : 'cart only';

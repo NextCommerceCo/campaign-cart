@@ -86,7 +86,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       if (ok) coupon.value = '';
     });
   };
-  coupon.onkeydown = (e) => e.key === 'Enter' && apply();
+  coupon.onkeydown = (e) => {
+    if (e.key === 'Enter') void apply();
+  };
 
   const price = (priced: SummaryLine | undefined, p: Package | undefined, count: number) => {
     if (!priced)

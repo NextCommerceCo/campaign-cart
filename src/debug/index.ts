@@ -10,7 +10,7 @@ import { checkoutView } from './checkout';
 import { type IconName, icon } from './icons';
 import { journeyView } from './journey';
 import type { ProviderConfig } from './providers';
-import { createDebug, type PageKind } from './state';
+import { createDebug, type PageKind, type PageVisit } from './state';
 import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { badge, type Child, empty, h, nodes, time, tree, tsugi } from './view';
 
@@ -76,6 +76,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let stopPicking: (() => void) | undefined;
   let right = saved.right;
   let queued = false;
+  let resetting = false;
+  const queries: Partial<Record<Tab, string>> = {};
 
   const host = document.createElement('next-debug');
   const box = highlighter();
@@ -176,7 +178,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     return `${units} item${units === 1 ? '' : 's'}${price}`;
   };
   const item = (label: string, value: Child, onclick?: () => void, className = '') => {
-    const content = [h('span', {}, label), h('span', 'value', value)];
+    const content = [
+      h('span', {}, label),
+      h('span', { className: 'value', title: typeof value === 'string' ? value : '' }, value),
+    ];
     return onclick
       ? h('button', { type: 'button', className: `item ${className}`, onclick }, ...content)
       : h('div', `item ${className}`, ...content);
@@ -189,21 +194,77 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       .entries()
       .filter((e) => (e.level === 'warn' || e.level === 'error') && !shownOnPage.some((v) => e.message.includes(v)))
       .reverse();
-    const tone = logged.some((e) => e.level === 'error') ? 'red' : 'amber';
-    return { page, logged, count: page.length + logged.length, tone };
+    const pages = debug.state().pages;
+    const marks = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
+    const found: Array<{ from: Tab; text: string; error: boolean }> = [
+      ...marks(pages.at(-1)).map((m) => ({ from: 'journey' as Tab, text: m.text, error: m.tone === 'error' })),
+      ...checkout.problems().map((p) => ({ from: 'checkout' as Tab, ...p })),
+      ...flow.problems().map((p) => ({ from: 'analytics' as Tab, ...p })),
+    ];
+    const earlier = pages.slice(0, -1).reduce((n, p) => n + marks(p).length, 0);
+    const tone = logged.some((e) => e.level === 'error') || found.some((f) => f.error) ? 'red' : 'amber';
+    return {
+      page,
+      logged,
+      found,
+      earlier,
+      notes: flow.notes(),
+      count: page.length + logged.length + found.length,
+      tone,
+    };
   };
 
   const views: Record<Tab, () => Child[]> = {
     journey: () => journey.view(),
     issues: () => {
-      const { page, logged } = findIssues();
-      if (!page.length && !logged.length)
-        return [empty('No issues', 'Every SDK attribute on this page resolves, and no warnings were logged.', 'check')];
+      const { page, logged, found, earlier, notes } = findIssues();
+      const before =
+        earlier > 0 &&
+        h(
+          'p',
+          'summary',
+          `Earlier pages in this tab had ${earlier} problem${earlier === 1 ? '' : 's'}. `,
+          h('button', { type: 'button', className: 'link', onclick: () => show('journey') }, 'Open Journey'),
+        );
+      const setup = [
+        notes.length > 0 && h('h3', {}, `Setup notes · ${notes.length}`),
+        ...notes.map((text) =>
+          h(
+            'div',
+            { className: 'ecard', onclick: () => show('analytics') },
+            badge(TABS.analytics, 'outline'),
+            ' ',
+            text,
+          ),
+        ),
+      ];
+      if (!page.length && !logged.length && !found.length)
+        return [
+          empty(
+            'No issues',
+            'Nothing on this page needs a look: every SDK attribute resolves, the journey, checkout and analytics found no problems, and no warnings were logged.',
+            'check',
+          ),
+          before,
+          ...setup,
+        ];
       return [
+        found.length > 0 && h('h3', {}, `Problems · ${found.length}`),
+        ...found.map((f) =>
+          h(
+            'div',
+            { className: `ecard${f.error ? ' bad' : ''}`, onclick: () => show(f.from) },
+            badge(TABS[f.from], 'outline'),
+            ' ',
+            f.text,
+          ),
+        ),
         page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
         ...page.map((i) => card(i, box)),
         logged.length > 0 && h('h3', {}, `Warnings and errors · ${logged.length}`),
         ...logged.map(logRow),
+        before,
+        ...setup,
       ];
     },
     checkout: () => checkout.view(),
@@ -211,7 +272,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     elements: () => {
       const found = inspect(engine, picked).filter((i) => matches(i, query()));
       const bad = found.filter((i) => i.bad).length;
-      if (!found.length) return [empty('Nothing matches', 'No element with a data-next-* attribute fits the filter.')];
+      if (!found.length)
+        return [
+          query()
+            ? empty('Nothing matches', 'No element with a data-next-* attribute fits the filter.')
+            : empty('No SDK elements', 'No element on this page has a data-next-* attribute.'),
+        ];
       const unpick = () => {
         picked = undefined;
         render();
@@ -247,7 +313,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       item('Issues', h('span', `count ${count ? tone : 'green'}`, count ? String(count) : 'None'), () =>
         show('issues'),
       ),
-      item('Journey', `${debug.state().pages.length} pages in this tab`, () => show('journey')),
+      item(
+        'Journey',
+        `${debug.state().pages.length} page${debug.state().pages.length === 1 ? '' : 's'} in this tab`,
+        () => show('journey'),
+      ),
       item('Checkout', `${cartText()} · ${checkout.summary()}`, () => show('checkout')),
       item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
@@ -266,7 +336,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         debug.setPanel({ right });
         render();
       }),
-      item('Reset saved data', '', info.reset, 'danger'),
+      item(
+        'Reset saved data',
+        resetting ? "click again to clear this funnel's cart, form and order" : "this funnel's cart, form and order",
+        () => (resetting ? info.reset() : ((resetting = true), later())),
+        'danger',
+      ),
       item('Turn off debug', 'stays on in this tab until then', info.off, 'danger'),
     ];
   };
@@ -298,11 +373,20 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
   const setView = (next: typeof view) => {
     view = next;
+    if (next !== 'menu') resetting = false;
     if (next !== 'menu') debug.setPanel({ open: next === 'panel', tab });
     render();
   };
-  const show = (next: Tab) => {
+  const goTo = (next: Tab) => {
+    if (next !== tab) {
+      queries[tab] = filter.value;
+      filter.value = queries[next] ?? '';
+      body.scrollTop = 0;
+    }
     tab = next;
+  };
+  const show = (next: Tab) => {
+    goTo(next);
     setView('panel');
   };
   const later = () => {
@@ -320,7 +404,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       stopPicking = undefined;
       if (el) {
         picked = el;
-        tab = 'elements';
+        goTo('elements');
+        filter.value = '';
         view = 'panel';
       }
       render();

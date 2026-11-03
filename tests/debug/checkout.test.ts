@@ -119,6 +119,22 @@ describe('checkout tab', () => {
     expect(engine.getState().checkout!.errors.state).toBeUndefined();
   });
 
+  it('waits for the card details before calling a card order ready', async () => {
+    document.body.innerHTML = '<div id="spreedly-number"></div>';
+    const { engine, button, paint, steps, verdict } = await setup(true, { payment_env_key: 'env_test' });
+    await engine.cart.addItem(1);
+    button('Fill test details').click();
+    await vi.waitFor(() => expect(engine.getState().checkout!.rules.US).toBeDefined());
+    paint();
+    expect(steps()[3]).toEqual(['Payment', 'Card · card details not entered yet', 'todo']);
+    expect(verdict()).toBe('Not ready yet: payment');
+    engine.checkout!.paymentReady('card_token');
+    paint();
+    expect(steps()[3]).toEqual(['Payment', 'Card · card details entered', 'done']);
+    expect(verdict()).toBe('Ready: nothing stops the order');
+    document.body.innerHTML = '';
+  });
+
   it('names the payment method the checkout holds, with its icon', async () => {
     const { engine, paint, steps, root, ui } = await setup(true, {
       available_payment_methods: [
