@@ -112,6 +112,23 @@ describe('debug tools', () => {
     expect($('.issues').textContent).toBe('');
   });
 
+  it('shows the real analytics funnel and each event pushed to the data layer', async () => {
+    const next = await start('<button data-next-package-id="1">Buy</button>');
+    const layer = () => (window as unknown as { NextDataLayer?: Array<{ event: string }> }).NextDataLayer ?? [];
+    await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_view_item'));
+    await next.actions.addItem(1);
+    await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
+    $('.fab').click();
+    menuItem('Events').click();
+    const fired = [...shadow().querySelectorAll('.step.fired')].map((s) => s.textContent);
+    expect(fired).toEqual(['Page view', 'View item', 'Add to cart']);
+    const atc = [...shadow().querySelectorAll('.ga-row summary')].find((s) =>
+      s.textContent!.startsWith('add_to_cart'),
+    )!;
+    expect(atc.textContent).toMatch(/^add_to_cart \$49\.00 · 1 item→ dl_add_to_cart✓ GA4$/);
+    expect(atc.closest('.moment')!.querySelector('.sdk-name')!.textContent).toBe('cart.calculated');
+  });
+
   it('lists every SDK element with what it resolves to', async () => {
     const next = await start(
       '<p data-next-show="cart.total"><span data-next-display="cart.total"></span></p><span data-next-display="cart.nope"></span>',

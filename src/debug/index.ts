@@ -1,12 +1,12 @@
 import type { Engine } from '../engine/engine';
-import type { EngineEvent } from '../engine/events';
 import type { LogEntry } from '../engine/log';
 import { format, resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
-import { type Child, h, tree } from './view';
+import { EVENTS_CSS, eventFlow } from './events';
+import { type Child, empty, h, nodes, time, tree } from './view';
 
-const CSS = `:host{all:initial;color-scheme:dark;--bg:#0a0a0a;--raised:#141414;--fg:#ededed;--muted:#a1a1a1;--line:#2e2e2e;--hover:#1f1f1f;--red:#ff6166;--amber:#f2a43a;--green:#5fc36e;--blue:#52a8ff;--purple:#c27cf8;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-@media (prefers-color-scheme:light){:host{color-scheme:light;--bg:#fff;--raised:#fafafa;--fg:#171717;--muted:#6b6b6b;--line:#e6e6e6;--hover:#f2f2f2;--red:#d93036;--amber:#a35200;--green:#297a3a;--blue:#0068d6;--purple:#8e4ec6}}
+const CSS = `:host{all:initial;color-scheme:dark;--bg:#0a0a0a;--raised:#141414;--fg:#ededed;--muted:#a1a1a1;--line:#2e2e2e;--hover:#1f1f1f;--red:#ff6166;--amber:#f2a43a;--green:#5fc36e;--blue:#52a8ff;--purple:#c27cf8;--orange:#ff8a3d;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:light){:host{color-scheme:light;--bg:#fff;--raised:#fafafa;--fg:#171717;--muted:#6b6b6b;--line:#e6e6e6;--hover:#f2f2f2;--red:#d93036;--amber:#a35200;--green:#297a3a;--blue:#0068d6;--purple:#8e4ec6;--orange:#c2410c}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 .root{font:13px/1.5 var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased}
@@ -66,7 +66,7 @@ summary:hover,.row:hover{background:var(--hover)}
 details details,details>.row{margin-left:14px}
 .key,.name{color:var(--purple)}.s,.note{color:var(--green)}.n{color:var(--blue)}.b{color:var(--amber)}
 .time{margin-right:8px}
-.lv,.ev{display:inline-block;margin-right:8px;padding:0 6px;border-radius:4px;background:var(--hover);font-size:11px}
+.lv{display:inline-block;margin-right:8px;padding:0 6px;border-radius:4px;background:var(--hover);font-size:11px}
 .lv{min-width:44px;text-align:center}
 .lv.debug{color:var(--muted)}.lv.info{color:var(--blue)}.lv.warn{color:var(--amber)}.lv.error{color:var(--red)}
 .card{margin-bottom:6px;padding:8px 10px;background:var(--raised);border:1px solid var(--line);border-radius:8px;cursor:pointer}
@@ -93,19 +93,6 @@ const TABS = { issues: 'Issues', state: 'State', elements: 'Elements', events: '
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'events', 'logs'];
 const LIMIT = 200;
-const HUES: Record<string, string> = {
-  cart: 'blue',
-  selection: 'blue',
-  shipping: 'blue',
-  coupon: 'amber',
-  checkout: 'purple',
-  prospect: 'purple',
-  order: 'green',
-  upsell: 'green',
-  analytics: 'amber',
-  error: 'red',
-};
-
 export interface DebugInfo {
   version: string;
   apiBase: string;
@@ -114,21 +101,13 @@ export interface DebugInfo {
   reset: () => void;
 }
 
-const time = (at: number) => {
-  const d = new Date(at);
-  return `${d.toTimeString().slice(0, 8)}.${String(d.getMilliseconds()).padStart(3, '0')}`;
-};
-
 const svg = (markup: string, className: string) => {
   const el = h('span', className);
   el.innerHTML = markup;
   return el;
 };
 
-const shown = (children: Child[]) => children.filter((c): c is Node | string => !!c);
-
 export function startDebug(engine: Engine, info: DebugInfo): void {
-  const events: EngineEvent[] = [];
   const open = new Set(['cart']);
   const ids = new WeakMap<object, number>();
   let seq = 0;
@@ -186,13 +165,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  host.attachShadow({ mode: 'open' }).append(h('style', {}, CSS), box.el, root);
+  host.attachShadow({ mode: 'open' }).append(h('style', {}, CSS, EVENTS_CSS), box.el, root);
   document.body.append(host);
 
   const query = () => filter.value.trim().toLowerCase();
+  const flow = eventFlow(engine, { open, idOf, render: () => render() });
   const stamp = (at: number) => h('span', 'time', time(at));
-  const empty = (title: string, detail = '', className = 'empty') =>
-    h('div', className, h('b', {}, title), detail && h('div', {}, detail));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);
     return e.data === undefined ? h('div', 'row', label) : tree(label, e.data, `l${idOf(e)}`, open);
@@ -258,17 +236,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         found.length > LIMIT && h('div', 'summary', `Showing ${LIMIT} of ${found.length}. Filter to narrow.`),
       ];
     },
-    events: () => {
-      const rows = events
-        .filter((e) => !query() || `${e.name} ${JSON.stringify(e.data)}`.toLowerCase().includes(query()))
-        .slice(-100)
-        .reverse()
-        .map((e) => {
-          const label = h('span', {}, stamp(e.at), h('span', `ev ${HUES[e.name.split('.')[0]!] ?? 'dim'}`, e.name));
-          return tree(label, e.data, `e${idOf(e)}`, open);
-        });
-      return rows.length ? rows : [empty(query() ? 'Nothing matches' : 'No events yet')];
-    },
+    events: () => flow.view(query()),
     logs: () => {
       const rows = engine.log
         .entries()
@@ -289,7 +257,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       ),
       item('Cart', cartText(), () => show('state')),
       item('Elements', String(countElements()), () => show('elements')),
-      item('Events', String(events.length), () => show('events')),
+      item('Events', flow.summary(), () => show('events')),
       item('Logs', String(engine.log.entries().length), () => show('logs')),
       h('hr'),
       item('Pick an element', svg(PICK, ''), () => togglePick()),
@@ -315,11 +283,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     root.dataset.view = view;
     root.classList.toggle('picking', !!stopPicking);
     root.classList.toggle('right', right);
-    if (view === 'menu') menu.replaceChildren(...shown(menuItems()));
+    if (view === 'menu') menu.replaceChildren(...nodes(menuItems()));
     if (view !== 'panel') return;
     tabs.forEach((el) => el.setAttribute('aria-selected', String(el.dataset.tab === tab)));
     search.hidden = !FILTERED.includes(tab);
-    body.replaceChildren(...shown(views[tab]()));
+    body.replaceChildren(...nodes(views[tab]()));
   };
   const setView = (next: typeof view) => {
     view = next;
@@ -361,8 +329,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   engine.on(
     '*',
     (e) => {
-      events.push(e);
-      if (events.length > 200) events.shift();
+      flow.record(e);
       engine.log.debug(`event ${e.name}`, e.data);
     },
     { replay: true },
