@@ -12,9 +12,12 @@ async function setup() {
   const paint = () => root.replaceChildren(...nodes(view.view()), view.dialog);
   paint();
   const lines = () =>
-    [...root.querySelectorAll('.cline')].map((l) =>
-      ['.cinfo > b', '.cinfo > small', '.avatar-count', '.cprice > b'].map((q) => l.querySelector(q)!.textContent),
-    );
+    [...root.querySelectorAll('.cline')].map((l) => [
+      l.querySelector('.cname > b')!.textContent,
+      [...l.querySelectorAll('.cname .badge')].map((b) => b.textContent).join(', '),
+      l.querySelector('.avatar-count')!.textContent,
+      l.querySelector('.cprice > b')!.textContent,
+    ]);
   const button = (text: string) =>
     [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent === text)!;
   const head = () => root.querySelector('.chead > span')!.textContent;
@@ -38,7 +41,7 @@ describe('cart tab', () => {
     expect(root.textContent).toContain('Cart is empty');
     button('Add products').click();
     expect(view.dialog.open).toBe(true);
-    expect(picker()).toEqual(expect.arrayContaining(['Earbuds ×1', 'Earbuds ×1#1 · Black', 'Earbuds ×2#2 · White']));
+    expect(picker()).toEqual(expect.arrayContaining(['Earbuds ×1', 'Earbuds ×1Black', 'Earbuds ×2White']));
     tick('Earbuds ×2');
     expect(view.dialog.querySelector('footer .btn:last-child')!.textContent).toBe('Add 1 to cart');
     tick('Earbuds ×1');
@@ -52,7 +55,8 @@ describe('cart tab', () => {
     (view.dialog.querySelector('footer .btn:last-child') as HTMLElement).click();
     expect(view.dialog.open).toBe(false);
     await vi.waitFor(() => expect(head()).toMatch(/^1 item · \$[\d,.]+ · priced at \d\d:\d\d:\d\d$/));
-    expect(lines()).toEqual([['Earbuds ×2', '#2 · from added', '1', expect.stringMatching(/^\$/)]]);
+    expect(lines()).toEqual([['Earbuds ×2', '', '1', expect.stringMatching(/^\$/)]]);
+    expect(root.querySelector('.cname > b')!.getAttribute('title')).toBe('Package #2');
     expect(root.querySelector('.cunit')!.textContent).toMatch(/^\$[\d.]+ ×−1\+$/);
     const totals = [...root.querySelectorAll('.trow')].map((r) => r.firstChild!.textContent);
     expect(totals).toEqual(['Subtotal', 'ShippingStandard', 'Total']);
@@ -72,6 +76,26 @@ describe('cart tab', () => {
     color.dispatchEvent(new Event('change'));
     await vi.waitFor(() => expect(lines()[0]![0]).toBe('Earbuds ×2'));
     expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+  });
+
+  it('explains a line on hover: the package, where it came from and how its price adds up', async () => {
+    const { engine, root, paint } = await setup();
+    await engine.cart.addItem(1);
+    await engine.cart.applyCoupon('SAVE10');
+    paint();
+    root.querySelector('.cmain')!.dispatchEvent(new MouseEvent('mouseenter'));
+    const card = root.querySelector('.hovercard')!;
+    await vi.waitFor(() => expect(card.getAttribute('aria-hidden')).toBe('false'));
+    expect(card.querySelector('header')!.textContent).toBe('Earbuds ×1Package #1 · from added');
+    const rows = [...card.querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]);
+    expect(rows).toEqual([
+      ['1 × $49.00', '$49.00'],
+      ['Compare at', '$99.00'],
+      ['codeSAVE10 · 10%', '−$1.00'],
+      ['Total', '$49.00'],
+    ]);
+    root.querySelector('.cmain')!.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(card.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('changes the quantity, and removes the line', async () => {
@@ -115,7 +139,7 @@ describe('cart tab', () => {
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await engine.cart.addItem(1);
     paint();
-    expect(lines()[0]![1]).toMatch(/· from bundle "main", added$/);
+    expect(lines()[0]![1]).toBe('bundle main, added');
     expect(lines()[0]![2]).toBe('2');
   });
 

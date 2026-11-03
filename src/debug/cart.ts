@@ -4,13 +4,13 @@ import { variantChoices } from '../engine/cart/variants';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import { avatar, productPicker } from './picker';
-import { badge, type Child, empty, expandable, h, time, tsugi } from './view';
+import { badge, type Child, empty, expandable, h, hoverCard, time, tsugi } from './view';
 
 const source = (group: string) =>
   group === 'items'
     ? 'added'
     : group.startsWith('bundle:')
-      ? `bundle "${group.slice(7)}"`
+      ? `bundle ${group.slice(7)}`
       : group.startsWith('toggle:')
         ? 'toggle'
         : group;
@@ -89,6 +89,57 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     return el;
   };
 
+  const priceDetails = (
+    packageId: number,
+    count: number,
+    priced: SummaryLine | undefined,
+    from: string[],
+    codes: Set<string>,
+  ): Child[] => {
+    const p = engine.getPackage(packageId);
+    const row = (label: Child, value: Child, className = '') => [h('dt', className, label), h('dd', className, value)];
+    const unit = priced?.package_price ?? p?.price_total;
+    const was = Number(priced?.original_package_price ?? p?.price_retail_total ?? 0);
+    const units = p && p.qty > 1 ? ` (${p.qty} × ${money(priced?.unit_price ?? p.price)})` : '';
+    const recurring = (priced?.is_recurring ?? p?.is_recurring) && (priced?.price_recurring ?? p?.price_recurring);
+    return [
+      h(
+        'header',
+        {},
+        h('b', {}, p?.name ?? `Package ${packageId}`),
+        h(
+          'small',
+          {},
+          [`Package #${packageId}`, p?.product_sku && `SKU ${p.product_sku}`, `from ${from.join(', ')}`]
+            .filter(Boolean)
+            .join(' · '),
+        ),
+      ),
+      h(
+        'dl',
+        {},
+        ...row(`${count} × ${money(unit)}${units}`, money(priced?.subtotal ?? Number(unit) * count)),
+        ...(was > Number(unit) ? row('Compare at', h('s', {}, money(was * count)), 'dim') : []),
+        ...(priced?.discounts ?? []).flatMap((d) =>
+          row(
+            h(
+              'span',
+              {},
+              codes.has(d.name ?? '') && badge('code', 'outline'),
+              d.name || 'Offer',
+              Number(d.percentage) ? ` · ${Math.round(Number(d.percentage))}%` : '',
+            ),
+            `−${money(d.amount)}`,
+            'green',
+          ),
+        ),
+        ...row('Total', money(priced?.total ?? Number(unit) * count), 'htotal'),
+        ...(recurring ? row('Then', `${money(String(recurring))} every ${p?.interval ?? 'month'}`, 'dim') : []),
+      ),
+      !priced && h('p', 'amber', 'Estimated from campaign prices: the server has not priced this line yet.'),
+    ];
+  };
+
   const line = (packageId: number, count: number, priced: SummaryLine | undefined, codes: Set<string>) => {
     const p = engine.getPackage(packageId);
     const from = Object.entries(engine.getState().cart.groups)
@@ -120,36 +171,43 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       'div',
       'cline',
       !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => discount(d, codes))),
-      h(
-        'div',
-        'cmain',
-        avatar(p?.image, count),
+      hoverCard(
         h(
           'div',
-          'cinfo',
-          h('b', {}, p?.name ?? `Package ${packageId}`),
+          'cmain',
+          avatar(p?.image, count),
           h(
             'div',
-            'cunit',
-            `${money(priced?.package_price ?? p?.price_total)} ×`,
+            'cinfo',
             h(
-              'span',
-              'cstep',
-              button('−', set(count - 1), step, 'One less'),
-              h('span', {}, String(count)),
-              button('+', set(count + 1), step, 'One more'),
+              'div',
+              'cname',
+              h('b', { title: `Package #${packageId}` }, p?.name ?? `Package ${packageId}`),
+              ...(from.length === 1 && from[0] === 'added' ? [] : from.map((f) => badge(f, 'outline'))),
+            ),
+            h(
+              'div',
+              'cunit',
+              `${money(priced?.package_price ?? p?.price_total)} ×`,
+              h(
+                'span',
+                'cstep',
+                button('−', set(count - 1), step, 'One less'),
+                h('span', {}, String(count)),
+                button('+', set(count + 1), step, 'One more'),
+              ),
             ),
           ),
-          h('small', {}, `#${packageId} · from ${from.join(', ')}`),
+          h(
+            'div',
+            'cprice',
+            before && h('s', {}, money(before)),
+            h('b', {}, money(total)),
+            !priced && h('small', {}, 'estimate'),
+            button('Remove', set(0), { variant: 'link', size: 'sm' }),
+          ),
         ),
-        h(
-          'div',
-          'cprice',
-          before && h('s', {}, money(before)),
-          h('b', {}, money(total)),
-          !priced && h('small', {}, 'estimate'),
-          button('Remove', set(0), { variant: 'link', size: 'sm' }),
-        ),
+        () => priceDetails(packageId, count, priced, from, codes),
       ),
       variants.length > 0 && h('div', 'cvars', ...variants.map(variant)),
       recurring && h('div', 'crecur', `Then ${money(String(recurring))} every ${every}`),

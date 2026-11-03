@@ -98,7 +98,7 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
         {},
         h(
           'label',
-          own ? '' : 'pvariant',
+          { className: own ? '' : 'pvariant', title: `Package #${p.ref_id}` },
           own && avatar(p.image),
           h(
             'span',
@@ -110,11 +110,8 @@ export function productPicker(engine: Engine, ui: { render: () => void }) {
               p.product_purchase_availability === 'unavailable' && badge('Unavailable', 'outline'),
               inCart.has(p.ref_id) && badge(`In cart ×${inCart.get(p.ref_id)}`, 'secondary'),
             ),
-            h(
-              'small',
-              {},
-              [`#${p.ref_id}`, ...(p.product_variant_attribute_values ?? []).map((a) => a.value)].join(' · '),
-            ),
+            !!p.product_variant_attribute_values?.length &&
+              h('small', {}, p.product_variant_attribute_values.map((a) => a.value).join(' · ')),
           ),
           h('span', 'pprice', money(p)),
           box([p.ref_id]),

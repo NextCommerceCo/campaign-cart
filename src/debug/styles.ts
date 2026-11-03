@@ -119,9 +119,9 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .cbadges .badge{background:var(--card)}
 .cmain{display:flex;align-items:flex-start;gap:16px;padding:16px}
 .cinfo{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
-.cinfo>b{overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
-.cunit,.cinfo>small{color:var(--muted-foreground)}
-.cinfo>small{font-size:12px}
+.cname>b{overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.cname{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+.cunit{color:var(--muted-foreground)}
 .cunit{display:flex;align-items:center;gap:6px}
 .cstep{display:inline-flex;align-items:center}
 .cstep>span{min-width:24px;text-align:center;color:var(--foreground)}
@@ -149,6 +149,14 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .cctl .input{flex:1;min-width:0}
 .cctl .select{width:100%}
 .cmsg{font-size:12px}
+.hovercard{width:320px;margin:6px 0;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+.hovercard header{display:flex;flex-direction:column;gap:2px}
+.hovercard header small{font-size:12px;color:var(--muted-foreground)}
+.hovercard dl{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+.hovercard dd{padding-left:16px;text-align:right}
+.hovercard .htotal{padding-top:8px;border-top:1px solid var(--border);font-weight:600}
+.hovercard .badge{margin-right:6px}
+.hovercard p{font-size:12px}
 .picker{font-family:var(--font-sans)}
 .picker>div{height:min(40rem,calc(100vh - 4rem))}
 .picker section{display:flex;flex-direction:column;gap:12px;min-height:0}
