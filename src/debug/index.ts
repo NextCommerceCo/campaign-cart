@@ -14,8 +14,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .fab,.menu,.panel,.hint{position:fixed;z-index:2147483646}
 .fab{left:20px;bottom:20px;display:flex;align-items:center;gap:6px;height:40px;padding:4px;border-radius:999px;background:#0a0a0a;color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:0 8px 24px rgba(0,0,0,.3);transition:transform .15s}
 .fab:hover{transform:scale(1.04)}
-.logo{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fff;color:#000}
-.logo svg{width:18px;height:18px}
+.logo{display:grid;place-items:center;width:30px;height:30px}
+.logo svg{width:30px;height:30px}
 .issues{padding:0 10px 0 2px;font-size:12px;font-weight:600}
 .issues:empty{display:none}
 .issues::before{content:'';display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:currentColor}
@@ -83,7 +83,7 @@ details details,details>.row{margin-left:14px}
 .box span{position:absolute;left:-2px;top:-24px;padding:2px 6px;border-radius:4px;background:#0a0a0a;color:#fff;white-space:nowrap;font:11px var(--mono)}`;
 
 const LOGO =
-  '<svg viewBox="0 0 24 24"><path d="M7 17V7l10 10V7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0 0 148 148" fill="currentColor" stroke="currentColor" stroke-width="2.5"><path d="M100.143 81.8349L98.205 80.5596L43.8535 44.7978C43.1486 44.378 42.4606 44.1524 41.8457 44.1523C39.8673 44.1523 38.258 45.7609 38.2578 47.7392V101.117C38.2579 103.095 39.8673 104.704 41.8457 104.704H45.6807V117.046H41.8457C33.0653 117.046 26 109.98 26 101.2V47.8232C26 39.0429 33.0653 31.9775 41.8457 31.9775C44.9198 31.9776 48.002 32.8807 50.5537 34.6123L99.596 67.9736L100.143 68.3457V81.8349Z"/><path d="M106.818 31.9775C115.599 31.9775 122.664 39.0429 122.664 47.8232V101.2C122.664 109.98 115.599 117.046 106.818 117.046C103.744 117.046 100.662 116.142 98.11 114.411L49.0684 81.0498L48.5215 80.6777V67.1914L50.457 68.4629L104.802 104.136C105.51 104.56 106.201 104.788 106.818 104.788C108.797 104.788 110.406 103.178 110.406 101.2V47.8232C110.406 45.8447 108.797 44.2353 106.818 44.2353H102.983V31.9775H106.818Z"/></svg>';
 const PICK =
   '<svg viewBox="0 0 16 16"><path d="M3 2l10 5-4.2 1.3L7.5 13z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 const CLOSE =
