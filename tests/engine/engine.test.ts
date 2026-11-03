@@ -153,6 +153,17 @@ describe('Engine', () => {
     expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(61_000);
   });
 
+  it('stays in debug mode for the tab across storage scopes until ?debug=0', () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session, debug: true }).engine;
+    expect([first.debug, first.log.level]).toEqual([true, 'debug']);
+    const next = makeEngine({ session, storagePrefix: 'next:other' }).engine;
+    expect([next.debug, next.log.level]).toEqual([true, 'debug']);
+    expect(makeEngine({ session, debug: false }).engine.debug).toBe(false);
+    expect(makeEngine({ session }).engine.debug).toBe(false);
+    expect([...session.data.keys()].filter((k) => k.startsWith('next:debug'))).toEqual([]);
+  });
+
   it('logs every API call by method, path and status, without the query or body', async () => {
     const { engine } = makeEngine({
       fetch: (url) => Promise.resolve(new Response('{}', { status: String(url).includes('/orders/') ? 500 : 200 })),

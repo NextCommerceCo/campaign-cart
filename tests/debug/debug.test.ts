@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS, CART_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
+import { ANALYTICS_CSS, CART_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -14,12 +14,12 @@ const menuItem = (label: string) =>
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
 
-async function start(markup = '') {
+async function start(markup = '', config: { debug?: boolean } = { debug: true }) {
   document.body.innerHTML = markup;
   vi.stubGlobal('fetch', fakeApi().fetch);
   for (const level of ['debug', 'info', 'warn'] as const) vi.spyOn(console, level).mockImplementation(() => {});
   const next = boot(
-    { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: 'f1', debug: true, reset: false },
+    { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: 'f1', reset: false, ...config },
     Promise.resolve(campaign),
   );
   await vi.waitFor(() => expect(document.querySelector('next-debug')).not.toBeNull());
@@ -30,6 +30,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   document.body.innerHTML = '';
+  sessionStorage.clear();
 });
 
 describe('debug tools', () => {
@@ -57,13 +58,35 @@ describe('debug tools', () => {
     expect(body()).toContain('GA4 events sent');
     expect(body()).toContain('All workflows');
     tab('logs');
-    expect(body()).toContain('infostorage scope');
-    expect(body()).toMatch(/debugapi POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
+    expect(body()).toContain('info storage scope');
+    expect(body()).toMatch(/debug api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
     tab('state');
     expect(details('cart').open).toBe(true);
     expect(details('cart').textContent).toContain('groups');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(view()).toBe('closed');
+  });
+
+  it('follows the shopper to the next page of the tab, open where it was left, until ?debug=0', async () => {
+    await start();
+    $('.fab').click();
+    menuItem('Cart').click();
+    await start('', {});
+    expect(view()).toBe('panel');
+    expect($('[data-tab="cart"]').getAttribute('aria-selected')).toBe('true');
+    tab('journey');
+    expect(shadow().querySelectorAll('.journey > ol > li')).toHaveLength(2);
+    $('[aria-label="Close"]').click();
+    $('.fab').click();
+    expect(menuItem('Journey').textContent).toBe('Journey2 pages in this tab');
+    expect(menuItem('Turn off debug')).toBeDefined();
+    document.body.innerHTML = '';
+    boot(
+      { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: 'f1', debug: false, reset: false },
+      Promise.resolve(campaign),
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    expect(document.querySelector('next-debug')).toBeNull();
   });
 
   it('keeps expanded nodes open when the state changes', async () => {
@@ -87,7 +110,7 @@ describe('debug tools', () => {
     const filter = $<HTMLInputElement>('input');
     filter.value = 'unknown display';
     filter.dispatchEvent(new Event('input'));
-    expect(body()).toContain('warnunknown display path "cart.nope"');
+    expect(body()).toContain('warn unknown display path "cart.nope"');
     expect(body()).not.toContain('api POST');
   });
 
@@ -192,17 +215,21 @@ describe('debug tools', () => {
     expect(menuItem('Position').textContent).toBe('PositionRight');
   });
 
-  it('styles the panel, the analytics view and the cart view with separate class names', async () => {
+  it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
-    expect(shadow().querySelector('style')!.textContent).toBe(TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS);
+    expect(shadow().querySelector('style')!.textContent).toBe(
+      TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS + JOURNEY_CSS,
+    );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
     const analytics = classes(ANALYTICS_CSS);
     const cart = classes(CART_CSS);
+    const journey = classes(JOURNEY_CSS);
     expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
     expect([...cart].filter((name) => panel.has(name) || analytics.has(name))).toEqual([]);
-    const components = ['badge', 'btn', 'card', 'input', 'select'];
-    expect([...panel, ...analytics, ...cart].filter((name) => components.includes(name!))).toEqual([]);
+    expect([...journey].filter((name) => panel.has(name) || analytics.has(name) || cart.has(name))).toEqual([]);
+    const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
+    expect([...panel, ...analytics, ...cart, ...journey].filter((name) => components.includes(name!))).toEqual([]);
   });
 
   it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
@@ -218,8 +245,9 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    expect([...defined(PANEL_CSS + ANALYTICS_CSS + CART_CSS)].filter((name) => tokens.has(name))).toEqual([]);
-    expect(CART_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + JOURNEY_CSS;
+    expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
+    expect(CART_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });

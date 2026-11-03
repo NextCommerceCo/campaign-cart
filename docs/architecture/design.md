@@ -149,8 +149,8 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
 
 ## 8. Errors and debugging
 
-- `?debug=1` shows the panel and full logs. It never changes which code loads or where
-  it loads from.
+- `?debug=1` shows the panel and full logs on every page of the tab until `?debug=0`. It never
+  changes which code loads or where it loads from.
 - Setup mistakes always print in the console: missing key, unknown attribute, unknown
   field.
 - SDK errors go out as the `error` event (debug panel, analytics); a collector endpoint is a backend ask (B3).

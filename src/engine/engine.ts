@@ -26,13 +26,14 @@ export interface EngineOptions {
   reset?: boolean;
   now?: () => number;
   logLevel?: LogLevel;
+  debug?: boolean;
 }
 
 export interface Context {
   getState(): State;
   update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
-  on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void): () => void;
+  on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
   fail(action: string, err: unknown): void;
   log: Logger;
   getPackage(id: number): Package | undefined;
@@ -51,12 +52,14 @@ export class Engine {
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
   readonly toggles: ToggleActions;
+  readonly debug: boolean;
   checkout?: CheckoutActions;
   order?: OrderActions;
   private state: State;
   private api: Api;
   private session: StorageAdapter;
   private local: StorageAdapter;
+  private debugStore: StorageAdapter;
   private listeners = new Set<() => void>();
   private notifying = false;
   private ready = false;
@@ -76,6 +79,11 @@ export class Engine {
       });
     this.session = adapter('session', [options.storage.session]);
     this.local = adapter('local', [options.storage.local, options.storage.session]);
+    this.debugStore = new StorageAdapter({ prefix: 'next', version: 1, backends: [options.storage.session] });
+    if (options.debug) this.debugStore.set('debugging', true);
+    if (options.debug === false) for (const name of ['debugging', 'debug']) this.debugStore.remove(name);
+    this.debug = this.debugStore.get<boolean>('debugging') === true;
+    if (this.debug) this.log.level = 'debug';
     this.state = {
       cart: emptyCart(),
       selectors: {},
@@ -86,12 +94,12 @@ export class Engine {
       getState: () => this.state,
       update: (slice, patch, opts) => this.update(slice, patch, opts),
       emit: (name, data) => this.events.emit(name, data),
-      on: (name, fn) => this.events.on(name, fn),
+      on: (name, fn, options) => this.events.on(name, fn, options),
       fail: (action, err) => this.fail(action, err),
       log: this.log,
       getPackage: (id) => this.getPackage(id),
       attribution: () => this.attribution(),
-      saved: (slice) => this.session.get(slice),
+      saved: (slice) => (slice === 'debug' ? this.debugStore : this.session).get(slice),
       forget: (slice) => {
         this.session.remove(slice);
         this.state = { ...this.state, [slice]: undefined };
@@ -213,13 +221,14 @@ export class Engine {
   }
 
   private save(slice: keyof State): void {
-    const { cart, visit, campaign, checkout, order } = this.state;
+    const { cart, visit, campaign, checkout, order, debug } = this.state;
     if (slice === 'cart') {
       const { groups, coupons, dismissed, shippingId, reported, added } = cart;
       this.session.set('cart', { groups, coupons, dismissed, shippingId, reported, added });
     }
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
+    if (slice === 'debug' && debug) this.debugStore.set('debug', debug);
     if (slice === 'order' && order) {
       const { refId, order: saved, loadedAt, accepted, coupon } = order;
       this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });

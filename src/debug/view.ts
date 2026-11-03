@@ -1,3 +1,5 @@
+import { type IconName, icon } from './icons';
+
 export type Child = Node | string | false | null | undefined;
 
 export function h<K extends keyof HTMLElementTagNameMap>(
@@ -21,6 +23,17 @@ const leaf = (v: unknown) =>
     ? h('span', 'red', `${v.name}: ${v.message}`)
     : h('span', typeof v === 'string' ? 's' : typeof v === 'number' ? 'n' : 'b', JSON.stringify(v) ?? String(v));
 
+export const tsugi = <E extends HTMLElement>(el: E, data: Record<string, string>) => {
+  Object.assign(el.dataset, data);
+  return el;
+};
+
+export const tsugiCard = (className: string, ...children: Child[]) =>
+  tsugi(h('div', `card ${className}`, h('section', {}, ...children)), { size: 'sm' });
+
+export const badge = (text: Child, variant: string, ...rest: Child[]) =>
+  tsugi(h('span', 'badge', text, ...rest), { variant });
+
 export const nodes = (children: Child[]) => children.filter((c): c is Node | string => !!c);
 
 export const time = (at: number) => {
@@ -28,8 +41,12 @@ export const time = (at: number) => {
   return `${d.toTimeString().slice(0, 8)}.${String(d.getMilliseconds()).padStart(3, '0')}`;
 };
 
-export const empty = (title: string, detail = '', className = 'empty') =>
-  h('div', className, h('b', {}, title), detail && h('div', {}, detail));
+export const empty = (title: string, detail = '', figure: IconName = 'search') =>
+  h(
+    'section',
+    'empty',
+    h('header', {}, h('figure', {}, icon(figure)), h('h3', {}, title), detail && h('p', {}, detail)),
+  );
 
 export function expandable(
   summary: Child[],

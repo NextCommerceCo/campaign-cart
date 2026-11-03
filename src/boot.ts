@@ -108,19 +108,21 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     },
     funnel: config.funnel || undefined,
     reset: config.reset,
-    logLevel: config.debug ? 'debug' : 'warn',
+    debug: config.debug,
   });
 
-  if (config.debug) {
+  if (engine.debug) {
     engine.log.info(`storage scope ${scope} (funnel "${funnel || '(none)'}")`);
-    const reset = () => location.assign(`${location.pathname}?reset=1`);
+    const arrived = { lines: engine.cart.lines(), reset: config.reset };
     void import('./debug').then((m) =>
       m.startDebug(engine, {
         version: __VERSION__,
         apiBase: config.apiBase,
         scope,
         funnel,
-        reset,
+        arrived,
+        reset: () => location.assign(`${location.pathname}?reset=1`),
+        off: () => location.assign(`${location.pathname}?debug=0`),
         analytics: readLegacyAnalytics,
       }),
     );

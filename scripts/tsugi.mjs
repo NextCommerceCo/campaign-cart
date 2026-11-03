@@ -3,7 +3,18 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { join } from 'node:path';
 
 const REPO = 'NextCommerceCo/tsugi';
-const COMPONENTS = ['badge', 'button', 'card', 'input', 'native-select'];
+const COMPONENTS = [
+  'badge',
+  'button',
+  'card',
+  'empty',
+  'input',
+  'journey',
+  'native-select',
+  'stat',
+  'tabs',
+  'timeline',
+];
 const OUT = 'vendor/tsugi/tsugi.css';
 
 const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').match(/^\/\*! tsugi ([^\s:]+)/)?.[1] : undefined;
@@ -41,7 +52,11 @@ try {
   for (const name of COMPONENTS) writeFileSync(join(dir, `${name}.css`), source(`components/${name}.css`));
   writeFileSync(
     join(dir, 'entry.css'),
-    ['@import "tailwindcss/theme.css" layer(theme);', '@import "./base.css";']
+    [
+      '@import "tailwindcss/theme.css" layer(theme);',
+      '@import "tailwindcss/preflight.css" layer(base);',
+      '@import "./base.css";',
+    ]
       .concat(COMPONENTS.map((name) => `@import "./${name}.css";`))
       .join('\n'),
   );
@@ -59,7 +74,7 @@ try {
   mkdirSync('vendor/tsugi', { recursive: true });
   writeFileSync(
     OUT,
-    `/*! tsugi ${tag}: base and ${COMPONENTS.join(', ')}, made for a shadow root by scripts/tsugi.mjs. Do not edit; run npm run tsugi -- <tag>. */\n${css}\n`,
+    `/*! tsugi ${tag}: Tailwind preflight, base and ${COMPONENTS.join(', ')}, made for a shadow root by scripts/tsugi.mjs. Do not edit; run npm run tsugi -- <tag>. */\n${css}\n`,
   );
   console.log(`${OUT}: tsugi ${tag}, ${(css.length / 1024).toFixed(1)} KB`);
 } finally {

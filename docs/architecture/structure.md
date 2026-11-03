@@ -50,7 +50,8 @@ docs/
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
-vendor/tsugi/tsugi.css     tsugi base and components for the debug panel's shadow root; generated, never edited
+vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
+                           generated, never edited
 dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
@@ -99,7 +100,11 @@ src/
     context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (issues, cart, state, elements, analytics, logs), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, cart, analytics, elements, state, logs), window.nextDebug
+    state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
+                                   session under next:debug, outside the storage scope
+    journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
+    icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
     cart.ts                        the cart as a shopper sees it, with controls that call engine.cart
     analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
@@ -126,7 +131,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 22 KB         |
+| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 32 KB         |
 
 ## Imports
 

@@ -7,7 +7,7 @@ export interface BootConfig {
   apiBase: string;
   funnel: string;
   currency?: string;
-  debug: boolean;
+  debug?: boolean;
   reset: boolean;
 }
 
@@ -16,12 +16,13 @@ const scriptAttr = (doc: Document, name: string) => doc.querySelector(`script[${
 export function readConfig(doc: Document, win: Window): BootConfig {
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);
+  const debug = params.get('debug');
   return {
     apiKey: scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win),
     apiBase: API_BASE,
     funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
     currency: params.get('currency') || undefined,
-    debug: params.get('debug') === '1' || legacy.debug,
+    debug: debug === '1' || legacy.debug ? true : debug === '0' ? false : undefined,
     reset: params.get('reset') === '1' || legacy.reset,
   };
 }

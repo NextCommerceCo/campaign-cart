@@ -1,5 +1,6 @@
 import type { CheckoutState } from '../checkout/state/types';
 import type { OrderState } from '../order/state';
+import type { DebugState } from '../debug/state';
 import type { Visit } from './attribution';
 import type { CartState, Selector, Toggle } from './cart/types';
 
@@ -119,4 +120,5 @@ export interface State {
   visit: VisitState;
   checkout?: CheckoutState;
   order?: OrderState;
+  debug?: DebugState;
 }

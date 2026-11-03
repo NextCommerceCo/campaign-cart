@@ -14,6 +14,8 @@ export interface MakeEngine {
   visit?: Visit;
   now?: () => number;
   reset?: boolean;
+  debug?: boolean;
+  storagePrefix?: string;
 }
 
 export function makeEngine(opts: MakeEngine = {}) {
@@ -25,12 +27,13 @@ export function makeEngine(opts: MakeEngine = {}) {
     apiBase: 'https://api.test',
     send: opts.fetch ?? api.fetch,
     campaign: opts.campaign ?? Promise.resolve(campaign),
-    storagePrefix: 'next:test',
+    storagePrefix: opts.storagePrefix ?? 'next:test',
     storage: { local, session },
     params: opts.params,
     visit: opts.visit,
     now: opts.now,
     reset: opts.reset,
+    debug: opts.debug,
   });
   return { engine, api, local, session };
 }

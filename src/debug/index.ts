@@ -1,3 +1,4 @@
+import type { ApiLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
 import { format } from '../engine/format';
@@ -5,25 +6,23 @@ import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
+import { type IconName, icon } from './icons';
+import { journeyView } from './journey';
 import type { ProviderConfig } from './providers';
-import { ANALYTICS_CSS, CART_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
-import { type Child, empty, h, nodes, time, tree } from './view';
-
-const LOGO =
-  '<svg viewBox="0 0 148 148" fill="currentColor" stroke="currentColor" stroke-width="2.5"><path d="M100.143 81.8349L98.205 80.5596L43.8535 44.7978C43.1486 44.378 42.4606 44.1524 41.8457 44.1523C39.8673 44.1523 38.258 45.7609 38.2578 47.7392V101.117C38.2579 103.095 39.8673 104.704 41.8457 104.704H45.6807V117.046H41.8457C33.0653 117.046 26 109.98 26 101.2V47.8232C26 39.0429 33.0653 31.9775 41.8457 31.9775C44.9198 31.9776 48.002 32.8807 50.5537 34.6123L99.596 67.9736L100.143 68.3457V81.8349Z"/><path d="M106.818 31.9775C115.599 31.9775 122.664 39.0429 122.664 47.8232V101.2C122.664 109.98 115.599 117.046 106.818 117.046C103.744 117.046 100.662 116.142 98.11 114.411L49.0684 81.0498L48.5215 80.6777V67.1914L50.457 68.4629L104.802 104.136C105.51 104.56 106.201 104.788 106.818 104.788C108.797 104.788 110.406 103.178 110.406 101.2V47.8232C110.406 45.8447 108.797 44.2353 106.818 44.2353H102.983V31.9775H106.818Z"/></svg>';
-const PICK =
-  '<svg viewBox="0 0 16 16"><path d="M3 2l10 5-4.2 1.3L7.5 13z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-const CLOSE =
-  '<svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+import { createDebug, type PageKind } from './state';
+import { ANALYTICS_CSS, CART_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
+import { badge, type Child, empty, h, nodes, time, tree, tsugi } from './view';
 
 const TABS = {
+  journey: 'Journey',
   issues: 'Issues',
   cart: 'Cart',
-  state: 'State',
-  elements: 'Elements',
   analytics: 'Analytics',
+  elements: 'Elements',
+  state: 'State',
   logs: 'Logs',
 };
+const LEVELS = { debug: 'outline', info: 'info', warn: 'warning', error: 'destructive' };
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'logs'];
 const LIMIT = 200;
@@ -32,14 +31,21 @@ export interface DebugInfo {
   apiBase: string;
   scope: string;
   funnel: string;
+  arrived: { lines: ApiLine[]; reset: boolean };
   reset: () => void;
+  off: () => void;
   analytics: () => ProviderConfig;
 }
 
-const svg = (markup: string, className: string) => {
-  const el = h('span', className);
-  el.innerHTML = markup;
-  return el;
+const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
+
+const pageKind = (): PageKind => {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="next-page-type"]')?.content as PageKind;
+  if (PAGE_KINDS.includes(meta)) return meta;
+  if (document.querySelector('form[data-next-checkout]')) return 'checkout';
+  if (document.querySelector('[data-next-upsell]')) return 'upsell';
+  if (document.querySelector('[data-next-display^="order."]')) return 'receipt';
+  return 'page';
 };
 
 export function startDebug(engine: Engine, info: DebugInfo): void {
@@ -50,11 +56,24 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     if (!ids.has(o)) ids.set(o, ++seq);
     return ids.get(o)!;
   };
-  let view: 'closed' | 'menu' | 'panel' = 'closed';
-  let tab: Tab = 'issues';
+  const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const debug = engine.attach((ctx) =>
+    createDebug(ctx, {
+      at: Date.now(),
+      path: location.pathname,
+      title: document.title,
+      kind: pageKind(),
+      scope: info.scope,
+      reload: navigation?.type === 'reload',
+      ...info.arrived,
+    }),
+  );
+  const saved = debug.state().panel;
+  let view: 'closed' | 'menu' | 'panel' = saved.open ? 'panel' : 'closed';
+  let tab: Tab = saved.tab in TABS ? (saved.tab as Tab) : 'journey';
   let picked: Element | undefined;
   let stopPicking: (() => void) | undefined;
-  let right = false;
+  let right = saved.right;
   let queued = false;
 
   const host = document.createElement('next-debug');
@@ -62,17 +81,28 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const body = h('div', 'body');
   const menu = h('div', 'menu pop');
   const issues = h('span', 'issues');
-  const filter = h('input', { type: 'search', placeholder: 'Filter…', oninput: () => render() });
+  const filter = h('input', { type: 'search', className: 'input', placeholder: 'Filter…', oninput: () => render() });
   const search = h('div', 'search', filter);
-  const button = (markup: string, label: string, onclick: () => void) => {
-    const el = h('button', { type: 'button', className: 'icon', title: label, onclick }, svg(markup, ''));
+  const button = (name: IconName, label: string, onclick: () => void) => {
+    const el = tsugi(h('button', { type: 'button', className: 'btn', title: label, onclick }, icon(name)), {
+      variant: 'ghost',
+      size: 'icon-sm',
+    });
     el.setAttribute('aria-label', label);
     return el;
   };
   const tabs = (Object.keys(TABS) as Tab[]).map((t) => {
     const el = h('button', { type: 'button', onclick: () => show(t) }, TABS[t]);
     el.dataset.tab = t;
+    el.setAttribute('role', 'tab');
     return el;
+  });
+  const tablist = tsugi(h('div', {}, ...tabs), { size: 'sm' });
+  tablist.setAttribute('role', 'tablist');
+  const dock = button('dockRight', 'Move to the right', () => {
+    right = !right;
+    debug.setPanel({ right });
+    render();
   });
   const fab = h(
     'button',
@@ -82,7 +112,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       title: 'Campaign SDK debug',
       onclick: () => setView(view === 'closed' ? 'menu' : 'closed'),
     },
-    svg(LOGO, 'logo'),
+    icon('logo'),
     issues,
   );
   const panel = h(
@@ -91,9 +121,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     h(
       'div',
       'head',
-      h('div', 'tabs', ...tabs),
-      button(PICK, 'Pick an element', () => togglePick()),
-      button(CLOSE, 'Close', () => setView('closed')),
+      h('div', 'tabs', tablist),
+      button('pick', 'Pick an element', () => togglePick()),
+      dock,
+      button('close', 'Close', () => setView('closed')),
     ),
     search,
     body,
@@ -102,7 +133,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const root = h('div', 'root', panel, menu, fab, hint);
   host
     .attachShadow({ mode: 'open' })
-    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS), box.el, root);
+    .append(h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, JOURNEY_CSS), box.el, root);
   document.body.append(host);
   const scheme = matchMedia('(prefers-color-scheme: dark)');
   const theme = () => host.classList.toggle('dark', scheme.matches);
@@ -112,9 +143,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const query = () => filter.value.trim().toLowerCase();
   const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
+  const journey = journeyView(engine, debug, { render: () => render() });
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
-    const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);
+    const label = h('span', {}, stamp(e.at), badge(e.level, LEVELS[e.level]), ' ', e.message);
     return e.data === undefined ? h('div', 'row', label) : tree(label, e.data, `l${idOf(e)}`, open);
   };
   const cartText = () => {
@@ -144,12 +176,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   const views: Record<Tab, () => Child[]> = {
+    journey: () => journey.view(),
     issues: () => {
       const { page, logged } = findIssues();
       if (!page.length && !logged.length)
-        return [
-          empty('No issues', 'Every SDK attribute on this page resolves, and no warnings were logged.', 'empty ok'),
-        ];
+        return [empty('No issues', 'Every SDK attribute on this page resolves, and no warnings were logged.', 'check')];
       return [
         page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
         ...page.map((i) => card(i, box)),
@@ -198,12 +229,13 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       item('Issues', h('span', `count ${count ? tone : 'green'}`, count ? String(count) : 'None'), () =>
         show('issues'),
       ),
+      item('Journey', `${debug.state().pages.length} pages in this tab`, () => show('journey')),
       item('Cart', cartText(), () => show('cart')),
       item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
       item('Logs', String(engine.log.entries().length), () => show('logs')),
       h('hr'),
-      item('Pick an element', svg(PICK, ''), () => togglePick()),
+      item('Pick an element', icon('pick'), () => togglePick()),
       h('hr'),
       item('Campaign', campaign ? `${campaign.name} · ${campaign.currency}` : 'Loading…'),
       item('SDK', `v${info.version}`),
@@ -213,9 +245,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       h('hr'),
       item('Position', right ? 'Right' : 'Left', () => {
         right = !right;
+        debug.setPanel({ right });
         render();
       }),
       item('Reset saved data', '', info.reset, 'danger'),
+      item('Turn off debug', 'stays on in this tab until then', info.off, 'danger'),
     ];
   };
 
@@ -226,14 +260,25 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     root.dataset.view = view;
     root.classList.toggle('picking', !!stopPicking);
     root.classList.toggle('right', right);
+    dock.title = right ? 'Move to the left' : 'Move to the right';
+    dock.replaceChildren(icon(right ? 'dockLeft' : 'dockRight'));
     if (view === 'menu') menu.replaceChildren(...nodes(menuItems()));
     if (view !== 'panel') return;
-    tabs.forEach((el) => el.setAttribute('aria-selected', String(el.dataset.tab === tab)));
+    tabs.forEach((el) => {
+      el.setAttribute('aria-selected', String(el.dataset.tab === tab));
+      if (el.dataset.tab === 'issues')
+        el.replaceChildren(
+          TABS.issues,
+          ...nodes([count > 0 && badge(String(count), tone === 'red' ? 'destructive' : 'warning')]),
+        );
+    });
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));
+    if (tab === 'journey') journey.draw();
   };
   const setView = (next: typeof view) => {
     view = next;
+    if (next !== 'menu') debug.setPanel({ open: next === 'panel', tab });
     render();
   };
   const show = (next: Tab) => {

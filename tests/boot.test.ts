@@ -26,6 +26,19 @@ afterEach(() => {
 });
 
 describe('readConfig', () => {
+  it('turns debug mode on with ?debug=1 and off with ?debug=0, and leaves it as it was otherwise', () => {
+    const debug = (search: string) => {
+      history.replaceState(null, '', `/lp/${search}`);
+      return readConfig(document, window).debug;
+    };
+    expect([debug('?debug=1'), debug('?debugger=true'), debug('?debug=0'), debug('')]).toEqual([
+      true,
+      true,
+      false,
+      undefined,
+    ]);
+  });
+
   it('reads the script tag first, then the deprecated config', () => {
     document.head.innerHTML = `<script data-campaign="pk_live_1"></script><script data-funnel="helloweenA"></script>`;
     expect(readConfig(document, window)).toMatchObject({ apiKey: 'pk_live_1', funnel: 'helloweenA' });

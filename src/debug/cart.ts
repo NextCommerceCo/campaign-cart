@@ -1,7 +1,7 @@
 import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
-import { type Child, empty, expandable, h, time } from './view';
+import { badge, type Child, empty, expandable, h, time, tsugi, tsugiCard } from './view';
 
 const source = (group: string) =>
   group === 'items'
@@ -11,14 +11,6 @@ const source = (group: string) =>
       : group.startsWith('toggle:')
         ? 'toggle'
         : group;
-
-const tsugi = <E extends HTMLElement>(el: E, data: Record<string, string>) => {
-  Object.assign(el.dataset, data);
-  return el;
-};
-
-const card = (className: string, ...children: Child[]) =>
-  tsugi(h('div', `card ${className}`, h('section', {}, ...children)), { size: 'sm' });
 
 const button = (label: Child, onclick: () => void, data: Record<string, string>, title = '') =>
   tsugi(h('button', { type: 'button', className: 'btn', title, onclick }, label), data);
@@ -62,13 +54,13 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
   };
   coupon.onkeydown = (e) => e.key === 'Enter' && apply();
 
-  const badge = (d: Discount, codes: Set<string>) => {
+  const discount = (d: Discount, codes: Set<string>) => {
     const code = codes.has(d.name ?? '');
     const percent = Math.round(Number(d.percentage));
     const off = percent ? `${percent}% OFF` : `−${money(d.amount)}`;
-    return tsugi(h('span', { className: 'badge', title: d.name ?? '' }, code ? `Extra ${off}` : off), {
-      variant: code ? 'info' : 'success',
-    });
+    const el = badge(code ? `Extra ${off}` : off, code ? 'info' : 'success');
+    el.title = d.name ?? '';
+    return el;
   };
 
   const line = (packageId: number, count: number, priced: SummaryLine | undefined, codes: Set<string>) => {
@@ -84,9 +76,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     const attributes = p?.product_variant_attribute_values ?? [];
     const set = (n: number) => () => act(engine.cart.setQuantity(packageId, n));
     const step = { variant: 'outline', size: 'icon-xs' };
-    return card(
+    return tsugiCard(
       'cline',
-      !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => badge(d, codes))),
+      !!priced?.discounts.length && h('div', 'cbadges', ...priced.discounts.map((d) => discount(d, codes))),
       h(
         'div',
         'cmain',
@@ -156,7 +148,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
                 h(
                   'div',
                   'tpart',
-                  h('span', {}, code && tsugi(h('span', 'badge', 'code'), { variant: 'outline' }), name),
+                  h('span', {}, code && badge('code', 'outline'), name),
                   h('span', {}, `−${money(amount)}`),
                 ),
               ),
@@ -175,7 +167,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     ];
     const ship = s.shipping_method;
     const shipParts = (ship?.discounts ?? []).map((d) => part(d, 'Shipping discount', codes.has(d.name ?? '')));
-    return card(
+    return tsugiCard(
       'ctotals',
       row('Subtotal', money(s.subtotal)),
       Number(s.total_discount) > 0 &&
@@ -254,27 +246,23 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
               codes,
             ),
           )
-        : [empty('Cart is empty', 'Add a package below, or use the page.')]),
+        : [empty('Cart is empty', 'Add a package below, or use the page.', 'cart')]),
       summary && lines.length > 0 && totals(summary),
-      card(
+      tsugiCard(
         'cctl',
         h(
           'div',
           'crow',
           h('span', 'clabel', 'Coupons'),
           ...cart.coupons.map((c) =>
-            tsugi(
+            badge(
+              c,
+              'success',
               h(
-                'span',
-                'badge',
-                c,
-                h(
-                  'button',
-                  { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
-                  '✕',
-                ),
+                'button',
+                { type: 'button', title: `Remove ${c}`, onclick: () => act(engine.cart.removeCoupon(c)) },
+                '✕',
               ),
-              { variant: 'success' },
             ),
           ),
           coupon,
