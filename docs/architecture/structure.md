@@ -83,7 +83,8 @@ src/
     widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
-    state/                         headless: checkout.ts (actions, order body), rules.ts (i18n-rules API, checks), phone.ts
+    state/                         headless: checkout.ts (actions), order-body.ts (order body, payment codes),
+                                   rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields)
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
     payment/                       card.ts (payment radios and panels, payment.js), express.ts, logos.ts

@@ -1,5 +1,6 @@
 import { RulesApi } from './state/rules';
-import { type CheckoutActions, createCheckout, EXPRESS_METHODS, redirectFor } from './state/checkout';
+import { type CheckoutActions, createCheckout, redirectFor } from './state/checkout';
+import { EXPRESS_METHODS } from './state/order-body';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import { bindAddress } from './address/country';

@@ -1,6 +1,6 @@
-import { type CheckoutActions, PHONES } from '../state/checkout';
+import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
-import { asciiDigits, formatPhone } from '../state/phone';
+import { asciiDigits, formatPhone, PHONES } from '../state/phone';
 import type { Fields } from '../form/fields';
 import { reformat } from '../form/reformat';
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCheckout, orderBody, paymentCode, redirectFor } from '../../../src/checkout/state/checkout';
+import { createCheckout, redirectFor } from '../../../src/checkout/state/checkout';
+import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
 import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json } from '../../fixtures/api';
 import { flush, makeEngine, type MakeEngine, wait } from '../../fixtures/engine';

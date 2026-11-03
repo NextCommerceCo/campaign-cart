@@ -1,4 +1,4 @@
-import { EXPRESS_METHODS } from '../state/checkout';
+import { EXPRESS_METHODS } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
 import { legacyExpressOrder } from '../../compat/checkout';
 import { EXPRESS_BUTTONS } from './logos';

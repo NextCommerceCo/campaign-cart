@@ -1,4 +1,4 @@
-import type { FieldFormat } from '../../engine/types';
+import type { CheckoutState, FieldFormat } from '../../engine/types';
 
 const MIN_DIGITS = 4;
 const MAX_DIGITS = 15;
@@ -85,3 +85,11 @@ export function plausiblePhone(text: string, format?: FieldFormat): boolean {
   }
   return international.length >= MIN_INTERNATIONAL_DIGITS && international.length <= MAX_DIGITS;
 }
+
+export const PHONES = ['phone_number', 'billing_phone_number'];
+
+export const phoneFieldOf = (countryField: string) =>
+  countryField === 'country' ? 'phone_number' : 'billing_phone_number';
+
+export const phoneOf = (checkout: CheckoutState, name: string) =>
+  checkout.phones[name]?.value ?? (asciiDigits(checkout.fields[name]?.trim() ?? '') || undefined);

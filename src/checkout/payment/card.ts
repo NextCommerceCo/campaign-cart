@@ -1,4 +1,5 @@
-import { type CheckoutActions, paymentCode } from '../state/checkout';
+import type { CheckoutActions } from '../state/checkout';
+import { paymentCode } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
 import { FIELD_ATTRS } from '../../compat/checkout';
 import { option, showField } from '../form/errors';
