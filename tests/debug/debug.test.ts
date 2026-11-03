@@ -55,8 +55,8 @@ describe('debug tools', () => {
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toContain('Goes to');
-    expect(body()).toContain('All workflows');
+    expect(body()).toContain('Tracking');
+    expect(body()).toContain('On this page');
     tab('logs');
     expect(body()).toContain('info storage scope');
     expect(body()).toMatch(/debug api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);

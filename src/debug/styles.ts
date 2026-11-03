@@ -79,15 +79,20 @@ details details,details>.row{margin-left:14px}
 .box{position:fixed;z-index:2147483645;display:none;pointer-events:none;border:2px solid #3b82f6;border-radius:3px;background:rgba(59,130,246,.12)}
 .box span{position:absolute;left:-2px;top:-24px;padding:2px 6px;border-radius:4px;background:#0a0a0a;color:#fff;white-space:nowrap;font:11px var(--font-mono)}`;
 
-export const ANALYTICS_CSS = `.agoes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font:12px var(--font-sans);color:var(--muted-foreground)}
-.alert{margin:0 0 8px;padding:6px 10px;border:1px solid var(--warning);border-radius:8px;color:var(--warning);font:12px/1.4 var(--font-sans)}
+export const ANALYTICS_CSS = `.afunnel>.kstep{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;padding:8px 16px}
+.afunnel>.kstep>small{margin-left:auto;text-align:right}
+@container panel (max-width:560px){.afunnel>.kstep>small{flex-basis:100%;margin-left:30px;text-align:left}}
+.afunnel>button{width:100%;text-align:left}
+.afunnel>button:hover{background:var(--accent)}
+.afunnel code{font:500 13px var(--font-mono)}
+.adest{display:flex;flex-direction:column;gap:6px;padding:10px 16px 12px;border-top:1px solid var(--border);font:12px/1.5 var(--font-sans);color:var(--muted-foreground)}
 .chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .chip{padding:0 8px;border:1px solid var(--border);border-radius:999px;font:12px var(--font-sans);white-space:nowrap}
 .chip.ok{color:var(--success);border-color:var(--success)}
 .chip.warn{color:var(--warning);border-color:var(--warning)}
 .chip.off{color:var(--muted-foreground);border-style:dashed}
 .chip.info{color:var(--muted-foreground)}
-.alog{overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);font:14px var(--font-sans)}
+.alog{font-size:14px}
 .arun{display:grid;grid-template-columns:16px minmax(0,1fr) auto 14px;align-items:center;gap:12px;width:100%;padding:8px 12px;text-align:left}
 .arun+.arun{border-top:1px solid var(--border)}
 .arun:hover{background:var(--accent)}
@@ -100,6 +105,7 @@ export const ANALYTICS_CSS = `.agoes{display:flex;flex-wrap:wrap;align-items:cen
 .amain code{font:500 13px var(--font-mono)}
 .arun.skip .amain code{color:var(--muted-foreground)}
 .amain small{overflow:hidden;font-size:12px;white-space:nowrap;text-overflow:ellipsis;color:var(--muted-foreground)}
+.arun.warn .amain small{color:var(--warning)}
 .aend{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted-foreground)}
 .aend b{font-size:13px;font-weight:500;color:var(--foreground)}
 .aevent{font-family:var(--font-sans)}
@@ -124,10 +130,7 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .aitems{width:100%;overflow-x:auto}
 th,td{padding:2px 12px 2px 0;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)}
 th{font-size:12px;font-weight:500;color:var(--muted-foreground)}
-.more{margin-top:12px}
-.more>summary{font:12px var(--font-sans);color:var(--muted-foreground)}
-.flow{margin:3px 0 3px 14px;font:12px var(--font-sans)}
-.flow code{font:12px var(--font-mono)}`;
+`;
 
 export const CART_CSS = `.ctable{font-size:14px}
 .cth,.cline{display:grid;grid-template-columns:minmax(0,1fr) 104px 112px 28px;grid-template-areas:'pkg qty price x';align-items:center;gap:8px 12px;padding:10px 16px}

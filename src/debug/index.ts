@@ -151,7 +151,13 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   theme();
 
   const query = () => filter.value.trim().toLowerCase();
-  const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
+  const flow = analyticsFlow({
+    open,
+    idOf,
+    render: () => render(),
+    config: info.analytics,
+    pages: () => debug.state().pages,
+  });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });

@@ -4,10 +4,11 @@ import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../engine/events
 import { format } from '../engine/format';
 import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win, WIRING } from './providers';
 import { icon } from './icons';
-import { type Child, empty, expandable, h, nodes, time, tree, tsugi } from './view';
+import { KINDS } from './journey';
+import type { PageVisit } from './state';
+import { type Child, h, nodes, time, tree, tsugi } from './view';
 
 type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
-type Show = 'sent' | 'skipped' | 'problems';
 type Run = AnalyticsTrace & { at: number };
 
 const LABELS: Partial<Record<EventName, string>> = {
@@ -33,17 +34,22 @@ const NOT_PUSHED: Record<Layer, string> = {
 };
 const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: '○', info: '•' };
 const MARK = { ok: 'check', warn: 'warn', skip: 'wait', off: 'wait', info: 'wait' } as const;
-const SHOWS: Array<[Show, string]> = [
-  ['sent', 'Sent'],
-  ['skipped', 'Not sent'],
-  ['problems', 'Problems'],
-];
 const STATED: Record<State, string> = { ok: 'Sent', warn: 'Sent with problems', skip: 'Not sent', off: '', info: '' };
-const NONE: Record<Show, string> = {
-  sent: 'Nothing sent yet: every decision so far stopped its event.',
-  skipped: 'Every decision so far sent its event.',
-  problems: 'No problems: every sent event has the fields GA4 requires and reached each data layer.',
-};
+const STEP = { done: 'check', warn: 'warn', todo: 'wait' } as const;
+const FUNNEL: Array<[string, string]> = [
+  ['page_view', 'every page load'],
+  ['view_item', 'a page showing one package'],
+  ['view_item_list', 'a page showing packages'],
+  ['add_to_cart', 'something is added to the cart'],
+  ['begin_checkout', 'once, when the checkout form is ready'],
+  ['add_shipping_info', 'once, when the address is complete'],
+  ['add_payment_info', 'once, when payment details are complete'],
+  ['purchase', 'when a paid order loads, on the upsell or receipt page'],
+  ['view_upsell', 'each upsell shown'],
+  ['upsell_purchase', 'each accepted upsell, when the order loads'],
+];
+const VIEWS = ['view_item', 'view_item_list'];
+const UPSELLS = ['view_upsell', 'upsell_purchase'];
 const KEEP = 300;
 
 const label = (name: EventName) => LABELS[name] ?? name;
@@ -98,6 +104,7 @@ export function analyticsFlow(ui: {
   idOf: (o: object) => number;
   render: () => void;
   config: () => ProviderConfig;
+  pages?: () => PageVisit[];
 }) {
   const received: EngineEvent[] = [];
   const runs: Run[] = [];
@@ -140,7 +147,7 @@ export function analyticsFlow(ui: {
     };
   };
   type Snapshot = ReturnType<typeof snapshot>;
-  let show: Show = 'sent';
+  let skipped = false;
 
   const stateOf = (snap: Snapshot, run: Run): State => (!run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok');
 
@@ -195,7 +202,21 @@ export function analyticsFlow(ui: {
       'button',
       { type: 'button', className: `arun ${stateOf(snap, run)}`, onclick: () => inspect(run) },
       icon(MARK[stateOf(snap, run)]),
-      h('span', 'amain', h('code', {}, run.name), h('small', {}, `${label(run.trigger)} · ${sub(snap, run)}`)),
+      h(
+        'span',
+        'amain',
+        h('code', {}, run.name),
+        h(
+          'small',
+          {},
+          label(run.trigger),
+          ' · ',
+          snap
+            .issues(run)
+            .map((i) => `⚠ ${i}`)
+            .join(' · ') || sub(snap, run),
+        ),
+      ),
       h('span', 'aend', event && amount(event.params) && h('b', {}, amount(event.params)), clock(run.at)),
       icon('chevron'),
     );
@@ -268,92 +289,131 @@ export function analyticsFlow(ui: {
     if (next) inspect(next);
   };
 
-  const filters = (counts: Record<Show, number>) => {
-    const group = h(
-      'div',
-      'button-group',
-      ...SHOWS.map(([value, text]) => {
-        const el = tsugi(
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'btn',
-              onclick: () => {
-                show = value;
-                ui.render();
-              },
-            },
-            `${text} ${counts[value]}`,
-          ),
-          { variant: 'outline', size: 'sm' },
-        );
-        el.setAttribute('aria-pressed', String(value === show));
-        return el;
-      }),
-    );
-    group.setAttribute('role', 'group');
-    group.setAttribute('aria-label', 'Show events');
-    return group;
+  const verdict = (snap: Snapshot) => {
+    if (!snap.config.enabled) return h('span', 'dim', snap.provider('NextDataLayer').detail);
+    if (!runs.some((r) => r.sent)) return h('span', 'dim', 'Nothing sent yet: analytics starts once the page is idle.');
+    const bad = runs.filter((r) => r.sent && snap.issues(r).length);
+    const last = bad.at(-1);
+    if (last)
+      return h(
+        'span',
+        'red',
+        `${bad.length} event${bad.length === 1 ? '' : 's'} with problems: ${last.name} ${snap.issues(last)[0]}`,
+      );
+    const warn = snap.providers.find((p) => p.status === 'warn');
+    if (warn) return h('span', 'amber', warn.detail);
+    if (!snap.config.dataLayer) return h('span', 'amber', 'GTM tags get none of these events: GTM dataLayer is off');
+    return h('span', 'green', 'Every event so far was pushed with the fields GA4 requires');
   };
 
-  const goesTo = (snap: Snapshot) =>
-    h(
+  const funnel = (snap: Snapshot) => {
+    const before = (ui.pages?.() ?? []).slice(0, -1);
+    const sentAnywhere = (name: string) =>
+      runs.some((r) => r.sent && r.name === name) || before.some((p) => p.sent.includes(name));
+    const views = VIEWS.filter(sentAnywhere);
+    const upsell =
+      (ui.pages?.() ?? []).some((p) => p.kind === 'upsell') ||
+      runs.some((r) => UPSELLS.includes(r.name) || r.trigger === 'upsell.viewed');
+    return FUNNEL.filter(([name]) =>
+      VIEWS.includes(name)
+        ? views.length
+          ? views.includes(name)
+          : name === 'view_item_list'
+        : !UPSELLS.includes(name) || upsell,
+    ).map(([name, when]) => {
+      const here = runs.filter((r) => r.name === name);
+      const sent = here.filter((r) => r.sent);
+      const counts = new Map<string, number>();
+      for (const page of before) {
+        const n = page.sent.filter((s) => s === name).length;
+        if (n) counts.set(KINDS[page.kind], (counts.get(KINDS[page.kind]) ?? 0) + n);
+      }
+      if (sent.length) counts.set('this page', sent.length);
+      const where = [...counts].map(([page, n]) => (n > 1 ? `${page} ×${n}` : page)).join(' · ');
+      const problem = sent.flatMap(snap.issues)[0];
+      const last = here.at(-1);
+      const tone = problem ? 'warn' : counts.size ? 'done' : 'todo';
+      const detail = problem
+        ? `${where} · ${problem}`
+        : where || (last && !last.sent ? `Not sent: ${last.reason}` : `Not yet: ${when}`);
+      const parts = [
+        icon(STEP[tone]),
+        h('b', {}, h('code', {}, name)),
+        h('small', {}, detail.charAt(0).toUpperCase() + detail.slice(1)),
+      ];
+      const latest = sent.at(-1);
+      return latest
+        ? h('button', { type: 'button', className: `kstep ${tone}`, onclick: () => inspect(latest) }, ...parts)
+        : h('div', `kstep ${tone}`, ...parts);
+    });
+  };
+
+  const destinations = (snap: Snapshot) => {
+    const list = snap.providers.filter((p) => p.id !== 'listeners');
+    const notes = snap.config.enabled
+      ? [...new Set(list.filter((p) => p.status === 'off' || p.status === 'warn').map((p) => p.detail))]
+      : [];
+    return h(
       'div',
-      'agoes',
-      h('span', {}, 'Goes to'),
-      ...snap.providers
-        .filter((p) => p.id !== 'listeners')
-        .map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail)),
+      'adest',
+      h('div', 'chips', 'Pushed to', ...list.map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail))),
+      ...notes.map((note) => h('p', {}, note)),
     );
+  };
 
-  const flows = () =>
-    expandable(
-      [`All workflows · ${WIRING.length}`],
-      'flows',
-      ui.open,
-      () =>
-        WIRING.map((w) =>
-          h(
-            'div',
-            'flow',
-            w.from.map(label).join(' or '),
-            ' → ',
-            w.ga ? h('code', 'ga-name', w.ga) : h('span', 'dim', 'no analytics event'),
-            ' → ',
-            h('code', 'dl', w.dl),
-          ),
-        ),
-      'more',
-    );
-
-  const view = (query: string): Child[] => {
-    const snap = snapshot(ui.config());
+  const events = (snap: Snapshot, query: string) => {
     const matching = runs.filter((r) =>
       `${r.name} ${r.trigger} ${label(r.trigger)} ${r.reason}`.toLowerCase().includes(query),
     );
-    const of: Record<Show, Run[]> = {
-      sent: matching.filter((r) => r.sent),
-      skipped: matching.filter((r) => !r.sent),
-      problems: matching.filter((r) => stateOf(snap, r) === 'warn'),
-    };
-    const list = [...of[show]].reverse();
-    shown = list;
-    fill(snap);
-    return [
-      h('div', 'vhead', filters({ sent: of.sent.length, skipped: of.skipped.length, problems: of.problems.length })),
-      goesTo(snap),
-      ...snap.providers.filter((p) => p.status === 'warn').map((p) => h('div', 'alert', `⚠ ${p.detail}`)),
-      list.length
-        ? h('div', 'alog', ...list.map((run) => row(snap, run)))
-        : runs.length
-          ? h('p', 'anone', query ? 'Nothing matches the filter.' : NONE[show])
-          : empty(
-              'Nothing sent yet',
-              snap.config.enabled ? 'Analytics starts once the page is idle.' : snap.provider('NextDataLayer').detail,
-            ),
-      flows(),
+    const sent = matching.filter((r) => r.sent);
+    const not = matching.length - sent.length;
+    shown = [...(skipped ? matching : sent)].reverse();
+    const toggle = h(
+      'button',
+      {
+        type: 'button',
+        className: 'link',
+        onclick: () => {
+          skipped = !skipped;
+          ui.render();
+        },
+      },
+      skipped ? 'Hide not sent' : `Show ${not} not sent`,
+    );
+    return h(
+      'div',
+      'block',
+      h(
+        'div',
+        'bhead',
+        h(
+          'div',
+          {},
+          h('h4', {}, 'On this page'),
+          h('p', {}, `${sent.length} sent, newest first. Open one for its data.`),
+        ),
+        not > 0 && h('div', 'bact', toggle),
+      ),
+      shown.length
+        ? h('div', 'alog', ...shown.map((run) => row(snap, run)))
+        : h('p', 'anone', query ? 'Nothing matches the filter.' : 'Nothing sent yet.'),
+    );
+  };
+
+  const view = (query: string): Child[] => {
+    const snap = snapshot(ui.config());
+    const out = [
+      h(
+        'div',
+        'block',
+        h('div', 'bhead', h('div', {}, h('h4', {}, 'Tracking'), h('p', {}, verdict(snap)))),
+        h('div', 'ksteps afunnel', ...funnel(snap)),
+        destinations(snap),
+      ),
+      events(snap, query),
     ];
+    fill(snap);
+    return out;
   };
 
   const summary = () => {
