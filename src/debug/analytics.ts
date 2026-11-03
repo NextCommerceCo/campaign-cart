@@ -1,35 +1,28 @@
 import type { EngineEvent } from '../engine/events';
 import type { AnalyticsEvent, AnalyticsName, EventName } from '../engine/types';
 import { format } from '../engine/values';
-import { type Child, expandable, h, time, tree } from './view';
+import { drawGraph, GRAPH_CSS, type GraphEdge, type GraphNode } from './graph';
+import { type Child, empty, expandable, h, time, tree } from './view';
 
-export const ANALYTICS_CSS = `.prov{display:grid;grid-template-columns:16px 168px minmax(0,1fr);gap:8px;align-items:baseline;margin-bottom:6px;padding:7px 10px;background:var(--raised);border:1px solid var(--line);border-radius:8px;font-family:var(--sans)}
-.prov.off{background:none}
-.prov.warn{border-color:var(--amber)}
-.mark{font-weight:700;text-align:center}
-.ok .mark{color:var(--green)}.off .mark,.off .pdetail{color:var(--muted)}.warn .mark{color:var(--amber)}.info .mark{color:var(--blue)}
-.pname{font-weight:600}
-.foot,.why{font:12px/1.5 var(--sans);color:var(--muted)}
-.foot{margin:4px 2px 0}
+export const ANALYTICS_CSS = `.headline{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:2px 0 8px;font:13px var(--sans)}
+.switch{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+.alert{margin:0 0 8px;padding:6px 10px;border:1px solid var(--amber);border-radius:8px;color:var(--amber);font:12px/1.4 var(--sans)}
+.cols{display:grid;grid-template-columns:172fr 230fr 138fr;margin-top:4px;font:600 11px var(--sans);color:var(--muted)}
+.tip,.why{font:12px/1.5 var(--sans);color:var(--muted)}
 .why{margin:0 0 6px}
-.wiring{overflow:hidden;background:var(--raised);border:1px solid var(--line);border-radius:10px}
-.cols,.wire>summary{display:grid;grid-template-columns:12px minmax(0,1.2fr) 12px minmax(0,1fr) 12px minmax(0,1fr);gap:6px;align-items:center}
-.cols{padding:7px 10px;border-bottom:1px solid var(--line);font:600 11px var(--sans);color:var(--muted)}
-.wire+.wire{border-top:1px solid var(--line)}
-.wire>summary{padding:7px 10px;border-radius:0}
-.idle>summary{opacity:.5}
-.from{display:flex;flex-wrap:wrap;gap:4px}
-.eng{padding:0 6px;border:1px solid var(--line);border-radius:4px;color:var(--muted);white-space:nowrap}
-.eng.fired{border-color:var(--blue);color:var(--blue)}
-.to{color:var(--muted);text-align:center}
+.detail{margin:4px 0 12px;padding:10px 12px;background:var(--raised);border:1px solid var(--line);border-radius:10px}
+.dhead{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;font:600 13px var(--sans)}
+.dhead .code{font:400 11px var(--mono);color:var(--muted)}
+.dhead .link{margin-left:auto;font-weight:400}
+.line{margin:3px 0}
 .ga-name{font-weight:600;color:var(--orange)}
 .dl{color:var(--purple);overflow-wrap:anywhere}
+.sdk-name{color:var(--blue)}
 .n{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--hover);color:var(--fg);font-size:11px}
-.tag{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;background:var(--hover);color:var(--muted);font:10px var(--sans);white-space:nowrap}
-.fail{margin-left:6px;color:var(--amber)}.pass{color:var(--green)}
-.wire-body{padding:2px 10px 10px 28px}
+.fail{margin-left:8px;color:var(--amber)}.pass{margin-left:8px;color:var(--green)}
 .send{border-top:1px solid var(--line)}
 .send>summary{display:grid;grid-template-columns:12px 96px minmax(0,1fr) 84px 18px;gap:8px;align-items:baseline;border-radius:0}
+.send .fail,.send .pass{margin:0}
 .what{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .amount{text-align:right;font-variant-numeric:tabular-nums}
 .send-body{padding:2px 8px 10px 24px}
@@ -40,8 +33,11 @@ th{font:600 11px var(--sans);color:var(--muted)}
 .route{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .push{padding:0 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
 .push.ok{color:var(--purple);border-color:var(--purple)}
+.more{margin-top:10px}
+.more>summary{font:12px var(--sans);color:var(--muted)}
 .other>summary .desc{margin-left:8px;font-family:var(--sans);color:var(--muted)}
-.sdk-name{color:var(--blue)}`;
+.idle>summary{opacity:.5}
+${GRAPH_CSS}`;
 
 export interface ProviderConfig {
   enabled: boolean;
@@ -50,11 +46,18 @@ export interface ProviderConfig {
   unsupported: string[];
 }
 
+export interface Provider {
+  id: string;
+  status: 'ok' | 'off' | 'warn' | 'info';
+  name: string;
+  short: string;
+  detail: string;
+}
+
 type EngineName = Exclude<EventName, 'analytics'>;
 type Item = Record<string, unknown>;
 type Layer = 'NextDataLayer' | 'dataLayer';
 type Route = Record<Layer, string | undefined>;
-type Tone = 'ok' | 'off' | 'warn' | 'info';
 type Win = Window &
   Partial<Record<Layer, unknown[]>> & {
     google_tag_manager?: Record<string, unknown>;
@@ -71,25 +74,25 @@ export interface Wire {
 
 export const WIRING: Wire[] = [
   { from: ['ready'], ga: 'page_view', dl: 'dl_user_data' },
-  { from: ['ready'], ga: 'view_item', dl: 'dl_view_item', why: 'When the page shows exactly one package.' },
-  { from: ['ready'], ga: 'view_item_list', dl: 'dl_view_item_list', why: 'When the page shows several packages.' },
+  { from: ['ready'], ga: 'view_item', dl: 'dl_view_item', why: 'Only when the page shows one package.' },
+  { from: ['ready'], ga: 'view_item_list', dl: 'dl_view_item_list', why: 'Only when the page shows several packages.' },
   {
     from: ['ready', 'cart.calculated'],
     ga: 'add_to_cart',
     dl: 'dl_add_to_cart',
-    why: 'Lines added since the last report. On ready: a cart filled before this page (default bundle, forcePackageId, an earlier page).',
+    why: 'What was added since the last report, at the cart price.',
   },
   {
     from: ['ready', 'cart.calculated', 'cart.updated'],
     ga: 'remove_from_cart',
     dl: 'dl_remove_from_cart',
-    why: 'Lines removed since the last report, at the price they were added. cart.updated only when the cart empties.',
+    why: 'What was removed since the last report. From a cart change only when the cart empties.',
   },
   {
     from: ['cart.calculated'],
     ga: 'update_cart',
     dl: 'dl_cart_updated',
-    why: 'The whole cart, after every server total.',
+    why: 'The whole cart, after each price update.',
   },
   { from: ['checkout.started'], ga: 'begin_checkout', dl: 'dl_begin_checkout' },
   { from: ['checkout.shipping-added'], ga: 'add_shipping_info', dl: 'dl_add_shipping_info' },
@@ -98,19 +101,11 @@ export const WIRING: Wire[] = [
   { from: ['order.loaded'], ga: 'upsell_purchase', dl: 'dl_upsell_purchase', why: 'Once per accepted upsell.' },
   { from: ['upsell.viewed'], ga: 'view_upsell', dl: 'dl_viewed_upsell' },
   { from: ['upsell.skipped'], ga: 'skip_upsell', dl: 'dl_skipped_upsell' },
-  { from: ['exit-intent.shown'], dl: 'dl_exit_intent_shown', why: 'Data layer only: there is no analytics event.' },
-  {
-    from: ['exit-intent.clicked'],
-    dl: 'dl_exit_intent_accepted',
-    why: 'Data layer only: there is no analytics event.',
-  },
-  {
-    from: ['exit-intent.dismissed'],
-    dl: 'dl_exit_intent_dismissed',
-    why: 'Data layer only: there is no analytics event.',
-  },
-  { from: ['exit-intent.closed'], dl: 'dl_exit_intent_closed', why: 'Data layer only: there is no analytics event.' },
-  { from: ['exit-intent.action'], dl: 'dl_exit_intent_action', why: 'Data layer only: there is no analytics event.' },
+  { from: ['exit-intent.shown'], dl: 'dl_exit_intent_shown' },
+  { from: ['exit-intent.clicked'], dl: 'dl_exit_intent_accepted' },
+  { from: ['exit-intent.dismissed'], dl: 'dl_exit_intent_dismissed' },
+  { from: ['exit-intent.closed'], dl: 'dl_exit_intent_closed' },
+  { from: ['exit-intent.action'], dl: 'dl_exit_intent_action' },
 ];
 
 export const ENGINE: Record<EngineName, string> = {
@@ -139,6 +134,18 @@ export const ENGINE: Record<EngineName, string> = {
   error: 'An SDK action failed',
 };
 
+const LABELS: Partial<Record<EngineName, string>> = {
+  ready: 'Page loaded',
+  'cart.calculated': 'Cart priced',
+  'cart.updated': 'Cart changed',
+  'checkout.started': 'Checkout opened',
+  'checkout.shipping-added': 'Shipping filled in',
+  'checkout.payment-added': 'Payment chosen',
+  'order.loaded': 'Order loaded',
+  'upsell.viewed': 'Upsell shown',
+  'upsell.skipped': 'Upsell skipped',
+};
+
 const CUSTOM = new Set<string>(['update_cart', 'upsell_purchase', 'view_upsell', 'skip_upsell']);
 const NEEDS_ITEMS = new Set([
   'view_item',
@@ -157,9 +164,13 @@ const UNSUPPORTED: Record<string, string> = {
   custom: 'Custom endpoint',
 };
 const LAYERS: Layer[] = ['NextDataLayer', 'dataLayer'];
-const MARK: Record<Tone, string> = { ok: '✓', off: '○', warn: '⚠', info: 'i' };
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 const KEEP = 300;
+const GA_WIRES = WIRING.filter((w): w is Wire & { ga: AnalyticsName } => !!w.ga);
+const EXITS = WIRING.filter((w) => !w.ga);
+const TRIGGERS = [...new Set(GA_WIRES.flatMap((w) => w.from))];
+const EXIT_NODE = 'e:exit-intent.*';
+const FROM_GA = ['NextDataLayer', 'dataLayer', 'listeners'];
 
 const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
 const itemsOf = (params: Record<string, unknown>) => (Array.isArray(params.items) ? (params.items as Item[]) : []);
@@ -175,51 +186,94 @@ export function checks(name: string, params: Record<string, unknown>): string[] 
   ].filter((p): p is string => !!p);
 }
 
-export function providers(config: ProviderConfig, started: boolean): Array<[Tone, string, string]> {
+export function providers(config: ProviderConfig, started: boolean): Provider[] {
   const win = window as Win;
-  if (!config.enabled) return [['off', 'Analytics', 'Off: nextConfig.analytics.enabled is false, so nothing is sent']];
-  const waiting = 'Starts once the page is idle after ready';
-  const containers = Object.keys(win.google_tag_manager ?? {}).filter((k) => k.startsWith('GTM-'));
-  const rows: Array<[Tone, string, string] | false> = [
-    started
+  const p = (id: string, status: Provider['status'], name: string, short: string, detail: string): Provider => ({
+    id,
+    status,
+    name,
+    short,
+    detail,
+  });
+  const extra = [
+    ...config.unsupported.map((id) => {
+      const name = UNSUPPORTED[id] ?? id;
+      return p(
+        id,
+        'warn',
+        name,
+        'not built in',
+        `${name} is on in nextConfig, but the SDK no longer sends to it. Add it as a GTM tag.`,
+      );
+    }),
+    ...(typeof win.NextDataLayerTransformFn === 'function'
       ? [
-          'ok',
-          'NextDataLayer',
-          `window.NextDataLayer has ${win.NextDataLayer?.length ?? 0} dl_* events (Elevar format)`,
+          p(
+            'transform',
+            'info',
+            'NextDataLayerTransformFn',
+            'set',
+            'NextDataLayerTransformFn can change or drop each dl_* event.',
+          ),
         ]
-      : ['off', 'NextDataLayer', waiting],
+      : []),
+  ];
+  if (!config.enabled) {
+    const off = 'Analytics is off: nextConfig.analytics.enabled is false.';
+    return [
+      p('NextDataLayer', 'off', 'NextDataLayer', 'off', off),
+      p('dataLayer', 'off', 'GTM dataLayer', 'off', off),
+      p('listeners', 'off', 'Page scripts', 'off', off),
+      p('nextCampaign', 'off', 'NEXT analytics', 'off', off),
+      ...extra,
+    ];
+  }
+  const idle = 'Starts once the page is idle.';
+  const events = win.NextDataLayer?.length ?? 0;
+  const containers = Object.keys(win.google_tag_manager ?? {}).filter((k) => k.startsWith('GTM-'));
+  return [
+    started
+      ? p('NextDataLayer', 'ok', 'NextDataLayer', `${events} events`, `window.NextDataLayer has ${events} dl_* events.`)
+      : p('NextDataLayer', 'off', 'NextDataLayer', 'waits for idle', idle),
     !config.dataLayer
-      ? ['off', 'GTM dataLayer', 'Off: nextConfig.analytics.providers.gtm.enabled is false']
+      ? p('dataLayer', 'off', 'GTM dataLayer', 'off', 'Off in nextConfig: analytics.providers.gtm.enabled is false.')
       : containers.length
-        ? ['ok', 'GTM dataLayer', `window.dataLayer, read by ${containers.join(', ')}`]
-        : [
+        ? p('dataLayer', 'ok', 'GTM dataLayer', containers[0]!, `window.dataLayer, read by ${containers.join(', ')}.`)
+        : p(
+            'dataLayer',
             'warn',
             'GTM dataLayer',
-            'On, but no GTM container on this page: dl_* events wait in window.dataLayer unless another tool reads them',
-          ],
+            'no GTM container',
+            'GTM dataLayer is on, but this page has no GTM container.',
+          ),
+    p(
+      'listeners',
+      'info',
+      'Page scripts',
+      "next.on('analytics')",
+      "Page scripts get every event with next.on('analytics', fn).",
+    ),
     !config.nextCampaign
-      ? ['off', 'NEXT analytics', 'Off: nextConfig.analytics.providers.nextCampaign.enabled is false']
+      ? p(
+          'nextCampaign',
+          'off',
+          'NEXT analytics',
+          'off',
+          'Off in nextConfig: analytics.providers.nextCampaign.enabled is false.',
+        )
       : typeof win.nextCampaign?.event === 'function'
-        ? ['ok', 'NEXT analytics', 'Script loaded; it sends its own page_view']
+        ? p('nextCampaign', 'ok', 'NEXT analytics', 'own page_view', 'Its own script sends page_view.')
         : started
-          ? [
+          ? p(
+              'nextCampaign',
               'warn',
               'NEXT analytics',
-              `On, but its script ${document.querySelector(NEXT_SCRIPT) ? 'has not loaded: blocked or slow' : 'is not on the page'}`,
-            ]
-          : ['off', 'NEXT analytics', waiting],
-    ...config.unsupported.map((name): [Tone, string, string] => [
-      'warn',
-      UNSUPPORTED[name] ?? name,
-      `On in nextConfig (providers.${name}), but no longer built in: add it as a GTM tag`,
-    ]),
-    typeof win.NextDataLayerTransformFn === 'function' && [
-      'info',
-      'NextDataLayerTransformFn',
-      'Set: it can change or drop each dl_* event before it is pushed',
-    ],
+              'not loaded',
+              `NEXT analytics is on, but its script ${document.querySelector(NEXT_SCRIPT) ? 'did not load' : 'is not on the page'}.`,
+            )
+          : p('nextCampaign', 'off', 'NEXT analytics', 'waits for idle', idle),
+    ...extra,
   ];
-  return rows.filter((r): r is [Tone, string, string] => !!r);
 }
 
 const what = ({ name, params }: AnalyticsEvent) => {
@@ -269,6 +323,9 @@ export function analyticsFlow(ui: {
   config: () => ProviderConfig;
 }) {
   const received: EngineEvent[] = [];
+  let selected: string | undefined;
+  let everything = false;
+  let reveal = false;
 
   const record = (e: EngineEvent) => {
     received.push(e);
@@ -277,18 +334,48 @@ export function analyticsFlow(ui: {
 
   const sent = () => received.filter(isAnalytics);
   const started = () => sent().length > 0 || !!(window as Win).NextDataLayer;
+  const select = (id: string | undefined) => {
+    selected = id;
+    reveal = !!id;
+    ui.render();
+  };
+
+  const snapshot = (config: ProviderConfig) => {
+    const win = window as Win;
+    const fired = new Map<string, number>();
+    for (const e of received) fired.set(e.name, (fired.get(e.name) ?? 0) + 1);
+    const routes = new Map(sent().map((e) => [e.data.id, pushed(e.data.id)]));
+    const active = LAYERS.filter(
+      (l) => (l === 'dataLayer' ? config.dataLayer : true) && [...routes.values()].some((r) => r[l]),
+    );
+    return {
+      fired: (name: string) => fired.get(name) ?? 0,
+      sends: (ga: string) => sent().filter((e) => e.data.name === ga),
+      route: (e: EngineEvent<'analytics'>) => routes.get(e.data.id)!,
+      active,
+      pushes: (layer: Layer, dl: string) =>
+        (win[layer] ?? []).filter((p) => (p as { event?: unknown } | null)?.event === dl).length,
+      providers: providers(config, started()),
+    };
+  };
+  type Snapshot = ReturnType<typeof snapshot>;
+
+  const problems = (e: EngineEvent<'analytics'>, route: Route, active: Layer[]) => [
+    ...checks(e.data.name, e.data.params),
+    ...active.filter((l) => !route[l]).map((l) => `not in ${l}`),
+  ];
 
   const sendRow = (e: EngineEvent<'analytics'>, route: Route, active: Layer[]) => {
-    const { name, id, params, context } = e.data;
-    const problems = [...checks(name, params), ...active.filter((l) => !route[l]).map((l) => `not in ${l}`)];
+    const { id, params, context } = e.data;
+    const found = problems(e, route, active);
     const items = itemsOf(params);
     return expandable(
       [
         h('span', 'time', time(e.at)),
         h('span', 'what', what(e.data)),
         h('span', 'amount', amount(params)),
-        problems.length
-          ? h('span', { className: 'fail', title: problems.join('\n') }, '⚠')
+        found.length
+          ? h('span', { className: 'fail', title: found.join('\n') }, '⚠')
           : h('span', { className: 'pass', title: 'Required GA4 fields present, and pushed' }, '✓'),
       ],
       `a${ui.idOf(e)}`,
@@ -305,8 +392,8 @@ export function analyticsFlow(ui: {
               .map(([k, v]) => h('span', {}, h('span', 'key', k), ` ${v}`)),
           ),
           items.length > 0 && itemsTable(items),
-          ...(problems.length
-            ? problems.map((p) => h('div', 'amber', `⚠ ${p}`))
+          ...(found.length
+            ? found.map((p) => h('div', 'amber', `⚠ ${p}`))
             : [h('div', 'green', '✓ Required GA4 fields are present')]),
           h(
             'div',
@@ -326,118 +413,263 @@ export function analyticsFlow(ui: {
     );
   };
 
-  const providerList = (config: ProviderConfig) => [
-    h('h3', {}, 'Providers'),
-    ...providers(config, started()).map(([tone, name, detail]) =>
-      h('div', `prov ${tone}`, h('span', 'mark', MARK[tone]), h('span', 'pname', name), h('span', 'pdetail', detail)),
-    ),
-    h(
-      'div',
-      'foot',
-      'GA4, Meta and other vendors get these through GTM tags or Elevar reading the data layer. Page scripts can forward them with next.on("analytics", fn).',
-    ),
-  ];
+  const model = (snap: Snapshot) => {
+    const status = (id: string) => snap.providers.find((p) => p.id === id)?.status;
+    const sends = (ga: string) => snap.sends(ga).length;
+    const shownGa = GA_WIRES.filter((w) => everything || sends(w.ga) > 0);
+    const shown = new Set<string>(shownGa.map((w) => w.ga));
+    const exits = EXITS.reduce((n, w) => n + snap.fired(w.from[0]!), 0);
+    const engines = TRIGGERS.filter(
+      (t) => everything || (snap.fired(t) > 0 && GA_WIRES.some((w) => w.from.includes(t) && shown.has(w.ga))),
+    );
+    const nodes: GraphNode[] = [
+      ...engines.map((name): GraphNode => ({
+        id: `e:${name}`,
+        col: 0,
+        label: LABELS[name] ?? name,
+        keys: name,
+        tone: snap.fired(name) ? 'engine' : 'idle',
+        count: snap.fired(name),
+        title: `${name}: ${ENGINE[name]}`,
+      })),
+      ...(everything || exits
+        ? [
+            {
+              id: EXIT_NODE,
+              col: 0 as const,
+              label: 'Exit popup',
+              keys: 'exit-intent',
+              tone: exits ? ('engine' as const) : ('idle' as const),
+              count: exits,
+              title: 'exit-intent.*: data layer only, no GA4 event',
+            },
+          ]
+        : []),
+      ...shownGa.map((w): GraphNode => ({
+        id: `a:${w.ga}`,
+        col: 1,
+        label: w.ga,
+        keys: w.dl,
+        tone: sends(w.ga) ? 'ga' : 'idle',
+        count: sends(w.ga),
+        flag: snap.sends(w.ga).some((e) => problems(e, snap.route(e), snap.active).length > 0),
+        title: `${w.ga} → ${w.dl}${w.why ? `. ${w.why}` : ''}`,
+      })),
+      ...(shownGa.length
+        ? [
+            {
+              id: 'bus',
+              col: 'bus' as const,
+              label: '',
+              tone: sent().length ? ('ga' as const) : ('idle' as const),
+              title: '',
+            },
+          ]
+        : []),
+      ...snap.providers
+        .filter((p) => p.id !== 'transform')
+        .map((p): GraphNode => ({
+          id: `d:${p.id}`,
+          col: 2,
+          label: p.name,
+          keys: p.id === 'listeners' ? "next.on('analytics')" : p.id,
+          sub: p.short,
+          tone: p.status,
+          title: p.detail,
+        })),
+    ];
+    const edges: GraphEdge[] = [
+      ...shownGa.flatMap((w) =>
+        w.from
+          .filter((f) => engines.includes(f))
+          .map((f) => ({ from: `e:${f}`, to: `a:${w.ga}`, lit: snap.fired(f) > 0 && sends(w.ga) > 0 })),
+      ),
+      ...shownGa.map((w) => ({ from: `a:${w.ga}`, to: 'bus', lit: sends(w.ga) > 0 })),
+      ...(shownGa.length
+        ? FROM_GA.map((d) => ({
+            from: 'bus',
+            to: `d:${d}`,
+            off: status(d) === 'off',
+            lit:
+              d === 'listeners'
+                ? status(d) !== 'off' && sent().length > 0
+                : sent().some((e) => snap.route(e)[d as Layer]),
+          }))
+        : []),
+      ...(everything || exits
+        ? LAYERS.map((d) => ({
+            from: EXIT_NODE,
+            to: `d:${d}`,
+            off: status(d) === 'off',
+            lit: EXITS.some((w) => snap.pushes(d, w.dl) > 0),
+          }))
+        : []),
+      ...(engines.includes('ready')
+        ? [
+            {
+              from: 'e:ready',
+              to: 'd:nextCampaign',
+              off: status('nextCampaign') === 'off',
+              lit: status('nextCampaign') === 'ok',
+            },
+          ]
+        : []),
+    ];
+    return { nodes, edges };
+  };
 
-  const wiring = (query: string, config: ProviderConfig) => {
-    const fired = new Map<string, number>();
-    for (const e of received) fired.set(e.name, (fired.get(e.name) ?? 0) + 1);
-    const routes = new Map(sent().map((e) => [e.data.id, pushed(e.data.id)]));
-    const active = LAYERS.filter(
-      (l) => (l === 'dataLayer' ? config.dataLayer : true) && [...routes.values()].some((r) => r[l]),
-    );
-    const win = window as Win;
-    const rows = WIRING.filter((w) => [...w.from, w.ga ?? '', w.dl].join(' ').toLowerCase().includes(query)).map(
-      (w) => {
-        const sends = w.ga ? sent().filter((e) => e.data.name === w.ga) : [];
-        const pushes = w.ga
-          ? sends.filter((e) => routes.get(e.data.id)!.NextDataLayer ?? routes.get(e.data.id)!.dataLayer).length
-          : (win.NextDataLayer ?? win.dataLayer ?? []).filter((p) => (p as { event?: unknown } | null)?.event === w.dl)
-              .length;
-        const missing = active.filter((l) => sends.some((e) => !routes.get(e.data.id)![l]));
-        const invalid = sends.filter((e) => checks(e.data.name, e.data.params).length).length;
-        const live = w.ga ? sends.length > 0 : pushes > 0;
-        const chips = w.from.map((f) =>
-          h('span', { className: fired.get(f) ? 'eng fired' : 'eng', title: ENGINE[f] }, f, count(fired.get(f) ?? 0)),
-        );
-        const ga = w.ga
-          ? h(
-              'span',
-              {},
-              h('span', 'ga-name', w.ga),
-              count(sends.length),
-              CUSTOM.has(w.ga) && h('span', { className: 'tag', title: 'No GA4 equivalent: map it in GTM' }, 'custom'),
-              invalid > 0 &&
-                h('span', { className: 'fail', title: `${invalid} sent without a field GA4 requires` }, '⚠'),
-            )
-          : h('span', 'dim', 'none');
-        const dl = h(
-          'span',
-          {},
-          h('span', 'dl', w.dl),
-          count(pushes),
-          missing.length > 0 &&
-            h('span', { className: 'fail', title: missing.map((l) => `Some are not in ${l}`).join('\n') }, '⚠'),
-        );
-        return expandable(
-          [h('span', 'from', ...chips), h('span', 'to', '→'), ga, h('span', 'to', '→'), dl],
-          `w${w.dl}`,
-          ui.open,
-          () => [
-            h(
-              'div',
-              'wire-body',
-              w.why && h('div', 'why', w.why),
-              ...(w.ga
-                ? sends.length
-                  ? sends.map((e) => sendRow(e, routes.get(e.data.id)!, active))
-                  : [h('div', 'why', 'Not sent on this page.')]
-                : [h('div', 'why', `${pushes} pushed on this page.`)]),
-            ),
-          ],
-          live ? 'wire' : 'wire idle',
-        );
-      },
-    );
-    return [
-      h('h3', {}, 'Event wiring'),
-      h('div', 'foot', 'Numbers count this page. Hover an engine event for when it fires; click a row for each send.'),
+  const chip = (name: EngineName) => h('span', { className: 'sdk-name', title: ENGINE[name] }, LABELS[name] ?? name);
+
+  const detail = (snap: Snapshot): HTMLElement => {
+    if (!selected) return h('div', 'tip', 'Click a node to see what it sent.');
+    const head = (...children: Child[]) =>
       h(
         'div',
-        'wiring',
-        h('div', 'cols', h('span'), 'Engine event', h('span'), 'Analytics event', h('span'), 'Data layer'),
-        ...rows,
-      ),
-    ];
+        'dhead',
+        ...children,
+        h('button', { type: 'button', className: 'link', onclick: () => select(undefined) }, 'Close'),
+      );
+    const ga = GA_WIRES.find((w) => `a:${w.ga}` === selected);
+    if (ga) {
+      const sends = snap.sends(ga.ga);
+      return h(
+        'div',
+        'detail',
+        head(
+          h('span', 'ga-name', ga.ga),
+          h('span', 'code', `→ ${ga.dl}${CUSTOM.has(ga.ga) ? ' · not a GA4 standard event' : ''}`),
+        ),
+        h(
+          'div',
+          'why',
+          'From ',
+          ...ga.from.flatMap((f, i) => [i > 0 && ' or ', chip(f)]),
+          ga.why ? `. ${ga.why}` : '.',
+        ),
+        ...(sends.length
+          ? sends.map((e) => sendRow(e, snap.route(e), snap.active))
+          : [h('div', 'why', 'Not sent on this page.')]),
+      );
+    }
+    if (selected === EXIT_NODE)
+      return h(
+        'div',
+        'detail',
+        head('Exit popup', h('span', 'code', 'exit-intent.* · data layer only')),
+        ...EXITS.map((w) =>
+          h(
+            'div',
+            'line',
+            h('span', 'sdk-name', w.from[0]!),
+            count(snap.fired(w.from[0]!)),
+            ' → ',
+            h('span', 'dl', w.dl),
+          ),
+        ),
+      );
+    if (selected.startsWith('e:')) {
+      const engine = selected.slice(2) as EngineName;
+      const seen = received.filter((e) => e.name === engine);
+      return h(
+        'div',
+        'detail',
+        head(LABELS[engine] ?? engine, h('span', 'code', engine)),
+        h('div', 'why', `${ENGINE[engine]}.`),
+        ...GA_WIRES.filter((w) => w.from.includes(engine)).map((w) =>
+          h('div', 'line', '→ ', h('span', 'ga-name', w.ga), count(snap.sends(w.ga).length)),
+        ),
+        ...seen.slice(-5).map((e) => tree(h('span', 'time', time(e.at)), e.data, `e${ui.idOf(e)}`, ui.open)),
+      );
+    }
+    const provider = snap.providers.find((p) => `d:${p.id}` === selected)!;
+    const win = window as Win;
+    const layer = LAYERS.find((l) => l === provider.id);
+    const events = layer
+      ? [...new Set((win[layer] ?? []).map((p) => (p as { event?: unknown } | null)?.event))].filter(
+          (e): e is string => typeof e === 'string' && e.startsWith('dl_'),
+        )
+      : [];
+    return h(
+      'div',
+      'detail',
+      head(provider.name, provider.id === 'listeners' && h('span', 'code', "next.on('analytics', fn)")),
+      h('div', 'why', provider.detail),
+      ...events.map((dl) => h('div', 'line', h('span', 'dl', dl), count(snap.pushes(layer!, dl)))),
+    );
   };
 
   const others = (query: string) => {
     const wired = new Set(WIRING.flatMap((w) => w.from));
     const names = (Object.keys(ENGINE) as EngineName[]).filter((n) => !wired.has(n) && n.includes(query));
-    return [
-      h('h3', {}, 'Engine events not sent to analytics'),
-      ...names.map((name) => {
-        const seen = received.filter((e) => e.name === name);
-        return expandable(
-          [h('span', 'sdk-name', name), count(seen.length), h('span', 'desc', ENGINE[name])],
-          `o${name}`,
-          ui.open,
-          () =>
-            seen.length
-              ? seen.map((e) => tree(h('span', 'time', time(e.at)), e.data, `e${ui.idOf(e)}`, ui.open))
-              : [h('div', 'why', 'Not fired on this page.')],
-          seen.length ? 'other' : 'other idle',
-        );
-      }),
-    ];
+    return expandable(
+      ['Other SDK events, not sent to analytics', count(names.length)],
+      'others',
+      ui.open,
+      () =>
+        names.map((name) => {
+          const seen = received.filter((e) => e.name === name);
+          return expandable(
+            [h('span', 'sdk-name', name), count(seen.length), h('span', 'desc', ENGINE[name])],
+            `o${name}`,
+            ui.open,
+            () =>
+              seen.length
+                ? seen.map((e) => tree(h('span', 'time', time(e.at)), e.data, `e${ui.idOf(e)}`, ui.open))
+                : [h('div', 'why', 'Not fired on this page.')],
+            seen.length ? 'other' : 'other idle',
+          );
+        }),
+      'more',
+    );
   };
 
   const view = (query: string): Child[] => {
     const config = ui.config();
-    return [...providerList(config), ...wiring(query, config), ...others(query)];
+    const snap = snapshot(config);
+    const { nodes, edges } = model(snap);
+    const total = sent().length;
+    const missing = sent().filter((e) => checks(e.data.name, e.data.params).length).length;
+    const toggle = h('input', {
+      type: 'checkbox',
+      checked: everything,
+      onchange: () => {
+        everything = toggle.checked;
+        ui.render();
+      },
+    });
+    const card = detail(snap);
+    if (reveal) {
+      reveal = false;
+      requestAnimationFrame(() => card.scrollIntoView?.({ block: 'nearest' }));
+    }
+    const graph = nodes.some((n) => n.col === 1 || n.col === 0);
+    return [
+      h(
+        'div',
+        'headline',
+        h(
+          'span',
+          {},
+          total ? `${total} GA4 event${total === 1 ? '' : 's'} sent` : 'No GA4 events yet',
+          total > 0 &&
+            (missing ? h('span', 'fail', `⚠ ${missing} missing GA4 fields`) : h('span', 'pass', '✓ GA4 fields OK')),
+        ),
+        h('label', 'switch', toggle, 'Show every route'),
+      ),
+      ...snap.providers.filter((p) => p.status === 'warn').map((p) => h('div', 'alert', `⚠ ${p.detail}`)),
+      ...(graph
+        ? [
+            h('div', 'cols', h('span', {}, 'On the page'), h('span', {}, 'GA4 event'), h('span', {}, 'Sent to')),
+            drawGraph(nodes, edges, { selected, query, select }),
+            card,
+          ]
+        : [empty('Nothing sent yet', 'Analytics starts once the page is idle.')]),
+      others(query),
+    ];
   };
 
   const summary = () => {
-    const warnings = providers(ui.config(), started()).filter(([tone]) => tone === 'warn').length;
+    const warnings = providers(ui.config(), started()).filter((p) => p.status === 'warn').length;
     return `${sent().length} sent${warnings ? ` · ⚠ ${warnings}` : ''}`;
   };
 

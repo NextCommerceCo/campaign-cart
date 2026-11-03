@@ -53,8 +53,8 @@ describe('debug tools', () => {
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toContain('Providers');
-    expect(body()).toContain('Event wiring');
+    expect(body()).toContain('GA4 events sent');
+    expect(body()).toContain('Page loaded');
     tab('logs');
     expect(body()).toContain('infostorage scope');
     expect(body()).toMatch(/debugapi POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
@@ -113,7 +113,7 @@ describe('debug tools', () => {
     expect($('.issues').textContent).toBe('');
   });
 
-  it('shows the real analytics routes: what fired, what was sent and what reached the data layer', async () => {
+  it('draws the real analytics graph: what fired, what was sent and what reached the data layer', async () => {
     const next = await start('<button data-next-package-id="1">Buy</button>');
     const layer = () => (window as unknown as { NextDataLayer?: Array<{ event: string }> }).NextDataLayer ?? [];
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_view_item'));
@@ -121,15 +121,21 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
     $('.fab').click();
     menuItem('Analytics').click();
-    const sent = [...shadow().querySelectorAll('.wire:not(.idle) .ga-name')].map((s) => s.textContent);
-    expect(sent).toEqual(['page_view', 'view_item', 'add_to_cart', 'update_cart']);
-    const atc = [...shadow().querySelectorAll('.wire > summary')].find((s) =>
-      s.textContent!.includes('dl_add_to_cart'),
-    )!;
-    expect([...atc.children].slice(2).map((c) => c.textContent)).toEqual(['add_to_cart1', '→', 'dl_add_to_cart1']);
-    expect([...shadow().querySelectorAll('.prov .pname')].map((p) => p.textContent)).toEqual([
+    const sent = [...shadow().querySelectorAll('.gn.ga')].map((g) => g.getAttribute('data-id'));
+    expect(sent).toEqual(['a:page_view', 'a:view_item', 'a:add_to_cart', 'a:update_cart']);
+    const lit = [...shadow().querySelectorAll('.ge.lit')].map(
+      (p) => `${p.getAttribute('data-from')} → ${p.getAttribute('data-to')}`,
+    );
+    expect(lit).toContain('e:cart.calculated → a:add_to_cart');
+    expect(lit).toContain('a:add_to_cart → bus');
+    expect(lit).toContain('bus → d:NextDataLayer');
+    expect(lit).toContain('bus → d:dataLayer');
+    shadow().querySelector('.gn[data-id="a:add_to_cart"]')!.dispatchEvent(new Event('click'));
+    expect(shadow().querySelector('.detail .send .what')!.textContent).toBe('+ Earbuds ×1 ×1');
+    expect([...shadow().querySelectorAll('.gn[data-id^="d:"] .gl')].map((p) => p.textContent)).toEqual([
       'NextDataLayer',
       'GTM dataLayer',
+      'Page scripts',
       'NEXT analytics',
     ]);
   });

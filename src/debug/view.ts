@@ -10,6 +10,17 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return el;
 }
 
+export function s<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string | number | false | undefined> = {},
+  ...children: Child[]
+): SVGElementTagNameMap[K] {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) if (v !== false && v !== undefined) el.setAttribute(k, String(v));
+  el.append(...children.filter((c): c is Node | string => !!c));
+  return el;
+}
+
 const preview = (v: object) => {
   if (Array.isArray(v)) return `[${v.length}]`;
   const keys = Object.keys(v);
