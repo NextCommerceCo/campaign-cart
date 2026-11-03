@@ -131,7 +131,7 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
         'div',
         {},
         h('h3', {}, p.title || p.path),
-        h('p', 'jmeta', `${KINDS[p.kind]} · ${p.path} · storage ${p.scope}`),
+        h('p', 'jmeta', `${KINDS[p.kind]} · ${p.path}`, h('span', 'devonly', ` · storage ${p.scope}`)),
       ),
       h(
         'div',

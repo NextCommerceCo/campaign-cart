@@ -26,6 +26,7 @@ const TABS = {
 const LEVELS = { debug: 'outline', info: 'info', warn: 'warning', error: 'destructive' };
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'logs'];
+const DEV: Tab[] = ['elements', 'state', 'logs'];
 const LIMIT = 200;
 export interface DebugInfo {
   version: string;
@@ -75,6 +76,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let picked: Element | undefined;
   let stopPicking: (() => void) | undefined;
   let right = saved.right;
+  let dev = saved.dev === true;
   let queued = false;
   let resetting = false;
   const queries: Partial<Record<Tab, string>> = {};
@@ -100,6 +102,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     ...(Object.keys(TABS) as Tab[]).map((t) => h('option', { value: t }, TABS[t])),
   );
   tabpick.setAttribute('aria-label', 'Panel tab');
+  const pickButton = button('pick', 'Pick an element', () => togglePick());
   const dock = button('dockRight', 'Move to the right', () => {
     right = !right;
     debug.setPanel({ right });
@@ -124,7 +127,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       'head',
       h('div', 'tabs', strip),
       tabpick,
-      button('pick', 'Pick an element', () => togglePick()),
+      pickButton,
       dock,
       button('close', 'Close', () => setView('closed')),
     ),
@@ -307,18 +310,31 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       ),
       item('Journey', `${plural(debug.state().pages.length, 'page')} in this tab`, () => show('journey')),
       item('Checkout', `${cartText()} · ${checkout.summary()}`, () => show('checkout')),
-      item('Elements', String(countElements()), () => show('elements')),
+      dev && item('Elements', String(countElements()), () => show('elements')),
       item('Analytics', flow.summary(), () => show('analytics')),
-      item('Logs', String(engine.log.entries().length), () => show('logs')),
-      h('hr'),
-      item('Pick an element', icon('pick'), () => togglePick()),
+      ...(dev
+        ? [
+            item('Logs', String(engine.log.entries().length), () => show('logs')),
+            h('hr'),
+            item('Pick an element', icon('pick'), () => togglePick()),
+          ]
+        : []),
       h('hr'),
       item('Campaign', campaign ? `${campaign.name} · ${campaign.currency}` : 'Loading…'),
-      item('SDK', `v${info.version}`),
-      item('API', info.apiBase.replace(/^https?:\/\//, '')),
-      item('Funnel', info.funnel || '—'),
-      item('Storage', info.scope),
+      ...(dev
+        ? [
+            item('SDK', `v${info.version}`),
+            item('API', info.apiBase.replace(/^https?:\/\//, '')),
+            item('Funnel', info.funnel || '—'),
+            item('Storage', info.scope),
+          ]
+        : []),
       h('hr'),
+      item('Developer mode', dev ? 'On' : 'Off · Elements, State, Logs', () => {
+        dev = !dev;
+        debug.setPanel({ dev });
+        later();
+      }),
       item('Position', right ? 'Right' : 'Left', () => {
         right = !right;
         debug.setPanel({ right });
@@ -341,11 +357,15 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     root.dataset.view = view;
     root.classList.toggle('picking', !!stopPicking);
     root.classList.toggle('right', right);
+    root.classList.toggle('dev', dev);
+    pickButton.hidden = !dev;
+    if (!dev && DEV.includes(tab)) goTo('journey');
     dock.title = right ? 'Move to the left' : 'Move to the right';
     dock.replaceChildren(icon(right ? 'dockLeft' : 'dockRight'));
     if (view === 'menu') menu.replaceChildren(...nodes(menuItems()));
     if (view !== 'panel') return;
     tabs.forEach((el) => {
+      el.hidden = !dev && DEV.includes(el.dataset.tab as Tab);
       el.setAttribute('aria-selected', String(el.dataset.tab === tab));
       if (el.dataset.tab === 'issues')
         el.replaceChildren(
@@ -353,6 +373,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
           ...nodes([count > 0 && badge(String(count), tone === 'red' ? 'destructive' : 'warning')]),
         );
     });
+    for (const o of tabpick.options) o.hidden = o.disabled = !dev && DEV.includes(o.value as Tab);
     tabpick.value = tab;
     tabpick.querySelector('[value="issues"]')!.textContent = count ? `${TABS.issues} · ${count}` : TABS.issues;
     search.hidden = !FILTERED.includes(tab);

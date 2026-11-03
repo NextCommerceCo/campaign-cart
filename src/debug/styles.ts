@@ -46,6 +46,7 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .summary{margin:2px 0 8px;font-family:var(--font-sans);color:var(--muted-foreground)}
 .link{margin-left:8px;color:var(--info)}
 .link.danger{color:var(--destructive)}
+.root:not(.dev) .devonly{display:none}
 .vhead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:2px 0 14px;font:13px var(--font-sans);color:var(--muted-foreground)}
 .vhead b{font-weight:600;color:var(--foreground)}
 .vhead>span{margin-right:auto}

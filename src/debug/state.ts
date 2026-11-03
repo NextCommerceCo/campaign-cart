@@ -31,6 +31,7 @@ export interface Panel {
   open: boolean;
   tab: string;
   right: boolean;
+  dev?: boolean;
 }
 
 export interface DebugState {

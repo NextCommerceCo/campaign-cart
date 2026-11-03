@@ -12,6 +12,11 @@ const body = () => $('.body').textContent!;
 const tab = (name: string) => $(`[data-tab="${name}"]`).click();
 const menuItem = (label: string) =>
   [...shadow().querySelectorAll<HTMLElement>('.menu button')].find((b) => b.firstChild!.textContent === label)!;
+const developer = async () => {
+  while (view() !== 'menu') $('.fab').click();
+  menuItem('Developer mode').click();
+  await vi.waitFor(() => expect(menuItem('Developer mode').textContent).toBe('Developer modeOn'));
+};
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
 
@@ -43,16 +48,48 @@ describe('debug tools', () => {
     const menu = $('.menu').textContent!;
     expect(menu).toMatch(/Checkout1 item · \$[\d.]+ · cart only/);
     expect(menu).toContain('CampaignOlympus · USD');
-    expect(menu).toContain('APIapi.test');
-    expect(menu).toContain('Funnelf1');
+    expect(menu).not.toContain('APIapi.test');
+    expect(menu).toContain('Developer modeOff · Elements, State, Logs');
+    await developer();
+    expect($('.menu').textContent).toContain('APIapi.test');
+    expect($('.menu').textContent).toContain('Funnelf1');
     document.body.click();
     expect(view()).toBe('closed');
+  });
+
+  it('starts simple, with the developer tabs and setup behind Developer mode, remembered on the next page', async () => {
+    await start('<span data-next-display="campaign.name"></span>');
+    $('.fab').click();
+    menuItem('Checkout').click();
+    const shown = () =>
+      [...shadow().querySelectorAll<HTMLElement>('[role=tab][data-tab]')]
+        .filter((t) => !t.hidden)
+        .map((t) => t.dataset.tab);
+    const pickable = () =>
+      [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
+    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
+    expect($('[aria-label="Pick an element"]').hidden).toBe(true);
+    expect($('.root').classList.contains('dev')).toBe(false);
+    expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
+    await developer();
+    menuItem('Logs').click();
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'elements', 'state', 'logs']);
+    expect($('[aria-label="Pick an element"]').hidden).toBe(false);
+    await start('', {});
+    expect($('.root').classList.contains('dev')).toBe(true);
+    expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    while (view() !== 'menu') $('.fab').click();
+    menuItem('Developer mode').click();
+    await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
+    menuItem('Journey').click();
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
   });
 
   it('opens each panel tab from the menu, and closes on Esc', async () => {
     const next = await start();
     await next.actions.addItem(1);
-    $('.fab').click();
+    await developer();
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
@@ -92,7 +129,7 @@ describe('debug tools', () => {
 
   it('switches tabs from a select when the panel is too narrow for the tab row', async () => {
     await start('<span data-next-display="cart.nope"></span>');
-    $('.fab').click();
+    await developer();
     menuItem('Checkout').click();
     const pick = $<HTMLSelectElement>('select.tabpick');
     expect([pick.value, pick.options[1]!.text]).toEqual(['checkout', 'Issues · 1']);
@@ -115,7 +152,7 @@ describe('debug tools', () => {
 
   it('keeps expanded nodes open when the state changes', async () => {
     const next = await start();
-    $('.fab').click();
+    await developer();
     menuItem('Checkout').click();
     tab('state');
     details('visit').open = true;
@@ -129,7 +166,7 @@ describe('debug tools', () => {
   it('filters the logs', async () => {
     const next = await start('<span data-next-display="cart.nope"></span>');
     await next.actions.addItem(1);
-    $('.fab').click();
+    await developer();
     menuItem('Logs').click();
     const filter = $<HTMLInputElement>('input');
     filter.value = 'unknown display';
@@ -177,7 +214,7 @@ describe('debug tools', () => {
 
   it('keeps a filter to its own tab, and opens each tab at the top', async () => {
     await start('<span data-next-display="campaign.name"></span>');
-    $('.fab').click();
+    await developer();
     menuItem('Logs').click();
     const filter = $<HTMLInputElement>('.search input');
     filter.value = 'api';
@@ -194,7 +231,7 @@ describe('debug tools', () => {
   it('names one page, says when a page has no SDK elements, and asks before clearing saved data', async () => {
     await start();
     const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
-    $('.fab').click();
+    await developer();
     expect(menuItem('Journey').textContent).toBe('Journey1 page in this tab');
     expect(menuItem('Reset saved data').textContent).toBe("Reset saved datathis funnel's cart, form and order");
     menuItem('Reset saved data').click();
@@ -254,7 +291,7 @@ describe('debug tools', () => {
       '<p data-next-show="cart.total"><span data-next-display="cart.total"></span></p><span data-next-display="cart.nope"></span>',
     );
     await next.actions.addItem(1);
-    $('.fab').click();
+    await developer();
     menuItem('Elements').click();
     expect(body()).toContain('3 elements · 1 with problems');
     expect(body()).toMatch(/data-next-display="cart.total" → "\$[\d.]+"/);
@@ -266,7 +303,7 @@ describe('debug tools', () => {
     );
     const clicked = vi.fn();
     document.querySelector('button')!.addEventListener('click', clicked);
-    $('.fab').click();
+    await developer();
     menuItem('Pick an element').click();
     expect($('.root').classList.contains('picking')).toBe(true);
     document.querySelector('b')!.click();
@@ -286,7 +323,7 @@ describe('debug tools', () => {
 
   it('stops picking on Esc and keeps the page clickable', async () => {
     await start('<button data-next-package-id="1">Buy</button>');
-    $('.fab').click();
+    await developer();
     menuItem('Elements').click();
     $('[aria-label="Pick an element"]').click();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

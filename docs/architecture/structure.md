@@ -102,7 +102,7 @@ src/
     context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics, elements, state, logs), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
                                    session under next:debug, outside the storage scope
     journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline

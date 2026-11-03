@@ -5,7 +5,7 @@ import { format } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { productPicker, thumb } from './picker';
-import { badge, button, type Child, h, iconButton, plural, time, tsugi } from './view';
+import { badge, button, type Child, clock, h, iconButton, plural, tsugi } from './view';
 
 const source = (group: string) =>
   group === 'items'
@@ -192,8 +192,10 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
           h(
             'small',
             {},
-            `#${packageId} · ${values || p?.product_sku || 'no SKU'}`,
-            ...(from.length === 1 && from[0] === 'added' ? [] : from.map((f) => badge(f, 'outline'))),
+            h('span', 'devonly', `#${packageId} · `),
+            values || h('span', 'devonly', p?.product_sku || 'no SKU'),
+            !(from.length === 1 && from[0] === 'added') &&
+              h('span', 'devonly', ...from.map((f) => badge(f, 'outline'))),
           ),
         ),
       ),
@@ -257,7 +259,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     const math = `${Number(s.subtotal).toFixed(2)} − ${itemDiscount.toFixed(2)} + ${Number(ship?.price ?? 0).toFixed(2)} = ${expected.toFixed(2)}`;
     const check = h(
       'small',
-      addsUp ? 'cmath' : 'cmath red',
+      addsUp ? 'cmath devonly' : 'cmath red',
       addsUp ? `${math} ✓` : `${math} ≠ ${s.total}: the server's total does not add up`,
     );
     check.title = 'Subtotal − item discounts + shipping = total';
@@ -276,7 +278,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       : cart.calculating
         ? 'pricing…'
         : summary
-          ? `priced${pricedAt ? ` at ${time(pricedAt).slice(0, 8)}` : ''}`
+          ? 'priced'
           : lines.length
             ? 'not priced yet'
             : '';
@@ -310,12 +312,13 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
               {},
               lines.length ? `${plural(lines.length, 'package')} · ${plural(units, 'unit')}` : 'Empty',
               status && ` · ${status}`,
+              status === 'priced' && !!pricedAt && h('span', 'devonly', ` at ${clock(pricedAt)}`),
             ),
           ),
           h(
             'div',
             'bact',
-            h('button', { type: 'button', className: 'link', onclick: ui.showState }, 'Raw state'),
+            h('button', { type: 'button', className: 'link devonly', onclick: ui.showState }, 'Raw state'),
             lines.length > 0 &&
               h(
                 'button',

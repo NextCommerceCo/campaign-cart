@@ -529,7 +529,7 @@ export function analyticsFlow(ui: {
       : [];
     return h(
       'div',
-      'adest',
+      'adest devonly',
       h(
         'div',
         'chips',
