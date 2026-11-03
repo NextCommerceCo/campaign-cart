@@ -11,7 +11,7 @@ type Win = Window & {
   NextDataLayerTransformFn?: (event: DataLayerEvent) => DataLayerEvent | null | undefined | false;
 };
 
-const NAMES: Record<AnalyticsName, string> = {
+export const NAMES: Record<AnalyticsName, string> = {
   page_view: 'dl_user_data',
   view_item: 'dl_view_item',
   view_item_list: 'dl_view_item_list',
@@ -27,7 +27,7 @@ const NAMES: Record<AnalyticsName, string> = {
   skip_upsell: 'dl_skipped_upsell',
 };
 
-const EXIT_INTENT = {
+export const EXIT_INTENT = {
   'exit-intent.shown': 'shown',
   'exit-intent.clicked': 'accepted',
   'exit-intent.dismissed': 'dismissed',

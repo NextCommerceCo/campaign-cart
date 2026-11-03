@@ -50,11 +50,11 @@ describe('debug tools', () => {
     const next = await start();
     await next.actions.addItem(1);
     $('.fab').click();
-    menuItem('Events').click();
+    menuItem('Analytics').click();
     expect(view()).toBe('panel');
-    expect($('[data-tab="events"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toContain('GA4 funnel on this page');
-    expect(body()).toContain('Page ready');
+    expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
+    expect(body()).toContain('Providers');
+    expect(body()).toContain('Event wiring');
     tab('logs');
     expect(body()).toContain('infostorage scope');
     expect(body()).toMatch(/debugapi POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
@@ -113,21 +113,25 @@ describe('debug tools', () => {
     expect($('.issues').textContent).toBe('');
   });
 
-  it('shows the real analytics funnel and each event pushed to the data layer', async () => {
+  it('shows the real analytics routes: what fired, what was sent and what reached the data layer', async () => {
     const next = await start('<button data-next-package-id="1">Buy</button>');
     const layer = () => (window as unknown as { NextDataLayer?: Array<{ event: string }> }).NextDataLayer ?? [];
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_view_item'));
     await next.actions.addItem(1);
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
     $('.fab').click();
-    menuItem('Events').click();
-    const fired = [...shadow().querySelectorAll('.step.fired')].map((s) => s.textContent);
-    expect(fired).toEqual(['Page view', 'View item', 'Add to cart']);
-    const atc = [...shadow().querySelectorAll('.ga-row > summary')].find(
-      (s) => s.firstElementChild!.textContent === 'add_to_cart',
+    menuItem('Analytics').click();
+    const sent = [...shadow().querySelectorAll('.wire:not(.idle) .ga-name')].map((s) => s.textContent);
+    expect(sent).toEqual(['page_view', 'view_item', 'add_to_cart', 'update_cart']);
+    const atc = [...shadow().querySelectorAll('.wire > summary')].find((s) =>
+      s.textContent!.includes('dl_add_to_cart'),
     )!;
-    expect([...atc.children].map((c) => c.textContent)).toEqual(['add_to_cart', '+ Earbuds ×1 ×1', '$49.00', '✓']);
-    expect(shadow().querySelector('.status')!.textContent).toMatch(/NextDataLayer (\d+)\/\1dataLayer (\d+)\/\2$/);
+    expect([...atc.children].slice(2).map((c) => c.textContent)).toEqual(['add_to_cart1', '→', 'dl_add_to_cart1']);
+    expect([...shadow().querySelectorAll('.prov .pname')].map((p) => p.textContent)).toEqual([
+      'NextDataLayer',
+      'GTM dataLayer',
+      'NEXT analytics',
+    ]);
   });
 
   it('lists every SDK element with what it resolves to', async () => {

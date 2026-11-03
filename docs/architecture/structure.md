@@ -95,9 +95,9 @@ src/
     context.ts ecommerce.ts        page context and event ids; GA4 items and payloads
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, events, logs), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, analytics, logs), window.nextDebug
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    events.ts                      GA4 funnel; one card per shopper action with the GA4 events it sent, field checks, data layer delivery
+    analytics.ts                   providers and their missing setup; engine event → analytics event → dl_* wiring, checked against compat/analytics.ts by its test
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names

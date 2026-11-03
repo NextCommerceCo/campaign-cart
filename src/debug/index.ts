@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
 import { format, resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
-import { EVENTS_CSS, eventFlow } from './events';
+import { ANALYTICS_CSS, analyticsFlow, type ProviderConfig } from './analytics';
 import { type Child, empty, h, nodes, time, tree } from './view';
 
 const CSS = `:host{all:initial;color-scheme:dark;--bg:#0a0a0a;--raised:#141414;--fg:#ededed;--muted:#a1a1a1;--line:#2e2e2e;--hover:#1f1f1f;--red:#ff6166;--amber:#f2a43a;--green:#5fc36e;--blue:#52a8ff;--purple:#c27cf8;--orange:#ff8a3d;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -89,9 +89,9 @@ const PICK =
 const CLOSE =
   '<svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
-const TABS = { issues: 'Issues', state: 'State', elements: 'Elements', events: 'Events', logs: 'Logs' };
+const TABS = { issues: 'Issues', state: 'State', elements: 'Elements', analytics: 'Analytics', logs: 'Logs' };
 type Tab = keyof typeof TABS;
-const FILTERED: Tab[] = ['elements', 'events', 'logs'];
+const FILTERED: Tab[] = ['elements', 'analytics', 'logs'];
 const LIMIT = 200;
 export interface DebugInfo {
   version: string;
@@ -99,6 +99,7 @@ export interface DebugInfo {
   scope: string;
   funnel: string;
   reset: () => void;
+  analytics: () => ProviderConfig;
 }
 
 const svg = (markup: string, className: string) => {
@@ -121,7 +122,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let stopPicking: (() => void) | undefined;
   let right = false;
   let queued = false;
-  let painted: Tab | undefined;
 
   const host = document.createElement('next-debug');
   const box = highlighter();
@@ -166,11 +166,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  host.attachShadow({ mode: 'open' }).append(h('style', {}, CSS, EVENTS_CSS), box.el, root);
+  host.attachShadow({ mode: 'open' }).append(h('style', {}, CSS, ANALYTICS_CSS), box.el, root);
   document.body.append(host);
 
   const query = () => filter.value.trim().toLowerCase();
-  const flow = eventFlow({ open, idOf, render: () => render() });
+  const flow = analyticsFlow({ open, idOf, render: () => render(), config: info.analytics });
   const stamp = (at: number) => h('span', 'time', time(at));
   const logRow = (e: LogEntry) => {
     const label = h('span', {}, stamp(e.at), h('span', `lv ${e.level}`, e.level), e.message);
@@ -237,7 +237,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         found.length > LIMIT && h('div', 'summary', `Showing ${LIMIT} of ${found.length}. Filter to narrow.`),
       ];
     },
-    events: () => flow.view(query()),
+    analytics: () => flow.view(query()),
     logs: () => {
       const rows = engine.log
         .entries()
@@ -258,7 +258,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       ),
       item('Cart', cartText(), () => show('state')),
       item('Elements', String(countElements()), () => show('elements')),
-      item('Events', flow.summary(), () => show('events')),
+      item('Analytics', flow.summary(), () => show('analytics')),
       item('Logs', String(engine.log.entries().length), () => show('logs')),
       h('hr'),
       item('Pick an element', svg(PICK, ''), () => togglePick()),
@@ -288,15 +288,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     if (view !== 'panel') return;
     tabs.forEach((el) => el.setAttribute('aria-selected', String(el.dataset.tab === tab)));
     search.hidden = !FILTERED.includes(tab);
-    const atEnd = body.scrollHeight - body.scrollTop - body.clientHeight < 24;
-    const fresh = painted !== tab;
-    painted = tab;
     body.replaceChildren(...nodes(views[tab]()));
-    if (tab === 'events' && (atEnd || fresh)) body.scrollTop = body.scrollHeight;
   };
   const setView = (next: typeof view) => {
     view = next;
-    if (next !== 'panel') painted = undefined;
     render();
   };
   const show = (next: Tab) => {

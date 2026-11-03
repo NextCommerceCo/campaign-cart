@@ -9,6 +9,7 @@ import {
   announceLegacyReady,
   legacyAnalytics,
   LEGACY_EVENTS,
+  readLegacyAnalytics,
   legacyApi,
   type LegacyApi,
   removeLegacyPersonalData,
@@ -112,7 +113,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     engine.log.info(`storage scope ${scope} (funnel "${funnel || '(none)'}")`);
     const reset = () => location.assign(`${location.pathname}?reset=1`);
     void import('./debug').then((m) =>
-      m.startDebug(engine, { version: __VERSION__, apiBase: config.apiBase, scope, funnel, reset }),
+      m.startDebug(engine, {
+        version: __VERSION__,
+        apiBase: config.apiBase,
+        scope,
+        funnel,
+        reset,
+        analytics: readLegacyAnalytics,
+      }),
     );
   }
 
