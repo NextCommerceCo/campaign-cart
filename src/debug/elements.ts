@@ -4,13 +4,18 @@ import { format, resolve, truthy } from '../engine/values';
 import { h } from './view';
 
 const PREFIX = 'data-next-';
-const LIMIT = 200;
 
 export interface Note {
   attr: string;
   value: string;
   note?: string;
   bad?: boolean;
+}
+
+export interface Inspected {
+  el: Element;
+  notes: Note[];
+  bad: boolean;
 }
 
 export interface Box {
@@ -87,47 +92,46 @@ export function highlighter(): Box {
   };
 }
 
-export function elementsView(engine: Engine, box: Box, query: string, picked?: Element, unpick?: () => void): Node[] {
-  const rows = (picked ? lineage(picked) : [...document.body.querySelectorAll('*')])
-    .filter(isSdkElement)
-    .map((el) => ({ el, notes: explain(engine, el) }))
-    .filter(({ el, notes }) =>
-      [describe(el), ...notes.map((n) => `${n.attr}="${n.value}"`)].join(' ').toLowerCase().includes(query),
-    );
-  const bad = rows.filter((r) => r.notes.some((n) => n.bad)).length;
-  const summary = h(
+export function inspect(engine: Engine, picked?: Element): Inspected[] {
+  return (picked ? lineage(picked) : [...document.body.querySelectorAll('*')]).filter(isSdkElement).map((el) => {
+    const notes = explain(engine, el);
+    return { el, notes, bad: notes.some((n) => n.bad) };
+  });
+}
+
+export const countElements = () => [...document.body.querySelectorAll('*')].filter(isSdkElement).length;
+
+export const matches = ({ el, notes }: Inspected, query: string) =>
+  [describe(el), ...notes.map((n) => `${n.attr}="${n.value}"`)].join(' ').toLowerCase().includes(query);
+
+export function card({ el, notes, bad }: Inspected, box: Box): HTMLElement {
+  const row = h(
     'div',
-    'row dim',
-    picked ? 'picked element and its SDK parents ' : `${rows.length} elements`,
-    bad > 0 && h('span', 'bad', ` · ${bad} with problems`),
-    picked && h('button', { type: 'button', onclick: unpick }, 'show all'),
-    rows.length > LIMIT && ` · first ${LIMIT}, filter to narrow`,
-  );
-  return [
-    summary,
-    ...rows.slice(0, LIMIT).map(({ el, notes }) => {
-      const row = h(
+    bad ? 'card bad' : 'card',
+    h(
+      'div',
+      {},
+      h('span', 'tagname', describe(el)),
+      ...[...el.classList].filter((c) => c.startsWith('next-')).map((c) => h('span', 'chip', c)),
+    ),
+    ...notes.map((n) =>
+      h(
         'div',
-        'el',
-        h(
-          'div',
-          {},
-          h('b', {}, describe(el)),
-          ...[...el.classList].filter((c) => c.startsWith('next-')).map((c) => h('span', 'tag', c)),
-        ),
-        ...notes.map((n) =>
-          h('div', n.bad ? 'attr bad' : 'attr', `${n.attr}="${n.value}"`, n.note && h('span', 'note', ` → ${n.note}`)),
-        ),
-      );
-      row.onmouseenter = () => box.show(el);
-      row.onmouseleave = () => box.hide();
-      row.onclick = () => {
-        el.scrollIntoView({ block: 'center' });
-        box.show(el);
-      };
-      return row;
-    }),
-  ];
+        n.bad ? 'attr bad' : 'attr',
+        h('span', 'name', n.attr),
+        '=',
+        h('span', 's', `"${n.value}"`),
+        n.note && h('span', 'note', ` → ${n.note}`),
+      ),
+    ),
+  );
+  row.onmouseenter = () => box.show(el);
+  row.onmouseleave = () => box.hide();
+  row.onclick = () => {
+    el.scrollIntoView({ block: 'center' });
+    box.show(el);
+  };
+  return row;
 }
 
 export function pick(host: Element, box: Box, done: (el?: Element) => void): () => void {
@@ -145,7 +149,11 @@ export function pick(host: Element, box: Box, done: (el?: Element) => void): () 
     const el = target(e);
     if (el) finish(el);
   };
-  const key = (e: KeyboardEvent) => e.key === 'Escape' && finish();
+  const key = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return;
+    e.stopPropagation();
+    finish();
+  };
   const finish = (el?: Element) => {
     document.removeEventListener('mouseover', over, true);
     document.removeEventListener('click', click, true);

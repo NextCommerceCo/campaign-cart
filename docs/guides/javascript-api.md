@@ -30,20 +30,23 @@ lists each one with what to use instead.
 
 ## Debugging with `?debug=1`
 
-`?debug=1` on the page URL sends every SDK log line to the console and adds a **next** button
-that opens a panel. Its badge counts warnings and errors (red once there is an error).
+`?debug=1` on the page URL sends every SDK log line to the console and adds a round **N**
+button in the bottom-left corner. It shows the number of issues on the page; click it for a
+menu with the cart, campaign, SDK version, API, funnel and storage scope, and a link into each
+panel tab. The panel follows the system light or dark theme; **Position** moves it to the right.
 
-| Tab      | Shows                                                                                                                                                                                                                                     |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| state    | `next.getState()` as a tree; open branches stay open as the state changes                                                                                                                                                                 |
-| events   | Every [event](events.md) with its data, newest first                                                                                                                                                                                      |
-| logs     | Every log line, including each API call: `api POST /api/v1/carts/calculate/ → 200 in 140 ms`                                                                                                                                              |
-| elements | Every element with a `data-next-*` attribute and what it resolves to now: a display's text, the value behind a show / hide and whether it shows, a package's name and price. Unknown paths and packages missing from the campaign are red |
-| setup    | SDK version, API, campaign, storage scope and funnel; **reset** clears this funnel's saved cart, form and order                                                                                                                           |
+| Tab      | Shows                                                                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Issues   | Elements whose `data-next-*` setup does not resolve (unknown path, unreadable condition, a package missing from the campaign), then logged warnings and errors. The button counts these |
+| State    | `next.getState()` as a tree, `cart` open; open branches stay open as the state changes                                                                                                  |
+| Elements | Every element with a `data-next-*` attribute and what it resolves to now: a display's text, the value behind a show / hide and whether it shows, a package's name and price             |
+| Events   | Every [event](events.md) with its data, newest first                                                                                                                                    |
+| Logs     | Every log line, including each API call: `api POST /api/v1/carts/calculate/ → 200 in 140 ms`                                                                                            |
 
-Hovering an element row outlines it on the page; clicking scrolls to it. **pick**, then a click on
-the page, shows that element and its SDK parents; the click does not reach the page, and Esc
-cancels. The filter narrows events, logs and elements.
+Hovering an element card outlines it on the page; clicking scrolls to it. **Pick an element**
+(in the menu, or the arrow in the panel), then a click on the page, shows that element and its
+SDK parents; the click does not reach the page, and Esc cancels. The filter narrows elements,
+events and logs. **Reset saved data** clears this funnel's saved cart, form and order.
 
 From the console, `nextDebug.explain(el)` gives the same for one element; with an element
 selected in DevTools, `nextDebug.explain($0)`.

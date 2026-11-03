@@ -1,4 +1,4 @@
-type Child = Node | string | false | null | undefined;
+export type Child = Node | string | false | null | undefined;
 
 export function h<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -18,7 +18,7 @@ const preview = (v: object) => {
 
 const leaf = (v: unknown) =>
   v instanceof Error
-    ? h('span', 'bad', `${v.name}: ${v.message}`)
+    ? h('span', 'red', `${v.name}: ${v.message}`)
     : h('span', typeof v === 'string' ? 's' : typeof v === 'number' ? 'n' : 'b', JSON.stringify(v) ?? String(v));
 
 export function tree(label: Child, value: unknown, path: string, open: Set<string>): HTMLElement {
