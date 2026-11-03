@@ -3,12 +3,9 @@ import { startAnalytics } from '../../src/analytics';
 import { EXIT_INTENT, NAMES } from '../../src/compat/analytics';
 import { analyticsFlow, checks, type ProviderConfig, providers, WIRING } from '../../src/debug/analytics';
 import { nodes } from '../../src/debug/view';
-import type { AnalyticsEvent } from '../../src/engine/types';
+import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/types';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
-
-const event = (name: string, params: Record<string, unknown>, id = `${name}_1`) =>
-  ({ name, id, time: '', params, context: {} }) as unknown as AnalyticsEvent;
 
 const EARBUDS = { item_id: '11', item_name: 'Earbuds', quantity: 1, price: 49 };
 const ON: ProviderConfig = { enabled: true, nextCampaign: true, dataLayer: true, unsupported: [] };
@@ -38,20 +35,45 @@ function setup(config: ProviderConfig = ON) {
     root.replaceChildren(...nodes(flow.view(query)));
   };
   engine.on('*', flow.record);
-  const node = (id: string) => root.querySelector<SVGGElement>(`.gn[data-id="${id}"]`)!;
-  const edge = (from: string, to: string) => root.querySelector(`.ge[data-from="${from}"][data-to="${to}"]`)!;
-  const on = () => [...root.querySelectorAll('.gn.on')].map((g) => g.getAttribute('data-id'));
-  return { engine, flow, root, paint, node, edge, on };
+  engine.log.stream(flow.note, { replay: true });
+  const decide = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
+    const trace: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };
+    engine.log.debug(`analytics ${name}`, trace);
+  };
+  const send = (trigger: EventName, name: string, params: Record<string, unknown>, id: string, layers = true) => {
+    engine.events.emit('analytics', { name, id, time: '', params, context: {} } as unknown as AnalyticsEvent);
+    if (layers)
+      for (const layer of [(win.NextDataLayer ??= []), (win.dataLayer ??= [])])
+        layer.push({ event: `dl_${name}`, event_id: id });
+    decide(trigger, name, true, `reason for ${name}`, id);
+  };
+  const runs = () =>
+    [...root.querySelectorAll('.rhead > :first-child, .run')].map((r) =>
+      r.classList.contains('run')
+        ? ['.ricon', 'code', 'small'].map((q) => r.querySelector(q)!.textContent).join(' ')
+        : r.textContent,
+    );
+  const run = (name: string) =>
+    [...root.querySelectorAll<HTMLElement>('.run')].find((r) => r.querySelector('code')!.textContent === name)!;
+  const steps = () =>
+    [...root.querySelectorAll('.step')].map((s) => [
+      s.className.replace('step ', ''),
+      s.querySelector('.stitle')!.textContent,
+      s.querySelector('.sdetail')?.textContent ?? '',
+      [...s.querySelectorAll('.chip')].map((c) => c.textContent).join(', '),
+    ]);
+  return { engine, root, paint, decide, send, runs, run, steps };
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const key of ['NextDataLayer', 'dataLayer', 'google_tag_manager', 'nextCampaign', 'NextDataLayerTransformFn'])
     delete (win as unknown as Record<string, unknown>)[key];
   document.head.innerHTML = '';
   document.body.innerHTML = '';
 });
 
-describe('the wiring map matches the analytics code', () => {
+describe('the workflows match the analytics code', () => {
   it('names the same data layer event as the data layer code for every analytics event', () => {
     const ga = WIRING.filter((w) => w.ga).map((w) => [w.ga, w.dl]);
     expect(Object.fromEntries(ga)).toEqual(NAMES);
@@ -62,17 +84,9 @@ describe('the wiring map matches the analytics code', () => {
     });
   });
 
-  it('lists every engine event that sends an analytics event, and nothing it does not send', async () => {
+  it('lists every trigger that sends each event, and nothing the code does not send', async () => {
     document.body.innerHTML = '<div data-next-package-id="1"></div>';
     const { engine } = makeEngine();
-    const seen = new Set<string>();
-    let cause: string | undefined;
-    engine.on('*', (e) => {
-      if (e.name !== 'analytics') {
-        cause = e.name;
-        queueMicrotask(() => (cause = undefined));
-      } else seen.add(`${cause} → ${(e.data as AnalyticsEvent).name}`);
-    });
     startAnalytics(engine, { apiKey: 'pk_test', version: '1', nextCampaign: false });
     await engine.start();
     await engine.cart.addItem(1);
@@ -87,16 +101,19 @@ describe('the wiring map matches the analytics code', () => {
     });
     engine.events.emit('upsell.viewed', { refId: 'R1', page: '/upsell' });
     engine.events.emit('upsell.skipped', { refId: 'R1' });
-    await flush();
-    const allowed = new Set(WIRING.flatMap((w) => w.from.map((f) => `${f} → ${w.ga}`)));
-    expect([...seen].filter((pair) => !allowed.has(pair))).toEqual([]);
-    expect(new Set([...seen].map((pair) => pair.split(' → ')[1]))).toEqual(
-      new Set(WIRING.map((w) => w.ga).filter((ga) => ga && ga !== 'view_item_list')),
-    );
-    for (const w of WIRING.filter((w) => !w.ga)) {
+    for (const w of WIRING.filter((w) => !w.ga))
       engine.events.emit(w.from[0]!, { imageUrl: '', template: '' } as never);
-      expect((win.NextDataLayer!.at(-1) as { event: string }).event).toBe(w.dl);
-    }
+    await flush();
+    const traced = engine.log
+      .entries()
+      .map((e) => e.data as AnalyticsTrace | undefined)
+      .filter((d): d is AnalyticsTrace => d?.trace === 'analytics' && d.sent)
+      .map((d) => `${d.trigger} → ${d.name}`);
+    const allowed = new Set(WIRING.flatMap((w) => w.from.map((f) => `${f} → ${w.ga ?? w.dl}`)));
+    expect(traced.filter((pair) => !allowed.has(pair))).toEqual([]);
+    expect(new Set(traced.map((pair) => pair.split(' → ')[1]))).toEqual(
+      new Set(WIRING.map((w) => w.ga ?? w.dl).filter((name) => name !== 'view_item_list')),
+    );
   });
 });
 
@@ -144,157 +161,142 @@ describe('providers', () => {
   });
 });
 
-function shop(engine: ReturnType<typeof setup>['engine']) {
-  win.NextDataLayer = [
-    { event: 'dl_user_data', event_id: 'pv' },
-    { event: 'dl_add_to_cart', event_id: 'atc' },
-  ];
-  engine.events.emit('ready', { lines: [] });
-  engine.events.emit('analytics', event('page_view', { page_title: 'Olympus' }, 'pv'));
-  engine.events.emit('cart.calculated', { summary: {} as never });
-  engine.events.emit('analytics', event('add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc'));
-}
-
-describe('analytics graph', () => {
-  it('shows only what happened on this page, in plain words, and where it went', () => {
-    const { engine, root, paint, node, edge } = setup();
-    shop(engine);
+describe('analytics workflow', () => {
+  it('lists each run under what triggered it, newest first, with the ones that were not sent', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const { engine, root, paint, decide, send, runs } = setup();
+    vi.setSystemTime(10_000);
+    engine.events.emit('ready', { lines: [] });
+    send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    decide('ready', 'view_item', false, 'No package on the page');
+    vi.setSystemTime(20_000);
+    engine.events.emit('cart.calculated', { summary: {} as never });
+    decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
+    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     paint();
-    expect(root.querySelector('.headline')!.textContent).toBe('2 GA4 events sent✓ GA4 fields OKShow every route');
-    expect([...root.querySelectorAll('.gn')].map((g) => g.getAttribute('data-id'))).toEqual([
-      'e:ready',
-      'e:cart.calculated',
-      'a:page_view',
-      'a:add_to_cart',
-      'd:NextDataLayer',
-      'd:dataLayer',
-      'd:listeners',
-      'd:nextCampaign',
+    expect(root.querySelector('.wf-sum')!.textContent).toBe('2 GA4 events sent0 problems');
+    expect(runs()).toEqual([
+      'Cart priced',
+      '✓ add_to_cart + Earbuds ×1 · $49.00',
+      '– remove_from_cart not sent',
+      'Page loaded',
+      '✓ page_view Olympus',
+      '– view_item not sent',
     ]);
-    expect(node('e:ready').textContent).toBe(
-      'ready: Once, when the campaign and the page’s values are inPage loaded×1',
-    );
-    expect(node('a:add_to_cart').getAttribute('class')).toBe('gn ga ga-node');
-    expect(node('d:dataLayer').textContent).toContain('no GTM container');
-    expect(root.querySelector('.alert')!.textContent).toBe(
-      '⚠ GTM dataLayer is on, but this page has no GTM container.',
-    );
-    expect(edge('e:cart.calculated', 'a:add_to_cart').getAttribute('class')).toBe('ge lit from-engine');
-    expect(edge('a:add_to_cart', 'bus').getAttribute('class')).toBe('ge lit');
-    expect(root.querySelector('.ge.bus')!.getAttribute('class')).toBe('ge bus lit');
-    expect(edge('bus', 'd:NextDataLayer').getAttribute('class')).toBe('ge lit');
-    expect(edge('bus', 'd:dataLayer').getAttribute('class')).toBe('ge');
-    expect(edge('e:ready', 'd:nextCampaign')).not.toBeNull();
+    expect(root.querySelector('.run.on code')!.textContent).toBe('add_to_cart');
   });
 
-  it('shows every route on request, idle ones dimmed, and dashes the routes into a provider that is off', () => {
-    const { root, paint, node, edge } = setup({ ...ON, dataLayer: false });
+  it('walks a sent run from trigger to delivery', () => {
+    win.google_tag_manager = { 'GTM-ABC123': {} };
+    const { engine, root, paint, send, steps } = setup();
+    engine.events.emit('cart.calculated', { summary: {} as never });
+    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     paint();
-    expect(root.querySelector('.graph')).toBeNull();
-    expect(root.textContent).toContain('Nothing sent yet');
-    const toggle = root.querySelector<HTMLInputElement>('.switch input')!;
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change'));
-    expect(root.querySelectorAll('.gn.ga-node')).toHaveLength(13);
-    expect(root.querySelectorAll('.gn[data-id^="e:"]')).toHaveLength(10);
-    expect(node('a:purchase').getAttribute('class')).toBe('gn idle ga-node');
-    expect(node('d:dataLayer').getAttribute('class')).toBe('gn off');
-    expect(edge('bus', 'd:dataLayer').getAttribute('class')).toBe('ge dash');
-    expect(edge('e:exit-intent.*', 'd:NextDataLayer')).not.toBeNull();
-    expect(edge('e:exit-intent.*', 'd:listeners')).toBeNull();
+    expect(steps()).toEqual([
+      ['ok', 'Triggercart.calculated', expect.stringMatching(/^Cart priced at \d\d:\d\d:\d\d$/), ''],
+      ['ok', 'Decide', 'Send: reason for add_to_cart', ''],
+      ['ok', 'Buildadd_to_cart', '+ Earbuds ×1 · $49.00', ''],
+      ['ok', 'Pushdl_add_to_cart', '', '✓ NextDataLayer, ✓ GTM dataLayer'],
+      ['ok', 'Deliver', '', "✓ Page scripts (next.on('analytics')), ✓ GTM GTM-ABC123 → GA4, Meta…"],
+    ]);
+    expect(root.querySelector('.green')!.textContent).toBe('✓ Has every field GA4 requires');
   });
 
-  it('traces a node’s paths on hover, and keeps the trace of the selected node', () => {
-    const { engine, root, paint, node, on } = setup();
-    shop(engine);
+  it('stops a run that was not sent at Decide, and says why', () => {
+    const { engine, paint, decide, run, steps } = setup();
+    engine.events.emit('cart.calculated', { summary: {} as never });
+    decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
     paint();
-    node('e:cart.calculated').dispatchEvent(new Event('mouseenter'));
-    expect(root.querySelector('.graph')!.classList.contains('tracing')).toBe(true);
-    expect(on()).toEqual(['e:cart.calculated', 'a:add_to_cart', 'd:NextDataLayer', 'd:dataLayer', 'd:listeners']);
-    expect(root.querySelector('.ge.bus')!.classList.contains('on')).toBe(true);
-    node('e:cart.calculated').dispatchEvent(new Event('mouseleave'));
-    expect(root.querySelector('.graph')!.classList.contains('tracing')).toBe(false);
-    node('d:nextCampaign').dispatchEvent(new Event('click'));
-    expect(node('d:nextCampaign').getAttribute('class')).toContain('sel');
-    expect(on()).toEqual(['e:ready', 'd:nextCampaign']);
+    run('remove_from_cart').click();
+    expect(steps().map(([state, title, detail]) => [state, title, detail])).toEqual([
+      ['ok', 'Triggercart.calculated', expect.any(String)],
+      ['skip', 'Decide', 'Stop: Nothing was removed since the last report'],
+      ['skip', 'Build', 'Not run'],
+      ['skip', 'Push', 'Not run'],
+      ['skip', 'Deliver', 'Not run'],
+    ]);
   });
 
-  it('shows what an analytics event sent when it is clicked', () => {
-    const { engine, root, paint, node } = setup();
+  it('flags missing GA4 fields and a push that did not arrive', () => {
+    const { engine, root, paint, send, steps } = setup();
+    engine.events.emit('order.loaded', { order: ORDER });
+    send('order.loaded', 'purchase', { value: 98, items: [] }, 'p1', false);
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
-    engine.events.emit(
-      'analytics',
-      event('purchase', { currency: 'USD', value: 98, transaction_id: 'R1', items: [EARBUDS] }, 'p1'),
-    );
-    engine.events.emit('analytics', event('purchase', { value: 98, items: [] }, 'p2'));
+    win.dataLayer = [];
     paint();
-    expect(root.querySelector('.headline')!.textContent).toContain('⚠ 1 missing GA4 fields');
-    expect(node('a:purchase').textContent).toContain('⚠ ×2');
-    node('a:purchase').dispatchEvent(new Event('click'));
-    const detail = root.querySelector('.detail')!;
-    expect(detail.querySelector('.dhead')!.textContent).toBe('purchase→ dl_purchaseClose');
-    expect(detail.querySelector('.why')!.textContent).toBe('From Order loaded. Once per order, only when paid.');
-    const sends = [...detail.querySelectorAll('.send > summary')].map((s) =>
-      [...s.children].slice(1).map((c) => c.textContent),
+    expect(root.querySelector('.wf-sum')!.textContent).toBe('1 GA4 event sent1 problem');
+    expect(root.querySelector('.run')!.className).toBe('run warn on');
+    const [, , build, push] = steps();
+    expect(build![0]).toBe('warn');
+    expect(root.querySelector('.step.warn .amber')!.textContent).toBe(
+      '⚠ items is empty⚠ value is set without currency⚠ transaction_id is missing',
     );
-    expect(sends).toEqual([
-      ['Earbuds ×1', '$98.00', '✓'],
-      ['', '98.00', '⚠'],
-    ]);
-    expect(detail.querySelectorAll<HTMLElement>('.send .fail')[0]!.title).toBe(
-      'items is empty\nvalue is set without currency\ntransaction_id is missing\nnot in NextDataLayer',
-    );
-    detail.querySelector<HTMLElement>('.link')!.click();
-    expect(root.querySelector('.detail')).toBeNull();
-    expect(root.querySelector('.tip')!.textContent).toBe('Click a node to see what it sent.');
+    expect(push).toEqual(['warn', 'Pushdl_purchase', '', '✓ NextDataLayer, ⚠ GTM dataLayer: not pushed']);
   });
 
-  it('shows what an engine event, the exit popup and a provider carry when clicked', () => {
-    const { engine, root, paint, node } = setup();
-    shop(engine);
-    win.NextDataLayer!.push({ event: 'dl_exit_intent_shown' });
+  it('shows a provider that is off, and the NEXT script for page_view', () => {
+    win.nextCampaign = { event() {} };
+    const { engine, root, paint, send, steps } = setup({ ...ON, dataLayer: false });
+    engine.events.emit('ready', { lines: [] });
+    send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    paint();
+    expect(root.querySelector('.wf-sum')!.textContent).toBe('1 GA4 event sent0 problems1 provider off');
+    const [, , , push, deliver] = steps();
+    expect(push![3]).toBe('✓ NextDataLayer, ○ GTM dataLayer: off');
+    expect(deliver![3]).toBe(
+      "✓ Page scripts (next.on('analytics')), ○ GTM dataLayer: off, ✓ NEXT analytics (own page_view)",
+    );
+  });
+
+  it('runs the exit popup straight to the data layer', () => {
+    const { engine, paint, decide, steps } = setup();
+    win.NextDataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
+    win.dataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
     engine.events.emit('exit-intent.shown', {} as never);
+    decide('exit-intent.shown', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
-    node('e:exit-intent.*').dispatchEvent(new Event('click'));
-    expect([...root.querySelectorAll('.detail .line')].map((l) => l.textContent)).toContain(
-      'exit-intent.shown1 → dl_exit_intent_shown',
+    expect(steps()).toEqual([
+      ['ok', 'Triggerexit-intent.shown', expect.stringMatching(/^Exit popup shown at /), ''],
+      ['ok', 'Decide', 'Send: Data layer only: there is no analytics event', ''],
+      ['off', 'Build', 'No analytics event: the data layer gets this directly', ''],
+      ['ok', 'Pushdl_exit_intent_shown', '', '✓ NextDataLayer, ✓ GTM dataLayer'],
+      ['warn', 'Deliver', '', '⚠ GTM dataLayer: no GTM container'],
+    ]);
+  });
+
+  it('shows the data at a step on request', async () => {
+    const { engine, root, paint, send } = setup();
+    engine.events.emit('cart.calculated', { summary: {} as never });
+    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
+    paint();
+    const data = root.querySelectorAll<HTMLDetailsElement>('.sdata')[1]!;
+    data.open = true;
+    await vi.waitFor(() => expect(data.querySelector('table')).not.toBeNull());
+    expect(data.querySelector('table')!.textContent).toBe('itemidqtypriceEarbuds11149');
+  });
+
+  it('filters runs, and explains an empty page', () => {
+    const { engine, root, paint, decide, send, runs } = setup();
+    paint();
+    expect(root.textContent).toContain('Nothing sent yet');
+    expect(root.textContent).toContain('Analytics starts once the page is idle.');
+    engine.events.emit('ready', { lines: [] });
+    send('ready', 'page_view', {}, 'pv');
+    decide('ready', 'view_item', false, 'No package on the page');
+    paint('package');
+    expect(runs()).toEqual(['Page loaded', '– view_item not sent']);
+  });
+
+  it('lists every workflow the SDK has', async () => {
+    const { root, paint } = setup();
+    paint();
+    const flows = root.querySelector<HTMLDetailsElement>('.more')!;
+    expect(flows.querySelector('summary')!.textContent).toBe(`All workflows${WIRING.length}`);
+    flows.open = true;
+    await vi.waitFor(() => expect(flows.querySelectorAll('.flow')).toHaveLength(WIRING.length));
+    expect(flows.querySelectorAll('.flow')[3]!.textContent).toBe(
+      'Page loaded or Cart priced → add_to_cart → dl_add_to_cart',
     );
-    node('e:cart.calculated').dispatchEvent(new Event('click'));
-    expect(root.querySelector('.detail .dhead')!.textContent).toBe('Cart pricedcart.calculatedClose');
-    expect([...root.querySelectorAll('.detail .line')].map((l) => l.textContent)).toEqual([
-      '→ add_to_cart1',
-      '→ remove_from_cart',
-      '→ update_cart',
-    ]);
-    node('d:NextDataLayer').dispatchEvent(new Event('click'));
-    expect(root.querySelector('.detail .why')!.textContent).toBe('window.NextDataLayer has 3 dl_* events.');
-    expect([...root.querySelectorAll('.detail .line')].map((l) => l.textContent)).toEqual([
-      'dl_user_data1',
-      'dl_add_to_cart1',
-      'dl_exit_intent_shown1',
-    ]);
-  });
-
-  it('lights the nodes that match the filter, by plain word or code name', () => {
-    const { engine, paint, on } = setup();
-    shop(engine);
-    paint('cart.calc');
-    expect(on()).toEqual(['e:cart.calculated']);
-    paint('page');
-    expect(on()).toEqual(['e:ready', 'a:page_view', 'd:listeners']);
-  });
-
-  it('folds the engine events that are not sent to analytics into one line', async () => {
-    const { engine, root, paint } = setup();
-    engine.events.emit('selection.changed', { selectorId: 'main', cardId: 'bundle-2x', items: [] });
-    paint();
-    const more = root.querySelector<HTMLDetailsElement>('.more')!;
-    expect(more.querySelector('summary')!.textContent).toBe('Other SDK events, not sent to analytics9');
-    more.open = true;
-    await vi.waitFor(() => expect(more.querySelectorAll('.other')).toHaveLength(9));
-    const others = [...more.querySelectorAll('.other > summary')].map((s) => s.textContent);
-    expect(others).toContain('selection.changed1A bundle pick, quantity or slot changed');
-    expect(others.some((o) => o!.startsWith('ready'))).toBe(false);
   });
 });
 

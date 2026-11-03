@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import type { Engine } from '../../src/engine/engine';
-import type { AnalyticsEvent } from '../../src/engine/types';
+import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/types';
 import { createOrder } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -469,5 +469,44 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, { ...options, dataLayer: false });
     expect(seen.map((e) => e.name)).toEqual(['page_view']);
     expect(win.dataLayer).toBeUndefined();
+  });
+});
+
+describe('analytics decisions', () => {
+  const traces = (engine: Engine) =>
+    engine.log
+      .entries()
+      .map((e) => e.data as AnalyticsTrace | undefined)
+      .filter((d): d is AnalyticsTrace => d?.trace === 'analytics')
+      .map(({ trigger, name, sent, reason }) => [trigger, name, sent, reason]);
+
+  it('logs why each event was sent or not, for the debug panel', async () => {
+    const engine = await ready('<div data-next-package-id="1"></div><div data-next-package-id="2"></div>');
+    startAnalytics(engine, options);
+    await engine.cart.addItem(1);
+    await flush();
+    expect(traces(engine)).toEqual([
+      ['ready', 'page_view', true, 'Every page load'],
+      ['ready', 'view_item_list', true, '2 packages on the page'],
+      ['ready', 'view_item', false, '2 packages on the page, so view_item_list instead'],
+      ['ready', 'add_to_cart', false, 'Nothing was added since the last report'],
+      ['ready', 'remove_from_cart', false, 'Nothing was removed since the last report'],
+      ['cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report'],
+      ['cart.calculated', 'add_to_cart', true, 'Added since the last report: Earbuds ×1 ×1'],
+      ['cart.calculated', 'update_cart', true, 'After every price update'],
+    ]);
+  });
+
+  it('names the analytics event id on each trace of a sent event', async () => {
+    const engine = await ready('<div data-next-package-id="1"></div>');
+    const ids: string[] = [];
+    engine.on('analytics', (e) => ids.push(e.data.id), { replay: true });
+    startAnalytics(engine, options);
+    const traced = engine.log
+      .entries()
+      .map((e) => e.data as AnalyticsTrace | undefined)
+      .filter((d): d is AnalyticsTrace => d?.trace === 'analytics' && d.sent)
+      .map((d) => d.id);
+    expect(traced).toEqual(ids);
   });
 });

@@ -97,8 +97,8 @@ src/
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (issues, state, elements, analytics, logs), window.nextDebug
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    analytics.ts graph.ts          providers and their missing setup; engine event → analytics event → destination node graph,
-                                   wiring checked against compat/analytics.ts by its test
+    analytics.ts                   analytics runs, each walked Trigger → Decide → Build → Push → Deliver from the
+                                   analytics chunk's decision traces; workflows checked against compat/analytics.ts
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy.ts          boot        window.next 0.4.x API, selector ids, event names
@@ -118,7 +118,7 @@ src/
 | exit-intent | first `next.exitIntent()`                                           | 3 KB          |
 | slots       | a bundle selector with a slot template                              | 6 KB          |
 | widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`                                                          | 15 KB         |
+| debug       | `?debug=1`                                                          | 12 KB         |
 
 ## Imports
 

@@ -1,43 +1,51 @@
 import type { EngineEvent } from '../engine/events';
-import type { AnalyticsEvent, AnalyticsName, EventName } from '../engine/types';
+import type { LogEntry } from '../engine/log';
+import type { AnalyticsEvent, AnalyticsName, AnalyticsTrace, EventName } from '../engine/types';
 import { format } from '../engine/values';
-import { drawGraph, GRAPH_CSS, type GraphEdge, type GraphNode } from './graph';
 import { type Child, empty, expandable, h, time, tree } from './view';
 
-export const ANALYTICS_CSS = `.headline{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:2px 0 8px;font:13px var(--sans)}
-.switch{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+export const ANALYTICS_CSS = `.wf-sum{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 8px;font:13px var(--sans);color:var(--muted)}
+.wf-sum b{font-weight:600;color:var(--fg)}
+.wf-sum .bad b{color:var(--amber)}
 .alert{margin:0 0 8px;padding:6px 10px;border:1px solid var(--amber);border-radius:8px;color:var(--amber);font:12px/1.4 var(--sans)}
-.cols{display:grid;grid-template-columns:172fr 230fr 138fr;margin-top:4px;font:600 11px var(--sans);color:var(--muted)}
-.tip,.why{font:12px/1.5 var(--sans);color:var(--muted)}
-.why{margin:0 0 6px}
-.detail{margin:4px 0 12px;padding:10px 12px;background:var(--raised);border:1px solid var(--line);border-radius:10px}
-.dhead{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;font:600 13px var(--sans)}
-.dhead .code{font:400 11px var(--mono);color:var(--muted)}
-.dhead .link{margin-left:auto;font-weight:400}
-.line{margin:3px 0}
-.ga-name{font-weight:600;color:var(--orange)}
-.dl{color:var(--purple);overflow-wrap:anywhere}
-.sdk-name{color:var(--blue)}
-.n{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--hover);color:var(--fg);font-size:11px}
-.fail{margin-left:8px;color:var(--amber)}.pass{margin-left:8px;color:var(--green)}
-.send{border-top:1px solid var(--line)}
-.send>summary{display:grid;grid-template-columns:12px 96px minmax(0,1fr) 84px 18px;gap:8px;align-items:baseline;border-radius:0}
-.send .fail,.send .pass{margin:0}
-.what{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.amount{text-align:right;font-variant-numeric:tabular-nums}
-.send-body{padding:2px 8px 10px 24px}
+.wf{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:10px;align-items:start;font-family:var(--sans)}
+@media (max-width:520px){.wf{grid-template-columns:minmax(0,1fr)}}
+.runs{overflow:hidden;border:1px solid var(--line);border-radius:10px}
+.rhead{display:flex;justify-content:space-between;gap:8px;padding:8px 10px 2px;font:600 11px var(--sans);color:var(--muted)}
+.rhead+.run,.run+.run{border-top:0}
+.run{display:grid;grid-template-columns:16px minmax(0,1fr);gap:6px;width:100%;padding:5px 10px;border-radius:0;text-align:left}
+.run:hover{background:var(--hover)}
+.run.on{background:var(--hover);box-shadow:inset 3px 0 var(--blue)}
+.run code{font:600 12px var(--mono);color:var(--orange)}
+.run small{display:block;overflow:hidden;font:11px var(--sans);color:var(--muted);white-space:nowrap;text-overflow:ellipsis}
+.run.skip code,.run.skip .ricon{color:var(--muted);font-weight:400}
+.ricon{text-align:center}.run.ok .ricon{color:var(--green)}.run.warn .ricon{color:var(--amber)}
+.steps{position:sticky;top:0;padding:12px 12px 2px;background:var(--raised);border:1px solid var(--line);border-radius:10px}
+.step{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;padding-bottom:12px}
+.step:not(:last-child)::after{content:'';position:absolute;left:10px;top:24px;bottom:0;border-left:1px solid var(--line)}
+.dot{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--line);border-radius:50%;background:var(--bg);font-size:12px}
+.step.ok .dot{color:var(--green);border-color:var(--green)}
+.step.warn .dot{color:var(--amber);border-color:var(--amber)}
+.step.off .dot{color:var(--muted);border-style:dashed}
+.step.skip .dot,.step.skip .stitle,.step.skip .sdetail{color:var(--muted)}
+.stitle{font:600 13px var(--sans)}
+.stitle code{margin-left:8px;font:400 12px var(--mono);color:var(--muted)}
+.sdetail{font:12px/1.5 var(--sans)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{padding:0 8px;border:1px solid var(--line);border-radius:999px;font:12px var(--sans)}
+.chip.ok{color:var(--green);border-color:var(--green)}
+.chip.warn{color:var(--amber);border-color:var(--amber)}
+.chip.off{color:var(--muted);border-style:dashed}
+.sdata>summary{padding:2px 0;font:12px var(--sans);color:var(--blue)}
+.sdata[open]{font:12px/1.6 var(--mono)}
 .facts{display:flex;flex-wrap:wrap;gap:2px 14px}
 table{width:100%;margin:6px 0;border-collapse:collapse}
 th,td{padding:2px 8px 2px 0;text-align:left;border-bottom:1px solid var(--line)}
 th{font:600 11px var(--sans);color:var(--muted)}
-.route{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.push{padding:0 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
-.push.ok{color:var(--purple);border-color:var(--purple)}
-.more{margin-top:10px}
+.more{margin-top:12px}
 .more>summary{font:12px var(--sans);color:var(--muted)}
-.other>summary .desc{margin-left:8px;font-family:var(--sans);color:var(--muted)}
-.idle>summary{opacity:.5}
-${GRAPH_CSS}`;
+.flow{margin:3px 0 3px 14px;font:12px var(--sans)}
+.flow code{font:12px var(--mono)}`;
 
 export interface ProviderConfig {
   enabled: boolean;
@@ -57,7 +65,8 @@ export interface Provider {
 type EngineName = Exclude<EventName, 'analytics'>;
 type Item = Record<string, unknown>;
 type Layer = 'NextDataLayer' | 'dataLayer';
-type Route = Record<Layer, string | undefined>;
+type State = 'ok' | 'skip' | 'warn' | 'off';
+type Run = AnalyticsTrace & { at: number };
 type Win = Window &
   Partial<Record<Layer, unknown[]>> & {
     google_tag_manager?: Record<string, unknown>;
@@ -69,36 +78,20 @@ export interface Wire {
   from: EngineName[];
   ga?: AnalyticsName;
   dl: string;
-  why?: string;
 }
 
 export const WIRING: Wire[] = [
   { from: ['ready'], ga: 'page_view', dl: 'dl_user_data' },
-  { from: ['ready'], ga: 'view_item', dl: 'dl_view_item', why: 'Only when the page shows one package.' },
-  { from: ['ready'], ga: 'view_item_list', dl: 'dl_view_item_list', why: 'Only when the page shows several packages.' },
-  {
-    from: ['ready', 'cart.calculated'],
-    ga: 'add_to_cart',
-    dl: 'dl_add_to_cart',
-    why: 'What was added since the last report, at the cart price.',
-  },
-  {
-    from: ['ready', 'cart.calculated', 'cart.updated'],
-    ga: 'remove_from_cart',
-    dl: 'dl_remove_from_cart',
-    why: 'What was removed since the last report. From a cart change only when the cart empties.',
-  },
-  {
-    from: ['cart.calculated'],
-    ga: 'update_cart',
-    dl: 'dl_cart_updated',
-    why: 'The whole cart, after each price update.',
-  },
+  { from: ['ready'], ga: 'view_item', dl: 'dl_view_item' },
+  { from: ['ready'], ga: 'view_item_list', dl: 'dl_view_item_list' },
+  { from: ['ready', 'cart.calculated'], ga: 'add_to_cart', dl: 'dl_add_to_cart' },
+  { from: ['ready', 'cart.calculated', 'cart.updated'], ga: 'remove_from_cart', dl: 'dl_remove_from_cart' },
+  { from: ['cart.calculated'], ga: 'update_cart', dl: 'dl_cart_updated' },
   { from: ['checkout.started'], ga: 'begin_checkout', dl: 'dl_begin_checkout' },
   { from: ['checkout.shipping-added'], ga: 'add_shipping_info', dl: 'dl_add_shipping_info' },
   { from: ['checkout.payment-added'], ga: 'add_payment_info', dl: 'dl_add_payment_info' },
-  { from: ['order.loaded'], ga: 'purchase', dl: 'dl_purchase', why: 'Once per order, only when paid.' },
-  { from: ['order.loaded'], ga: 'upsell_purchase', dl: 'dl_upsell_purchase', why: 'Once per accepted upsell.' },
+  { from: ['order.loaded'], ga: 'purchase', dl: 'dl_purchase' },
+  { from: ['order.loaded'], ga: 'upsell_purchase', dl: 'dl_upsell_purchase' },
   { from: ['upsell.viewed'], ga: 'view_upsell', dl: 'dl_viewed_upsell' },
   { from: ['upsell.skipped'], ga: 'skip_upsell', dl: 'dl_skipped_upsell' },
   { from: ['exit-intent.shown'], dl: 'dl_exit_intent_shown' },
@@ -108,45 +101,23 @@ export const WIRING: Wire[] = [
   { from: ['exit-intent.action'], dl: 'dl_exit_intent_action' },
 ];
 
-export const ENGINE: Record<EngineName, string> = {
-  ready: 'Once, when the campaign and the page’s values are in',
-  'campaign.loaded': 'Snapshot, then the fresh campaign',
-  'cart.updated': 'The shopper changed lines, coupons or shipping',
-  'cart.calculated': 'Server totals arrived',
-  'coupon.refused': 'The server gives no discount for a code',
-  'selection.changed': 'A bundle pick, quantity or slot changed',
-  'shipping.changed': 'The shipping method changed',
-  'storage.degraded': 'Browser storage is blocked or full',
-  'checkout.started': 'Once, when the checkout form is bound',
-  'checkout.shipping-added': 'Once, when the address is complete',
-  'checkout.payment-added': 'Once, when payment details are complete',
-  'prospect.saved': 'Once per tab, when the prospect cart is saved',
-  'order.placed': 'The order was created',
-  'order.loaded': 'On post-purchase pages',
-  'upsell.viewed': 'An upsell offer was shown',
-  'upsell.accepted': 'An upsell was accepted',
-  'upsell.skipped': 'An upsell was skipped',
-  'exit-intent.shown': 'The exit popup opened',
-  'exit-intent.clicked': 'The exit popup was clicked',
-  'exit-intent.dismissed': 'The exit popup was dismissed',
-  'exit-intent.closed': 'The exit popup closed',
-  'exit-intent.action': 'The exit popup offer was used',
-  error: 'An SDK action failed',
-};
-
-const LABELS: Partial<Record<EngineName, string>> = {
+const LABELS: Partial<Record<EventName, string>> = {
   ready: 'Page loaded',
   'cart.calculated': 'Cart priced',
-  'cart.updated': 'Cart changed',
+  'cart.updated': 'Cart emptied',
   'checkout.started': 'Checkout opened',
   'checkout.shipping-added': 'Shipping filled in',
   'checkout.payment-added': 'Payment chosen',
   'order.loaded': 'Order loaded',
   'upsell.viewed': 'Upsell shown',
   'upsell.skipped': 'Upsell skipped',
+  'exit-intent.shown': 'Exit popup shown',
+  'exit-intent.clicked': 'Exit popup clicked',
+  'exit-intent.dismissed': 'Exit popup dismissed',
+  'exit-intent.closed': 'Exit popup closed',
+  'exit-intent.action': 'Exit popup offer used',
 };
 
-const CUSTOM = new Set<string>(['update_cart', 'upsell_purchase', 'view_upsell', 'skip_upsell']);
 const NEEDS_ITEMS = new Set([
   'view_item',
   'view_item_list',
@@ -163,18 +134,19 @@ const UNSUPPORTED: Record<string, string> = {
   rudderstack: 'RudderStack',
   custom: 'Custom endpoint',
 };
-const LAYERS: Layer[] = ['NextDataLayer', 'dataLayer'];
+const NOT_PUSHED: Record<Layer, string> = {
+  NextDataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.NextDataLayer',
+  dataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.dataLayer',
+};
+const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: '○' };
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 const KEEP = 300;
-const GA_WIRES = WIRING.filter((w): w is Wire & { ga: AnalyticsName } => !!w.ga);
-const EXITS = WIRING.filter((w) => !w.ga);
-const TRIGGERS = [...new Set(GA_WIRES.flatMap((w) => w.from))];
-const EXIT_NODE = 'e:exit-intent.*';
-const FROM_GA = ['NextDataLayer', 'dataLayer', 'listeners'];
 
+const label = (name: EventName) => LABELS[name] ?? name;
 const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
+const isTrace = (data: unknown): data is AnalyticsTrace => (data as AnalyticsTrace | undefined)?.trace === 'analytics';
 const itemsOf = (params: Record<string, unknown>) => (Array.isArray(params.items) ? (params.items as Item[]) : []);
-const count = (n: number) => n > 0 && h('span', 'n', String(n));
+const clock = (at: number) => time(at).slice(0, 8);
 
 export function checks(name: string, params: Record<string, unknown>): string[] {
   const items = Array.isArray(params.items) ? (params.items as Item[]) : undefined;
@@ -292,13 +264,11 @@ const amount = (params: Record<string, unknown>) =>
     ? format({ type: 'money', value: params.value }, params.currency ? String(params.currency) : undefined)
     : '';
 
-const pushed = (id: string): Route => {
-  const win = window as Win;
-  const find = (layer: Layer) =>
-    (win[layer]?.find((p) => (p as { event_id?: unknown } | null)?.event_id === id) as { event?: string } | undefined)
-      ?.event;
-  return { NextDataLayer: find('NextDataLayer'), dataLayer: find('dataLayer') };
-};
+const pushedTo = (layer: Layer, id: string | undefined) =>
+  id
+    ? ((window as Win)[layer]?.find((p) => (p as { event_id?: unknown } | null)?.event_id === id) as
+        (Record<string, unknown> & { event?: string }) | undefined)
+    : undefined;
 
 const itemsTable = (items: Item[]) =>
   h(
@@ -316,6 +286,9 @@ const itemsTable = (items: Item[]) =>
     ),
   );
 
+const chip = (state: State, text: string, title = '') =>
+  h('span', { className: `chip ${state}`, title }, `${ICON[state]} ${text}`);
+
 export function analyticsFlow(ui: {
   open: Set<string>;
   idOf: (o: object) => number;
@@ -323,355 +296,248 @@ export function analyticsFlow(ui: {
   config: () => ProviderConfig;
 }) {
   const received: EngineEvent[] = [];
-  let selected: string | undefined;
-  let everything = false;
-  let reveal = false;
+  const runs: Run[] = [];
+  let selected: Run | undefined;
 
   const record = (e: EngineEvent) => {
     received.push(e);
     if (received.length > KEEP) received.shift();
   };
 
-  const sent = () => received.filter(isAnalytics);
-  const started = () => sent().length > 0 || !!(window as Win).NextDataLayer;
-  const select = (id: string | undefined) => {
-    selected = id;
-    reveal = !!id;
-    ui.render();
+  const note = (entry: LogEntry) => {
+    if (!isTrace(entry.data)) return;
+    runs.push({ ...entry.data, at: entry.at });
+    if (runs.length > KEEP) runs.shift();
   };
 
+  const started = () => runs.length > 0 || !!(window as Win).NextDataLayer;
+
   const snapshot = (config: ProviderConfig) => {
-    const win = window as Win;
-    const fired = new Map<string, number>();
-    for (const e of received) fired.set(e.name, (fired.get(e.name) ?? 0) + 1);
-    const routes = new Map(sent().map((e) => [e.data.id, pushed(e.data.id)]));
-    const active = LAYERS.filter(
-      (l) => (l === 'dataLayer' ? config.dataLayer : true) && [...routes.values()].some((r) => r[l]),
-    );
+    const events = new Map(received.filter(isAnalytics).map((e) => [e.data.id, e]));
+    const list = providers(config, started());
+    const enabled = (layer: Layer) => (layer === 'dataLayer' ? config.dataLayer : config.enabled);
+    const issues = (run: Run) => {
+      if (!run.sent) return [];
+      const event = run.id ? events.get(run.id) : undefined;
+      return [
+        ...(event ? checks(event.data.name, event.data.params) : []),
+        ...(['NextDataLayer', 'dataLayer'] as Layer[])
+          .filter((l) => enabled(l) && !pushedTo(l, run.id))
+          .map((l) => `not in ${l}`),
+      ];
+    };
     return {
-      fired: (name: string) => fired.get(name) ?? 0,
-      sends: (ga: string) => sent().filter((e) => e.data.name === ga),
-      route: (e: EngineEvent<'analytics'>) => routes.get(e.data.id)!,
-      active,
-      pushes: (layer: Layer, dl: string) =>
-        (win[layer] ?? []).filter((p) => (p as { event?: unknown } | null)?.event === dl).length,
-      providers: providers(config, started()),
+      config,
+      providers: list,
+      provider: (id: string) => list.find((p) => p.id === id)!,
+      event: (id?: string) => (id ? events.get(id) : undefined),
+      trigger: (run: Run) => received.filter((e) => e.name === run.trigger && e.at <= run.at + 5).at(-1),
+      enabled,
+      issues,
     };
   };
   type Snapshot = ReturnType<typeof snapshot>;
 
-  const problems = (e: EngineEvent<'analytics'>, route: Route, active: Layer[]) => [
-    ...checks(e.data.name, e.data.params),
-    ...active.filter((l) => !route[l]).map((l) => `not in ${l}`),
-  ];
-
-  const sendRow = (e: EngineEvent<'analytics'>, route: Route, active: Layer[]) => {
-    const { id, params, context } = e.data;
-    const found = problems(e, route, active);
-    const items = itemsOf(params);
-    return expandable(
-      [
-        h('span', 'time', time(e.at)),
-        h('span', 'what', what(e.data)),
-        h('span', 'amount', amount(params)),
-        found.length
-          ? h('span', { className: 'fail', title: found.join('\n') }, '⚠')
-          : h('span', { className: 'pass', title: 'Required GA4 fields present, and pushed' }, '✓'),
-      ],
-      `a${ui.idOf(e)}`,
-      ui.open,
-      () => [
-        h(
-          'div',
-          'send-body',
-          h(
-            'div',
-            'facts',
-            ...Object.entries(params)
-              .filter(([, v]) => v === null || typeof v !== 'object')
-              .map(([k, v]) => h('span', {}, h('span', 'key', k), ` ${v}`)),
-          ),
-          items.length > 0 && itemsTable(items),
-          ...(found.length
-            ? found.map((p) => h('div', 'amber', `⚠ ${p}`))
-            : [h('div', 'green', '✓ Required GA4 fields are present')]),
-          h(
-            'div',
-            'route',
-            ...LAYERS.map((layer) =>
-              h(
-                'span',
-                route[layer] ? 'push ok' : 'push',
-                `${layer} ${route[layer] ? `✓ ${route[layer]}` : 'not pushed'}`,
-              ),
-            ),
-          ),
-          tree(h('span', 'key', 'raw'), { id, params, context }, `r${ui.idOf(e)}`, ui.open),
-        ),
-      ],
-      'send',
-    );
+  const choose = (run: Run) => {
+    selected = run;
+    ui.render();
   };
 
-  const model = (snap: Snapshot) => {
-    const status = (id: string) => snap.providers.find((p) => p.id === id)?.status;
-    const sends = (ga: string) => snap.sends(ga).length;
-    const shownGa = GA_WIRES.filter((w) => everything || sends(w.ga) > 0);
-    const shown = new Set<string>(shownGa.map((w) => w.ga));
-    const exits = EXITS.reduce((n, w) => n + snap.fired(w.from[0]!), 0);
-    const engines = TRIGGERS.filter(
-      (t) => everything || (snap.fired(t) > 0 && GA_WIRES.some((w) => w.from.includes(t) && shown.has(w.ga))),
-    );
-    const nodes: GraphNode[] = [
-      ...engines.map((name): GraphNode => ({
-        id: `e:${name}`,
-        col: 0,
-        label: LABELS[name] ?? name,
-        keys: name,
-        tone: snap.fired(name) ? 'engine' : 'idle',
-        count: snap.fired(name),
-        title: `${name}: ${ENGINE[name]}`,
-      })),
-      ...(everything || exits
-        ? [
-            {
-              id: EXIT_NODE,
-              col: 0 as const,
-              label: 'Exit popup',
-              keys: 'exit-intent',
-              tone: exits ? ('engine' as const) : ('idle' as const),
-              count: exits,
-              title: 'exit-intent.*: data layer only, no GA4 event',
-            },
-          ]
-        : []),
-      ...shownGa.map((w): GraphNode => ({
-        id: `a:${w.ga}`,
-        col: 1,
-        label: w.ga,
-        keys: w.dl,
-        tone: sends(w.ga) ? 'ga' : 'idle',
-        count: sends(w.ga),
-        flag: snap.sends(w.ga).some((e) => problems(e, snap.route(e), snap.active).length > 0),
-        title: `${w.ga} → ${w.dl}${w.why ? `. ${w.why}` : ''}`,
-      })),
-      ...(shownGa.length
-        ? [
-            {
-              id: 'bus',
-              col: 'bus' as const,
-              label: '',
-              tone: sent().length ? ('ga' as const) : ('idle' as const),
-              title: '',
-            },
-          ]
-        : []),
-      ...snap.providers
-        .filter((p) => p.id !== 'transform')
-        .map((p): GraphNode => ({
-          id: `d:${p.id}`,
-          col: 2,
-          label: p.name,
-          keys: p.id === 'listeners' ? "next.on('analytics')" : p.id,
-          sub: p.short,
-          tone: p.status,
-          title: p.detail,
-        })),
-    ];
-    const edges: GraphEdge[] = [
-      ...shownGa.flatMap((w) =>
-        w.from
-          .filter((f) => engines.includes(f))
-          .map((f) => ({ from: `e:${f}`, to: `a:${w.ga}`, lit: snap.fired(f) > 0 && sends(w.ga) > 0 })),
-      ),
-      ...shownGa.map((w) => ({ from: `a:${w.ga}`, to: 'bus', lit: sends(w.ga) > 0 })),
-      ...(shownGa.length
-        ? FROM_GA.map((d) => ({
-            from: 'bus',
-            to: `d:${d}`,
-            off: status(d) === 'off',
-            lit:
-              d === 'listeners'
-                ? status(d) !== 'off' && sent().length > 0
-                : sent().some((e) => snap.route(e)[d as Layer]),
-          }))
-        : []),
-      ...(everything || exits
-        ? LAYERS.map((d) => ({
-            from: EXIT_NODE,
-            to: `d:${d}`,
-            off: status(d) === 'off',
-            lit: EXITS.some((w) => snap.pushes(d, w.dl) > 0),
-          }))
-        : []),
-      ...(engines.includes('ready')
-        ? [
-            {
-              from: 'e:ready',
-              to: 'd:nextCampaign',
-              off: status('nextCampaign') === 'off',
-              lit: status('nextCampaign') === 'ok',
-            },
-          ]
-        : []),
-    ];
-    return { nodes, edges };
+  const groups = (list: Run[]) => {
+    const out: Array<{ trigger: EventName; at: number; runs: Run[] }> = [];
+    for (const run of list) {
+      const last = out.at(-1);
+      if (last && last.trigger === run.trigger && run.at - last.at <= 5) last.runs.push(run);
+      else out.push({ trigger: run.trigger, at: run.at, runs: [run] });
+    }
+    for (const g of out) g.runs.sort((a, b) => Number(b.sent) - Number(a.sent));
+    return out.reverse();
   };
 
-  const chip = (name: EngineName) => h('span', { className: 'sdk-name', title: ENGINE[name] }, LABELS[name] ?? name);
-
-  const detail = (snap: Snapshot): HTMLElement => {
-    if (!selected) return h('div', 'tip', 'Click a node to see what it sent.');
-    const head = (...children: Child[]) =>
-      h(
-        'div',
-        'dhead',
-        ...children,
-        h('button', { type: 'button', className: 'link', onclick: () => select(undefined) }, 'Close'),
-      );
-    const ga = GA_WIRES.find((w) => `a:${w.ga}` === selected);
-    if (ga) {
-      const sends = snap.sends(ga.ga);
-      return h(
-        'div',
-        'detail',
-        head(
-          h('span', 'ga-name', ga.ga),
-          h('span', 'code', `→ ${ga.dl}${CUSTOM.has(ga.ga) ? ' · not a GA4 standard event' : ''}`),
-        ),
-        h(
-          'div',
-          'why',
-          'From ',
-          ...ga.from.flatMap((f, i) => [i > 0 && ' or ', chip(f)]),
-          ga.why ? `. ${ga.why}` : '.',
-        ),
-        ...(sends.length
-          ? sends.map((e) => sendRow(e, snap.route(e), snap.active))
-          : [h('div', 'why', 'Not sent on this page.')]),
-      );
-    }
-    if (selected === EXIT_NODE)
-      return h(
-        'div',
-        'detail',
-        head('Exit popup', h('span', 'code', 'exit-intent.* · data layer only')),
-        ...EXITS.map((w) =>
-          h(
-            'div',
-            'line',
-            h('span', 'sdk-name', w.from[0]!),
-            count(snap.fired(w.from[0]!)),
-            ' → ',
-            h('span', 'dl', w.dl),
-          ),
-        ),
-      );
-    if (selected.startsWith('e:')) {
-      const engine = selected.slice(2) as EngineName;
-      const seen = received.filter((e) => e.name === engine);
-      return h(
-        'div',
-        'detail',
-        head(LABELS[engine] ?? engine, h('span', 'code', engine)),
-        h('div', 'why', `${ENGINE[engine]}.`),
-        ...GA_WIRES.filter((w) => w.from.includes(engine)).map((w) =>
-          h('div', 'line', '→ ', h('span', 'ga-name', w.ga), count(snap.sends(w.ga).length)),
-        ),
-        ...seen.slice(-5).map((e) => tree(h('span', 'time', time(e.at)), e.data, `e${ui.idOf(e)}`, ui.open)),
-      );
-    }
-    const provider = snap.providers.find((p) => `d:${p.id}` === selected)!;
-    const win = window as Win;
-    const layer = LAYERS.find((l) => l === provider.id);
-    const events = layer
-      ? [...new Set((win[layer] ?? []).map((p) => (p as { event?: unknown } | null)?.event))].filter(
-          (e): e is string => typeof e === 'string' && e.startsWith('dl_'),
-        )
-      : [];
-    return h(
+  const runList = (snap: Snapshot, list: Run[]) =>
+    h(
       'div',
-      'detail',
-      head(provider.name, provider.id === 'listeners' && h('span', 'code', "next.on('analytics', fn)")),
-      h('div', 'why', provider.detail),
-      ...events.map((dl) => h('div', 'line', h('span', 'dl', dl), count(snap.pushes(layer!, dl)))),
-    );
-  };
-
-  const others = (query: string) => {
-    const wired = new Set(WIRING.flatMap((w) => w.from));
-    const names = (Object.keys(ENGINE) as EngineName[]).filter((n) => !wired.has(n) && n.includes(query));
-    return expandable(
-      ['Other SDK events, not sent to analytics', count(names.length)],
-      'others',
-      ui.open,
-      () =>
-        names.map((name) => {
-          const seen = received.filter((e) => e.name === name);
-          return expandable(
-            [h('span', 'sdk-name', name), count(seen.length), h('span', 'desc', ENGINE[name])],
-            `o${name}`,
-            ui.open,
-            () =>
-              seen.length
-                ? seen.map((e) => tree(h('span', 'time', time(e.at)), e.data, `e${ui.idOf(e)}`, ui.open))
-                : [h('div', 'why', 'Not fired on this page.')],
-            seen.length ? 'other' : 'other idle',
+      'runs',
+      ...groups(list).flatMap((g) => [
+        h('div', 'rhead', h('span', {}, label(g.trigger)), h('span', {}, clock(g.at))),
+        ...g.runs.map((run) => {
+          const state: State = !run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok';
+          const event = snap.event(run.id);
+          const sub = !run.sent
+            ? 'not sent'
+            : event
+              ? [what(event.data), amount(event.data.params)].filter(Boolean).join(' · ') || 'sent'
+              : 'data layer only';
+          return h(
+            'button',
+            { type: 'button', className: `run ${state}${run === selected ? ' on' : ''}`, onclick: () => choose(run) },
+            h('span', 'ricon', ICON[state]),
+            h('span', {}, h('code', {}, run.name), h('small', {}, sub)),
           );
         }),
-      'more',
+      ]),
     );
+
+  const step = (
+    state: State,
+    title: string,
+    code: string,
+    detail: Child,
+    extra?: Child,
+    data?: [string, () => Child[]],
+  ) =>
+    h(
+      'div',
+      `step ${state}`,
+      h('span', 'dot', ICON[state]),
+      h(
+        'div',
+        {},
+        h('div', 'stitle', title, code && h('code', {}, code)),
+        detail && h('div', 'sdetail', detail),
+        extra,
+        data && expandable(['Data'], data[0], ui.open, data[1], 'sdata'),
+      ),
+    );
+
+  const steps = (snap: Snapshot, run: Run) => {
+    const wire = WIRING.find((w) => (w.ga ?? w.dl) === run.name);
+    const dl = wire?.dl ?? run.name;
+    const direct = !wire?.ga;
+    const trigger = snap.trigger(run);
+    const event = snap.event(run.id);
+    const key = ui.idOf(run);
+    const fields = event ? checks(event.data.name, event.data.params) : [];
+    const notRun = (title: string) => step('skip', title, '', 'Not run');
+
+    const triggered = step(
+      'ok',
+      'Trigger',
+      run.trigger,
+      `${label(run.trigger)} at ${clock(run.at)}`,
+      undefined,
+      trigger && [`t${key}`, () => [tree(h('span', 'key', run.trigger), trigger.data, `td${key}`, ui.open)]],
+    );
+    const decided = step(run.sent ? 'ok' : 'skip', 'Decide', '', `${run.sent ? 'Send' : 'Stop'}: ${run.reason}`);
+    if (!run.sent) return [triggered, decided, notRun('Build'), notRun('Push'), notRun('Deliver')];
+
+    const built = direct
+      ? step('off', 'Build', '', 'No analytics event: the data layer gets this directly')
+      : step(
+          fields.length ? 'warn' : 'ok',
+          'Build',
+          run.name,
+          event && [what(event.data), amount(event.data.params)].filter(Boolean).join(' · '),
+          fields.length
+            ? h('div', 'amber', ...fields.map((f) => h('div', {}, `⚠ ${f}`)))
+            : h('div', 'green', '✓ Has every field GA4 requires'),
+          event && [
+            `b${key}`,
+            () => [
+              h(
+                'div',
+                'facts',
+                ...Object.entries(event.data.params)
+                  .filter(([, v]) => v === null || typeof v !== 'object')
+                  .map(([k, v]) => h('span', {}, h('span', 'key', k), ` ${v}`)),
+              ),
+              itemsOf(event.data.params).length > 0 && itemsTable(itemsOf(event.data.params)),
+              tree(h('span', 'key', 'raw'), event.data, `br${key}`, ui.open),
+            ],
+          ],
+        );
+
+    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).map((layer) => {
+      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
+      if (!snap.enabled(layer)) return chip('off', `${name}: off`, snap.provider(layer).detail);
+      return pushedTo(layer, run.id) ? chip('ok', name) : chip('warn', `${name}: not pushed`, NOT_PUSHED[layer]);
+    });
+    const object = pushedTo('NextDataLayer', run.id) ?? pushedTo('dataLayer', run.id);
+    const pushed = step(
+      layers.some((c) => c.classList.contains('warn')) ? 'warn' : 'ok',
+      'Push',
+      dl,
+      null,
+      h('div', 'chips', ...layers),
+      object && [`p${key}`, () => [tree(h('span', 'key', dl), object, `pr${key}`, ui.open)]],
+    );
+
+    const status = (id: string, ok: string) => {
+      const p = snap.provider(id);
+      const state: State = p.status === 'ok' || p.status === 'info' ? 'ok' : p.status === 'warn' ? 'warn' : 'off';
+      return chip(state, state === 'ok' ? ok : `${p.name}: ${p.short}`, p.detail);
+    };
+    const receivers = [
+      !direct && status('listeners', "Page scripts (next.on('analytics'))"),
+      status('dataLayer', `GTM ${snap.provider('dataLayer').short} → GA4, Meta…`),
+      run.name === 'page_view' && status('nextCampaign', 'NEXT analytics (own page_view)'),
+    ].filter((c): c is HTMLSpanElement => !!c);
+    const delivered = step(
+      receivers.some((c) => c.classList.contains('warn')) ? 'warn' : 'ok',
+      'Deliver',
+      '',
+      null,
+      h('div', 'chips', ...receivers),
+    );
+    return [triggered, decided, built, pushed, delivered];
   };
 
+  const flows = () =>
+    expandable(
+      ['All workflows', h('span', 'n', String(WIRING.length))],
+      'flows',
+      ui.open,
+      () =>
+        WIRING.map((w) =>
+          h(
+            'div',
+            'flow',
+            w.from.map(label).join(' or '),
+            ' → ',
+            w.ga ? h('code', 'ga-name', w.ga) : h('span', 'dim', 'no analytics event'),
+            ' → ',
+            h('code', 'dl', w.dl),
+          ),
+        ),
+      'more',
+    );
+
   const view = (query: string): Child[] => {
-    const config = ui.config();
-    const snap = snapshot(config);
-    const { nodes, edges } = model(snap);
-    const total = sent().length;
-    const missing = sent().filter((e) => checks(e.data.name, e.data.params).length).length;
-    const toggle = h('input', {
-      type: 'checkbox',
-      checked: everything,
-      onchange: () => {
-        everything = toggle.checked;
-        ui.render();
-      },
-    });
-    const card = detail(snap);
-    if (reveal) {
-      reveal = false;
-      requestAnimationFrame(() => card.scrollIntoView?.({ block: 'nearest' }));
-    }
-    const graph = nodes.some((n) => n.col === 1 || n.col === 0);
+    const snap = snapshot(ui.config());
+    const list = runs.filter((r) =>
+      `${r.name} ${r.trigger} ${label(r.trigger)} ${r.reason}`.toLowerCase().includes(query),
+    );
+    const sent = runs.filter((r) => r.sent);
+    const ga = sent.filter((r) => !r.name.startsWith('dl_')).length;
+    const problems = sent.filter((r) => snap.issues(r).length).length;
+    const off = snap.providers.filter((p) => p.status === 'off' && p.id !== 'listeners').length;
+    if (!list.includes(selected!)) selected = [...list].reverse().find((r) => r.sent) ?? list.at(-1);
     return [
       h(
         'div',
-        'headline',
-        h(
-          'span',
-          {},
-          total ? `${total} GA4 event${total === 1 ? '' : 's'} sent` : 'No GA4 events yet',
-          total > 0 &&
-            (missing ? h('span', 'fail', `⚠ ${missing} missing GA4 fields`) : h('span', 'pass', '✓ GA4 fields OK')),
-        ),
-        h('label', 'switch', toggle, 'Show every route'),
+        'wf-sum',
+        h('span', {}, h('b', {}, String(ga)), ` GA4 event${ga === 1 ? '' : 's'} sent`),
+        h('span', problems ? 'bad' : '', h('b', {}, String(problems)), ` problem${problems === 1 ? '' : 's'}`),
+        off > 0 && h('span', {}, h('b', {}, String(off)), ` provider${off === 1 ? '' : 's'} off`),
       ),
       ...snap.providers.filter((p) => p.status === 'warn').map((p) => h('div', 'alert', `⚠ ${p.detail}`)),
-      ...(graph
-        ? [
-            h('div', 'cols', h('span', {}, 'On the page'), h('span', {}, 'GA4 event'), h('span', {}, 'Sent to')),
-            drawGraph(nodes, edges, { selected, query, select }),
-            card,
-          ]
-        : [empty('Nothing sent yet', 'Analytics starts once the page is idle.')]),
-      others(query),
+      selected
+        ? h('div', 'wf', runList(snap, list), h('div', 'steps', ...steps(snap, selected)))
+        : empty(
+            query ? 'Nothing matches' : 'Nothing sent yet',
+            snap.config.enabled ? 'Analytics starts once the page is idle.' : snap.provider('NextDataLayer').detail,
+          ),
+      flows(),
     ];
   };
 
   const summary = () => {
-    const warnings = providers(ui.config(), started()).filter((p) => p.status === 'warn').length;
-    return `${sent().length} sent${warnings ? ` · ⚠ ${warnings}` : ''}`;
+    const snap = snapshot(ui.config());
+    const ga = runs.filter((r) => r.sent && !r.name.startsWith('dl_')).length;
+    const problems =
+      runs.filter((r) => snap.issues(r).length).length + snap.providers.filter((p) => p.status === 'warn').length;
+    return `${ga} sent${problems ? ` · ⚠ ${problems}` : ''}`;
   };
 
-  return { record, view, summary };
+  return { record, note, view, summary };
 }

@@ -1,6 +1,6 @@
 import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
-import type { AnalyticsName, EventMap, SummaryLine } from '../engine/types';
+import type { AnalyticsName, AnalyticsTrace, EventMap, EventName, SummaryLine } from '../engine/types';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { eventIds, pageContext } from './context';
 import { cartEcommerce, cents, currency, ecommerce, type Line, orderItem, taxIncluded } from './ecommerce';
@@ -27,11 +27,26 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     nextId,
   });
 
-  const emit = (name: AnalyticsName, params: Record<string, unknown>, id?: string) => {
-    const generated = nextId();
-    const context = pageContext(engine);
-    engine.events.emit('analytics', { name, id: id ?? generated, time: new Date().toISOString(), params, context });
+  const trace = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
+    const data: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };
+    engine.log.debug(`analytics ${name} ${sent ? 'sent' : 'not sent'}: ${reason}`, data);
   };
+  const skip = (trigger: EventName, name: AnalyticsName, reason: string) => trace(trigger, name, false, reason);
+
+  const emit = (
+    name: AnalyticsName,
+    params: Record<string, unknown>,
+    why: { trigger: EventName; reason: string; id?: string },
+  ) => {
+    const generated = nextId();
+    const id = why.id ?? generated;
+    const context = pageContext(engine);
+    engine.events.emit('analytics', { name, id, time: new Date().toISOString(), params, context });
+    trace(why.trigger, name, true, why.reason, id);
+  };
+
+  const names = (lines: Line[]) =>
+    lines.map((l) => `${engine.getPackage(l.package_id)?.name ?? l.package_id} ×${l.quantity}`).join(', ');
 
   let ready = false;
   let priced: SummaryLine[] | undefined;
@@ -39,7 +54,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   const onReady = () => {
     ready = true;
     const { page_location, page_title, page_referrer } = pageContext(engine);
-    emit('page_view', { page_location, page_title, page_referrer });
+    emit('page_view', { page_location, page_title, page_referrer }, { trigger: 'ready', reason: 'Every page load' });
     const ids = [
       ...new Set(
         [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
@@ -48,14 +63,25 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       ),
     ];
     const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
-    if (viewed.length === 1) emit('view_item', ecommerce(engine, viewed));
-    if (viewed.length > 1) {
+    const packages = `${viewed.length} packages on the page`;
+    if (viewed.length === 1) {
+      emit('view_item', ecommerce(engine, viewed), { trigger: 'ready', reason: 'One package on the page' });
+      skip('ready', 'view_item_list', 'Only one package on the page, so view_item instead');
+    } else if (viewed.length > 1) {
       const { value: _, ...list } = ecommerce(engine, viewed);
-      emit('view_item_list', { ...list, item_list_id: 'product_list', item_list_name: 'Product List' });
+      emit(
+        'view_item_list',
+        { ...list, item_list_id: 'product_list', item_list_name: 'Product List' },
+        { trigger: 'ready', reason: packages },
+      );
+      skip('ready', 'view_item', `${packages}, so view_item_list instead`);
+    } else {
+      skip('ready', 'view_item', 'No package on the page');
+      skip('ready', 'view_item_list', 'No package on the page');
     }
   };
 
-  const reportCart = (lines: SummaryLine[]) => {
+  const reportCart = (lines: SummaryLine[], trigger: EventName) => {
     const { reported = [], added: addedBefore } = engine.getState().cart;
     const before = new Map(reported.map((l) => [l.package_id, l]));
     const after = new Map<number, { quantity: number; line: SummaryLine }>();
@@ -70,7 +96,13 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       if (diff > 0) added.push({ package_id: id, quantity: diff });
       if (diff < 0) removed.push({ package_id: id, quantity: -diff });
     }
-    if (!added.length && !removed.length) return;
+    const nothingAdded = 'Nothing was added since the last report';
+    const nothingRemoved = 'Nothing was removed since the last report';
+    if (!added.length && !removed.length) {
+      skip(trigger, 'add_to_cart', nothingAdded);
+      skip(trigger, 'remove_from_cart', nothingRemoved);
+      return;
+    }
     engine.cart.markReported(
       [...after].map(([package_id, { quantity, line }]) => ({ package_id, quantity, price: Number(line.unit_price) })),
       added.length > 0,
@@ -79,12 +111,22 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       emit(
         'remove_from_cart',
         ecommerce(engine, removed, (id) => ({ unit_price: String(before.get(id)!.price) })),
+        { trigger, reason: `Removed since the last report: ${names(removed)}` },
       );
+    else skip(trigger, 'remove_from_cart', nothingRemoved);
     if (added.length)
-      emit('add_to_cart', {
-        ...ecommerce(engine, added, (id) => after.get(id)!.line),
-        first_in_session: !addedBefore,
-      });
+      emit(
+        'add_to_cart',
+        { ...ecommerce(engine, added, (id) => after.get(id)!.line), first_in_session: !addedBefore },
+        {
+          trigger,
+          reason:
+            trigger === 'ready'
+              ? `The cart was filled before this page: ${names(added)}`
+              : `Added since the last report: ${names(added)}`,
+        },
+      );
+    else skip(trigger, 'add_to_cart', nothingAdded);
   };
 
   const onOrder = ({ order, purchase, coupon, upsells }: EventMap['order.loaded']) => {
@@ -107,10 +149,10 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           ...(coupon && { coupon }),
           ...(discount > 0 && { discount }),
         },
-        purchase,
+        { trigger: 'order.loaded', reason: 'A paid order not reported before', id: purchase },
       );
       reported.push(purchase);
-    }
+    } else skip('order.loaded', 'purchase', 'Already reported, or not paid');
     for (const { id, number, line } of upsells ?? []) {
       const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
       const transaction = `${order.ref_id}-US${number}`;
@@ -131,10 +173,11 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             package_name: line.product_title,
           },
         },
-        transaction,
+        { trigger: 'order.loaded', reason: `Accepted upsell ${number}`, id: transaction },
       );
       reported.push(id);
     }
+    if (!upsells?.length) skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
     if (reported.length) engine.order?.markReported(reported);
   };
 
@@ -143,8 +186,8 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'ready') {
         onReady();
-        if (!(e.data as EventMap['ready']).lines.length) return reportCart([]);
-        return priced && reportCart(priced);
+        if (!(e.data as EventMap['ready']).lines.length) return reportCart([], 'ready');
+        return priced && reportCart(priced, 'ready');
       }
       if (!ready) {
         if (e.name === 'cart.updated') priced = undefined;
@@ -154,37 +197,54 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       legacyExitIntent(e);
       switch (e.name) {
         case 'cart.updated':
-          return mergeLines((e.data as EventMap['cart.updated']).cart.groups).length ? undefined : reportCart([]);
+          return mergeLines((e.data as EventMap['cart.updated']).cart.groups).length
+            ? undefined
+            : reportCart([], 'cart.updated');
         case 'cart.calculated':
-          reportCart((e.data as EventMap['cart.calculated']).summary.lines);
-          return emit('update_cart', cartEcommerce(engine));
+          reportCart((e.data as EventMap['cart.calculated']).summary.lines, 'cart.calculated');
+          return emit('update_cart', cartEcommerce(engine), {
+            trigger: e.name,
+            reason: 'After every price update',
+          });
         case 'checkout.started':
-          return emit('begin_checkout', cartEcommerce(engine));
+          return emit('begin_checkout', cartEcommerce(engine), {
+            trigger: e.name,
+            reason: 'Once, when the checkout form is ready',
+          });
         case 'checkout.shipping-added': {
           const { tier } = e.data as EventMap['checkout.shipping-added'];
-          return emit('add_shipping_info', { ...cartEcommerce(engine), shipping_tier: tier });
+          return emit(
+            'add_shipping_info',
+            { ...cartEcommerce(engine), shipping_tier: tier },
+            { trigger: e.name, reason: 'Once, when the address is complete' },
+          );
         }
         case 'checkout.payment-added': {
           const { method } = e.data as EventMap['checkout.payment-added'];
-          return emit('add_payment_info', {
-            ...cartEcommerce(engine),
-            payment_type: method === 'card_token' ? 'Credit Card' : method,
-          });
+          return emit(
+            'add_payment_info',
+            { ...cartEcommerce(engine), payment_type: method === 'card_token' ? 'Credit Card' : method },
+            { trigger: e.name, reason: 'Once, when payment details are complete' },
+          );
         }
         case 'order.loaded':
           return onOrder(e.data as EventMap['order.loaded']);
         case 'upsell.viewed': {
           const { refId, page } = e.data as EventMap['upsell.viewed'];
-          return emit('view_upsell', { order_id: refId, page_path: page, currency: currency(engine) });
+          return emit(
+            'view_upsell',
+            { order_id: refId, page_path: page, currency: currency(engine) },
+            { trigger: e.name, reason: 'Every time an upsell is shown' },
+          );
         }
         case 'upsell.skipped': {
           const { refId, packageId } = e.data as EventMap['upsell.skipped'];
           const name = packageId ? engine.getPackage(packageId)?.name : undefined;
-          return emit('skip_upsell', {
-            order_id: refId,
-            ...(packageId && { package_id: packageId }),
-            ...(name && { package_name: name }),
-          });
+          return emit(
+            'skip_upsell',
+            { order_id: refId, ...(packageId && { package_id: packageId }), ...(name && { package_name: name }) },
+            { trigger: e.name, reason: 'Every time an upsell is skipped' },
+          );
         }
       }
     },

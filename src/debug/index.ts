@@ -336,7 +336,13 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     { replay: true },
   );
   engine.subscribe(later);
-  engine.log.stream(later);
+  engine.log.stream(
+    (entry) => {
+      flow.note(entry);
+      later();
+    },
+    { replay: true },
+  );
   (window as unknown as { nextDebug: unknown }).nextDebug = {
     explain: (el: Element) =>
       Object.fromEntries(explain(engine, el).map((n) => [n.attr, n.note ? `${n.value} → ${n.note}` : n.value])),

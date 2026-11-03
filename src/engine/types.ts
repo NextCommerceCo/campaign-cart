@@ -403,6 +403,15 @@ export interface AnalyticsEvent {
   context: AnalyticsContext;
 }
 
+export interface AnalyticsTrace {
+  trace: 'analytics';
+  trigger: EventName;
+  name: string;
+  sent: boolean;
+  reason: string;
+  id?: string;
+}
+
 export interface EventMap {
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   'cart.updated': { cart: CartState };
