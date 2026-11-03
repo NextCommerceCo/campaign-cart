@@ -6,8 +6,9 @@ import type { PageKind, PageVisit } from '../../src/debug/state';
 import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
 import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/events';
+import type { Order } from '../../src/engine/types';
 import { flush, makeEngine } from '../fixtures/engine';
-import { ORDER } from '../fixtures/order';
+import { ORDER, withUpsell } from '../fixtures/order';
 
 const EARBUDS = { item_id: '11', item_name: 'Earbuds', quantity: 1, price: 49 };
 const ON: ProviderConfig = { enabled: true, nextCampaign: true, dataLayer: true, unsupported: [] };
@@ -98,6 +99,7 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   for (const key of ['NextDataLayer', 'dataLayer', 'google_tag_manager', 'nextCampaign', 'NextDataLayerTransformFn'])
     delete (win as unknown as Record<string, unknown>)[key];
   document.head.innerHTML = '';
@@ -230,7 +232,12 @@ describe('analytics workflow', () => {
   it('adds the upsell steps once the tab reaches an upsell page', () => {
     const { engine, paint, send, steps } = setup(ON, [page('checkout'), page('upsell')]);
     engine.events.emit('order.loaded', { order: ORDER });
-    send('order.loaded', 'purchase', { currency: 'USD', value: 98, transaction_id: 'R1', items: [EARBUDS] }, 'p1');
+    send(
+      'order.loaded',
+      'purchase',
+      { currency: 'USD', value: 89, shipping: 9.99, tax: 7.12, transaction_id: 'R1', items: [EARBUDS] },
+      'p1',
+    );
     paint();
     expect(steps().slice(-3)).toEqual([
       ['done', 'purchase', 'This page'],
@@ -285,7 +292,7 @@ describe('analytics workflow', () => {
     expect(rows()[0]![2]).toBe('Cart priced · + Earbuds (Black) ×1');
     expect(open('add_to_cart')).toEqual([
       ['Why', 'reason for add_to_cartCart priced: cart.calculated'],
-      ['Pushed as', 'dl_add_to_cart✓ NextDataLayer✓ GTM dataLayer'],
+      ['Reached', 'dl_add_to_cart✓ NextDataLayer✓ GTM dataLayer'],
       ['Params', 'currency USDvalue 49'],
       ['Items', 'itemvariantidqtypriceEarbudsBlack11149'],
       ['Raw', expect.stringMatching(/^event .*dl_add_to_cart .*cart\.calculated /)],
@@ -334,7 +341,7 @@ describe('analytics workflow', () => {
   it('puts missing GA4 fields and a push that did not arrive in the verdict, the funnel and the row', () => {
     const { engine, paint, send, rows, verdict, steps, open } = setup();
     engine.events.emit('order.loaded', { order: ORDER });
-    send('order.loaded', 'purchase', { value: 98, items: [] }, 'p1', false);
+    send('order.loaded', 'purchase', { value: 89, shipping: 9.99, tax: 7.12, items: [] }, 'p1', false);
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
     win.dataLayer = [];
     paint();
@@ -347,7 +354,81 @@ describe('analytics workflow', () => {
     ]);
     const detail = Object.fromEntries(open('purchase'));
     expect(detail.Problems).toBe('⚠ items is empty⚠ value is set without currency⚠ transaction_id is missing');
-    expect(detail['Pushed as']).toBe('dl_purchase✓ NextDataLayer⚠ GTM dataLayer: not pushed');
+    expect(detail.Reached).toBe('dl_purchase✓ NextDataLayer⚠ GTM dataLayer: not pushed');
+  });
+
+  it('checks update_cart against the cart lines, and a voucher GA4 takes as coupon', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const { engine, paint, send, verdict, open } = setup();
+    const priced = (value: number, voucher?: string) => {
+      vi.setSystemTime(Date.now() + 1000);
+      engine.events.emit('cart.calculated', {
+        summary: { lines: [{ total: '49.00' }], voucher_discounts: voucher ? [{ amount: voucher }] : [] } as never,
+      });
+      send('cart.calculated', 'update_cart', { currency: 'USD', value, items: [EARBUDS] }, `u${value}${voucher ?? ''}`);
+      paint();
+      return Object.fromEntries(open('update_cart'))['Adds up'];
+    };
+    expect(priced(49)).toBe('✓ value $49.00 = the cart lines $49.00');
+    expect(priced(59, '10.00')).toBe(
+      '✓ value $59.00 = the cart lines $49.00 before the $10.00 voucher, sent as coupon',
+    );
+    expect(priced(59)).toBe('⚠ value $59.00, but the cart lines come to $49.00');
+    expect(verdict()).toBe('1 event with problems: update_cart value $59.00, but the cart lines come to $49.00');
+  });
+
+  it('checks a purchase against the order total, with tax added or included in the prices', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const { engine, paint, send, steps, open } = setup();
+    const bought = (order: Order, params: Record<string, unknown>, id: string) => {
+      vi.setSystemTime(Date.now() + 1000);
+      engine.events.emit('order.loaded', { order });
+      send('order.loaded', 'purchase', { currency: 'USD', transaction_id: 'R1', items: [EARBUDS], ...params }, id);
+      paint();
+      return Object.fromEntries(open('purchase'))['Adds up'];
+    };
+    expect(bought(ORDER, { value: 89, shipping: 9.99, tax: 7.12 }, 'p1')).toBe(
+      '✓ value $89.00 + shipping $9.99 + tax $7.12 = $106.11, the order total',
+    );
+    expect(bought(ORDER, { value: 96.12, shipping: 9.99, tax: 7.12 }, 'p2')).toBe(
+      '✓ value $96.12 + shipping $9.99 = $106.11, the order total (prices include tax)',
+    );
+    const upsold = { ...withUpsell(ORDER, 12, 1), total_incl_tax: '126.11' };
+    expect(bought(upsold, { value: 89, shipping: 9.99, tax: 7.12 }, 'p3')).toBe(
+      '✓ value $89.00 + shipping $9.99 + tax $7.12 = $106.11, the order total',
+    );
+    expect(bought(ORDER, { value: 50, shipping: 9.99, tax: 7.12 }, 'p4')).toBe(
+      '⚠ value $50.00 + shipping $9.99 + tax $7.12 = $67.11, but the order total is $106.11',
+    );
+    expect(steps().find(([, name]) => name === 'purchase')![0]).toBe('warn');
+  });
+
+  it('shows GTM reading a push, and a GA4 request that left the page after an event', () => {
+    win.google_tag_manager = { 'GTM-ABC123': {} };
+    win.nextCampaign = { event() {} };
+    const { engine, paint, send, chips, steps, open } = setup();
+    engine.events.emit('cart.calculated', { summary: {} as never });
+    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
+    (win.dataLayer![0] as Record<string, unknown>)['gtm.uniqueEventId'] = 7;
+    const collect = (en: string) => ({
+      name: `https://region1.google-analytics.com/g/collect?v=2&tid=G-TEST1&en=${en}`,
+      startTime: Date.now() - performance.timeOrigin + 20,
+    });
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+      collect('add_to_cart'),
+      collect('page_view'),
+      { name: 'https://cdn.test/app.js', startTime: 0 },
+    ] as never);
+    paint();
+    expect(chips()).toContain('✓ GA4 · G-TEST1');
+    expect(steps().find(([, name]) => name === 'add_to_cart')).toEqual([
+      'done',
+      'add_to_cart',
+      'This page · reached GA4',
+    ]);
+    expect(Object.fromEntries(open('add_to_cart')).Reached).toBe(
+      'dl_add_to_cart✓ NextDataLayer✓ GTM dataLayer✓ GTM read it✓ GA4 G-TEST1',
+    );
   });
 
   it('says what GTM being off means in the verdict, and its nextConfig key once, not on each event', () => {
@@ -359,7 +440,7 @@ describe('analytics workflow', () => {
     expect(chips()).toEqual(['✓ NextDataLayer · 1 event', '○ GTM dataLayer · off', '✓ NEXT analytics · own page_view']);
     expect(verdict()).toBe('GTM tags get none of these events: GTM dataLayer is off');
     expect(notes()).toEqual(['Off in nextConfig: analytics.providers.gtm.enabled is false.']);
-    expect(Object.fromEntries(open('page_view'))['Pushed as']).toBe('dl_user_data✓ NextDataLayer');
+    expect(Object.fromEntries(open('page_view'))['Reached']).toBe('dl_user_data✓ NextDataLayer');
   });
 
   it('runs the exit popup straight to the data layer, and names a provider that cannot deliver', () => {
@@ -373,7 +454,7 @@ describe('analytics workflow', () => {
     expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Exit popup shown · data layer only']);
     expect(open('dl_exit_intent_shown')).toEqual([
       ['Why', 'Data layer only: there is no analytics eventExit popup shown: exit-intent.shown'],
-      ['Pushed as', 'dl_exit_intent_shown✓ NextDataLayer✓ GTM dataLayer'],
+      ['Reached', 'dl_exit_intent_shown✓ NextDataLayer✓ GTM dataLayer'],
       ['Raw', expect.stringMatching(/^dl_exit_intent_shown /)],
     ]);
   });

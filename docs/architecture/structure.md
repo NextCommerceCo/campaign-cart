@@ -117,8 +117,8 @@ src/
     picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
                                    Add and the stepper set the quantity through engine.cart
     analytics.ts                   the Analytics tab: a verdict, the GA4 funnel checked off across the tab's pages, where
-                                   events are pushed, then this page's events; one opens in tsugi's dialog with why, the
-                                   dl_* push, params, items and raw data
+                                   events are pushed, then this page's events; one opens in tsugi's dialog with why, what it
+                                   reached (data layers, GTM, GA4 requests), whether its value adds up, items and raw data
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
                                    compat/analytics.ts), parameter checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens

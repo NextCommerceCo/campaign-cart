@@ -181,6 +181,14 @@ describe('debug tools', () => {
     );
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(view()).toBe('panel');
+    [...shadow().querySelectorAll<HTMLElement>('.arun')]
+      .find((r) => r.querySelector('code')!.textContent === 'update_cart')!
+      .click();
+    const detail = [...shadow().querySelectorAll('.aevent .adetail > dt')].map((dt) => [
+      dt.textContent,
+      dt.nextElementSibling!.textContent,
+    ]);
+    expect(Object.fromEntries(detail)['Adds up']).toMatch(/^✓ value \$[\d.]+ = the cart lines \$[\d.]+$/);
   });
 
   it('lists every SDK element with what it resolves to', async () => {
