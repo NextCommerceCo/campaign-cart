@@ -89,6 +89,19 @@ describe('debug tools', () => {
     expect(document.querySelector('next-debug')).toBeNull();
   });
 
+  it('switches tabs from a select when the panel is too narrow for the tab row', async () => {
+    await start('<span data-next-display="cart.nope"></span>');
+    $('.fab').click();
+    menuItem('Cart').click();
+    const pick = $<HTMLSelectElement>('select.tabpick');
+    expect([pick.value, pick.options[1]!.text]).toEqual(['cart', 'Issues · 1']);
+    pick.value = 'logs';
+    pick.dispatchEvent(new Event('change'));
+    expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    expect(PANEL_CSS).toContain('@container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}');
+    expect(ANALYTICS_CSS).not.toContain('@media');
+  });
+
   it('keeps the panel open on Esc while the product picker is open', async () => {
     await start();
     $('.fab').click();

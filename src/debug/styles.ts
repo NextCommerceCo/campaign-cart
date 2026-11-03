@@ -32,9 +32,11 @@ button.item:hover{background:var(--accent)}
 hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .count{font-weight:600}
 .red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.blue{color:var(--info)}.purple{color:var(--purple)}.dim,.time{color:var(--muted-foreground)}
-.panel{flex-direction:column;width:min(600px,calc(100vw - 40px));height:min(640px,calc(100vh - 100px))}
+.panel{flex-direction:column;width:min(600px,calc(100vw - 40px));height:min(640px,calc(100vh - 100px));container:panel/inline-size}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}
-.head .tabs{flex:1;min-width:0;overflow-x:auto;margin-right:6px}
+.head .tabs{flex:1;min-width:0;margin-right:6px}
+.tabpick{display:none;flex:1;min-width:0;margin-right:6px}
+@container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}
 .head [role=tab] .badge{margin-left:2px}
 .search{padding:8px;border-bottom:1px solid var(--border)}
 .search .input{width:100%}
@@ -71,7 +73,7 @@ export const ANALYTICS_CSS = `.wf-sum{display:flex;flex-wrap:wrap;gap:4px 14px;m
 .wf-sum .bad b{color:var(--warning)}
 .alert{margin:0 0 8px;padding:6px 10px;border:1px solid var(--warning);border-radius:8px;color:var(--warning);font:12px/1.4 var(--font-sans)}
 .wf{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:10px;align-items:start;font-family:var(--font-sans)}
-@media (max-width:520px){.wf{grid-template-columns:minmax(0,1fr)}}
+@container panel (max-width:560px){.wf{grid-template-columns:minmax(0,1fr)}}
 .runs{overflow:hidden;border:1px solid var(--border);border-radius:10px}
 .rhead{display:flex;justify-content:space-between;gap:8px;padding:8px 10px 2px;font:600 11px var(--font-sans);color:var(--muted-foreground)}
 .rhead+.run,.run+.run{border-top:0}
@@ -113,6 +115,7 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .chead b{font-weight:600;color:var(--foreground)}
 .chead>span{margin-right:auto}
 .chead .link{margin-left:0}
+@container panel (max-width:560px){.chead>span{flex-basis:100%}.chead .btn{margin-left:auto}}
 .cline,.ctotals,.cctl{margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:14px;font-variant-numeric:tabular-nums}
 .cline{position:relative}
 .cbadges{position:absolute;top:-10px;right:12px;display:flex;gap:6px}
@@ -149,7 +152,7 @@ export const CART_CSS = `.chead{display:flex;flex-wrap:wrap;align-items:center;g
 .cctl .input{flex:1;min-width:0}
 .cctl .select{width:100%}
 .cmsg{font-size:12px}
-.hovercard{width:320px;margin:6px 0;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+.hovercard{width:min(320px,calc(100vw - 32px));margin:6px 0;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
 .hovercard header{display:flex;flex-direction:column;gap:2px}
 .hovercard header small{font-size:12px;color:var(--muted-foreground)}
 .hovercard dl{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
@@ -178,7 +181,7 @@ export const JOURNEY_CSS = `.jhead{display:flex;flex-wrap:wrap;align-items:basel
 .jpage{font-family:var(--font-sans)}
 .jpage section{display:flex;flex-direction:column;gap:12px}
 .jpage h3{font-size:15px;font-weight:600}
-.jmeta{font-size:12px;color:var(--muted-foreground);word-break:break-all}
+.jmeta{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
 .jpage .stat-group{border:1px solid var(--border);border-radius:8px}
 .jsent{display:flex;flex-wrap:wrap;gap:4px}
 .jdone>.icon{color:var(--success)}

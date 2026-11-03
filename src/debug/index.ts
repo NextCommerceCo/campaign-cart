@@ -98,6 +98,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     return el;
   });
   const tablist = tsugi(h('div', {}, ...tabs), { size: 'sm' });
+  const tabpick = h(
+    'select',
+    { className: 'select tabpick', onchange: () => show(tabpick.value as Tab) },
+    ...(Object.keys(TABS) as Tab[]).map((t) => h('option', { value: t }, TABS[t])),
+  );
+  tabpick.setAttribute('aria-label', 'Panel tab');
   tablist.setAttribute('role', 'tablist');
   const dock = button('dockRight', 'Move to the right', () => {
     right = !right;
@@ -122,6 +128,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       'div',
       'head',
       h('div', 'tabs', tablist),
+      tabpick,
       button('pick', 'Pick an element', () => togglePick()),
       dock,
       button('close', 'Close', () => setView('closed')),
@@ -273,6 +280,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
           ...nodes([count > 0 && badge(String(count), tone === 'red' ? 'destructive' : 'warning')]),
         );
     });
+    tabpick.value = tab;
+    tabpick.querySelector('[value="issues"]')!.textContent = count ? `${TABS.issues} · ${count}` : TABS.issues;
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));
     if (tab === 'journey') journey.draw();
