@@ -30,6 +30,10 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   const detail = { imageUrl: o.image, template: o.template };
   const emit = (name: 'shown' | 'clicked' | 'dismissed' | 'closed' | 'action', extra: object = {}) =>
     engine.events.emit(`exit-intent.${name}`, { ...detail, ...extra });
+  if (!o.image && !o.template) {
+    engine.log.warn('exitIntent needs an image or a template');
+    return () => {};
+  }
   const mobile = matchMedia('(pointer: coarse)').matches;
   if (mobile && o.disableOnMobile && !o.mobileScrollTrigger) return () => {};
 
@@ -45,7 +49,6 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   const show = () => {
     const shown = engine.getState().visit.exitIntentShown;
     if (open.length || shown >= o.maxTriggers) return;
-    engine.noteExitIntentShown();
 
     const overlay = Object.assign(document.createElement('div'), { className: 'exit-intent-overlay' });
     overlay.dataset.exitIntent = 'overlay';
@@ -81,7 +84,8 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
       }
       popup.append(img);
     } else {
-      return engine.log.warn('exitIntent needs an image or a template');
+      engine.log.warn(`exitIntent template "${o.template}" is not on the page`);
+      return;
     }
 
     if (o.showCloseButton) {
@@ -96,6 +100,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     }
     if (o.overlayClosable) overlay.addEventListener('click', () => close('dismissed'));
     document.addEventListener('keydown', onKey);
+    engine.noteExitIntentShown();
     document.body.append(overlay, popup);
     open = [overlay, popup];
     emit('shown');

@@ -112,6 +112,15 @@ describe('exitIntent', () => {
     expect(document.querySelector('.exit-intent-popup')).toBeNull();
   });
 
+  it('uses up no trigger when its template is not on the page', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    await next.exitIntent({ template: 'missing' });
+    leave();
+    expect(document.querySelector('.exit-intent-popup')).toBeNull();
+    expect(next.getState().visit.exitIntentShown).toBe(0);
+  });
+
   it('stays off on touch devices by default', async () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true }));
     const next = boot(config, Promise.resolve(campaign));
