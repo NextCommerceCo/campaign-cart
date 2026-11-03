@@ -170,9 +170,6 @@ export function checkoutView(
         ? { title: 'Shipping', detail: shipping, tone: 'done' }
         : { title: 'Shipping', detail: 'No method yet', tone: 'todo' },
       payment(state),
-      state.prospectSaved
-        ? { title: 'Prospect', detail: 'Saved: abandoned-cart emails can go out', tone: 'done' }
-        : { title: 'Prospect', detail: 'Saved once the email is filled in', tone: 'todo' },
       ...(state.rulesDown
         ? [{ title: 'Address rules', detail: 'Service down: fields fall back to basic checks', tone: 'warn' } as Step]
         : []),
@@ -264,6 +261,12 @@ export function checkoutView(
           ['Email', state.fields.email, state.errors.email],
           ['Phone', phone?.international ?? state.fields.phone_number, state.errors.phone_number],
           ['Marketing', state.fields.accepts_marketing === 'false' ? 'Declined' : 'Accepted'],
+          [
+            'Open cart',
+            state.prospectSaved
+              ? 'Saved: it is in Open Carts on the dashboard, for abandoned-cart emails'
+              : 'Not saved yet: needs a valid email and a first and last name',
+          ],
         ]),
         h(
           'div',

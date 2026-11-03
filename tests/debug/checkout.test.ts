@@ -63,7 +63,6 @@ describe('checkout tab', () => {
       ['Details', 'Not filled in yet: Email, First name, Last name, Address, Town/City', 'todo'],
       ['Shipping', 'Standard', 'done'],
       ['Payment', 'Card · no cc-number and cvv fields on the page', 'bad'],
-      ['Prospect', 'Saved once the email is filled in', 'todo'],
       ['Order', 'Not placed yet', 'todo'],
     ]);
     expect([...root.querySelectorAll('.kstep.bad .payment-icon')].map((i) => i.className.split('-').pop())).toEqual([
@@ -102,6 +101,7 @@ describe('checkout tab', () => {
       ['Email', 'test@example.com'],
       ['Phone', expect.stringMatching(/2015550123|201/)],
       ['Marketing', 'Accepted'],
+      ['Open cart', 'Saved: it is in Open Carts on the dashboard, for abandoned-cart emails'],
     ]);
     expect(written('Bill to')).toBeUndefined();
   });
