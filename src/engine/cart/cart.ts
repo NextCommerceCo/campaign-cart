@@ -1,6 +1,6 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChange, CartItem, Discount, Selector } from '../events';
+import type { Cart, CartChange, CartItem, Coupon, Discount, Selector } from '../events';
 import type {
   Line,
   CartGroup,
@@ -136,6 +136,14 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
       discounts: [...byOffer.values()],
     }),
   };
+}
+
+export function publicCoupon(state: State, code: string, summary?: CartSummary): Coupon {
+  if (!summary) return { code };
+  const coupons = [...new Set([...state.cart.coupons, code])];
+  const cart = publicCart({ ...state, cart: { ...state.cart, coupons } }, summary);
+  const given = [...(cart.discounts ?? []), ...(cart.shipping_method?.discounts ?? [])].filter((d) => d.code === code);
+  return given.length ? { code, discount: { ...given[0]!, amount: sum(given.map((d) => d.amount)) } } : { code };
 }
 
 function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
@@ -409,12 +417,14 @@ export function createCart(ctx: Context) {
     async applyCoupon(code: string): Promise<boolean> {
       const normalized = normalizeCode(code);
       if (!normalized || vouchers().includes(normalized)) return false;
+      let priced: CartSummary | undefined;
       if (!lines().length || !ctx.getState().campaign) unchecked.add(normalized);
       else {
         await settled();
         try {
           const without = state().summary ?? (await price(vouchers()));
-          if (!addsDiscount(without, await price([...vouchers(), normalized]))) {
+          priced = await price([...vouchers(), normalized]);
+          if (!addsDiscount(without, priced)) {
             ctx.emit('coupon.denied', { code: normalized });
             return false;
           }
@@ -425,15 +435,16 @@ export function createCart(ctx: Context) {
         if (state().coupons.includes(normalized)) return false;
       }
       const done = commit({ coupons: [...state().coupons, normalized] });
-      ctx.emit('coupon.applied', { code: normalized });
+      ctx.emit('coupon.applied', publicCoupon(ctx.getState(), normalized, priced));
       await done;
       return true;
     },
     removeCoupon(code: string): Promise<void> {
       const normalized = normalizeCode(code);
       if (!state().coupons.includes(normalized)) return Promise.resolve();
+      const coupon = publicCoupon(ctx.getState(), normalized, state().summary);
       const done = commit({ coupons: state().coupons.filter((c) => c !== normalized) });
-      ctx.emit('coupon.removed', { code: normalized });
+      ctx.emit('coupon.removed', coupon);
       return done;
     },
     setShipping(shippingId: number | undefined) {

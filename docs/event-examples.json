@@ -259,10 +259,24 @@
     ]
   },
   "coupon.applied": {
-    "code": "SAVE10"
+    "code": "SAVE10",
+    "discount": {
+      "name": "SAVE10",
+      "amount": 1,
+      "source": "coupon",
+      "code": "SAVE10",
+      "offer_id": 10
+    }
   },
   "coupon.removed": {
-    "code": "SAVE10"
+    "code": "SAVE10",
+    "discount": {
+      "name": "SAVE10",
+      "amount": 1,
+      "source": "coupon",
+      "code": "SAVE10",
+      "offer_id": 10
+    }
   },
   "coupon.denied": {
     "code": "NOPE"

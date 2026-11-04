@@ -56,6 +56,17 @@ export interface Discount {
   offer_id: number;
 }
 
+/** A code the shopper entered, the same on every `coupon.*` event. */
+export interface Coupon {
+  /** In upper case, as in the cart's `coupons`. */
+  code: string;
+  /**
+   * What the code takes off, shipping included, from the cart priced with it. None on
+   * `coupon.denied`, or for a code entered before the cart had lines. @priced
+   */
+  discount?: Discount;
+}
+
 /** A package billed again every interval. */
 export interface Subscription {
   /** The unit of the renewal interval. */
@@ -302,17 +313,17 @@ export interface EventMap {
    * A code was added to the cart.
    * @group Coupons
    */
-  'coupon.applied': { code: string };
+  'coupon.applied': Coupon;
   /**
    * A code was removed.
    * @group Coupons
    */
-  'coupon.removed': { code: string };
+  'coupon.removed': Coupon;
   /**
    * The server gives no discount for a code; it is not kept.
    * @group Coupons
    */
-  'coupon.denied': { code: string };
+  'coupon.denied': Coupon;
   /**
    * Once, when the checkout form is bound with a cart.
    * @group Checkout

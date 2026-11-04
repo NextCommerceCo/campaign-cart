@@ -21,6 +21,10 @@ group: 'Event Reference/Coupons'
 | `applied` | A code applied to an empty cart takes nothing off once it is priced | `denied`  | `coupon.denied`, `cart.updated`                           |
 | `applied` | The code is removed                                                 | `removed` | `cart.updated`, `coupon.removed`                          |
 
+Every coupon event carries the same `Coupon`: the `code` and, from the cart priced with it, the
+`discount` it gives, shipping included. `coupon.denied` and a code applied to an empty cart have no
+`discount`. The cart's own `discounts` keep following the cart as it changes.
+
 ## Errors
 
 Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
