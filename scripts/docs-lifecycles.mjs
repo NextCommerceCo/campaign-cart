@@ -79,10 +79,10 @@ const down = (from, to, title, events = [], { boxH = H } = {}) => {
     ...events.map((e, i) => label(MAIN.cx + 14, mid + 20 + i * 17, e, { code: true })),
   ];
 };
-const toSide = (row, title) => {
+const toSide = (row, title, { dashed = false } = {}) => {
   const y = rowY(row) + 18;
   return [
-    arrow(`M${MAIN.x + MAIN.w} ${y} H${SIDE.x - 6}`),
+    arrow(`M${MAIN.x + MAIN.w} ${y} H${SIDE.x - 6}`, { dashed }),
     label((MAIN.x + MAIN.w + SIDE.x) / 2, y - 8, title, { anchor: 'middle', size: 12 }),
   ];
 };
@@ -146,73 +146,95 @@ const code = (text) => ({ text, code: true });
 const LIFECYCLES = {
   carts: {
     title: 'Cart lifecycle',
-    desc: 'empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed, cart.added, cart.calculated). Pricing that fails moves calculating to unpriced (sdk.error); the next change goes back to calculating. A change to a priced cart goes back to calculating (cart.updated, cart.calculating). Removing the last package empties the cart from any state (cart.updated, cart.removed).',
+    desc: 'empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed and cart.added for the packages that changed, then cart.calculated). A page that opens with a saved cart starts at calculating (cart.calculating only). Pricing that fails sends sdk.error and moves to unpriced; the next change prices again. A change sends cart.updated, then cart.calculating; while calculating, cart.updated only. Removing the last package, or clearing the cart, empties it (cart.updated, then cart.removed).',
     rows: 3,
     boxes: [
       { row: 0, title: 'empty', sub: ['no lines'] },
       { row: 1, title: 'calculating', sub: ['prices on the way'], tone: 'active' },
       { row: 2, title: 'priced', sub: ['the cart carries prices'], tone: 'success' },
-      {
-        col: 'side',
-        row: 1,
-        title: 'unpriced',
-        sub: [code('cart.calculate')],
-        tone: 'failure',
-      },
+      { col: 'side', row: 1, title: 'unpriced', sub: [code('sdk.error')], tone: 'failure' },
     ],
     parts: () => [
       down(0, 1, 'add a package', ['cart.updated', 'cart.calculating']),
-      down(1, 2, 'prices arrive', ['cart.removed · cart.added', 'cart.calculated']),
-      toSide(1, 'pricing fails'),
-      fromSide(1, 'next change'),
+      down(1, 2, 'prices arrive', ['cart.removed, cart.added', 'cart.calculated']),
+      toSide(1, 'pricing fails', { dashed: true }),
+      fromSide(1, 'a change'),
       loopUp(2, 1, 'a change', ['cart.updated', 'cart.calculating']),
+      [
+        arrow(`M60 ${rowY(0) + 20} V${rowY(1) + 14} H${MAIN.x - 6}`),
+        label(72, rowY(0) + 34, 'a page opens', { size: 12 }),
+        label(72, rowY(0) + 50, 'with a saved cart', { size: 12 }),
+        label(72, rowY(0) + 70, 'cart.calculating', { code: true }),
+      ],
     ],
-    note: 'From any state, removing the last package empties the cart: cart.updated · cart.removed',
+    note: [
+      'cart.removed, cart.added: only the packages that changed since the last report, also when pricing fails',
+      'A change while calculating sends cart.updated only',
+      'Removing the last package, or clearing the cart, empties it: cart.updated, then cart.removed',
+    ],
     errors: [['cart.calculate', 'unpriced; the summary keeps its earlier totals']],
   },
   sdk: {
     title: 'SDK lifecycle',
-    desc: "starting, then ready once the campaign is in, from the tab's copy or the API (sdk.ready, once). When the campaign cannot load and the tab has no copy, the SDK stops at failed (sdk.error with action load) and never sends sdk.ready. Once ready, an action that fails sends sdk.error and the SDK stays ready.",
+    desc: 'starting, then ready (sdk.ready, once a page) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready.',
     rows: 2,
     boxes: [
       { row: 0, title: 'starting', sub: ['loading the campaign'] },
-      { row: 1, title: 'ready', sub: ['values are on the page'], tone: 'success' },
-      { col: 'side', row: 0, title: 'failed', sub: [code('campaign.load')], tone: 'failure' },
+      { row: 1, title: 'ready', sub: [code('sdk.ready')], tone: 'success' },
+      { col: 'side', row: 0, title: 'failed', sub: [code('sdk.error')], tone: 'failure' },
     ],
-    parts: () => [down(0, 1, 'the campaign is in', ['sdk.ready']), toSide(0, 'no campaign')],
-    note: 'Once ready, a failed step sends sdk.error and the SDK stays ready',
+    parts: () => [down(0, 1, 'a saved copy, or the API answers'), toSide(0, 'fails, no copy', { dashed: true })],
+    note: [
+      'A copy saved in this browser in the last 10 minutes makes it ready at once; an API failure then sends sdk.error',
+      'Once ready, a failed step sends sdk.error and the SDK stays ready',
+      'sdk.error is not replayed to late listeners: read html[data-next-error]',
+    ],
     errors: [
-      ['campaign.load', 'failed, when the tab has no copy of the campaign'],
+      ['campaign.load', 'failed without a saved copy, else stays ready · data-next-error="campaign"'],
       ['storage.write', 'works on without saving across pages'],
     ],
   },
   selectors: {
     title: 'Selector lifecycle',
-    desc: "A selector is registered and its first option picked (selector.selected), then calculating the options that have no price yet (selector.calculating), then priced (selector.calculated). When every option already has a price from the last 10 minutes it goes straight to priced (selector.calculated). Pricing that fails moves calculating to unpriced (sdk.error) and the options show package prices. Changing the picked option's quantity or a slot sends selector.selected and calculates again.",
+    desc: "A selector is registered and picks its option (selector.selected): ?forceBundleId, the one in the cart, data-next-selected, else the first. Options with no price from the last 10 minutes are calculated (selector.calculating), then priced (selector.calculated); when every price is from the last 10 minutes it goes straight to priced. Picking another option sends selector.selected. Changing the picked option's quantity or a slot sends selector.selected and calculates again; a coupon change calculates again without selector.selected. Pricing that fails sends sdk.error and moves to unpriced: each option keeps its last price, else the package price; the next change calculates again.",
     rows: 3,
     boxes: [
       { row: 0, title: 'picked', sub: [code('selector.selected')] },
       { row: 1, title: 'calculating', sub: ['prices on the way'], tone: 'active' },
       { row: 2, title: 'priced', sub: ['every option has a price'], tone: 'success' },
-      { col: 'side', row: 1, title: 'unpriced', sub: [code('selector.calculate')], tone: 'failure' },
+      { col: 'side', row: 1, title: 'unpriced', sub: [code('sdk.error')], tone: 'failure' },
     ],
-    parts: () => [
-      down(0, 1, 'options need a price', ['selector.calculating']),
-      down(1, 2, 'prices arrive', ['selector.calculated']),
-      toSide(1, 'pricing fails'),
-      loopUp(2, 1, 'quantity changes', ['selector.selected', 'selector.calculating']),
-      [
-        arrow(`M${MAIN.x + MAIN.w} ${rowY(0) + 29} H712 V${rowY(2) + 29} H${MAIN.x + MAIN.w + 6}`, { dashed: true }),
-        label(700, rowY(2) - 4, 'all prices cached', { anchor: 'end', size: 12 }),
-        label(700, rowY(2) + 13, 'selector.calculated', { anchor: 'end', code: true }),
-      ],
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      return [
+        down(0, 1, 'options need a price', ['selector.calculating']),
+        down(1, 2, 'prices arrive', ['selector.calculated']),
+        toSide(1, 'pricing fails', { dashed: true }),
+        fromSide(1, 'a change'),
+        loopUp(2, 1, 'quantity or slot', ['selector.selected', 'selector.calculating']),
+        [
+          arrow(`M${right} ${rowY(0) + 29} H712 V${rowY(2) + 46} H${right + 6}`),
+          label(700, rowY(2) - 40, 'every price is from', { anchor: 'end', size: 12 }),
+          label(700, rowY(2) - 24, 'the last 10 minutes', { anchor: 'end', size: 12 }),
+          label(700, rowY(2) - 7, 'selector.calculated', { anchor: 'end', code: true }),
+        ],
+        [
+          arrow(`M${right} ${rowY(2) + 12} H470 V${rowY(2) + 30} H${right + 6}`),
+          label(482, rowY(2) + 16, 'another option', { size: 12 }),
+          label(482, rowY(2) + 32, 'selector.selected', { code: true }),
+        ],
+      ];
+    },
+    note: [
+      'Swap mode (the default) also puts the picked option in the cart: cart.updated follows',
+      'A coupon change calculates every option again, without selector.selected',
+      'A toggle sends selector.selected when switched on and selector.deselected when switched off',
     ],
-    note: 'A toggle sends selector.selected when switched on and selector.deselected when switched off',
-    errors: [['selector.calculate', 'unpriced; the options show package prices']],
+    errors: [['selector.calculate', 'unpriced: each option keeps its last price, else the package price']],
   },
   coupons: {
     title: 'Coupon lifecycle',
-    desc: 'A code is entered and checked against the cart. When it takes money off, or the cart is still empty, it is applied (coupon.applied, then cart.updated). When it takes nothing off it is denied (coupon.denied) and not kept. A code applied to an empty cart is checked after the first price and denied then if it takes nothing off (coupon.denied, cart.updated). Removing an applied code sends coupon.removed.',
+    desc: 'A code is entered and checked against the cart. When it takes money off, or the cart is still empty, it is applied (cart.updated, then coupon.applied). When it takes nothing off it is denied (coupon.denied) and the cart does not change. A code applied to an empty cart is checked once the cart is first priced, and denied then if it takes nothing off (coupon.denied, then cart.updated as it comes off). Removing an applied code sends cart.updated, then coupon.removed. Clearing the cart takes every code off with cart.updated only.',
     rows: 3,
     boxes: [
       { row: 0, title: 'entered', sub: ['checked against the cart'] },
@@ -222,13 +244,18 @@ const LIFECYCLES = {
     ],
     parts: () => [
       down(0, 1, 'takes money off, or the cart is empty', ['cart.updated']),
-      down(1, 2, 'removed', ['cart.updated']),
-      toSide(0, 'no discount'),
+      down(1, 2, 'the code is taken off', ['cart.updated']),
+      toSide(0, 'no discount', { dashed: true }),
       [
         arrow(`M${MAIN.x + MAIN.w} ${rowY(1) + 29} H${SIDE.cx} V${rowY(0) + H + 6}`, { dashed: true }),
-        label(SIDE.cx - 12, rowY(1) - 10, 'checked after the', { anchor: 'end', size: 12 }),
-        label(SIDE.cx - 12, rowY(1) + 6, 'first price', { anchor: 'end', size: 12 }),
+        label(SIDE.cx - 12, rowY(1) - 10, 'no discount once', { anchor: 'end', size: 12 }),
+        label(SIDE.cx - 12, rowY(1) + 6, 'first priced', { anchor: 'end', size: 12 }),
       ],
+    ],
+    note: [
+      'Denied once priced, the code comes off the cart: cart.updated',
+      'Applied or taken off, a cart with packages is priced again: cart.calculating, cart.calculated',
+      'Clearing the cart takes every code off with cart.updated, without coupon.removed',
     ],
     errors: [['coupon.check', 'the code is not applied; applyCoupon resolves false']],
   },
@@ -239,7 +266,7 @@ const LIFECYCLES = {
     rowYs: [16, 196, 336, 516, 601, 766],
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
-      { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
+      { row: 1, title: 'filling', sub: ['user, address, payment'], tone: 'active' },
       { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
       { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
       { row: 5, title: 'paid', sub: [code('order.loaded'), code('order.paid')], tone: 'success' },
@@ -258,7 +285,7 @@ const LIFECYCLES = {
         down(2, 3, 'the checks pass', ['checkout.submitted', 'valid: true']),
         [
           arrow(`M${MAIN.x} ${placing + 29} H24 V${filling + 16} H${MAIN.x - 6}`, { dashed: true }),
-          label(36, placing - 56, 'refused'),
+          label(36, placing - 56, 'not created'),
           label(36, placing - 36, 'order.failed', { code: true }),
         ],
         [
@@ -277,7 +304,7 @@ const LIFECYCLES = {
         [
           arrow(`M${MAIN.cx + 12} ${fork} H${SIDE.x - 6}`),
           label((MAIN.cx + 12 + SIDE.x) / 2, fork - 8, 'payment_complete_url', { anchor: 'middle', code: true }),
-          label((MAIN.cx + 12 + SIDE.x) / 2, fork + 18, 'redirected', { anchor: 'middle', size: 12 }),
+          label((MAIN.cx + 12 + SIDE.x) / 2, fork + 18, 'redirected to it', { anchor: 'middle', size: 12 }),
         ],
         [
           arrow(`M${SIDE.cx} ${gateway + H} V${rowY(5) + 29} H${right + 6}`),
@@ -285,56 +312,60 @@ const LIFECYCLES = {
           label((right + SIDE.cx) / 2, rowY(5) + 21, 'to the next page', { anchor: 'middle', size: 12 }),
         ],
         [
-          arrow(`M${SIDE.cx} ${gateway} V${filling + 29} H${right + 6}`, { dashed: true }),
-          label((right + SIDE.cx) / 2, filling + 23, 'payment fails', { anchor: 'middle', size: 12 }),
-          label((right + SIDE.cx) / 2, filling + 45, 'order.failed', { anchor: 'middle', code: true }),
+          arrow(`M${SIDE.cx} ${gateway} V${rowY(0) + 29} H${right + 6}`, { dashed: true }),
+          label((right + SIDE.cx) / 2, rowY(0) + 5, 'payment fails:', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.cx) / 2, rowY(0) + 21, 'redirected back', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.cx) / 2, rowY(0) + 45, 'order.failed', { anchor: 'middle', code: true }),
         ],
       ];
     },
     note: [
-      'The next page is next-success-url, or the order status page: order.loaded, then order.paid once per order',
+      'The next page is next-success-url, where the SDK sends order.loaded, then order.paid once per order',
       'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
+      'checkout.started comes on every checkout page load with a cart: each step, a reload, a return',
+      'A multi-step form (data-next-checkout-step) checks each step on submit, then opens the next step',
     ],
     errors: [
-      ['user.save', 'no Open Cart yet; tried again on the next field'],
-      ['address.rules', 'the campaign countries and simpler checks'],
+      ['user.save', 'no Open Cart yet; tried again on the next field change'],
+      ['address.rules', 'falls back to the campaign countries and simpler checks'],
       ['address.autocomplete', 'no address suggestions'],
-      ['order.create', 'refused: back to filling, with order.failed'],
+      ['order.create', 'not created: back to filling, with order.failed'],
+      ['order.load', 'on the next page: no order.loaded or order.paid'],
     ],
   },
   'checkout/user': {
     title: 'User lifecycle',
-    desc: 'Lead capture. There is no user until the shopper has entered what data-next-lead asks for: by default a first and last name and an email. Then the checkout saves them with an Open Cart and sends user.created, once per tab. If saving fails it sends sdk.error and tries again when the shopper leaves the next field. After that, a change that is still valid sends user.updated; the Open Cart keeps the first details. With data-next-lead off it never saves.',
+    desc: 'Lead capture. There is no user until the shopper has entered what data-next-lead asks for, checked each time a field changes: by default a first and last name of two letters or more and a valid email. Then the checkout saves them with an Open Cart and sends user.created, once per tab until an order is paid. If saving fails it sends sdk.error and tries again on the next field change. After that, a change that is still valid sends user.updated and an invalid one sends nothing; the Open Cart keeps the first details, the order takes the latest. With data-next-lead off it never saves.',
     rows: 3,
     boxes: [
-      { row: 0, title: 'no user yet', sub: ['waiting for data-next-lead'] },
-      { row: 1, title: 'saving', sub: ['the Open Cart is created'], tone: 'waiting' },
+      { row: 0, title: 'no user yet', sub: ['details not complete'] },
+      { row: 1, title: 'saving', sub: ['creating the Open Cart'], tone: 'waiting' },
       { row: 2, title: 'created', sub: [code('user.created')], tone: 'success' },
-      { col: 'side', row: 1, title: 'not saved', sub: [code('user.save')], tone: 'failure' },
+      { col: 'side', row: 1, title: 'not saved', sub: [code('sdk.error')], tone: 'failure' },
     ],
     parts: () => {
       const right = MAIN.x + MAIN.w;
       return [
-        down(0, 1, 'the fields data-next-lead needs'),
+        down(0, 1, 'a name and a valid email are in'),
         down(1, 2, 'saved'),
-        toSide(1, 'save fails'),
-        [
-          arrow(`M${SIDE.cx} ${rowY(1)} V${rowY(0) + 29} H${right + 6}`, { dashed: true }),
-          label((right + SIDE.cx) / 2 + 10, rowY(0) + 21, 'the next field', { anchor: 'middle', size: 12 }),
-        ],
+        toSide(1, 'save fails', { dashed: true }),
+        fromSide(1, 'next change'),
         [
           arrow(`M${right} ${rowY(2) + 18} H470 V${rowY(2) + 42} H${right + 6}`),
-          label(482, rowY(2) + 24, 'details change', { size: 12 }),
+          label(482, rowY(2) + 24, 'changes, still valid', { size: 12 }),
           label(482, rowY(2) + 41, 'user.updated', { code: true }),
         ],
       ];
     },
-    note: 'Once per tab, kept across pages · data-next-lead="off" never saves',
-    errors: [['user.save', 'not saved yet; tried again on the next field']],
+    note: [
+      'data-next-lead="phone": a phone instead of the email · "email+phone": both · "off": never saves',
+      'Once per tab until an order is paid · the Open Cart keeps the first details',
+    ],
+    errors: [['user.save', 'not saved; tried again on the next field change']],
   },
   'checkout/address': {
     title: 'Address lifecycle',
-    desc: 'For each type, shipping and billing. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once. A later change that is still valid sends address.updated; a change that makes it invalid sends nothing, and the Checkout keeps the last valid address. A billing address counts only while billing is separate from shipping.',
+    desc: 'For each type, shipping and billing, checked when a field changes once checkout.started has fired. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once per type per tab until an order is paid. A later valid change, the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept. Billing counts only while separate from shipping.',
     rows: 2,
     boxes: [
       { row: 0, title: 'incomplete', sub: ['a field is missing or wrong'] },
@@ -351,66 +382,94 @@ const LIFECYCLES = {
         ],
       ];
     },
-    note: 'Per type · an invalid change sends nothing and the last valid address is kept · billing only while separate',
-    errors: [['address.rules', 'the campaign countries and simpler checks']],
+    note: [
+      'Per type, once per tab until an order is paid · billing only while separate from shipping',
+      'An invalid change sends nothing; the last valid address is kept',
+    ],
+    errors: [
+      ['address.rules', 'falls back to the campaign countries and simpler checks'],
+      ['address.autocomplete', 'no address suggestions'],
+    ],
   },
   orders: {
     title: 'Order lifecycle',
-    desc: 'order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, then order.paid the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without order.paid, and the cart is kept.',
+    desc: 'The checkout creates the order (order.created). Without a payment_complete_url it is paid at once and the shopper is redirected to the next page: order.loaded, then order.paid the first time. With one, the shopper is redirected to the gateway: paid, the gateway redirects to the next page (order.loaded, order.paid) and the cart kept for it is emptied; failed, back to the checkout with the cart kept (order.failed, stage payment). Each later page that opens the order sends order.loaded. A refused order is never created: order.failed with stage order.',
     rows: 3,
     boxes: [
       { row: 0, title: 'created', sub: [code('order.created')] },
-      { row: 1, title: 'at the gateway', sub: ['the shopper pays'], tone: 'waiting' },
-      { row: 2, title: 'loaded', sub: [code('order.loaded'), code('order.paid')], tone: 'success' },
+      { row: 1, title: 'awaiting payment', sub: ['paying at the gateway'], tone: 'waiting' },
+      { row: 2, title: 'paid', sub: [code('order.loaded'), code('order.paid')], tone: 'success' },
       {
         col: 'side',
-        row: 2,
+        row: 1,
         title: 'payment failed',
-        sub: [code('order.failed'), code("stage: 'payment'")],
+        sub: [code('order.failed'), 'the cart is kept'],
         tone: 'failure',
       },
     ],
-    parts: () => [
-      down(0, 1, 'payment_complete_url'),
-      down(1, 2, 'paid: the order page'),
-      [label(MAIN.cx + 14, rowY(1) + 136, 'empties the gateway cart', { size: 12 })],
-      [
-        arrow(`M${MAIN.x} ${rowY(0) + 29} H120 V${rowY(2) + 29} H${MAIN.x - 6}`),
-        label(108, rowY(1) + 20, 'paid at once:', { anchor: 'end' }),
-        label(108, rowY(1) + 38, 'the next page', { anchor: 'end' }),
-      ],
-      [
-        arrow(`M${MAIN.x + MAIN.w} ${rowY(1) + 29} H${SIDE.cx} V${rowY(2) - 6}`),
-        label(SIDE.cx + 12, rowY(1) + 80, 'payment fails', { size: 12 }),
-      ],
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      return [
+        [
+          arrow(`M${MAIN.cx} ${rowY(0) + H} V${rowY(1) - 6}`),
+          mixed(MAIN.cx + 14, rowY(0) + 112, [
+            ['has a ', false],
+            ['payment_complete_url', true],
+          ]),
+          label(MAIN.cx + 14, rowY(0) + 130, 'redirected to the gateway'),
+        ],
+        [
+          arrow(`M${MAIN.cx} ${rowY(1) + H} V${rowY(2) - 6}`),
+          label(MAIN.cx + 14, rowY(1) + 112, 'paid: redirected to the next page'),
+          label(MAIN.cx + 14, rowY(1) + 130, 'the cart kept for it is emptied', { size: 12 }),
+        ],
+        [
+          arrow(`M${MAIN.x} ${rowY(0) + 29} H120 V${rowY(2) + 29} H${MAIN.x - 6}`),
+          label(108, rowY(1) + 20, 'paid at once:', { anchor: 'end' }),
+          label(108, rowY(1) + 38, 'redirected to', { anchor: 'end' }),
+          label(108, rowY(1) + 56, 'the next page', { anchor: 'end' }),
+        ],
+        toSide(1, 'payment fails', { dashed: true }),
+        [
+          arrow(`M${right} ${rowY(2) + 18} H470 V${rowY(2) + 46} H${right + 6}`),
+          label(482, rowY(2) + 26, 'each later page', { size: 12 }),
+          label(482, rowY(2) + 43, 'order.loaded', { code: true }),
+        ],
+      ];
+    },
+    note: [
+      'order.paid comes once per order in this browser · a page with ref_id or order_ref_id loads the order',
+      'A refused order is never created: order.failed with stage order, on the checkout',
     ],
-    note: 'order.paid comes once per order, when a paid order first loads · a failed gateway payment is not an sdk.error',
-    errors: [['order.load', 'the page has no order values']],
+    errors: [['order.load', 'the page has no order values; offers stay hidden']],
   },
   upsells: {
     title: 'Upsell lifecycle',
-    desc: 'An offer is shown (upsell.viewed). Accepting it adds it to the order: upsell.accepted with the updated order, then the next page. Skipping it sends upsell.skipped and moves on. When adding the offer fails, such as a decline, upsell.failed is sent and the shopper can accept again. An offer already accepted on that page is not charged again.',
+    desc: 'An offer is shown (upsell.viewed, once a page). Accepting posts it to the order: upsell.accepted with the updated order, then the shopper is redirected to the next page, which sends order.loaded with the offer in upsells. Skipping sends upsell.skipped and moves on. When adding fails, such as a decline, sdk.error then upsell.failed are sent and the shopper is redirected on after a second. An offer already accepted on that page sends nothing and moves on. If the order cannot load or take upsells, the offer stays hidden and upsell.viewed is not sent.',
     rows: 3,
     boxes: [
       { row: 0, title: 'shown', sub: [code('upsell.viewed')] },
       { row: 1, title: 'adding', sub: ['the offer is posted'], tone: 'active' },
       { row: 2, title: 'accepted', sub: [code('upsell.accepted')], tone: 'success' },
       { col: 'side', row: 0, title: 'skipped', sub: [code('upsell.skipped')] },
-      { col: 'side', row: 1, title: 'failed', sub: [code('upsell.add'), code('upsell.failed')], tone: 'failure' },
+      { col: 'side', row: 1, title: 'failed', sub: [code('sdk.error'), code('upsell.failed')], tone: 'failure' },
     ],
     parts: () => [
       down(0, 1, 'accept'),
       down(1, 2, 'added to the order'),
       toSide(0, 'skip'),
-      toSide(1, 'refused'),
-      fromSide(1, 'accept again'),
+      toSide(1, 'adding fails', { dashed: true }),
     ],
-    note: 'An offer already accepted on that page is not charged again',
-    errors: [['upsell.add', 'failed, with upsell.failed; the shopper can accept again']],
+    note: [
+      'Accepted, skipped or failed, the shopper is redirected to the next page (failed: after a second)',
+      'An offer already accepted on that page sends nothing and moves on',
+      'The next page sends order.loaded, with an accepted offer in upsells once',
+    ],
+    errors: [['upsell.add', 'failed, with upsell.failed; the shopper moves on']],
   },
   promotions: {
     title: 'Promotion lifecycle',
-    desc: 'The exit-intent popup waits until the mouse leaves the page (or, on a phone with mobileScrollTrigger, a scroll back up). It opens (promotion.viewed). A click on its image or a template button sends promotion.clicked and closes it. Esc or the overlay sends promotion.closed with reason dismissed; the close button sends it with reason closed. It can open again up to maxTriggers times in the session.',
+    desc: 'Starts when the page calls next.exitIntent({ image | template }). The popup waits: on a desktop until the mouse leaves through the top of the window; on a touch screen, with mobileScrollTrigger (or disableOnMobile false), until the shopper scrolls past 30% of a screen and back up more than 100px. It opens (promotion.viewed). A click on its image or a data-exit-intent-action button sends promotion.clicked and closes it; apply-coupon applies its code first (coupon.applied or coupon.denied). Esc or the overlay sends promotion.closed with reason dismissed; the × of showCloseButton sends it with reason closed. It waits again while it has opened fewer than maxTriggers times this tab session (default 1).',
     rows: 3,
     boxes: [
       { row: 0, title: 'waiting', sub: ['for the shopper to leave'] },
@@ -418,12 +477,24 @@ const LIFECYCLES = {
       { row: 2, title: 'clicked', sub: [code('promotion.clicked')], tone: 'success' },
       { col: 'side', row: 1, title: 'closed', sub: [code('promotion.closed')] },
     ],
-    parts: () => [
-      down(0, 1, 'the mouse leaves the page'),
-      down(1, 2, 'image or button clicked'),
-      toSide(1, 'Esc or close'),
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      return [
+        down(0, 1, 'mouse out the top, or scroll back up'),
+        down(1, 2, 'image or button clicked'),
+        toSide(1, 'Esc, overlay, ×'),
+        loopUp(2, 0, 'under maxTriggers'),
+        [
+          arrow(`M${SIDE.cx} ${rowY(1)} V${rowY(0) + 29} H${right + 6}`, { dashed: true }),
+          label((right + SIDE.cx) / 2, rowY(0) + 21, 'under maxTriggers', { anchor: 'middle', size: 12 }),
+        ],
+      ];
+    },
+    note: [
+      'Starts when the page calls next.exitIntent({ image | template }) · opens up to maxTriggers times a tab session (1)',
+      'apply-coupon applies its code before promotion.clicked: coupon.applied or coupon.denied first',
+      'reason: dismissed (Esc, overlay) or closed (the × of showCloseButton)',
     ],
-    note: 'It can open again, up to maxTriggers times a session · reason: dismissed (Esc, overlay) or closed',
   },
 };
 

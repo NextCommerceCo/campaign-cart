@@ -111,11 +111,12 @@ number too, set `data-next-lead` on the form:
 | `email` (default) | a valid email                                      |
 | `phone`           | a valid phone number (read by the address service) |
 | `email+phone`     | both                                               |
-| `off`             | never by itself                                    |
+| `off`             | never                                              |
 
 `email phone`, `Email + Phone` or `phone,email` read the same as `email+phone`. A value the checkout
 cannot read logs a warning and uses `email`. _0.4.x:_ `data-trigger-on` (`emailEntry`, `phoneEntry`,
-`emailAndPhone`, `manual`, `formStart`) and `data-auto-create="false"` still work.
+`emailAndPhone`, `manual`, `formStart`) and `data-auto-create="false"` still work; `formStart` saves
+at the first field the shopper fills, without waiting for a name or an email.
 
 ## Upsell and receipt
 

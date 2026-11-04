@@ -308,8 +308,8 @@ export interface AnalyticsTrace {
 
 export interface EventMap {
   /**
-   * Once, when the campaign and the page's values are in. `ready` is the same event, and it
-   * reaches listeners added after it fired.
+   * Once a page, when the campaign is in: at once from a copy saved in the last 10 minutes, else
+   * when the API answers. `ready` is the same event, and it reaches listeners added after it fired.
    * @group SDK
    */
   'sdk.ready': {
@@ -370,8 +370,9 @@ export interface EventMap {
    */
   'cart.calculated': Cart;
   /**
-   * Packages the page added since the last price, net, just before `cart.calculated`. A `+ + −`
-   * within one price run sends one event for the net change; `+` then `−` sends none.
+   * Packages the page added since the last price, net, just before `cart.calculated`, or after
+   * `sdk.error` when pricing fails. A `+ + −` within one price run sends one event for the net
+   * change; `+` then `−` sends none.
    * @group Carts
    */
   'cart.added': Cart & {
@@ -402,14 +403,16 @@ export interface EventMap {
    */
   'coupon.denied': { code: string };
   /**
-   * Once, when the checkout form is bound with a cart.
+   * Once a page, when the checkout form is bound with a cart: each step, a reload, a return from
+   * a payment gateway. None when the cart is empty then.
    * @group Checkout
    */
   'checkout.started': Checkout;
   /**
-   * Once per tab, when the store saves the shopper with a new Open Cart: a valid email and a
-   * first and last name are in, checked when the shopper leaves a field. The store keeps the user
-   * for marketing, as `accepts_marketing` allows, and the cart for `cart.abandoned`.
+   * Once per tab until an order is paid, when the store saves the shopper with a new Open Cart:
+   * what `data-next-lead` asks for is in (by default a first and last name and a valid email),
+   * checked when a field changes. The store keeps the user for marketing, as `accepts_marketing`
+   * allows, and the cart for `cart.abandoned`.
    * @group Checkout
    */
   'user.created': User;
@@ -420,8 +423,9 @@ export interface EventMap {
    */
   'user.updated': User;
   /**
-   * Once per `type`, when that address is valid: every field its country requires is filled and
-   * valid, and so is each optional one filled. Checked when the shopper leaves a field.
+   * Once per `type` per tab until an order is paid, when that address is valid: every field its
+   * country requires is filled and valid, and so is each optional one filled. Checked when a field
+   * changes.
    * @group Checkout
    */
   'address.entered': Address & {
@@ -455,7 +459,8 @@ export interface EventMap {
     errors: Record<string, CheckoutError>;
   };
   /**
-   * The order was created.
+   * The order was created. For a payment at a gateway the order has only `ref_id` and
+   * `payment_complete_url`; its details come with `order.loaded` once it is paid.
    * @group Orders
    */
   'order.created': { order: Order };

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 342" width="720" height="342" role="img" aria-labelledby="sdk-lifecycle-title sdk-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 382" width="720" height="382" role="img" aria-labelledby="sdk-lifecycle-title sdk-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="sdk-lifecycle-title">SDK lifecycle</title>
-  <desc id="sdk-lifecycle-desc">starting, then ready once the campaign is in, from the tab's copy or the API (sdk.ready, once). When the campaign cannot load and the tab has no copy, the SDK stops at failed (sdk.error with action load) and never sends sdk.ready. Once ready, an action that fails sends sdk.error and the SDK stays ready.</desc>
+  <desc id="sdk-lifecycle-desc">starting, then ready (sdk.ready, once a page) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready.</desc>
   <defs>
     <marker id="sdk-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -8,10 +8,9 @@
   </defs>
   <g>
     <path d="M330 74 V190" marker-end="url(#sdk-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="123.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the campaign is in</text>
-    <text x="344" y="143.5" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.ready</text>
-    <path d="M440 34 H534" marker-end="url(#sdk-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="490" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">no campaign</text>
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">a saved copy, or the API answers</text>
+    <path d="M440 34 H534" marker-end="url(#sdk-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="490" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">fails, no copy</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
@@ -19,12 +18,14 @@
     <text x="330" y="61" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">loading the campaign</text>
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">ready</text>
-    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">values are on the page</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.ready</text>
     <rect x="540" y="16" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
-    <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">campaign.load</text>
+    <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
   </g>
-  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Once ready, a failed step sends sdk.error and the SDK stays ready</tspan></text>
-  <text x="360" y="308" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · campaign.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed, when the tab has no copy of the campaign</tspan></text>
-  <text x="360" y="328" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · storage.write</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → works on without saving across pages</tspan></text>
+  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A copy saved in this browser in the last 10 minutes makes it ready at once; an API failure then sends sdk.error</tspan></text>
+  <text x="360" y="308" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Once ready, a failed step sends sdk.error and the SDK stays ready</tspan></text>
+  <text x="360" y="328" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">sdk.error is not replayed to late listeners: read html[data-next-error]</tspan></text>
+  <text x="360" y="348" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · campaign.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed without a saved copy, else stays ready · data-next-error="campaign"</tspan></text>
+  <text x="360" y="368" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · storage.write</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → works on without saving across pages</tspan></text>
 </svg>

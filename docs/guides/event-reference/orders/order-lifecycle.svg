@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 517" width="720" height="517" role="img" aria-labelledby="orders-lifecycle-title orders-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 537" width="720" height="537" role="img" aria-labelledby="orders-lifecycle-title orders-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="orders-lifecycle-title">Order lifecycle</title>
-  <desc id="orders-lifecycle-desc">order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, then order.paid the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without order.paid, and the cart is kept.</desc>
+  <desc id="orders-lifecycle-desc">The checkout creates the order (order.created). Without a payment_complete_url it is paid at once and the shopper is redirected to the next page: order.loaded, then order.paid the first time. With one, the shopper is redirected to the gateway: paid, the gateway redirects to the next page (order.loaded, order.paid) and the cart kept for it is emptied; failed, back to the checkout with the cart kept (order.failed, stage payment). Each later page that opens the order sends order.loaded. A refused order is never created: order.failed with stage order.</desc>
   <defs>
     <marker id="orders-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -8,32 +8,38 @@
   </defs>
   <g>
     <path d="M330 74 V190" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">payment_complete_url</text>
+    <text x="344" y="128" style="fill: var(--clean-fg, #111827); font-size: 13px">has a <tspan style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment_complete_url</tspan></text>
+    <text x="344" y="146" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">redirected to the gateway</text>
     <path d="M330 254 V370" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">paid: the order page</text>
-    <text x="344" y="332" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">empties the gateway cart</text>
+    <text x="344" y="308" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">paid: redirected to the next page</text>
+    <text x="344" y="326" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">the cart kept for it is emptied</text>
     <path d="M220 45 H120 V405 H214" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="108" y="216" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">paid at once:</text>
-    <text x="108" y="234" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">the next page</text>
-    <path d="M440 225 H620 V370" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="632" y="276" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">payment fails</text>
+    <text x="108" y="234" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">redirected to</text>
+    <text x="108" y="252" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">the next page</text>
+    <path d="M440 214 H534" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">payment fails</text>
+    <path d="M440 394 H470 V422 H446" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="402" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">each later page</text>
+    <text x="482" y="419" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
     <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">created</text>
     <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.created</text>
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
-    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">at the gateway</text>
-    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the shopper pays</text>
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">awaiting payment</text>
+    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">paying at the gateway</text>
     <rect x="220" y="376" width="220" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
-    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">loaded</text>
+    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">paid</text>
     <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
     <text x="330" y="436" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
-    <rect x="540" y="376" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
-    <text x="620" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">payment failed</text>
-    <text x="620" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.failed</text>
-    <text x="620" y="436" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">stage: 'payment'</text>
+    <rect x="540" y="196" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">payment failed</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.failed</text>
+    <text x="620" y="256" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the cart is kept</text>
   </g>
-  <text x="360" y="483" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">order.paid comes once per order, when a paid order first loads · a failed gateway payment is not an sdk.error</tspan></text>
-  <text x="360" y="503" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · order.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the page has no order values</tspan></text>
+  <text x="360" y="483" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">order.paid comes once per order in this browser · a page with ref_id or order_ref_id loads the order</tspan></text>
+  <text x="360" y="503" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A refused order is never created: order.failed with stage order, on the checkout</tspan></text>
+  <text x="360" y="523" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · order.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the page has no order values; offers stay hidden</tspan></text>
 </svg>

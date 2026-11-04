@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 482" width="720" height="482" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 522" width="720" height="522" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="promotions-lifecycle-title">Promotion lifecycle</title>
-  <desc id="promotions-lifecycle-desc">The exit-intent popup waits until the mouse leaves the page (or, on a phone with mobileScrollTrigger, a scroll back up). It opens (promotion.viewed). A click on its image or a template button sends promotion.clicked and closes it. Esc or the overlay sends promotion.closed with reason dismissed; the close button sends it with reason closed. It can open again up to maxTriggers times in the session.</desc>
+  <desc id="promotions-lifecycle-desc">Starts when the page calls next.exitIntent({ image | template }). The popup waits: on a desktop until the mouse leaves through the top of the window; on a touch screen, with mobileScrollTrigger (or disableOnMobile false), until the shopper scrolls past 30% of a screen and back up more than 100px. It opens (promotion.viewed). A click on its image or a data-exit-intent-action button sends promotion.clicked and closes it; apply-coupon applies its code first (coupon.applied or coupon.denied). Esc or the overlay sends promotion.closed with reason dismissed; the × of showCloseButton sends it with reason closed. It waits again while it has opened fewer than maxTriggers times this tab session (default 1).</desc>
   <defs>
     <marker id="promotions-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -8,11 +8,15 @@
   </defs>
   <g>
     <path d="M330 74 V190" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the mouse leaves the page</text>
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">mouse out the top, or scroll back up</text>
     <path d="M330 254 V370" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">image or button clicked</text>
     <path d="M440 214 H534" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">Esc or close</text>
+    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">Esc, overlay, ×</text>
+    <path d="M220 405 H170 V45 H214" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="158" y="225" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">under maxTriggers</text>
+    <path d="M620 196 V45 H446" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="530" y="37" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">under maxTriggers</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
@@ -28,5 +32,7 @@
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">closed</text>
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.closed</text>
   </g>
-  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">It can open again, up to maxTriggers times a session · reason: dismissed (Esc, overlay) or closed</tspan></text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Starts when the page calls next.exitIntent({ image | template }) · opens up to maxTriggers times a tab session (1)</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">apply-coupon applies its code before promotion.clicked: coupon.applied or coupon.denied first</tspan></text>
+  <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">reason: dismissed (Esc, overlay) or closed (the × of showCloseButton)</tspan></text>
 </svg>

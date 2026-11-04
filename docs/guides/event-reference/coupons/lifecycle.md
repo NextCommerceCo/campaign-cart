@@ -14,12 +14,13 @@ group: 'Event Reference/Coupons'
 | `denied`  | The code takes nothing off; it is not kept |
 | `removed` | The code was taken off the cart            |
 
-| From      | What happens                                                        | To        | Events                                                    |
-| --------- | ------------------------------------------------------------------- | --------- | --------------------------------------------------------- |
-| `entered` | The code takes money off, or the cart is still empty                | `applied` | `cart.updated`, `coupon.applied`, then the cart is priced |
-| `entered` | The code takes nothing off                                          | `denied`  | `coupon.denied`                                           |
-| `applied` | A code applied to an empty cart takes nothing off once it is priced | `denied`  | `coupon.denied`, `cart.updated`                           |
-| `applied` | The code is removed                                                 | `removed` | `cart.updated`, `coupon.removed`                          |
+| From      | What happens                                                                    | To        | Events, in order                                                                         |
+| --------- | ------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------- |
+| `entered` | The code takes money off, or the cart is still empty                            | `applied` | `cart.updated`, `coupon.applied`; a cart with packages is then priced                    |
+| `entered` | The code takes nothing off                                                      | `denied`  | `coupon.denied`; the cart does not change                                                |
+| `applied` | A code applied to an empty cart takes nothing off once the cart is first priced | `denied`  | `coupon.denied`, then `cart.updated` as the code comes off, and the cart is priced again |
+| `applied` | The code is taken off                                                           | `removed` | `cart.updated`, `coupon.removed`; a cart with packages is then priced                    |
+| `applied` | The cart is cleared                                                             | `removed` | `cart.updated` only; no `coupon.removed`                                                 |
 
 A coupon event carries the `code`. What it takes off is in the cart's `discounts`, with `source`
 `coupon` and the same `code`, on the next `cart.calculated`, and follows the cart as it changes.

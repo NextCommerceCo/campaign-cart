@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="carts-lifecycle-title carts-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 542" width="720" height="542" role="img" aria-labelledby="carts-lifecycle-title carts-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="carts-lifecycle-title">Cart lifecycle</title>
-  <desc id="carts-lifecycle-desc">empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed, cart.added, cart.calculated). Pricing that fails moves calculating to unpriced (sdk.error); the next change goes back to calculating. A change to a priced cart goes back to calculating (cart.updated, cart.calculating). Removing the last package empties the cart from any state (cart.updated, cart.removed).</desc>
+  <desc id="carts-lifecycle-desc">empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed and cart.added for the packages that changed, then cart.calculated). A page that opens with a saved cart starts at calculating (cart.calculating only). Pricing that fails sends sdk.error and moves to unpriced; the next change prices again. A change sends cart.updated, then cart.calculating; while calculating, cart.updated only. Removing the last package, or clearing the cart, empties it (cart.updated, then cart.removed).</desc>
   <defs>
     <marker id="carts-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -13,16 +13,20 @@
     <text x="344" y="152" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculating</text>
     <path d="M330 254 V370" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="295" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">prices arrive</text>
-    <text x="344" y="315" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.removed · cart.added</text>
+    <text x="344" y="315" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.removed, cart.added</text>
     <text x="344" y="332" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculated</text>
-    <path d="M440 214 H534" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M440 214 H534" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">pricing fails</text>
     <path d="M540 238 H446" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
-    <text x="490" y="257" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">next change</text>
+    <text x="490" y="257" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a change</text>
     <path d="M220 405 H170 V225 H214" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="158" y="298" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">a change</text>
     <text x="158" y="318" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.updated</text>
     <text x="158" y="335" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculating</text>
+    <path d="M60 36 V210 H214" marker-end="url(#carts-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="72" y="50" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">a page opens</text>
+    <text x="72" y="66" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">with a saved cart</text>
+    <text x="72" y="86" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculating</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
@@ -36,8 +40,10 @@
     <text x="330" y="421" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the cart carries prices</text>
     <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">unpriced</text>
-    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculate</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
   </g>
-  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">From any state, removing the last package empties the cart: cart.updated · cart.removed</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · cart.calculate</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unpriced; the summary keeps its earlier totals</tspan></text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">cart.removed, cart.added: only the packages that changed since the last report, also when pricing fails</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A change while calculating sends cart.updated only</tspan></text>
+  <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Removing the last package, or clearing the cart, empties it: cart.updated, then cart.removed</tspan></text>
+  <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · cart.calculate</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unpriced; the summary keeps its earlier totals</tspan></text>
 </svg>
