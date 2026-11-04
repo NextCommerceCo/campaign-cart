@@ -105,12 +105,13 @@ export function createSelectors(ctx: Context, cart: CartActions) {
   };
 
   const coupons = () => [...ctx.getState().cart.coupons].sort().join();
-  let quotedCoupons = coupons();
+  const quotedCoupons = new Map<string, string>();
 
   const quote = async (id: string): Promise<void> => {
     const selector = get(id);
     const currency = ctx.getState().campaign?.currency;
     if (!selector || !currency) return;
+    quotedCoupons.set(id, coupons());
     const own = new Set(selector.cards.flatMap((c) => c.vouchers));
     const extra = ctx.getState().cart.coupons.filter((c) => !own.has(c));
     const upsell = selector.mode === 'offer';
@@ -164,9 +165,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
   };
 
   ctx.on('cart.updated', () => {
-    if (coupons() === quotedCoupons) return;
-    quotedCoupons = coupons();
-    for (const id of Object.keys(ctx.getState().selectors)) void quote(id);
+    for (const [id, quoted] of quotedCoupons) if (quoted !== coupons()) void quote(id);
   });
 
   return {

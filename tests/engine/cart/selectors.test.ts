@@ -277,6 +277,36 @@ describe('selectors', () => {
     expect(second[1]![1].lines[0]).toHaveProperty('price');
   });
 
+  it.each([
+    ['finds its pick in the saved cart', 'main'],
+    ['puts its pick in the saved cart', 'side'],
+  ])(
+    'prices the options once when a swap selector %s with a coupon, and again only when a coupon changes',
+    async (_, id) => {
+      const session = new MemoryStorage();
+      const first = makeEngine({ session }).engine;
+      await first.start();
+      await first.selectors.register('main', CARDS, 'swap', 'two');
+      expect(await first.cart.applyCoupon('SAVE10')).toBe(true);
+
+      const { engine } = makeEngine({ session });
+      const seen: string[] = [];
+      engine.on('*', (e) => {
+        if (e.name.startsWith('selector.')) seen.push(e.name);
+      });
+      await engine.start();
+      expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+      await engine.selectors.register(id, CARDS, 'swap');
+      await flush();
+      await engine.cart.addItem(3);
+      await flush();
+      expect(seen.splice(0)).toEqual(['selector.selected', 'selector.calculating', 'selector.calculated']);
+      await engine.cart.removeCoupon('SAVE10');
+      await flush();
+      expect(seen).toEqual(['selector.calculating', 'selector.calculated']);
+    },
+  );
+
   it('names the picked option and its products, priced once the option has a price', async () => {
     const { engine } = makeEngine({ fetch: fakeApi().fetch });
     await engine.start();
