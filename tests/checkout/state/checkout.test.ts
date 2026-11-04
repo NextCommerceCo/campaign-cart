@@ -317,6 +317,83 @@ describe('checkout', () => {
     expect(engine.cart.currentCheckout().billing_address).toBeUndefined();
   });
 
+  it('reports each address once per tab: its changes on later pages, and again after a paid order', async () => {
+    const session = new MemoryStorage();
+    const page = async () => {
+      const made = await setup({ session });
+      const seen: string[] = [];
+      made.engine.on('*', (e) => e.name.startsWith('address.') && seen.push(e.name));
+      await made.engine.cart.addItem(1);
+      made.checkout.begin();
+      await made.checkout.loadCountries();
+      return { ...made, seen };
+    };
+    const first = await page();
+    first.fill(SHIPPING);
+    await first.checkout.leave('city');
+    const next = await page();
+    await next.checkout.leave('city');
+    expect(next.seen).toEqual([]);
+    next.fill({ city: 'Dallas' });
+    await next.checkout.leave('city');
+    expect(next.seen).toEqual(['address.updated']);
+    await next.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    const after = await page();
+    after.fill(SHIPPING);
+    await after.checkout.leave('city');
+    expect([first.seen, after.seen]).toEqual([['address.entered'], ['address.entered']]);
+  });
+
+  it('reports a phone change as an address update once the number is valid, for either address', async () => {
+    const { engine, checkout, fill } = await setup();
+    const updated: unknown[] = [];
+    engine.on('address.updated', (e) => updated.push(e.data));
+    await engine.cart.addItem(1);
+    checkout.begin();
+    fill(SHIPPING);
+    await flush();
+    checkout.setField('phone_number', '(415) 555-267');
+    await checkout.leave('phone_number');
+    expect(updated).toEqual([]);
+    checkout.setField('phone_number', '(415) 555-2671');
+    await checkout.leave('phone_number');
+    checkout.setSameAsShipping(false);
+    const billing = {
+      first_name: 'Ann',
+      last_name: 'Lee',
+      line1: '2 Side St',
+      city: 'Reno',
+      state: 'NY',
+      postcode: '89501',
+    };
+    fill(Object.fromEntries(Object.entries(billing).map(([k, v]) => [`billing_${k}`, v])));
+    await checkout.leave('billing_postcode');
+    checkout.setField('billing_phone_number', '4155552671');
+    await checkout.leave('billing_phone_number');
+    const { email: _, ...address } = SHIPPING;
+    expect(updated).toEqual([
+      { ...address, phone: '+14155552671', type: 'shipping' },
+      { ...billing, country: 'US', phone: '+14155552671', type: 'billing' },
+    ]);
+  });
+
+  it('reads the phone against a new country before reporting the address', async () => {
+    const { engine, checkout, fill } = await setup();
+    const updated: unknown[] = [];
+    engine.on('address.updated', (e) => updated.push(e.data));
+    await engine.cart.addItem(1);
+    checkout.begin();
+    fill({ ...SHIPPING, phone_number: '+1 415 555 2671' });
+    await checkout.leave('phone_number');
+    checkout.setField('country', 'TH');
+    await flush();
+    await checkout.leave('line1');
+    const { first_name, last_name, line1, city } = SHIPPING;
+    expect(updated).toEqual([
+      { first_name, last_name, line1, city, country: 'TH', phone: '+14155552671', type: 'shipping' },
+    ]);
+  });
+
   it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
     const answers = [json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400)];
     const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });

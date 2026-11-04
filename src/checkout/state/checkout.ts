@@ -4,17 +4,8 @@ import type { Context } from '../../engine/engine';
 import { nextUrl } from '../../engine/params';
 import { EXPRESS_METHODS, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
-import {
-  ADDRESS,
-  addressValid,
-  fieldError,
-  formErrors,
-  type RemoteCheck,
-  type RulesApi,
-  type Scope,
-  validEmail,
-} from './rules';
-import type { AddressType, User } from '../../engine/events';
+import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
+import type { User } from '../../engine/events';
 import type { CheckoutError, OpenCart, Order } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
@@ -31,6 +22,8 @@ const emptyCheckout = (): CheckoutState => ({
   countries: [],
   rules: {},
   prospectSaved: false,
+  shippingAddress: undefined,
+  billingAddress: undefined,
 });
 
 const countryOf = (fields: Record<string, string>, name: string) =>
@@ -109,7 +102,6 @@ export function createCheckout(
     user_agent: stored?.user_agent || ctx.getState().visit.landing?.device || '',
   });
   let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
-  const addresses: Partial<Record<AddressType, string>> = {};
 
   const loadCountry = async (code: string): Promise<void> => {
     if (!code || state().rules[code]) return;
@@ -158,13 +150,11 @@ export function createCheckout(
     for (const type of ['shipping', 'billing'] as const) {
       const prefix = type === 'billing' ? 'billing_' : '';
       if ((type === 'billing' && checkout.sameAsShipping) || !addressValid(checkout, prefix)) continue;
-      const now = ADDRESS.map((name) => checkout.fields[prefix + name]?.trim() ?? '').join('|');
-      const before = addresses[type];
-      if (now === before) continue;
-      addresses[type] = now;
+      const before = type === 'billing' ? checkout.billingAddress : checkout.shippingAddress;
       const address = publicAddress(checkout, prefix);
+      if (JSON.stringify(address) === JSON.stringify(before)) continue;
       set(type === 'billing' ? { billingAddress: address } : { shippingAddress: address });
-      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', { ...address, type });
+      ctx.emit(before ? 'address.updated' : 'address.entered', { ...address, type });
     }
   };
 
@@ -246,7 +236,7 @@ export function createCheckout(
         errors,
         phones: kept,
       });
-      if (isCountry) void loadCountry(value).then(() => (announceAddresses(), checkPhone(phone, true)));
+      if (isCountry) void loadCountry(value).then(() => checkPhone(phone, true).then(announceAddresses));
     },
 
     async leave(name: string): Promise<void> {

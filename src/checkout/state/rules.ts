@@ -139,7 +139,7 @@ export function requiredFields(checkout: CheckoutState, scope: Scope, phoneRequi
   return names;
 }
 
-export const ADDRESS = ['first_name', 'last_name', 'line1', 'line2', ...BY_COUNTRY, 'country'];
+const ADDRESS = ['first_name', 'last_name', 'line1', 'line2', ...BY_COUNTRY, 'country', 'phone_number'];
 
 export function addressValid(checkout: CheckoutState, prefix: '' | 'billing_'): boolean {
   const country = checkout.fields[`${prefix}country`];
