@@ -166,6 +166,9 @@ describe('order', () => {
       upsells: [{ id: 'R1:99', number: 1, line: { is_upsell: true } }],
     });
     expect(next.paid).not.toHaveBeenCalled();
+    const later = await setup({ session, local });
+    await later.order.load('R1');
+    expect(later.loaded.mock.calls[0]![0].upsells).toBeUndefined();
   });
 
   it('does not post an offer the order cannot take, or two at once', async () => {

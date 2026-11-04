@@ -183,8 +183,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         { trigger: 'order.loaded', reason: `Accepted upsell ${number}`, id: transaction },
       );
     }
-    if (upsells?.length) engine.order?.markReported(upsells.map((u) => u.id));
-    else skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
+    if (!upsells?.length) skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
   };
 
   engine.on(

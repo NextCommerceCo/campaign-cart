@@ -183,6 +183,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       .filter((l) => l.is_upsell)
       .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
       .filter((u) => !done.includes(u.id));
+    if (upsells.length) markReported(upsells.map((u) => u.id));
     ctx.emit('order.loaded', { order, ...(upsells.length && { upsells }) });
     if (!paid || done.includes(purchaseId(order))) return;
     markReported([purchaseId(order)]);
@@ -269,8 +270,6 @@ export function createOrder(ctx: Context, cart: CartActions) {
       const refId = ctx.saved<Partial<CheckoutState>>('checkout')?.pendingRef;
       if (refId) ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: refId });
     },
-
-    markReported,
   };
 }
 
