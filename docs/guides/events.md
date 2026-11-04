@@ -28,9 +28,9 @@ next.on('order.paid', (data, event) => {
 
 Events come in order, once each. `next.on` first calls the listener with the events of that name
 this page has already sent, then with each new one, so a script that loads late misses nothing.
-The page keeps its last 100 events; past that, the oldest cart and selector updates go first
-(`cart.updated`, `cart.calculating`, `cart.calculated`, `selector.updated`,
-`selector.calculating`, `selector.calculated`), and `sdk.ready` always stays. `ready` is the same
+The page keeps its last 100 events; past that, the oldest price updates go first (`cart.updated`,
+`cart.calculating`, `cart.calculated`, `selector.calculating`, `selector.calculated`), then the
+SDK's internal events, then the rest; `sdk.ready` and the newest event always stay. `ready` is the same
 event as `sdk.ready`.
 
 `next.snapshot()` returns what the page shows now: `campaign`, `cart`, `checkout` on a checkout

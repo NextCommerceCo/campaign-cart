@@ -30,10 +30,10 @@ paid, and `order.loaded` carries them. The next page is `next-success-url`, else
 site, with the order's `order_ref_id`; see the order lifecycle.
 
 `payment.failed` comes on the page the gateway sends the shopper back to, when its URL has
-`payment_failed=true` and no `ref_id`: by default the checkout itself, with that parameter added.
-A `next-failure-url` page gets it only if its URL carries it. The order is not loaded, since the
-store has nothing to load until it is paid. `method` is the URL's `payment_method`, else the
-method picked in the form. The shopper is back in the same checkout with the same cart, so
+`payment_failed=true` and no `ref_id`: the checkout itself, or the `next-failure-url` page; the
+store adds `payment_failed=true` and `payment_method` to either. The order is not loaded, since
+the store has nothing to load until it is paid. `method` is the URL's `payment_method`, else the
+express button's method, else the method picked in the form. The shopper is back in the same checkout with the same cart, so
 `checkout.started` does not come again, and `param.payment_failed` is `'true'` for
 `data-next-show`.
 

@@ -24,15 +24,16 @@ A promotion is the exit-intent popup (`type: 'exit_intent'`) or an element the p
 | none      | The page calls `next.exitIntent({ image })` or `({ template })`                                                                       | `waiting` | none. A template missing from the page falls back to `image`, else warns each time it would open. On a touch screen it waits only with `mobileScrollTrigger` or `disableOnMobile: false` |
 | `waiting` | Desktop: the mouse leaves through the top of the window. Touch screen: past 30% of a screen, then a scroll back up of more than 100px | `open`    | `promotion.viewed`                                                                                                                                                                       |
 | `open`    | The image or a `data-exit-intent-action` button is clicked                                                                            | `closed`  | `promotion.clicked` (with `action` and `coupon_code` for a button), then its action runs, then `promotion.closed` (`reason: 'clicked'`)                                                  |
-| `open`    | Esc, the overlay (`overlayClosable`, on by default), or the page closes the popup                                                     | `closed`  | `promotion.closed` (`reason: 'dismissed'`)                                                                                                                                               |
+| `open`    | Esc, or the overlay (`overlayClosable`, on by default)                                                                                | `closed`  | `promotion.closed` (`reason: 'dismissed'`)                                                                                                                                               |
+| `open`    | The page removes the popup (the function `next.exitIntent()` resolves to)                                                             | `closed`  | none                                                                                                                                                                                     |
 | `open`    | The × button (`showCloseButton`, off by default)                                                                                      | `closed`  | `promotion.closed` (`reason: 'close_button'`)                                                                                                                                            |
 | `closed`  | It has opened fewer than `maxTriggers` times this tab session (1 by default)                                                          | `waiting` | none                                                                                                                                                                                     |
 
-`promotion.closed` comes once for each `promotion.viewed`. `promotion.clicked` comes before the
+`promotion.closed` comes once for each `promotion.viewed`, unless the page removes the popup. `promotion.clicked` comes before the
 action runs. An `apply-coupon` button applies its `data-coupon-code` without waiting for it, so its
 coupon events (see the coupon lifecycle) can come after `promotion.closed`; the image's action and
-a `custom` button's action, `exitIntent({ action })`, are waited for. The page closes the popup
-with the function `next.exitIntent` resolves to.
+a `custom` button's action, `exitIntent({ action })`, are waited for. The page removes the popup,
+without `promotion.closed`, with the function `next.exitIntent` resolves to.
 
 The popup's `id` is `exitIntent({ id })`, else `exit_intent`; `name` is `exitIntent({ name })`, and
 `creative` the template's name or the image URL.

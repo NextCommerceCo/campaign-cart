@@ -39,8 +39,9 @@ without prices after the `sdk.error` when pricing fails. On an empty cart, or be
 loads, it comes right after `cart.updated`, without prices. A bundle card with its own shipping
 method sets it when it is picked.
 
-Before the campaign loads, a change sends `cart.updated`, `cart.removed` and `cart.added` only;
-pricing starts once it has loaded. While an order is being placed, from the submit until the order
+Before the campaign loads, a change sends its `cart.updated`, `cart.removed` and `cart.added`
+(and `shipping.selected` or a toggle's `selector.selected` when it changes those) but no pricing
+events; pricing starts once it has loaded. While an order is being placed, from the submit until the order
 is placed or fails, the cart is frozen: a change is refused and sends nothing, `applyCoupon`
 resolves `false`, and a swap selector keeps its pick. A paid order empties the cart without cart
 events; see the order lifecycle.

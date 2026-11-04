@@ -26,8 +26,8 @@ as the page shows them then, the same objects the events carry. `next.snapshot()
 at any time. A failed campaign load also sets `html[data-next-error="campaign"]`.
 
 `next.on` gives a listener added later the page's earlier events of that name first, then the new
-ones. The page keeps its last 100 events for this, dropping the oldest cart and selector updates
-first; `sdk.ready` is always kept. A 0.4.x name gets only the events after the call, except those
+ones. The page keeps its last 100 events for this, dropping the oldest price updates first;
+`sdk.ready` is always kept. A 0.4.x name gets only the events after the call, except those
 0.4.x pages listen for late (`campaign:loaded`, `checkout:started`, …).
 
 ## Errors

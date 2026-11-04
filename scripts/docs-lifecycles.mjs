@@ -564,7 +564,7 @@ const LIFECYCLES = {
   },
   promotions: {
     title: 'Promotion lifecycle',
-    desc: 'Starts when the page calls next.exitIntent({ image | template }). The popup waits: on a desktop until the mouse leaves through the top of the window; on a touch screen, with mobileScrollTrigger (or disableOnMobile false), until the shopper scrolls past 30% of a screen and back up more than 100px. It opens (promotion.viewed). A click on its image or a data-exit-intent-action button sends promotion.clicked, runs its action, and closes it (promotion.closed, reason clicked); apply-coupon does not wait for its code. Esc, the overlay or the page closing it sends promotion.closed with reason dismissed; the × of showCloseButton with reason close_button. It waits again while it has opened fewer than maxTriggers times this tab session (default 1).',
+    desc: 'Starts when the page calls next.exitIntent({ image | template }). The popup waits: on a desktop until the mouse leaves through the top of the window; on a touch screen, with mobileScrollTrigger (or disableOnMobile false), until the shopper scrolls past 30% of a screen and back up more than 100px. It opens (promotion.viewed). A click on its image or a data-exit-intent-action button sends promotion.clicked, runs its action, and closes it (promotion.closed, reason clicked); apply-coupon does not wait for its code. Esc or the overlay sends promotion.closed with reason dismissed; the × of showCloseButton with reason close_button. It waits again while it has opened fewer than maxTriggers times this tab session (default 1).',
     rows: 3,
     boxes: [
       { row: 0, title: 'waiting', sub: ['for the shopper to leave'] },
@@ -586,7 +586,7 @@ const LIFECYCLES = {
     },
     note: [
       'Starts when the page calls next.exitIntent({ image | template }) · opens up to maxTriggers times a tab session (1)',
-      'reason: clicked (after promotion.clicked), dismissed (Esc, overlay, the page), close_button (×)',
+      'reason: clicked (after promotion.clicked), dismissed (Esc, overlay), close_button (×); none when the page removes it',
       'promotion.clicked comes before the action; apply-coupon’s coupon events can follow promotion.closed',
     ],
   },

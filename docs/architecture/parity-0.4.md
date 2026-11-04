@@ -303,13 +303,16 @@ load. Page moments no event marks (`checkout:form-initialized`, `checkout:paymen
 `bundle:selection-changed` (7 pages), `cart:updated`, `coupon:validation-failed`,
 `shipping:method-changed` and `exit-intent:*`. A 0.4.x name reaches only listeners added before
 it, except the ones 0.4.x pages listen for late (`campaign:loaded`, `currency:fallback`,
-`sdk:url-parameters-processed`, `error:occurred`, `action:failed`, `checkout:started`,
+`sdk:url-parameters-processed`, `error:occurred`, `checkout:started`,
 `checkout:payment-ready`, `checkout:spreedly-ready`). `checkout:started` comes once a page, as in
 0.4.x, while `checkout.started` is once per checkout.
 
-No longer sent, with a warning that names what to listen for: `action:success`,
-`cart:package-swapped`, `order:redirect-missing`, `address:autocomplete-filled`,
-`address:messages-loaded`. 0.4.43 declared the other 11 (`selector:action-completed`,
+No longer sent, with a warning that names what to listen for: `cart:package-swapped`,
+`order:redirect-missing`, `address:messages-loaded`, `upsell:accepted` (0.4.43 sent it only for
+`data-next-action="accept-upsell"`, which is not bound; offers send `upsell:added`).
+`payment:tokenized` no longer carries `token` or `pmData`, and says so once a page. The cart item
+names come once per operation (`cart:item-added`, `cart:quantity-changed`, `cart:item-removed`);
+0.4.43's buttons also sent a second copy from their enhancer, which is not repeated. 0.4.43 declared the other 11 (`selector:action-completed`,
 `checkout:express-started`, `express-checkout:redirect-missing`, `address:location-fields-shown`,
 `config:updated`, `message:displayed`, `offer:*`, `*:price-updated`) but never sent them through
 `next.on`; they log a warning too. An unknown name logs a warning. DOM events kept:

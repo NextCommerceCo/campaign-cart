@@ -51,8 +51,8 @@ While submitting and placing, the cart is frozen; it unfreezes when a check fail
 not created. A paid order empties the cart without cart events. While the shopper is at a gateway
 the cart is kept until the paid order loads, so a shopper whose payment fails comes back to the
 same cart. `shipping.selected` is in the cart lifecycle. `user.*` and `payment.selected` can come
-before `checkout.started`, while the cart is still empty; `address.*` only once the checkout is
-open on the page.
+before `checkout.started`: `payment.selected` when the form binds, and both while the cart is
+still empty; `address.*` only once the checkout is open on the page.
 
 Each event carries its own object: `checkout.*` the Checkout (the Cart as `cart`, the `user`, the
 addresses, `billing_same_as_shipping` and `payment_method`, with `valid` and `errors` on

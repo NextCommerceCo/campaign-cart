@@ -30,8 +30,9 @@ group: 'Event Reference/Coupons'
 
 `next.actions.applyCoupon` resolves `true` once the code is applied, and `false` when it is denied
 or dropped. For a held code it resolves when the code is checked, if that happens on the same page;
-a held code still waiting on a later page is checked there once the cart is priced. The 0.4.x
-`next.applyCoupon` resolves `true` at once for a code it holds.
+a held code still waiting on a later page is checked there once the cart is priced. Codes are
+checked one at a time, each against the codes already on the cart, so two codes that do not stack
+are not both applied. The 0.4.x `next.applyCoupon` resolves `true` at once for a code it holds.
 
 While an order is being placed the cart is frozen: `applyCoupon` resolves `false`, `removeCoupon`
 does nothing, and no coupon event is sent. A code whose check ends after the cart froze is not
