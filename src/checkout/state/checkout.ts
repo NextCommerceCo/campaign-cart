@@ -54,13 +54,21 @@ export function redirectFor(
   return nextUrl(url.href, current, params);
 }
 
+/** When the shopper becomes a user: the checkout form's `data-trigger-on`. */
+export type TriggerOn = 'emailEntry' | 'phoneEntry' | 'emailAndPhone' | 'formStart' | 'manual';
+
 export interface PlaceOrder extends OrderUrls {
   method?: string;
   tokenize?: () => Promise<string>;
   phoneRequired?: boolean;
 }
 
-export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesApi) {
+export function createCheckout(
+  ctx: Context,
+  cart: CartActions,
+  rulesApi: RulesApi,
+  { triggerOn = 'emailEntry' }: { triggerOn?: TriggerOn } = {},
+) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
   let started = false;
@@ -70,17 +78,28 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   type Entered = Omit<User, 'language' | 'ip' | 'user_agent'>;
   const contactOf = (): Entered | undefined => {
-    const { fields } = state();
-    const [email, first_name, last_name] = ['email', 'first_name', 'last_name'].map((n) => fields[n]?.trim() ?? '');
-    if (!validEmail(email!) || first_name!.length < 2 || last_name!.length < 2) return;
+    const { fields, phones } = state();
+    const [email = '', first_name = '', last_name = ''] = ['email', 'first_name', 'last_name'].map(
+      (n) => fields[n]?.trim() ?? '',
+    );
     const phone = phoneOf(state(), 'phone_number');
-    const accepts_marketing = fields.accepts_marketing !== 'false';
+    const hasEmail = validEmail(email);
+    const hasPhone = !!phones.phone_number;
+    const named = first_name.length >= 2 && last_name.length >= 2;
+    const ready = {
+      emailEntry: hasEmail && named,
+      phoneEntry: hasPhone && named,
+      emailAndPhone: hasEmail && hasPhone && named,
+      formStart: !!(email || first_name || last_name || phone),
+      manual: false,
+    }[triggerOn];
+    if (!ready) return;
     return {
-      email: email!,
-      first_name: first_name!,
-      last_name: last_name!,
+      ...(hasEmail && { email }),
+      first_name,
+      last_name,
       ...(phone && { phone }),
-      accepts_marketing,
+      accepts_marketing: fields.accepts_marketing !== 'false',
     };
   };
   const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);

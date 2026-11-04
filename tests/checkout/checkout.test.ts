@@ -541,6 +541,28 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(orders()[0]!.body.shipping_address).toMatchObject({ country: 'SG', postcode: '018956' });
   });
 
+  it('reads data-trigger-on and 0.4.x data-auto-create from the form, and says which 0.4.x options it ignores', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const on = (attrs: Record<string, string>) => (body: HTMLElement) =>
+      Object.entries(attrs).forEach(([k, v]) => body.querySelector('form[data-next-checkout]')!.setAttribute(k, v));
+    const carts = async (attrs: Record<string, string>) => {
+      sessionStorage.clear();
+      const { fill, api } = await mount('olympus/checkout.html', { markup: on(attrs) });
+      fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
+      await flush();
+      return api.calls.filter((c) => c.url.endsWith('/carts/')).length;
+    };
+    expect(await carts({})).toBe(1);
+    expect(await carts({ 'data-trigger-on': 'manual' })).toBe(0);
+    expect(await carts({ 'data-auto-create': 'false' })).toBe(0);
+    expect(await carts({ 'data-trigger-on': 'phoneEntry' })).toBe(0);
+    expect(await carts({ 'data-trigger-on': 'soon', 'data-prospect-config': '{}' })).toBe(1);
+    expect(warn.mock.calls.map(([m]) => m)).toEqual([
+      '[next] data-trigger-on="soon" is not one of emailEntry, phoneEntry, emailAndPhone, formStart, manual; using emailEntry',
+      '[next] data-prospect-config on the checkout form is no longer read; set data-trigger-on instead',
+    ]);
+  });
+
   it('tells page scripts about the prospect cart, once', async () => {
     const { fill, form } = await mount('olympus/checkout.html');
     const created = vi.fn();

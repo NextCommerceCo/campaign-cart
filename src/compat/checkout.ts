@@ -78,6 +78,24 @@ export function clearStepGuard(): void {
   } catch {}
 }
 
+const UNREAD: Record<string, string> = {
+  'data-prospect-config': 'set data-trigger-on instead',
+  'data-min-phone-digits': 'the address service checks the phone number',
+  'data-email-field': 'mark the input with data-next-checkout-field',
+  'data-phone-field': 'mark the input with data-next-checkout-field',
+};
+
+/**
+ * @deprecated 0.4.x options on the checkout form. `data-auto-create="false"` is
+ * `data-trigger-on="manual"`; the rest are no longer read, and say so.
+ */
+export function legacyTriggerOn(engine: Engine, form: HTMLFormElement): 'manual' | undefined {
+  for (const [name, instead] of Object.entries(UNREAD)) {
+    if (form.hasAttribute(name)) engine.log.warn(`${name} on the checkout form is no longer read; ${instead}`);
+  }
+  return form.getAttribute('data-auto-create') === 'false' ? 'manual' : undefined;
+}
+
 /** @deprecated `next:prospect-cart-created` on the form. Use `next.on('user.created')`. */
 export function announceProspect(engine: Engine, form: HTMLFormElement): void {
   engine.on('user.created', ({ data }) => {

@@ -1,5 +1,5 @@
 import { RulesApi } from './state/rules';
-import { type CheckoutActions, createCheckout, redirectFor } from './state/checkout';
+import { type CheckoutActions, createCheckout, redirectFor, type TriggerOn } from './state/checkout';
 import { EXPRESS_METHODS } from './state/order-body';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
@@ -12,6 +12,7 @@ import { bindFields, phoneRequired, scanFields, syncFields } from './form/fields
 import { bindLabels } from './form/labels';
 import {
   announceProspect,
+  legacyTriggerOn,
   clearStepGuard,
   FAILURE_URL_META,
   legacyAutocomplete,
@@ -66,13 +67,23 @@ function overlay(): (busy: boolean) => void {
   };
 }
 
+const TRIGGERS: TriggerOn[] = ['emailEntry', 'phoneEntry', 'emailAndPhone', 'formStart', 'manual'];
+
+function triggerOf(engine: Engine, form: HTMLFormElement): TriggerOn {
+  const value = form.getAttribute('data-trigger-on') ?? '';
+  if (TRIGGERS.includes(value as TriggerOn)) return value as TriggerOn;
+  if (value) engine.log.warn(`data-trigger-on="${value}" is not one of ${TRIGGERS.join(', ')}; using emailEntry`);
+  return legacyTriggerOn(engine, form) ?? 'emailEntry';
+}
+
 export function bindCheckout(
   engine: Engine,
   form: HTMLFormElement,
   navigate: (url: string) => void = (url) => location.assign(url),
 ): CheckoutActions {
   const rules = new RulesApi(window.fetch.bind(window), RULES, engine.getState().campaign?.language || 'en');
-  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules));
+  const triggerOn = triggerOf(engine, form);
+  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { triggerOn }));
   engine.checkout = checkout;
   form.noValidate = true;
   cloneBillingRows(form);

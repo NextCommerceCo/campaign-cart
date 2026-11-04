@@ -100,7 +100,7 @@ export interface ApiAddress {
 }
 
 export interface OrderUser {
-  email: string;
+  email?: string;
   first_name: string;
   last_name: string;
   language: string;

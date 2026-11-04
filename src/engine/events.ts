@@ -16,8 +16,8 @@ export type AddressType = 'shipping' | 'billing';
 
 /** The shopper, as the store's `user` on the Open Cart and the order. */
 export interface User {
-  /** As typed, trimmed. */
-  email: string;
+  /** As typed, trimmed; none when `data-trigger-on` created the user without one. */
+  email?: string;
   first_name: string;
   last_name: string;
   /** In E.164 once the address service read it, else the digits typed. */

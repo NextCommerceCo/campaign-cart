@@ -21,7 +21,7 @@ export interface OrderUrls {
 }
 
 export const userOf = (fields: Record<string, string>, language: string, phone?: string): OrderUser => ({
-  email: fields.email?.trim() ?? '',
+  ...(fields.email?.trim() && { email: fields.email.trim() }),
   first_name: fields.first_name?.trim() ?? '',
   last_name: fields.last_name?.trim() ?? '',
   language,
