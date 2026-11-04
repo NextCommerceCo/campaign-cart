@@ -180,4 +180,30 @@ describe('Engine', () => {
     ]);
     expect(calls.every((e) => e.level === 'debug' && e.data === undefined)).toBe(true);
   });
+
+  it('gives events a short context: the page, campaign, session, flat attribution and browser', async () => {
+    const visit = {
+      landingPage: 'https://shop.test/olympus/?email=jane@x.com',
+      referrer: 'https://www.facebook.com/',
+      device: 'test',
+      deviceType: 'desktop' as const,
+      fbp: 'fb.1.1.123',
+    };
+    const { engine } = makeEngine({ visit, params: { utm_source: 'facebook', fbclid: 'IwAR0' } });
+    await engine.start();
+    expect(engine.eventContext()).toEqual({
+      page_location: 'https://shop.test/',
+      page_referrer: '',
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      attribution: {
+        utm_source: 'facebook',
+        funnel: 'Olympus',
+        landing_page: 'https://shop.test/olympus/',
+        fbclid: 'IwAR0',
+        fbp: 'fb.1.1.123',
+      },
+      browser: { user_agent: 'test', language: 'en-US', device_type: 'desktop' },
+    });
+  });
 });

@@ -1,11 +1,12 @@
 import { bindAll } from './bindings';
+import { pageEnvironment } from './bindings/environment';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { AnalyticsEvent, AnalyticsName, EventCampaign, EventMap, EventName } from './engine/events';
+import type { AnalyticsEvent, AnalyticsName, EventContext, EventMap, EventName } from './engine/events';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
@@ -80,8 +81,6 @@ export interface SdkEvent<K extends EventName = EventName> {
   object: string;
   data: EventMap[K];
   created_at: string;
-  /** The campaign the page runs, once it has loaded. */
-  campaign?: EventCampaign;
   /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
   session_id: string;
   sdk_version: string;
@@ -93,19 +92,15 @@ const objectOf = (name: EventName) => {
   return CHECKOUT_STEPS.includes(namespace) ? 'checkout' : namespace;
 };
 
-const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => {
-  const campaign = engine.eventCampaign();
-  return {
-    event_id: e.id,
-    event_type: e.name,
-    object: objectOf(e.name),
-    data: e.data,
-    created_at: new Date(e.at).toISOString(),
-    ...(campaign && { campaign }),
-    session_id: engine.sessionId(),
-    sdk_version: __VERSION__,
-  };
-};
+const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => ({
+  event_id: e.id,
+  event_type: e.name,
+  object: objectOf(e.name),
+  data: e.data,
+  created_at: new Date(e.at).toISOString(),
+  session_id: engine.sessionId(),
+  sdk_version: __VERSION__,
+});
 
 export interface NextApi extends LegacyApi {
   version: string;
@@ -114,6 +109,8 @@ export interface NextApi extends LegacyApi {
     on(name: AnalyticsName | '*', fn: (event: AnalyticsEvent) => void): () => void;
   };
   getState: Engine['getState'];
+  /** The page, campaign, session, attribution and browser now, as on tracking events. */
+  context(): EventContext;
   log: Pick<Logger, 'level' | 'entries' | 'stream'>;
   bind(root: ParentNode): void;
   actions: {
@@ -136,6 +133,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const scope = storageScope(config.apiKey, funnel);
 
   const engine = new Engine({
+    environment: pageEnvironment,
     apiKey: config.apiKey,
     apiBase: config.apiBase,
     send: window.fetch.bind(window),
@@ -227,6 +225,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         ),
     },
     getState: () => engine.getState(),
+    context: () => engine.eventContext(),
     log: engine.log,
     bind: (root) => bindings.bind(root),
     actions: {

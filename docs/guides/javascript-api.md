@@ -13,6 +13,7 @@ Available after the `sdk.ready` event (`next.on('sdk.ready', fn)`, or its alias 
 | `next.version`                                            | SDK version                                                                                                  |
 | `next.getState()`                                         | The whole state: `campaign`, `cart`, `selectors`, `visit`, `checkout`, `order`                               |
 | `next.on(event, fn)`                                      | Listen to an [event](events.md); returns an unsubscribe function                                             |
+| `next.context()`                                          | The page, campaign, session, attribution and browser now, as on tracking events                              |
 | `next.bind(root)`                                         | Bind attributes inside markup added after the page loaded                                                    |
 | `next.log.level`                                          | What reaches the console: `debug`, `info`, `warn` (default), `error`, `silent`; `?debug=1` starts at `debug` |
 | `next.log.entries()`                                      | The last 200 SDK log entries `{ level, message, data?, at }`, whatever the level                             |

@@ -20,7 +20,6 @@ next.on('order.created', (data, event) => {
   event.object; // 'order'
   event.data; // same as data
   event.created_at; // ISO time
-  event.campaign; // { id, name, currency, language }, once the campaign has loaded
   event.session_id; // the campaign session, a UUID v4 as 32 hex digits
   event.sdk_version;
 });
@@ -78,8 +77,11 @@ Names and `params` follow GA4 ecommerce; `update_cart`, `upsell_purchase`,
 `view_upsell` and `skip_upsell` have no GA4 equivalent. `items` carry GA4 item fields (`item_id`,
 `item_name`, `item_variant`, `price`, `discount`, `quantity`, `index`, …). `id` is unique per
 event, and is the transaction id for `purchase` and `upsell_purchase`; `purchase` is sent once, only
-when paid. `context` has `page_location`, `page_title`, `page_referrer`, `campaign` (as in the
-envelope), `attribution` and `session_id`. No personal data is sent.
+when paid. `context` has `page_location` and `page_referrer` (without their query string), the
+`campaign` (`id`, `name`, `currency`, `language`), the campaign `session_id`, the `attribution`
+(UTM parameters, affiliate and click ids, `landing_page`, `fbp`, `fbc`) and the `browser`
+(`user_agent`, `language`, `device_type`). `next.context()` returns the same object, for a script
+that sends `next.on` events on. No personal data is sent.
 
 `generate_lead` is sent once, on `contact.entered`. `add_shipping_info` is sent once, after
 `checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that

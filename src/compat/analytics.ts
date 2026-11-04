@@ -1,10 +1,10 @@
-import { pageContext } from '../analytics/context';
 import { cents, currency, ecommerce } from '../analytics/ecommerce';
+import { withoutQuery } from '../engine/attribution';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
 import type { EngineEvent } from '../engine/events';
 import type {
-  AnalyticsContext,
+  EventContext,
   AnalyticsEvent,
   AnalyticsName,
   AnalyticsTrace,
@@ -70,6 +70,17 @@ const legacyCart = (engine: Engine) => {
   };
 };
 
+const legacyAttribution = (engine: Engine) => {
+  const attribution = engine.attribution();
+  const metadata = Object.fromEntries(
+    Object.entries(attribution.metadata).map(([k, v]) => [
+      k,
+      typeof v === 'string' && /^https?:/.test(v) ? withoutQuery(v) : v,
+    ]),
+  );
+  return { ...attribution, metadata };
+};
+
 /**
  * @deprecated 0.4.x `dl_*` events (Elevar format) on `window.NextDataLayer` and `window.dataLayer`,
  * with `window.NextDataLayerTransformFn`. Listen with `next.on('analytics', fn)`: the same events
@@ -102,14 +113,14 @@ export function startLegacyDataLayer(
     }
   };
 
-  const send = (name: string, id: string, time: string, context: AnalyticsContext, data: object) => {
+  const send = (name: string, id: string, time: string, context: EventContext, data: object) => {
     const event = transform({
       event: name,
       event_id: id,
       event_time: time,
       user_properties: { visitor_type: 'guest' },
       page_location: context.page_location,
-      page_title: context.page_title,
+      page_title: document.title,
       page_referrer: context.page_referrer,
       campaign_id: context.campaign && String(context.campaign.id),
       campaign_name: context.campaign?.name,
@@ -117,7 +128,7 @@ export function startLegacyDataLayer(
       campaign_language: context.campaign?.language,
       campaign_api_key: options.apiKey,
       campaign_session_id: context.session_id,
-      attribution: context.attribution,
+      attribution: legacyAttribution(engine),
       _metadata: { source: 'NextDataLayer', version: options.version },
       ...data,
     });
@@ -190,7 +201,7 @@ export function startLegacyDataLayer(
   const exitIntent = (trigger: EventName, name: string, data: object) => {
     const event = `dl_exit_intent_${name}`;
     const id = newId();
-    send(event, id, new Date().toISOString(), pageContext(engine), { event_category: 'engagement', ...data });
+    send(event, id, new Date().toISOString(), engine.eventContext(), { event_category: 'engagement', ...data });
     const reason = 'Data layer only: there is no analytics event';
     const trace: AnalyticsTrace = { trace: 'analytics', trigger, name: event, sent: true, reason, id };
     engine.log.debug(`analytics ${event} sent: ${reason}`, trace);

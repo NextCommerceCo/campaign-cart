@@ -154,13 +154,24 @@ describe('boot', () => {
         object: 'sdk',
         data: { lines: expect.any(Array) },
         created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
-        campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
         session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
         sdk_version: expect.any(String),
       },
     );
     const session = ready.mock.calls[0]![1].session_id;
     expect(document.cookie).toContain(`ncsid=${session}`);
+    expect(next.context()).toEqual({
+      page_location: location.origin + location.pathname,
+      page_referrer: '',
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      session_id: session,
+      attribution: expect.any(Object),
+      browser: {
+        user_agent: navigator.userAgent,
+        language: navigator.language,
+        device_type: expect.stringMatching(/^(mobile|desktop)$/),
+      },
+    });
     const added = vi.fn();
     next.on('cart.added', added);
     await next.actions.addItem(1);

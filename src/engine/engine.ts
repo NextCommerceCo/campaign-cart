@@ -1,9 +1,16 @@
 import { Api, errorCode } from './api';
-import { type Attribution, buildAttribution, type Visit } from './attribution';
+import { type Attribution, buildAttribution, eventAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import type { CheckoutActions } from '../checkout/state/checkout';
 import type { OrderActions } from '../order/state';
-import { type EngineEvent, type ErrorAction, type EventCampaign, Events } from './events';
+import {
+  type Browser,
+  type EngineEvent,
+  type ErrorAction,
+  type EventCampaign,
+  type EventContext,
+  Events,
+} from './events';
 import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
@@ -13,7 +20,15 @@ import { createToggles, type ToggleActions } from './cart/toggles';
 import type { EventMap, EventName } from './events';
 import type { Campaign, Package, Send, State } from './types';
 
+/** The page and the browser now; supplied by the page, since the engine has no DOM. */
+export interface Environment {
+  page_location: string;
+  page_referrer: string;
+  browser: Browser;
+}
+
 export interface EngineOptions {
+  environment: () => Environment;
   apiKey: string;
   apiBase: string;
   send: Send;
@@ -162,6 +177,18 @@ export class Engine {
   eventCampaign(): EventCampaign | undefined {
     const c = this.state.campaign;
     return c && { id: c.id, name: c.name, currency: c.currency, language: c.language };
+  }
+
+  eventContext(): EventContext {
+    const { browser, ...page } = this.options.environment();
+    const campaign = this.eventCampaign();
+    return {
+      ...page,
+      ...(campaign && { campaign }),
+      session_id: this.sessionId(),
+      attribution: eventAttribution(this.attribution()),
+      browser,
+    };
   }
 
   attribution(): Attribution {

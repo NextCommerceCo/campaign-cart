@@ -1,4 +1,15 @@
+import type { EventAttribution } from './events';
+
 declare const __VERSION__: string;
+
+export const withoutQuery = (url: string) => {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return '';
+  }
+};
 
 export interface Visit {
   landingPage: string;
@@ -72,4 +83,16 @@ export function buildAttribution(
   return Object.fromEntries(
     Object.entries(result).filter(([, v]) => v !== undefined && v !== ''),
   ) as unknown as Attribution;
+}
+
+export function eventAttribution({ metadata, ...fields }: Attribution): EventAttribution {
+  const text = (key: string) => (typeof metadata[key] === 'string' ? (metadata[key] as string) : '');
+  const added = {
+    landing_page: withoutQuery(text('landing_page')),
+    fbclid: text('fbclid'),
+    fbp: text('fb_fbp'),
+    fbc: text('fb_fbc'),
+    clickid: text('clickid'),
+  };
+  return { ...fields, ...Object.fromEntries(Object.entries(added).filter(([, v]) => v)) };
 }
