@@ -242,6 +242,7 @@ export function createCart(ctx: Context) {
   };
 
   const refuse = (code: string) => {
+    if (state().frozen) return void unchecked.add(code);
     ctx.emit('coupon.denied', { code });
     return commit({ coupons: state().coupons.filter((c) => c !== code) });
   };
@@ -341,6 +342,7 @@ export function createCart(ctx: Context) {
   };
 
   const setGroup = (id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}) => {
+    if (state().frozen) return Promise.resolve();
     const groups = { ...state().groups };
     const keep = !!group && group.lines.some((l) => l.quantity > 0);
     if (id.startsWith('toggle:') && keep !== !!groups[id])
@@ -425,7 +427,7 @@ export function createCart(ctx: Context) {
     clear: () => commit({ groups: {}, coupons: [], dismissed: [] }),
     async applyCoupon(code: string): Promise<boolean> {
       const normalized = normalizeCode(code);
-      if (!normalized || vouchers().includes(normalized)) return false;
+      if (state().frozen || !normalized || vouchers().includes(normalized)) return false;
       if (!lines().length || !ctx.getState().campaign) unchecked.add(normalized);
       else {
         await settled();
@@ -439,7 +441,7 @@ export function createCart(ctx: Context) {
           ctx.fail('coupon.check', err);
           return false;
         }
-        if (state().coupons.includes(normalized)) return false;
+        if (state().frozen || state().coupons.includes(normalized)) return false;
       }
       const done = commit({ coupons: [...state().coupons, normalized] });
       ctx.emit('coupon.applied', { code: normalized });
@@ -448,13 +450,13 @@ export function createCart(ctx: Context) {
     },
     removeCoupon(code: string): Promise<void> {
       const normalized = normalizeCode(code);
-      if (!state().coupons.includes(normalized)) return Promise.resolve();
+      if (state().frozen || !state().coupons.includes(normalized)) return Promise.resolve();
       const done = commit({ coupons: state().coupons.filter((c) => c !== normalized) });
       ctx.emit('coupon.removed', { code: normalized });
       return done;
     },
     setShipping(shippingId: number | undefined) {
-      if (shippingId === state().shippingId) return Promise.resolve();
+      if (state().frozen || shippingId === state().shippingId) return Promise.resolve();
       const done = commit({ shippingId });
       const method = currentCheckout().cart.shipping_method;
       if (method) ctx.emit('shipping.selected', method);

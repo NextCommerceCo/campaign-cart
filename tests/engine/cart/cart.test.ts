@@ -268,6 +268,71 @@ describe('cart', () => {
     expect(seen).toEqual(['coupon.denied NOPE', 'coupon.applied SAVE10', 'coupon.removed SAVE10']);
   });
 
+  it('takes no coupon change while the cart is frozen for an order, and takes them again once it thaws', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(`${e.name} ${(e.data as { code: string }).code}`));
+    const requests = api.calls.length;
+    engine.cart.freeze(true);
+    expect(await engine.cart.applyCoupon('save10')).toBe(false);
+    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(api.calls).toHaveLength(requests);
+    engine.cart.freeze(false);
+    const checking = engine.cart.applyCoupon('save10');
+    engine.cart.freeze(true);
+    expect(await checking).toBe(false);
+    expect(engine.getState().cart.coupons).toEqual([]);
+    engine.cart.freeze(false);
+    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    engine.cart.freeze(true);
+    await engine.cart.removeCoupon('save10');
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    expect(seen).toEqual(['coupon.applied SAVE10']);
+    engine.cart.freeze(false);
+    await engine.cart.removeCoupon('save10');
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(seen).toEqual(['coupon.applied SAVE10', 'coupon.removed SAVE10']);
+  });
+
+  it('announces no shipping or toggle change while the cart is frozen', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.setShipping(1);
+    const seen: string[] = [];
+    engine.on('*', (e) => ['shipping.selected', 'selector.selected'].includes(e.name) && seen.push(e.name));
+    engine.cart.freeze(true);
+    await engine.cart.setShipping(2);
+    await engine.cart.addItem(9, 1, 'toggle:9');
+    expect(seen).toEqual([]);
+    expect(engine.getState().cart).toMatchObject({ shippingId: 1, groups: {} });
+    engine.cart.freeze(false);
+    await engine.cart.setShipping(2);
+    await engine.cart.addItem(9, 1, 'toggle:9');
+    expect(seen).toEqual(['shipping.selected', 'selector.selected']);
+  });
+
+  it('keeps a code entered on an empty cart until it can be refused, when the cart is frozen while it is priced', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const refused: string[] = [];
+    engine.on('coupon.denied', (e) => refused.push(e.data.code));
+    expect(await engine.cart.applyCoupon('nope')).toBe(true);
+    const adding = engine.cart.addItem(1);
+    engine.cart.freeze(true);
+    await adding;
+    await flush();
+    expect(refused).toEqual([]);
+    expect(engine.getState().cart.coupons).toEqual(['NOPE']);
+    engine.cart.freeze(false);
+    await engine.cart.addItem(1);
+    await flush();
+    await engine.cart.settled();
+    expect(refused).toEqual(['NOPE']);
+    expect(engine.getState().cart.coupons).toEqual([]);
+  });
+
   it('announces a toggle switched on and off, but not a change of its quantity', async () => {
     const { engine } = makeEngine();
     await engine.start();
