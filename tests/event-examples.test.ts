@@ -146,7 +146,7 @@ describe('event examples', () => {
 
     const upsell = await page({ local });
     const order = upsell.attach((ctx) => createOrder(ctx, upsell.cart));
-    await order.load('R1', '/upsell/');
+    await order.load('R1');
     order.view('/upsell/');
     await order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/upsell/');
     order.skip({ lines: [{ packageId: 3, quantity: 1 }] });

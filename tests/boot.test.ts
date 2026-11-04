@@ -8,7 +8,6 @@ import type { Campaign } from '../src/engine/types';
 import { fakeApi, json } from './fixtures/api';
 import { campaign } from './fixtures/campaign';
 import { flush, makeEngine } from './fixtures/engine';
-import { ORDER } from './fixtures/order';
 import { fakeRules } from './fixtures/rules';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
@@ -120,8 +119,10 @@ describe('boot', () => {
   });
 
   it('sends order.failed for the gateway order when a failed payment comes back without a ref_id', async () => {
-    const unpaid = () => json({ ...ORDER, payment_complete_url: 'https://pay.test/R1' });
-    const api = fakeApi({ order: unpaid, getOrder: unpaid });
+    const api = fakeApi({
+      order: () => json({ ref_id: 'R1', payment_complete_url: 'https://pay.test/R1' }),
+      getOrder: () => json({ message: 'Not found' }, 400),
+    });
     const { engine } = makeEngine({
       fetch: api.fetch,
       local: localStorage,
@@ -146,6 +147,7 @@ describe('boot', () => {
       expect(failed).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R1' }),
     );
     expect(Object.values(next.getState().cart.groups).flatMap((g) => g.lines)).toHaveLength(1);
+    expect(api.calls.filter((c) => c.method === 'GET' && c.url.includes('/orders/'))).toHaveLength(0);
   });
 
   it('marks the page when the campaign cannot load, even with a snapshot', async () => {

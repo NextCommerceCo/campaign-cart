@@ -171,15 +171,9 @@ export function createOrder(ctx: Context, cart: CartActions) {
     return { card, lines: selector && card ? cardLines(selector, card) : (offer.lines ?? []) };
   };
 
-  const settle = (order: Order, page?: string) => {
+  const settle = (order: Order) => {
     const paid = !order.payment_complete_url;
     const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
-    const failed =
-      !paid && (ctx.getState().visit.params.payment_failed === 'true' || (!!page && page === checkout?.failurePath));
-    if (failed) {
-      ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: order.ref_id });
-      return ctx.emit('order.loaded', { order });
-    }
     if (paid && checkout?.pendingRef === order.ref_id) {
       cart.clearAfterOrder();
       ctx.forget('checkout');
@@ -197,12 +191,12 @@ export function createOrder(ctx: Context, cart: CartActions) {
   };
 
   return {
-    async load(refId: string, page?: string): Promise<void> {
+    async load(refId: string): Promise<void> {
       const current = ++seq;
       const { order, loadedAt } = state();
       if (order && state().refId === refId && loadedAt && Date.now() - loadedAt < ORDER_TTL) {
         set({ status: 'ready' });
-        return settle(order, page);
+        return settle(order);
       }
       set({
         refId,
@@ -216,7 +210,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
         const loaded = await ctx.api.getOrder(refId, controller.signal).finally(() => clearTimeout(timer));
         if (current !== seq) return;
         set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
-        settle(loaded, page);
+        settle(loaded);
       } catch (err) {
         if (current !== seq) return;
         set({ status: 'failed', error: orderError(err) });
@@ -270,9 +264,10 @@ export function createOrder(ctx: Context, cart: CartActions) {
       }
     },
 
-    /** The order sent to a payment gateway from this tab: the gateway's failure redirect carries no ref_id. */
-    pending(): string | undefined {
-      return ctx.saved<Partial<CheckoutState>>('checkout')?.pendingRef;
+    /** The gateway's failure redirect carries no ref_id, and the store has no order to load until it is paid. */
+    paymentFailed(): void {
+      const refId = ctx.saved<Partial<CheckoutState>>('checkout')?.pendingRef;
+      if (refId) ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: refId });
     },
 
     markReported,

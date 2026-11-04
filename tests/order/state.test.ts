@@ -52,15 +52,32 @@ describe('order', () => {
     });
     await unpaid.order.load('R2');
     expect(unpaid.paid).not.toHaveBeenCalled();
-    const failed = await setup({
-      params: { payment_failed: 'true' },
-      api: { getOrder: (ref) => json({ ...ORDER, ref_id: ref, payment_complete_url: 'https://pay.test' }) },
+  });
+
+  it('sends order.failed for the order sent to the gateway, without loading it', async () => {
+    const session = new MemoryStorage();
+    const api = fakeApi({ order: () => json({ ref_id: 'R3', payment_complete_url: 'https://pay.test/R3' }) });
+    const { engine } = makeEngine({ session, fetch: api.fetch });
+    await engine.start();
+    await engine.cart.addItem(1);
+    const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+    ['email', 'first_name', 'last_name'].forEach((f, i) =>
+      checkout.setField(f, ['jane@example.com', 'Jane', 'Doe'][i]!),
+    );
+    await checkout.placeOrder({
+      method: 'paypal',
+      failureUrl: 'https://shop.test/checkout/',
+      pageUrl: 'https://shop.test/checkout/',
     });
+
+    const landing = await setup({ session, params: { payment_failed: 'true' } });
     const refused = vi.fn();
-    failed.engine.on('order.failed', (e) => refused(e.data));
-    await failed.order.load('R3');
-    expect(failed.paid).not.toHaveBeenCalled();
+    landing.engine.on('order.failed', (e) => refused(e.data));
+    landing.order.paymentFailed();
     expect(refused).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R3' });
+    expect(landing.gets()).toHaveLength(0);
+    expect(landing.loaded).not.toHaveBeenCalled();
+    expect(landing.engine.cart.lines()).toHaveLength(1);
   });
 
   it('never takes a paid order for a failed payment, whatever the URL says', async () => {
@@ -89,20 +106,20 @@ describe('order', () => {
     await gatewayOrder(paid, 'https://shop.test/checkout/?payment_failed=true');
     const next = await setup({ session: paid });
     expect(next.engine.cart.lines()).toHaveLength(1);
-    await next.order.load('R1', '/upsell/');
+    await next.order.load('R1');
     expect(next.engine.cart.lines()).toEqual([]);
 
     const failed = new MemoryStorage();
     await gatewayOrder(failed, 'https://shop.test/oops/');
     const unpaid = (ref: string) => json({ ...ORDER, ref_id: ref, payment_complete_url: `https://pay.test/${ref}` });
     const landing = await setup({ session: failed, api: { getOrder: unpaid } });
-    await landing.order.load('R1', '/oops/');
+    await landing.order.load('R1');
     expect(landing.engine.cart.lines()).toHaveLength(1);
     expect(landing.paid).not.toHaveBeenCalled();
 
     const other = await setup();
     await other.engine.cart.addItem(2);
-    await other.order.load('R1', '/receipt/');
+    await other.order.load('R1');
     expect(other.engine.cart.lines()).toHaveLength(1);
   });
 
