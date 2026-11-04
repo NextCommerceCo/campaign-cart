@@ -25,13 +25,28 @@ export interface Contact {
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
 
+/** The cart every `cart.*` event carries. */
+export interface Cart {
+  /** Every line in the cart, the same package's lines merged. */
+  lines: Line[];
+  /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
+  coupons: string[];
+  /** The picked shipping method's `ref_id`. */
+  shipping_method_id?: number;
+  /**
+   * Lines, discounts, shipping and totals, as the server priced these lines. None before they are
+   * priced (`cart.updated`, `cart.calculating`), for an empty cart, or when pricing failed.
+   */
+  summary?: CartSummary;
+}
+
 /** A package added to or removed from the cart, and the price it was charged. */
 export interface CartChangeLine {
   /** The package's `ref_id` in the campaign. */
   package_id: number;
   /** How many packages were added or removed. */
   quantity: number;
-  /** Unit price after discounts, as the server priced it ({@link SummaryLine}'s `unit_price`). */
+  /** Unit price after discounts, as the server priced it; the package's price when it could not. */
   unit_price: string;
 }
 
@@ -140,45 +155,34 @@ export interface EventMap {
    * Lines, coupons or shipping changed, at once, before the server prices them.
    * @group Carts
    */
-  'cart.updated': {
-    /** Every line in the cart, the same package's lines merged. */
-    lines: Line[];
-    /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
-    coupons: string[];
-    /** The picked shipping method's `ref_id`. */
-    shipping_method_id?: number;
-  };
+  'cart.updated': Cart;
   /**
    * Pricing starts; once for a burst of changes.
    * @group Carts
    */
-  'cart.calculating': {
-    /** The lines being priced. */
-    lines: Line[];
-  };
+  'cart.calculating': Cart;
   /**
    * Server totals arrived.
    * @group Carts
    */
-  'cart.calculated': {
-    /** Lines, discounts, shipping and totals, as the server priced them. */
-    summary: CartSummary;
-  };
+  'cart.calculated': Cart & { summary: CartSummary };
   /**
    * Packages the page added since the last price, net, just before `cart.calculated`. A `+ + −`
    * within one price run sends one event for the net change; `+` then `−` sends none.
    * @group Carts
    */
-  'cart.added': {
-    lines: CartChangeLine[];
-    /** `false` when pricing failed: `unit_price` is then the package price. */
-    priced: boolean;
+  'cart.added': Cart & {
+    /** What was added, at the price the server charged. */
+    changes: CartChangeLine[];
   };
   /**
    * Packages the page removed since the last price, at the price they had.
    * @group Carts
    */
-  'cart.removed': { lines: CartChangeLine[]; priced: boolean };
+  'cart.removed': Cart & {
+    /** What was removed, at the price it had. */
+    changes: CartChangeLine[];
+  };
   /**
    * A code was added to the cart.
    * @group Coupons

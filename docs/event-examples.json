@@ -114,9 +114,21 @@
         "package_id": 1,
         "quantity": 1
       }
-    ]
+    ],
+    "coupons": []
   },
   "cart.calculated": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
+      },
+      {
+        "package_id": 2,
+        "quantity": 1
+      }
+    ],
+    "coupons": [],
     "summary": {
       "lines": [
         {
@@ -163,6 +175,58 @@
     "lines": [
       {
         "package_id": 1,
+        "quantity": 1
+      },
+      {
+        "package_id": 2,
+        "quantity": 1
+      }
+    ],
+    "coupons": [],
+    "summary": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "unit_price": "49.00",
+          "original_unit_price": "99.00",
+          "package_price": "49.00",
+          "original_package_price": "99.00",
+          "subtotal": "49.00",
+          "total_discount": "0.00",
+          "total": "49.00",
+          "discounts": []
+        },
+        {
+          "package_id": 2,
+          "quantity": 1,
+          "unit_price": "44.50",
+          "original_unit_price": "99.00",
+          "package_price": "89.00",
+          "original_package_price": "198.00",
+          "subtotal": "89.00",
+          "total_discount": "0.00",
+          "total": "89.00",
+          "discounts": []
+        }
+      ],
+      "offer_discounts": [],
+      "voucher_discounts": [],
+      "subtotal": "138.00",
+      "total_discount": "0.00",
+      "total": "138.00",
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "name": "Standard",
+        "code": "standard",
+        "price": "0.00",
+        "original_price": "0.00"
+      }
+    },
+    "changes": [
+      {
+        "package_id": 1,
         "quantity": 1,
         "unit_price": "49.00"
       },
@@ -171,18 +235,52 @@
         "quantity": 1,
         "unit_price": "44.50"
       }
-    ],
-    "priced": true
+    ]
   },
   "cart.removed": {
     "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
+      }
+    ],
+    "coupons": [],
+    "summary": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "unit_price": "49.00",
+          "original_unit_price": "99.00",
+          "package_price": "49.00",
+          "original_package_price": "99.00",
+          "subtotal": "49.00",
+          "total_discount": "0.00",
+          "total": "49.00",
+          "discounts": []
+        }
+      ],
+      "offer_discounts": [],
+      "voucher_discounts": [],
+      "subtotal": "49.00",
+      "total_discount": "0.00",
+      "total": "49.00",
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "name": "Standard",
+        "code": "standard",
+        "price": "0.00",
+        "original_price": "0.00"
+      }
+    },
+    "changes": [
       {
         "package_id": 2,
         "quantity": 1,
         "unit_price": "44.50"
       }
-    ],
-    "priced": true
+    ]
   },
   "coupon.applied": {
     "code": "SAVE10"

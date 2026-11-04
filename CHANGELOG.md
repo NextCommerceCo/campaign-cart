@@ -17,7 +17,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 - **Each event has its own page in the Event Reference**, like the webhook reference: when it fires, every field of its data, and an example recorded from a real checkout.
 - **A listener gets the data and a webhook-style envelope.** In `next.on('order.created', (data, event) => …)`, `event` has `event_id`, `event_type`, `object`, `data`, `created_at` and `sdk_version`.
 - **`sdk.ready` reaches a listener added after it fired**, and `ready` is the same event. Other events come once each, in order.
-- **The cart says when it is being priced**: `cart.calculating`, then `cart.calculated` with the server's totals, once for a burst of clicks. `cart.added` and `cart.removed` carry the net change of that price run, at the price it was charged.
+- **Every `cart.*` event carries the same cart**: its lines, coupons, shipping method and, once the server priced it, `summary`. `cart.calculating` and `cart.calculated` frame each price run, once for a burst of clicks. `cart.added` and `cart.removed` add `changes`: the net change of that price run, at the price it was charged.
 - **Bundle cards, upsell offer cards and toggles share the `selector.*` events**: `selector.selected`, `selector.deselected`, `selector.calculating` and `selector.calculated`, with `type` set to `bundle`, `offer` or `toggle`.
 - **Coupons send `coupon.applied`, `coupon.removed` and `coupon.denied`.**
 - **`contact.entered` fires when the store creates the Open Cart** from a valid email and a first and last name, and `contact.updated` when the contact changes after that. The Open Cart keeps the first contact.

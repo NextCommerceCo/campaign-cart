@@ -47,7 +47,10 @@ async function eventMap(root) {
 /** Fields of an event's data: a literal, an interface, or an intersection of them. */
 function fieldsOf(type) {
   if (!type) return [];
-  if (type.type === 'intersection') return type.types.flatMap(fieldsOf);
+  if (type.type === 'intersection') {
+    const byName = new Map(type.types.flatMap(fieldsOf).map((f) => [f.name, f]));
+    return [...byName.values()];
+  }
   if (type.type === 'reflection') return type.declaration.children ?? [];
   if (type.type === 'reference' && type.reflection) return type.reflection.children ?? fieldsOf(type.reflection.type);
   return [];

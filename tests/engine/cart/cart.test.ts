@@ -147,10 +147,20 @@ describe('cart', () => {
     void engine.cart.addItem(1);
     await engine.cart.setQuantity(1, 1);
     await engine.cart.settled();
-    const price = engine.getState().cart.summary!.lines[0]!.unit_price;
+    const summary = engine.getState().cart.summary!;
+    const price = summary.lines[0]!.unit_price;
     expect(seen).toEqual([
       'cart.calculating',
-      ['cart.added', { lines: [{ package_id: 1, quantity: 1, unit_price: price }], priced: true }],
+      [
+        'cart.added',
+        {
+          lines: [{ package_id: 1, quantity: 1 }],
+          coupons: [],
+          shipping_method_id: undefined,
+          summary,
+          changes: [{ package_id: 1, quantity: 1, unit_price: price }],
+        },
+      ],
       'cart.calculated',
     ]);
     seen.length = 0;
@@ -161,7 +171,15 @@ describe('cart', () => {
     seen.length = 0;
     await engine.cart.clear();
     expect(seen).toEqual([
-      ['cart.removed', { lines: [{ package_id: 1, quantity: 1, unit_price: price }], priced: true }],
+      [
+        'cart.removed',
+        {
+          lines: [],
+          coupons: [],
+          shipping_method_id: undefined,
+          changes: [{ package_id: 1, quantity: 1, unit_price: price }],
+        },
+      ],
     ]);
   });
 
@@ -178,7 +196,14 @@ describe('cart', () => {
     engine.on('cart.added', (e) => added.push(e.data));
     await engine.cart.addItem(1);
     await engine.cart.settled();
-    expect(added).toEqual([{ lines: [{ package_id: 1, quantity: 1, unit_price: '49.00' }], priced: false }]);
+    expect(added).toEqual([
+      {
+        lines: [{ package_id: 1, quantity: 1 }],
+        coupons: [],
+        shipping_method_id: undefined,
+        changes: [{ package_id: 1, quantity: 1, unit_price: '49.00' }],
+      },
+    ]);
   });
 
   it('announces a coupon applied, removed or denied', async () => {

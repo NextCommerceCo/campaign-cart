@@ -12,6 +12,7 @@ export interface Discount {
 
 /** One priced line of a {@link CartSummary}. Prices are decimal strings in the cart's currency. */
 export interface SummaryLine {
+  /** The package's `ref_id` in the campaign. */
   package_id: number;
   /** Package quantity. */
   quantity: number;

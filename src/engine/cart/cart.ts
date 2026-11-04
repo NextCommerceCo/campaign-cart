@@ -1,6 +1,6 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { CartChangeLine } from '../events';
+import type { Cart, CartChangeLine } from '../events';
 import type { Line, CartGroup, CartLine, CartState, CartSummary, ReportedLine, SummaryLine } from './types';
 
 export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
@@ -95,18 +95,25 @@ export function createCart(ctx: Context) {
     }
   };
 
-  const announce = (priced: SummaryLine[] | undefined) => {
+  const cartOf = (summary?: CartSummary): Cart => ({
+    lines: lines(),
+    coupons: state().coupons,
+    shipping_method_id: state().shippingId,
+    ...(summary && { summary }),
+  });
+
+  const announce = (summary?: CartSummary) => {
     const added: CartChangeLine[] = [];
     const removed: CartChangeLine[] = [];
     for (const [id, change] of changes) {
-      const now = priced?.find((l) => l.package_id === id)?.unit_price;
+      const now = summary?.lines.find((l) => l.package_id === id)?.unit_price;
       if (change.quantity > 0) added.push({ package_id: id, quantity: change.quantity, unit_price: now ?? listed(id) });
       if (change.quantity < 0)
         removed.push({ package_id: id, quantity: -change.quantity, unit_price: change.price ?? listed(id) });
     }
     changes.clear();
-    if (removed.length) ctx.emit('cart.removed', { lines: removed, priced: true });
-    if (added.length) ctx.emit('cart.added', { lines: added, priced: !!priced });
+    if (removed.length) ctx.emit('cart.removed', { ...cartOf(summary), changes: removed });
+    if (added.length) ctx.emit('cart.added', { ...cartOf(summary), changes: added });
   };
 
   const refuse = (code: string) => {
@@ -133,12 +140,12 @@ export function createCart(ctx: Context) {
     if (!lines().length || !campaign) {
       if (state().calculating) set({ calculating: false });
       busy = false;
-      if (!lines().length) announce(undefined);
+      if (!lines().length) announce();
       return;
     }
     if (!busy) {
       busy = true;
-      ctx.emit('cart.calculating', { lines: lines() });
+      ctx.emit('cart.calculating', cartOf());
     }
     const controller = (abort = new AbortController());
     try {
@@ -154,15 +161,15 @@ export function createCart(ctx: Context) {
       if (current !== seq) return;
       busy = false;
       set({ summary, calculating: false });
-      announce(summary.lines);
-      ctx.emit('cart.calculated', { summary });
+      announce(summary);
+      ctx.emit('cart.calculated', { ...cartOf(), summary });
       if (unchecked.size) void recheck(summary);
     } catch (err) {
       if (current !== seq) return;
       busy = false;
       set({ calculating: false });
       ctx.fail('calculate', err);
-      announce(undefined);
+      announce();
     }
   };
 
@@ -191,8 +198,7 @@ export function createCart(ctx: Context) {
       calculating: hasLines && !!ctx.getState().campaign,
     });
     track(before, prices);
-    const { coupons, shippingId } = state();
-    ctx.emit('cart.updated', { lines: mergeLines(state().groups), coupons, shipping_method_id: shippingId });
+    ctx.emit('cart.updated', cartOf());
     return recalculate();
   };
 

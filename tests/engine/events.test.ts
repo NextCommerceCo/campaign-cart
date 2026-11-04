@@ -44,7 +44,8 @@ describe('events', () => {
     engine.on('sdk.ready', () => engine.on('sdk.ready', late, { replay: true }));
     engine.events.emit('sdk.ready', { lines: [] });
     expect(late).toHaveBeenCalledTimes(1);
-    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { summary: {} as never });
+    for (let i = 0; i < 150; i++)
+      engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
     const later = vi.fn();
     engine.on('sdk.ready', later, { replay: true });
     expect(later).toHaveBeenCalledTimes(1);
