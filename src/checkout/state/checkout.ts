@@ -105,7 +105,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       if (contactKey(now) === contact) return;
       contact = contactKey(now);
       set({ contact: now });
-      ctx.emit('contact.updated', cart.current());
+      ctx.emit('contact.updated', cart.currentCheckout());
       return;
     }
     prospecting = true;
@@ -118,7 +118,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       });
       set({ prospectSaved: true, openCart: saved, contact: now });
       contact = contactKey(now);
-      ctx.emit('contact.entered', cart.current());
+      ctx.emit('contact.entered', cart.currentCheckout());
     } catch (err) {
       ctx.fail('contact.save', err);
     } finally {
@@ -141,7 +141,10 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
           ? { billingAddress: publicAddress(checkout, prefix) }
           : { shippingAddress: publicAddress(checkout, prefix) },
       );
-      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', { ...cart.current(), address_type: type });
+      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', {
+        ...cart.currentCheckout(),
+        address_type: type,
+      });
     }
   };
 
@@ -201,7 +204,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     begin(): void {
       if (started || !cart.lines().length) return;
       started = true;
-      ctx.emit('checkout.started', cart.current());
+      ctx.emit('checkout.started', cart.currentCheckout());
     },
 
     setField(name: string, value: string): void {
@@ -262,7 +265,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const method = paymentCode(word);
       const changed = method !== state().paymentMethod;
       set({ paymentMethod: method, errors });
-      if (changed) ctx.emit('payment.selected', cart.current());
+      if (changed) ctx.emit('payment.selected', cart.currentCheckout());
     },
 
     setStep(step: number): void {
@@ -332,7 +335,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         return undefined;
       };
       const stop = (errors: Record<string, CheckoutError>) => {
-        ctx.emit('checkout.submitted', { ...cart.current(), payment_method: method, valid: false, errors });
+        ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method, valid: false, errors });
         return fail(errors);
       };
 
@@ -358,7 +361,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         }
       }
 
-      ctx.emit('checkout.submitted', { ...cart.current(), payment_method: method, valid: true, errors: {} });
+      ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method, valid: true, errors: {} });
       try {
         const vouchers = cart.vouchers();
         const order = await ctx.api.createOrder(

@@ -150,6 +150,10 @@ export interface Cart {
   total?: number;
   /** The discounts on the products, one per offer. @priced */
   discounts?: Discount[];
+}
+
+/** The cart and what the shopper has entered so far, the same on every checkout event. */
+export interface Checkout extends Cart {
   /** The shopper's contact, from `contact.entered` on. */
   contact?: Contact;
   /** From `address.entered` for the shipping address on. */
@@ -344,26 +348,26 @@ export interface EventMap {
    * Once, when the checkout form is bound with a cart.
    * @group Checkout
    */
-  'checkout.started': Cart;
+  'checkout.started': Checkout;
   /**
    * Once per tab, when the store creates the Cart: a valid email and a first and last name are
    * in, checked when the shopper leaves a field. It is the Cart in the dashboard's Open Carts,
    * and later `cart.abandoned`.
    * @group Checkout
    */
-  'contact.entered': Cart;
+  'contact.entered': Checkout;
   /**
    * The contact changed after `contact.entered` and is still valid. The Open Cart keeps the first
    * contact.
    * @group Checkout
    */
-  'contact.updated': Cart;
+  'contact.updated': Checkout;
   /**
    * Once per `type`, when that address is valid: every field its country requires is filled and
    * valid, and so is each optional one filled. Checked when the shopper leaves a field.
    * @group Checkout
    */
-  'address.entered': Cart & {
+  'address.entered': Checkout & {
     /** Which address: `billing` only when it is separate from the shipping one. */
     address_type: AddressType;
   };
@@ -371,23 +375,23 @@ export interface EventMap {
    * The address changed after `address.entered` and is still valid.
    * @group Checkout
    */
-  'address.updated': Cart & { address_type: AddressType };
+  'address.updated': Checkout & { address_type: AddressType };
   /**
    * A shipping method was picked. A bundle card can set it on the landing page too.
    * @group Checkout
    */
-  'shipping.selected': Cart;
+  'shipping.selected': Checkout;
   /**
    * The payment method changed.
    * @group Checkout
    */
-  'payment.selected': Cart;
+  'payment.selected': Checkout;
   /**
    * Each submit, once its checks ran: the fields, then the card tokenized. A valid submit is
    * followed by `order.created` or `order.failed`.
    * @group Checkout
    */
-  'checkout.submitted': Cart & {
+  'checkout.submitted': Checkout & {
     /** `true` when the order is being sent. */
     valid: boolean;
     /** What stopped it, by field name; empty when valid. */

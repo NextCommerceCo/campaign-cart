@@ -139,14 +139,14 @@ function tables() {
   };
 }
 
-const CART_STEPS = ['checkout', 'contact', 'address', 'shipping', 'payment'];
+const CHECKOUT_STEPS = ['contact', 'address', 'shipping', 'payment'];
 
 function page(event, order, example, version) {
   const data = tables()(fieldsOf(event.member.type));
   const envelope = {
     event_id: '3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e',
     event_type: event.name,
-    object: CART_STEPS.includes(event.name.split('.')[0]) ? 'cart' : event.name.split('.')[0],
+    object: CHECKOUT_STEPS.includes(event.name.split('.')[0]) ? 'checkout' : event.name.split('.')[0],
     data: example,
     created_at: '2026-11-04T08:30:00.000Z',
     campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },

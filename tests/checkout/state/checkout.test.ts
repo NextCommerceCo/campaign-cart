@@ -193,7 +193,11 @@ describe('checkout', () => {
     await checkout.leave('email');
     expect(updated).not.toHaveBeenCalled();
     const next = await setup({ session });
-    expect(next.engine.cart.current().contact).toEqual(contact);
+    expect(next.engine.cart.currentCheckout().contact).toEqual(contact);
+    const updates = vi.fn();
+    next.engine.on('cart.updated', (e) => updates(e.data));
+    await next.engine.cart.addItem(2);
+    expect(updates.mock.calls[0]![0]).not.toHaveProperty('contact');
     next.engine.on('contact.updated', (e) => updated(e.data));
     next.checkout.setField('email', 'jane@example.org');
     await next.checkout.leave('email');
@@ -250,7 +254,7 @@ describe('checkout', () => {
     checkout.setSameAsShipping(false);
     expect(seen).toEqual([shipping, ['billing', address, { ...billing, postcode: '89501', country: 'US' }]]);
     checkout.setSameAsShipping(true);
-    expect(engine.cart.current().billing_address).toBeUndefined();
+    expect(engine.cart.currentCheckout().billing_address).toBeUndefined();
   });
 
   it('says whether each submit passed its checks, and why an order the server refused failed', async () => {

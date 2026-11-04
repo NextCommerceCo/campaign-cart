@@ -30,9 +30,9 @@ Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) re
 added after it fired; for anything else read `next.getState()`.
 
 The checkout steps (`checkout.*`, `contact.*`, `address.*`, `shipping.selected`,
-`payment.selected`) carry the same Cart as `cart.*`, and their `object` is `cart`. Once the shopper
-has entered them, the Cart has `contact`, `shipping_address`, `billing_address` and
-`payment_method` on every event, `cart.*` included, so send a tag only the fields it needs.
+`payment.selected`) carry the Checkout, and their `object` is `checkout`: the Cart, plus
+`contact`, `shipping_address`, `billing_address` and `payment_method` once the shopper has entered
+them. `cart.*` events carry the Cart alone.
 
 ## Event Reference
 

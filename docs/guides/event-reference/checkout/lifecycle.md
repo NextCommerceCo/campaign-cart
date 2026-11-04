@@ -28,7 +28,7 @@ group: 'Event Reference/Checkout'
 A created order empties the cart without cart events, unless the shopper pays at a payment
 gateway; then the cart is kept until the paid order is loaded. See the order lifecycle.
 
-Every checkout event carries the Cart, as `cart.*` do. It has `contact` from `contact.entered` on,
+Every checkout event carries the Checkout: the Cart, with `contact` from `contact.entered` on,
 each address from its `address.entered` on (`billing_address` only while billing is separate), and
 the chosen `payment_method`. `address.*` add `address_type`, and `checkout.submitted` adds `valid`
 and `errors`.

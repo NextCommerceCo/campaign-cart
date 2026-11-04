@@ -203,10 +203,10 @@ describe('analytics', () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', engine.cart.current());
-    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
+    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
     engine.events.emit('checkout.submitted', {
-      ...engine.cart.current(),
+      ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
       valid: true,
       errors: {},
@@ -228,7 +228,7 @@ describe('analytics', () => {
     await flush();
     await engine.cart.applyCoupon('SAVE10');
     await flush();
-    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
     const updated = win.NextDataLayer!.filter((e) => e.event === 'dl_cart_updated').at(-1);
     const begin = win.NextDataLayer!.at(-1);
     expect(updated.ecommerce).toMatchObject({ coupon: 'SAVE10', shipping: 0 });
@@ -436,10 +436,10 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, options);
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
-    engine.events.emit('checkout.started', engine.cart.current());
-    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
+    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
     engine.events.emit('checkout.submitted', {
-      ...engine.cart.current(),
+      ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
       valid: true,
       errors: {},
@@ -481,12 +481,12 @@ describe('analytics events (GA4 names)', () => {
     const seen = listen(engine);
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', engine.cart.current());
-    engine.events.emit('contact.entered', engine.cart.current());
-    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'billing' });
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
+    engine.events.emit('contact.entered', engine.cart.currentCheckout());
+    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'billing' });
     engine.events.emit('promotion.viewed', { source: 'exit_intent', template: 'exit' });
     engine.events.emit('promotion.clicked', { source: 'exit_intent', template: 'exit', action: 'apply-coupon' });
-    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
     expect(seen.slice(-4)).toMatchObject([
       { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
       { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },

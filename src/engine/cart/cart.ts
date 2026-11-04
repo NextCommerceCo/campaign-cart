@@ -1,6 +1,6 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChange, CartItem, Discount, Selector } from '../events';
+import type { Cart, CartChange, CartItem, Checkout, Discount, Selector } from '../events';
 import type {
   Line,
   CartGroup,
@@ -124,7 +124,6 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
     const seen = byOffer.get(d.offer_id);
     byOffer.set(d.offer_id, seen ? { ...seen, amount: sum([seen.amount, d.amount]) } : d);
   }
-  const checkout = state.checkout;
   return {
     lines,
     coupons,
@@ -136,6 +135,13 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
       total: money(summary.total),
       discounts: [...byOffer.values()],
     }),
+  };
+}
+
+export function publicCheckout(state: State, summary?: CartSummary): Checkout {
+  const checkout = state.checkout;
+  return {
+    ...publicCart(state, summary),
     ...(checkout?.contact && { contact: checkout.contact }),
     ...(checkout?.shippingAddress && { shipping_address: checkout.shippingAddress }),
     ...(checkout?.billingAddress && !checkout.sameAsShipping && { billing_address: checkout.billingAddress }),
@@ -206,7 +212,8 @@ export function createCart(ctx: Context) {
   };
 
   const cartOf = (summary?: CartSummary): Cart => publicCart(ctx.getState(), summary);
-  const currentCart = () => cartOf(state().calculating ? undefined : state().summary);
+  const settledSummary = () => (state().calculating ? undefined : state().summary);
+  const currentCheckout = () => publicCheckout(ctx.getState(), settledSummary());
 
   const announce = (summary?: CartSummary) => {
     const added: CartChange[] = [];
@@ -379,7 +386,8 @@ export function createCart(ctx: Context) {
   return {
     lines,
     vouchers,
-    current: currentCart,
+    current: () => cartOf(settledSummary()),
+    currentCheckout,
     recalculate,
     settled,
     freeze: (frozen: boolean) => set({ frozen }),
@@ -446,7 +454,7 @@ export function createCart(ctx: Context) {
     setShipping(shippingId: number | undefined) {
       if (shippingId === state().shippingId) return Promise.resolve();
       const done = commit({ shippingId });
-      ctx.emit('shipping.selected', currentCart());
+      ctx.emit('shipping.selected', currentCheckout());
       return done;
     },
   };

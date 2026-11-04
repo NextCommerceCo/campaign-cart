@@ -87,10 +87,10 @@ export interface SdkEvent<K extends EventName = EventName> {
   sdk_version: string;
 }
 
-const CART_STEPS = ['checkout', 'contact', 'address', 'shipping', 'payment'];
+const CHECKOUT_STEPS = ['contact', 'address', 'shipping', 'payment'];
 const objectOf = (name: EventName) => {
   const namespace = name.split('.')[0]!;
-  return CART_STEPS.includes(namespace) ? 'cart' : namespace;
+  return CHECKOUT_STEPS.includes(namespace) ? 'checkout' : namespace;
 };
 
 const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => {

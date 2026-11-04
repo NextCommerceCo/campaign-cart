@@ -126,11 +126,11 @@ describe('the workflows match the analytics code', () => {
     await engine.start();
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
-    engine.events.emit('checkout.started', engine.cart.current());
-    engine.events.emit('contact.entered', engine.cart.current());
-    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
+    engine.events.emit('contact.entered', engine.cart.currentCheckout());
+    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
     engine.events.emit('checkout.submitted', {
-      ...engine.cart.current(),
+      ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
       valid: true,
       errors: {},
@@ -218,7 +218,7 @@ describe('analytics workflow', () => {
     send('sdk.ready', 'page_view', { page_title: 'Checkout' }, 'pv');
     engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
-    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('checkout.started', engine.cart.currentCheckout());
     send('checkout.started', 'begin_checkout', { currency: 'USD', value: 49, items: [EARBUDS] }, 'bc');
     paint();
     expect(verdict()).toBe('Every event so far was pushed with the fields GA4 requires');
