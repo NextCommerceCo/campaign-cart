@@ -284,6 +284,58 @@ const LIFECYCLES = {
       ['order.create', 'refused: back to filling, with order.failed'],
     ],
   },
+  'checkout/user': {
+    title: 'User lifecycle',
+    desc: 'Lead capture. There is no user until the shopper has entered what data-next-lead asks for: by default a first and last name and an email. Then the checkout saves them with an Open Cart and sends user.created, once per tab. If saving fails it sends sdk.error and tries again when the shopper leaves the next field. After that, a change that is still valid sends user.updated; the Open Cart keeps the first details. With data-next-lead off it never saves.',
+    rows: 3,
+    boxes: [
+      { row: 0, title: 'no user yet', sub: ['waiting for data-next-lead'] },
+      { row: 1, title: 'saving', sub: ['the Open Cart is created'], tone: 'waiting' },
+      { row: 2, title: 'created', sub: [code('user.created')], tone: 'success' },
+      { col: 'side', row: 1, title: 'not saved', sub: [code('user.save')], tone: 'failure' },
+    ],
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      return [
+        down(0, 1, 'the fields data-next-lead needs'),
+        down(1, 2, 'saved'),
+        toSide(1, 'save fails'),
+        [
+          arrow(`M${SIDE.cx} ${rowY(1)} V${rowY(0) + 29} H${right + 6}`, { dashed: true }),
+          label((right + SIDE.cx) / 2 + 10, rowY(0) + 21, 'the next field', { anchor: 'middle', size: 12 }),
+        ],
+        [
+          arrow(`M${right} ${rowY(2) + 18} H470 V${rowY(2) + 42} H${right + 6}`),
+          label(482, rowY(2) + 24, 'details change', { size: 12 }),
+          label(482, rowY(2) + 41, 'user.updated', { code: true }),
+        ],
+      ];
+    },
+    note: 'Once per tab, kept across pages · data-next-lead="off" never saves',
+    errors: [['user.save', 'not saved yet; tried again on the next field']],
+  },
+  'checkout/address': {
+    title: 'Address lifecycle',
+    desc: 'For each type, shipping and billing. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once. A later change that is still valid sends address.updated; a change that makes it invalid sends nothing, and the Checkout keeps the last valid address. A billing address counts only while billing is separate from shipping.',
+    rows: 2,
+    boxes: [
+      { row: 0, title: 'incomplete', sub: ['a field is missing or wrong'] },
+      { row: 1, title: 'entered', sub: [code('address.entered')], tone: 'success' },
+    ],
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      return [
+        down(0, 1, 'every field is valid'),
+        [
+          arrow(`M${right} ${rowY(1) + 18} H470 V${rowY(1) + 42} H${right + 6}`),
+          label(482, rowY(1) + 24, 'changes, still valid', { size: 12 }),
+          label(482, rowY(1) + 41, 'address.updated', { code: true }),
+        ],
+      ];
+    },
+    note: 'Per type · an invalid change sends nothing and the last valid address is kept · billing only while separate',
+    errors: [['address.rules', 'the campaign countries and simpler checks']],
+  },
   orders: {
     title: 'Order lifecycle',
     desc: 'order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, with purchase the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without purchase, and the cart is kept.',
@@ -357,8 +409,9 @@ const LIFECYCLES = {
   },
 };
 
-for (const [group, spec] of Object.entries(LIFECYCLES)) {
+for (const [name, spec] of Object.entries(LIFECYCLES)) {
   ROWS = spec.rowYs;
-  const file = `${ROOT}/${group}/${group === 'carts' ? 'cart' : group.replace(/s$/, '')}-lifecycle.svg`;
-  writeFileSync(file, svg(group, spec));
+  const [group, part] = name.split('/');
+  const stem = part ?? (group === 'carts' ? 'cart' : group.replace(/s$/, ''));
+  writeFileSync(`${ROOT}/${group}/${stem}-lifecycle.svg`, svg(name.replace('/', '-'), spec));
 }

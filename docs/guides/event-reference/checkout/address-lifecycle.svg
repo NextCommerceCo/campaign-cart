@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 322" width="720" height="322" role="img" aria-labelledby="checkout-address-lifecycle-title checkout-address-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="checkout-address-lifecycle-title">Address lifecycle</title>
+  <desc id="checkout-address-lifecycle-desc">For each type, shipping and billing. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once. A later change that is still valid sends address.updated; a change that makes it invalid sends nothing, and the Checkout keeps the last valid address. A billing address counts only while billing is separate from shipping.</desc>
+  <defs>
+    <marker id="checkout-address-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <path d="M330 74 V190" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">every field is valid</text>
+    <path d="M440 214 H470 V238 H446" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="220" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">changes, still valid</text>
+    <text x="482" y="237" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.updated</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">incomplete</text>
+    <text x="330" y="61" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">a field is missing or wrong</text>
+    <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">entered</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.entered</text>
+  </g>
+  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Per type · an invalid change sends nothing and the last valid address is kept · billing only while separate</tspan></text>
+  <text x="360" y="308" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · address.rules</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the campaign countries and simpler checks</tspan></text>
+</svg>

@@ -38,6 +38,8 @@ Cart as `cart`, the `user`, the addresses, `billing_same_as_shipping` and `payme
 
 ## User
 
+![User lifecycle: no user yet, saving, created or not saved, with user.created and user.updated](user-lifecycle.svg)
+
 `user.created` fires once per tab, when the checkout saves the shopper as a lead: their first and
 last name and email by default, or what `data-next-lead` asks for (see Lead capture in
 [Attributes](../../attributes.md#lead-capture)). The Open Cart keeps those first details;
@@ -45,6 +47,8 @@ last name and email by default, or what `data-next-lead` asks for (see Lead capt
 what the store recorded with the Open Cart.
 
 ## Address
+
+![Address lifecycle: incomplete, then entered, with address.entered and address.updated](address-lifecycle.svg)
 
 `address.entered` fires once per `type`, when that address is valid: every field its country
 requires passes its check, and so does each optional field the shopper filled. `address.updated`
