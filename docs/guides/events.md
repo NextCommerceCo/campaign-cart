@@ -27,6 +27,36 @@ next.on('order.created', (data, event) => {
 Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
 added after it fired; for anything else read `next.getState()`.
 
+## Cart lifecycle
+
+![Cart lifecycle: empty, calculating, priced, unpriced, frozen and ordered, with the events each step sends](diagrams/cart-lifecycle.png)
+
+| State         | Means                                                                 |
+| ------------- | --------------------------------------------------------------------- |
+| `empty`       | No lines                                                              |
+| `calculating` | Lines changed; the server's prices are on the way                     |
+| `priced`      | The cart carries the server's prices                                  |
+| `unpriced`    | Pricing failed; the cart has no prices until the next change          |
+| `frozen`      | The checkout is placing an order; changes are ignored                 |
+| `ordered`     | The order was created or paid; the cart is empty, without cart events |
+
+| From                                | What happens                                                            | To            | Events, in order                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| `empty`                             | A package is added                                                      | `calculating` | `cart.updated`, `cart.calculating`                                                          |
+| `calculating`                       | Another change before the prices arrive                                 | `calculating` | `cart.updated`; no second `cart.calculating`, and only the latest request's prices are used |
+| `calculating`                       | The server prices the cart                                              | `priced`      | `cart.removed`, `cart.added` (the net change), `cart.calculated`                            |
+| `calculating`                       | Pricing fails                                                           | `unpriced`    | `sdk.error` (`action: 'calculate'`), `cart.removed`, `cart.added` at the campaign's prices  |
+| `priced`, `unpriced`                | A package, a quantity, a coupon or the shipping method changes          | `calculating` | `cart.updated` (then `coupon.applied` or `coupon.removed` for a coupon), `cart.calculating` |
+| `priced`                            | A coupon takes nothing off                                              | `priced`      | `coupon.denied`; the cart does not change                                                   |
+| `priced`                            | A coupon entered while the cart was empty turns out to take nothing off | `calculating` | `coupon.denied`, `cart.updated` (the code is removed), `cart.calculating`                   |
+| `calculating`, `priced`, `unpriced` | The last package is removed, or the cart is cleared                     | `empty`       | `cart.updated`, `cart.removed`                                                              |
+| `priced`                            | The checkout sends the order                                            | `frozen`      | none                                                                                        |
+| `frozen`                            | The order is refused                                                    | `priced`      | `order.failed`                                                                              |
+| `frozen`                            | The order is created                                                    | `ordered`     | `order.created`                                                                             |
+| `priced`                            | A post-purchase page loads an order paid through a payment gateway      | `ordered`     | `order.loaded`                                                                              |
+
+Before the campaign loads, a change sends `cart.updated` only; pricing starts once it has loaded.
+
 ## Event Reference
 
 Each event has its own page with its fields and an example, generated from `EventMap` in

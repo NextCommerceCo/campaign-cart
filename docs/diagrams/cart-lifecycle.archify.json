@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Cart Lifecycle",
+    "output": ".archify/cart-lifecycle/cart-lifecycle.html",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Shopping"
+    },
+    {
+      "id": "failure",
+      "label": "Pricing failed"
+    },
+    {
+      "id": "terminal",
+      "label": "After the order"
+    }
+  ],
+  "states": [
+    {
+      "id": "empty",
+      "type": "start",
+      "label": "empty",
+      "sublabel": "no lines",
+      "lane": "main",
+      "col": 0,
+      "step": "01"
+    },
+    {
+      "id": "calculating",
+      "type": "active",
+      "label": "calculating",
+      "sublabel": "cart.calculating",
+      "lane": "main",
+      "col": 1,
+      "step": "02"
+    },
+    {
+      "id": "priced",
+      "type": "success",
+      "label": "priced",
+      "sublabel": "cart.calculated",
+      "lane": "main",
+      "col": 2,
+      "step": "03"
+    },
+    {
+      "id": "frozen",
+      "type": "waiting",
+      "label": "frozen",
+      "sublabel": "placing the order",
+      "lane": "main",
+      "col": 3,
+      "step": "04"
+    },
+    {
+      "id": "unpriced",
+      "type": "failure",
+      "label": "unpriced",
+      "sublabel": "sdk.error",
+      "lane": "failure",
+      "col": 1
+    },
+    {
+      "id": "ordered",
+      "type": "success",
+      "label": "ordered",
+      "sublabel": "emptied, no cart events",
+      "lane": "terminal",
+      "col": 3
+    }
+  ],
+  "transitions": [
+    {
+      "from": "empty",
+      "to": "calculating",
+      "label": "add · cart.updated"
+    },
+    {
+      "from": "calculating",
+      "to": "priced",
+      "label": "prices arrive"
+    },
+    {
+      "from": "priced",
+      "to": "frozen",
+      "label": "order sent"
+    },
+    {
+      "from": "frozen",
+      "to": "ordered",
+      "label": "order.created",
+      "variant": "emphasis"
+    },
+    {
+      "from": "calculating",
+      "to": "unpriced",
+      "label": "pricing fails",
+      "variant": "security"
+    },
+    {
+      "from": "unpriced",
+      "to": "calculating",
+      "label": "next change",
+      "variant": "dashed"
+    },
+    {
+      "from": "priced",
+      "to": "calculating",
+      "label": "change · cart.updated",
+      "variant": "dashed"
+    },
+    {
+      "from": "frozen",
+      "to": "priced",
+      "label": "order.failed",
+      "variant": "dashed"
+    },
+    {
+      "from": "priced",
+      "to": "empty",
+      "label": "emptied · cart.removed",
+      "variant": "dashed",
+      "route": "top-channel"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Every change",
+      "items": [
+        "sends cart.updated at once",
+        "starts one price run: one cart.calculating per burst",
+        "a newer change replaces the running request"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Prices",
+      "items": [
+        "cart.added and cart.removed carry the net change",
+        "both come just before cart.calculated",
+        "no prices until the server answers"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Orders",
+      "items": [
+        "changes are ignored while the order is placed",
+        "a refused order unfreezes the cart",
+        "a created or gateway-paid order empties it silently"
+      ]
+    }
+  ]
+}

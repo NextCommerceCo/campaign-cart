@@ -45,6 +45,16 @@ function rewriteLinks(text, dir) {
   });
 }
 
+// The theme prefixes its base path twice on a raster image it serves, so a guide's PNG goes inline.
+async function inlineRaster(text, dir) {
+  const images = [...text.matchAll(/!\[[^\]]*\]\(([^)\s]+\.png)\)/g)];
+  for (const [, src] of images) {
+    const bytes = await readFile(join(dir, src));
+    text = text.replace(`(${src})`, `(data:image/png;base64,${bytes.toString('base64')})`);
+  }
+  return text;
+}
+
 async function walk(dir) {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -66,9 +76,12 @@ for (const file of await walk(SRC)) {
   // Only a page is rewritten. An image is copied byte for byte: read as UTF-8, a PNG
   // comes out corrupted.
   if (file.endsWith('.md')) {
-    const text = rewriteLinks(
-      stripGroupPrefix((await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)),
-      relative(SRC, dirname(file)) || '.',
+    const text = await inlineRaster(
+      rewriteLinks(
+        stripGroupPrefix((await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)),
+        relative(SRC, dirname(file)) || '.',
+      ),
+      dirname(file),
     );
     await writeFile(temporary, text);
   } else {
