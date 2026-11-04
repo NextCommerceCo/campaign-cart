@@ -154,36 +154,18 @@ describe('boot', () => {
         object: 'sdk',
         data: { lines: expect.any(Array) },
         created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
-        context: {
-          page_location: location.origin + location.pathname,
-          page_title: document.title,
-          page_referrer: '',
-          campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
-          session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
-          attribution: expect.objectContaining({ metadata: expect.any(Object) }),
-          browser: {
-            user_agent: navigator.userAgent,
-            language: navigator.language,
-            timezone: expect.any(String),
-            screen: { width: screen.width, height: screen.height },
-            viewport: { width: innerWidth, height: innerHeight },
-            device_type: expect.stringMatching(/^(mobile|desktop)$/),
-          },
-        },
+        campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+        session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
         sdk_version: expect.any(String),
       },
     );
-    const session = ready.mock.calls[0]![1].context.session_id;
+    const session = ready.mock.calls[0]![1].session_id;
     expect(document.cookie).toContain(`ncsid=${session}`);
     const added = vi.fn();
     next.on('cart.added', added);
     await next.actions.addItem(1);
     await vi.waitFor(() => expect(added).toHaveBeenCalledTimes(1));
-    expect(added.mock.calls[0]![1]).toMatchObject({
-      event_type: 'cart.added',
-      object: 'cart',
-      context: { session_id: session },
-    });
+    expect(added.mock.calls[0]![1]).toMatchObject({ event_type: 'cart.added', object: 'cart', session_id: session });
     expect(api.calls.at(-1)!.headers['X-Next-Campaign-Session-Id']).toBe(session);
     const shipped = vi.fn();
     next.on('shipping.selected', shipped);

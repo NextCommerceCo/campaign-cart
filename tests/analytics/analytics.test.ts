@@ -49,10 +49,6 @@ describe('analytics', () => {
     expect(event).toMatchObject({
       event: 'dl_user_data',
       user_properties: { visitor_type: 'guest' },
-      user_agent: navigator.userAgent,
-      screen_resolution: `${screen.width}x${screen.height}`,
-      viewport_size: `${innerWidth}x${innerHeight}`,
-      session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
       campaign_id: '1310',
       campaign_name: 'Olympus',
       campaign_currency: 'USD',
@@ -64,7 +60,7 @@ describe('analytics', () => {
       attribution: { utm_source: 'fb', funnel: 'Olympus' },
     });
     expect(event.event_id).toMatch(/^[0-9a-f]{32}$/);
-    expect(event.session_id).not.toBe(event.campaign_session_id);
+    expect(event).not.toHaveProperty('session_id');
     expect(JSON.stringify(event)).not.toContain('jane@x.com');
     expect(win.dataLayer).toEqual([{ ecommerce: null }, event]);
   });

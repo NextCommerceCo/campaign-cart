@@ -20,17 +20,11 @@ next.on('order.created', (data, event) => {
   event.object; // 'order'
   event.data; // same as data
   event.created_at; // ISO time
-  event.context; // the page, campaign, session, attribution and browser, as on tracking events
+  event.campaign; // { id, name, currency, language }, once the campaign has loaded
+  event.session_id; // the campaign session, a UUID v4 as 32 hex digits
   event.sdk_version;
 });
 ```
-
-`context` has `page_location` and `page_referrer` (without their query string), `page_title`,
-`campaign` (`id`, `name`, `currency`, `language`, once it has loaded), `session_id` (the campaign
-session, a UUID v4 as 32 hex digits), `attribution` (as sent with the order) and `browser`
-(`user_agent`, `language`, `timezone`, `screen`, `viewport`, `device_type`). It has no IP address:
-the Campaigns API keeps the IP of each campaign session, and a server receiving an event sees the
-IP of its request.
 
 Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
 added after it fired; for anything else read `next.getState()`.
@@ -84,7 +78,8 @@ Names and `params` follow GA4 ecommerce; `update_cart`, `upsell_purchase`,
 `view_upsell` and `skip_upsell` have no GA4 equivalent. `items` carry GA4 item fields (`item_id`,
 `item_name`, `item_variant`, `price`, `discount`, `quantity`, `index`, …). `id` is unique per
 event, and is the transaction id for `purchase` and `upsell_purchase`; `purchase` is sent once, only
-when paid. `context` is the envelope's `context`. No personal data is sent.
+when paid. `context` has `page_location`, `page_title`, `page_referrer`, `campaign` (as in the
+envelope), `attribution` and `session_id`. No personal data is sent.
 
 `generate_lead` is sent once, on `contact.entered`. `add_shipping_info` is sent once, after
 `checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that
@@ -111,8 +106,7 @@ falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` afte
 `_closed` / `_action`. The exit-intent popup sends both its `dl_exit_intent_*` event and
 `dl_view_promotion` / `dl_select_promotion`. No personal data is sent. Each push carries
 `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key` and
-`campaign_session_id` at the top level, as 0.4.30 did, and `user_agent`, `screen_resolution`,
-`viewport_size` and `session_id` (one per tab), as 0.4.x did. `dl_add_to_cart` carries
+`campaign_session_id` at the top level, as 0.4.30 did. `dl_add_to_cart` carries
 `first_in_session` at the top level. The purchase
 events use the transaction id as `event_id`, as 0.4.x did. `nextConfig.analytics.providers.gtm.enabled: false`
 keeps events out of `dataLayer` (only `NextDataLayer`).

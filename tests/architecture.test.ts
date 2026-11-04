@@ -27,7 +27,7 @@ const ALLOWED: Record<string, string[]> = {
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
   debug: ['engine', '../vendor/tsugi'],
-  compat: ['engine', 'analytics/ecommerce'],
+  compat: ['engine', 'analytics/context', 'analytics/ecommerce'],
   boot: ['engine', 'bindings', 'compat/legacy'],
   loader: ['config', 'compat/config'],
   config: ['compat/config'],

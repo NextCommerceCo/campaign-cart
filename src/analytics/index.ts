@@ -2,6 +2,7 @@ import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
 import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { startLegacyDataLayer } from '../compat/analytics';
+import { pageContext } from './context';
 import { newId } from '../engine/id';
 import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
 
@@ -38,7 +39,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     why: { trigger: EventName; reason: string; id?: string },
   ) => {
     const id = why.id ?? newId();
-    const context = engine.eventContext();
+    const context = pageContext(engine);
     engine.events.emit('analytics', { name, id, time: new Date().toISOString(), params, context });
     trace(why.trigger, name, true, why.reason, id);
   };
@@ -55,7 +56,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   const onReady = () => {
     ready = true;
-    const { page_location, page_title, page_referrer } = engine.eventContext();
+    const { page_location, page_title, page_referrer } = pageContext(engine);
     emit(
       'page_view',
       { page_location, page_title, page_referrer },
