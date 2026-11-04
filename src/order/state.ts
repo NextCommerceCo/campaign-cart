@@ -5,7 +5,7 @@ import type { ErrorCode, Failure, Upsell } from '../engine/events';
 import { appliedCodes, publicOrder } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { bool, cents, money, type Value } from '../engine/format';
-import type { CartLine } from '../engine/cart/types';
+import type { CartLine, Line } from '../engine/cart/types';
 import type { ApiOrder, ApiOrderAddress, ApiOrderLine, CheckoutError, State } from '../engine/types';
 import type { CheckoutState } from '../checkout/state/types';
 
@@ -18,6 +18,8 @@ export interface OrderState {
   accepted: string[];
   /** The codes the checkout sent with the order: `code` is the first, `codes` the shopper's own. */
   coupon?: { refId: string; code?: string; codes: string[] };
+  /** The order as it was when `order.paid` was sent, before any upsell; never saved. */
+  paidOrder?: ApiOrder;
 }
 
 const ORDER_TTL = 15 * 60 * 1000;
@@ -157,9 +159,22 @@ type Offer = { selectorId?: string; lines?: CartLine[] };
 
 const UNKNOWN_OUTCOME: ErrorCode[] = ['network', 'timeout', 'server'];
 
-const newUpsellLines = (before: ApiOrder, after: ApiOrder) => {
+const sameId = (a?: number | null, b?: number | null) => (a ?? null) === (b ?? null);
+
+const hasOfferLines = (before: ApiOrder, after: ApiOrder, lines: Line[], packageOf: Context['getPackage']) => {
   const known = new Set((before.lines ?? []).map((l) => String(l.id)));
-  return (after.lines ?? []).filter((l) => l.is_upsell && !known.has(String(l.id)));
+  const added = (after.lines ?? []).filter((l) => l.is_upsell && !known.has(String(l.id)));
+  return lines.every(({ package_id, quantity }) => {
+    const pkg = packageOf(package_id);
+    if (!pkg) return false;
+    const at = added.findIndex(
+      (l) =>
+        l.quantity === quantity && sameId(l.product_id, pkg.product_id) && sameId(l.variant_id, pkg.product_variant_id),
+    );
+    if (at < 0) return false;
+    added.splice(at, 1);
+    return true;
+  });
 };
 
 export function createOrder(ctx: Context, cart: CartActions) {
@@ -214,6 +229,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
     ctx.emit('order.loaded', data);
     if (!paid || reported().includes(purchaseId(order))) return;
     markReported([purchaseId(order)]);
+    set({ paidOrder: order });
     ctx.emit('order.paid', data);
   };
 
@@ -290,7 +306,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
         const { code } = failureOf(err);
         if (UNKNOWN_OUTCOME.includes(code)) {
           const after = await fetchOrder(refId).catch(() => undefined);
-          if (after && newUpsellLines(order, after).length) {
+          if (after && hasOfferLines(order, after, body, ctx.getPackage)) {
             ctx.log.info(`upsell.add failed (${code}), but the order now has the upsell: accepted`);
             return added(after);
           }

@@ -1,8 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { EngineEvent, Snapshot } from '../../src/engine/events';
+import type { Engine } from '../../src/engine/engine';
+import type { AnalyticsEvent, EngineEvent, EventContext, EventName, Snapshot } from '../../src/engine/events';
 import { makeEngine } from '../fixtures/engine';
 
 const READY: Snapshot = { cart: { lines: [], coupons: [] }, selectors: [] };
+const ANALYTICS: AnalyticsEvent = { name: 'page_view', id: 'a1', time: '', params: {}, context: {} as EventContext };
+
+const replayed = (engine: Engine, name: EventName | '*') => {
+  const seen: string[] = [];
+  engine.on(name, (e) => seen.push(e.name), { replay: true })();
+  return seen;
+};
 
 describe('events', () => {
   it('replays buffered events and survives a throwing subscriber', async () => {
@@ -82,5 +90,43 @@ describe('events', () => {
     const kept = replayed();
     expect(kept.map((e) => e.name)).toEqual(['sdk.ready', ...Array<string>(99).fill('coupon.denied')]);
     expect(kept[1]!.data).toMatchObject({ code: 'C51' });
+  });
+
+  it('replays to a late listener in order, and an event its handler sends reaches the others at once', () => {
+    const { engine } = makeEngine();
+    const seen: string[] = [];
+    const code = (e: EngineEvent) => (e.data as { code: string }).code;
+    engine.events.emit('coupon.removed', { code: 'A', reason: 'shopper' });
+    engine.events.emit('coupon.removed', { code: 'B', reason: 'shopper' });
+    engine.on('coupon.removed', (e) => seen.push(`other ${code(e)}`));
+    engine.on(
+      'coupon.removed',
+      (e) => {
+        seen.push(`late ${code(e)}`);
+        if (code(e) === 'A') engine.events.emit('coupon.removed', { code: 'C', reason: 'shopper' });
+      },
+      { replay: true },
+    );
+    expect(seen).toEqual(['late A', 'other C', 'late B', 'late C']);
+  });
+
+  it('keeps selector.updated and analytics events while state updates flood the buffer', () => {
+    const { engine } = makeEngine();
+    engine.events.emit('sdk.ready', READY);
+    engine.events.emit('selector.updated', { selector_id: 's', type: 'bundle', lines: [] });
+    engine.events.emit('analytics', ANALYTICS);
+    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    expect(replayed(engine, 'selector.updated')).toEqual(['selector.updated']);
+    expect(replayed(engine, 'analytics')).toEqual(['analytics']);
+  });
+
+  it('never drops the event just sent, and drops internal events before public ones', () => {
+    const { engine } = makeEngine();
+    engine.events.emit('sdk.ready', READY);
+    for (let i = 0; i < 99; i++) engine.events.emit('coupon.denied', { code: `C${i}`, reason: 'no_discount' });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    expect(replayed(engine, 'cart.calculated')).toEqual(['cart.calculated']);
+    for (let i = 0; i < 150; i++) engine.events.emit('analytics', ANALYTICS);
+    expect(replayed(engine, '*')).toEqual(['sdk.ready', ...Array<string>(98).fill('coupon.denied'), 'analytics']);
   });
 });

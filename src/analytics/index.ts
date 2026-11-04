@@ -155,8 +155,8 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   };
 
   const onPaid = ({ ref_id }: EventMap['order.paid']) => {
-    const order = rawOrder(ref_id);
-    if (!order) return skip('order.paid', 'purchase', 'The order is not in the state');
+    const order = engine.getState().order?.paidOrder;
+    if (order?.ref_id !== ref_id) return skip('order.paid', 'purchase', 'The order is not in the state');
     const { coupon } = engine.getState().order!;
     const code = coupon?.refId === ref_id ? coupon.code : undefined;
     const transaction = String(order.number ?? order.ref_id);

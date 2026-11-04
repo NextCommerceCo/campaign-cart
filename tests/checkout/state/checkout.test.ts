@@ -152,6 +152,23 @@ describe('checkout', () => {
     });
   });
 
+  it('keeps the step each page showed for the tab, and starts over after a paid order', async () => {
+    const session = new MemoryStorage();
+    const first = await setup({ session });
+    await first.engine.cart.addItem(1);
+    await first.checkout.loadCountries();
+    first.fill(SHIPPING);
+    first.checkout.setStep(1, '/information/');
+    expect(first.checkout.nextStep()).toBe(true);
+    const next = await setup({ session });
+    expect(next.engine.getState().checkout).toMatchObject({ step: 2, steps: { '/information/': 1 } });
+    next.checkout.setStep(2, '/shipping/');
+    next.checkout.setStep(1, '/information/');
+    expect(next.engine.getState().checkout!.steps).toEqual({ '/information/': 1, '/shipping/': 2 });
+    await next.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect((await setup({ session })).engine.getState().checkout!.steps).toBeUndefined();
+  });
+
   it('offers the campaign’s countries and opens on the stored, linked, located, US or first one', async () => {
     const offered = {
       available_shipping_countries: [
@@ -572,7 +589,7 @@ describe('checkout', () => {
     checkout.setField('email', 'jane@example.com');
     checkout.setField('first_name', 'Jane');
     checkout.setField('last_name', 'Doe');
-    expect(await checkout.placeOrder({ ...URLS, method: 'paypal' })).toMatchObject({ ref_id: 'R2' });
+    expect(await checkout.placeOrder({ ...URLS, expressMethod: 'paypal' })).toMatchObject({ ref_id: 'R2' });
     expect(seen).toEqual([['payment.redirected', { method: 'paypal', ref_id: 'R2', url: 'https://pay.test/R2' }]]);
     expect(engine.getState().checkout).toMatchObject({ status: 'placed', pendingRef: 'R2' });
     expect(engine.getState().checkout).not.toHaveProperty('failurePath');
@@ -690,7 +707,7 @@ describe('one checkout per tab', () => {
     const step = await page(session, { api: gateway });
     expect(step.started).toEqual([]);
     expect(step.id()).toBe(first.id());
-    await step.checkout.placeOrder({ ...URLS, method: 'paypal' });
+    await step.checkout.placeOrder({ ...URLS, expressMethod: 'paypal' });
 
     const back = await page(session);
     expect(back.started).toEqual([]);
@@ -718,6 +735,20 @@ describe('one checkout per tab', () => {
     expect(seen).toEqual(['checkout.started', 'address.entered']);
     expect(started).toHaveLength(1);
     expect(pages).toHaveLength(1);
+  });
+
+  it('calls the 0.4.x hook after checkout.started, when the cart fills after the form binds', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const heard: string[] = [];
+    const checkout = engine.attach((ctx) =>
+      createCheckout(ctx, engine.cart, fakeRules().api, { opened: (c) => heard.push(`0.4.x ${c.id}`) }),
+    );
+    checkout.begin();
+    engine.on('checkout.started', (e) => heard.push(`checkout.started ${e.data.id}`));
+    await engine.cart.addItem(1);
+    const id = engine.getState().checkout!.id;
+    expect(heard).toEqual([`checkout.started ${id}`, `0.4.x ${id}`]);
   });
 
   it('sends checkout.continued with the step that passed, then moves to the next step', async () => {
@@ -784,7 +815,7 @@ describe('checkout payment', () => {
       await engine.cart.addItem(1);
       await checkout.loadCountries();
       fill(fields);
-      const placed = await checkout.placeOrder({ ...URLS, method: 'apple-pay', expressChecks });
+      const placed = await checkout.placeOrder({ ...URLS, expressMethod: 'apple-pay', expressChecks });
       return { placed, body: posts('/orders/')[0]?.body, errors: engine.getState().checkout!.errors };
     };
     const free = await pay();

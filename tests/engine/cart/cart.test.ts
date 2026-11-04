@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
+import { publicCart } from '../../../src/engine/cart/cart';
 import { MemoryStorage } from '../../fixtures/storage';
 import type { EventMap, Selector } from '../../../src/engine/events';
 import { campaign } from '../../fixtures/campaign';
@@ -87,6 +88,33 @@ describe('cart', () => {
     await applying;
     expect(applied).toBe(true);
     expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+  });
+
+  it('records the cart action behind each change as it is announced, and never saves it', async () => {
+    const session = new MemoryStorage();
+    const { engine } = makeEngine({ session });
+    await engine.start();
+    const seen: Array<[string, unknown]> = [];
+    engine.on('*', (e) => e.name.startsWith('cart.') && seen.push([e.name, engine.getState().cart.lastOperation]));
+    await engine.cart.addItem(1);
+    await engine.cart.setQuantity(1, 3);
+    await engine.cart.removeItem(1);
+    await engine.cart.setGroup('bundle:main', toggle(2));
+    await engine.cart.setGroups({ items: toggle(3) });
+    await engine.cart.clear();
+    const changes = seen.filter(([name]) => name === 'cart.added' || name === 'cart.removed');
+    expect(changes).toEqual([
+      ['cart.added', { action: 'addItem', group: 'items' }],
+      ['cart.added', { action: 'setQuantity' }],
+      ['cart.removed', { action: 'removeItem' }],
+      ['cart.added', { action: 'setGroup', group: 'bundle:main' }],
+      ['cart.removed', { action: 'setGroups' }],
+      ['cart.added', { action: 'setGroups' }],
+      ['cart.removed', { action: 'clear' }],
+    ]);
+    await engine.cart.addItem(1);
+    expect([...session.data.values()].join()).not.toContain('lastOperation');
+    expect(makeEngine({ session }).engine.getState().cart.lastOperation).toBeUndefined();
   });
 
   it('keeps a held code in this tab, and checks and announces it at the first price on the next page', async () => {
@@ -728,6 +756,126 @@ describe('cart', () => {
     expect(Object.keys(engine.getState().cart.groups)).toEqual(['bundle:main']);
     await engine.cart.removeItem(1);
     expect(engine.cart.lines()).toEqual([]);
+  });
+
+  it('gives no totals after a failed price, for new lines or a new coupon', async () => {
+    const api = fakeApi();
+    let failing = false;
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      failing && String(input).includes('/carts/calculate')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init)) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    await engine.cart.addItem(1);
+    expect(engine.snapshot().cart).toMatchObject({ total: 49 });
+    failing = true;
+    await engine.cart.addItem(2);
+    await engine.cart.settled();
+    const cart = engine.snapshot().cart;
+    expect(cart.lines).toMatchObject([{ package_id: 1 }, { package_id: 2 }]);
+    expect(cart.lines.map((l) => l.price)).toEqual([undefined, undefined]);
+    expect(cart).not.toHaveProperty('total');
+    expect(engine.cart.currentCheckout().cart).not.toHaveProperty('total');
+    failing = false;
+    await engine.cart.removeItem(2);
+    engine.on('coupon.applied', () => (failing = true));
+    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    expect(engine.snapshot().cart).toMatchObject({ coupons: ['SAVE10'] });
+    expect(engine.snapshot().cart).not.toHaveProperty('total');
+    expect(engine.snapshot().cart.lines[0]).not.toHaveProperty('price');
+  });
+
+  it('prices lines and totals only from a price of exactly these lines', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    const one = engine.getState().cart.summary;
+    await engine.cart.addItem(2);
+    const cart = publicCart(engine.getState(), one);
+    expect(cart.lines.map((l) => l.price)).toEqual([undefined, undefined]);
+    expect(cart).not.toHaveProperty('total');
+    expect(cart).not.toHaveProperty('subtotal');
+    expect(publicCart(engine.getState(), engine.getState().cart.summary)).toMatchObject({ subtotal: 138, total: 138 });
+  });
+
+  it('checks codes one at a time, so two codes that do not stack are not both applied', async () => {
+    const api = fakeApi();
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      const stacked = body?.vouchers?.some((v: string) => v === 'A' || v === 'B');
+      return api.fetch(input, stacked ? { ...init, body: JSON.stringify({ ...body, vouchers: ['SAVE10'] }) } : init);
+    }) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    await engine.start();
+    await engine.cart.addItem(1);
+    const denied: unknown[] = [];
+    engine.on('coupon.denied', (e) => denied.push(e.data));
+    expect(await Promise.all([engine.cart.applyCoupon('a'), engine.cart.applyCoupon('b')])).toEqual([true, false]);
+    expect(engine.getState().cart.coupons).toEqual(['A']);
+    expect(denied).toEqual([{ code: 'B', reason: 'no_discount' }]);
+  });
+
+  it('checks a code against the codes the cart had when its check began', async () => {
+    const api = fakeApi();
+    let failing = true;
+    let hold: Promise<void> | undefined;
+    let reached!: () => void;
+    const arrived = new Promise<void>((r) => (reached = r));
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).includes('/carts/calculate')) return api.fetch(input, init);
+      if (failing) return new Response('{}', { status: 502 });
+      if (hold && !JSON.parse(String(init!.body)).vouchers.length) {
+        reached();
+        await hold;
+      }
+      return api.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    await engine.cart.addItem(1);
+    failing = false;
+    let release!: () => void;
+    hold = new Promise((r) => (release = r));
+    const applying = engine.cart.applyCoupon('nope');
+    await arrived;
+    hold = undefined;
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 2, quantity: 1 }], vouchers: ['save10'] });
+    release();
+    expect(await applying).toBe(false);
+    expect(engine.getState().cart.coupons).toEqual([]);
+  });
+
+  it('sends nothing for a check that ends after the cart froze, and keeps a held code held', async () => {
+    const api = fakeApi();
+    let engine!: ReturnType<typeof makeEngine>['engine'];
+    let failCheck = false;
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(init?.body ?? '').includes('NOPE')) return api.fetch(input, init);
+      engine.cart.freeze(true);
+      return failCheck ? Promise.resolve(new Response('{}', { status: 502 })) : api.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    engine = makeEngine({ fetch }).engine;
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => (e.name === 'sdk.error' || e.name.startsWith('coupon.')) && seen.push(e.name));
+    let held: boolean | undefined;
+    void engine.cart.applyCoupon('nope').then((r) => (held = r));
+    await engine.cart.addItem(1);
+    await flush();
+    expect(engine.getState().cart).toMatchObject({ frozen: true, coupons: [], held: ['NOPE'] });
+    expect(held).toBeUndefined();
+    engine.cart.freeze(false);
+    await engine.cart.removeCoupon('nope');
+    await flush();
+    expect(held).toBe(false);
+    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    engine.cart.freeze(false);
+    failCheck = true;
+    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(seen).toEqual([]);
   });
 
   it('leaves no totals behind after a paid order', async () => {

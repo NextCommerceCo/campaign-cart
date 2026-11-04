@@ -7,8 +7,6 @@ import type { ApiAddress, CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
 
-export const EXPRESS_METHODS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay'];
-
 export function paymentCode(word: string): string {
   const code = word.trim().toLowerCase().replace(/-/g, '_');
   return ['credit', 'credit_card', 'card', 'card_token'].includes(code) ? 'card_token' : code;

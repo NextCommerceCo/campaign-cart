@@ -24,9 +24,9 @@ function item(raw: ApiOrderLine): OrderItem {
   const before = raw.price_incl_tax_excl_discounts ? amount(raw.price_incl_tax_excl_discounts) : total;
   return {
     id: String(raw.id),
-    ...(raw.product_id !== undefined && { product_id: raw.product_id }),
+    ...(raw.product_id != null && { product_id: raw.product_id }),
     product_title: raw.product_title,
-    ...(raw.variant_id !== undefined && { variant_id: raw.variant_id }),
+    ...(raw.variant_id != null && { variant_id: raw.variant_id }),
     ...(raw.variant_title && { variant_title: raw.variant_title }),
     ...(raw.product_sku && { sku: raw.product_sku }),
     ...(raw.image && { image: raw.image }),

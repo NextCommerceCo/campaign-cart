@@ -1,3 +1,4 @@
+import { failureOf } from '../api';
 import type { Context } from '../engine';
 import type { State } from '../types';
 import type { Cart, CartChange, CartItem, Checkout, Discount, EventMap, Selector } from '../events';
@@ -5,6 +6,7 @@ import type {
   Line,
   CartGroup,
   CartLine,
+  CartOperation,
   CartState,
   CartSummary,
   ReportedLine,
@@ -12,7 +14,9 @@ import type {
   SummaryLine,
 } from './types';
 
-export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
+const TOGGLE = 'toggle:';
+
+export const toggleGroup = (packageId: number) => TOGGLE + packageId;
 
 export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
@@ -86,14 +90,13 @@ export function cartItem(state: State, line: Line, priced?: SummaryLine): CartIt
   };
 }
 
-const fresh = (priced: SummaryLine | undefined, line: Line) =>
-  priced?.package_id === line.package_id && priced.quantity === line.quantity;
+const fresh = (lines: Line[], priced?: SummaryLine[]) =>
+  priced?.length === lines.length &&
+  lines.every((l, i) => priced[i]!.package_id === l.package_id && priced[i]!.quantity === l.quantity);
 
 export function cartItems(state: State, lines: Line[], priced?: SummaryLine[]): CartItem[] {
-  const fresh =
-    priced?.length === lines.length &&
-    lines.every((l, i) => priced[i]!.package_id === l.package_id && priced[i]!.quantity === l.quantity);
-  return lines.map((l, i) => cartItem(state, l, fresh ? priced[i] : undefined));
+  const quoted = fresh(lines, priced) ? priced : undefined;
+  return lines.map((l, i) => cartItem(state, l, quoted?.[i]));
 }
 
 export function publicToggle(state: State, id: string, group?: CartGroup): Selector {
@@ -101,7 +104,7 @@ export function publicToggle(state: State, id: string, group?: CartGroup): Selec
   const quoted = lines.map((l) => state.toggles[l.package_id]?.line).filter((l) => !!l);
   const items = cartItems(state, lines, quoted);
   const currency = state.campaign?.currency;
-  const priced = items.length > 0 && items.every((l) => l.total !== undefined);
+  const priced = lines.length > 0 && fresh(lines, quoted);
   return {
     selector_id: id,
     type: 'toggle',
@@ -111,22 +114,22 @@ export function publicToggle(state: State, id: string, group?: CartGroup): Selec
   };
 }
 
-export function publicCart(state: State, summary?: CartSummary): Cart {
+export function publicCart(state: State, priced?: CartSummary): Cart {
   const { coupons, shippingId } = state.cart;
   const campaign = state.campaign;
-  const lines = mergeLines(state.cart.groups).map((line, i) =>
-    cartItem(state, line, fresh(summary?.lines[i], line) ? summary!.lines[i] : undefined),
-  );
+  const merged = mergeLines(state.cart.groups);
+  const summary = fresh(merged, priced?.lines) ? priced : undefined;
+  const lines = cartItems(state, merged, summary?.lines);
   const listed = campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
-  const priced = summary?.shipping_method;
-  const shipping_method = priced
+  const method = summary?.shipping_method;
+  const shipping_method = method
     ? {
-        id: priced.id,
-        code: priced.code,
-        name: priced.name,
-        price: money(priced.price),
-        original_price: money(priced.original_price),
-        discounts: (priced.discounts ?? []).map((d) => discountOf(d, coupons)),
+        id: method.id,
+        code: method.code,
+        name: method.name,
+        price: money(method.price),
+        original_price: money(method.original_price),
+        discounts: (method.discounts ?? []).map((d) => discountOf(d, coupons)),
       }
     : shippingId !== undefined
       ? { id: shippingId, ...(listed && { code: listed.code }) }
@@ -186,9 +189,7 @@ const quantities = (groups: Record<string, CartGroup>) => {
 };
 
 const toggleOn = (groups: Record<string, CartGroup>, id: string) =>
-  id.startsWith('toggle:') && !!groups[id]?.lines.some((l) => l.quantity > 0);
-
-const messageOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
+  id.startsWith(TOGGLE) && !!groups[id]?.lines.some((l) => l.quantity > 0);
 
 export function createCart(ctx: Context) {
   let seq = 0;
@@ -199,6 +200,7 @@ export function createCart(ctx: Context) {
   let unpriced = false;
   let shippingAt: number | undefined;
   let checkingHeld = false;
+  let checks: Promise<unknown> = Promise.resolve();
   const waiting = new Map<string, (applied: boolean) => void>();
   const checking = new Map<string, object>();
 
@@ -213,16 +215,19 @@ export function createCart(ctx: Context) {
 
   const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
 
-  const price = (codes: string[]) =>
-    ctx.api.calculate({
-      lines: lines(),
-      vouchers: codes,
-      currency: ctx.getState().campaign!.currency,
-      shipping_method: shippingMethodOf(ctx.getState()),
-    });
+  const price = (codes: string[], signal?: AbortSignal) =>
+    ctx.api.calculate(
+      {
+        lines: lines(),
+        vouchers: codes,
+        currency: ctx.getState().campaign!.currency,
+        shipping_method: shippingMethodOf(ctx.getState()),
+      },
+      { signal },
+    );
 
   const cartOf = (summary?: CartSummary): Cart => publicCart(ctx.getState(), summary);
-  const settledSummary = () => (state().calculating ? undefined : state().summary);
+  const settledSummary = () => (state().calculating || unpriced ? undefined : state().summary);
   const currentCheckout = () => publicCheckout(ctx.getState(), settledSummary());
 
   const changesOf = (before: Map<number, number>, after: Map<number, number>, priced: SummaryLine[] = []) => {
@@ -270,40 +275,41 @@ export function createCart(ctx: Context) {
     waiting.delete(code);
   };
 
-  const release = (code: string) => {
-    if (state().held.includes(code)) set({ held: state().held.filter((c) => c !== code) });
-  };
+  const unheld = (code: string) => state().held.filter((c) => c !== code);
 
-  const check = async (code: string): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
+  const check = (code: string) => {
     const run = {};
     checking.set(code, run);
-    const dropped = () => checking.get(code) !== run;
-    try {
-      let without: CartSummary;
-      let withCode: CartSummary;
+    const go = async (): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
+      let without: CartSummary | undefined;
+      let withCode: CartSummary | undefined;
+      let error: unknown;
       try {
         await settled();
-        without = (!unpriced && state().summary) || (await price(vouchers()));
-        withCode = await price([...vouchers(), code]);
+        const base = vouchers();
+        without = settledSummary() || (await price(base));
+        withCode = await price([...base, code]);
       } catch (err) {
-        if (dropped()) return 'dropped';
-        ctx.fail('coupon.check', err);
-        deny(code, 'check_failed', messageOf(err));
+        error = err;
+      }
+      if (checking.get(code) !== run) return 'dropped';
+      checking.delete(code);
+      if (state().frozen) return 'frozen';
+      if (!withCode) {
+        ctx.fail('coupon.check', error);
+        deny(code, 'check_failed', failureOf(error).message);
         return 'denied';
       }
-      if (dropped()) return 'dropped';
-      if (!addsDiscount(without, withCode)) {
+      if (!addsDiscount(without!, withCode)) {
         deny(code, 'no_discount');
         return 'denied';
       }
-      if (state().frozen) return 'frozen';
-      const done = commit({ coupons: [...state().coupons, code], held: state().held.filter((c) => c !== code) });
+      const done = commit({ coupons: [...state().coupons, code], held: unheld(code) });
       ctx.emit('coupon.applied', { code, ...discountsOf(code, withCode) });
       await done;
       return 'applied';
-    } finally {
-      if (!dropped()) checking.delete(code);
-    }
+    };
+    return (checks = checks.then(go, go));
   };
 
   const checkHeld = async () => {
@@ -314,9 +320,8 @@ export function createCart(ctx: Context) {
         if (state().frozen || !lines().length) break;
         const result = await check(code);
         if (result === 'frozen') break;
-        if (result === 'dropped') continue;
-        release(code);
-        answer(code, result === 'applied');
+        if (result === 'denied') set({ held: unheld(code) });
+        if (result !== 'dropped') answer(code, result === 'applied');
       }
     } finally {
       checkingHeld = false;
@@ -326,8 +331,7 @@ export function createCart(ctx: Context) {
   const calculate = async (): Promise<void> => {
     const current = ++seq;
     abort?.abort();
-    const campaign = ctx.getState().campaign;
-    if (!lines().length || !campaign) {
+    if (!lines().length || !ctx.getState().campaign) {
       if (state().calculating) set({ calculating: false });
       busy = false;
       announceShipping(current);
@@ -340,15 +344,7 @@ export function createCart(ctx: Context) {
     }
     const controller = (abort = new AbortController());
     try {
-      const summary = await ctx.api.calculate(
-        {
-          lines: lines(),
-          vouchers: vouchers(),
-          currency: campaign.currency,
-          shipping_method: shippingMethodOf(ctx.getState()),
-        },
-        { signal: controller.signal },
-      );
+      const summary = await price(vouchers(), controller.signal);
       if (current !== seq) return;
       busy = false;
       unpriced = false;
@@ -379,7 +375,7 @@ export function createCart(ctx: Context) {
     }
   };
 
-  const commit = (patch: Partial<CartState>): Promise<void> => {
+  const commit = (patch: Partial<CartState>, lastOperation?: CartOperation): Promise<void> => {
     if (state().frozen) return Promise.resolve();
     const before = state().groups;
     const after = patch.groups ?? before;
@@ -387,6 +383,7 @@ export function createCart(ctx: Context) {
     const hasLines = mergeLines(after).length > 0;
     set({
       ...patch,
+      lastOperation,
       ...(!hasLines && { summary: undefined }),
       calculating: hasLines && !!ctx.getState().campaign,
     });
@@ -416,7 +413,12 @@ export function createCart(ctx: Context) {
     );
   };
 
-  const setGroup = (id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}) => {
+  const setGroup = (
+    id: string,
+    group: CartGroup | null,
+    options: { dismiss?: boolean } = {},
+    action: CartOperation['action'] = 'setGroup',
+  ) => {
     if (state().frozen) return Promise.resolve();
     const groups = { ...state().groups };
     const keep = !!group && group.lines.some((l) => l.quantity > 0);
@@ -424,10 +426,10 @@ export function createCart(ctx: Context) {
     else delete groups[id];
     const dismissed = state().dismissed.filter((d) => d !== id);
     if (!keep && options.dismiss) dismissed.push(id);
-    return commit({ groups, dismissed });
+    return commit({ groups, dismissed }, { action, group: id });
   };
 
-  const setQuantity = (packageId: number, quantity: number) => {
+  const setQuantity = (packageId: number, quantity: number, action: CartOperation['action'] = 'setQuantity') => {
     const total = lines().reduce((n, l) => n + (l.package_id === packageId ? l.quantity : 0), 0);
     let delta = Math.max(0, quantity) - total;
     if (!delta) return Promise.resolve();
@@ -454,7 +456,7 @@ export function createCart(ctx: Context) {
       group.lines = group.lines.filter((l) => l.quantity > 0);
       if (!group.lines.length) delete groups[id];
     }
-    return commit({ groups });
+    return commit({ groups }, { action });
   };
 
   return {
@@ -485,22 +487,22 @@ export function createCart(ctx: Context) {
       return groups !== state().groups ? commit({ groups }) : lines().length ? recalculate() : Promise.resolve();
     },
     setGroup,
-    setGroups: (groups: Record<string, CartGroup>) => commit({ groups }),
+    setGroups: (groups: Record<string, CartGroup>) => commit({ groups }, { action: 'setGroups' }),
     setQuantity,
-    removeItem: (packageId: number) => setQuantity(packageId, 0),
+    removeItem: (packageId: number) => setQuantity(packageId, 0, 'removeItem'),
     addItem(packageId: number, quantity = 1, groupId = 'items') {
       const current = state().groups[groupId] ?? { lines: [], vouchers: [] };
       const existing = current.lines.find((l) => l.packageId === packageId);
       const next = existing
         ? current.lines.map((l) => (l.packageId === packageId ? { ...l, quantity: l.quantity + quantity } : l))
         : [...current.lines, { packageId, quantity }];
-      return setGroup(groupId, { ...current, lines: next });
+      return setGroup(groupId, { ...current, lines: next }, {}, 'addItem');
     },
     clear(): Promise<void> {
       if (state().frozen) return Promise.resolve();
       const { coupons, held } = state();
       checking.clear();
-      const done = commit({ groups: {}, coupons: [], held: [], dismissed: [] });
+      const done = commit({ groups: {}, coupons: [], held: [], dismissed: [] }, { action: 'clear' });
       for (const code of coupons) ctx.emit('coupon.removed', { code, reason: 'cleared' });
       for (const code of held) answer(code, false);
       return done;
@@ -521,7 +523,7 @@ export function createCart(ctx: Context) {
       if (state().frozen) return Promise.resolve();
       checking.delete(normalized);
       if (state().held.includes(normalized)) {
-        release(normalized);
+        set({ held: unheld(normalized) });
         answer(normalized, false);
       }
       if (!state().coupons.includes(normalized)) return Promise.resolve();

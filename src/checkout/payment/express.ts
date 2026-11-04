@@ -1,7 +1,8 @@
-import { EXPRESS_METHODS } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
 import { legacyExpressOrder } from '../../compat/checkout';
 import { EXPRESS_BUTTONS } from './logos';
+
+const EXPRESS_METHODS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay'];
 
 function button(method: string): HTMLButtonElement {
   const look = EXPRESS_BUTTONS[method]!;

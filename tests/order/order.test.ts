@@ -104,6 +104,24 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     expect(dataOf('upsell.viewed')[0]).toMatchObject({ lines: [{ package_id: 3, total: 20 }], total: 20 });
   });
 
+  it('sends upsell.viewed, unpriced, before the skip of a shopper who answers before the price arrives', async () => {
+    const { $, navigate, dataOf, events } = await mount('apollo/upsell-bundle-stepper.html', { delays: [50] });
+    $('[data-next-upsell-action="skip"]').click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
+    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual(['upsell.viewed', 'upsell.skipped']);
+    expect(dataOf('upsell.viewed')[0]).toMatchObject({ lines: [{ package_id: 3, quantity: 1 }] });
+    expect(dataOf('upsell.viewed')[0]).not.toHaveProperty('total');
+    await new Promise((r) => setTimeout(r, 80));
+    expect(dataOf('upsell.viewed')).toHaveLength(1);
+  });
+
+  it('sends upsell.viewed before the accept of a shopper who answers before the price arrives', async () => {
+    const { $, navigate, events } = await mount('apollo/upsell-bundle-stepper.html', { delays: [50] });
+    $('[data-next-upsell-action="add"]').click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
+    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual(['upsell.viewed', 'upsell.accepted']);
+  });
+
   it('does not charge again after Back, and moves on', async () => {
     const first = await mount('apollo/upsell-bundle-stepper.html');
     first.$('[data-next-upsell-action="add"]').click();

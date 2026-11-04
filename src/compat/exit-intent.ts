@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { EventMap, Promotion } from '../engine/events';
+import { addLegacyEvents, type From, legacyEvent, type LegacyPopup, legacyRegistry } from './legacy';
 
 export interface ExitIntentOptions {
   id?: string;
@@ -21,7 +22,54 @@ const POPUP =
 const CLOSE =
   'position:absolute;top:10px;right:10px;background:none;border:0;font-size:30px;line-height:1;cursor:pointer;color:#666';
 
+type PopupEvent = From<'promotion.viewed' | 'promotion.clicked' | 'promotion.closed'>;
+type Clicked = EventMap['promotion.clicked'];
+const closedFor = (reason: string) => (e: PopupEvent) => (e.data as EventMap['promotion.closed']).reason === reason;
+
+/**
+ * @deprecated The popup's 0.4.x `next.on` names, at the moments 0.4.43 sent them: `shown`, and every event of a
+ * template popup, name the image and the template; an image popup's other events name the image only.
+ * `exit-intent:action` comes as a close or apply-coupon button is clicked, and once a custom button's action has run.
+ */
+function exitEvents(popups: Record<string, LegacyPopup>) {
+  const popupOf = ({ data }: PopupEvent) => (data.type === 'exit_intent' ? popups[data.id] : undefined);
+  const exit = (from: PopupEvent['name'], when: (e: PopupEvent) => boolean, both?: boolean) =>
+    legacyEvent<PopupEvent['name']>({
+      from: [from],
+      when: (e) => !!popupOf(e) && when(e),
+      data: (e) => {
+        const { imageUrl, template } = popupOf(e)!;
+        return both || template ? { imageUrl, template } : { imageUrl };
+      },
+    });
+  const action = (e: PopupEvent) => {
+    if (!popupOf(e)) return undefined;
+    if (e.name === 'promotion.closed')
+      return closedFor('clicked')(e) && popupOf(e)!.ran === 'custom' ? { action: 'custom' } : undefined;
+    const { action, coupon_code } = e.data as Clicked;
+    if (action === 'close') return { action };
+    return action === 'apply-coupon' && coupon_code ? { action, couponCode: coupon_code } : undefined;
+  };
+  return {
+    'exit-intent:shown': exit('promotion.viewed', () => true, true),
+    'exit-intent:clicked': exit('promotion.clicked', (e) => !(e.data as Clicked).action),
+    'exit-intent:action': legacyEvent<PopupEvent['name']>({
+      from: ['promotion.clicked', 'promotion.closed'],
+      when: (e) => !!action(e),
+      data: action,
+    }),
+    'exit-intent:dismissed': exit('promotion.closed', closedFor('dismissed')),
+    'exit-intent:closed': exit('promotion.closed', closedFor('close_button')),
+  };
+}
+
+/**
+ * @deprecated 0.4.x `next.exitIntent(options)`. The function it resolves to closes the popup, with no
+ * `promotion.closed`, and stops it opening again.
+ */
 export function exitIntent(engine: Engine, options: ExitIntentOptions): () => void {
+  const { popups } = legacyRegistry(engine);
+  addLegacyEvents(engine, exitEvents(popups));
   const o = {
     showCloseButton: false,
     overlayClosable: true,
@@ -39,12 +87,12 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
 
   let open: HTMLElement[] = [];
   let promotion: Promotion;
-  const close = (reason: EventMap['promotion.closed']['reason']) => {
+  const close = (reason?: EventMap['promotion.closed']['reason']) => {
     if (!open.length) return;
     open.forEach((el) => el.remove());
     open = [];
     document.removeEventListener('keydown', onKey);
-    engine.events.emit('promotion.closed', { ...promotion, reason });
+    if (reason) engine.events.emit('promotion.closed', { ...promotion, reason });
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close('dismissed');
 
@@ -61,6 +109,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
 
     const template =
       o.template && document.querySelector<HTMLTemplateElement>(`template[data-template="${o.template}"]`);
+    const given: LegacyPopup = { imageUrl: o.image ?? '', template: template ? o.template! : '' };
     let clicked = false;
     const failed = (err: unknown) => engine.log.error('exitIntent action failed', err);
     const clickable = (el: HTMLElement, run: () => unknown, extra?: { action?: string; coupon_code?: string }) =>
@@ -70,6 +119,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
         engine.events.emit('promotion.clicked', { ...promotion, ...extra });
         try {
           await run();
+          given.ran = extra?.action;
         } catch (err) {
           failed(err);
         }
@@ -102,6 +152,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
       ...(o.name && { name: o.name }),
       creative: template ? o.template : o.image,
     };
+    popups[promotion.id] = given;
 
     if (o.showCloseButton) {
       const button = Object.assign(document.createElement('button'), {
@@ -131,7 +182,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   else document.addEventListener('mouseout', onLeave);
 
   return () => {
-    close('dismissed');
+    close();
     document.removeEventListener('mouseout', onLeave);
     removeEventListener('scroll', onScroll);
   };

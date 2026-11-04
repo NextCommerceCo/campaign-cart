@@ -2,6 +2,7 @@ import { cents, currency, ecommerce } from '../analytics/ecommerce';
 import { withoutQuery } from '../engine/attribution';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
+import { type LegacyPopup, legacyRegistry } from './legacy';
 import type { EngineEvent } from '../engine/events';
 import type {
   EventContext,
@@ -52,18 +53,20 @@ const CLOSED: Partial<Record<EventMap['promotion.closed']['reason'], string>> = 
   close_button: 'closed',
 };
 
-const exitIntentName = (e: EngineEvent): string | undefined => {
-  if (!e.name.startsWith('promotion.') || (e.data as Promotion).type !== 'exit_intent') return undefined;
-  if (e.name === 'promotion.viewed') return 'shown';
-  if (e.name === 'promotion.clicked') return (e.data as EventMap['promotion.clicked']).action ? 'action' : 'accepted';
-  if (e.name === 'promotion.closed') return CLOSED[(e.data as EventMap['promotion.closed']).reason];
-  return undefined;
-};
+type PopupEvent = EventMap['promotion.clicked'] & Partial<EventMap['promotion.closed']>;
 
-const isTemplate = (creative: string) =>
-  [...document.querySelectorAll<HTMLTemplateElement>('template[data-template]')].some(
-    (t) => t.dataset.template === creative,
-  );
+/** 0.4.43's `exit-intent:*` moments: a close or apply-coupon button's action as it is clicked, a custom one once it has run. */
+const exitIntentName = (e: EngineEvent, popup?: LegacyPopup): string | undefined => {
+  const { type, action, coupon_code, reason } = e.data as PopupEvent;
+  if (!e.name.startsWith('promotion.') || type !== 'exit_intent') return undefined;
+  if (e.name === 'promotion.viewed') return 'shown';
+  if (e.name === 'promotion.clicked') {
+    if (!action) return 'accepted';
+    return action === 'close' || (action === 'apply-coupon' && coupon_code) ? 'action' : undefined;
+  }
+  if (reason === 'clicked') return popup?.ran === 'custom' ? 'action' : undefined;
+  return CLOSED[reason!];
+};
 
 const legacyCart = (engine: Engine) => {
   const summary = engine.getState().cart.summary;
@@ -218,23 +221,23 @@ export function startLegacyDataLayer(
   };
 
   return (e) => {
-    const name = exitIntentName(e);
+    const popup = legacyRegistry(engine).popups[(e.data as Promotion).id];
+    const name = exitIntentName(e, popup);
     if (!name) return;
     if (name === 'action') {
-      const { action, coupon_code } = e.data as EventMap['promotion.clicked'];
+      const { coupon_code } = e.data as PopupEvent;
+      const action = e.name === 'promotion.closed' ? 'custom' : (e.data as PopupEvent).action!;
       return exitIntent(e.name, name, {
         event_action: `exit_intent_${action}`,
         event_label: coupon_code || action,
         exit_intent: { action, coupon_code: coupon_code || '' },
       });
     }
-    const creative = (e.data as Promotion).creative ?? '';
-    const template = isTemplate(creative) ? creative : '';
-    const image_url = template ? '' : creative;
+    const { imageUrl = '', template = '' } = popup ?? {};
     exitIntent(e.name, name, {
       event_action: `exit_intent_${name}`,
-      event_label: image_url || template || 'exit-intent',
-      exit_intent: { image_url, template },
+      event_label: imageUrl || template || 'exit-intent',
+      exit_intent: { image_url: imageUrl, template },
     });
   };
 }

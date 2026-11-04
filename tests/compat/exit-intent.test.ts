@@ -110,7 +110,7 @@ describe('exitIntent promotion', () => {
     }
   });
 
-  it('ends each view in one promotion.closed: dismissed, close_button or clicked', async () => {
+  it('ends each view the shopper closes in one promotion.closed: dismissed, close_button or clicked; the page’s remover sends none', async () => {
     const { engine, seen } = await popup();
     const stop = exitIntent(engine, { image: IMAGE, showCloseButton: true, maxTriggers: 5 });
     const closes = () =>
@@ -129,7 +129,8 @@ describe('exitIntent promotion', () => {
     leave();
     stop();
 
-    expect(closes()).toEqual(['dismissed', 'dismissed', 'close_button', 'clicked', 'dismissed']);
+    expect(document.querySelector('.exit-intent-popup')).toBeNull();
+    expect(closes()).toEqual(['dismissed', 'dismissed', 'close_button', 'clicked']);
     expect(seen.filter(([name]) => name === 'promotion.viewed')).toHaveLength(5);
     expect(seen.filter(([name]) => name === 'promotion.clicked')).toHaveLength(1);
   });

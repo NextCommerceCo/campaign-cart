@@ -50,6 +50,15 @@ describe('publicOrder', () => {
     });
   });
 
+  it('leaves out a product or variant the API sends as null', () => {
+    const line = { ...ORDER.lines![0]!, product_id: null, variant_id: null, package: null };
+    const [item] = publicOrder({ ...ORDER, lines: [line] }).lines;
+    expect(item).not.toHaveProperty('product_id');
+    expect(item).not.toHaveProperty('variant_id');
+    const [known] = publicOrder({ ...ORDER, lines: [{ ...line, product_id: 400, variant_id: 0 }] }).lines;
+    expect(known).toMatchObject({ product_id: 400, variant_id: 0 });
+  });
+
   it('marks the lines an upsell added, and a test order', () => {
     const order = publicOrder({ ...withUpsell(ORDER, 99, 1), is_test: true, payment_method: { code: 'paypal' } });
     expect(order.lines.map((l) => l.upsell)).toEqual([false, true]);

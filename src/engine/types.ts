@@ -72,7 +72,7 @@ export interface ApiOrderLine {
   /** Order line ID. */
   id: number | string;
   /** The package's `ref_id` in the campaign. */
-  package?: number;
+  package?: number | null;
   /** Product image. */
   image?: string;
   /** `true` for a line an upsell added. */
@@ -93,8 +93,8 @@ export interface ApiOrderLine {
   variant_title?: string;
   /** Total product units from the package. */
   quantity: number;
-  product_id?: number;
-  variant_id?: number;
+  product_id?: number | null;
+  variant_id?: number | null;
 }
 
 /** A shipping or billing address on an {@link ApiOrder}. */

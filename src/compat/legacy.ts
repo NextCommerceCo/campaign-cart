@@ -3,7 +3,7 @@ import type { Logger } from '../engine/log';
 import { mergeLines } from '../engine/cart/cart';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { CartLine, CartSummary, Line, SummaryLine } from '../engine/cart/types';
-import type { CartChange, Checkout, EngineEvent, EventMap, EventName, Promotion, Selector } from '../engine/events';
+import type { CartChange, Checkout, EngineEvent, EventMap, EventName, Selector } from '../engine/events';
 import type { Campaign, Package, ShippingOption, State } from '../engine/types';
 import type { WidgetEvents } from '../bindings/widgets';
 import type { ExitIntentOptions } from './exit-intent';
@@ -162,19 +162,19 @@ function legacyCart(state: State) {
   };
 }
 
-/** 0.4.x bundle selectors swapped the cart's lines without the item events. */
-function bySwapSelector(state: State, id: number): boolean {
-  const product = (ref: number) => packageOf(state, ref)?.product_id;
-  const variant = (ref: number) => product(ref) !== undefined && product(ref) === product(id);
-  return Object.values(state.selectors).some(
-    (s) =>
-      s.mode === 'swap' &&
-      s.cards.some((c) => c.lines.some((l) => l.packageId === id || (l.configurable && variant(l.packageId)))),
-  );
-}
-
-const pageChanges = ({ data }: From<'cart.added' | 'cart.removed'>, state: State): CartChange[] =>
-  data.changes.filter((c) => !bySwapSelector(state, c.package_id));
+/** 0.4.43 sent one item event per cart action; none for a swap-mode selector's pick, emptying or replacing the cart. */
+const itemEvent = (map: (c: CartChange, op?: string, source?: string) => object | false) =>
+  alias<'cart.added' | 'cart.removed'>({
+    from: ['cart.added', 'cart.removed'],
+    each: true,
+    data: ({ data }, { cart: { lastOperation }, selectors }) => {
+      const { action, group = '' } = lastOperation ?? {};
+      const bundle = group.startsWith('bundle:') ? selectors[group.slice(7)] : undefined;
+      if (action === 'clear' || action === 'setGroups' || bundle?.mode === 'swap') return [];
+      const source = action === 'addItem' ? 'direct' : bundle ? 'selector' : undefined;
+      return data.changes.flatMap((c) => map(c, action, source) || []);
+    },
+  });
 
 type Picked = From<'selector.viewed' | 'selector.selected' | 'selector.updated' | 'selector.deselected'>;
 const SELECTIONS = ['selector.viewed', 'selector.selected', 'selector.updated'] as const;
@@ -195,6 +195,12 @@ const selectorQuantity = ({ selector_id }: Selector, { selectors }: State) => {
   return state && card ? cardQuantity(state, card) : 1;
 };
 
+const offerPick = selector(
+  ['selector.selected'],
+  (s) => ({ selectorId: s.selector_id, packageId: firstPackage(s) }),
+  true,
+);
+
 const toggleCards = () =>
   [...document.querySelectorAll('[data-next-toggle-card][data-next-package-id]')].map((el) =>
     Number(el.getAttribute('data-next-package-id')),
@@ -213,20 +219,8 @@ const COUPON_TEXTS: Record<EventMap['coupon.denied']['reason'], string> = {
   check_failed: "Couldn't check the coupon. Try again.",
 };
 
-const CREATIVE_TEMPLATE = 'template[data-template]';
-/** 0.4.x named the popup's image or template; `creative` is whichever the popup shows. */
-const popup = ({ creative }: Promotion) =>
-  [...document.querySelectorAll(CREATIVE_TEMPLATE)].some((t) => t.getAttribute('data-template') === creative)
-    ? { template: creative }
-    : { imageUrl: creative };
-type Popup = Promotion & { action?: string; coupon_code?: string; reason?: string };
-const exit = (event: 'promotion.viewed' | 'promotion.clicked' | 'promotion.closed', when: (p: Popup) => boolean) =>
-  alias({
-    from: [event],
-    when: ({ data }) => data.type === 'exit_intent' && when(data),
-    data: ({ data }) => popup(data),
-  });
-const POPUP_ACTIONS = ['close', 'apply-coupon', 'custom'];
+/** The click being dispatched, if any: 0.4.x `action:success` named the add-to-cart button whose click changed the cart. */
+let click: Event | undefined;
 
 const requestedCurrency = () => new URLSearchParams(location.search).get('currency')?.toUpperCase();
 
@@ -250,38 +244,30 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     replay: true,
     data: ({ data }) => ({ message: data.message, code: data.code, details: data }),
   }),
-  'action:failed': alias({
-    from: ['sdk.error'],
-    replay: true,
-    when: (e) => e.data.action === 'upsell.add',
-    data: (e) => ({ action: 'AcceptUpsellEnhancer', error: new Error(e.data.message) }),
+  'action:success': alias<'cart.added' | 'coupon.applied' | 'coupon.denied'>({
+    from: ['cart.added', 'coupon.applied', 'coupon.denied'],
+    each: true,
+    data: (e) => {
+      const field = document.querySelector('[data-next-coupon] .next-loading')?.closest('[data-next-coupon]');
+      const button = click?.eventPhase && (click.target as Element).closest?.('[data-next-action="add-to-cart"]');
+      const [action, element] = e.name === 'cart.added' ? ['AddToCartEnhancer', button] : ['CouponEnhancer', field];
+      return element ? [{ action, data: { element } }] : [];
+    },
   }),
   'cart:updated': alias({
     from: ['cart.calculated', 'cart.updated'],
     when: (e) => e.name === 'cart.calculated' || !e.data.lines.length,
     data: (_, state) => legacyCart(state),
   }),
-  'cart:item-added': alias({
-    from: ['cart.added'],
-    each: true,
-    data: (e, state) => pageChanges(e, state).map((c) => ({ packageId: c.package_id, quantity: c.quantity })),
-  }),
-  'cart:item-removed': alias({
-    from: ['cart.removed'],
-    each: true,
-    data: (e, state) =>
-      pageChanges(e, state)
-        .filter((c) => c.to === 0)
-        .map((c) => ({ packageId: c.package_id })),
-  }),
-  'cart:quantity-changed': alias({
-    from: ['cart.added', 'cart.removed'],
-    each: true,
-    data: (e, state) =>
-      pageChanges(e, state)
-        .filter((c) => c.from > 0)
-        .map((c) => ({ packageId: c.package_id, quantity: c.to, oldQuantity: c.from })),
-  }),
+  'cart:item-added': itemEvent(
+    (c, op, source) =>
+      op !== 'setQuantity' &&
+      c.to > c.from && { packageId: c.package_id, quantity: c.quantity, ...(source && { source }) },
+  ),
+  'cart:item-removed': itemEvent((c) => c.to === 0 && { packageId: c.package_id }),
+  'cart:quantity-changed': itemEvent(
+    (c, op) => op === 'setQuantity' && { packageId: c.package_id, quantity: c.to, oldQuantity: c.from },
+  ),
   'coupon:applied': alias({ from: ['coupon.applied'], data: (e) => ({ code: e.data.code }) }),
   'coupon:removed': alias({
     from: ['coupon.removed'],
@@ -312,16 +298,8 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     };
   }),
   'selector:quantity-changed': selector(['selector.updated'], (s) => ({ selectorId: s.selector_id, ...onePackage(s) })),
-  'upsell-selector:item-selected': selector(
-    ['selector.selected'],
-    (s) => ({ selectorId: s.selector_id, packageId: firstPackage(s) }),
-    true,
-  ),
-  'upsell:option-selected': selector(
-    ['selector.selected'],
-    (s) => ({ selectorId: s.selector_id, packageId: firstPackage(s) }),
-    true,
-  ),
+  'upsell-selector:item-selected': offerPick,
+  'upsell:option-selected': offerPick,
   'upsell:quantity-changed': selector(
     ['selector.updated'],
     (s, state) => ({ selectorId: s.selector_id, quantity: selectorQuantity(s, state), packageId: firstPackage(s) }),
@@ -341,20 +319,16 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
   }),
   'shipping:method-changed': shipping,
   'shipping:method-selected': alias({ from: ['shipping.selected'], data: (e) => ({ shippingId: String(e.data.id) }) }),
-  'exit-intent:shown': exit('promotion.viewed', () => true),
-  'exit-intent:clicked': exit('promotion.clicked', (p) => !p.action),
-  'exit-intent:action': alias({
-    from: ['promotion.clicked'],
-    when: ({ data: { type, action, coupon_code } }) =>
-      type === 'exit_intent' && POPUP_ACTIONS.includes(action ?? '') && (action !== 'apply-coupon' || !!coupon_code),
-    data: ({ data }) => ({ action: data.action, ...(data.coupon_code && { couponCode: data.coupon_code }) }),
-  }),
-  'exit-intent:dismissed': exit('promotion.closed', (p) => p.reason === 'dismissed'),
-  'exit-intent:closed': exit('promotion.closed', (p) => p.reason === 'close_button'),
 };
 
-/** 0.4.x names of checkout and order events: those chunks add them with {@link addLegacyEvents} when they load. */
+/** 0.4.x names of checkout, order and exit popup events: those chunks add them with {@link addLegacyEvents} when they load. */
 const LATER = [
+  'action:failed',
+  'exit-intent:shown',
+  'exit-intent:clicked',
+  'exit-intent:action',
+  'exit-intent:dismissed',
+  'exit-intent:closed',
   'payment:tokenized',
   'payment:error',
   'checkout:express-completed',
@@ -365,24 +339,47 @@ const LATER = [
   'express-checkout:error',
   'order:completed',
   'upsell:viewed',
-  'upsell:accepted',
   'upsell:added',
   'upsell:skipped',
   'upsell:error',
 ];
-const added: Record<string, LegacyEvent> = {};
-const shapes: Record<string, (data: never, state: State) => unknown> = {};
+type Shape = (data: never, state: State) => unknown;
+
+/** @deprecated What an exit popup was given, by its Promotion id: 0.4.x payloads name its image and template. */
+export interface LegacyPopup {
+  imageUrl: string;
+  /** The template the popup shows; '' for an image popup. */
+  template: string;
+  /** The `data-exit-intent-action` whose run finished. */
+  ran?: string;
+}
+
+interface Registry {
+  added: Record<string, LegacyEvent>;
+  shapes: Record<string, Shape>;
+  popups: Record<string, LegacyPopup>;
+  fire?(name: string, data: unknown, keep?: boolean): void;
+}
+const registries = new WeakMap<Engine, Registry>();
+/** @deprecated One engine's 0.4.x names added by lazy chunks, page moment shapes and exit popups (by Promotion id). */
+export const legacyRegistry = (engine: Engine) => {
+  let r = registries.get(engine);
+  if (!r) registries.set(engine, (r = { added: {}, shapes: {}, popups: {} }));
+  return r;
+};
 
 /**
  * @deprecated A lazy chunk adds the 0.4.x names of its events, and the shape of its page moments, when it loads:
  * none of them can happen before.
  */
 export function addLegacyEvents(
+  engine: Engine,
   events: Record<string, LegacyEvent>,
-  moments: Record<string, (data: never, state: State) => unknown> = {},
+  moments?: Record<string, Shape>,
 ): void {
-  Object.assign(added, events);
-  Object.assign(shapes, moments);
+  const r = legacyRegistry(engine);
+  Object.assign(r.added, events);
+  Object.assign(r.shapes, moments);
 }
 
 /** 0.4.x events no engine event marks: the page's code sends them with {@link legacyFire}. */
@@ -407,7 +404,6 @@ const MOMENTS = [
 
 /** 0.4.x names this SDK no longer sends, and why. */
 const UNSENT: Record<string, string> = {
-  'action:success': 'listen for cart.added, coupon.applied or upsell.accepted',
   'cart:package-swapped': 'package selectors are gone; listen for cart.added and cart.removed',
   'order:redirect-missing': 'the checkout always sends the shopper on',
   'address:messages-loaded': 'the checkout no longer loads the address service’s texts',
@@ -419,11 +415,9 @@ const own = <T>(table: Record<string, T>, name: string) =>
 /** @deprecated 0.4.x features the SDK no longer has. Starter templates still register empty listeners for them. */
 export const RETIRED_EVENTS = ['fomo:', 'profile:'];
 
-const hubs = new WeakMap<Engine, (name: string, data: unknown, keep?: boolean) => void>();
-
 /** @deprecated Sends a 0.4.x page moment (see `MOMENTS`); with `keep`, a listener added later on this page gets it too. */
 export const legacyFire = (engine: Engine, name: string, data: unknown, keep?: boolean) =>
-  hubs.get(engine)?.(name, data, keep);
+  legacyRegistry(engine).fire?.(name, data, keep);
 
 /** @deprecated See {@link legacyEvents}. */
 export interface LegacyEvents {
@@ -446,22 +440,27 @@ export function legacyEvents(engine: Engine): LegacyEvents {
       engine.log.error('a 0.4.x event listener failed', err);
     }
   };
-  const fire = (name: string, data: unknown, keep?: boolean) => {
-    const shaped = shapes[name] ? shapes[name](data as never, engine.getState()) : data;
+  const r = legacyRegistry(engine);
+  const fire = (r.fire = (name: string, data: unknown, keep?: boolean) => {
+    const shaped = r.shapes[name] ? r.shapes[name](data as never, engine.getState()) : data;
     if (keep) kept.set(name, [...(kept.get(name) ?? []), shaped]);
     listeners.get(name)?.forEach((fn) => call(fn, shaped));
-  };
-  hubs.set(engine, fire);
+  });
 
   const picks = new Map<string, number | undefined>();
   const previous = new Map<string, number | undefined>();
-  const picked = ({ data }: EngineEvent<'selector.viewed' | 'selector.selected'>) => {
-    if (data.type === 'toggle') return;
+  const counted = new WeakSet<EngineEvent>();
+  /** Once per pick, whichever reads it first: this listener or a '*' listener's `previousPick`. */
+  const picked = (e: EngineEvent<'selector.viewed' | 'selector.selected'>) => {
+    const { data } = e;
+    if (data.type === 'toggle' || counted.has(e)) return;
+    counted.add(e);
     previous.set(data.selector_id, picks.get(data.selector_id));
     picks.set(data.selector_id, firstPackage(data));
   };
   engine.on('selector.viewed', picked);
   engine.on('selector.selected', picked);
+  addEventListener('click', (e) => (click = e), true);
 
   return {
     on(name, fn) {
@@ -484,9 +483,12 @@ export function legacyEvents(engine: Engine): LegacyEvents {
         '*',
         (event) => {
           const e = event as From<EventName>;
-          const alias = boot ?? added[name];
+          const alias = boot ?? r.added[name];
           if (done || !alias?.from.includes(e.name)) return;
-          const state: LegacyState = { ...engine.getState(), previousPick: (id) => previous.get(id) };
+          const state: LegacyState = {
+            ...engine.getState(),
+            previousPick: (id) => (picked(e as EngineEvent<'selector.selected'>), previous.get(id)),
+          };
           if (alias.when && !alias.when(e, state)) return;
           const data = alias.data(e, state);
           (alias.each ? (data as unknown[]) : [data]).forEach((payload) => fn(payload, e));

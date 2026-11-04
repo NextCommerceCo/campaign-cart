@@ -4,7 +4,7 @@ import { bindAll } from '../../src/bindings';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { legacyCheckoutEvents } from '../../src/compat/checkout';
 import { legacyEvents, type LegacyDecimal } from '../../src/compat/legacy';
-import type { Checkout } from '../../src/engine/events';
+import type { Checkout, EngineEvent } from '../../src/engine/events';
 import { bindOrder } from '../../src/order';
 import { ADDRESSES, fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
@@ -118,7 +118,7 @@ describe('0.4.x event names', () => {
     expect(updated.at(-1).total.toNumber()).toBe(0);
   });
 
-  it('cart item events carry the package as 0.4.x did, and none for a swap-mode bundle selector', async () => {
+  it('cart item events: one per operation with the package as 0.4.43 sent it, and none for a swap-mode bundle selector', async () => {
     document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
       <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div>
       <div id="two" data-next-bundle-card data-next-bundle-id="two" data-next-bundle-items='[{"packageId":2,"quantity":1}]'></div></div>`;
@@ -128,20 +128,87 @@ describe('0.4.x event names', () => {
     const removed = heard(next, 'cart:item-removed');
     const changed = heard(next, 'cart:quantity-changed');
     await next.addItem({ packageId: 9, quantity: 1 });
-    await next.actions.setQuantity(9, 3);
+    await next.actions.addItem(9, 2);
+    await next.actions.setQuantity(9, 5);
+    await next.actions.setQuantity(9, 4);
     await next.actions.removeItem(9);
     document.querySelector<HTMLElement>('#two')!.click();
     await flush();
     expect(next.getState().cart.groups['bundle:main']?.lines).toEqual([{ packageId: 2, quantity: 1 }]);
     expect(added).toEqual([
-      { packageId: 9, quantity: 1 },
-      { packageId: 9, quantity: 2 },
+      { packageId: 9, quantity: 1, source: 'direct' },
+      { packageId: 9, quantity: 2, source: 'direct' },
     ]);
     expect(changed).toEqual([
-      { packageId: 9, quantity: 3, oldQuantity: 1 },
-      { packageId: 9, quantity: 0, oldQuantity: 3 },
+      { packageId: 9, quantity: 5, oldQuantity: 3 },
+      { packageId: 9, quantity: 4, oldQuantity: 5 },
     ]);
     expect(removed).toEqual([{ packageId: 9 }]);
+  });
+
+  it('a quantity set to zero sends cart:item-removed and cart:quantity-changed, as 0.4.43’s quantity control did; emptying or replacing the cart sends no item event', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    await next.addItem({ packageId: 9, quantity: 2 });
+    const added = heard(next, 'cart:item-added');
+    const removed = heard(next, 'cart:item-removed');
+    const changed = heard(next, 'cart:quantity-changed');
+    await next.actions.setQuantity(9, 0);
+    expect(removed).toEqual([{ packageId: 9 }]);
+    expect(changed).toEqual([{ packageId: 9, quantity: 0, oldQuantity: 2 }]);
+    await next.swapCart([{ packageId: 9, quantity: 1 }]);
+    await next.clearCart();
+    await next.addItem({ packageId: 1 });
+    await next.actions.clear();
+    expect(added).toEqual([{ packageId: 1, quantity: 1, source: 'direct' }]);
+    expect(removed).toHaveLength(1);
+    expect(changed).toHaveLength(1);
+  });
+
+  it('cart:item-added names the selector a select-mode add-to-cart button took its card from', async () => {
+    document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main" data-next-selection-mode="select">
+      <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div></div>
+      <button id="add" data-next-action="add-to-cart" data-next-selector-id="main">Add</button>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const added = heard(next, 'cart:item-added');
+    document.querySelector<HTMLElement>('#add')!.click();
+    await flush();
+    expect(added).toEqual([{ packageId: 1, quantity: 1, source: 'selector' }]);
+  });
+
+  it('action:success names the add-to-cart button or coupon field that did its work, as 0.4.43; never a page script’s call', async () => {
+    document.body.innerHTML = `<button id="add" data-next-action="add-to-cart" data-next-package-id="1">Add</button>
+      <div data-next-bundle-selector data-next-selector-id="main" data-next-selection-mode="select">
+        <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":2,"quantity":1}]'></div></div>
+      <button id="bundle" data-next-action="add-to-cart" data-next-selector-id="main">Add bundle</button>
+      <div id="coupon" data-next-coupon><input><button>Apply</button></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const success = heard(next, 'action:success');
+    const el = (id: string) => document.getElementById(id)!;
+    await next.addItem({ packageId: 3 });
+    await next.actions.addItem(3);
+    el('add').click();
+    el('bundle').click();
+    await flush();
+    const coupon = (code: string) => {
+      el('coupon').querySelector('input')!.value = code;
+      el('coupon').querySelector('button')!.click();
+    };
+    coupon('SAVE10');
+    await vi.waitFor(() => expect(next.getState().cart.coupons).toEqual(['SAVE10']));
+    coupon('NOPE');
+    await vi.waitFor(() => expect(success).toHaveLength(4));
+    await next.actions.applyCoupon('SAVE5');
+    await next.applyCoupon('NOPE2');
+    await flush();
+    expect(success).toEqual([
+      { action: 'AddToCartEnhancer', data: { element: el('add') } },
+      { action: 'AddToCartEnhancer', data: { element: el('bundle') } },
+      { action: 'CouponEnhancer', data: { element: el('coupon') } },
+      { action: 'CouponEnhancer', data: { element: el('coupon') } },
+    ]);
   });
 
   it('coupon events carry the code, a refusal its message, and clearing the cart sends no coupon:removed', async () => {
@@ -249,6 +316,43 @@ describe('0.4.x event names', () => {
     ]);
   });
 
+  it('selector:item-selected names the previous pick whichever order the listeners run in', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const on = engine.on.bind(engine);
+    const named: Array<() => void> = [];
+    vi.spyOn(engine, 'on').mockImplementation(((name: string, fn: (e: EngineEvent) => void, options?: object) => {
+      if (name === '*') return on('*', fn, options);
+      named.push(() => on('*', (e) => e.name === name && fn(e)));
+      return () => {};
+    }) as never);
+    const legacy = legacyEvents(engine);
+    const item = heard(legacy, 'selector:item-selected');
+    named.forEach((add) => add());
+    const cards = [1, 2].map((id) => ({ id: `c${id}`, lines: [{ packageId: id, quantity: 1 }], vouchers: [] }));
+    await engine.selectors.register('main', cards, 'select');
+    await engine.selectors.pick('main', 'c2');
+    await engine.selectors.pick('main', 'c1');
+    expect(item.map((i) => i.previousPackageId)).toEqual([1, 2]);
+  });
+
+  it('a lazy chunk’s 0.4.x names reach only the engine that loaded it', async () => {
+    const engines = await Promise.all(
+      [0, 1].map(async () => {
+        const { engine } = makeEngine();
+        await engine.start();
+        return { engine, legacy: legacyEvents(engine) };
+      }),
+    );
+    legacyCheckoutEvents(engines[0]!.engine, document.createElement('form'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const heardBy = engines.map(({ legacy }) => heard(legacy, 'payment:tokenized'));
+    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
+    for (const { engine } of engines)
+      engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+    expect(heardBy).toEqual([[{ paymentMethod: 'credit-card' }], []]);
+  });
+
   it('shipping events carry the method id and the campaign’s method', async () => {
     const next = boot(config, Promise.resolve(campaign));
     await flush();
@@ -299,6 +403,8 @@ describe('0.4.x event names', () => {
     const failed = heard(legacy, 'express-checkout:failed');
     const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
     const emit = engine.events.emit.bind(engine.events);
+    const placedBy = (express: boolean) => engine.attach((ctx) => ctx.update('checkout', { express }));
+    placedBy(false);
     emit('checkout.submitted', {
       ...checkout,
       payment_method: 'card_token',
@@ -306,6 +412,7 @@ describe('0.4.x event names', () => {
       errors: { form: { code: 'card', message: 'Enter a valid card number' } },
     });
     emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+    placedBy(true);
     emit('checkout.submitted', { ...checkout, payment_method: 'paypal', valid: true, errors: {} });
     emit('checkout.submitted', {
       ...checkout,
@@ -314,13 +421,17 @@ describe('0.4.x event names', () => {
       errors: { form: { code: 'empty_cart' } },
     });
     const declined = { code: 'declined', status: 400, message: 'Your card was declined.', decline_code: '05' } as const;
+    placedBy(false);
     emit('checkout.failed', { ...checkout, payment_method: 'card_token', error: declined });
+    placedBy(true);
     emit('checkout.failed', {
       ...checkout,
       payment_method: 'paypal',
       error: { code: 'network', message: 'Failed to fetch' },
     });
+    placedBy(false);
     emit('payment.redirected', { method: 'card_token', ref_id: 'R8', url: 'https://pay.test/3ds' });
+    placedBy(true);
     emit('payment.redirected', { method: 'paypal', ref_id: 'R9', url: 'https://pay.test/R9' });
     expect(tokenized).toEqual([{ paymentMethod: 'credit-card' }]);
     expect(started).toEqual([{ method: 'paypal', itemCount: 0 }]);
@@ -338,6 +449,62 @@ describe('0.4.x event names', () => {
       { method: 'paypal', order: { ref_id: 'R9', payment_complete_url: 'https://pay.test/R9' } },
     ]);
     expect(done).toEqual([{ method: 'paypal', success: true }]);
+  });
+
+  it('payment:tokenized says once a page that it no longer sends token and pmData', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { engine } = makeEngine();
+    await engine.start();
+    const legacy = legacyEvents(engine);
+    legacyCheckoutEvents(engine, document.createElement('form'));
+    const one = heard(legacy, 'payment:tokenized');
+    const two = heard(legacy, 'payment:tokenized');
+    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
+    for (let i = 0; i < 2; i++)
+      engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+    expect([...one, ...two]).toEqual(Array(4).fill({ paymentMethod: 'credit-card' }));
+    expect(engine.log.entries().filter((e) => e.message.includes('payment:tokenized'))).toEqual([
+      expect.objectContaining({
+        level: 'warn',
+        message: 'next.on: "payment:tokenized" no longer sends token and pmData',
+      }),
+    ]);
+  });
+
+  it('wallet events follow the express button, also when the form has the same method picked', async () => {
+    const shipping = {
+      country: 'US',
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'CA',
+      postcode: '90210',
+    };
+    const place = async (expressMethod?: string) => {
+      const order = () => json({ ref_id: 'R9', payment_complete_url: 'https://pay.test/R9' });
+      const { engine } = makeEngine({ fetch: fakeApi({ order }).fetch });
+      await engine.start();
+      await engine.cart.addItem(1);
+      const legacy = legacyEvents(engine);
+      legacyCheckoutEvents(engine, document.createElement('form'));
+      const started = heard(legacy, 'express-checkout:started');
+      const completed = heard(legacy, 'checkout:express-completed');
+      const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+      await checkout.loadCountries();
+      Object.entries(shipping).forEach(([name, value]) => checkout.setField(name, value));
+      checkout.setPaymentMethod('paypal');
+      await flush();
+      const urls = { failureUrl: 'https://shop.test/checkout/', pageUrl: 'https://shop.test/checkout/' };
+      expect(await checkout.placeOrder({ ...urls, expressMethod })).toMatchObject({ ref_id: 'R9' });
+      return { started, completed };
+    };
+    expect(await place('paypal')).toEqual({
+      started: [{ method: 'paypal', itemCount: 1 }],
+      completed: [{ method: 'paypal', success: true }],
+    });
+    expect(await place()).toEqual({ started: [], completed: [] });
   });
 
   it('order:completed carries the order from the API on the page after the checkout, paid or not', async () => {
@@ -372,7 +539,7 @@ describe('0.4.x event names', () => {
       return { seen, failed, click };
     }
 
-    it('carry the package and the order, and upsell:viewed once a page', async () => {
+    it('carry the package and the order, upsell:viewed once a page, and only upsell:added for an accepted offer, as 0.4.43', async () => {
       const { seen, click } = await upsellPage();
       click('#first button');
       click('#first button');
@@ -386,7 +553,7 @@ describe('0.4.x event names', () => {
         ],
         viewed: [{ pagePath: '/upsell/', orderId: 'R1' }],
         adding: [{ packageId: 3 }],
-        accepted: [{ packageId: 3, quantity: 1, orderId: 'R1' }],
+        accepted: [],
         added: [{ packageId: 3, quantity: 1, order: withUpsell(ORDER, 99, 1), willRedirect: false }],
         skipped: [{ packageId: 9, orderId: 'R1' }],
         error: [],
@@ -567,7 +734,7 @@ describe('exitIntent', () => {
     await next.exitIntent({ image: 'https://cdn.test/exit.png', action, showCloseButton: true });
 
     leave();
-    expect(shown).toEqual([{ imageUrl: 'https://cdn.test/exit.png' }]);
+    expect(shown).toEqual([{ imageUrl: 'https://cdn.test/exit.png', template: '' }]);
     expect(document.querySelector('.exit-intent-overlay')).not.toBeNull();
     expect(document.querySelector('.exit-intent-close')).not.toBeNull();
 
@@ -603,13 +770,57 @@ describe('exitIntent', () => {
     leave();
     document.querySelector<HTMLElement>('.exit-intent-close')!.click();
     document.querySelector<HTMLElement>('#banner')!.click();
+    const popup = { imageUrl: '', template: 'exit-intent' };
     expect(seen).toEqual({
-      shown: [{ template: 'exit-intent' }, { template: 'exit-intent' }, { template: 'exit-intent' }],
+      shown: [popup, popup, popup],
       clicked: [],
       action: [{ action: 'apply-coupon', couponCode: 'EXIT10' }],
-      dismissed: [{ template: 'exit-intent' }],
-      closed: [{ template: 'exit-intent' }],
+      dismissed: [popup],
+      closed: [popup],
     });
+  });
+
+  it('names the image and the template of a popup given both, as 0.4.43 did', async () => {
+    document.body.innerHTML = `<template data-template="exit-intent"><p>Wait!</p></template>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const seen = Object.fromEntries(['shown', 'dismissed', 'closed'].map((n) => [n, heard(next, `exit-intent:${n}`)]));
+    const image = 'https://cdn.test/exit.png';
+    await next.exitIntent({ image, template: 'exit-intent', maxTriggers: 2, showCloseButton: true });
+    leave();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    leave();
+    document.querySelector<HTMLElement>('.exit-intent-close')!.click();
+    const popup = { imageUrl: image, template: 'exit-intent' };
+    expect(seen).toEqual({ shown: [popup, popup], dismissed: [popup], closed: [popup] });
+  });
+
+  it('sends exit-intent:action for a custom button once its action has run, as 0.4.43 did', async () => {
+    document.body.innerHTML = `<template data-template="exit-intent"><button data-exit-intent-action="custom">Go</button></template>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const action = heard(next, 'exit-intent:action');
+    const clicked = heard(next, 'promotion.clicked');
+    let finish!: () => void;
+    await next.exitIntent({ template: 'exit-intent', action: () => new Promise<void>((r) => (finish = r)) });
+    leave();
+    document.querySelector<HTMLElement>('[data-exit-intent-action]')!.click();
+    expect(clicked).toHaveLength(1);
+    expect(action).toEqual([]);
+    finish();
+    await flush();
+    expect(action).toEqual([{ action: 'custom' }]);
+  });
+
+  it('closes the popup without exit-intent:dismissed or exit-intent:closed when the page removes it', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const seen = ['dismissed', 'closed'].map((n) => heard(next, `exit-intent:${n}`));
+    const remove = await next.exitIntent({ image: 'https://cdn.test/exit.png' });
+    leave();
+    remove();
+    expect(document.querySelector('.exit-intent-popup')).toBeNull();
+    expect(seen).toEqual([[], []]);
   });
 
   it('uses up no trigger when its template is not on the page', async () => {

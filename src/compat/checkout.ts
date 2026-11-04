@@ -170,21 +170,18 @@ export function announceProspect(engine: Engine, form: HTMLFormElement): void {
   });
 }
 
-const EXPRESS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay', 'link'];
-/** A wallet button, not the method picked on the form. */
-const express = (method: string | undefined, { checkout }: State) =>
-  !!method && EXPRESS.includes(method) && method !== checkout?.paymentMethod;
+const express = ({ checkout }: State) => !!checkout?.express;
 type Placed = From<'payment.redirected' | 'order.created'>;
 const placedWith = (e: Placed) => (e.name === 'payment.redirected' ? e.data.method : e.data.payment_method);
 const expressPlaced = (data: (e: Placed) => unknown) =>
   legacyEvent<Placed['name']>({
     from: ['payment.redirected', 'order.created'],
-    when: (e, state) => express(placedWith(e), state),
+    when: (_, state) => express(state),
     data,
   });
 const expressFailed = legacyEvent({
   from: ['checkout.failed'],
-  when: ({ data }, state) => express(data.payment_method, state),
+  when: (_, state) => express(state),
   data: ({ data }) => ({ method: data.payment_method, error: data.error.message ?? data.error.code }),
 });
 const formError = (e: EventMap['checkout.submitted']) => e.errors.form?.code;
@@ -192,12 +189,21 @@ const formError = (e: EventMap['checkout.submitted']) => e.errors.form?.code;
 const ORDER_FAILED = 'Failed to process order. Please try again.';
 const CARD_FAILED = 'Please check your card details and try again.';
 
-const CHECKOUT_EVENTS = {
-  'payment:tokenized': legacyEvent({
+/** 0.4.x `payment:tokenized` carried the card token and its details; they stay out of events, which the page is told once. */
+const tokenized = (engine: Engine) => {
+  let told = false;
+  return legacyEvent({
     from: ['checkout.submitted'],
     when: (e) => e.data.valid && e.data.payment_method === 'card_token',
-    data: () => ({ paymentMethod: 'credit-card' }),
-  }),
+    data: () => {
+      if (!told) engine.log.warn('next.on: "payment:tokenized" no longer sends token and pmData');
+      told = true;
+      return { paymentMethod: 'credit-card' };
+    },
+  });
+};
+
+const CHECKOUT_EVENTS = {
   'payment:error': legacyEvent({
     from: ['checkout.failed', 'checkout.submitted'],
     when: (e) => e.name === 'checkout.failed' || formError(e.data) === 'card',
@@ -214,12 +220,12 @@ const CHECKOUT_EVENTS = {
   }),
   'express-checkout:started': legacyEvent({
     from: ['checkout.submitted'],
-    when: ({ data }, state) => data.valid && express(data.payment_method, state),
+    when: ({ data }, state) => data.valid && express(state),
     data: ({ data }) => ({ method: data.payment_method, itemCount: data.cart.lines.length }),
   }),
   'express-checkout:error': legacyEvent({
     from: ['checkout.submitted'],
-    when: ({ data }, state) => formError(data) === 'empty_cart' && express(data.payment_method, state),
+    when: ({ data }, state) => formError(data) === 'empty_cart' && express(state),
     data: ({ data }) => ({ method: data.payment_method, error: 'Cart is empty' }),
   }),
   'checkout:express-completed': expressPlaced((e) => ({ method: placedWith(e), success: true })),
@@ -273,7 +279,11 @@ export function legacyAddressFilled(input: HTMLElement, type: 'shipping' | 'bill
  * `checkout:location-fields-shown` when the address reveals them, and `address:fields-rendered` per address block.
  */
 export function legacyCheckoutEvents(engine: Engine, form: HTMLFormElement): void {
-  addLegacyEvents(CHECKOUT_EVENTS, { 'checkout:started': checkoutData });
+  addLegacyEvents(
+    engine,
+    { ...CHECKOUT_EVENTS, 'payment:tokenized': tokenized(engine) },
+    { 'checkout:started': checkoutData },
+  );
   engines.set(form, engine);
   const fire = (name: string, data: object, keep?: boolean) => legacyFire(engine, name, data, keep);
   fire('checkout:form-initialized', { form });

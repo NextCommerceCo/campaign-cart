@@ -844,6 +844,47 @@ describe('three-step checkout (shop-three-step)', () => {
     expect(legacy[1]).toMatchObject({ id, cart: { lines: [{ package_id: 2 }] } });
   });
 
+  it('counts the steps of a funnel whose forms have no data-next-step-number from the step before', async () => {
+    const unnumbered = (body: HTMLElement) => body.querySelector('form')!.removeAttribute('data-next-step-number');
+    const steps: number[] = [];
+    const visit = async (path: string, file: string) => {
+      history.replaceState(null, '', path);
+      const page = await mount(file, { markup: unnumbered });
+      steps.push(page.engine.getState().checkout!.step);
+      return page;
+    };
+    const one = await visit('/shop-three-step/information/', 'shop-three-step/information.html');
+    one.fill(SHIPPING);
+    await one.submit();
+    const two = await visit('/shop-three-step/shipping/', 'starter/shop-three-step-shipping.html');
+    await two.submit();
+    expect(two.navigate).toHaveBeenCalledWith(`${location.origin}/shop-three-step/billing/`);
+    await visit('/shop-three-step/billing/', 'shop-three-step/billing.html');
+    expect(steps).toEqual([1, 2, 3]);
+  });
+
+  it('shows its own step on a page without data-next-step-number that the shopper goes back to', async () => {
+    const unnumbered = (body: HTMLElement) => body.querySelector('form')!.removeAttribute('data-next-step-number');
+    const steps: number[] = [];
+    const visit = async (path: string, file: string) => {
+      history.replaceState(null, '', path);
+      const page = await mount(file, { markup: unnumbered });
+      steps.push(page.engine.getState().checkout!.step);
+      return page;
+    };
+    const one = await visit('/shop-three-step/information/', 'shop-three-step/information.html');
+    one.fill(SHIPPING);
+    await one.submit();
+    const two = await visit('/shop-three-step/shipping/', 'starter/shop-three-step-shipping.html');
+    await two.submit();
+    await visit('/shop-three-step/billing/', 'shop-three-step/billing.html');
+    await visit('/shop-three-step/shipping/', 'starter/shop-three-step-shipping.html');
+    const back = await visit('/shop-three-step/information/', 'shop-three-step/information.html');
+    await back.submit();
+    await visit('/shop-three-step/shipping/', 'starter/shop-three-step-shipping.html');
+    expect(steps).toEqual([1, 2, 3, 2, 1, 2]);
+  });
+
   it('keeps the state chosen on step one when the last step’s hidden copy has no options', async () => {
     history.replaceState(null, '', '/shop-three-step/billing/');
     const { checkout, submit, orders, card } = await mount('shop-three-step/billing.html', { rulesDown: true });

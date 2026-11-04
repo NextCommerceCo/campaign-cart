@@ -277,7 +277,7 @@ export interface OrderItem {
   price: number;
   /** What one unit cost before discounts. */
   original_price: number;
-  /** `price × quantity`. */
+  /** What the line cost; `price` is `total / quantity`, rounded to the cent. */
   total: number;
   /** `true` for a line an upsell added. */
   upsell: boolean;
@@ -707,11 +707,11 @@ export interface EventMap {
     coupon_code?: string;
   };
   /**
-   * The popup closed; once for each `promotion.viewed` of a popup.
+   * The popup closed; once for each `promotion.viewed` of a popup, unless the page removed it.
    * @group Promotions
    */
   'promotion.closed': Promotion & {
-    /** `clicked`: after `promotion.clicked`. `dismissed`: Esc, the overlay, or the page removed the popup. `close_button`: the × button. */
+    /** `clicked`: after `promotion.clicked`. `dismissed`: Esc or the overlay. `close_button`: the × button. */
     reason: 'clicked' | 'dismissed' | 'close_button';
   };
   /** @internal One tracking event under its GA4 name, for `next.analytics.on`. */
@@ -730,13 +730,13 @@ export interface EngineEvent<K extends EventName = EventName> {
 type Listener = (event: EngineEvent) => void;
 
 const BUFFER_SIZE = 100;
+const INTERNAL: ReadonlySet<EventName> = new Set<EventName>(['analytics', 'campaign.loaded']);
 const STATE_SYNC: ReadonlySet<EventName> = new Set<EventName>([
   'cart.updated',
   'cart.calculating',
   'cart.calculated',
   'selector.calculating',
   'selector.calculated',
-  'selector.updated',
 ]);
 
 /** @internal */
@@ -750,21 +750,14 @@ export class Events {
 
   emit<K extends EventName>(name: K, data: EventMap[K]): void {
     const event: EngineEvent = { id: newId(), name, data, at: Date.now() };
-    this.buffer.push(event);
-    if (this.buffer.length > BUFFER_SIZE) this.buffer.splice(this.oldestDroppable(), 1);
+    const drop =
+      this.buffer.length >= BUFFER_SIZE &&
+      (this.buffer.find((e) => STATE_SYNC.has(e.name)) ??
+        this.buffer.find((e) => INTERNAL.has(e.name)) ??
+        this.buffer.find((e) => e.name !== 'sdk.ready'));
+    this.buffer = [...this.buffer.filter((e) => e !== drop), event];
     this.queue.push(event);
-    if (this.emitting) return;
-    this.emitting = true;
-    try {
-      for (let next = this.queue.shift(); next; next = this.queue.shift()) {
-        const current = next;
-        [current.name, '*']
-          .flatMap((key) => [...(this.listeners.get(key) ?? [])])
-          .forEach((fn) => this.deliver(fn, current));
-      }
-    } finally {
-      this.emitting = false;
-    }
+    this.drain();
   }
 
   on<K extends EventName>(
@@ -772,21 +765,32 @@ export class Events {
     fn: (event: EngineEvent<K>) => void,
     options: { replay?: boolean } = {},
   ): () => void {
-    const listener = fn as Listener;
     let set = this.listeners.get(name);
     if (!set) this.listeners.set(name, (set = new Set()));
-    set.add(listener);
     if (options.replay)
-      this.buffer
-        .filter((e) => (name === '*' || e.name === name) && !this.queue.includes(e))
-        .forEach((e) => this.deliver(listener, e));
-    return () => set.delete(listener);
+      this.drain(
+        (e) => (name === '*' || e.name === name) && this.deliver(fn as Listener, e),
+        this.buffer.filter((e) => !this.queue.includes(e)),
+      );
+    set.add(fn as Listener);
+    return () => set.delete(fn as Listener);
   }
 
-  private oldestDroppable(): number {
-    const sync = this.buffer.findIndex((e) => STATE_SYNC.has(e.name));
-    const other = this.buffer.findIndex((e) => e.name !== 'sdk.ready');
-    return sync >= 0 ? sync : Math.max(0, other);
+  private drain(late?: (event: EngineEvent) => unknown, past?: EngineEvent[]): void {
+    if (this.emitting) return past?.forEach(late!);
+    this.emitting = true;
+    try {
+      for (let next, old; (next = this.queue.shift()) || (old = past?.shift());) {
+        if (!next) late!(old!);
+        else {
+          for (const fn of [next.name, '*'].flatMap((key) => [...(this.listeners.get(key) ?? [])]))
+            this.deliver(fn, next);
+          past?.push(next);
+        }
+      }
+    } finally {
+      this.emitting = false;
+    }
   }
 
   private deliver(fn: Listener, event: EngineEvent): void {

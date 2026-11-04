@@ -60,7 +60,7 @@ export class Api {
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
-    const call = `api ${init.method ?? 'GET'} ${url.slice(this.base.length).split('?')[0]}`;
+    const route = `${init.method ?? 'GET'} ${url.slice(this.base.length).split('?')[0]}`;
     const started = Date.now();
     const res = await this.send(url, {
       ...init,
@@ -71,16 +71,16 @@ export class Api {
         ...init.headers,
       },
     }).catch((err: unknown) => {
-      this.log.debug(`${call} failed`, err);
+      this.log.debug(`api ${route} failed`, err);
       throw err;
     });
-    this.log.debug(`${call} → ${res.status} in ${Date.now() - started} ms`);
+    this.log.debug(`api ${route} → ${res.status} in ${Date.now() - started} ms`);
     const text = await res.text();
     let body: unknown = text;
     try {
       body = text ? JSON.parse(text) : null;
     } catch {}
-    if (!res.ok) throw new ApiError(`${call.slice(4)} → ${res.status}`, res.status, body);
+    if (!res.ok) throw new ApiError(`${route} → ${res.status}`, res.status, body);
     return body as T;
   }
 }

@@ -1,4 +1,4 @@
-import type { ApiOrder } from '../../src/engine/types';
+import type { ApiOrder, ApiOrderLine } from '../../src/engine/types';
 
 export const ORDER: ApiOrder = {
   ref_id: 'R1',
@@ -46,10 +46,15 @@ export const ORDER: ApiOrder = {
   supports_post_purchase_upsells: true,
 };
 
-export const withUpsell = (order: ApiOrder, id: number, quantity: number): ApiOrder => ({
+export const withUpsell = (
+  order: ApiOrder,
+  id: number,
+  quantity: number,
+  line: Partial<ApiOrderLine> = {},
+): ApiOrder => ({
   ...order,
   lines: [
     ...(order.lines ?? []),
-    { id, product_title: 'Bump', quantity, price_excl_tax: '20.00', price_incl_tax: '20.00', is_upsell: true },
+    { id, product_title: 'Bump', quantity, price_excl_tax: '20.00', price_incl_tax: '20.00', is_upsell: true, ...line },
   ],
 });

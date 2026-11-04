@@ -131,7 +131,7 @@ describe('order', () => {
     await engine.cart.addItem(1);
     const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
     await checkout.placeOrder({
-      method: 'paypal',
+      expressMethod: 'paypal',
       failureUrl: 'https://shop.test/checkout/',
       pageUrl: 'https://shop.test/checkout/',
     });
@@ -159,7 +159,7 @@ describe('order', () => {
       ['email', 'first_name', 'last_name'].forEach((f, i) =>
         checkout.setField(f, ['jane@example.com', 'Jane', 'Doe'][i]!),
       );
-      await checkout.placeOrder({ method: 'paypal', failureUrl, pageUrl: 'https://shop.test/checkout/' });
+      await checkout.placeOrder({ expressMethod: 'paypal', failureUrl, pageUrl: 'https://shop.test/checkout/' });
     };
 
     const paid = new MemoryStorage();
@@ -212,6 +212,20 @@ describe('order', () => {
     expect(await back.order.accept(PLAIN, '/up-1/')).toBe('repeat');
     expect(await back.order.accept(PLAIN, '/up-2/')).toBe('accepted');
     expect(upsells().length + back.upsells().length).toBe(2);
+  });
+
+  it('keeps the order as it was paid on this page, after an upsell changes it, and never saves it', async () => {
+    const session = new MemoryStorage();
+    const local = new MemoryStorage();
+    const { engine, order } = await setup({ session, local });
+    await order.load('R1');
+    expect(engine.getState().order!.paidOrder).toEqual(ORDER);
+    expect(await order.accept(PLAIN, '/up-1/')).toBe('accepted');
+    expect(engine.getState().order).toMatchObject({ order: withUpsell(ORDER, 99, 1), paidOrder: ORDER });
+    expect([...session.data.values()].join()).not.toContain('paidOrder');
+    const next = await setup({ session, local });
+    await next.order.load('R1');
+    expect(next.engine.getState().order!.paidOrder).toBeUndefined();
   });
 
   it('leaves accepted upsells for analytics to mark reported, once per browser', async () => {
@@ -271,22 +285,38 @@ describe('order', () => {
 
   it('takes an upsell as accepted when its request failed unanswered but the order now has it', async () => {
     let reads = 0;
+    const upsold = withUpsell(ORDER, 99, 1, { product_id: 400 });
     const { order, sent, gets, upsells, engine } = await setup({
       api: {
         upsell: () => json({ message: 'Bad gateway' }, 502),
-        getOrder: () => json(reads++ ? withUpsell(ORDER, 99, 1) : ORDER),
+        getOrder: () => json(reads++ ? upsold : ORDER),
       },
     });
     await order.load('R1');
     expect(await order.accept(PLAIN, '/up-1/')).toBe('accepted');
     expect(gets()).toHaveLength(2);
     expect(sent('upsell.accepted')).toHaveLength(1);
-    expect(sent('order.updated')).toEqual([publicOrder(withUpsell(ORDER, 99, 1))]);
+    expect(sent('order.updated')).toEqual([publicOrder(upsold)]);
     expect(sent('upsell.failed')).toEqual([]);
     expect(sent('sdk.error')).toEqual([]);
     expect(engine.getState().order).toMatchObject({ status: 'ready', order: { lines: [{ id: 11 }, { id: 99 }] } });
     expect(await order.accept(PLAIN, '/up-1/')).toBe('repeat');
     expect(upsells()).toHaveLength(1);
+  });
+
+  it('takes a later offer as accepted only when the order has its own line, not an earlier offer’s late one', async () => {
+    const first = withUpsell(ORDER, 99, 1, { product_id: 400 });
+    const reads = [ORDER, ORDER, first, withUpsell(first, 100, 1, { product_id: 900 })];
+    const { order, sent } = await setup({
+      api: { upsell: () => json({ message: 'Bad gateway' }, 502), getOrder: () => json(reads.shift()) },
+    });
+    await order.load('R1');
+    const plan = { lines: [{ packageId: 9, quantity: 1 }] };
+    expect(await order.accept(PLAIN, '/up-1/')).toBe('failed');
+    expect(await order.accept(plan, '/up-2/')).toBe('failed');
+    expect(await order.accept(plan, '/up-2/')).toBe('accepted');
+    expect(sent('upsell.failed')).toHaveLength(2);
+    expect(sent('upsell.accepted')).toMatchObject([{ page: '/up-2/', lines: [{ package_id: 9 }] }]);
   });
 
   it('keeps an upsell failed when the order does not have it, or when the API refused it', async () => {

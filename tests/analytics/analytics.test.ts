@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
+import { exitIntent } from '../../src/compat/exit-intent';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
 import type { Address, AnalyticsEvent, AnalyticsTrace, Promotion } from '../../src/engine/events';
@@ -399,6 +400,24 @@ describe('analytics', () => {
     expect(win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!.ecommerce).not.toHaveProperty('coupon');
   });
 
+  it('builds purchase from the order as it was paid, when an upsell was accepted before analytics loaded', async () => {
+    const engine = await loadOrder(ORDER);
+    const upsold: ApiOrder = {
+      ...withUpsell(ORDER, 99, 1),
+      total_tax: '9.00',
+      total_discounts: '5.00',
+      shipping_excl_tax: '0.00',
+      shipping_incl_tax: '0.00',
+    };
+    engine.attach((ctx) => ctx.update('order', { order: upsold }));
+    const seen: AnalyticsEvent[] = [];
+    engine.on('analytics', (e) => void seen.push(e.data));
+    startAnalytics(engine, options);
+    const purchase = seen.find((e) => e.name === 'purchase')!.params;
+    expect(purchase).toMatchObject({ value: 89, tax: 7.12, shipping: 9.99 });
+    expect(purchase).not.toHaveProperty('discount');
+  });
+
   it('sends no purchase for a paid order other than the one in state', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
@@ -520,33 +539,88 @@ describe('analytics', () => {
     expect((await run(two)).sent).toEqual([]);
   });
 
-  it('reports the exit-intent popup the 0.4.x way', async () => {
-    const engine = await ready('<template data-template="exit"></template>');
-    startAnalytics(engine, options);
-    const template: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'exit' };
-    engine.events.emit('promotion.viewed', EXIT);
-    engine.events.emit('promotion.clicked', EXIT);
-    engine.events.emit('promotion.closed', { ...EXIT, reason: 'clicked' });
-    engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' });
-    engine.events.emit('promotion.closed', { ...template, reason: 'dismissed' });
-    engine.events.emit('promotion.closed', { ...EXIT, reason: 'close_button' });
-    expect(win.NextDataLayer!.filter((e) => e.event.startsWith('dl_exit_intent_'))).toMatchObject([
-      {
-        event: 'dl_exit_intent_shown',
-        event_category: 'engagement',
-        event_label: EXIT.creative,
-        exit_intent: { image_url: EXIT.creative, template: '' },
-      },
-      { event: 'dl_exit_intent_accepted', event_action: 'exit_intent_accepted' },
-      {
-        event: 'dl_exit_intent_action',
-        event_action: 'exit_intent_apply-coupon',
-        event_label: 'EXIT10',
-        exit_intent: { action: 'apply-coupon', coupon_code: 'EXIT10' },
-      },
-      { event: 'dl_exit_intent_dismissed', event_label: 'exit', exit_intent: { image_url: '', template: 'exit' } },
-      { event: 'dl_exit_intent_closed', event_action: 'exit_intent_closed' },
-    ]);
+  describe('exit-intent popup (0.4.x data layer)', () => {
+    const leave = () => document.dispatchEvent(new MouseEvent('mouseout', { clientY: -1, relatedTarget: null }));
+    const click = (selector: string) => document.querySelector<HTMLElement>(selector)!.click();
+    const TEMPLATE = `<template data-template="exit"><button data-exit-intent-action="apply-coupon" data-coupon-code="EXIT10">Apply</button><button data-exit-intent-action="custom">Go</button></template>`;
+    const exits = () => win.NextDataLayer!.filter((e) => e.event.startsWith('dl_exit_intent_'));
+
+    beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false })));
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('names the image, and the template of a template popup, as 0.4.43 did', async () => {
+      const engine = await ready(TEMPLATE);
+      startAnalytics(engine, options);
+      const stop = exitIntent(engine, { id: 'image', image: EXIT.creative });
+      leave();
+      click('.exit-intent-popup img');
+      await flush();
+      stop();
+      exitIntent(engine, { id: 'both', image: EXIT.creative, template: 'exit', maxTriggers: 3 });
+      leave();
+      click('[data-exit-intent-action="apply-coupon"]');
+      await flush();
+      leave();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      const image = { event_label: EXIT.creative, exit_intent: { image_url: EXIT.creative, template: '' } };
+      const both = { event_label: EXIT.creative, exit_intent: { image_url: EXIT.creative, template: 'exit' } };
+      expect(exits()).toMatchObject([
+        { event: 'dl_exit_intent_shown', event_category: 'engagement', ...image },
+        { event: 'dl_exit_intent_accepted', event_action: 'exit_intent_accepted', ...image },
+        { event: 'dl_exit_intent_shown', ...both },
+        {
+          event: 'dl_exit_intent_action',
+          event_action: 'exit_intent_apply-coupon',
+          event_label: 'EXIT10',
+          exit_intent: { action: 'apply-coupon', coupon_code: 'EXIT10' },
+        },
+        { event: 'dl_exit_intent_shown', ...both },
+        { event: 'dl_exit_intent_dismissed', event_action: 'exit_intent_dismissed', ...both },
+      ]);
+    });
+
+    it('sends a custom button’s dl_exit_intent_action once its action has run, as 0.4.43 did', async () => {
+      const engine = await ready(TEMPLATE);
+      startAnalytics(engine, options);
+      let finish!: () => void;
+      const action = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+      exitIntent(engine, { template: 'exit', action });
+      leave();
+      click('[data-exit-intent-action="custom"]');
+      expect(action).toHaveBeenCalled();
+      expect(exits().map((e) => e.event)).toEqual(['dl_exit_intent_shown']);
+      finish();
+      await flush();
+      expect(exits().slice(1)).toMatchObject([
+        {
+          event: 'dl_exit_intent_action',
+          event_action: 'exit_intent_custom',
+          event_label: 'custom',
+          exit_intent: { action: 'custom', coupon_code: '' },
+        },
+      ]);
+    });
+
+    it('sends no dl_exit_intent_action for a custom action that fails, as 0.4.43', async () => {
+      const engine = await ready(TEMPLATE);
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      startAnalytics(engine, options);
+      exitIntent(engine, { template: 'exit', action: () => Promise.reject(new Error('page script')) });
+      leave();
+      click('[data-exit-intent-action="custom"]');
+      await flush();
+      expect(exits().map((e) => e.event)).toEqual(['dl_exit_intent_shown']);
+    });
+
+    it('sends no dl_exit_intent_dismissed when the page removes the popup', async () => {
+      const engine = await ready();
+      startAnalytics(engine, options);
+      const remove = exitIntent(engine, { image: EXIT.creative });
+      leave();
+      remove();
+      expect(document.querySelector('.exit-intent-popup')).toBeNull();
+      expect(exits().map((e) => e.event)).toEqual(['dl_exit_intent_shown']);
+    });
   });
 
   it('reports a marked banner as a promotion, without the exit-intent data layer events', async () => {
@@ -667,7 +741,7 @@ describe('analytics events (GA4 names)', () => {
     engine.events.emit('address.entered', { ...SHIPPING, type: 'billing' });
     const template: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'exit' };
     engine.events.emit('promotion.viewed', template);
-    engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon' });
+    engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' });
     engine.events.emit('address.entered', SHIPPING);
     expect(seen.slice(-4)).toMatchObject([
       { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },

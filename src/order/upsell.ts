@@ -35,12 +35,18 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
     const go = (url: string | undefined, delay: number) => url && setTimeout(() => navigate(url), delay);
     let leaving = false;
     let viewed = false;
+    const view = () => {
+      if (viewed || !engine.getState().order?.order) return;
+      viewed = true;
+      order.view(spec, page);
+    };
 
     for (const button of buttons) {
       const accept = ACCEPT_WORDS.includes(button.getAttribute('data-next-upsell-action') ?? '');
       button.addEventListener('click', async (e) => {
         e.preventDefault();
         if (leaving || offer.classList.contains('next-processing')) return;
+        view();
         const url = targetUrl(button, accept, engine);
         if (!accept) {
           leaving = true;
@@ -69,10 +75,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         offer.classList.toggle('next-available', available);
         offer.classList.toggle('next-hidden', !available);
         const quoting = selectorId && engine.getState().selectors[selectorId]?.quoting;
-        if (available && !viewed && !quoting) {
-          viewed = true;
-          order.view(spec, page);
-        }
+        if (available && !quoting) view();
       }
       const busy = state?.status === 'accepting' || leaving;
       for (const button of buttons) button.classList.toggle('next-disabled', busy);

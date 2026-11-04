@@ -72,6 +72,8 @@ export interface CheckoutState {
   sameAsShipping: boolean;
   paymentMethod: string;
   step: number;
+  /** The step each page of this checkout showed, by path: a page the shopper comes back to shows its own step. */
+  steps?: Record<string, number>;
   errors: Record<string, CheckoutError>;
   status: 'idle' | 'placing' | 'placed';
   countries: CountryOption[];
@@ -86,6 +88,8 @@ export interface CheckoutState {
   pendingRef?: string;
   /** The payment method of the order at the gateway: an express button's, which the form never selected. */
   pendingMethod?: string;
+  /** The order placed last came from an express button, not the form; kept on this page only. */
+  express?: boolean;
   /** The checkout's `Checkout.id`, set when it starts; a paid order starts a new one. */
   id?: string;
   /** The analytics events already sent for this checkout, such as `add_shipping_info`. */

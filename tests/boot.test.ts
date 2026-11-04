@@ -158,7 +158,7 @@ describe('boot', () => {
       checkout.setField(f, ['jane@example.com', 'Jane', 'Doe'][i]!),
     );
     const pageUrl = `${location.origin}/checkout/`;
-    await checkout.placeOrder({ method: 'paypal', failureUrl: `${pageUrl}?payment_failed=true`, pageUrl });
+    await checkout.placeOrder({ expressMethod: 'paypal', failureUrl: `${pageUrl}?payment_failed=true`, pageUrl });
 
     history.replaceState(null, '', '/checkout/?payment_failed=true&payment_method=paypal');
     vi.stubGlobal('fetch', api.fetch);
@@ -170,6 +170,31 @@ describe('boot', () => {
     );
     expect(Object.values(next.getState().cart.groups).flatMap((g) => g.lines)).toHaveLength(1);
     expect(api.calls.filter((c) => c.method === 'GET' && c.url.includes('/orders/'))).toHaveLength(0);
+  });
+
+  it('takes payment_failed and payment_method off the URL once read, so a reload after a retry sends nothing', async () => {
+    const storagePrefix = `next:${storageScope(config.apiKey, funnelFromPath('/checkout/'))}`;
+    const pending = async (pendingRef: string, pendingMethod: string) => {
+      const { engine } = makeEngine({ local: localStorage, session: sessionStorage, storagePrefix });
+      await engine.start();
+      engine.attach((ctx) => ctx.update('checkout', { pendingRef, pendingMethod }));
+    };
+    await pending('R1', 'paypal');
+    history.replaceState(null, '', '/checkout/?payment_failed=true&payment_method=paypal&utm_source=fb#form');
+    const next = boot(config, Promise.resolve(campaign));
+    const failed = vi.fn();
+    next.on('payment.failed', (data) => failed(data));
+    await vi.waitFor(() => expect(failed).toHaveBeenCalledWith(expect.objectContaining({ ref_id: 'R1' })));
+    expect(`${location.search}${location.hash}`).toBe('?utm_source=fb#form');
+    expect(next.getState().visit.params).toMatchObject({ payment_failed: 'true', payment_method: 'paypal' });
+
+    await pending('R2', 'klarna');
+    const reloaded = boot(config, Promise.resolve(campaign));
+    await flush();
+    await flush();
+    const again = vi.fn();
+    reloaded.on('payment.failed', again);
+    expect(again).not.toHaveBeenCalled();
   });
 
   it('marks the page when the campaign cannot load, even with a snapshot', async () => {

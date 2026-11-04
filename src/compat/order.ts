@@ -1,7 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { pickedCard } from '../engine/cart/selectors';
 import type { Upsell } from '../engine/events';
-import type { State } from '../engine/types';
 import { addLegacyEvents, legacyEvent, legacyFire, legacySelectorId } from './legacy';
 
 /** @deprecated `accept` / `decline`. Use `data-next-upsell-action="add"` / `"skip"`. */
@@ -18,11 +17,8 @@ const leaves = () =>
   !!document.querySelector(
     ['meta[name="next-upsell-accept-url"]', ...NEXT_URL_ATTRS.map((a) => `[data-next-upsell] [${a}]`)].join(', '),
   );
-const orderCoupon = ({ order }: State) => {
-  const first = (order?.order as { vouchers?: Array<string | { code?: string }> } | undefined)?.vouchers?.[0];
-  return typeof first === 'string' ? first : first?.code;
-};
 
+/** `upsell:accepted` came from `data-next-action="accept-upsell"` buttons, which are removed; an offer sent `upsell:added`. */
 const ORDER_EVENTS = {
   'order:completed': legacyEvent({
     from: ['order.paid', 'order.loaded'],
@@ -33,21 +29,6 @@ const ORDER_EVENTS = {
     from: ['upsell.viewed'],
     once: true,
     data: ({ data }) => ({ pagePath: data.page, orderId: data.ref_id }),
-  }),
-  'upsell:accepted': legacyEvent({
-    from: ['upsell.accepted'],
-    each: true,
-    data: ({ data }, state) => {
-      const coupon = orderCoupon(state);
-      const discount = Math.round(data.lines.reduce((n, l) => n + (l.total_discount ?? 0) * 100, 0)) / 100;
-      return data.lines.map((l) => ({
-        packageId: l.package_id,
-        quantity: l.quantity,
-        orderId: data.ref_id,
-        ...(data.total !== undefined && { value: data.total, discount }),
-        ...(coupon && { coupon }),
-      }));
-    },
   }),
   'upsell:added': legacyEvent({
     from: ['upsell.accepted'],
@@ -67,6 +48,11 @@ const ORDER_EVENTS = {
       ...(offerPackage(data) !== undefined && { packageId: offerPackage(data) }),
       ...(data.ref_id && { orderId: data.ref_id }),
     }),
+  }),
+  'action:failed': legacyEvent({
+    from: ['sdk.error'],
+    when: (e) => e.data.action === 'upsell.add',
+    data: (e) => ({ action: 'AcceptUpsellEnhancer', error: new Error(e.data.message) }),
   }),
   'upsell:error': legacyEvent({
     from: ['upsell.failed'],
@@ -88,7 +74,7 @@ function packageOf(engine: Engine, offer: Element): number {
  * 0.4.x sent: `upsell:initialized` per offer, and `upsell:adding` when an add goes out.
  */
 export function legacyOrderEvents(engine: Engine): void {
-  addLegacyEvents(ORDER_EVENTS);
+  addLegacyEvents(engine, ORDER_EVENTS);
   const offers = [...document.querySelectorAll('[data-next-upsell]')];
   for (const offer of offers)
     legacyFire(engine, 'upsell:initialized', { packageId: packageOf(engine, offer), element: offer });

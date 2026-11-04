@@ -32,6 +32,8 @@ const emptyCheckout = (): CheckoutState => ({
   openCart: undefined,
   pendingRef: undefined,
   pendingMethod: undefined,
+  express: undefined,
+  steps: undefined,
 });
 
 const countryOf = (fields: Record<string, string>, name: string) =>
@@ -60,7 +62,7 @@ export type Lead = 'email' | 'phone' | 'email+phone' | 'off' | 'formStart';
 
 export interface PlaceOrder extends OrderUrls {
   /** An express button's method: the wallet gives the shopper's details, so the form is not sent. */
-  method?: string;
+  expressMethod?: string;
   expressChecks?: Scope;
   tokenize?: () => Promise<string>;
   phoneRequired?: boolean;
@@ -230,11 +232,15 @@ export function createCheckout(
   const start = () => {
     if (!bound || open || !cart.lines().length) return;
     open = true;
-    if (!state().id) {
+    if (state().id) opened?.(cart.currentCheckout());
+    else {
       set({ id: newId() });
+      const off = ctx.on('checkout.started', (e) => {
+        off();
+        opened?.(e.data);
+      });
       ctx.emit('checkout.started', cart.currentCheckout());
     }
-    opened?.(cart.currentCheckout());
     announceAddresses();
   };
   ctx.on('cart.updated', start);
@@ -313,8 +319,8 @@ export function createCheckout(
       if (changed) ctx.emit('payment.selected', { method });
     },
 
-    setStep(step: number): void {
-      set({ step });
+    setStep(step: number, page?: string): void {
+      set({ step, ...(page !== undefined && { steps: { ...state().steps, [page]: step } }) });
     },
 
     nextStep(phoneRequired = false): boolean {
@@ -373,10 +379,10 @@ export function createCheckout(
 
     async placeOrder(input: PlaceOrder): Promise<ApiOrder | undefined> {
       if (state().status !== 'idle') return undefined;
-      const express = !!input.method;
-      const method = input.method ? paymentCode(input.method) : state().paymentMethod;
+      const express = !!input.expressMethod;
+      const method = input.expressMethod ? paymentCode(input.expressMethod) : state().paymentMethod;
       const checks = express ? input.expressChecks : 'all';
-      set({ status: 'placing' });
+      set({ status: 'placing', express });
       cart.freeze(true);
       const fail = (errors: Record<string, CheckoutError>) => {
         set({ status: 'idle', errors });

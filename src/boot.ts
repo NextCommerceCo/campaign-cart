@@ -193,8 +193,9 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     );
   }
 
-  if (config.reset) {
-    params.delete('reset');
+  const paymentFailed = params.get('payment_failed') === 'true';
+  if (config.reset || paymentFailed) {
+    for (const name of ['reset', 'payment_failed', 'payment_method']) params.delete(name);
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
 
@@ -258,10 +259,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   (window as unknown as { next: NextApi }).next = next;
 
   const orderPage =
-    document.querySelector(ORDER_MARKUP) ||
-    params.has('ref_id') ||
-    params.has('order_ref_id') ||
-    params.get('payment_failed') === 'true';
+    document.querySelector(ORDER_MARKUP) || params.has('ref_id') || params.has('order_ref_id') || paymentFailed;
   const orderChunk = orderPage ? import('./order') : undefined;
   if (
     document.querySelector(

@@ -120,7 +120,10 @@ export function bindCheckout(
   const phones = bindPhones(engine, checkout, form, fields, RULES);
   const address = bindAddress(engine, form, fields);
   const stepUrl = stepUrlOf(form);
-  const step = Number(form.getAttribute('data-next-step-number')) || 1;
+  const page = location.pathname;
+  const { step: advanced, steps } = engine.getState().checkout!;
+  const step =
+    Number(form.getAttribute('data-next-step-number')) || steps?.[page] || (advanced > 1 ? advanced : stepUrl ? 1 : 0);
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
   const wasDisabled = !!submit?.disabled;
   const showOverlay = overlay();
@@ -136,12 +139,12 @@ export function bindCheckout(
     }, 100);
   };
 
-  const pay = async (method?: string): Promise<void> => {
+  const pay = async (expressMethod?: string): Promise<void> => {
     syncFields(fields, checkout, engine.getState().checkout);
-    box = method ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
+    box = expressMethod ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
     const successUrl = meta(...SUCCESS_URL_META);
     const order = await checkout.placeOrder({
-      method,
+      expressMethod,
       expressChecks: legacyExpressChecks(),
       successUrl,
       failureUrl: failureUrl(),
@@ -151,7 +154,7 @@ export function bindCheckout(
     });
     if (!order) {
       const errors = Object.keys(engine.getState().checkout?.errors ?? {});
-      if (!method && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
+      if (!expressMethod && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
       return focusFirstError();
     }
     clearStepGuard();
@@ -224,8 +227,7 @@ export function bindCheckout(
   render();
 
   announceProspect(engine, form);
-  const advanced = engine.getState().checkout!.step;
-  checkout.setStep(stepUrl || form.hasAttribute('data-next-step-number') ? step : advanced > 1 ? advanced : 0);
+  checkout.setStep(step, page);
   checkout.begin();
   void checkout.loadCountries(legacyCountries());
   return checkout;
