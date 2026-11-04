@@ -237,7 +237,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   };
   (window as unknown as { next: NextApi }).next = next;
 
-  const orderPage = document.querySelector(ORDER_MARKUP);
+  const orderPage = document.querySelector(ORDER_MARKUP) || params.has('ref_id') || params.has('order_ref_id');
   const orderChunk = orderPage ? import('./order') : undefined;
   if (
     document.querySelector(

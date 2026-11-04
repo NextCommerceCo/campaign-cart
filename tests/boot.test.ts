@@ -103,6 +103,18 @@ describe('boot', () => {
     expect(next.getState().cart.summary?.total).toBe('49.00');
   });
 
+  it('loads the order on any page with ?ref_id, as 0.4.x did, so a plain thank-you page reports it', async () => {
+    history.replaceState(null, '', '/thank-you/?ref_id=R1');
+    const api = fakeApi();
+    vi.stubGlobal('fetch', api.fetch);
+    const next = boot(config, Promise.resolve(campaign));
+    const loaded = vi.fn();
+    next.on('order.loaded', (data) => loaded(data));
+    await vi.waitFor(() => expect(loaded).toHaveBeenCalledTimes(1));
+    expect(loaded.mock.calls[0]![0]).toMatchObject({ order: { ref_id: 'R1' }, purchase: expect.any(String) });
+    history.replaceState(null, '', '/');
+  });
+
   it('marks the page when the campaign cannot load, even with a snapshot', async () => {
     boot(config, Promise.resolve(campaign));
     await flush();

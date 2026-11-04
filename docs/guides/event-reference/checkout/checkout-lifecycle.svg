@@ -31,7 +31,7 @@
     <text x="608" y="561" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
     <path d="M620 436 V301 H446" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="500" y="295" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">payment fails</text>
-    <text x="500" y="317" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">cart kept</text>
+    <text x="500" y="317" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.failed</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />

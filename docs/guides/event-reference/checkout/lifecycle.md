@@ -25,7 +25,7 @@ group: 'Event Reference/Checkout'
 | `placing`            | The order is created and paid; the shopper goes to the next page                                              | `paid`               | `order.created`, then `order.loaded` on the next page                                                                       |
 | `placing`            | The order is created but its payment is not complete: the shopper is sent to its `payment_complete_url`       | `completing payment` | `order.created`                                                                                                             |
 | `completing payment` | The payment is completed; the next page loads the order                                                       | `paid`               | `order.loaded`                                                                                                              |
-| `completing payment` | The payment fails; the shopper is sent back to the checkout, cart kept                                        | `filling`            | `order.failed` (`stage: 'payment'`) only on a page that shows the order; `param.payment_failed` is `'true'`                 |
+| `completing payment` | The payment fails; the shopper is sent back to the checkout, cart kept                                        | `filling`            | `order.failed` (`stage: 'payment'`) when the page opens with the order's `ref_id`; `param.payment_failed` is `'true'`       |
 
 A paid order empties the cart without cart events. While its payment is completed the cart is kept
 until the paid order loads, so a shopper whose payment fails comes back to the same cart. See the order

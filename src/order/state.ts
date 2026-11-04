@@ -172,7 +172,8 @@ export function createOrder(ctx: Context, cart: CartActions) {
   const settle = (order: Order, page?: string) => {
     const paid = !order.payment_complete_url;
     const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
-    const failed = ctx.getState().visit.params.payment_failed === 'true' || (!!page && page === checkout?.failurePath);
+    const failed =
+      !paid && (ctx.getState().visit.params.payment_failed === 'true' || (!!page && page === checkout?.failurePath));
     if (failed) {
       ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: order.ref_id });
       return ctx.emit('order.loaded', { order });

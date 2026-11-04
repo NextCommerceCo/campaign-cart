@@ -49,12 +49,24 @@ describe('order', () => {
     });
     await unpaid.order.load('R2');
     expect(unpaid.loaded.mock.calls[0]![0].purchase).toBeUndefined();
-    const failed = await setup({ params: { payment_failed: 'true' } });
+    const failed = await setup({
+      params: { payment_failed: 'true' },
+      api: { getOrder: (ref) => json({ ...ORDER, ref_id: ref, payment_complete_url: 'https://pay.test' }) },
+    });
     const refused = vi.fn();
     failed.engine.on('order.failed', (e) => refused(e.data));
     await failed.order.load('R3');
     expect(failed.loaded.mock.calls[0]![0].purchase).toBeUndefined();
     expect(refused).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R3' });
+  });
+
+  it('never takes a paid order for a failed payment, whatever the URL says', async () => {
+    const paid = await setup({ params: { payment_failed: 'true' } });
+    const refused = vi.fn();
+    paid.engine.on('order.failed', (e) => refused(e.data));
+    await paid.order.load('R4');
+    expect(refused).not.toHaveBeenCalled();
+    expect(paid.loaded.mock.calls[0]![0].purchase).toEqual(expect.any(String));
   });
 
   it('clears only the cart kept for that order’s gateway, and never on the failure landing', async () => {
@@ -79,7 +91,8 @@ describe('order', () => {
 
     const failed = new MemoryStorage();
     await gatewayOrder(failed, 'https://shop.test/oops/');
-    const landing = await setup({ session: failed });
+    const unpaid = (ref: string) => json({ ...ORDER, ref_id: ref, payment_complete_url: `https://pay.test/${ref}` });
+    const landing = await setup({ session: failed, api: { getOrder: unpaid } });
     await landing.order.load('R1', '/oops/');
     expect(landing.engine.cart.lines()).toHaveLength(1);
     expect(landing.loaded.mock.calls[0]![0].purchase).toBeUndefined();

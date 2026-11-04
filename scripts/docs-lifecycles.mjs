@@ -272,7 +272,7 @@ const LIFECYCLES = {
         [
           arrow(`M${SIDE.cx} ${gateway} V${filling + 105} H${right + 6}`, { dashed: true }),
           label(500, filling + 99, 'payment fails', { size: 12 }),
-          label(500, filling + 121, 'cart kept', { size: 12 }),
+          label(500, filling + 121, 'order.failed', { code: true }),
         ],
       ];
     },
