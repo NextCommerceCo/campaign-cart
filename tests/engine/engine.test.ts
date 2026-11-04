@@ -56,6 +56,19 @@ describe('Engine', () => {
     await engine.start();
     expect(errors).toEqual([{ action: 'campaign.load', code: 'network', message: 'down' }]);
   });
+  it('prices a saved cart with the campaign copy when the campaign request fails', async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    const first = makeEngine({ local, session }).engine;
+    await first.start();
+    await first.cart.addItem(2);
+    const second = makeEngine({ local, session, campaign: Promise.reject(new Error('down')) }).engine;
+    vi.spyOn(second.log, 'error').mockImplementation(() => {});
+    await second.start();
+    await second.cart.settled();
+    expect(second.getState().cart.summary?.lines).toHaveLength(1);
+  });
+
   it('restores the cart from this tab and the campaign snapshot on the next page', async () => {
     const local = new MemoryStorage();
     const session = new MemoryStorage();

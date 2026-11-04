@@ -232,10 +232,16 @@ export class Engine {
     try {
       campaign = await this.options.campaign;
     } catch (err) {
-      return this.fail('campaign.load', err);
+      this.fail('campaign.load', err);
+      if (this.state.campaign) this.price();
+      return;
     }
     this.update('campaign', campaign);
     this.events.emit('campaign.loaded', { campaign, fromCache: false });
+    this.price();
+  }
+
+  private price(): void {
     void this.cart.campaignLoaded();
     this.selectors.campaignLoaded();
   }
