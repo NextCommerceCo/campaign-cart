@@ -7,12 +7,12 @@ group: 'Event Reference/Carts'
 
 ![Cart lifecycle: empty, calculating, priced and unpriced, with the events each step sends](cart-lifecycle.svg)
 
-| State         | Means                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `empty`       | No lines                                                                                                                                              |
-| `calculating` | Lines changed; the server's prices are on the way                                                                                                     |
-| `priced`      | The cart carries the server's prices                                                                                                                  |
-| `unpriced`    | Pricing failed: events carry no prices, and `data-next-cart-summary` gets `next-price-failed` while it still shows the totals from before that change |
+| State         | Means                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| `empty`       | No lines                                                                                               |
+| `calculating` | Lines changed; the server's prices are on the way                                                      |
+| `priced`      | The cart carries the server's prices                                                                   |
+| `unpriced`    | Pricing failed: events carry no prices, and the summary still shows the totals from before that change |
 
 | From                                | What happens                                                            | To            | Events, in order                                                                            |
 | ----------------------------------- | ----------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------- |
@@ -31,6 +31,6 @@ Before the campaign loads, a change sends `cart.updated` only; pricing starts on
 
 Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
 
-| `action`         | When                      | What the SDK does next                                                            |
-| ---------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| `cart.calculate` | The cart cannot be priced | The cart is `unpriced`; the summary keeps its totals and gets `next-price-failed` |
+| `action`         | When                      | What the SDK does next                                                      |
+| ---------------- | ------------------------- | --------------------------------------------------------------------------- |
+| `cart.calculate` | The cart cannot be priced | The cart is `unpriced`; the summary keeps its totals from before the change |

@@ -64,14 +64,14 @@ asking the server again; a coupon or a new quantity prices that card again.
 
 ## Order bumps and cart
 
-| Attribute                                                      | Meaning                                                                                                                                                                     |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-next-toggle-card`, `data-next-package-id`                | A bump that adds or removes its package. `data-next-is-upsell="true"` flags the line                                                                                        |
-| `data-next-package-sync` / `data-next-product-sync`            | The bump's quantity follows these packages / products in the cart                                                                                                           |
-| `data-next-toggle-display`, `data-next-toggle-image`           | The bump's own values (server-priced, like 0.4.x) and image                                                                                                                 |
-| `data-next-action="add-to-cart"`                               | With `data-next-package-id` (+ `data-next-quantity`) or `data-next-selector-id`; `data-next-clear-cart`, `data-next-url`                                                    |
-| `data-next-cart-summary`                                       | Cart lines and totals. Gets `next-calculating` while prices are on the way, and `next-price-failed` while the last price failed: its totals are the ones before that change |
-| `data-next-coupon`, `data-next-remove-item`, quantity controls | Cart editing controls. A code is kept only when the server gives a discount for it                                                                                          |
+| Attribute                                                      | Meaning                                                                                                                  |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `data-next-toggle-card`, `data-next-package-id`                | A bump that adds or removes its package. `data-next-is-upsell="true"` flags the line                                     |
+| `data-next-package-sync` / `data-next-product-sync`            | The bump's quantity follows these packages / products in the cart                                                        |
+| `data-next-toggle-display`, `data-next-toggle-image`           | The bump's own values (server-priced, like 0.4.x) and image                                                              |
+| `data-next-action="add-to-cart"`                               | With `data-next-package-id` (+ `data-next-quantity`) or `data-next-selector-id`; `data-next-clear-cart`, `data-next-url` |
+| `data-next-cart-summary`                                       | Cart lines and totals. Gets `next-calculating` while prices are on the way                                               |
+| `data-next-coupon`, `data-next-remove-item`, quantity controls | Cart editing controls. A code is kept only when the server gives a discount for it                                       |
 
 ## Checkout
 

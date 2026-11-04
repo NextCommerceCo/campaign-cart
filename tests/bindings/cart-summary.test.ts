@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../../src/bindings';
-import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 
 const SUMMARY = `
@@ -26,9 +25,9 @@ const SUMMARY = `
   </template>
 </div>`;
 
-async function setup(html: string, fetch?: typeof globalThis.fetch) {
+async function setup(html: string) {
   document.body.innerHTML = html;
-  const { engine } = makeEngine({ fetch });
+  const { engine } = makeEngine();
   await engine.start();
   bindAll(document, engine, vi.fn());
   return {
@@ -75,26 +74,6 @@ describe('cart summary', () => {
     const { $ } = await setup(SUMMARY);
     expect($('#summary').classList.contains('next-cart-empty')).toBe(true);
     expect($('.total').textContent).toBe('');
-  });
-
-  it('marks the summary while its last price failed, until a change prices it', async () => {
-    let down = true;
-    const api = fakeApi();
-    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
-      down && String(input).includes('/carts/calculate')
-        ? Promise.resolve(new Response('{}', { status: 502 }))
-        : api.fetch(input, init)) as typeof globalThis.fetch;
-    const { engine, $ } = await setup(SUMMARY, fetch);
-    vi.spyOn(engine.log, 'error').mockImplementation(() => {});
-    await engine.cart.addItem(1);
-    await engine.cart.settled();
-    await flush();
-    expect($('#summary').classList.contains('next-price-failed')).toBe(true);
-    down = false;
-    await engine.cart.addItem(1);
-    await engine.cart.settled();
-    await flush();
-    expect($('#summary').classList.contains('next-price-failed')).toBe(false);
   });
 
   it('changes quantity from controls inside rendered lines', async () => {

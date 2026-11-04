@@ -102,7 +102,6 @@ export interface CartState {
   shippingId?: number;
   summary?: CartSummary;
   calculating: boolean;
-  priceFailed?: boolean;
   frozen: boolean;
   reported?: ReportedLine[];
   added?: boolean;

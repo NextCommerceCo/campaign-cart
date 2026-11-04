@@ -132,7 +132,7 @@ const code = (text) => ({ text, code: true });
 const LIFECYCLES = {
   carts: {
     title: 'Cart lifecycle',
-    desc: 'empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed, cart.added, cart.calculated). Pricing that fails moves calculating to unpriced (sdk.error), and the cart summary gets the next-price-failed class; the next change goes back to calculating. A change to a priced cart goes back to calculating (cart.updated, cart.calculating). Removing the last package empties the cart from any state (cart.updated, cart.removed).',
+    desc: 'empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed, cart.added, cart.calculated). Pricing that fails moves calculating to unpriced (sdk.error); the next change goes back to calculating. A change to a priced cart goes back to calculating (cart.updated, cart.calculating). Removing the last package empties the cart from any state (cart.updated, cart.removed).',
     rows: 3,
     boxes: [
       { row: 0, title: 'empty', sub: ['no lines'] },
@@ -142,7 +142,7 @@ const LIFECYCLES = {
         col: 'side',
         row: 1,
         title: 'unpriced',
-        sub: [code('cart.calculate'), code('next-price-failed')],
+        sub: [code('cart.calculate')],
         tone: 'failure',
       },
     ],
@@ -154,7 +154,7 @@ const LIFECYCLES = {
       loopUp(2, 1, 'a change', ['cart.updated', 'cart.calculating']),
     ],
     note: 'From any state, removing the last package empties the cart: cart.updated · cart.removed',
-    errors: [['cart.calculate', 'unpriced; the summary gets next-price-failed']],
+    errors: [['cart.calculate', 'unpriced; the summary keeps its earlier totals']],
   },
   sdk: {
     title: 'SDK lifecycle',

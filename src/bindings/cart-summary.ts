@@ -29,7 +29,7 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
     let last: unknown;
     renders.push(() => {
       const { cart } = engine.getState();
-      const key = [cart.summary, cart.calculating, cart.priceFailed, engine.getState().campaign];
+      const key = [cart.summary, cart.calculating, engine.getState().campaign];
       if (last && key.every((k, i) => k === (last as unknown[])[i])) return;
       last = key;
       const tokens = cartTokens(engine);
@@ -62,7 +62,6 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
         'next-free-shipping': tokens.isFreeShipping === 'true',
         'next-has-shipping-discount': tokens.hasShippingDiscount === 'true',
         'next-calculating': cart.calculating,
-        'next-price-failed': !!cart.priceFailed,
         'next-has-tax': false,
       };
       const opposite: Record<string, string> = {
@@ -75,7 +74,7 @@ export function bindCartSummary(root: ParentNode, b: BindContext): Render[] {
       };
       for (const [cls, on] of Object.entries(flags)) {
         el.classList.toggle(cls, on);
-        if (opposite[cls]) el.classList.toggle(opposite[cls], !on);
+        el.classList.toggle(opposite[cls]!, !on);
       }
     });
   });

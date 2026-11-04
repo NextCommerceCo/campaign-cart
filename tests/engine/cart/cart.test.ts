@@ -188,7 +188,6 @@ describe('cart', () => {
     engine.on('cart.added', (e) => added.push(e.data));
     await engine.cart.addItem(1);
     await engine.cart.settled();
-    expect(engine.getState().cart.priceFailed).toBe(true);
     expect(added).toEqual([
       {
         lines: [{ package_id: 1, quantity: 1, product_id: 400, image: 'https://cdn.test/1.png' }],
