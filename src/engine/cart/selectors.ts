@@ -1,9 +1,20 @@
 import { apiLines, type CartActions, cartItems, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
-import type { Selector } from '../events';
+import type { Selector, SelectorOption } from '../events';
+import { cents } from '../format';
 import { forcedBundle } from '../params';
-import type { CartGroup, CartLine, CartSummary, SelectorState, SelectorCard, SelectorMode, Slot } from './types';
-import type { Package } from '../types';
+import { hash } from '../scope';
+import type {
+  CartGroup,
+  CartLine,
+  CartSummary,
+  SelectorState,
+  SelectorCard,
+  SelectorMode,
+  Slot,
+  SummaryLine,
+} from './types';
+import type { Campaign, Package, State } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
 
@@ -64,21 +75,43 @@ function quantityIn(card: SelectorCard, group: CartGroup): number | undefined {
   return groupKey(scaled) === groupKey(group) ? times : undefined;
 }
 
+const amount = (lines: SummaryLine[], field: 'total' | 'subtotal') =>
+  lines.reduce((n, l) => n + cents(l[field]), 0) / 100;
+
+function publicOption(state: State, selector: SelectorState, card: SelectorCard): SelectorOption {
+  const quoted = selector.quotes?.[card.id]?.lines;
+  const lines = cartItems(state, apiLines(cardLines(selector, card)), quoted);
+  const priced = !!quoted && lines.every((l) => l.price !== undefined);
+  return {
+    option_id: card.id,
+    lines,
+    ...(priced && { total: amount(quoted, 'total'), original_total: amount(quoted, 'subtotal') }),
+  };
+}
+
 export function createSelectors(ctx: Context, cart: CartActions) {
   const inFlight = new Map<string, AbortController>();
+  const viewed = new Set<string>();
+  const fetched: SavedQuotes = {};
+  const quotedOn = new Map<string, string>();
+  let version: { campaign: Campaign; hash: string } | undefined;
 
   const get = (id: string): SelectorState | undefined => ctx.getState().selectors[id];
   const set = (id: string, patch: Partial<SelectorState>) =>
     ctx.update('selectors', { [id]: { ...get(id)!, ...patch } });
   const publicSelector = (id: string): Selector => {
+    const state = ctx.getState();
     const selector = get(id)!;
-    const card = pickedCard(selector);
-    const lines = card ? apiLines(cardLines(selector, card)) : [];
+    const options = selector.cards.map((card) => publicOption(state, selector, card));
+    const picked = options.find((o) => o.option_id === selector.picked);
     return {
       selector_id: id,
       type: typeOf(selector),
-      ...(card && { option_id: card.id }),
-      lines: cartItems(ctx.getState(), lines, card && selector.quotes?.[card.id]?.lines),
+      ...(picked && { option_id: picked.option_id }),
+      lines: picked?.lines ?? [],
+      ...(state.campaign && { currency: state.campaign.currency }),
+      ...(picked?.total !== undefined && { total: picked.total }),
+      options,
     };
   };
 
@@ -106,14 +139,21 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
 
-  const coupons = () => [...ctx.getState().cart.coupons].sort().join();
-  const quotedCoupons = new Map<string, string>();
+  const campaignVersion = (campaign: Campaign) => {
+    if (version?.campaign !== campaign) version = { campaign, hash: hash(JSON.stringify(campaign)) };
+    return version.hash;
+  };
+  const basis = () => {
+    const { cart, campaign } = ctx.getState();
+    return [[...cart.coupons].sort().join(), campaign && campaignVersion(campaign)].join('|');
+  };
 
   const quote = async (id: string): Promise<void> => {
     const selector = get(id);
-    const currency = ctx.getState().campaign?.currency;
-    if (!selector || !currency) return;
-    quotedCoupons.set(id, coupons());
+    const campaign = ctx.getState().campaign;
+    if (!selector || !campaign) return;
+    quotedOn.set(id, basis());
+    const { currency } = campaign;
     const own = new Set(selector.cards.flatMap((c) => c.vouchers));
     const extra = ctx.getState().cart.coupons.filter((c) => !own.has(c));
     const upsell = selector.mode === 'offer';
@@ -123,38 +163,46 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       return {
         card,
         body: { lines, vouchers, currency },
-        key: JSON.stringify([lines, [...vouchers].sort(), currency, upsell]),
+        key: JSON.stringify([lines, [...vouchers].sort(), currency, upsell, campaignVersion(campaign)]),
       };
     });
     const now = Date.now();
-    const saved = Object.fromEntries(
-      Object.entries(ctx.local.get<SavedQuotes>(QUOTES) ?? {}).filter(([, q]) => now - q.at < QUOTE_MAX_AGE),
+    const known: SavedQuotes = Object.fromEntries(
+      Object.entries({ ...ctx.local.get<SavedQuotes>(QUOTES), ...fetched }).filter(
+        ([, q]) => now - q.at < QUOTE_MAX_AGE,
+      ),
     );
     const settle = () => {
       const quotes = Object.fromEntries(
-        requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary]),
+        requests.filter((r) => known[r.key]).map((r) => [r.card.id, known[r.key]!.summary]),
       );
       set(id, { quotes, quoting: false });
       ctx.emit('selector.calculated', publicSelector(id));
     };
-    const missing = requests.filter((r) => !saved[r.key]);
+    const unpriced = requests.filter((r) => !known[r.key]);
+    const unchecked = requests.filter((r) => !known[r.key] || !fetched[r.key]);
     inFlight.get(id)?.abort();
-    if (!missing.length) {
-      inFlight.delete(id);
-      return settle();
-    }
+    inFlight.delete(id);
+    if (!unpriced.length) settle();
+    if (!unchecked.length) return;
     const controller = new AbortController();
     inFlight.set(id, controller);
-    set(id, { quoting: true });
-    ctx.emit('selector.calculating', publicSelector(id));
+    if (unpriced.length) {
+      set(id, { quoting: true });
+      ctx.emit('selector.calculating', publicSelector(id));
+    }
     try {
       const summaries = await Promise.all(
-        missing.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
+        unchecked.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
       );
       if (inFlight.get(id) !== controller) return;
       const at = Date.now();
-      missing.forEach((r, i) => (saved[r.key] = { at, summary: summaries[i]! }));
-      const newest = Object.entries(saved).sort(([, a], [, b]) => b.at - a.at);
+      const priced = Object.fromEntries(unchecked.map((r, i) => [r.key, { at, summary: summaries[i]! }]));
+      Object.assign(fetched, priced);
+      Object.assign(known, priced);
+      const newest = Object.entries({ ...ctx.local.get<SavedQuotes>(QUOTES), ...priced })
+        .filter(([, q]) => at - q.at < QUOTE_MAX_AGE)
+        .sort(([, a], [, b]) => b.at - a.at);
       ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
       settle();
     } catch (err) {
@@ -166,8 +214,16 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     }
   };
 
+  const updated = (id: string): Promise<void> => {
+    const { mode } = get(id)!;
+    ctx.emit('selector.updated', publicSelector(id));
+    const quoting = quote(id);
+    if (mode === 'offer') return quoting;
+    return mode === 'swap' ? addToCart(id) : Promise.resolve();
+  };
+
   ctx.on('cart.updated', () => {
-    for (const [id, quoted] of quotedCoupons) if (quoted !== coupons()) void quote(id);
+    for (const [id, quoted] of quotedOn) if (quoted !== basis()) void quote(id);
   });
 
   return {
@@ -185,11 +241,15 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const quantities = restored && inCart ? { [restored.id]: quantityIn(restored, inCart)! } : undefined;
       const slots = restored && inCart && slotsIn(restored, inCart);
       ctx.update('selectors', {
-        [id]: { mode, cards, quantities, ...(slots && { slots: { [restored!.id]: slots } }) },
+        [id]: { mode, cards, quantities, picked: initial?.id, ...(slots && { slots: { [restored!.id]: slots } }) },
       });
-      const picking = initial ? pick(id, initial.id) : Promise.resolve();
+      if (!viewed.has(id)) {
+        viewed.add(id);
+        ctx.emit('selector.viewed', publicSelector(id));
+      } else if (initial && initial.id !== previous) ctx.emit('selector.selected', publicSelector(id));
+      const adding = mode === 'swap' ? addToCart(id) : Promise.resolve();
       void quote(id);
-      return picking;
+      return adding;
     },
     pick,
     addToCart,
@@ -197,13 +257,11 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const selector = get(id);
       const card = selector?.cards.find((c) => c.id === cardId);
       if (!selector || !card || locked(selector)) return Promise.resolve();
-      const slots = cardSlots(selector, card).map((s, i) => (i === index ? { ...s, ...slot } : s));
+      const before = cardSlots(selector, card);
+      const slots = before.map((s, i) => (i === index ? { ...s, ...slot } : s));
+      if (JSON.stringify(slots) === JSON.stringify(before)) return Promise.resolve();
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
-      if (selector.picked !== cardId) return Promise.resolve();
-      ctx.emit('selector.selected', publicSelector(id));
-      const quoting = quote(id);
-      if (selector.mode === 'offer') return quoting;
-      return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
+      return selector.picked === cardId ? updated(id) : Promise.resolve();
     },
     setQuantity(id: string, quantity: number): Promise<void> {
       const selector = get(id);
@@ -212,14 +270,14 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const next = clamp(card, quantity);
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
-      ctx.emit('selector.selected', publicSelector(id));
-      const quoting = quote(id);
-      if (selector.mode === 'offer') return quoting;
-      return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
+      return updated(id);
+    },
+    list(): Selector[] {
+      return Object.keys(ctx.getState().selectors).map(publicSelector);
     },
     campaignLoaded(): void {
       for (const [id, selector] of Object.entries(ctx.getState().selectors)) {
-        if (!selector.quotes && !inFlight.has(id)) void quote(id);
+        if (quotedOn.get(id) !== basis() || (!selector.quotes && !inFlight.has(id))) void quote(id);
       }
     },
   };

@@ -67,8 +67,8 @@ export interface CheckoutError {
   warning?: boolean;
 }
 
-/** One line of an {@link Order}. Prices are decimal strings in the order's currency. */
-export interface OrderLine {
+/** One line of an {@link ApiOrder}. Prices are decimal strings in the order's currency. */
+export interface ApiOrderLine {
   /** Order line ID. */
   id: number | string;
   /** The package's `ref_id` in the campaign. */
@@ -97,8 +97,8 @@ export interface OrderLine {
   variant_id?: number;
 }
 
-/** A shipping or billing address on an {@link Order}. */
-export interface OrderAddress {
+/** A shipping or billing address on an {@link ApiOrder}. */
+export interface ApiOrderAddress {
   first_name?: string;
   last_name?: string;
   /** Street address: house number and street name. */
@@ -134,14 +134,14 @@ export interface OpenCart {
 }
 
 /** An order from the Campaigns API. Prices are decimal strings in `currency`. */
-export interface Order {
+export interface ApiOrder {
   /** Order reference ID: the `ref_id` in post-purchase page URLs. */
   ref_id: string;
   /** Order number, as the customer sees it. */
   number?: string | number;
   /** ISO 4217, such as `USD`. */
   currency?: string;
-  lines?: OrderLine[];
+  lines?: ApiOrderLine[];
   /** Total price before tax. */
   total_excl_tax?: string;
   /** Total price including tax. */
@@ -158,8 +158,8 @@ export interface Order {
   shipping_method?: string;
   /** The customer. */
   user?: { first_name?: string; last_name?: string; email?: string; phone_number?: string };
-  shipping_address?: OrderAddress;
-  billing_address?: OrderAddress;
+  shipping_address?: ApiOrderAddress;
+  billing_address?: ApiOrderAddress;
   /** Payment method used for the order. */
   payment_method?: string | { code?: string } | null;
   /** `true` when upsells can be added to this order. */
@@ -168,6 +168,8 @@ export interface Order {
   payment_complete_url?: string | null;
   /** The order's status page. */
   order_status_url?: string;
+  /** `true` for a test order. */
+  is_test?: boolean;
 }
 
 export interface State {

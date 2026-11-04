@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindCheckout } from '../../src/checkout';
+import type { Checkout } from '../../src/engine/events';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
@@ -66,6 +67,8 @@ async function mount(
     rulesDown?: boolean;
     countries?: Campaign['available_shipping_countries'];
     markup?: (body: HTMLElement) => void;
+    empty?: boolean;
+    legacyCheckoutStarted?: (checkout: Checkout) => void;
   } = {},
 ) {
   const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
@@ -78,10 +81,10 @@ async function mount(
   const campaign = { ...CAMPAIGN, ...(options.countries && { available_shipping_countries: options.countries }) };
   const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(campaign), session: sessionStorage });
   await engine.start();
-  await engine.cart.addItem(2);
+  if (!options.empty) await engine.cart.addItem(2);
   const navigate = vi.fn();
   const form = document.querySelector<HTMLFormElement>('form[data-next-checkout]')!;
-  const checkout = bindCheckout(engine, form, navigate);
+  const checkout = bindCheckout(engine, form, { navigate, legacyCheckoutStarted: options.legacyCheckoutStarted });
   await flush();
   await flush();
   const $ = <T extends HTMLElement = HTMLInputElement>(s: string) => document.querySelector<T>(s)!;
@@ -114,6 +117,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  delete (window as unknown as { nextConfig?: unknown }).nextConfig;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   document.head.innerHTML = '';
@@ -182,6 +186,27 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await submit();
     await flush();
     expect(orders()[0]!.body.shipping_address).toMatchObject({ first_name: 'Jane', postcode: '90210' });
+  });
+
+  it('says when the page has no success URL, which the purchase report and the gateway need', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { engine } = await mount('olympus/checkout.html');
+    expect(error).not.toHaveBeenCalled();
+    expect(engine.getState().checkout!.step).toBe(0);
+    await mount('olympus/checkout.html', {
+      markup: () => document.querySelector('meta[name="next-success-url"]')!.remove(),
+    });
+    expect(error).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/next-success-url.*not be tracked.*\/success/));
+  });
+
+  it('starts the checkout when the cart first gets lines after the form is bound', async () => {
+    const { engine } = await mount('olympus/checkout.html', { empty: true });
+    const started = vi.fn();
+    engine.on('checkout.started', started);
+    expect(engine.getState().checkout!.id).toBeUndefined();
+    await engine.cart.addItem(2);
+    expect(started).toHaveBeenCalledOnce();
+    expect(engine.getState().checkout!.id).toBeTruthy();
   });
 
   it('places a card order with the page’s fields and goes to the success page', async () => {
@@ -286,22 +311,61 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(navigate).toHaveBeenCalledWith('https://paypal.test/R3');
   });
 
-  it('asks for the contact fields before a PayPal order chosen in the form, like 0.4.x requiredFields', async () => {
-    const { fill, submit, orders, $, field } = await mount('olympus/checkout.html', {
+  it('checks the whole form before a PayPal order chosen in the form, and sends the shopper and address', async () => {
+    const { fill, submit, orders, $, field, navigate } = await mount('olympus/checkout.html', {
       order: () => json({ ref_id: 'R4', payment_complete_url: 'https://paypal.test/R4' }),
     });
     const paypal = $('input[name="payment_method"][value="paypal"]');
     paypal.checked = true;
     paypal.dispatchEvent(new Event('change', { bubbles: true }));
     await flush();
-    await submit();
-    expect(orders()).toHaveLength(0);
-    expect(field('email').classList).toContain('next-error-field');
-    expect(field('address1').classList).not.toContain('next-error-field');
     fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
     await submit();
+    expect(orders()).toHaveLength(0);
+    expect(field('address1').classList).toContain('next-error-field');
+    fill(SHIPPING);
+    await submit();
     await flush();
-    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'paypal' });
+    expect(orders()[0]!.body).toMatchObject({
+      payment_detail: { payment_method: 'paypal' },
+      user: { email: 'jane@example.com', first_name: 'Jane' },
+      shipping_address: { line1: '1 Main St', line4: 'Austin', state: 'CA', postcode: '90210' },
+      billing_same_as_shipping_address: true,
+    });
+    expect(navigate).toHaveBeenCalledWith('https://paypal.test/R4');
+  });
+
+  it('checks what nextConfig.paymentConfig.expressCheckout asks before an express button pays, like 0.4.x', async () => {
+    const click = async () => {
+      document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
+      await flush();
+      await flush();
+    };
+    const config = (expressCheckout: object) =>
+      ((window as unknown as { nextConfig: unknown }).nextConfig = { paymentConfig: { expressCheckout } });
+
+    config({ requireValidation: true, requiredFields: ['email', 'fname'] });
+    const listed = await mount('olympus/checkout.html');
+    listed.type('fname', 'Jane');
+    await click();
+    expect(listed.orders()).toHaveLength(0);
+    expect(listed.field('email').classList).toContain('next-error-field');
+    expect(listed.field('lname').classList).not.toContain('next-error-field');
+    listed.type('email', 'jane@example.com');
+    await click();
+    expect(Object.keys(listed.orders()[0]!.body)).not.toContain('user');
+
+    config({ requireValidation: true });
+    const whole = await mount('olympus/checkout.html');
+    whole.fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
+    await click();
+    expect(whole.orders()).toHaveLength(0);
+    expect(whole.field('address1').classList).toContain('next-error-field');
+
+    config({ requireValidation: false, requiredFields: ['email'] });
+    const off = await mount('olympus/checkout.html');
+    await click();
+    expect(off.orders()).toHaveLength(1);
   });
 
   it('suggests addresses from the NextCommerce lookup and fills the address, like 0.4.x', async () => {
@@ -738,14 +802,46 @@ describe('SDK-built address blocks (starter templates, data-next-address)', () =
 describe('three-step checkout (shop-three-step)', () => {
   it('checks step one, records it for the page guard, and moves on', async () => {
     history.replaceState(null, '', '/shop-three-step/information/');
-    const { fill, submit, navigate, orders } = await mount('shop-three-step/information.html');
+    const { engine, fill, submit, navigate, orders } = await mount('shop-three-step/information.html');
+    const seen: string[] = [];
+    engine.on('checkout.continued', (e) => seen.push(`continued ${e.data.id === engine.getState().checkout!.id}`));
+    navigate.mockImplementation(() => seen.push(`navigate step ${engine.getState().checkout!.step}`));
+    expect(engine.getState().checkout!.step).toBe(1);
+    await submit();
+    expect(seen).toEqual([]);
     fill(SHIPPING);
     await submit();
     expect(orders()).toHaveLength(0);
+    expect(seen).toEqual(['continued true', 'navigate step 2']);
     expect(navigate).toHaveBeenCalledWith(`${location.origin}/shop-three-step/shipping/`);
     const guard = JSON.parse(sessionStorage.getItem('next-checkout-store')!);
     expect(guard.state.step).toBe(2);
     expect(guard.state.formData).toMatchObject({ email: 'jane@example.com', fname: 'Jane', postal: '90210' });
+  });
+
+  it('keeps one checkout across the steps, and still gives 0.4.x checkout:started listeners every page', async () => {
+    const started: string[] = [];
+    const legacy: Checkout[] = [];
+    const step = async (path: string, file: string) => {
+      history.replaceState(null, '', path);
+      const page = await mount(file, { legacyCheckoutStarted: (c) => legacy.push(c) });
+      page.engine.on('checkout.started', (e) => started.push(e.data.id));
+      return page;
+    };
+    const one = await step('/shop-three-step/information/', 'shop-three-step/information.html');
+    const id = one.engine.getState().checkout!.id;
+    expect(id).toBeTruthy();
+    one.fill(SHIPPING);
+    await one.submit();
+    const last = await step('/shop-three-step/billing/', 'shop-three-step/billing.html');
+    expect(last.engine.getState().checkout).toMatchObject({ id, step: 2 });
+    const back = await step('/shop-three-step/information/', 'shop-three-step/information.html');
+    expect(back.engine.getState().checkout).toMatchObject({ id, step: 1 });
+    const onePage = await step('/olympus/checkout/', 'olympus/checkout.html');
+    expect(onePage.engine.getState().checkout).toMatchObject({ id, step: 0 });
+    expect(started).toEqual([]);
+    expect(legacy).toHaveLength(4);
+    expect(legacy[1]).toMatchObject({ id, cart: { lines: [{ package_id: 2 }] } });
   });
 
   it('keeps the state chosen on step one when the last step’s hidden copy has no options', async () => {

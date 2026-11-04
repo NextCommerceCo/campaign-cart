@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createCheckout } from '../../src/checkout/state/checkout';
+import { ApiError } from '../../src/engine/api';
+import { createOrder } from '../../src/order/state';
 import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine, wait } from '../fixtures/engine';
 import { campaign } from '../fixtures/campaign';
+import { fakeRules } from '../fixtures/rules';
 import { MemoryStorage } from '../fixtures/storage';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
@@ -55,6 +59,55 @@ describe('Engine', () => {
     engine.on('sdk.error', (e) => errors.push(e.data));
     await engine.start();
     expect(errors).toEqual([{ action: 'campaign.load', code: 'network', message: 'down' }]);
+  });
+  it('reports a declined payment with the gateway’s decline code', () => {
+    const { engine } = makeEngine();
+    const errors: unknown[] = [];
+    engine.on('sdk.error', (e) => errors.push(e.data));
+    const declined = new ApiError('POST /orders/R1/upsells/ → 400', 400, {
+      payment_response_code: '51',
+      payment_details: 'Insufficient funds',
+    });
+    engine.attach((ctx) => ctx.fail('upsell.add', declined));
+    expect(errors).toEqual([
+      {
+        action: 'upsell.add',
+        code: 'declined',
+        status: 400,
+        message: 'POST /orders/R1/upsells/ → 400',
+        decline_code: '51',
+      },
+    ]);
+  });
+  it('is ready with what the page shows then', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.cart.addItem(2);
+    const { engine } = makeEngine({ session });
+    const ready = vi.fn();
+    engine.on('sdk.ready', (e) => ready(e.data));
+    await engine.start();
+    expect(ready).toHaveBeenCalledWith({
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      cart: expect.objectContaining({ lines: [expect.objectContaining({ package_id: 2, quantity: 1 })] }),
+      selectors: [],
+    });
+  });
+  it('shows the checkout and the order a page loaded as their events carry them', async () => {
+    const { engine } = makeEngine();
+    expect(engine.snapshot()).toEqual({ cart: { lines: [], coupons: [] }, selectors: [] });
+    await engine.start();
+    await engine.cart.addItem(1);
+    const sent: Record<string, unknown> = {};
+    engine.on('*', (e) => (sent[e.name] = e.data));
+    engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api)).begin();
+    const order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    engine.attach((ctx) => ctx.update('order', { coupon: { refId: 'R1', code: 'SAVE10', codes: ['SAVE10'] } }));
+    await order.load('R1');
+    const snapshot = engine.snapshot();
+    expect(snapshot).toMatchObject({ checkout: sent['checkout.started'], order: sent['order.loaded'] });
+    expect(snapshot.order).toMatchObject({ ref_id: 'R1', coupons: ['SAVE10'] });
   });
   it('prices a saved cart with the campaign copy when the campaign request fails', async () => {
     const local = new MemoryStorage();

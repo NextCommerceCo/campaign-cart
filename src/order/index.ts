@@ -3,6 +3,7 @@ import { createOrder, type OrderActions, orderValue } from './state';
 import { registerValues } from '../engine/values';
 import { bindReceipt } from './receipt';
 import { bindUpsells } from './upsell';
+import { legacyOrderEvents } from '../compat/order';
 
 export async function bindOrder(
   engine: Engine,
@@ -13,6 +14,7 @@ export async function bindOrder(
   registerValues('order', orderValue);
 
   const renders = [...bindUpsells(engine, order, navigate), ...bindReceipt(engine)];
+  legacyOrderEvents(engine);
   const render = () => renders.forEach((r) => r());
   engine.subscribe(render);
 

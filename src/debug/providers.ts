@@ -153,8 +153,8 @@ export function providers(config: ProviderConfig, started: boolean): Provider[] 
       'listeners',
       'info',
       'Page scripts',
-      "next.on('analytics')",
-      "Page scripts get every event with next.on('analytics', fn).",
+      'next.analytics.on',
+      "Page scripts get every event with next.analytics.on('*', fn).",
     ),
     !config.nextCampaign
       ? p(

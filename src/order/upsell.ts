@@ -26,6 +26,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
     const selectorId = selectorEl ? selectorIdOf(selectorEl) : legacyOfferSelector(offer);
     const packageId = Number(offer.getAttribute('data-next-package-id'));
     const quantity = Number(offer.getAttribute('data-next-quantity')) || 1;
+    const spec = { selectorId, lines: packageId ? [{ packageId, quantity }] : undefined };
     const buttons = [...offer.querySelectorAll<HTMLElement>('[data-next-upsell-action]')];
     const flash = (name: string, ms: number) => {
       offer.classList.add(name);
@@ -33,6 +34,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
     };
     const go = (url: string | undefined, delay: number) => url && setTimeout(() => navigate(url), delay);
     let leaving = false;
+    let viewed = false;
 
     for (const button of buttons) {
       const accept = ACCEPT_WORDS.includes(button.getAttribute('data-next-upsell-action') ?? '');
@@ -42,13 +44,12 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         const url = targetUrl(button, accept, engine);
         if (!accept) {
           leaving = true;
-          order.skip({ selectorId, lines: packageId ? [{ packageId, quantity }] : undefined });
+          order.skip(spec, page);
           offer.classList.add('next-skipped');
           return go(url, 0);
         }
         offer.classList.add('next-processing');
-        const lines = packageId ? [{ packageId, quantity }] : undefined;
-        const result: Accepted = await order.accept({ selectorId, lines }, page);
+        const result: Accepted = await order.accept(spec, page);
         if (result === 'busy') return offer.classList.remove('next-processing');
         leaving = true;
         if (result === 'accepted' || result === 'repeat') {
@@ -67,7 +68,11 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         const available = !!state.order?.supports_post_purchase_upsells;
         offer.classList.toggle('next-available', available);
         offer.classList.toggle('next-hidden', !available);
-        if (available) order.view(page);
+        const quoting = selectorId && engine.getState().selectors[selectorId]?.quoting;
+        if (available && !viewed && !quoting) {
+          viewed = true;
+          order.view(spec, page);
+        }
       }
       const busy = state?.status === 'accepting' || leaving;
       for (const button of buttons) button.classList.toggle('next-disabled', busy);

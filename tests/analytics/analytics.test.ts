@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
+import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
-import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/events';
-import { createOrder } from '../../src/order/state';
+import type { Address, AnalyticsEvent, AnalyticsTrace, Promotion } from '../../src/engine/events';
+import { publicOrder } from '../../src/engine/order';
+import type { ApiOrder } from '../../src/engine/types';
+import { upsellId } from '../../src/engine/order';
+import { createOrder, type OrderState } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
+import { fakeRules } from '../fixtures/rules';
 import { MemoryStorage } from '../fixtures/storage';
 
 type Win = Window & {
@@ -17,6 +23,37 @@ type Win = Window & {
 const win = window as Win;
 const options = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false };
 const names = () => (win.NextDataLayer ?? []).map((e) => e.event);
+const SHIPPING: Address & { type: 'shipping' } = {
+  first_name: 'Jane',
+  last_name: 'Doe',
+  line1: '1 Main St',
+  country: 'US',
+  type: 'shipping',
+};
+const EXIT: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'https://cdn.test/exit.png' };
+
+function startCheckout(engine: Engine) {
+  engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+  engine.checkout.begin();
+  return engine.checkout;
+}
+
+const submitted = (engine: Engine, payment_method = 'card_token') =>
+  engine.events.emit('checkout.submitted', {
+    ...engine.cart.currentCheckout(),
+    payment_method,
+    valid: true,
+    errors: {},
+  });
+
+async function loadOrder(order: ApiOrder, opts: { local?: Storage; coupon?: OrderState['coupon'] } = {}) {
+  const { engine } = makeEngine({ local: opts.local, fetch: fakeApi({ getOrder: () => json(order) }).fetch });
+  await engine.start();
+  engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+  engine.attach((ctx) => ctx.update('order', { coupon: opts.coupon }));
+  await engine.order.load(order.ref_id);
+  return engine;
+}
 
 async function ready(html = '', params: Record<string, string> = {}, before?: (engine: Engine) => void) {
   document.body.innerHTML = html;
@@ -203,20 +240,9 @@ describe('analytics', () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'shipping',
-    });
-    engine.events.emit('checkout.submitted', {
-      ...engine.cart.currentCheckout(),
-      payment_method: 'card_token',
-      valid: true,
-      errors: {},
-    });
+    startCheckout(engine);
+    engine.events.emit('address.entered', SHIPPING);
+    submitted(engine);
     const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
     expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
     expect(shipping).toMatchObject({
@@ -226,6 +252,81 @@ describe('analytics', () => {
       ecommerce: { currencyCode: 'USD', shipping_tier: 'Standard' },
     });
     expect(payment).toMatchObject({ event: 'dl_add_payment_info', payment_type: 'Credit Card' });
+  });
+
+  it('sends begin_checkout, add_shipping_info and add_payment_info once per checkout, across its pages', async () => {
+    const session = new MemoryStorage();
+    const steps = ['dl_begin_checkout', 'dl_add_shipping_info', 'dl_add_payment_info'];
+    const page = async (fill?: (engine: Engine) => Promise<void>) => {
+      delete win.NextDataLayer;
+      const { engine } = makeEngine({ session });
+      await engine.start();
+      await fill?.(engine);
+      startAnalytics(engine, options);
+      startCheckout(engine);
+      await flush();
+      engine.events.emit('address.entered', SHIPPING);
+      submitted(engine, 'paypal');
+      return { engine, sent: names().filter((n) => steps.includes(n)) };
+    };
+    expect((await page((e) => e.cart.addItem(2))).sent).toEqual(steps);
+    const back = await page();
+    expect(back.sent).toEqual([]);
+    expect(
+      back.engine.log
+        .entries()
+        .map((e) => e.data as AnalyticsTrace | undefined)
+        .filter((d) => d?.trace === 'analytics' && !d.sent && d.name.endsWith('_info'))
+        .map((d) => [d!.name, d!.reason]),
+    ).toEqual([
+      ['add_shipping_info', 'Already sent for this checkout'],
+      ['add_payment_info', 'Already sent for this checkout'],
+    ]);
+    back.engine.attach((ctx) => ctx.forget('checkout'));
+    expect((await page()).sent).toEqual(steps);
+  });
+
+  it('sends begin_checkout on a later page when the page that started the checkout was left first', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.cart.addItem(2);
+    startCheckout(first);
+    await flush();
+    expect(first.getState().checkout?.id).toBeTruthy();
+
+    delete win.NextDataLayer;
+    const { engine } = makeEngine({ session });
+    await engine.start();
+    startCheckout(engine);
+    startAnalytics(engine, options);
+    await flush();
+    expect(names().filter((n) => n === 'dl_begin_checkout')).toHaveLength(1);
+    startAnalytics(engine, options);
+    await flush();
+    expect(names().filter((n) => n === 'dl_begin_checkout')).toHaveLength(1);
+  });
+
+  it('names the shipping method the cart was priced with on add_shipping_info', async () => {
+    const api = fakeApi();
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await api.fetch(input, init);
+      if (JSON.parse(String(init?.body ?? '{}')).shipping_method !== 2) return response;
+      const express = { id: 2, name: 'Express', code: 'express', price: '9.99', original_price: '9.99' };
+      return json({ ...(await response.json()), shipping_method: express });
+    }) as typeof globalThis.fetch;
+    const methods = [...campaign.shipping_methods, { ref_id: 2, code: 'express', price: '9.99' }];
+    const { engine } = makeEngine({ fetch, campaign: Promise.resolve({ ...campaign, shipping_methods: methods }) });
+    await engine.start();
+    await engine.cart.addItem(2);
+    startAnalytics(engine, options);
+    startCheckout(engine);
+    await engine.cart.setShipping(2);
+    await flush();
+    expect(win.NextDataLayer!.find((e) => e.event === 'dl_add_shipping_info')).toMatchObject({
+      shipping_tier: 'Express',
+      ecommerce: { shipping: 9.99, shipping_tier: 'Express' },
+    });
   });
 
   it('names the coupon and the shipping cost on cart-level events, like 0.4.x', async () => {
@@ -262,9 +363,8 @@ describe('analytics', () => {
         },
       ],
     };
-    const engine = await ready();
+    const engine = await loadOrder(order, { coupon: { refId: 'R1', code: 'SAVE10', codes: ['SAVE10'] } });
     startAnalytics(engine, options);
-    engine.events.emit('order.paid', { order, coupon: 'SAVE10' });
     const purchase = win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!;
     expect(purchase.ecommerce.coupon).toBe('SAVE10');
     expect(purchase.ecommerce.items[0]).toMatchObject({
@@ -273,6 +373,37 @@ describe('analytics', () => {
       item_product_id: '900',
       item_image: 'https://cdn.test/9.png',
     });
+  });
+
+  it('builds purchase from the paid order in state, with the first code the checkout sent with it', async () => {
+    const engine = await loadOrder(ORDER, { coupon: { refId: 'R1', code: 'CARD5', codes: ['SAVE10'] } });
+    const seen: AnalyticsEvent[] = [];
+    engine.on('analytics', (e) => void seen.push(e.data));
+    startAnalytics(engine, options);
+    expect(seen.find((e) => e.name === 'purchase')!.params).toEqual({
+      currency: 'USD',
+      transaction_id: '1001',
+      value: 89,
+      tax: 7.12,
+      shipping: 9.99,
+      affiliation: 'Online Store',
+      items: [expect.objectContaining({ item_id: 'EB-2', price: 44.5, quantity: 2 })],
+      coupon: 'CARD5',
+    });
+    delete win.NextDataLayer;
+    const other = await loadOrder(
+      { ...ORDER, ref_id: 'R2', number: 1002 },
+      { coupon: { refId: 'R1', code: 'CARD5', codes: [] } },
+    );
+    startAnalytics(other, options);
+    expect(win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!.ecommerce).not.toHaveProperty('coupon');
+  });
+
+  it('sends no purchase for a paid order other than the one in state', async () => {
+    const engine = await ready();
+    startAnalytics(engine, options);
+    engine.events.emit('order.paid', publicOrder(ORDER));
+    expect(names()).not.toContain('dl_purchase');
   });
 
   it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
@@ -353,9 +484,9 @@ describe('analytics', () => {
   it('reports upsell views and skips', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
-    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/up/' });
-    engine.events.emit('upsell.skipped', { ref_id: 'R1' });
-    engine.events.emit('upsell.skipped', { ref_id: 'R1', package_id: 3 });
+    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/up/', lines: [] });
+    engine.events.emit('upsell.skipped', { ref_id: 'R1', page: '/up/', lines: [] });
+    engine.events.emit('upsell.skipped', { ref_id: 'R1', page: '/up/', lines: [{ package_id: 3, quantity: 1 }] });
     expect(win.NextDataLayer!.slice(-3)).toMatchObject([
       { event: 'dl_viewed_upsell', order_id: 'R1', page_path: '/up/' },
       { event: 'dl_skipped_upsell', order_id: 'R1', upsell: { package_id: 'unknown' } },
@@ -363,27 +494,48 @@ describe('analytics', () => {
     ]);
   });
 
-  it('reports the exit-intent popup the 0.4.x way', async () => {
+  it('sends dl_viewed_upsell once per upsell page, as 0.4.x did, when the page shows several offers', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
-    const source = 'exit_intent';
-    const image = { source, image_url: 'https://cdn.test/exit.png' } as const;
-    engine.events.emit('promotion.viewed', image);
-    engine.events.emit('promotion.clicked', image);
-    engine.events.emit('promotion.clicked', {
-      source,
-      template: 'exit',
-      action: 'apply-coupon',
-      coupon_code: 'EXIT10',
-    });
-    engine.events.emit('promotion.closed', { source, template: 'exit', reason: 'dismissed' });
-    engine.events.emit('promotion.closed', { ...image, reason: 'closed' });
+    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/up/', selector_id: 'a', lines: [] });
+    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/up/', selector_id: 'b', lines: [] });
+    expect(names().filter((n) => n === 'dl_viewed_upsell')).toHaveLength(1);
+  });
+
+  it('reports each accepted upsell once per browser, numbered by its place among the order upsells', async () => {
+    const local = new MemoryStorage();
+    const run = async (order: ApiOrder) => {
+      delete win.NextDataLayer;
+      const engine = await loadOrder(order, { local });
+      startAnalytics(engine, options);
+      const sent = win.NextDataLayer!.filter((e) => e.event === 'dl_upsell_purchase').map((e) => e.event_id);
+      return { engine, sent };
+    };
+    const one = withUpsell(ORDER, 99, 1);
+    const first = await run(one);
+    expect(first.sent).toEqual(['R1-US1']);
+    expect(first.engine.order!.reported()).toEqual(['1001', upsellId(one, one.lines!.at(-1)!)]);
+    const two = withUpsell(one, 100, 2);
+    expect((await run(two)).sent).toEqual(['R1-US2']);
+    expect((await run(two)).sent).toEqual([]);
+  });
+
+  it('reports the exit-intent popup the 0.4.x way', async () => {
+    const engine = await ready('<template data-template="exit"></template>');
+    startAnalytics(engine, options);
+    const template: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'exit' };
+    engine.events.emit('promotion.viewed', EXIT);
+    engine.events.emit('promotion.clicked', EXIT);
+    engine.events.emit('promotion.closed', { ...EXIT, reason: 'clicked' });
+    engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' });
+    engine.events.emit('promotion.closed', { ...template, reason: 'dismissed' });
+    engine.events.emit('promotion.closed', { ...EXIT, reason: 'close_button' });
     expect(win.NextDataLayer!.filter((e) => e.event.startsWith('dl_exit_intent_'))).toMatchObject([
       {
         event: 'dl_exit_intent_shown',
         event_category: 'engagement',
-        event_label: image.image_url,
-        exit_intent: { image_url: image.image_url, template: '' },
+        event_label: EXIT.creative,
+        exit_intent: { image_url: EXIT.creative, template: '' },
       },
       { event: 'dl_exit_intent_accepted', event_action: 'exit_intent_accepted' },
       {
@@ -392,14 +544,35 @@ describe('analytics', () => {
         event_label: 'EXIT10',
         exit_intent: { action: 'apply-coupon', coupon_code: 'EXIT10' },
       },
-      { event: 'dl_exit_intent_dismissed', event_label: 'exit' },
-      { event: 'dl_exit_intent_closed' },
+      { event: 'dl_exit_intent_dismissed', event_label: 'exit', exit_intent: { image_url: '', template: 'exit' } },
+      { event: 'dl_exit_intent_closed', event_action: 'exit_intent_closed' },
     ]);
+  });
+
+  it('reports a marked banner as a promotion, without the exit-intent data layer events', async () => {
+    const engine = await ready();
+    const seen: AnalyticsEvent[] = [];
+    engine.on('analytics', (e) => void seen.push(e.data));
+    startAnalytics(engine, options);
+    const banner: Promotion = { id: 'summer', type: 'banner', name: 'Summer sale', creative: 'hero' };
+    engine.events.emit('promotion.viewed', banner);
+    engine.events.emit('promotion.clicked', banner);
+    expect(seen.slice(-2)).toMatchObject([
+      {
+        name: 'view_promotion',
+        params: { promotion_id: 'summer', promotion_name: 'Summer sale', creative_name: 'hero' },
+      },
+      {
+        name: 'select_promotion',
+        params: { promotion_id: 'summer', promotion_name: 'Summer sale', creative_name: 'hero' },
+      },
+    ]);
+    expect(names().slice(1)).toEqual(['dl_view_promotion', 'dl_select_promotion']);
   });
 
   it('keeps dl_user_data first when the exit-intent popup showed before analytics loaded', async () => {
     const engine = await ready();
-    engine.events.emit('promotion.viewed', { source: 'exit_intent', image_url: 'https://cdn.test/exit.png' });
+    engine.events.emit('promotion.viewed', EXIT);
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
     expect(names()).toEqual([
@@ -442,20 +615,9 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, options);
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
-    engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'shipping',
-    });
-    engine.events.emit('checkout.submitted', {
-      ...engine.cart.currentCheckout(),
-      payment_method: 'card_token',
-      valid: true,
-      errors: {},
-    });
+    startCheckout(engine);
+    engine.events.emit('address.entered', SHIPPING);
+    submitted(engine);
     expect(seen.map((e) => e.name)).toEqual([
       'page_view',
       'add_to_cart',
@@ -493,7 +655,7 @@ describe('analytics events (GA4 names)', () => {
     const seen = listen(engine);
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', engine.cart.currentCheckout());
+    startCheckout(engine);
     engine.events.emit('user.created', {
       email: 'jane@example.com',
       first_name: 'Jane',
@@ -502,22 +664,11 @@ describe('analytics events (GA4 names)', () => {
       language: 'en',
       user_agent: 'test',
     });
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'billing',
-    });
-    engine.events.emit('promotion.viewed', { source: 'exit_intent', template: 'exit' });
-    engine.events.emit('promotion.clicked', { source: 'exit_intent', template: 'exit', action: 'apply-coupon' });
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'shipping',
-    });
+    engine.events.emit('address.entered', { ...SHIPPING, type: 'billing' });
+    const template: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'exit' };
+    engine.events.emit('promotion.viewed', template);
+    engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon' });
+    engine.events.emit('address.entered', SHIPPING);
     expect(seen.slice(-4)).toMatchObject([
       { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
       { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },

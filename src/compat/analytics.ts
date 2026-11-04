@@ -10,7 +10,7 @@ import type {
   AnalyticsTrace,
   EventMap,
   EventName,
-  PromotionDetail,
+  Promotion,
 } from '../engine/events';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
@@ -47,13 +47,23 @@ export const EXIT_INTENT: Array<[EventName, string]> = [
   ['promotion.closed', 'closed'],
 ];
 
+const CLOSED: Partial<Record<EventMap['promotion.closed']['reason'], string>> = {
+  dismissed: 'dismissed',
+  close_button: 'closed',
+};
+
 const exitIntentName = (e: EngineEvent): string | undefined => {
-  if ((e.data as { source?: string } | undefined)?.source !== 'exit_intent') return undefined;
+  if (!e.name.startsWith('promotion.') || (e.data as Promotion).type !== 'exit_intent') return undefined;
   if (e.name === 'promotion.viewed') return 'shown';
   if (e.name === 'promotion.clicked') return (e.data as EventMap['promotion.clicked']).action ? 'action' : 'accepted';
-  if (e.name === 'promotion.closed') return (e.data as EventMap['promotion.closed']).reason;
+  if (e.name === 'promotion.closed') return CLOSED[(e.data as EventMap['promotion.closed']).reason];
   return undefined;
 };
+
+const isTemplate = (creative: string) =>
+  [...document.querySelectorAll<HTMLTemplateElement>('template[data-template]')].some(
+    (t) => t.dataset.template === creative,
+  );
 
 const legacyCart = (engine: Engine) => {
   const summary = engine.getState().cart.summary;
@@ -83,7 +93,7 @@ const legacyAttribution = (engine: Engine) => {
 
 /**
  * @deprecated 0.4.x `dl_*` events (Elevar format) on `window.NextDataLayer` and `window.dataLayer`,
- * with `window.NextDataLayerTransformFn`. Listen with `next.on('analytics', fn)`: the same events
+ * with `window.NextDataLayerTransformFn`. Listen with `next.analytics.on('*', fn)`: the same events
  * under GA4 names. Returns the exit-intent handler, for the caller to run in event order.
  */
 export function startLegacyDataLayer(
@@ -93,7 +103,7 @@ export function startLegacyDataLayer(
   const win = window as Win;
   win.NextDataLayer ??= [];
   if (options.dataLayer !== false) win.dataLayer ??= [];
-  engine.log.info('dl_* data layer events are deprecated: use next.on("analytics", fn)');
+  engine.log.info('dl_* data layer events are deprecated: use next.analytics.on("*", fn)');
 
   const deliver = (event: DataLayerEvent) => {
     win.NextDataLayer!.push(event);
@@ -218,11 +228,13 @@ export function startLegacyDataLayer(
         exit_intent: { action, coupon_code: coupon_code || '' },
       });
     }
-    const { image_url, template } = e.data as PromotionDetail;
+    const creative = (e.data as Promotion).creative ?? '';
+    const template = isTemplate(creative) ? creative : '';
+    const image_url = template ? '' : creative;
     exitIntent(e.name, name, {
       event_action: `exit_intent_${name}`,
       event_label: image_url || template || 'exit-intent',
-      exit_intent: { image_url: image_url || '', template: template || '' },
+      exit_intent: { image_url, template },
     });
   };
 }

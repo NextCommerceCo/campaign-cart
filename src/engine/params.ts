@@ -5,6 +5,7 @@ export const ONE_SHOT_PARAMS = [
   'debug',
   'debugger',
   'payment_failed',
+  'payment_method',
   'ref_id',
   'order_ref_id',
 ];

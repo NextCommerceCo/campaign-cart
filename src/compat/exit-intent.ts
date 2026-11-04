@@ -1,6 +1,9 @@
 import type { Engine } from '../engine/engine';
+import type { EventMap, Promotion } from '../engine/events';
 
 export interface ExitIntentOptions {
+  id?: string;
+  name?: string;
   image?: string;
   template?: string;
   action?: () => unknown;
@@ -27,7 +30,6 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     disableOnMobile: true,
     ...options,
   };
-  const detail = { source: 'exit_intent' as const, image_url: o.image, template: o.template };
   if (!o.image && !o.template) {
     engine.log.warn('exitIntent needs an image or a template');
     return () => {};
@@ -36,11 +38,13 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   if (mobile && o.disableOnMobile && !o.mobileScrollTrigger) return () => {};
 
   let open: HTMLElement[] = [];
-  const close = (event?: 'dismissed' | 'closed') => {
+  let promotion: Promotion;
+  const close = (reason: EventMap['promotion.closed']['reason']) => {
+    if (!open.length) return;
     open.forEach((el) => el.remove());
     open = [];
     document.removeEventListener('keydown', onKey);
-    if (event) engine.events.emit('promotion.closed', { ...detail, reason: event });
+    engine.events.emit('promotion.closed', { ...promotion, reason });
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close('dismissed');
 
@@ -57,34 +61,47 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
 
     const template =
       o.template && document.querySelector<HTMLTemplateElement>(`template[data-template="${o.template}"]`);
+    let clicked = false;
+    const failed = (err: unknown) => engine.log.error('exitIntent action failed', err);
+    const clickable = (el: HTMLElement, run: () => unknown, extra?: { action?: string; coupon_code?: string }) =>
+      el.addEventListener('click', async () => {
+        if (clicked) return;
+        clicked = true;
+        engine.events.emit('promotion.clicked', { ...promotion, ...extra });
+        try {
+          await run();
+        } catch (err) {
+          failed(err);
+        }
+        if (open.includes(popup)) close('clicked');
+      });
     if (template) {
       popup.classList.add('exit-intent-template-popup');
       popup.append(template.content.cloneNode(true));
-      popup.querySelectorAll<HTMLElement>('[data-exit-intent-action]').forEach((button) =>
-        button.addEventListener('click', async () => {
-          const action = button.dataset.exitIntentAction;
-          const couponCode = button.dataset.couponCode;
-          if (action === 'apply-coupon' && couponCode) await engine.cart.applyCoupon(couponCode);
-          if (action === 'custom') await o.action?.();
-          engine.events.emit('promotion.clicked', { ...detail, action, coupon_code: couponCode });
-          close();
-        }),
-      );
+      popup.querySelectorAll<HTMLElement>('[data-exit-intent-action]').forEach((button) => {
+        const action = button.dataset.exitIntentAction;
+        const couponCode = button.dataset.couponCode;
+        const run = () => {
+          if (action === 'apply-coupon' && couponCode) void engine.cart.applyCoupon(couponCode).catch(failed);
+          if (action === 'custom') return o.action?.();
+        };
+        clickable(button, run, { action, coupon_code: couponCode });
+      });
     } else if (o.image) {
       const img = Object.assign(document.createElement('img'), { src: o.image, alt: '' });
       img.style.cssText = `display:block;max-width:100%;${o.imageClickable ? 'cursor:pointer' : ''}`;
-      if (o.imageClickable) {
-        img.addEventListener('click', async () => {
-          engine.events.emit('promotion.clicked', detail);
-          await o.action?.();
-          close();
-        });
-      }
+      if (o.imageClickable) clickable(img, () => o.action?.());
       popup.append(img);
     } else {
       engine.log.warn(`exitIntent template "${o.template}" is not on the page`);
       return;
     }
+    promotion = {
+      id: o.id ?? 'exit_intent',
+      type: 'exit_intent',
+      ...(o.name && { name: o.name }),
+      creative: template ? o.template : o.image,
+    };
 
     if (o.showCloseButton) {
       const button = Object.assign(document.createElement('button'), {
@@ -93,7 +110,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
       });
       button.dataset.exitIntent = 'close';
       button.style.cssText = CLOSE;
-      button.addEventListener('click', () => close('closed'));
+      button.addEventListener('click', () => close('close_button'));
       popup.append(button);
     }
     if (o.overlayClosable) overlay.addEventListener('click', () => close('dismissed'));
@@ -101,7 +118,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     engine.noteExitIntentShown();
     document.body.append(overlay, popup);
     open = [overlay, popup];
-    engine.events.emit('promotion.viewed', detail);
+    engine.events.emit('promotion.viewed', promotion);
   };
 
   const onLeave = (e: MouseEvent) => e.clientY <= 0 && !e.relatedTarget && show();
@@ -114,7 +131,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
   else document.addEventListener('mouseout', onLeave);
 
   return () => {
-    close();
+    close('dismissed');
     document.removeEventListener('mouseout', onLeave);
     removeEventListener('scroll', onScroll);
   };

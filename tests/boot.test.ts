@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
-import { boot } from '../src/boot';
+import { boot, type NextApi } from '../src/boot';
 import { createCheckout } from '../src/checkout/state/checkout';
-import { LEGACY_EVENTS } from '../src/compat/legacy';
 import { funnelFromPath, storageScope } from '../src/engine/scope';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi, json } from './fixtures/api';
@@ -114,11 +113,34 @@ describe('boot', () => {
     const paid = vi.fn();
     next.on('order.paid', (data) => paid(data));
     await vi.waitFor(() => expect(paid).toHaveBeenCalledTimes(1));
-    expect(paid.mock.calls[0]![0]).toMatchObject({ order: { ref_id: 'R1' } });
+    expect(paid.mock.calls[0]![0]).toMatchObject({ ref_id: 'R1' });
     history.replaceState(null, '', '/');
   });
 
-  it('sends order.failed for the gateway order when a failed payment comes back without a ref_id', async () => {
+  it('gives a page script that listens once the page is up the events it missed, and of 0.4.x names only those 0.4.x pages heard late', async () => {
+    history.replaceState(null, '', '/thank-you/?ref_id=R1');
+    const seen: Record<string, string[]> = { loaded: [], paid: [], all: [], ready: [], legacy: [] };
+    const listen = (next: NextApi) => {
+      next.on('order.loaded', (data) => seen.loaded!.push(data.ref_id));
+      next.on('order.paid', (data) => seen.paid!.push(data.ref_id));
+      next.on('*', (_, e) => seen.all!.push(e.event_type));
+      next.on('ready', (_, e) => seen.ready!.push(e.event_type));
+      next.on('sdk:url-parameters-processed' as never, () => seen.legacy!.push('sdk:url-parameters-processed'));
+      next.on('order:completed' as never, () => seen.legacy!.push('order:completed'));
+    };
+    (window as unknown as { nextReady: unknown[] }).nextReady = [listen];
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(seen.paid).toEqual(['R1']));
+    expect(seen).toEqual({
+      loaded: ['R1'],
+      paid: ['R1'],
+      all: ['sdk.ready', 'order.loaded', 'order.paid'],
+      ready: ['sdk.ready'],
+      legacy: ['sdk:url-parameters-processed'],
+    });
+  });
+
+  it('sends payment.failed for the gateway order when a failed payment comes back without a ref_id', async () => {
     const api = fakeApi({
       order: () => json({ ref_id: 'R1', payment_complete_url: 'https://pay.test/R1' }),
       getOrder: () => json({ message: 'Not found' }, 400),
@@ -142,9 +164,9 @@ describe('boot', () => {
     vi.stubGlobal('fetch', api.fetch);
     const next = boot(config, Promise.resolve(campaign));
     const failed = vi.fn();
-    next.on('order.failed', (data) => failed(data));
+    next.on('payment.failed', (data) => failed(data));
     await vi.waitFor(() =>
-      expect(failed).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R1' }),
+      expect(failed).toHaveBeenCalledWith({ method: 'paypal', ref_id: 'R1', error: { code: 'payment_failed' } }),
     );
     expect(Object.values(next.getState().cart.groups).flatMap((g) => g.lines)).toHaveLength(1);
     expect(api.calls.filter((c) => c.method === 'GET' && c.url.includes('/orders/'))).toHaveLength(0);
@@ -188,7 +210,7 @@ describe('boot', () => {
     next.on('nope:event' as never, vi.fn());
     document.querySelector<HTMLElement>('#two')!.click();
     expect(changed).toHaveBeenCalledWith(
-      { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },
+      { selectorId: 'main', items: [{ packageId: 2, quantity: 1 }] },
       expect.anything(),
     );
     expect(warn.mock.calls).toEqual([['[next] next.on: unknown event "nope:event"']]);
@@ -201,18 +223,20 @@ describe('boot', () => {
     await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
     const ready = vi.fn();
     next.on('ready', ready);
-    expect(ready).toHaveBeenCalledWith(
-      { lines: expect.any(Array) },
-      {
-        event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
-        event_type: 'sdk.ready',
-        object: 'sdk',
-        data: { lines: expect.any(Array) },
-        created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
-        session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
-        sdk_version: expect.any(String),
-      },
-    );
+    const snapshot = {
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      cart: expect.objectContaining({ lines: expect.any(Array), currency: 'USD' }),
+      selectors: [],
+    };
+    expect(ready).toHaveBeenCalledWith(snapshot, {
+      event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      event_type: 'sdk.ready',
+      object: 'sdk',
+      data: snapshot,
+      created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+      session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      sdk_version: expect.any(String),
+    });
     const session = ready.mock.calls[0]![1].session_id;
     expect(document.cookie).toContain(`ncsid=${session}`);
     expect(next.context()).toEqual({
@@ -248,32 +272,81 @@ describe('boot', () => {
     next.on('shipping:method-changed' as never, shipping);
     await next.actions.addItem(1);
     await next.actions.setShipping(1);
-    expect(cart.mock.calls.at(-1)![0]).toMatchObject({ groups: expect.any(Object), coupons: [] });
+    await vi.waitFor(() => expect(shipping).toHaveBeenCalledTimes(1));
+    expect(cart.mock.calls.map(([data]) => data.isCalculating)).not.toContain(true);
+    expect(cart.mock.calls.at(-1)![0]).toMatchObject({
+      items: [{ packageId: 1, quantity: 1, title: 'Earbuds ×1', total: '49.00' }],
+      totalQuantity: 1,
+      isEmpty: false,
+      vouchers: [],
+      shippingMethod: { id: 1, code: 'standard' },
+    });
+    expect(cart.mock.calls.at(-1)![0].total.toNumber()).toBe(49);
     expect(shipping).toHaveBeenCalledWith(
       { methodId: 1, method: { ref_id: 1, code: 'standard', price: '0.00' } },
       expect.anything(),
     );
-    const popup = (name: string, data: Record<string, unknown>) => {
-      const alias = LEGACY_EVENTS[name]!;
-      return alias.when && !alias.when(data) ? 'skipped' : (alias.data?.(data, next.getState()) ?? data);
+  });
+
+  it('fires 0.4.x checkout:started on each checkout page, for a script that listens once the page is up', async () => {
+    history.replaceState(null, '', '/checkout/?forcePackageId=2:1');
+    document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email"></form>`;
+    const started: unknown[] = [];
+    const page = () => {
+      (window as unknown as { nextReady: unknown[] }).nextReady = [
+        (next: NextApi) => next.on('checkout:started' as never, (data) => started.push(data)),
+      ];
+      boot(config, Promise.resolve(campaign));
     };
-    const click = { source: 'exit_intent', image_url: 'x.png' };
-    const used = { source: 'exit_intent', template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' };
-    expect([popup('exit-intent:clicked', click), popup('exit-intent:clicked', used)]).toEqual([
-      { imageUrl: 'x.png', template: undefined },
-      'skipped',
-    ]);
-    expect(popup('exit-intent:action', used)).toEqual({
-      imageUrl: undefined,
-      template: 'exit',
-      action: 'apply-coupon',
-      couponCode: 'EXIT10',
+    page();
+    await vi.waitFor(() => expect(started).toHaveLength(1));
+    await flush();
+    expect(started).toHaveLength(1);
+    history.replaceState(null, '', '/checkout/');
+    page();
+    await vi.waitFor(() => expect(started).toHaveLength(2));
+    expect(started[1]).toEqual({
+      formData: expect.any(Object),
+      paymentMethod: 'credit-card',
+      isProcessing: false,
+      step: 1,
     });
-    expect(
-      ['dismissed', 'closed'].map((reason) =>
-        popup('exit-intent:dismissed', { source: 'exit_intent', template: 'exit', reason }),
-      ),
-    ).toEqual([{ imageUrl: undefined, template: 'exit' }, 'skipped']);
+  });
+
+  it('fires 0.4.x checkout:payment-ready once the card fields are ready', async () => {
+    class NextPayment {
+      onReady = () => {};
+      constructor() {
+        queueMicrotask(() => this.onReady());
+      }
+      destroy() {}
+    }
+    vi.stubGlobal('NextPayment', NextPayment);
+    document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email">
+      <div data-next-checkout-field="cc-number"></div><div data-next-checkout-field="cvv"></div></form>`;
+    const ready: unknown[] = [];
+    (window as unknown as { nextReady: unknown[] }).nextReady = [
+      (next: NextApi) => {
+        next.on('checkout:payment-ready' as never, (data) => ready.push(data));
+        next.on('checkout:spreedly-ready' as never, (data) => ready.push(data));
+      },
+    ];
+    boot(config, Promise.resolve({ ...campaign, payment_env_key: 'env_test' }));
+    await vi.waitFor(() => expect(ready).toEqual([{}, {}]));
+    expect(document.querySelector('form')!.classList).not.toContain('next-loading-spreedly');
+  });
+
+  it('sends no checkout:payment-ready when the card fields cannot load', async () => {
+    document.body.innerHTML = `<form data-next-checkout="form"><input data-next-checkout-field="email">
+      <div data-next-checkout-field="cc-number"></div><div data-next-checkout-field="cvv"></div></form>`;
+    const form = document.querySelector('form')!;
+    const next = boot(config, Promise.resolve({ ...campaign, payment_env_key: 'env_test' }));
+    const ready = vi.fn();
+    next.on('checkout:payment-ready' as never, ready);
+    await vi.waitFor(() => expect(form.noValidate).toBe(true));
+    await vi.waitFor(() => expect(form.classList).not.toContain('next-loading-spreedly'));
+    await flush();
+    expect(ready).not.toHaveBeenCalled();
   });
 
   it('lets page scripts listen to one tracking event by its GA4 name', async () => {
@@ -286,16 +359,40 @@ describe('boot', () => {
     expect(all).toContain('page_view');
   });
 
-  it('lets page scripts listen to analytics events under GA4 names, including ones sent before they listened', async () => {
-    const warn = vi.spyOn(console, 'warn');
+  it('keeps the SDK’s internal events off next.on: tracking events come through next.analytics.on', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));
     const early: string[] = [];
-    next.on('analytics', (e) => void early.push(e.name));
-    await vi.waitFor(() => expect(early).toContain('page_view'));
+    next.on('*', (_, e) => early.push(e.event_type));
+    const tracked = vi.fn();
+    next.on('analytics' as never, tracked);
+    const views: string[] = [];
+    next.analytics.on('page_view', (e) => views.push(e.name));
+    await vi.waitFor(() => expect(views).toEqual(['page_view']));
     const late: string[] = [];
-    next.on('analytics', (e) => void late.push(e.name));
+    next.on('*', (_, e) => late.push(e.event_type));
+    expect(early).toContain('sdk.ready');
+    expect(early.filter((name) => name === 'campaign.loaded' || name === 'analytics')).toEqual([]);
     expect(late).toEqual(early);
-    expect(warn).not.toHaveBeenCalled();
+    expect(tracked).not.toHaveBeenCalled();
+    expect(warn.mock.calls).toEqual([['[next] next.on: unknown event "analytics"']]);
+  });
+
+  it('shows what the page shows now through next.snapshot(), the same objects the events carry', async () => {
+    document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
+      <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    const calculated = vi.fn();
+    next.on('cart.calculated', calculated);
+    await next.actions.addItem(2);
+    await vi.waitFor(() => expect(next.getState().cart.calculating).toBe(false));
+    const snapshot = next.snapshot();
+    expect(snapshot).toEqual({
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      cart: calculated.mock.calls.at(-1)![0],
+      selectors: [expect.objectContaining({ selector_id: 'main', option_id: 'one' })],
+    });
+    expect(snapshot.campaign).toEqual(next.context().campaign);
   });
 
   it('lets page scripts quiet the console and read the log stream', async () => {
@@ -312,8 +409,8 @@ describe('boot', () => {
 
   it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {
     const next = boot(config, Promise.resolve(campaign));
-    await next.actions.applyCoupon('SAVE10');
     await next.addItem({ packageId: 1 });
+    await next.actions.applyCoupon('SAVE10');
     await next.clearCart();
     expect(next.getState().cart.coupons).toEqual(['SAVE10']);
     await next.swapCart([{ packageId: 2, quantity: 2 }]);

@@ -84,7 +84,12 @@ export interface CheckoutState {
   billingAddress?: Address;
   cardReady?: boolean;
   pendingRef?: string;
-  failurePath?: string;
+  /** The payment method of the order at the gateway: an express button's, which the form never selected. */
+  pendingMethod?: string;
+  /** The checkout's `Checkout.id`, set when it starts; a paid order starts a new one. */
+  id?: string;
+  /** The analytics events already sent for this checkout, such as `add_shipping_info`. */
+  reported?: string[];
 }
 
 export interface ApiAddress {

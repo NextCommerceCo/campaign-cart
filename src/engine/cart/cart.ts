@@ -1,6 +1,6 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChange, CartItem, Checkout, Discount, Selector } from '../events';
+import type { Cart, CartChange, CartItem, Checkout, Discount, EventMap, Selector } from '../events';
 import type {
   Line,
   CartGroup,
@@ -86,6 +86,9 @@ export function cartItem(state: State, line: Line, priced?: SummaryLine): CartIt
   };
 }
 
+const fresh = (priced: SummaryLine | undefined, line: Line) =>
+  priced?.package_id === line.package_id && priced.quantity === line.quantity;
+
 export function cartItems(state: State, lines: Line[], priced?: SummaryLine[]): CartItem[] {
   const fresh =
     priced?.length === lines.length &&
@@ -96,14 +99,23 @@ export function cartItems(state: State, lines: Line[], priced?: SummaryLine[]): 
 export function publicToggle(state: State, id: string, group?: CartGroup): Selector {
   const lines = apiLines(group?.lines ?? []);
   const quoted = lines.map((l) => state.toggles[l.package_id]?.line).filter((l) => !!l);
-  return { selector_id: id, type: 'toggle', lines: cartItems(state, lines, quoted) };
+  const items = cartItems(state, lines, quoted);
+  const currency = state.campaign?.currency;
+  const priced = items.length > 0 && items.every((l) => l.total !== undefined);
+  return {
+    selector_id: id,
+    type: 'toggle',
+    lines: items,
+    ...(currency && { currency }),
+    ...(priced && { total: sum(items.map((l) => l.total!)) }),
+  };
 }
 
 export function publicCart(state: State, summary?: CartSummary): Cart {
   const { coupons, shippingId } = state.cart;
   const campaign = state.campaign;
   const lines = mergeLines(state.cart.groups).map((line, i) =>
-    cartItem(state, line, summary?.lines[i]?.package_id === line.package_id ? summary.lines[i] : undefined),
+    cartItem(state, line, fresh(summary?.lines[i], line) ? summary!.lines[i] : undefined),
   );
   const listed = campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
   const priced = summary?.shipping_method;
@@ -141,6 +153,8 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
 export function publicCheckout(state: State, summary?: CartSummary): Checkout {
   const checkout = state.checkout;
   return {
+    id: checkout?.id ?? '',
+    ...(checkout && checkout.step > 0 && { step: checkout.step }),
     cart: publicCart(state, summary),
     ...(checkout?.user && { user: checkout.user }),
     ...(checkout?.shippingAddress && { shipping_address: checkout.shippingAddress }),
@@ -162,8 +176,19 @@ function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
 export const shippingMethodOf = (state: State) => state.cart.shippingId ?? state.campaign?.shipping_methods[0]?.ref_id;
 
 export function emptyCart(): CartState {
-  return { groups: {}, coupons: [], dismissed: [], calculating: false, frozen: false };
+  return { groups: {}, coupons: [], held: [], dismissed: [], calculating: false, frozen: false };
 }
+
+const quantities = (groups: Record<string, CartGroup>) => {
+  const by = new Map<number, number>();
+  for (const l of mergeLines(groups)) by.set(l.package_id, (by.get(l.package_id) ?? 0) + l.quantity);
+  return by;
+};
+
+const toggleOn = (groups: Record<string, CartGroup>, id: string) =>
+  id.startsWith('toggle:') && !!groups[id]?.lines.some((l) => l.quantity > 0);
+
+const messageOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export function createCart(ctx: Context) {
   let seq = 0;
@@ -172,6 +197,10 @@ export function createCart(ctx: Context) {
   let running: Promise<void> | undefined;
   let busy = false;
   let unpriced = false;
+  let shippingAt: number | undefined;
+  let checkingHeld = false;
+  const waiting = new Map<string, (applied: boolean) => void>();
+  const checking = new Map<string, object>();
 
   const state = () => ctx.getState().cart;
   const lines = () => mergeLines(state().groups);
@@ -183,7 +212,6 @@ export function createCart(ctx: Context) {
   };
 
   const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
-  const unchecked = new Set<string>();
 
   const price = (codes: string[]) =>
     ctx.api.calculate({
@@ -193,70 +221,105 @@ export function createCart(ctx: Context) {
       shipping_method: shippingMethodOf(ctx.getState()),
     });
 
-  const changes = new Map<number, { quantity: number; price?: string }>();
-  const quantities = () => {
-    const by = new Map<number, number>();
-    for (const l of lines()) by.set(l.package_id, (by.get(l.package_id) ?? 0) + l.quantity);
-    return by;
-  };
-  const listed = (id: number) => money(ctx.getPackage(id)?.price_total);
-
-  const track = (before: Map<number, number>, prices: SummaryLine[] | undefined) => {
-    const after = quantities();
-    for (const id of new Set([...before.keys(), ...after.keys()])) {
-      const delta = (after.get(id) ?? 0) - (before.get(id) ?? 0);
-      if (!delta) continue;
-      const change = changes.get(id) ?? { quantity: 0 };
-      change.quantity += delta;
-      change.price ??= prices?.find((l) => l.package_id === id)?.package_price;
-      changes.set(id, change);
-    }
-  };
-
   const cartOf = (summary?: CartSummary): Cart => publicCart(ctx.getState(), summary);
   const settledSummary = () => (state().calculating ? undefined : state().summary);
   const currentCheckout = () => publicCheckout(ctx.getState(), settledSummary());
 
-  const announce = (summary?: CartSummary) => {
+  const changesOf = (before: Map<number, number>, after: Map<number, number>, priced: SummaryLine[] = []) => {
     const added: CartChange[] = [];
     const removed: CartChange[] = [];
-    for (const [id, change] of changes) {
+    for (const id of new Set([...before.keys(), ...after.keys()])) {
+      const from = before.get(id) ?? 0;
+      const to = after.get(id) ?? 0;
+      if (from === to) continue;
       const p = ctx.getPackage(id);
-      const product = {
+      const charged = priced.find((l) => l.package_id === id)?.package_price;
+      (to > from ? added : removed).push({
+        package_id: id,
         ...(p?.product_id !== undefined && { product_id: p.product_id }),
         ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
-      };
-      const now = summary?.lines.find((l) => l.package_id === id)?.package_price;
-      if (change.quantity > 0)
-        added.push({ package_id: id, ...product, quantity: change.quantity, price: now ? money(now) : listed(id) });
-      if (change.quantity < 0)
-        removed.push({
-          package_id: id,
-          ...product,
-          quantity: -change.quantity,
-          price: change.price ? money(change.price) : listed(id),
-        });
+        quantity: Math.abs(to - from),
+        from,
+        to,
+        ...(charged !== undefined && { price: money(charged) }),
+      });
     }
-    changes.clear();
-    if (removed.length) ctx.emit('cart.removed', { ...cartOf(summary), changes: removed });
-    if (added.length) ctx.emit('cart.added', { ...cartOf(summary), changes: added });
+    return { added, removed };
   };
 
-  const refuse = (code: string) => {
-    if (state().frozen) return void unchecked.add(code);
-    ctx.emit('coupon.denied', { code });
-    return commit({ coupons: state().coupons.filter((c) => c !== code) });
+  const announceShipping = (run: number, summary?: CartSummary) => {
+    if (shippingAt === undefined || run <= shippingAt) return;
+    shippingAt = undefined;
+    const method = cartOf(summary).shipping_method;
+    if (method) ctx.emit('shipping.selected', method);
   };
 
-  const recheck = async (withAll: CartSummary) => {
-    for (const code of [...unchecked]) {
-      unchecked.delete(code);
-      if (!state().coupons.includes(code)) continue;
+  const deny = (code: string, reason: EventMap['coupon.denied']['reason'], message?: string) =>
+    ctx.emit('coupon.denied', { code, reason, ...(message && { message }) });
+
+  const discountsOf = (code: string, summary: CartSummary) => {
+    const cart = cartOf(summary);
+    const discounts = [...(cart.discounts ?? []), ...(cart.shipping_method?.discounts ?? [])].filter(
+      (d) => d.code === code,
+    );
+    return discounts.length ? { amount: sum(discounts.map((d) => d.amount)), discounts } : {};
+  };
+
+  const answer = (code: string, applied: boolean) => {
+    waiting.get(code)?.(applied);
+    waiting.delete(code);
+  };
+
+  const release = (code: string) => {
+    if (state().held.includes(code)) set({ held: state().held.filter((c) => c !== code) });
+  };
+
+  const check = async (code: string): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
+    const run = {};
+    checking.set(code, run);
+    const dropped = () => checking.get(code) !== run;
+    try {
+      let without: CartSummary;
+      let withCode: CartSummary;
       try {
-        if (!addsDiscount(await price(vouchers().filter((v) => v !== code)), withAll)) await refuse(code);
-      } catch {
-        unchecked.add(code);
+        await settled();
+        without = (!unpriced && state().summary) || (await price(vouchers()));
+        withCode = await price([...vouchers(), code]);
+      } catch (err) {
+        if (dropped()) return 'dropped';
+        ctx.fail('coupon.check', err);
+        deny(code, 'check_failed', messageOf(err));
+        return 'denied';
       }
+      if (dropped()) return 'dropped';
+      if (!addsDiscount(without, withCode)) {
+        deny(code, 'no_discount');
+        return 'denied';
+      }
+      if (state().frozen) return 'frozen';
+      const done = commit({ coupons: [...state().coupons, code], held: state().held.filter((c) => c !== code) });
+      ctx.emit('coupon.applied', { code, ...discountsOf(code, withCode) });
+      await done;
+      return 'applied';
+    } finally {
+      if (!dropped()) checking.delete(code);
+    }
+  };
+
+  const checkHeld = async () => {
+    if (checkingHeld) return;
+    checkingHeld = true;
+    try {
+      for (let code = state().held[0]; code !== undefined; code = state().held[0]) {
+        if (state().frozen || !lines().length) break;
+        const result = await check(code);
+        if (result === 'frozen') break;
+        if (result === 'dropped') continue;
+        release(code);
+        answer(code, result === 'applied');
+      }
+    } finally {
+      checkingHeld = false;
     }
   };
 
@@ -267,7 +330,7 @@ export function createCart(ctx: Context) {
     if (!lines().length || !campaign) {
       if (state().calculating) set({ calculating: false });
       busy = false;
-      if (!lines().length) announce();
+      announceShipping(current);
       return;
     }
     if (!state().calculating) set({ calculating: true });
@@ -290,16 +353,16 @@ export function createCart(ctx: Context) {
       busy = false;
       unpriced = false;
       set({ summary, calculating: false });
-      announce(summary);
       ctx.emit('cart.calculated', cartOf(summary));
-      if (unchecked.size) void recheck(summary);
+      announceShipping(current, summary);
+      if (state().held.length && !state().frozen) void checkHeld();
     } catch (err) {
       if (current !== seq) return;
       busy = false;
       unpriced = true;
       set({ calculating: false });
       ctx.fail('cart.calculate', err);
-      announce();
+      announceShipping(current);
     }
   };
 
@@ -318,17 +381,26 @@ export function createCart(ctx: Context) {
 
   const commit = (patch: Partial<CartState>): Promise<void> => {
     if (state().frozen) return Promise.resolve();
-    const groups = patch.groups ?? state().groups;
-    const hasLines = mergeLines(groups).length > 0;
-    const before = quantities();
-    const prices = state().summary?.lines;
+    const before = state().groups;
+    const after = patch.groups ?? before;
+    const priced = state().summary?.lines;
+    const hasLines = mergeLines(after).length > 0;
     set({
       ...patch,
       ...(!hasLines && { summary: undefined }),
       calculating: hasLines && !!ctx.getState().campaign,
     });
-    track(before, prices);
-    ctx.emit('cart.updated', cartOf());
+    for (const id of Object.keys(before))
+      if (toggleOn(before, id) && !toggleOn(after, id))
+        ctx.emit('selector.deselected', publicToggle(ctx.getState(), id, before[id]));
+    for (const id of Object.keys(after))
+      if (toggleOn(after, id) && !toggleOn(before, id))
+        ctx.emit('selector.selected', publicToggle(ctx.getState(), id, after[id]));
+    const cart = cartOf();
+    ctx.emit('cart.updated', cart);
+    const { added, removed } = changesOf(quantities(before), quantities(after), priced);
+    if (removed.length) ctx.emit('cart.removed', { ...cart, changes: removed });
+    if (added.length) ctx.emit('cart.added', { ...cart, changes: added });
     return recalculate();
   };
 
@@ -348,11 +420,6 @@ export function createCart(ctx: Context) {
     if (state().frozen) return Promise.resolve();
     const groups = { ...state().groups };
     const keep = !!group && group.lines.some((l) => l.quantity > 0);
-    if (id.startsWith('toggle:') && keep !== !!groups[id])
-      ctx.emit(
-        keep ? 'selector.selected' : 'selector.deselected',
-        publicToggle(ctx.getState(), id, keep ? group! : undefined),
-      );
     if (keep) groups[id] = group;
     else delete groups[id];
     const dismissed = state().dismissed.filter((d) => d !== id);
@@ -402,9 +469,11 @@ export function createCart(ctx: Context) {
       ctx.update('cart', { reported, added: state().added || added }, { silent: true });
     },
     clearAfterOrder() {
-      changes.clear();
       seq++;
       abort?.abort();
+      shippingAt = undefined;
+      waiting.forEach((done) => done(false));
+      waiting.clear();
       ctx.update(
         'cart',
         { ...emptyCart(), summary: undefined, shippingId: undefined, frozen: true, reported: [] },
@@ -427,43 +496,43 @@ export function createCart(ctx: Context) {
         : [...current.lines, { packageId, quantity }];
       return setGroup(groupId, { ...current, lines: next });
     },
-    clear: () => commit({ groups: {}, coupons: [], dismissed: [] }),
+    clear(): Promise<void> {
+      if (state().frozen) return Promise.resolve();
+      const { coupons, held } = state();
+      checking.clear();
+      const done = commit({ groups: {}, coupons: [], held: [], dismissed: [] });
+      for (const code of coupons) ctx.emit('coupon.removed', { code, reason: 'cleared' });
+      for (const code of held) answer(code, false);
+      return done;
+    },
     async applyCoupon(code: string): Promise<boolean> {
       const normalized = normalizeCode(code);
-      if (state().frozen || !normalized || vouchers().includes(normalized)) return false;
-      if (!lines().length || !ctx.getState().campaign) unchecked.add(normalized);
-      else {
-        await settled();
-        try {
-          const without = (!unpriced && state().summary) || (await price(vouchers()));
-          if (!addsDiscount(without, await price([...vouchers(), normalized]))) {
-            ctx.emit('coupon.denied', { code: normalized });
-            return false;
-          }
-        } catch (err) {
-          ctx.fail('coupon.check', err);
-          return false;
-        }
-        if (state().frozen || state().coupons.includes(normalized)) return false;
+      if (state().frozen || !normalized) return false;
+      if (vouchers().includes(normalized) || state().held.includes(normalized) || checking.has(normalized)) {
+        deny(normalized, 'duplicate');
+        return false;
       }
-      const done = commit({ coupons: [...state().coupons, normalized] });
-      ctx.emit('coupon.applied', { code: normalized });
-      await done;
-      return true;
+      if (lines().length && ctx.getState().campaign) return (await check(normalized)) === 'applied';
+      set({ held: [...state().held, normalized] });
+      return new Promise((done) => waiting.set(normalized, done));
     },
     removeCoupon(code: string): Promise<void> {
       const normalized = normalizeCode(code);
-      if (state().frozen || !state().coupons.includes(normalized)) return Promise.resolve();
+      if (state().frozen) return Promise.resolve();
+      checking.delete(normalized);
+      if (state().held.includes(normalized)) {
+        release(normalized);
+        answer(normalized, false);
+      }
+      if (!state().coupons.includes(normalized)) return Promise.resolve();
       const done = commit({ coupons: state().coupons.filter((c) => c !== normalized) });
-      ctx.emit('coupon.removed', { code: normalized });
+      ctx.emit('coupon.removed', { code: normalized, reason: 'shopper' });
       return done;
     },
     setShipping(shippingId: number | undefined) {
       if (state().frozen || shippingId === state().shippingId) return Promise.resolve();
-      const done = commit({ shippingId });
-      const method = currentCheckout().cart.shipping_method;
-      if (method) ctx.emit('shipping.selected', method);
-      return done;
+      shippingAt = seq;
+      return commit({ shippingId });
     },
   };
 }

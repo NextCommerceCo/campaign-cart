@@ -58,7 +58,7 @@ export class RulesApi {
   }
 }
 
-export type Scope = 'express' | 'shipping' | 'all';
+export type Scope = 'shipping' | 'all' | string[];
 
 const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 const NAME = /^[\p{L}\p{M}\s'’.-]+$/u;
@@ -131,7 +131,7 @@ function addressFields(prefix: '' | 'billing_', rules: CountryRules | undefined)
 }
 
 export function requiredFields(checkout: CheckoutState, scope: Scope, phoneRequired = false): string[] {
-  if (scope === 'express') return ['email', 'first_name', 'last_name'];
+  if (Array.isArray(scope)) return scope;
   const { fields, rules, sameAsShipping } = checkout;
   const names = ['email', ...addressFields('', rules[fields.country ?? ''])];
   if (phoneRequired) names.push('phone_number');
@@ -155,8 +155,7 @@ export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired 
   const errors: Record<string, FieldError> = {};
   for (const name of names) {
     const billing = name.startsWith('billing_');
-    if (billing && (sameAsShipping || scope !== 'all')) continue;
-    if (scope === 'express' && !required.includes(name)) continue;
+    if (Array.isArray(scope) ? !scope.includes(name) : billing && (sameAsShipping || scope !== 'all')) continue;
     if (checkout.phones[name]) continue;
     const country = rules[(billing ? fields.billing_country : fields.country) ?? ''];
     if (!hasField(country, name)) continue;

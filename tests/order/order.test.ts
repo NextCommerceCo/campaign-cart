@@ -6,8 +6,11 @@ import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
 
-async function mount(file: string, api: FakeApiOptions = {}) {
-  const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
+const mount = (file: string, api: FakeApiOptions = {}) =>
+  mountHtml(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), api);
+
+async function mountHtml(html: string, api: FakeApiOptions = {}) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
   const fake = fakeApi(api);
@@ -20,8 +23,17 @@ async function mount(file: string, api: FakeApiOptions = {}) {
   const $ = (s: string) => document.querySelector<HTMLElement>(s)!;
   const upsells = () => fake.calls.filter((c) => c.url.endsWith('/upsells/'));
   const events: string[] = [];
-  engine.on('*', (e) => events.push(e.name), { replay: true });
-  return { engine, navigate, $, upsells, events, calls: fake.calls };
+  const sent: Array<{ name: string; data: unknown }> = [];
+  engine.on(
+    '*',
+    (e) => {
+      events.push(e.name);
+      sent.push({ name: e.name, data: e.data });
+    },
+    { replay: true },
+  );
+  const dataOf = (name: string) => sent.filter((e) => e.name === name).map((e) => e.data);
+  return { engine, navigate, $, upsells, events, dataOf, calls: fake.calls };
 }
 
 beforeEach(() => {
@@ -52,10 +64,20 @@ describe('upsell page (starter upsell-single, selector beside the offer)', () =>
 
 describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
   it('prices the offer for the stepped quantity and adds it once', async () => {
-    const { $, upsells, navigate, events } = await mount('apollo/upsell-bundle-stepper.html');
+    const { $, upsells, navigate, events, dataOf } = await mount('apollo/upsell-bundle-stepper.html');
     const offer = $('[data-next-upsell="offer"]');
     expect(offer.classList).toContain('next-available');
-    expect(events).toContain('upsell.viewed');
+    expect(dataOf('upsell.viewed')).toEqual([
+      {
+        ref_id: 'R1',
+        page: '/apollo/upsell-bundle-stepper/',
+        selector_id: 'upsell-bundle',
+        option_id: 'upsell-bundle-1x',
+        lines: [expect.objectContaining({ package_id: 3, quantity: 1, total: 20 })],
+        currency: 'USD',
+        total: 20,
+      },
+    ]);
     $('[data-next-quantity-increase]').click();
     await flush();
     await flush();
@@ -69,6 +91,17 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
       vouchers: ['UP50'],
     });
     expect(offer.classList).toContain('next-success');
+    expect(events.slice(events.indexOf('upsell.accepted'))).toEqual(['upsell.accepted', 'order.updated']);
+    expect(dataOf('upsell.accepted')).toMatchObject([{ lines: [{ package_id: 3, quantity: 2 }], total: 40 }]);
+    expect(dataOf('upsell.viewed')).toHaveLength(1);
+  });
+
+  it('sends upsell.viewed with the offer’s price when the price arrives after the order', async () => {
+    const { calls, dataOf } = await mount('apollo/upsell-bundle-stepper.html', { delays: [50] });
+    expect(calls[0]!.url).toContain('/carts/calculate/');
+    expect(dataOf('upsell.viewed')).toEqual([]);
+    await vi.waitFor(() => expect(dataOf('upsell.viewed')).toHaveLength(1));
+    expect(dataOf('upsell.viewed')[0]).toMatchObject({ lines: [{ package_id: 3, total: 20 }], total: 20 });
   });
 
   it('does not charge again after Back, and moves on', async () => {
@@ -93,13 +126,10 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
   });
 
   it('skips straight to the next page', async () => {
-    const { engine, $, navigate, events, upsells } = await mount('apollo/upsell-bundle-stepper.html');
-    const skipped = vi.fn();
-    engine.on('upsell.skipped', (e) => skipped(e.data));
+    const { $, navigate, dataOf, upsells } = await mount('apollo/upsell-bundle-stepper.html');
     $('[data-next-upsell-action="skip"]').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
-    expect(events).toContain('upsell.skipped');
-    expect(skipped).toHaveBeenCalledWith({ ref_id: 'R1', package_id: 3 });
+    expect(dataOf('upsell.skipped')).toEqual([dataOf('upsell.viewed')[0]]);
     expect(upsells()).toHaveLength(0);
   });
 
@@ -115,6 +145,22 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     expect(navigate).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT), { timeout: 2000 });
     expect(upsells()).toHaveLength(0);
+  });
+});
+
+describe('upsell page with two offers', () => {
+  it('sends upsell.viewed once for each offer', async () => {
+    history.replaceState(null, '', '/up/?ref_id=R1');
+    const { engine, dataOf } = await mountHtml(`<body>
+      <div data-next-upsell="offer" data-next-package-id="2"><a data-next-upsell-action="add" href="#">Add</a></div>
+      <div data-next-upsell="offer" data-next-package-id="3" data-next-quantity="2"><a data-next-upsell-action="add" href="#">Add</a></div>
+    </body>`);
+    await engine.cart.addItem(1);
+    await flush();
+    expect(dataOf('upsell.viewed')).toEqual([
+      { ref_id: 'R1', page: '/up/', lines: [expect.objectContaining({ package_id: 2, quantity: 1 })], currency: 'USD' },
+      { ref_id: 'R1', page: '/up/', lines: [expect.objectContaining({ package_id: 3, quantity: 2 })], currency: 'USD' },
+    ]);
   });
 });
 

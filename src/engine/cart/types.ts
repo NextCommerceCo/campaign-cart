@@ -98,6 +98,8 @@ export interface CartGroup {
 export interface CartState {
   groups: Record<string, CartGroup>;
   coupons: string[];
+  /** Codes entered before the cart could be priced: not on the cart yet, checked at its next price. */
+  held: string[];
   dismissed: string[];
   shippingId?: number;
   summary?: CartSummary;

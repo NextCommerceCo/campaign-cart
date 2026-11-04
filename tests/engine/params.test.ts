@@ -11,6 +11,12 @@ describe('next page URL', () => {
     );
   });
 
+  it('leaves the gateway failure params on the page they came to', () => {
+    expect(nextUrl('/checkout', here, { utm_source: 'fb', payment_failed: 'true', payment_method: 'paypal' })).toBe(
+      'https://shop.test/checkout?utm_source=fb',
+    );
+  });
+
   it('carries only attribution params to another site', () => {
     expect(nextUrl('https://partner.test/checkout', here, params)).toBe(
       'https://partner.test/checkout?utm_source=fb&gclid=G1',

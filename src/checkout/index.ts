@@ -1,6 +1,5 @@
 import { RulesApi } from './state/rules';
 import { type CheckoutActions, createCheckout, type Lead, redirectFor } from './state/checkout';
-import { EXPRESS_METHODS } from './state/order-body';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import { bindAddress } from './address/country';
@@ -16,7 +15,11 @@ import {
   clearStepGuard,
   FAILURE_URL_META,
   legacyAutocomplete,
+  type LegacyCheckoutStarted,
   legacyCountries,
+  legacyCheckoutEvents,
+  legacyExpressChecks,
+  legacyStartedEachPage,
   stepUrlOf,
   SUBMIT_ATTRS,
   SUCCESS_URL_META,
@@ -86,15 +89,26 @@ function leadOf(engine: Engine, form: HTMLFormElement): Lead {
   return lead ?? 'email';
 }
 
+interface BindOptions {
+  navigate?: (url: string) => void;
+  legacyCheckoutStarted?: LegacyCheckoutStarted;
+}
+
 export function bindCheckout(
   engine: Engine,
   form: HTMLFormElement,
-  navigate: (url: string) => void = (url) => location.assign(url),
+  { navigate = (url) => location.assign(url), legacyCheckoutStarted }: BindOptions = {},
 ): CheckoutActions {
   const rules = new RulesApi(window.fetch.bind(window), RULES, engine.getState().campaign?.language || 'en');
   const lead = leadOf(engine, form);
-  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead }));
+  const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
+  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
   engine.checkout = checkout;
+  if (!meta(...SUCCESS_URL_META)) {
+    engine.log.error(
+      'the checkout page has no <meta name="next-success-url">: the purchase will not be tracked, and a payment gateway will send the shopper to /success',
+    );
+  }
   form.noValidate = true;
   cloneBillingRows(form);
   const fields = scanFields(form);
@@ -106,6 +120,7 @@ export function bindCheckout(
   const phones = bindPhones(engine, checkout, form, fields, RULES);
   const address = bindAddress(engine, form, fields);
   const stepUrl = stepUrlOf(form);
+  const step = Number(form.getAttribute('data-next-step-number')) || 1;
   const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
   const wasDisabled = !!submit?.disabled;
   const showOverlay = overlay();
@@ -123,11 +138,11 @@ export function bindCheckout(
 
   const pay = async (method?: string): Promise<void> => {
     syncFields(fields, checkout, engine.getState().checkout);
-    box =
-      method && EXPRESS_METHODS.includes(method) ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
+    box = method ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
     const successUrl = meta(...SUCCESS_URL_META);
     const order = await checkout.placeOrder({
       method,
+      expressChecks: legacyExpressChecks(),
       successUrl,
       failureUrl: failureUrl(),
       pageUrl: location.href,
@@ -145,9 +160,7 @@ export function bindCheckout(
 
   const advance = () => {
     syncFields(fields, checkout, engine.getState().checkout);
-    const step = Number(form.getAttribute('data-next-step-number')) || 1;
-    if (!checkout.validate('shipping', step === 1 && phoneRequired(fields))) return focusFirstError();
-    checkout.setStep(step + 1);
+    if (!checkout.nextStep(step === 1 && phoneRequired(fields))) return focusFirstError();
     writeStepGuard(engine);
     navigate(nextUrl(stepUrl!, current(), engine.getState().visit.params));
   };
@@ -205,11 +218,14 @@ export function bindCheckout(
     renderErrors,
     renderSubmit,
   ];
+  legacyCheckoutEvents(engine, form);
   const render = () => renders.forEach((r) => r());
   engine.subscribe(render);
   render();
 
   announceProspect(engine, form);
+  const advanced = engine.getState().checkout!.step;
+  checkout.setStep(stepUrl || form.hasAttribute('data-next-step-number') ? step : advanced > 1 ? advanced : 0);
   checkout.begin();
   void checkout.loadCountries(legacyCountries());
   return checkout;

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout, type Lead, redirectFor } from '../../../src/checkout/state/checkout';
 import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
+import type { Scope } from '../../../src/checkout/state/rules';
 import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
 import { campaign } from '../../fixtures/campaign';
@@ -68,13 +69,14 @@ describe('checkout', () => {
     expect(body.user).toMatchObject({ language: 'fr' });
   });
 
-  it('builds the 0.4.x order body, and a short one for express methods', async () => {
+  it('builds the 0.4.x order body for any method the form sends, and a short one for an express button', async () => {
     const { engine, checkout, fill } = await setup();
     await engine.cart.addItem(2);
     fill({ ...SHIPPING, line2: 'Apt 4', phone_number: '(415) 555-2671' });
-    const body = (method: string) =>
+    const body = (method: string, express = false) =>
       orderBody(engine.getState(), {
         method,
+        express,
         token: method === 'card_token' ? 'tok_1' : undefined,
         lines: engine.cart.lines(),
         vouchers: [],
@@ -104,7 +106,13 @@ describe('checkout', () => {
       line4: 'Reno',
       country: 'US',
     });
-    expect(Object.keys(body('paypal')).sort()).toEqual(
+    expect(body('paypal')).toMatchObject({
+      payment_detail: { payment_method: 'paypal' },
+      user: { email: 'jane@example.com' },
+      shipping_address: { line1: '1 Main St' },
+      billing_address: { first_name: 'Ann' },
+    });
+    expect(Object.keys(body('paypal', true)).sort()).toEqual(
       [
         'attribution',
         'currency',
@@ -395,23 +403,50 @@ describe('checkout', () => {
   });
 
   it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
-    const answers = [json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400)];
+    const answers = [
+      json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400),
+      json({ message: 'Card expired' }, 400),
+      json({}, 502),
+    ];
     const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });
     const submitted: unknown[] = [];
+    const seen: string[] = [];
     const failed: unknown[] = [];
     engine.on('checkout.submitted', (e) => submitted.push([e.data.valid, Object.keys(e.data.errors)]));
-    engine.on('order.failed', (e) => failed.push(e.data));
+    engine.on('*', (e) => /^(sdk\.error|checkout\.failed|order\.)/.test(e.name) && seen.push(e.name));
+    engine.on('checkout.failed', (e) => failed.push(e.data));
     await engine.cart.addItem(1);
+    checkout.begin();
     await checkout.loadCountries();
     checkout.setField('email', 'jane@');
     await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
     fill(SHIPPING);
-    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    for (let i = 0; i < 3; i++) await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
     expect(submitted).toEqual([
       [false, expect.arrayContaining(['email'])],
       [true, []],
+      [true, []],
+      [true, []],
     ]);
-    expect(failed).toEqual([{ stage: 'order', code: 'declined', decline: '51', message: 'Insufficient funds' }]);
+    expect(seen).toEqual([
+      'sdk.error',
+      'checkout.failed',
+      'sdk.error',
+      'checkout.failed',
+      'sdk.error',
+      'checkout.failed',
+    ]);
+    expect(failed[0]).toMatchObject({
+      id: engine.getState().checkout!.id,
+      cart: { lines: [{ package_id: 1, quantity: 1 }] },
+      payment_method: 'card_token',
+      error: { code: 'declined', status: 400, message: 'Insufficient funds', decline_code: '51' },
+    });
+    expect(failed.map((f) => (f as { error: unknown }).error)).toEqual([
+      expect.anything(),
+      { code: 'rejected', status: 400, message: 'Card expired' },
+      { code: 'server', status: 502, message: expect.stringContaining('502') },
+    ]);
   });
 
   it('reports shipping once the fields the country requires are valid, for a country with no city', async () => {
@@ -501,34 +536,46 @@ describe('checkout', () => {
     expect(next.getState().cart.groups).toEqual({});
     const reloaded = await setup({ session });
     expect(reloaded.engine.getState().checkout!.fields).toEqual({});
+    expect(reloaded.engine.cart.currentCheckout()).not.toHaveProperty('user');
+    expect(reloaded.engine.getState().checkout).toMatchObject({ openCart: undefined, pendingRef: undefined });
   });
 
-  it('remembers the coupon of a placed order for its purchase report on the next page, like 0.4.x', async () => {
+  it('sends the order it created with its coupons, and remembers them for the purchase on the next page', async () => {
     const session = new MemoryStorage();
     const { engine, checkout, fill } = await setup({ session });
+    const created = vi.fn();
+    engine.on('order.created', (e) => created(e.data));
     await engine.cart.addItem(1);
     await engine.cart.applyCoupon('SAVE10');
     await checkout.loadCountries();
     fill(SHIPPING);
     await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect(created).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ ref_id: 'R1', coupons: ['SAVE10'], status_url: 'https://shop.test/status/R1' }),
+    );
     const next = makeEngine({ session, fetch: fakeApi().fetch }).engine;
     await next.start();
     next.order = next.attach((ctx) => createOrder(ctx, next.cart));
     const paid = vi.fn();
     next.on('order.paid', (e) => paid(e.data));
     await next.order.load('R1');
-    expect(paid).toHaveBeenCalledWith(expect.objectContaining({ coupon: 'SAVE10' }));
+    expect(paid).toHaveBeenCalledWith(expect.objectContaining({ coupons: ['SAVE10'] }));
   });
 
   it('keeps the cart when the gateway takes over, so a failed payment can retry', async () => {
     const session = new MemoryStorage();
     const gateway = () => json({ ref_id: 'R2', payment_complete_url: 'https://pay.test/R2' });
     const { engine, checkout } = await setup({ session, api: { order: gateway } });
+    const seen: unknown[] = [];
+    engine.on('*', (e) => /^(order|payment)\./.test(e.name) && seen.push([e.name, e.data]));
     await engine.cart.addItem(1);
     checkout.setField('email', 'jane@example.com');
     checkout.setField('first_name', 'Jane');
     checkout.setField('last_name', 'Doe');
     expect(await checkout.placeOrder({ ...URLS, method: 'paypal' })).toMatchObject({ ref_id: 'R2' });
+    expect(seen).toEqual([['payment.redirected', { method: 'paypal', ref_id: 'R2', url: 'https://pay.test/R2' }]]);
+    expect(engine.getState().checkout).toMatchObject({ status: 'placed', pendingRef: 'R2' });
+    expect(engine.getState().checkout).not.toHaveProperty('failurePath');
     expect(makeEngine({ session }).engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
   });
 
@@ -607,6 +654,164 @@ describe('checkout', () => {
       code: 'rejected',
       message: 'Address is incomplete. Try again',
     });
+  });
+});
+
+describe('one checkout per tab', () => {
+  const page = async (session: MemoryStorage, opts: { api?: FakeApiOptions; lines?: boolean } = {}) => {
+    const api = fakeApi(opts.api);
+    const made = makeEngine({ session, fetch: api.fetch });
+    await made.engine.start();
+    const pages: unknown[] = [];
+    const checkout = made.engine.attach((ctx) =>
+      createCheckout(ctx, made.engine.cart, fakeRules().api, { opened: (c) => pages.push(c) }),
+    );
+    const started: string[] = [];
+    made.engine.on('checkout.started', (e) => started.push(e.data.id));
+    if (opts.lines !== false && !made.engine.cart.lines().length) await made.engine.cart.addItem(1);
+    checkout.begin();
+    const fill = (fields: Record<string, string>) =>
+      Object.entries(fields).forEach(([k, v]) => checkout.setField(k, v));
+    return { ...made, checkout, started, pages, fill, id: () => made.engine.getState().checkout!.id };
+  };
+
+  it('starts once across pages, steps and a return from the gateway, and anew after a paid order', async () => {
+    const session = new MemoryStorage();
+    const gateway = { order: () => json({ ref_id: 'R2', payment_complete_url: 'https://pay.test/R2' }) };
+    const first = await page(session);
+    expect(first.started).toEqual([first.id()]);
+    expect(first.id()).toMatch(/^[0-9a-f]{32}$/);
+    first.checkout.setStep(1);
+    expect(first.checkout.nextStep()).toBe(false);
+    first.fill(SHIPPING);
+    await flush();
+    expect(first.checkout.nextStep()).toBe(true);
+
+    const step = await page(session, { api: gateway });
+    expect(step.started).toEqual([]);
+    expect(step.id()).toBe(first.id());
+    await step.checkout.placeOrder({ ...URLS, method: 'paypal' });
+
+    const back = await page(session);
+    expect(back.started).toEqual([]);
+    expect(back.id()).toBe(first.id());
+    await back.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect(back.engine.getState().checkout).toMatchObject({ id: undefined, reported: undefined });
+
+    const after = await page(session);
+    expect(after.started).toEqual([after.id()]);
+    expect(after.id()).not.toBe(first.id());
+    expect([first, step, back, after].map((p) => p.pages.length)).toEqual([1, 1, 1, 1]);
+    expect(after.pages[0]).toMatchObject({ cart: { lines: [{ package_id: 1 }] } });
+  });
+
+  it('starts when the cart first has lines on a bound form, then reports the address already entered', async () => {
+    const { engine, checkout, fill, started, pages } = await page(new MemoryStorage(), { lines: false });
+    const seen: string[] = [];
+    engine.on('*', (e) => /^(checkout|address)\./.test(e.name) && seen.push(e.name));
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    await checkout.leave('city');
+    expect(seen).toEqual([]);
+    await engine.cart.addItem(1);
+    await engine.cart.addItem(2);
+    expect(seen).toEqual(['checkout.started', 'address.entered']);
+    expect(started).toHaveLength(1);
+    expect(pages).toHaveLength(1);
+  });
+
+  it('sends checkout.continued with the step that passed, then moves to the next step', async () => {
+    const { engine, checkout, fill } = await page(new MemoryStorage());
+    const continued: unknown[] = [];
+    engine.on('checkout.continued', (e) => continued.push(e.data));
+    checkout.setStep(1);
+    expect(checkout.nextStep()).toBe(false);
+    expect(continued).toEqual([]);
+    expect(engine.getState().checkout!.errors).toHaveProperty('email');
+    fill(SHIPPING);
+    await flush();
+    expect(checkout.nextStep(true)).toBe(false);
+    expect(engine.getState().checkout!.errors).toEqual({ phone_number: { code: 'blank' } });
+    expect(checkout.nextStep()).toBe(true);
+    expect(continued).toHaveLength(1);
+    expect(continued[0]).toMatchObject({ id: engine.getState().checkout!.id, cart: { lines: [{ package_id: 1 }] } });
+    expect(engine.getState().checkout!.step).toBe(2);
+  });
+
+  it('remembers what analytics reported for the checkout until an order is paid', async () => {
+    const session = new MemoryStorage();
+    const first = await page(session);
+    expect(first.checkout.reported('add_shipping_info')).toBe(false);
+    first.checkout.markReported('add_shipping_info');
+    first.checkout.markReported('add_shipping_info');
+    expect(first.engine.getState().checkout!.reported).toEqual(['add_shipping_info']);
+    const next = await page(session);
+    expect(next.checkout.reported('add_shipping_info')).toBe(true);
+    expect(next.checkout.reported('add_payment_info')).toBe(false);
+    await next.checkout.loadCountries();
+    next.fill(SHIPPING);
+    await next.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect((await page(session)).checkout.reported('add_shipping_info')).toBe(false);
+  });
+});
+
+describe('checkout payment', () => {
+  const contact = { email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' };
+
+  it('checks the whole form for a method chosen in the form and sends the shopper and addresses', async () => {
+    const gateway = () => json({ ref_id: 'R2', payment_complete_url: 'https://pay.test/R2' });
+    const { engine, checkout, fill, posts } = await setup({ api: { order: gateway } });
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    checkout.setPaymentMethod('paypal');
+    fill(contact);
+    expect(await checkout.placeOrder({ ...URLS })).toBeUndefined();
+    expect(Object.keys(engine.getState().checkout!.errors)).toEqual(expect.arrayContaining(['line1', 'city']));
+    expect(posts('/orders/')).toHaveLength(0);
+    fill(SHIPPING);
+    expect(await checkout.placeOrder({ ...URLS })).toMatchObject({ ref_id: 'R2' });
+    expect(posts('/orders/')[0]!.body).toMatchObject({
+      payment_detail: { payment_method: 'paypal' },
+      user: { email: 'jane@example.com', first_name: 'Jane' },
+      shipping_address: { line1: '1 Main St', line4: 'Austin', postcode: '90210' },
+      billing_same_as_shipping_address: true,
+    });
+  });
+
+  it('lets an express button pay without the form, or after the checks nextConfig asks for', async () => {
+    const pay = async (expressChecks?: Scope, fields: Record<string, string> = {}) => {
+      const { engine, checkout, fill, posts } = await setup();
+      await engine.cart.addItem(1);
+      await checkout.loadCountries();
+      fill(fields);
+      const placed = await checkout.placeOrder({ ...URLS, method: 'apple-pay', expressChecks });
+      return { placed, body: posts('/orders/')[0]?.body, errors: engine.getState().checkout!.errors };
+    };
+    const free = await pay();
+    expect(free.placed).toMatchObject({ ref_id: 'R1' });
+    expect(free.body.payment_detail).toEqual({ payment_method: 'apple_pay' });
+    expect(free.body).not.toHaveProperty('user');
+    expect(Object.keys((await pay(['email', 'first_name'], { first_name: 'Jane' })).errors)).toEqual(['email']);
+    const listed = await pay(['email', 'first_name'], contact);
+    expect(listed.placed).toMatchObject({ ref_id: 'R1' });
+    expect(listed.body).not.toHaveProperty('shipping_address');
+    expect(Object.keys((await pay('all', contact)).errors)).toEqual(expect.arrayContaining(['line1']));
+  });
+});
+
+describe('checkout errors', () => {
+  it('names the address rules and suggestions that could not load', async () => {
+    const api = fakeApi();
+    const send = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('/addresses/autocomplete/') ? json({}, 503) : api.fetch(input, init)) as typeof fetch;
+    const { engine } = makeEngine({ fetch: send });
+    await engine.start();
+    const failed: string[] = [];
+    engine.on('sdk.error', (e) => failed.push(e.data.action));
+    const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules({ down: true }).api));
+    await checkout.loadCountries();
+    await checkout.suggestAddresses('1 Main', 'US');
+    expect(failed).toEqual(['address.load_rules', 'address.suggest']);
   });
 });
 

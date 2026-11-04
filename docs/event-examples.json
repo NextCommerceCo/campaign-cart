@@ -1,18 +1,34 @@
 {
   "sdk.ready": {
-    "lines": [
-      {
-        "package_id": 1,
-        "quantity": 1
-      }
-    ]
+    "campaign": {
+      "id": 1310,
+      "name": "Olympus",
+      "currency": "USD",
+      "language": "en"
+    },
+    "cart": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "product_id": 400,
+          "product_title": "Olympus Earbuds",
+          "variant_id": 4001,
+          "variant_title": "Black",
+          "image": "https://cdn.test/1.png"
+        }
+      ],
+      "coupons": [],
+      "currency": "USD"
+    },
+    "selectors": []
   },
   "sdk.error": {
     "action": "campaign.load",
     "code": "network",
     "message": "Failed to fetch"
   },
-  "selector.selected": {
+  "selector.viewed": {
     "selector_id": "main",
     "type": "bundle",
     "option_id": "one",
@@ -26,12 +42,148 @@
         "variant_title": "Black",
         "image": "https://cdn.test/1.png"
       }
+    ],
+    "currency": "USD",
+    "options": [
+      {
+        "option_id": "one",
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4001,
+            "variant_title": "Black",
+            "image": "https://cdn.test/1.png"
+          }
+        ]
+      },
+      {
+        "option_id": "two",
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4002,
+            "variant_title": "Black",
+            "image": "https://cdn.test/2.png"
+          }
+        ]
+      }
+    ]
+  },
+  "selector.selected": {
+    "selector_id": "main",
+    "type": "bundle",
+    "option_id": "two",
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4002,
+        "variant_title": "Black",
+        "image": "https://cdn.test/2.png"
+      }
+    ],
+    "currency": "USD",
+    "options": [
+      {
+        "option_id": "one",
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4001,
+            "variant_title": "Black",
+            "image": "https://cdn.test/1.png"
+          }
+        ]
+      },
+      {
+        "option_id": "two",
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4002,
+            "variant_title": "Black",
+            "image": "https://cdn.test/2.png"
+          }
+        ]
+      }
+    ]
+  },
+  "selector.updated": {
+    "selector_id": "main",
+    "type": "bundle",
+    "option_id": "two",
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 2,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4002,
+        "variant_title": "Black",
+        "image": "https://cdn.test/2.png"
+      }
+    ],
+    "currency": "USD",
+    "options": [
+      {
+        "option_id": "one",
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4001,
+            "variant_title": "Black",
+            "image": "https://cdn.test/1.png"
+          }
+        ]
+      },
+      {
+        "option_id": "two",
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 2,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4002,
+            "variant_title": "Black",
+            "image": "https://cdn.test/2.png"
+          }
+        ]
+      }
     ]
   },
   "selector.deselected": {
     "selector_id": "toggle:9",
     "type": "toggle",
-    "lines": []
+    "lines": [
+      {
+        "package_id": 9,
+        "quantity": 1,
+        "product_id": 900,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4009,
+        "variant_title": "Black",
+        "image": "https://cdn.test/9.png"
+      }
+    ],
+    "currency": "USD"
   },
   "selector.calculating": {
     "selector_id": "main",
@@ -47,26 +199,103 @@
         "variant_title": "Black",
         "image": "https://cdn.test/1.png"
       }
+    ],
+    "currency": "USD",
+    "options": [
+      {
+        "option_id": "one",
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4001,
+            "variant_title": "Black",
+            "image": "https://cdn.test/1.png"
+          }
+        ]
+      },
+      {
+        "option_id": "two",
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4002,
+            "variant_title": "Black",
+            "image": "https://cdn.test/2.png"
+          }
+        ]
+      }
     ]
   },
   "selector.calculated": {
     "selector_id": "main",
     "type": "bundle",
-    "option_id": "one",
+    "option_id": "two",
     "lines": [
       {
-        "package_id": 1,
-        "quantity": 1,
+        "package_id": 2,
+        "quantity": 2,
         "product_id": 400,
         "product_title": "Olympus Earbuds",
-        "variant_id": 4001,
+        "variant_id": 4002,
         "variant_title": "Black",
-        "image": "https://cdn.test/1.png",
-        "price": 49,
-        "original_price": 99,
+        "image": "https://cdn.test/2.png",
+        "price": 89,
+        "original_price": 198,
         "total_discount": 0,
-        "total": 49,
+        "total": 178,
         "discounts": []
+      }
+    ],
+    "currency": "USD",
+    "total": 178,
+    "options": [
+      {
+        "option_id": "one",
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4001,
+            "variant_title": "Black",
+            "image": "https://cdn.test/1.png",
+            "price": 49,
+            "original_price": 99,
+            "total_discount": 0,
+            "total": 49,
+            "discounts": []
+          }
+        ],
+        "total": 49,
+        "original_total": 49
+      },
+      {
+        "option_id": "two",
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 2,
+            "product_id": 400,
+            "product_title": "Olympus Earbuds",
+            "variant_id": 4002,
+            "variant_title": "Black",
+            "image": "https://cdn.test/2.png",
+            "price": 89,
+            "original_price": 198,
+            "total_discount": 0,
+            "total": 178,
+            "discounts": []
+          }
+        ],
+        "total": 178,
+        "original_total": 178
       }
     ]
   },
@@ -164,12 +393,7 @@
         "product_title": "Olympus Earbuds",
         "variant_id": 4001,
         "variant_title": "Black",
-        "image": "https://cdn.test/1.png",
-        "price": 49,
-        "original_price": 99,
-        "total_discount": 0,
-        "total": 49,
-        "discounts": []
+        "image": "https://cdn.test/1.png"
       },
       {
         "package_id": 2,
@@ -178,42 +402,19 @@
         "product_title": "Olympus Earbuds",
         "variant_id": 4002,
         "variant_title": "Black",
-        "image": "https://cdn.test/2.png",
-        "price": 89,
-        "original_price": 198,
-        "total_discount": 0,
-        "total": 89,
-        "discounts": []
+        "image": "https://cdn.test/2.png"
       }
     ],
     "coupons": [],
     "currency": "USD",
-    "shipping_method": {
-      "id": 1,
-      "code": "standard",
-      "name": "Standard",
-      "price": 0,
-      "original_price": 0,
-      "discounts": []
-    },
-    "subtotal": 138,
-    "total_discount": 0,
-    "total": 138,
-    "discounts": [],
     "changes": [
-      {
-        "package_id": 1,
-        "product_id": 400,
-        "variant_id": 4001,
-        "quantity": 1,
-        "price": 49
-      },
       {
         "package_id": 2,
         "product_id": 400,
         "variant_id": 4002,
         "quantity": 1,
-        "price": 89
+        "from": 0,
+        "to": 1
       }
     ]
   },
@@ -226,48 +427,54 @@
         "product_title": "Olympus Earbuds",
         "variant_id": 4001,
         "variant_title": "Black",
-        "image": "https://cdn.test/1.png",
-        "price": 49,
-        "original_price": 99,
-        "total_discount": 0,
-        "total": 49,
-        "discounts": []
+        "image": "https://cdn.test/1.png"
       }
     ],
     "coupons": [],
     "currency": "USD",
-    "shipping_method": {
-      "id": 1,
-      "code": "standard",
-      "name": "Standard",
-      "price": 0,
-      "original_price": 0,
-      "discounts": []
-    },
-    "subtotal": 49,
-    "total_discount": 0,
-    "total": 49,
-    "discounts": [],
     "changes": [
       {
         "package_id": 2,
         "product_id": 400,
         "variant_id": 4002,
         "quantity": 1,
+        "from": 1,
+        "to": 0,
         "price": 89
       }
     ]
   },
+  "shipping.selected": {
+    "id": 1,
+    "code": "standard",
+    "name": "Standard",
+    "price": 0,
+    "original_price": 0,
+    "discounts": []
+  },
   "coupon.applied": {
-    "code": "SAVE10"
+    "code": "SAVE10",
+    "amount": 1,
+    "discounts": [
+      {
+        "name": "SAVE10",
+        "amount": 1,
+        "source": "coupon",
+        "code": "SAVE10",
+        "offer_id": 10
+      }
+    ]
   },
   "coupon.removed": {
-    "code": "SAVE10"
+    "code": "SAVE10",
+    "reason": "shopper"
   },
   "coupon.denied": {
-    "code": "NOPE"
+    "code": "NOPE",
+    "reason": "no_discount"
   },
   "checkout.started": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
     "cart": {
       "lines": [
         {
@@ -324,14 +531,67 @@
     "country": "US",
     "type": "shipping"
   },
-  "shipping.selected": {
-    "id": 1,
-    "code": "standard"
-  },
   "payment.selected": {
     "method": "paypal"
   },
+  "checkout.continued": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
+    "cart": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "product_id": 400,
+          "product_title": "Olympus Earbuds",
+          "variant_id": 4001,
+          "variant_title": "Black",
+          "image": "https://cdn.test/1.png",
+          "price": 49,
+          "original_price": 99,
+          "total_discount": 0,
+          "total": 49,
+          "discounts": []
+        }
+      ],
+      "coupons": [],
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "code": "standard",
+        "name": "Standard",
+        "price": 0,
+        "original_price": 0,
+        "discounts": []
+      },
+      "subtotal": 49,
+      "total_discount": 0,
+      "total": 49,
+      "discounts": []
+    },
+    "user": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "billing_same_as_shipping": true,
+    "payment_method": "card_token"
+  },
   "checkout.submitted": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
+    "step": 2,
     "cart": {
       "lines": [
         {
@@ -387,257 +647,380 @@
     "valid": true,
     "errors": {}
   },
-  "order.created": {
-    "order": {
-      "ref_id": "R1",
-      "number": 1001,
-      "currency": "USD",
+  "checkout.failed": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
+    "step": 2,
+    "cart": {
       "lines": [
         {
-          "id": 11,
-          "product_title": "Earbuds",
-          "product_sku": "EB-2",
-          "image": "https://img.test/eb.png",
-          "quantity": 2,
-          "price_excl_tax": "89.00",
-          "price_incl_tax": "96.12",
-          "price_incl_tax_excl_discounts": "198.00",
-          "is_upsell": false
+          "package_id": 1,
+          "quantity": 1,
+          "product_id": 400,
+          "product_title": "Olympus Earbuds",
+          "variant_id": 4001,
+          "variant_title": "Black",
+          "image": "https://cdn.test/1.png",
+          "price": 49,
+          "original_price": 99,
+          "total_discount": 0,
+          "total": 49,
+          "discounts": []
         }
       ],
-      "total_excl_tax": "89.00",
-      "total_incl_tax": "106.11",
-      "total_tax": "7.12",
-      "total_discounts": "0.00",
-      "shipping_excl_tax": "9.99",
-      "shipping_incl_tax": "9.99",
-      "shipping_method": "Express",
-      "user": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "email": "jane@example.com"
+      "coupons": [],
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "code": "standard",
+        "name": "Standard",
+        "price": 0,
+        "original_price": 0,
+        "discounts": []
       },
-      "shipping_address": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "line1": "1 Main St",
-        "line4": "Austin",
-        "state": "TX",
-        "postcode": "73301",
-        "country": "US"
-      },
-      "billing_address": {
-        "first_name": "Ann",
-        "last_name": "Lee",
-        "line1": "2 Side St",
-        "line4": "Reno",
-        "state": "NV",
-        "country": "US"
-      },
-      "payment_method": "card_token",
-      "supports_post_purchase_upsells": true
+      "subtotal": 49,
+      "total_discount": 0,
+      "total": 49,
+      "discounts": []
+    },
+    "user": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "billing_same_as_shipping": true,
+    "payment_method": "card_token",
+    "error": {
+      "code": "declined",
+      "status": 400,
+      "message": "Insufficient funds",
+      "decline_code": "51"
     }
   },
-  "order.failed": {
-    "stage": "order",
-    "code": "declined",
-    "message": "Insufficient funds",
-    "decline": "51"
+  "payment.redirected": {
+    "method": "paypal",
+    "ref_id": "R2",
+    "url": "https://pay.test/R2"
+  },
+  "payment.failed": {
+    "method": "paypal",
+    "ref_id": "R2",
+    "error": {
+      "code": "payment_failed"
+    }
+  },
+  "order.created": {
+    "ref_id": "R1",
+    "number": "1001",
+    "currency": "USD",
+    "test": false,
+    "lines": [
+      {
+        "id": "11",
+        "product_title": "Earbuds",
+        "sku": "EB-2",
+        "image": "https://img.test/eb.png",
+        "quantity": 2,
+        "price": 48.06,
+        "original_price": 99,
+        "total": 96.12,
+        "upsell": false
+      }
+    ],
+    "coupons": [],
+    "total_discount": 0,
+    "shipping_method": {
+      "name": "Express",
+      "price": 9.99
+    },
+    "tax": 7.12,
+    "total": 106.11,
+    "user": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "postcode": "73301",
+      "country": "US"
+    },
+    "billing_address": {
+      "first_name": "Ann",
+      "last_name": "Lee",
+      "line1": "2 Side St",
+      "city": "Reno",
+      "state": "NV",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "supports_upsells": true
   },
   "order.loaded": {
-    "order": {
-      "ref_id": "R1",
-      "number": 1001,
-      "currency": "USD",
-      "lines": [
-        {
-          "id": 11,
-          "product_title": "Earbuds",
-          "product_sku": "EB-2",
-          "image": "https://img.test/eb.png",
-          "quantity": 2,
-          "price_excl_tax": "89.00",
-          "price_incl_tax": "96.12",
-          "price_incl_tax_excl_discounts": "198.00",
-          "is_upsell": false
-        }
-      ],
-      "total_excl_tax": "89.00",
-      "total_incl_tax": "106.11",
-      "total_tax": "7.12",
-      "total_discounts": "0.00",
-      "shipping_excl_tax": "9.99",
-      "shipping_incl_tax": "9.99",
-      "shipping_method": "Express",
-      "user": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "email": "jane@example.com"
-      },
-      "shipping_address": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "line1": "1 Main St",
-        "line4": "Austin",
-        "state": "TX",
-        "postcode": "73301",
-        "country": "US"
-      },
-      "billing_address": {
-        "first_name": "Ann",
-        "last_name": "Lee",
-        "line1": "2 Side St",
-        "line4": "Reno",
-        "state": "NV",
-        "country": "US"
-      },
-      "payment_method": "card_token",
-      "supports_post_purchase_upsells": true
-    }
+    "ref_id": "R1",
+    "number": "1001",
+    "currency": "USD",
+    "test": false,
+    "lines": [
+      {
+        "id": "11",
+        "product_title": "Earbuds",
+        "sku": "EB-2",
+        "image": "https://img.test/eb.png",
+        "quantity": 2,
+        "price": 48.06,
+        "original_price": 99,
+        "total": 96.12,
+        "upsell": false
+      }
+    ],
+    "coupons": [],
+    "total_discount": 0,
+    "shipping_method": {
+      "name": "Express",
+      "price": 9.99
+    },
+    "tax": 7.12,
+    "total": 106.11,
+    "user": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "postcode": "73301",
+      "country": "US"
+    },
+    "billing_address": {
+      "first_name": "Ann",
+      "last_name": "Lee",
+      "line1": "2 Side St",
+      "city": "Reno",
+      "state": "NV",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "supports_upsells": true
   },
   "order.paid": {
-    "order": {
-      "ref_id": "R1",
-      "number": 1001,
-      "currency": "USD",
-      "lines": [
-        {
-          "id": 11,
-          "product_title": "Earbuds",
-          "product_sku": "EB-2",
-          "image": "https://img.test/eb.png",
-          "quantity": 2,
-          "price_excl_tax": "89.00",
-          "price_incl_tax": "96.12",
-          "price_incl_tax_excl_discounts": "198.00",
-          "is_upsell": false
-        }
-      ],
-      "total_excl_tax": "89.00",
-      "total_incl_tax": "106.11",
-      "total_tax": "7.12",
-      "total_discounts": "0.00",
-      "shipping_excl_tax": "9.99",
-      "shipping_incl_tax": "9.99",
-      "shipping_method": "Express",
-      "user": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "email": "jane@example.com"
+    "ref_id": "R1",
+    "number": "1001",
+    "currency": "USD",
+    "test": false,
+    "lines": [
+      {
+        "id": "11",
+        "product_title": "Earbuds",
+        "sku": "EB-2",
+        "image": "https://img.test/eb.png",
+        "quantity": 2,
+        "price": 48.06,
+        "original_price": 99,
+        "total": 96.12,
+        "upsell": false
+      }
+    ],
+    "coupons": [],
+    "total_discount": 0,
+    "shipping_method": {
+      "name": "Express",
+      "price": 9.99
+    },
+    "tax": 7.12,
+    "total": 106.11,
+    "user": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "postcode": "73301",
+      "country": "US"
+    },
+    "billing_address": {
+      "first_name": "Ann",
+      "last_name": "Lee",
+      "line1": "2 Side St",
+      "city": "Reno",
+      "state": "NV",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "supports_upsells": true
+  },
+  "order.updated": {
+    "ref_id": "R1",
+    "number": "1001",
+    "currency": "USD",
+    "test": false,
+    "lines": [
+      {
+        "id": "11",
+        "product_title": "Earbuds",
+        "sku": "EB-2",
+        "image": "https://img.test/eb.png",
+        "quantity": 2,
+        "price": 48.06,
+        "original_price": 99,
+        "total": 96.12,
+        "upsell": false
       },
-      "shipping_address": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "line1": "1 Main St",
-        "line4": "Austin",
-        "state": "TX",
-        "postcode": "73301",
-        "country": "US"
-      },
-      "billing_address": {
-        "first_name": "Ann",
-        "last_name": "Lee",
-        "line1": "2 Side St",
-        "line4": "Reno",
-        "state": "NV",
-        "country": "US"
-      },
-      "payment_method": "card_token",
-      "supports_post_purchase_upsells": true
-    }
+      {
+        "id": "99",
+        "product_title": "Bump",
+        "quantity": 1,
+        "price": 20,
+        "original_price": 20,
+        "total": 20,
+        "upsell": true
+      }
+    ],
+    "coupons": [],
+    "total_discount": 0,
+    "shipping_method": {
+      "name": "Express",
+      "price": 9.99
+    },
+    "tax": 7.12,
+    "total": 106.11,
+    "user": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "TX",
+      "postcode": "73301",
+      "country": "US"
+    },
+    "billing_address": {
+      "first_name": "Ann",
+      "last_name": "Lee",
+      "line1": "2 Side St",
+      "city": "Reno",
+      "state": "NV",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "supports_upsells": true
   },
   "upsell.viewed": {
     "ref_id": "R1",
-    "page": "/upsell/"
-  },
-  "upsell.accepted": {
-    "ref_id": "R1",
+    "page": "/upsell/",
     "lines": [
       {
         "package_id": 2,
-        "quantity": 1
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4002,
+        "variant_title": "Black",
+        "image": "https://cdn.test/2.png"
       }
     ],
-    "order": {
-      "ref_id": "R1",
-      "number": 1001,
-      "currency": "USD",
-      "lines": [
-        {
-          "id": 11,
-          "product_title": "Earbuds",
-          "product_sku": "EB-2",
-          "image": "https://img.test/eb.png",
-          "quantity": 2,
-          "price_excl_tax": "89.00",
-          "price_incl_tax": "96.12",
-          "price_incl_tax_excl_discounts": "198.00",
-          "is_upsell": false
-        },
-        {
-          "id": 99,
-          "product_title": "Bump",
-          "quantity": 1,
-          "price_excl_tax": "20.00",
-          "price_incl_tax": "20.00",
-          "is_upsell": true
-        }
-      ],
-      "total_excl_tax": "89.00",
-      "total_incl_tax": "106.11",
-      "total_tax": "7.12",
-      "total_discounts": "0.00",
-      "shipping_excl_tax": "9.99",
-      "shipping_incl_tax": "9.99",
-      "shipping_method": "Express",
-      "user": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "email": "jane@example.com"
-      },
-      "shipping_address": {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "line1": "1 Main St",
-        "line4": "Austin",
-        "state": "TX",
-        "postcode": "73301",
-        "country": "US"
-      },
-      "billing_address": {
-        "first_name": "Ann",
-        "last_name": "Lee",
-        "line1": "2 Side St",
-        "line4": "Reno",
-        "state": "NV",
-        "country": "US"
-      },
-      "payment_method": "card_token",
-      "supports_post_purchase_upsells": true
-    }
+    "currency": "USD"
+  },
+  "upsell.accepted": {
+    "ref_id": "R1",
+    "page": "/upsell/",
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4002,
+        "variant_title": "Black",
+        "image": "https://cdn.test/2.png"
+      }
+    ],
+    "currency": "USD"
   },
   "upsell.skipped": {
     "ref_id": "R1",
-    "package_id": 3
+    "page": "/upsell-2/",
+    "lines": [
+      {
+        "package_id": 3,
+        "quantity": 1,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4003,
+        "variant_title": "Black",
+        "image": "https://cdn.test/3.png"
+      }
+    ],
+    "currency": "USD"
   },
   "upsell.failed": {
     "ref_id": "R1",
-    "code": "rejected",
-    "message": "Card declined"
+    "page": "/upsell-2/",
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4002,
+        "variant_title": "Black",
+        "image": "https://cdn.test/2.png"
+      }
+    ],
+    "currency": "USD",
+    "error": {
+      "code": "rejected",
+      "status": 400,
+      "message": "Card declined"
+    }
   },
   "promotion.viewed": {
-    "source": "exit_intent",
-    "template": "exit-offer"
+    "id": "exit-offer",
+    "type": "exit_intent",
+    "name": "Exit offer",
+    "creative": "exit-offer"
   },
   "promotion.clicked": {
-    "source": "exit_intent",
-    "template": "exit-offer",
+    "id": "exit-offer",
+    "type": "exit_intent",
+    "name": "Exit offer",
+    "creative": "exit-offer",
     "action": "apply-coupon",
     "coupon_code": "SAVE10"
   },
   "promotion.closed": {
-    "source": "exit_intent",
-    "template": "exit-offer",
-    "reason": "dismissed"
+    "id": "exit-offer",
+    "type": "exit_intent",
+    "name": "Exit offer",
+    "creative": "exit-offer",
+    "reason": "clicked"
   }
 }

@@ -1,6 +1,7 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { AddressSuggestion } from '../state/types';
 import type { Fields } from '../form/fields';
+import { legacyAddressFilled } from '../../compat/checkout';
 
 const DEBOUNCE = 300;
 const searchable = (text: string) => /\S\s+\S/.test(text);
@@ -203,6 +204,9 @@ export function bindAutocomplete(fields: Fields, checkout: CheckoutActions): voi
     if (!(input instanceof HTMLInputElement) || attached.has(input)) continue;
     attached.add(input);
     const country = () => fields.get(`${prefix}country`)?.value || 'US';
-    attach(input, country, checkout.suggestAddresses, (s) => fill(fields, prefix, s));
+    attach(input, country, checkout.suggestAddresses, (s) => {
+      fill(fields, prefix, s);
+      legacyAddressFilled(input, prefix ? 'billing' : 'shipping', s);
+    });
   }
 }

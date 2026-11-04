@@ -1,4 +1,4 @@
-import { Api, errorCode } from './api';
+import { Api, failureOf } from './api';
 import { type Attribution, buildAttribution, eventAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import type { CheckoutActions } from '../checkout/state/checkout';
@@ -10,8 +10,10 @@ import {
   type EventCampaign,
   type EventContext,
   Events,
+  type Snapshot,
 } from './events';
 import { type LogLevel, Logger } from './log';
+import { appliedCodes, publicOrder } from './order';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
 import { campaignSession, type Cookies } from './session';
@@ -179,6 +181,19 @@ export class Engine {
     return c && { id: c.id, name: c.name, currency: c.currency, language: c.language };
   }
 
+  snapshot(): Snapshot {
+    const { checkout, order } = this.state;
+    const campaign = this.eventCampaign();
+    const placed = order?.order;
+    return {
+      ...(campaign && { campaign }),
+      cart: this.cart.current(),
+      ...(checkout && { checkout: this.cart.currentCheckout() }),
+      ...(placed && { order: publicOrder(placed, appliedCodes(placed, order.coupon)) }),
+      selectors: this.selectors.list(),
+    };
+  }
+
   eventContext(): EventContext {
     const { browser, ...page } = this.options.environment();
     const campaign = this.eventCampaign();
@@ -249,7 +264,7 @@ export class Engine {
   private markReady(): void {
     if (this.ready || !this.state.campaign) return;
     this.ready = true;
-    this.events.emit('sdk.ready', { lines: this.cart.lines() });
+    this.events.emit('sdk.ready', this.snapshot());
   }
 
   private update<K extends keyof State>(
@@ -270,8 +285,8 @@ export class Engine {
   private save(slice: keyof State): void {
     const { cart, visit, campaign, checkout, order, debug } = this.state;
     if (slice === 'cart') {
-      const { groups, coupons, dismissed, shippingId, reported, added } = cart;
-      this.session.set('cart', { groups, coupons, dismissed, shippingId, reported, added });
+      const { groups, coupons, held, dismissed, shippingId, reported, added } = cart;
+      this.session.set('cart', { groups, coupons, held, dismissed, shippingId, reported, added });
     }
     if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
     if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
@@ -281,7 +296,18 @@ export class Engine {
       this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
     }
     if (slice === 'checkout' && checkout) {
-      const { fields, phones, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } = checkout;
+      const {
+        fields,
+        phones,
+        sameAsShipping,
+        paymentMethod,
+        step,
+        prospectSaved,
+        pendingRef,
+        pendingMethod,
+        id,
+        reported,
+      } = checkout;
       const { user, shippingAddress, billingAddress } = checkout;
       this.session.set('checkout', {
         fields,
@@ -294,7 +320,9 @@ export class Engine {
         shippingAddress,
         billingAddress,
         pendingRef,
-        failurePath,
+        pendingMethod,
+        id,
+        reported,
       });
     }
   }
@@ -304,9 +332,8 @@ export class Engine {
   }
 
   private fail(action: ErrorAction, err: unknown): void {
-    const message = err instanceof Error ? err.message : String(err);
-    const { code, status } = errorCode(err);
-    this.log.info(`${action} failed (${code}): ${message}`);
-    this.events.emit('sdk.error', { action, code, ...(status && { status }), message });
+    const failure = failureOf(err);
+    this.log.info(`${action} failed (${failure.code}): ${failure.message}`);
+    this.events.emit('sdk.error', { action, ...failure });
   }
 }

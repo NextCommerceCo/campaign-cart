@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { cents, format } from '../engine/format';
-import type { OrderLine } from '../engine/types';
+import type { ApiOrderLine } from '../engine/types';
 
 const DEFAULT_TEMPLATE =
   '<div class="order-item"><img src="{item.image}" alt=""><span>{item.name}</span> × {item.quantity} <span>{item.lineTotal}</span></div>';
@@ -16,7 +16,7 @@ function templateOf(el: Element): string {
   return html.replace(/<!--[\s\S]*?-->/g, '').trim() ? html : DEFAULT_TEMPLATE;
 }
 
-function tokens(line: OrderLine, money: (c: number) => string): Record<string, string> {
+function tokens(line: ApiOrderLine, money: (c: number) => string): Record<string, string> {
   const each = (amount: string | undefined) => money(Math.round(cents(amount) / (line.quantity || 1)));
   const flag = (on: boolean) => String(on);
   const show = (on: boolean) => (on ? 'show' : 'hide');

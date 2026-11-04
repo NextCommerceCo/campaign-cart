@@ -7,6 +7,7 @@ import { BindContext, type Render } from './context';
 import { bindDisplay } from './display';
 import { bindLinks } from './links';
 import { bindPackageToggles } from './package-toggle';
+import { bindPromotions } from './promotion';
 
 export interface Bindings {
   render(): void;
@@ -28,6 +29,7 @@ export function bindAll(
       ...bindAddToCart(node, context, navigate),
       ...bindCartControls(node, context),
       ...bindLinks(node, context),
+      ...bindPromotions(node, context),
       ...bindCartSummary(node, context),
       ...bindDisplay(node, context),
     ];

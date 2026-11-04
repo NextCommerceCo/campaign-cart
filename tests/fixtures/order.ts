@@ -1,6 +1,6 @@
-import type { Order } from '../../src/engine/types';
+import type { ApiOrder } from '../../src/engine/types';
 
-export const ORDER: Order = {
+export const ORDER: ApiOrder = {
   ref_id: 'R1',
   number: 1001,
   currency: 'USD',
@@ -46,7 +46,7 @@ export const ORDER: Order = {
   supports_post_purchase_upsells: true,
 };
 
-export const withUpsell = (order: Order, id: number, quantity: number): Order => ({
+export const withUpsell = (order: ApiOrder, id: number, quantity: number): ApiOrder => ({
   ...order,
   lines: [
     ...(order.lines ?? []),

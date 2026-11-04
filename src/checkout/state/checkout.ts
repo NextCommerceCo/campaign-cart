@@ -1,12 +1,14 @@
-import { orderError } from '../../engine/api';
+import { orderError, orderFailure } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
+import { newId } from '../../engine/id';
+import { publicOrder } from '../../engine/order';
 import { nextUrl } from '../../engine/params';
-import { EXPRESS_METHODS, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
+import { orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
 import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
-import type { User } from '../../engine/events';
-import type { CheckoutError, OpenCart, Order } from '../../engine/types';
+import type { Checkout, Failure, User } from '../../engine/events';
+import type { ApiOrder, CheckoutError, OpenCart } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
 const PHONE_WAIT = 2000;
@@ -24,6 +26,12 @@ const emptyCheckout = (): CheckoutState => ({
   prospectSaved: false,
   shippingAddress: undefined,
   billingAddress: undefined,
+  id: undefined,
+  reported: undefined,
+  user: undefined,
+  openCart: undefined,
+  pendingRef: undefined,
+  pendingMethod: undefined,
 });
 
 const countryOf = (fields: Record<string, string>, name: string) =>
@@ -33,7 +41,7 @@ const within = (work: Promise<unknown>, ms: number) =>
   Promise.race([work, new Promise((done) => setTimeout(done, ms))]);
 
 export function redirectFor(
-  order: Order,
+  order: ApiOrder,
   successUrl: string | undefined,
   current: URL,
   params: Record<string, string>,
@@ -51,7 +59,9 @@ export function redirectFor(
 export type Lead = 'email' | 'phone' | 'email+phone' | 'off' | 'formStart';
 
 export interface PlaceOrder extends OrderUrls {
+  /** An express button's method: the wallet gives the shopper's details, so the form is not sent. */
   method?: string;
+  expressChecks?: Scope;
   tokenize?: () => Promise<string>;
   phoneRequired?: boolean;
 }
@@ -60,11 +70,12 @@ export function createCheckout(
   ctx: Context,
   cart: CartActions,
   rulesApi: RulesApi,
-  { lead = 'email' }: { lead?: Lead } = {},
+  { lead = 'email', opened }: { lead?: Lead; opened?: (checkout: Checkout) => void } = {},
 ) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
-  let started = false;
+  let bound = false;
+  let open = false;
   let prospecting = false;
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
@@ -110,7 +121,7 @@ export function createCheckout(
       set({ rules: { ...state().rules, [code]: rules } });
     } catch (err) {
       set({ rulesDown: true });
-      ctx.fail('address.rules', err);
+      ctx.fail('address.load_rules', err);
     }
   };
 
@@ -145,7 +156,7 @@ export function createCheckout(
   };
 
   const announceAddresses = () => {
-    if (!started) return;
+    if (!open) return;
     const checkout = state();
     for (const type of ['shipping', 'billing'] as const) {
       const prefix = type === 'billing' ? 'billing_' : '';
@@ -210,11 +221,35 @@ export function createCheckout(
   const showErrors = (errors: Record<string, string>) =>
     Object.fromEntries(Object.entries(errors).map(([name, code]) => [name, { code } as CheckoutError]));
 
+  const validate = (scope: Scope, phoneRequired = false): boolean => {
+    const errors = formErrors(state(), scope, phoneRequired);
+    set({ errors: showErrors(errors) });
+    return !Object.keys(errors).length;
+  };
+
+  const start = () => {
+    if (!bound || open || !cart.lines().length) return;
+    open = true;
+    if (!state().id) {
+      set({ id: newId() });
+      ctx.emit('checkout.started', cart.currentCheckout());
+    }
+    opened?.(cart.currentCheckout());
+    announceAddresses();
+  };
+  ctx.on('cart.updated', start);
+
   return {
     begin(): void {
-      if (started || !cart.lines().length) return;
-      started = true;
-      ctx.emit('checkout.started', cart.currentCheckout());
+      bound = true;
+      start();
+    },
+
+    reported: (name: string): boolean => !!state().reported?.includes(name),
+
+    markReported(name: string): void {
+      const reported = state().reported ?? [];
+      if (!reported.includes(name)) set({ reported: [...reported, name] }, { silent: true });
     },
 
     setField(name: string, value: string): void {
@@ -282,15 +317,18 @@ export function createCheckout(
       set({ step });
     },
 
+    nextStep(phoneRequired = false): boolean {
+      if (!validate('shipping', phoneRequired)) return false;
+      ctx.emit('checkout.continued', cart.currentCheckout());
+      set({ step: (state().step || 1) + 1 });
+      return true;
+    },
+
     problems(scope: Scope = 'all'): Record<string, FieldError> {
       return formErrors(state(), scope);
     },
 
-    validate(scope: Scope, phoneRequired = false): boolean {
-      const errors = formErrors(state(), scope, phoneRequired);
-      set({ errors: showErrors(errors) });
-      return !Object.keys(errors).length;
-    },
+    validate,
 
     paymentReady(): void {
       if (!state().cardReady) set({ cardReady: true });
@@ -300,7 +338,7 @@ export function createCheckout(
       try {
         return (await ctx.api.autocomplete(query, country, signal)).results ?? [];
       } catch (err) {
-        if (!signal?.aborted) ctx.fail('address.autocomplete', err);
+        if (!signal?.aborted) ctx.fail('address.suggest', err);
         return [];
       }
     },
@@ -314,7 +352,7 @@ export function createCheckout(
       try {
         countries = (await rulesApi.countries()).filter(keep);
       } catch (err) {
-        ctx.fail('address.rules', err);
+        ctx.fail('address.load_rules', err);
         countries = (campaign?.available_shipping_countries ?? []).map((c) => ({ code: c.code, name: c.label }));
         countries = countries.filter(keep);
       }
@@ -333,10 +371,11 @@ export function createCheckout(
       await Promise.all([country && loadCountry(country), loadCountry(state().fields.billing_country ?? '')]);
     },
 
-    async placeOrder(input: PlaceOrder): Promise<Order | undefined> {
+    async placeOrder(input: PlaceOrder): Promise<ApiOrder | undefined> {
       if (state().status !== 'idle') return undefined;
+      const express = !!input.method;
       const method = input.method ? paymentCode(input.method) : state().paymentMethod;
-      const express = EXPRESS_METHODS.includes(method);
+      const checks = express ? input.expressChecks : 'all';
       set({ status: 'placing' });
       cart.freeze(true);
       const fail = (errors: Record<string, CheckoutError>) => {
@@ -344,16 +383,23 @@ export function createCheckout(
         cart.freeze(false);
         return undefined;
       };
+      const submitted = (errors: Record<string, CheckoutError>) =>
+        ctx.emit('checkout.submitted', {
+          ...cart.currentCheckout(),
+          payment_method: method,
+          valid: !Object.keys(errors).length,
+          errors,
+        });
       const stop = (errors: Record<string, CheckoutError>) => {
-        ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method, valid: false, errors });
+        submitted(errors);
         return fail(errors);
       };
 
-      if (!express) {
+      if (checks) {
         const phones = PHONES.filter((name) => !name.startsWith('billing_') || !state().sameAsShipping);
         await within(Promise.all(phones.map((name) => checkPhone(name))), PHONE_WAIT);
       }
-      const invalid = input.method ? {} : formErrors(state(), express ? 'express' : 'all', input.phoneRequired);
+      const invalid = checks ? formErrors(state(), checks, input.phoneRequired) : {};
       if (Object.keys(invalid).length) return stop(showErrors(invalid));
       if (!cart.lines().length) return stop({ form: { code: 'empty_cart' } });
       await cart.settled();
@@ -371,12 +417,14 @@ export function createCheckout(
         }
       }
 
-      ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method, valid: true, errors: {} });
+      submitted({});
+      const vouchers = cart.vouchers();
+      let order: ApiOrder;
       try {
-        const vouchers = cart.vouchers();
-        const order = await ctx.api.createOrder(
+        order = await ctx.api.createOrder(
           orderBody(ctx.getState(), {
             method,
+            express,
             token,
             lines: cart.lines(),
             vouchers,
@@ -384,30 +432,23 @@ export function createCheckout(
             urls: input,
           }),
         );
-        if (vouchers[0]) ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0] } }, { silent: true });
-        ctx.emit('order.created', { order });
-        if (order.payment_complete_url) {
-          set({
-            status: 'placed',
-            pendingRef: order.ref_id,
-            failurePath: new URL(input.failureUrl, input.pageUrl).pathname,
-          });
-        } else {
-          cart.clearAfterOrder();
-          set({ ...emptyCheckout(), status: 'placed' }, { silent: true });
-        }
-        return order;
       } catch (err) {
-        const error = orderError(err);
         ctx.fail('order.create', err);
-        ctx.emit('order.failed', {
-          stage: 'order',
-          code: error.code,
-          ...(error.message && { message: error.message }),
-          ...(error.decline && { decline: error.decline }),
-        });
-        return fail({ form: error });
+        ctx.emit('checkout.failed', { ...cart.currentCheckout(), payment_method: method, error: orderFailure(err) });
+        return fail({ form: orderError(err) });
       }
+      const codes = ctx.getState().cart.coupons;
+      if (vouchers.length)
+        ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0], codes } }, { silent: true });
+      if (order.payment_complete_url) {
+        set({ status: 'placed', pendingRef: order.ref_id, pendingMethod: method });
+        ctx.emit('payment.redirected', { method, ref_id: order.ref_id, url: order.payment_complete_url });
+      } else {
+        ctx.emit('order.created', publicOrder(order, codes));
+        cart.clearAfterOrder();
+        set({ ...emptyCheckout(), status: 'placed' }, { silent: true });
+      }
+      return order;
     },
   };
 }

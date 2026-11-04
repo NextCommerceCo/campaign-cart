@@ -3,8 +3,9 @@ import type { SelectorCard } from '../../../src/engine/cart/types';
 import { format } from '../../../src/engine/format';
 import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
+import { campaign } from '../../fixtures/campaign';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
-import type { EventMap, Selector } from '../../../src/engine/events';
+import type { Selector } from '../../../src/engine/events';
 import { MemoryStorage } from '../../fixtures/storage';
 
 const CARDS: SelectorCard[] = [
@@ -12,10 +13,30 @@ const CARDS: SelectorCard[] = [
   { id: 'two', lines: [{ packageId: 2, quantity: 1 }], vouchers: ['BUNDLE'], shippingId: 2 },
 ];
 
-const price = (engine: ReturnType<typeof makeEngine>['engine'], path: string) => {
+type TestEngine = ReturnType<typeof makeEngine>['engine'];
+
+const price = (engine: TestEngine, path: string) => {
   const v = resolve(engine, path);
   return v && format(v, 'USD', 'en');
 };
+
+const record = (engine: TestEngine) => {
+  const seen: Array<[string, Selector]> = [];
+  engine.on('*', (e) => {
+    if (e.name.startsWith('selector.')) seen.push([e.name, e.data as Selector]);
+  });
+  return seen;
+};
+
+const totals = (seen: Array<[string, Selector]>) => seen.map(([name, s]) => `${name} ${s.total ?? ''}`.trim());
+
+async function landingWithOffer(local: Storage) {
+  const { engine } = makeEngine({ fetch: fakeApi({ offers: { 1: 0.5 } }).fetch, local });
+  await engine.start();
+  await engine.selectors.register('main', CARDS, 'select', 'one');
+  await flush();
+  expect(price(engine, 'bundle.one.price')).toBe('$24.50');
+}
 
 describe('selectors', () => {
   it('picks the card already in the cart, then the preferred one, then the first', async () => {
@@ -78,7 +99,28 @@ describe('selectors', () => {
     expect(engine.getState().cart.groups['bundle:side']?.lines).toEqual(CARDS[0]!.lines);
   });
 
-  it('announces a pick once and does not resend a cart that already has it', async () => {
+  it('sends selector.viewed once per selector with the option it picked, not selector.selected', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.selectors.register('main', CARDS, 'swap', 'two');
+
+    const { engine } = makeEngine({ session, params: { forceBundleId: 'side:two' } });
+    const seen = record(engine);
+    await engine.selectors.register('main', CARDS, 'swap', 'one');
+    await engine.selectors.register('side', CARDS, 'select');
+    await engine.selectors.register('gift', CARDS, 'select', 'two');
+    await engine.selectors.register('plain', CARDS, 'select');
+    await engine.selectors.register('main', CARDS, 'swap', 'one');
+    expect(seen.map(([name, s]) => `${name} ${s.selector_id}:${s.option_id}`)).toEqual([
+      'selector.viewed main:two',
+      'selector.viewed side:two',
+      'selector.viewed gift:two',
+      'selector.viewed plain:one',
+    ]);
+  });
+
+  it('sends selector.selected only for a pick of another option, and does not resend a cart that already has it', async () => {
     const { engine, api } = makeEngine();
     await engine.start();
     const seen: string[] = [];
@@ -87,8 +129,33 @@ describe('selectors', () => {
     const calls = api.calls.length;
     await engine.selectors.pick('main', 'one');
     await engine.selectors.addToCart('main');
-    expect(seen).toEqual(['one']);
+    expect(seen).toEqual([]);
     expect(api.calls).toHaveLength(calls);
+    await engine.selectors.pick('main', 'two');
+    await engine.selectors.pick('main', 'two');
+    expect(seen).toEqual(['two']);
+  });
+
+  it('sends selector.updated when the picked option’s quantity or one of its slots changes', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const cards = [
+      { id: 'pair', lines: [{ packageId: 1, quantity: 2, configurable: true }], vouchers: [], max: 3 },
+      { id: 'single', lines: [{ packageId: 1, quantity: 1, configurable: true }], vouchers: [] },
+    ];
+    await engine.selectors.register('main', cards, 'swap', 'pair');
+    const seen: string[] = [];
+    engine.on('*', (e) => {
+      const s = e.data as Selector;
+      if (e.name === 'selector.selected' || e.name === 'selector.updated')
+        seen.push(`${e.name} ${s.option_id} ${s.lines.map((l) => `${l.package_id}x${l.quantity}`).join()}`);
+    });
+    await engine.selectors.setQuantity('main', 2);
+    await engine.selectors.setQuantity('main', 2);
+    await engine.selectors.setSlot('main', 'pair', 0, { packageId: 2 });
+    await engine.selectors.setSlot('main', 'pair', 0, { packageId: 2 });
+    await engine.selectors.setSlot('main', 'single', 0, { packageId: 2 });
+    expect(seen).toEqual(['selector.updated pair 1x4', 'selector.updated pair 2x1,1x3']);
   });
 
   it('multiplies the picked card by its quantity, within its limits, and keeps it across a reload', async () => {
@@ -227,7 +294,7 @@ describe('selectors', () => {
     expect(price(engine, 'bundle.offer.price')).toBe('$24.50');
   });
 
-  it('prices each card once: a later page reuses the quotes for 10 minutes, a new quantity prices only its card', async () => {
+  it('prices each card once a page: a later page shows the saved quotes and checks them once, a new quantity prices only its card', async () => {
     const local = new MemoryStorage();
     const page = async () => {
       const api = fakeApi();
@@ -241,11 +308,14 @@ describe('selectors', () => {
     const landing = await page();
     expect(landing.quotes()).toBe(2);
     const checkout = await page();
-    expect(checkout.quotes()).toBe(0);
+    expect(checkout.quotes()).toBe(2);
     expect(price(checkout.engine, 'bundle.two.price')).toBe(price(landing.engine, 'bundle.two.price'));
     await checkout.engine.selectors.setQuantity('main', 2);
     await flush();
-    expect(checkout.quotes()).toBe(1);
+    expect(checkout.quotes()).toBe(3);
+    await checkout.engine.selectors.setQuantity('main', 1);
+    await flush();
+    expect(checkout.quotes()).toBe(3);
     vi.useFakeTimers({ now: Date.now() + 10 * 60 * 1000 + 1, toFake: ['Date'] });
     try {
       expect((await page()).quotes()).toBe(2);
@@ -254,7 +324,7 @@ describe('selectors', () => {
     }
   });
 
-  it('announces a price run for the options, and a later page priced from the cache at once', async () => {
+  it('announces a price run for the options, and a later page priced from the cache at once, then again when fresh', async () => {
     const local = new MemoryStorage();
     const page = async () => {
       const { engine } = makeEngine({ fetch: fakeApi().fetch, local });
@@ -268,13 +338,115 @@ describe('selectors', () => {
       return seen;
     };
     const first = await page();
-    expect(first.map(([name]) => name)).toEqual(['selector.selected', 'selector.calculating', 'selector.calculated']);
+    expect(first.map(([name]) => name)).toEqual(['selector.viewed', 'selector.calculating', 'selector.calculated']);
     for (const [, data] of first) expect(data).toMatchObject({ selector_id: 'main', type: 'bundle', option_id: 'one' });
     expect(first[0]![1].lines[0]).not.toHaveProperty('price');
     expect(first[2]![1].lines).toMatchObject([{ package_id: 1, price: expect.any(Number), total: expect.any(Number) }]);
     const second = await page();
-    expect(second.map(([name]) => name)).toEqual(['selector.selected', 'selector.calculated']);
+    expect(second.map(([name]) => name)).toEqual(['selector.viewed', 'selector.calculated', 'selector.calculated']);
     expect(second[1]![1].lines[0]).toHaveProperty('price');
+  });
+
+  it('shows a later page the saved prices at once, then checks every option once more and sends the fresh prices', async () => {
+    const local = new MemoryStorage();
+    await landingWithOffer(local);
+
+    const { engine } = makeEngine({ fetch: fakeApi().fetch, local });
+    await engine.start();
+    const seen = record(engine);
+    await engine.selectors.register('main', CARDS, 'select', 'one');
+    expect(price(engine, 'bundle.one.price')).toBe('$24.50');
+    await flush();
+    expect(totals(seen)).toEqual(['selector.viewed', 'selector.calculated 24.5', 'selector.calculated 49']);
+    expect(price(engine, 'bundle.one.price')).toBe('$49.00');
+  });
+
+  it('prices again, without the saved prices, once the campaign’s packages or offers changed', async () => {
+    const edited = { ...campaign, offers: [{ ref_id: 1, name: 'Half off', type: 'offer' }] };
+    const local = new MemoryStorage();
+    await landingWithOffer(local);
+    const fresh = makeEngine({ fetch: fakeApi().fetch, local, campaign: Promise.resolve(edited) }).engine;
+    await fresh.start();
+    const seen = record(fresh);
+    await fresh.selectors.register('main', CARDS, 'select', 'one');
+    await flush();
+    expect(totals(seen)).toEqual(['selector.viewed', 'selector.calculating', 'selector.calculated 49']);
+
+    const cached = new MemoryStorage();
+    await landingWithOffer(cached);
+    const later = makeEngine({ fetch: fakeApi().fetch, local: cached, campaign: Promise.resolve(edited) }).engine;
+    const after = record(later);
+    await later.selectors.register('main', CARDS, 'select', 'one');
+    await flush();
+    after.splice(0);
+    await later.start();
+    await flush();
+    expect(after.map(([name]) => name)).toEqual(['selector.calculating', 'selector.calculated']);
+  });
+
+  it('keeps the saved prices of selectors priced at the same time', async () => {
+    const local = new MemoryStorage();
+    const cases = [{ id: 'case', lines: [{ packageId: 3, quantity: 1 }], vouchers: [] }];
+    const page = async () => {
+      const { engine } = makeEngine({ local });
+      await engine.start();
+      const seen = record(engine);
+      void engine.selectors.register('main', CARDS, 'select');
+      void engine.selectors.register('side', cases, 'select');
+      await flush();
+      return seen.filter(([name]) => name === 'selector.calculating').map(([, s]) => s.selector_id);
+    };
+    expect(await page()).toEqual(['main', 'side']);
+    expect(await page()).toEqual([]);
+  });
+
+  it('lists every option at the quantity it would be added, priced once the option has a price', async () => {
+    const { engine } = makeEngine({ fetch: fakeApi({ offers: { 1: 0.5 } }).fetch });
+    await engine.start();
+    const seen = record(engine);
+    await engine.selectors.register('main', [CARDS[0]!, { ...CARDS[1]!, quantity: 2 }], 'select', 'one');
+    await flush();
+    await engine.selectors.pick('main', 'two');
+    const [viewed, calculating, calculated, selected] = seen.map(([, s]) => s);
+    expect(viewed).toMatchObject({
+      option_id: 'one',
+      currency: 'USD',
+      options: [
+        { option_id: 'one', lines: [{ package_id: 1, quantity: 1, product_id: 400 }] },
+        { option_id: 'two', lines: [{ package_id: 2, quantity: 2, product_id: 400 }] },
+      ],
+    });
+    expect(viewed).not.toHaveProperty('total');
+    for (const option of [...viewed!.options!, ...calculating!.options!]) {
+      expect(option).not.toHaveProperty('total');
+      expect(option.lines[0]).not.toHaveProperty('price');
+    }
+    expect(calculated).toMatchObject({
+      option_id: 'one',
+      total: 24.5,
+      options: [
+        { option_id: 'one', total: 24.5, original_total: 49, lines: [{ package_id: 1, quantity: 1, total: 24.5 }] },
+        { option_id: 'two', total: 178, original_total: 178, lines: [{ package_id: 2, quantity: 2, total: 178 }] },
+      ],
+    });
+    expect(selected).toMatchObject({ option_id: 'two', total: 178, lines: [{ package_id: 2, quantity: 2 }] });
+  });
+
+  it('lists every selector on the page as its events carry it', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const calculated: Selector[] = [];
+    engine.on('selector.calculated', (e) => calculated.push(e.data));
+    await engine.selectors.register('main', CARDS, 'swap', 'two');
+    await engine.selectors.register('offer', [CARDS[0]!], 'offer');
+    await flush();
+    const listed = engine.selectors.list();
+    expect(listed.map((s) => [s.selector_id, s.type, s.option_id])).toEqual([
+      ['main', 'bundle', 'two'],
+      ['offer', 'offer', 'one'],
+    ]);
+    expect(listed[1]).toMatchObject({ total: 24.5, options: [{ option_id: 'one', total: 24.5 }] });
+    expect(listed).toEqual(calculated);
   });
 
   it.each([
@@ -300,7 +472,7 @@ describe('selectors', () => {
       await flush();
       await engine.cart.addItem(3);
       await flush();
-      expect(seen.splice(0)).toEqual(['selector.selected', 'selector.calculating', 'selector.calculated']);
+      expect(seen.splice(0)).toEqual(['selector.viewed', 'selector.calculating', 'selector.calculated']);
       await engine.cart.removeCoupon('SAVE10');
       await flush();
       expect(seen).toEqual(['selector.calculating', 'selector.calculated']);
@@ -314,6 +486,7 @@ describe('selectors', () => {
     await flush();
     const picked = vi.fn();
     engine.on('selector.selected', picked);
+    engine.on('selector.updated', picked);
     engine.cart.freeze(true);
     await engine.selectors.pick('main', 'two');
     await engine.selectors.setQuantity('main', 2);
@@ -327,7 +500,8 @@ describe('selectors', () => {
   it('names the picked option and its products, priced once the option has a price', async () => {
     const { engine } = makeEngine({ fetch: fakeApi().fetch });
     await engine.start();
-    const seen: Array<EventMap['selector.selected']> = [];
+    const seen: Selector[] = [];
+    engine.on('selector.viewed', (e) => seen.push(e.data));
     engine.on('selector.selected', (e) => seen.push(e.data));
     await engine.selectors.register('main', CARDS, 'select', 'one');
     await flush();
@@ -337,14 +511,17 @@ describe('selectors', () => {
         selector_id: 'main',
         type: 'bundle',
         option_id: 'one',
+        currency: 'USD',
         lines: [{ package_id: 1, quantity: 1, product_id: 400 }],
       },
       {
         option_id: 'two',
+        total: 89,
         lines: [{ package_id: 2, quantity: 1, product_id: 400, price: expect.any(Number), total: expect.any(Number) }],
       },
     ]);
     expect(seen[0]!.lines[0]).not.toHaveProperty('price');
+    expect(seen[0]).not.toHaveProperty('total');
   });
 
   it('falls back to package prices when pricing fails', async () => {

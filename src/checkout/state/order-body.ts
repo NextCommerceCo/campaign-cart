@@ -63,6 +63,7 @@ export function orderBody(
   state: State,
   order: {
     method: string;
+    express?: boolean;
     token?: string;
     lines: Line[];
     vouchers: string[];
@@ -82,7 +83,7 @@ export function orderBody(
     success_url: new URL(urls.successUrl ?? '/success', urls.pageUrl).href,
     payment_failed_url: urls.failureUrl,
   };
-  if (EXPRESS_METHODS.includes(method)) return body;
+  if (order.express) return body;
   const checkout = state.checkout!;
   const phone = phoneOf(checkout, 'phone_number');
   return {

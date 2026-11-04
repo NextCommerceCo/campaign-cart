@@ -1,20 +1,23 @@
-import { orderError } from '../engine/api';
-import { type CartActions, mergeLines } from '../engine/cart/cart';
+import { failureOf, orderError, orderFailure } from '../engine/api';
+import { apiLines, type CartActions, cartItems } from '../engine/cart/cart';
 import type { Context } from '../engine/engine';
+import type { ErrorCode, Failure, Upsell } from '../engine/events';
+import { appliedCodes, publicOrder } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { bool, cents, money, type Value } from '../engine/format';
 import type { CartLine } from '../engine/cart/types';
-import type { CheckoutError, Order, OrderAddress, OrderLine, State } from '../engine/types';
+import type { ApiOrder, ApiOrderAddress, ApiOrderLine, CheckoutError, State } from '../engine/types';
 import type { CheckoutState } from '../checkout/state/types';
 
 export interface OrderState {
   refId?: string;
-  order?: Order;
+  order?: ApiOrder;
   loadedAt?: number;
   status: 'idle' | 'loading' | 'ready' | 'failed' | 'accepting';
   error?: CheckoutError;
   accepted: string[];
-  coupon?: { refId: string; code: string };
+  /** The codes the checkout sent with the order: `code` is the first, `codes` the shopper's own. */
+  coupon?: { refId: string; code?: string; codes: string[] };
 }
 
 const ORDER_TTL = 15 * 60 * 1000;
@@ -42,16 +45,15 @@ const PAYMENT_LABELS: Record<string, string> = {
   shop_pay: 'Shop Pay',
 };
 
-const purchaseId = (order: Order) => String(order.number ?? order.ref_id);
-export const upsellId = (order: Order, line: OrderLine) => `${order.ref_id}:${line.id}`;
+const purchaseId = (order: ApiOrder) => String(order.number ?? order.ref_id);
 
-function paymentLabel(method: Order['payment_method']): string {
+function paymentLabel(method: ApiOrder['payment_method']): string {
   const raw = typeof method === 'string' ? method : (method?.code ?? '');
   const code = raw.toLowerCase().replace(/[\s-]/g, '_');
   return PAYMENT_LABELS[code] ?? raw;
 }
 
-function addressValue(address: OrderAddress | undefined, prop: string): Value | undefined {
+function addressValue(address: ApiOrderAddress | undefined, prop: string): Value | undefined {
   const a = address ?? {};
   const text = (value?: string) => ({ type: 'text' as const, value: value ?? '' });
   switch (prop) {
@@ -153,10 +155,16 @@ export type Accepted = 'accepted' | 'repeat' | 'unsupported' | 'failed' | 'busy'
 
 type Offer = { selectorId?: string; lines?: CartLine[] };
 
+const UNKNOWN_OUTCOME: ErrorCode[] = ['network', 'timeout', 'server'];
+
+const newUpsellLines = (before: ApiOrder, after: ApiOrder) => {
+  const known = new Set((before.lines ?? []).map((l) => String(l.id)));
+  return (after.lines ?? []).filter((l) => l.is_upsell && !known.has(String(l.id)));
+};
+
 export function createOrder(ctx: Context, cart: CartActions) {
   const state = () => ctx.getState().order!;
   const set = (patch: Partial<OrderState>) => ctx.update('order', patch);
-  const viewed = new Set<string>();
   let seq = 0;
 
   set({ status: 'idle', accepted: [], ...ctx.saved<Partial<OrderState>>('order') });
@@ -165,33 +173,54 @@ export function createOrder(ctx: Context, cart: CartActions) {
   const markReported = (ids: string[]) =>
     ctx.local.set(REPORTED, [...new Set([...reported(), ...ids])].slice(-REPORTED_KEEP));
 
+  const fetchOrder = (refId: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT);
+    return ctx.api.getOrder(refId, controller.signal).finally(() => clearTimeout(timer));
+  };
+
   const offerLines = (offer: Offer) => {
     const selector = offer.selectorId ? ctx.getState().selectors[offer.selectorId] : undefined;
     const card = pickedCard(selector);
-    return { card, lines: selector && card ? cardLines(selector, card) : (offer.lines ?? []) };
+    return selector && card
+      ? { card, lines: cardLines(selector, card), quoted: selector.quotes?.[card.id]?.lines }
+      : { lines: offer.lines ?? [] };
   };
 
-  const settle = (order: Order) => {
+  const upsellOf = (offer: Offer, page: string): Upsell => {
+    const all = ctx.getState();
+    const { card, lines, quoted } = offerLines(offer);
+    const items = cartItems(all, apiLines(lines), quoted);
+    const priced = items.length > 0 && items.every((i) => i.total !== undefined);
+    return {
+      ref_id: state().refId ?? '',
+      page,
+      ...(offer.selectorId && { selector_id: offer.selectorId }),
+      ...(card && { option_id: card.id }),
+      lines: items,
+      currency: all.campaign?.currency ?? state().order?.currency,
+      ...(priced && { total: items.reduce((n, i) => n + cents(i.total), 0) / 100 }),
+    };
+  };
+
+  const settle = (order: ApiOrder) => {
     const paid = !order.payment_complete_url;
     const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
     if (paid && checkout?.pendingRef === order.ref_id) {
       cart.clearAfterOrder();
       ctx.forget('checkout');
     }
-    const done = reported();
-    const upsells = (order.lines ?? [])
-      .filter((l) => l.is_upsell)
-      .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
-      .filter((u) => !done.includes(u.id));
-    if (upsells.length) markReported(upsells.map((u) => u.id));
-    ctx.emit('order.loaded', { order, ...(upsells.length && { upsells }) });
-    if (!paid || done.includes(purchaseId(order))) return;
+    const data = publicOrder(order, appliedCodes(order, state().coupon));
+    ctx.emit('order.loaded', data);
+    if (!paid || reported().includes(purchaseId(order))) return;
     markReported([purchaseId(order)]);
-    const { coupon } = state();
-    ctx.emit('order.paid', { order, ...(coupon?.refId === order.ref_id && { coupon: coupon.code }) });
+    ctx.emit('order.paid', data);
   };
 
   return {
+    reported,
+    markReported,
+
     async load(refId: string): Promise<void> {
       const current = ++seq;
       const { order, loadedAt } = state();
@@ -206,9 +235,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
         ...(state().refId !== refId && { order: undefined }),
       });
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT);
-        const loaded = await ctx.api.getOrder(refId, controller.signal).finally(() => clearTimeout(timer));
+        const loaded = await fetchOrder(refId);
         if (current !== seq) return;
         set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
         settle(loaded);
@@ -219,16 +246,13 @@ export function createOrder(ctx: Context, cart: CartActions) {
       }
     },
 
-    view(page: string): void {
+    view(offer: Offer, page: string): void {
       const { refId, order } = state();
-      if (!refId || !order || viewed.has(page)) return;
-      viewed.add(page);
-      ctx.emit('upsell.viewed', { ref_id: refId, page });
+      if (refId && order) ctx.emit('upsell.viewed', upsellOf(offer, page));
     },
 
-    skip(offer: Offer = {}): void {
-      const { refId } = state();
-      if (refId) ctx.emit('upsell.skipped', { ref_id: refId, package_id: offerLines(offer).lines[0]?.packageId });
+    skip(offer: Offer, page: string): void {
+      if (state().refId) ctx.emit('upsell.skipped', upsellOf(offer, page));
     },
 
     async accept(offer: Offer, page: string): Promise<Accepted> {
@@ -239,36 +263,54 @@ export function createOrder(ctx: Context, cart: CartActions) {
       if (accepted.includes(key)) return 'repeat';
 
       const { card, lines } = offerLines(offer);
-      const body = mergeLines({ offer: { lines, vouchers: [] } });
-      if (!body.length) return 'failed';
+      const body = apiLines(lines);
+      if (!body.length) {
+        const name = offer.selectorId ? `selector "${offer.selectorId}"` : 'no selector';
+        ctx.log.warn(`upsell offer on ${page} (${name}) has nothing to add: no package and no picked option`);
+        return 'failed';
+      }
 
+      const upsell = upsellOf(offer, page);
+      const added = (updated: ApiOrder): Accepted => {
+        set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
+        ctx.emit('upsell.accepted', upsell);
+        ctx.emit('order.updated', publicOrder(updated, appliedCodes(updated, state().coupon)));
+        return 'accepted';
+      };
       set({ status: 'accepting', error: undefined });
       try {
-        const updated = await ctx.api.addUpsell(refId, {
-          lines: body,
-          currency: ctx.getState().campaign?.currency ?? order.currency,
-          ...(card?.vouchers.length && { vouchers: card.vouchers }),
-        });
-        set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
-        ctx.emit('upsell.accepted', { ref_id: refId, lines: body, order: updated });
-        return 'accepted';
+        return added(
+          await ctx.api.addUpsell(refId, {
+            lines: body,
+            currency: upsell.currency,
+            ...(card?.vouchers.length && { vouchers: card.vouchers }),
+          }),
+        );
       } catch (err) {
-        const error = orderError(err);
-        set({ status: 'ready', error });
+        const { code } = failureOf(err);
+        if (UNKNOWN_OUTCOME.includes(code)) {
+          const after = await fetchOrder(refId).catch(() => undefined);
+          if (after && newUpsellLines(order, after).length) {
+            ctx.log.info(`upsell.add failed (${code}), but the order now has the upsell: accepted`);
+            return added(after);
+          }
+        }
+        set({ status: 'ready', error: orderError(err) });
         ctx.fail('upsell.add', err);
-        ctx.emit('upsell.failed', {
-          ref_id: refId,
-          code: error.code,
-          ...(error.message && { message: error.message }),
-        });
+        ctx.emit('upsell.failed', { ...upsell, error: orderFailure(err) });
         return 'failed';
       }
     },
 
     /** The gateway's failure redirect carries no ref_id, and the store has no order to load until it is paid. */
     paymentFailed(): void {
-      const refId = ctx.saved<Partial<CheckoutState>>('checkout')?.pendingRef;
-      if (refId) ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: refId });
+      const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
+      const refId = checkout?.pendingRef;
+      if (!refId || reported().includes(`failed:${refId}`)) return;
+      markReported([`failed:${refId}`]);
+      const sent = ctx.getState().visit.params.payment_method;
+      const method = (sent !== 'None' && sent) || checkout?.pendingMethod || checkout?.paymentMethod || '';
+      ctx.emit('payment.failed', { method, ref_id: refId, error: { code: 'payment_failed' } });
     },
   };
 }

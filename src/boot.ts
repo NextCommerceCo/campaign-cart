@@ -6,13 +6,12 @@ import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { AnalyticsEvent, AnalyticsName, EventContext, EventMap, EventName } from './engine/events';
+import type { AnalyticsEvent, AnalyticsName, EventContext, EventMap, EventName, Snapshot } from './engine/events';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
   legacyAnalytics,
-  LEGACY_EVENTS,
-  RETIRED_EVENTS,
+  legacyEvents,
   readLegacyAnalytics,
   legacyApi,
   type LegacyApi,
@@ -38,43 +37,51 @@ const pixelId = () =>
   document.querySelector<HTMLMetaElement>('meta[name="os-facebook-pixel"], meta[name="facebook-pixel-id"]')?.content ||
   [...document.scripts].map((s) => s.text.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/)?.[1]).find(Boolean);
 
-const EVENT_NAMES: EventName[] = [
-  'sdk.ready',
-  'sdk.error',
-  'selector.selected',
-  'selector.deselected',
-  'selector.calculating',
-  'selector.calculated',
-  'cart.updated',
-  'cart.calculating',
-  'cart.calculated',
-  'cart.added',
-  'cart.removed',
-  'coupon.applied',
-  'coupon.removed',
-  'coupon.denied',
-  'checkout.started',
-  'user.created',
-  'user.updated',
-  'address.entered',
-  'address.updated',
-  'shipping.selected',
-  'payment.selected',
-  'checkout.submitted',
-  'order.created',
-  'order.failed',
-  'order.loaded',
-  'order.paid',
-  'upsell.viewed',
-  'upsell.accepted',
-  'upsell.skipped',
-  'upsell.failed',
-  'promotion.viewed',
-  'promotion.clicked',
-  'promotion.closed',
-  'analytics',
-];
-const REPLAYED: EventName[] = ['sdk.ready', 'sdk.error', 'campaign.loaded', 'analytics'];
+/** The names `next.on` takes: every event but the SDK's internal ones. */
+export type PublicEventName = Exclude<EventName, 'campaign.loaded' | 'analytics'>;
+
+const PUBLIC_EVENTS: Record<PublicEventName, true> = {
+  'sdk.ready': true,
+  'sdk.error': true,
+  'selector.viewed': true,
+  'selector.selected': true,
+  'selector.updated': true,
+  'selector.deselected': true,
+  'selector.calculating': true,
+  'selector.calculated': true,
+  'cart.updated': true,
+  'cart.calculating': true,
+  'cart.calculated': true,
+  'cart.added': true,
+  'cart.removed': true,
+  'shipping.selected': true,
+  'coupon.applied': true,
+  'coupon.removed': true,
+  'coupon.denied': true,
+  'checkout.started': true,
+  'user.created': true,
+  'user.updated': true,
+  'address.entered': true,
+  'address.updated': true,
+  'payment.selected': true,
+  'checkout.continued': true,
+  'checkout.submitted': true,
+  'checkout.failed': true,
+  'payment.redirected': true,
+  'payment.failed': true,
+  'order.created': true,
+  'order.loaded': true,
+  'order.paid': true,
+  'order.updated': true,
+  'upsell.viewed': true,
+  'upsell.accepted': true,
+  'upsell.skipped': true,
+  'upsell.failed': true,
+  'promotion.viewed': true,
+  'promotion.clicked': true,
+  'promotion.closed': true,
+};
+const PUBLIC = new Set(Object.keys(PUBLIC_EVENTS));
 
 export interface SdkEvent<K extends EventName = EventName> {
   event_id: string;
@@ -99,10 +106,21 @@ const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEv
 
 export interface NextApi extends LegacyApi {
   version: string;
-  on<K extends EventName>(name: K | 'ready' | '*', fn: (data: EventMap[K], event: SdkEvent<K>) => void): () => void;
+  /**
+   * Calls `fn` with every `name` event, or every event for `*`, starting with the ones this page
+   * sent before the call. A 0.4.x name gets its 0.4.x payload, and only the events after the call
+   * unless 0.4.x pages listen for it late (`campaign:loaded`, `checkout:started`, …).
+   */
+  on<K extends PublicEventName>(
+    name: K | 'ready' | '*',
+    fn: (data: EventMap[K], event: SdkEvent<K>) => void,
+  ): () => void;
   analytics: {
     on(name: AnalyticsName | '*', fn: (event: AnalyticsEvent) => void): () => void;
   };
+  /** What the page shows now: the campaign, cart, checkout, order and selectors, as the events carry them. */
+  snapshot(): Snapshot;
+  /** The SDK's internal state, for debugging; its shape changes between releases. Read `snapshot()` instead. */
   getState: Engine['getState'];
   /** The page, campaign, session, attribution and browser now, as on tracking events. */
   context(): EventContext;
@@ -180,6 +198,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
 
+  const legacy = legacyEvents(engine);
   const bindings = bindAll(document, engine);
   const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
   const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
@@ -192,21 +211,20 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
-      if (RETIRED_EVENTS.some((prefix) => name.startsWith(prefix))) return () => {};
-      const legacy = LEGACY_EVENTS[name];
-      const event = (name === 'ready' ? 'sdk.ready' : (legacy?.event ?? name)) as EventName | '*';
-      if (event !== '*' && !legacy && !EVENT_NAMES.includes(event)) {
+      const legacyOff = legacy.on(name, (data, e) => fn(data as never, (e && envelope(e, engine)) as never));
+      if (legacyOff) return legacyOff;
+      const event = (name === 'ready' ? 'sdk.ready' : name) as EventName | '*';
+      if (event !== '*' && !PUBLIC.has(event)) {
         engine.log.warn(`next.on: unknown event "${name}"`);
         return () => {};
       }
       return engine.on(
         event,
         (e) => {
-          const data = e.data as Record<string, unknown>;
-          if (legacy?.when && !legacy.when(data)) return;
-          fn((legacy?.data ? legacy.data(data, engine.getState()) : data) as never, envelope(e, engine) as never);
+          if (event === '*' && !PUBLIC.has(e.name)) return;
+          fn(e.data as never, envelope(e, engine) as never);
         },
-        { replay: event !== '*' && REPLAYED.includes(event) },
+        { replay: true },
       );
     },
     analytics: {
@@ -219,6 +237,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
           { replay: true },
         ),
     },
+    snapshot: () => engine.snapshot(),
     getState: () => engine.getState(),
     context: () => engine.eventContext(),
     log: engine.log,
@@ -250,7 +269,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     )
   )
     void import('./bindings/widgets').then((m) =>
-      m.bindWidgets(document, { timerStart: (id, ms) => engine.timerStart(id, ms), log: engine.log }),
+      m.bindWidgets(document, {
+        timerStart: (id, ms) => engine.timerStart(id, ms),
+        log: engine.log,
+        events: legacy.widgets,
+      }),
     );
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
   const slotsChunk = slotsPage ? import('./bindings/slots') : undefined;
@@ -278,7 +301,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   };
   engine.on('sdk.ready', () => {
     const binding = [
-      checkoutForm && checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm)),
+      checkoutForm &&
+        checkoutChunk!.then((m) =>
+          m.bindCheckout(engine, checkoutForm, { legacyCheckoutStarted: legacy.checkoutStarted }),
+        ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
     ].filter(Boolean);

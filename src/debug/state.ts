@@ -51,6 +51,11 @@ export interface Arrival {
 
 const PAGES = 25;
 const MARKS = 60;
+const DENIED: Record<EventMap['coupon.denied']['reason'], string> = {
+  no_discount: 'refused by the server',
+  duplicate: 'is already on the cart',
+  check_failed: 'could not be checked',
+};
 
 const quantities = (lines: Line[]) => {
   const byPackage = new Map<number, number>();
@@ -148,14 +153,17 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   on('cart.updated', (e) => cartChanged(e.data, e.at));
   on('cart.calculated', (e) => change({ total: e.data.total?.toFixed(2), currency: e.data.currency }));
   on('coupon.denied', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
+    change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} ${DENIED[e.data.reason]}` }),
   );
-  on('shipping.selected', (e) => change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.id)}` }));
+  on('shipping.selected', (e) =>
+    change({}, { at: e.at, text: `Shipping set to ${e.data.code ?? shippingCode(e.data.id)}` }),
+  );
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
   on('address.entered', (e) =>
     change({}, { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
   );
   on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
+  on('checkout.continued', (e) => change({}, { at: e.at, text: `Step ${e.data.step ?? 1} passed its checks` }));
   on('checkout.submitted', (e) =>
     change(
       {},
@@ -168,23 +176,28 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     ),
   );
   on('user.created', (e) => change({}, { at: e.at, text: 'User created: open cart saved on the store' }));
-  on('order.failed', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.message ?? e.data.code}` }),
+  on('checkout.failed', (e) =>
+    change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.error.message ?? e.data.error.code}` }),
   );
-  on('order.created', (e) => {
-    const { order: placed } = e.data;
+  on('payment.redirected', (e) =>
+    change({}, { at: e.at, text: `Left for the payment gateway to pay order ${e.data.ref_id}` }),
+  );
+  on('payment.failed', (e) =>
+    change({}, { at: e.at, tone: 'warn', text: `Payment for order ${e.data.ref_id} not completed at the gateway` }),
+  );
+  on('order.created', (e) =>
     change(
-      { order: placed.ref_id, total: placed.total_incl_tax, currency: placed.currency, units: 0 },
-      { at: e.at, tone: 'done', text: `Order ${placed.number ?? placed.ref_id} placed` },
-    );
-  });
-  on('order.loaded', (e) => {
-    const { order: loaded } = e.data;
+      { order: e.data.ref_id, total: e.data.total.toFixed(2), currency: e.data.currency, units: 0 },
+      { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} placed` },
+    ),
+  );
+  on('order.loaded', (e) =>
     change(
-      { order: loaded.ref_id, total: loaded.total_incl_tax, currency: loaded.currency },
-      { at: e.at, text: `Order ${loaded.number ?? loaded.ref_id} loaded` },
-    );
-  });
+      { order: e.data.ref_id, total: e.data.total.toFixed(2), currency: e.data.currency },
+      { at: e.at, text: `Order ${e.data.number ?? e.data.ref_id} loaded` },
+    ),
+  );
+  on('order.paid', (e) => change({}, { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} paid` }));
   on('upsell.accepted', (e) =>
     change(
       { upsell: 'accepted' },
@@ -193,9 +206,11 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   );
   on('upsell.skipped', (e) => change({ upsell: 'declined' }, { at: e.at, text: 'Upsell declined' }));
   on('upsell.failed', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Upsell refused: ${e.data.message ?? e.data.code}` }),
+    change({}, { at: e.at, tone: 'warn', text: `Upsell refused: ${e.data.error.message ?? e.data.error.code}` }),
   );
-  on('promotion.viewed', (e) => change({}, { at: e.at, text: 'Exit popup shown' }));
+  on('promotion.viewed', (e) =>
+    change({}, { at: e.at, text: e.data.type === 'exit_intent' ? 'Exit popup shown' : `Promotion ${e.data.id} shown` }),
+  );
   on('sdk.error', (e) =>
     e.data.action === 'storage.write'
       ? change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.message}` })

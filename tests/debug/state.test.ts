@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Arrival, createDebug } from '../../src/debug/state';
+import { publicOrder } from '../../src/engine/order';
+import type { ApiOrder } from '../../src/engine/types';
 import { makeEngine } from '../fixtures/engine';
+import { ORDER } from '../fixtures/order';
 import { MemoryStorage } from '../fixtures/storage';
 
 const arrival = (path: string): Arrival => ({
@@ -63,9 +66,10 @@ describe('debug journey', () => {
   it('follows the order from checkout to the upsell, and flags an upsell page without one', async () => {
     const session = new MemoryStorage();
     const checkout = page(session, '/checkout/', { kind: 'checkout' });
-    checkout.engine.events.emit('order.created', {
-      order: { ref_id: 'R1', number: 1001, total_incl_tax: '49.00', currency: 'USD' },
-    });
+    checkout.engine.events.emit(
+      'order.created',
+      publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: '49.00', currency: 'USD' } as ApiOrder),
+    );
     expect(checkout.debug.state().pages[0]).toMatchObject({ order: 'R1', total: '49.00', units: 0 });
     expect(page(session, '/upsell/', { kind: 'upsell' }).debug.state().pages[1]!.marks[0]!.text).toBe(
       'No order here: an upsell page shows the order placed at checkout',
@@ -77,14 +81,32 @@ describe('debug journey', () => {
     const upsell = page(session, '/upsell/', { kind: 'upsell' });
     upsell.engine.events.emit('upsell.accepted', {
       ref_id: 'R1',
+      page: '/upsell/',
       lines: [{ package_id: 2, quantity: 1 }],
-      order: { ref_id: 'R1' },
     });
     expect(upsell.debug.state().pages[3]).toMatchObject({
       order: 'R1',
       upsell: 'accepted',
       marks: [{ tone: 'done', text: 'Upsell accepted: package 2' }],
     });
+  });
+
+  it('marks a refused order, a payment left unpaid at the gateway and a paid order on their page', () => {
+    const { engine, debug } = page(new MemoryStorage(), '/checkout/', { kind: 'checkout' });
+    const checkout = engine.cart.currentCheckout();
+    const error = { code: 'declined' as const, message: 'Card declined' };
+    engine.events.emit('checkout.failed', { ...checkout, error });
+    engine.events.emit('payment.redirected', { method: 'paypal', ref_id: 'R1', url: 'https://pay.test/' });
+    engine.events.emit('payment.failed', { method: 'paypal', ref_id: 'R1', error: { code: 'payment_failed' } });
+    engine.events.emit('coupon.denied', { code: 'SAVE10', reason: 'duplicate' });
+    engine.events.emit('order.paid', publicOrder(ORDER));
+    expect(debug.state().pages[0]!.marks.map((m) => [m.tone, m.text])).toEqual([
+      ['warn', 'Order refused: Card declined'],
+      [undefined, 'Left for the payment gateway to pay order R1'],
+      ['warn', 'Payment for order R1 not completed at the gateway'],
+      ['warn', 'Coupon SAVE10 is already on the cart'],
+      ['done', 'Order 1001 paid'],
+    ]);
   });
 
   it('folds a reload into its page, and starts a new step for a page opened again by a link', async () => {

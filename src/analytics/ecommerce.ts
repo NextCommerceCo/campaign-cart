@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
-import type { Order, OrderLine } from '../engine/types';
+import type { ApiOrder, ApiOrderLine } from '../engine/types';
 
 export const cents = (n: number) => Math.round(n * 100) / 100;
 
@@ -57,7 +57,7 @@ export const cartEcommerce = (engine: Engine) => {
   };
 };
 
-export const taxIncluded = (engine: Engine, order: Order) => {
+export const taxIncluded = (engine: Engine, order: ApiOrder) => {
   for (const line of order.lines ?? []) {
     const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
     const qty = line.quantity || 1;
@@ -69,7 +69,7 @@ export const taxIncluded = (engine: Engine, order: Order) => {
   return false;
 };
 
-export const orderItem = (engine: Engine, order: Order, line: OrderLine, index: number, incl: boolean) => {
+export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, index: number, incl: boolean) => {
   const qty = line.quantity || 1;
   const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
   const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;

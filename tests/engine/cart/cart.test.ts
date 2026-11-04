@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';
-import type { EventMap } from '../../../src/engine/events';
+import type { EventMap, Selector } from '../../../src/engine/events';
+import { campaign } from '../../fixtures/campaign';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
 
@@ -40,18 +41,156 @@ describe('cart', () => {
     expect(api.calls.filter((c) => c.body.vouchers.includes('NOPE'))).toHaveLength(1);
   });
 
-  it('checks a code entered on an empty cart once the cart has items', async () => {
+  it('holds a code entered on an empty cart off the cart until its first price, and resolves applyCoupon once that decides it', async () => {
     const { engine } = makeEngine();
     await engine.start();
-    const refused: string[] = [];
-    engine.on('coupon.denied', (e) => refused.push(e.data.code));
-    expect(await engine.cart.applyCoupon('nope')).toBe(true);
-    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    const seen: unknown[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push([e.name, e.data]));
+    const results: Record<string, boolean> = {};
+    const nope = engine.cart.applyCoupon('nope').then((r) => (results.NOPE = r));
+    const save = engine.cart.applyCoupon('save10').then((r) => (results.SAVE10 = r));
+    expect(await engine.cart.applyCoupon('Save10')).toBe(false);
+    await flush();
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(results).toEqual({});
+    expect(seen).toEqual([['coupon.denied', { code: 'SAVE10', reason: 'duplicate' }]]);
+    seen.length = 0;
+    await engine.cart.addItem(1);
+    await Promise.all([nope, save]);
+    expect(results).toEqual({ NOPE: false, SAVE10: true });
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+    expect(seen).toEqual([
+      ['coupon.denied', { code: 'NOPE', reason: 'no_discount' }],
+      [
+        'coupon.applied',
+        {
+          code: 'SAVE10',
+          amount: 1,
+          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }],
+        },
+      ],
+    ]);
+  });
+
+  it('holds a code entered before the campaign loads until the cart is priced', async () => {
+    let load!: (c: typeof campaign) => void;
+    const { engine } = makeEngine({ campaign: new Promise((r) => (load = r)) });
+    const starting = engine.start();
+    void engine.cart.addItem(1);
+    let applied: boolean | undefined;
+    const applying = engine.cart.applyCoupon('save10').then((r) => (applied = r));
+    await flush();
+    expect(applied).toBeUndefined();
+    expect(engine.getState().cart.coupons).toEqual([]);
+    load(campaign);
+    await starting;
+    await applying;
+    expect(applied).toBe(true);
+    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
+  });
+
+  it('keeps a held code in this tab, and checks and announces it at the first price on the next page', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    void first.cart.applyCoupon('nope');
+    void first.cart.applyCoupon('save10');
+    await flush();
+    const { engine, api } = makeEngine({ session });
+    expect(engine.getState().cart).toMatchObject({ coupons: [], held: ['NOPE', 'SAVE10'] });
+    await engine.start();
+    const seen: unknown[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push([e.name, (e.data as { code: string }).code]));
+    const again = engine.cart.applyCoupon('save10');
     await engine.cart.addItem(1);
     await flush();
     await engine.cart.settled();
-    expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
-    expect(refused).toEqual(['NOPE']);
+    expect(await again).toBe(false);
+    expect(api.calls[0]!.body.vouchers).toEqual([]);
+    expect(seen).toEqual([
+      ['coupon.denied', 'SAVE10'],
+      ['coupon.denied', 'NOPE'],
+      ['coupon.applied', 'SAVE10'],
+    ]);
+    expect(engine.getState().cart).toMatchObject({ coupons: ['SAVE10'], held: [] });
+    expect(makeEngine({ session }).engine.getState().cart).toMatchObject({ coupons: ['SAVE10'], held: [] });
+  });
+
+  it('drops held codes when the cart is cleared: applyCoupon answers false, with no coupon event', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(e.name));
+    let applied: boolean | undefined;
+    void engine.cart.applyCoupon('save10').then((r) => (applied = r));
+    await engine.cart.clear();
+    await flush();
+    expect(applied).toBe(false);
+    expect(engine.getState().cart.held).toEqual([]);
+    await engine.cart.addItem(1);
+    await flush();
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(api.calls.filter((c) => c.body.vouchers.includes('SAVE10'))).toEqual([]);
+    expect(seen).toEqual([]);
+  });
+
+  it('drops a held code being checked when the cart is cleared', async () => {
+    const api = fakeApi({ delays: [0, 20] });
+    const { engine } = makeEngine({ fetch: api.fetch });
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(e.name));
+    let applied: boolean | undefined;
+    void engine.cart.applyCoupon('save10').then((r) => (applied = r));
+    await engine.cart.addItem(1);
+    await flush();
+    expect(api.calls.at(-1)!.body.vouchers).toEqual(['SAVE10']);
+    await engine.cart.clear();
+    await wait(40);
+    expect(applied).toBe(false);
+    expect(engine.getState().cart).toMatchObject({ coupons: [], held: [] });
+    expect(seen).toEqual([]);
+  });
+
+  it('cancels a code whose check is in flight when the shopper removes it or clears the cart', async () => {
+    const api = fakeApi();
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(init?.body ?? '').includes('SAVE10')) await wait(20);
+      return api.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    await engine.start();
+    await engine.cart.addItem(1);
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(e.name));
+    const removed = engine.cart.applyCoupon('save10');
+    await flush();
+    await engine.cart.removeCoupon('save10');
+    const cleared = engine.cart.applyCoupon('save10');
+    await flush();
+    await engine.cart.clear();
+    expect(await removed).toBe(false);
+    expect(await cleared).toBe(false);
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(seen).toEqual([]);
+  });
+
+  it('cancels a held code on removeCoupon: applyCoupon answers false, with no coupon event', async () => {
+    const { engine, api } = makeEngine();
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(e.name));
+    let applied: boolean | undefined;
+    void engine.cart.applyCoupon('save10').then((r) => (applied = r));
+    await engine.cart.removeCoupon(' Save10 ');
+    await flush();
+    expect(applied).toBe(false);
+    expect(engine.getState().cart.held).toEqual([]);
+    await engine.cart.addItem(1);
+    await flush();
+    expect(engine.getState().cart.coupons).toEqual([]);
+    expect(api.calls.filter((c) => c.body.vouchers.includes('SAVE10'))).toEqual([]);
+    expect(seen).toEqual([]);
   });
 
   it('never lets an older response overwrite a newer one', async () => {
@@ -148,63 +287,97 @@ describe('cart', () => {
     expect(errors).toEqual([]);
     expect(warn).toHaveBeenCalledWith('removed package ids the campaign does not have: 404');
   });
-  it('announces shipping and selection changes with their data', async () => {
+  it('announces a shipping method with what is known when the cart cannot be priced', async () => {
     const { engine } = makeEngine();
     const seen: unknown[] = [];
     engine.on('shipping.selected', (e) => seen.push(e.data));
-    engine.on('selector.selected', (e) => seen.push(e.data));
     await engine.cart.setShipping(2);
     await engine.cart.setShipping(2);
-    void engine.selectors.register(
-      'main',
-      [{ id: 'two', lines: [{ packageId: 2, quantity: 1 }], vouchers: [] }],
-      'select',
-    );
+    expect(seen).toEqual([{ id: 2 }]);
+    await engine.start();
+    await engine.cart.setShipping(1);
+    expect(seen).toEqual([{ id: 2 }, { id: 1, code: 'standard' }]);
+  });
+
+  it('announces a shipping method once the cart is priced with it, with its price', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    const seen: unknown[] = [];
+    engine.on('*', (e) => {
+      if (e.name === 'shipping.selected') seen.push([e.name, e.data]);
+      else if (e.name.startsWith('cart.')) seen.push(e.name);
+    });
+    await engine.cart.setShipping(1);
     expect(seen).toEqual([
-      { id: 2 },
-      {
-        selector_id: 'main',
-        type: 'bundle',
-        option_id: 'two',
-        lines: [{ package_id: 2, quantity: 1 }],
-      },
+      'cart.updated',
+      'cart.calculating',
+      'cart.calculated',
+      ['shipping.selected', { id: 1, code: 'standard', name: 'Standard', price: 0, original_price: 0, discounts: [] }],
     ]);
   });
-  it('announces one price run per burst of changes, and the net change once the cart is priced', async () => {
+
+  it('announces one price run per burst of changes, and each change right after its cart.updated', async () => {
     const { engine } = makeEngine();
     await engine.start();
     const seen: unknown[] = [];
     engine.on('*', (e) => {
-      if (e.name === 'cart.calculating' || e.name === 'cart.calculated') seen.push(e.name);
-      if (e.name === 'cart.added' || e.name === 'cart.removed') seen.push([e.name, e.data]);
+      if (e.name === 'cart.added' || e.name === 'cart.removed')
+        seen.push([e.name, (e.data as EventMap['cart.added']).changes]);
+      else if (e.name.startsWith('cart.')) seen.push(e.name);
     });
     void engine.cart.addItem(1);
     void engine.cart.addItem(1);
     await engine.cart.setQuantity(1, 1);
     await engine.cart.settled();
-    const change = { package_id: 1, product_id: 400, quantity: 1, price: 49 };
+    const earbuds = { package_id: 1, product_id: 400, quantity: 1 };
     expect(seen).toEqual([
+      'cart.updated',
+      ['cart.added', [{ ...earbuds, from: 0, to: 1 }]],
+      'cart.updated',
+      ['cart.added', [{ ...earbuds, from: 1, to: 2 }]],
+      'cart.updated',
+      ['cart.removed', [{ ...earbuds, from: 2, to: 1 }]],
       'cart.calculating',
-      [
-        'cart.added',
-        expect.objectContaining({
-          lines: [expect.objectContaining({ package_id: 1, product_id: 400, quantity: 1, price: 49, total: 49 })],
-          currency: 'USD',
-          subtotal: 49,
-          total: 49,
-          changes: [change],
-        }),
-      ],
       'cart.calculated',
     ]);
     seen.length = 0;
-    void engine.cart.addItem(2);
-    await engine.cart.removeItem(2);
-    await engine.cart.settled();
-    expect(seen.filter((e) => typeof e !== 'string')).toEqual([]);
-    seen.length = 0;
+    await engine.cart.setGroups({ bundle: { lines: [{ packageId: 2, quantity: 2 }], vouchers: [] } });
+    expect(seen.slice(0, 3)).toEqual([
+      'cart.updated',
+      ['cart.removed', [{ ...earbuds, from: 1, to: 0, price: 49 }]],
+      ['cart.added', [{ package_id: 2, product_id: 400, quantity: 2, from: 0, to: 2 }]],
+    ]);
+  });
+
+  it('carries on cart.added the cart its cart.updated carried', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const carts: unknown[] = [];
+    engine.on('cart.updated', (e) => carts.push(e.data));
+    engine.on('cart.added', (e) => carts.push(e.data));
+    await engine.cart.addItem(9, 2);
+    const changes = [{ package_id: 9, product_id: 900, quantity: 2, from: 0, to: 2 }];
+    expect(carts).toEqual([carts[0], { ...(carts[0] as object), changes }]);
+  });
+
+  it('prices a change only at what the server already charged for that package', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const changes: unknown[] = [];
+    engine.on('cart.added', (e) => changes.push(...e.data.changes));
+    engine.on('cart.removed', (e) => changes.push(...e.data.changes));
+    await engine.cart.addItem(1);
+    await engine.cart.addItem(1);
+    await engine.cart.addItem(9);
     await engine.cart.clear();
-    expect(seen).toEqual([['cart.removed', { lines: [], coupons: [], currency: 'USD', changes: [change] }]]);
+    expect(changes).toEqual([
+      { package_id: 1, product_id: 400, quantity: 1, from: 0, to: 1 },
+      { package_id: 1, product_id: 400, quantity: 1, from: 1, to: 2, price: 49 },
+      { package_id: 9, product_id: 900, quantity: 1, from: 0, to: 1 },
+      { package_id: 1, product_id: 400, quantity: 2, from: 2, to: 0, price: 49 },
+      { package_id: 9, product_id: 900, quantity: 1, from: 1, to: 0, price: 9 },
+    ]);
   });
 
   it('checks a coupon against a fresh price when the last pricing failed', async () => {
@@ -227,7 +400,27 @@ describe('cart', () => {
     expect(await engine.cart.applyCoupon('NOPE')).toBe(false);
   });
 
-  it('announces an addition at the package price when pricing fails', async () => {
+  it('gives a line whose quantity changed no price until the cart is priced again', async () => {
+    const api = fakeApi();
+    let failing = false;
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      failing && String(input).includes('/carts/calculate')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init)) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    await engine.cart.addItem(1);
+    await engine.cart.settled();
+    expect(engine.cart.currentCheckout().cart.lines[0]).toHaveProperty('price');
+    failing = true;
+    await engine.cart.setQuantity(1, 2);
+    await engine.cart.settled();
+    expect(engine.cart.currentCheckout().cart.lines[0]).toMatchObject({ package_id: 1, quantity: 2 });
+    expect(engine.cart.currentCheckout().cart.lines[0]).not.toHaveProperty('price');
+  });
+
+  it('announces an addition before pricing, and never at the campaign’s package price when pricing fails', async () => {
     const api = fakeApi();
     const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
       String(input).includes('/carts/calculate')
@@ -236,17 +429,19 @@ describe('cart', () => {
     const { engine } = makeEngine({ fetch });
     vi.spyOn(engine.log, 'info').mockImplementation(() => {});
     await engine.start();
-    const added: unknown[] = [];
-    engine.on('cart.added', (e) => added.push(e.data));
+    const seen: unknown[] = [];
+    engine.on('cart.added', (e) => seen.push(e.data));
+    engine.on('sdk.error', (e) => seen.push(e.name));
     await engine.cart.addItem(1);
     await engine.cart.settled();
-    expect(added).toEqual([
+    expect(seen).toEqual([
       {
         lines: [{ package_id: 1, quantity: 1, product_id: 400, image: 'https://cdn.test/1.png' }],
         coupons: [],
         currency: 'USD',
-        changes: [{ package_id: 1, product_id: 400, quantity: 1, price: 49 }],
+        changes: [{ package_id: 1, product_id: 400, quantity: 1, from: 0, to: 1 }],
       },
+      'sdk.error',
     ]);
   });
 
@@ -275,17 +470,63 @@ describe('cart', () => {
     expect(cart).toMatchObject({ coupons: ['SAVE10'], currency: 'USD', subtotal: 49, total: 39 });
   });
 
-  it('announces a coupon applied, removed or denied', async () => {
+  it('announces a coupon applied, removed or denied, and why', async () => {
     const { engine } = makeEngine();
     await engine.start();
     await engine.cart.addItem(1);
-    const seen: string[] = [];
-    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(`${e.name} ${(e.data as { code: string }).code}`));
-    await engine.cart.applyCoupon('nope');
+    const seen: unknown[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push([e.name, e.data]));
+    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(await engine.cart.applyCoupon('save10')).toBe(true);
+    expect(await engine.cart.applyCoupon('save10')).toBe(false);
+    await engine.cart.removeCoupon('save10');
+    await engine.cart.removeCoupon('save10');
+    expect(seen).toEqual([
+      ['coupon.denied', { code: 'NOPE', reason: 'no_discount' }],
+      [
+        'coupon.applied',
+        {
+          code: 'SAVE10',
+          amount: 1,
+          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }],
+        },
+      ],
+      ['coupon.denied', { code: 'SAVE10', reason: 'duplicate' }],
+      ['coupon.removed', { code: 'SAVE10', reason: 'shopper' }],
+    ]);
+  });
+
+  it('denies a code it cannot check, with the error, and reports the failed check', async () => {
+    const api = fakeApi();
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      String(init?.body ?? '').includes('SAVE10')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init)) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    await engine.cart.addItem(1);
+    const seen: unknown[] = [];
+    engine.on('*', (e) => (e.name === 'sdk.error' || e.name.startsWith('coupon.')) && seen.push([e.name, e.data]));
+    expect(await engine.cart.applyCoupon('save10')).toBe(false);
+    const [error, denied] = seen as Array<[string, { message: string }]>;
+    expect(error).toEqual(['sdk.error', expect.objectContaining({ action: 'coupon.check', status: 502 })]);
+    expect(denied).toEqual(['coupon.denied', { code: 'SAVE10', reason: 'check_failed', message: error![1].message }]);
+    expect(engine.getState().cart.coupons).toEqual([]);
+  });
+
+  it('takes every code off with reason cleared when the cart is cleared', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
     await engine.cart.applyCoupon('save10');
-    await engine.cart.removeCoupon('save10');
-    await engine.cart.removeCoupon('save10');
-    expect(seen).toEqual(['coupon.denied NOPE', 'coupon.applied SAVE10', 'coupon.removed SAVE10']);
+    const seen: unknown[] = [];
+    engine.on('*', (e) => (e.name === 'cart.updated' || e.name.startsWith('coupon.')) && seen.push([e.name, e.data]));
+    await engine.cart.clear();
+    expect(seen).toEqual([
+      ['cart.updated', { lines: [], coupons: [], currency: 'USD' }],
+      ['coupon.removed', { code: 'SAVE10', reason: 'cleared' }],
+    ]);
   });
 
   it('takes no coupon change while the cart is frozen for an order, and takes them again once it thaws', async () => {
@@ -333,23 +574,27 @@ describe('cart', () => {
     expect(seen).toEqual(['shipping.selected', 'selector.selected']);
   });
 
-  it('keeps a code entered on an empty cart until it can be refused, when the cart is frozen while it is priced', async () => {
+  it('keeps holding a code entered on an empty cart while the cart is frozen, and checks it at the next price', async () => {
     const { engine } = makeEngine();
     await engine.start();
     const refused: string[] = [];
     engine.on('coupon.denied', (e) => refused.push(e.data.code));
-    expect(await engine.cart.applyCoupon('nope')).toBe(true);
+    let applied: boolean | undefined;
+    const applying = engine.cart.applyCoupon('nope').then((r) => (applied = r));
     const adding = engine.cart.addItem(1);
     engine.cart.freeze(true);
     await adding;
+    await engine.cart.removeCoupon('nope');
+    await engine.cart.clear();
     await flush();
     expect(refused).toEqual([]);
-    expect(engine.getState().cart.coupons).toEqual(['NOPE']);
+    expect(applied).toBeUndefined();
+    expect(engine.getState().cart).toMatchObject({ coupons: [], held: ['NOPE'] });
     engine.cart.freeze(false);
     await engine.cart.addItem(1);
-    await flush();
-    await engine.cart.settled();
+    await applying;
     expect(refused).toEqual(['NOPE']);
+    expect(applied).toBe(false);
     expect(engine.getState().cart.coupons).toEqual([]);
   });
 
@@ -361,30 +606,77 @@ describe('cart', () => {
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
     await engine.cart.setGroup('toggle:9', null);
+    const line = (quantity: number) =>
+      `[{"package_id":9,"quantity":${quantity},"product_id":900,"image":"https://cdn.test/9.png"}]`;
     expect(seen).toEqual([
-      'selector.selected {"selector_id":"toggle:9","type":"toggle","lines":[{"package_id":9,"quantity":1,"product_id":900,"image":"https://cdn.test/9.png"}]}',
-      'selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":[]}',
+      `selector.selected {"selector_id":"toggle:9","type":"toggle","lines":${line(1)},"currency":"USD"}`,
+      `selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":${line(2)},"currency":"USD"}`,
     ]);
   });
 
-  it('names the package and quantity a toggle is priced at, and its price once it arrives', async () => {
+  it('announces a toggle leaving the cart by any path, and entering it by any group write', async () => {
     const { engine } = makeEngine();
     await engine.start();
-    const seen: Array<EventMap['selector.calculating']> = [];
-    engine.on('selector.calculating', (e) => seen.push(e.data));
-    engine.on('selector.calculated', (e) => seen.push(e.data));
-    engine.on('selector.selected', (e) => seen.push(e.data));
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('selector.') && seen.push(`${e.name} ${(e.data as Selector).selector_id}`));
+    const on = () => engine.cart.addItem(9, 1, 'toggle:9');
+    await on();
+    await engine.cart.removeItem(9);
+    await on();
+    await engine.cart.setQuantity(9, 0);
+    await on();
+    await engine.cart.clear();
+    await engine.cart.setGroups({ 'toggle:9': toggle(9) });
+    await engine.cart.setGroup('toggle:9', null);
+    await engine.cart.setQuantity(9, 1);
+    expect(seen).toEqual([...Array(4).fill(['selector.selected toggle:9', 'selector.deselected toggle:9']).flat()]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
+  });
+
+  it('prices a toggle without announcing it, and carries the price on selector.selected', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const seen: unknown[] = [];
+    engine.on('*', (e) => e.name.startsWith('selector.') && seen.push([e.name, e.data]));
     engine.toggles.price(9, 2);
     await flush();
+    expect(seen).toEqual([]);
+    expect(engine.getState().toggles[9]).toMatchObject({ quantity: 2, line: { package_id: 9, quantity: 2 } });
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
-    const [calculating, calculated, selected] = seen;
-    expect(calculating).toEqual({
-      selector_id: 'toggle:9',
-      type: 'toggle',
-      lines: [{ package_id: 9, quantity: 2, product_id: 900, image: 'https://cdn.test/9.png' }],
-    });
-    expect(calculated!.lines).toMatchObject([{ package_id: 9, quantity: 2, price: 9, total: 18 }]);
-    expect(calculated).toEqual(selected);
+    expect(seen).toEqual([
+      [
+        'selector.selected',
+        {
+          selector_id: 'toggle:9',
+          type: 'toggle',
+          lines: [expect.objectContaining({ package_id: 9, quantity: 2, price: 9, total: 18 })],
+          currency: 'USD',
+          total: 18,
+        },
+      ],
+    ]);
+  });
+
+  it('reports a toggle it cannot price only as sdk.error', async () => {
+    const failing = (async () => new Response('{}', { status: 502 })) as typeof fetch;
+    const { engine } = makeEngine({ fetch: failing, campaign: Promise.resolve(campaign) });
+    vi.spyOn(engine.log, 'error').mockImplementation(() => {});
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => seen.push(e.name));
+    engine.toggles.price(9, 1);
+    await flush();
+    expect(seen).toEqual(['sdk.error']);
+  });
+
+  it('names the checkout, and its step from the second step of a multi-step checkout', () => {
+    const { engine } = makeEngine();
+    expect(engine.cart.currentCheckout()).toMatchObject({ id: '' });
+    engine.attach((ctx) => ctx.update('checkout', { id: 'c1', step: 0 }));
+    expect(engine.cart.currentCheckout()).toMatchObject({ id: 'c1' });
+    expect(engine.cart.currentCheckout()).not.toHaveProperty('step');
+    engine.attach((ctx) => ctx.update('checkout', { step: 2 }));
+    expect(engine.cart.currentCheckout()).toMatchObject({ id: 'c1', step: 2 });
   });
 
   it('keeps working in memory when every storage is blocked', async () => {

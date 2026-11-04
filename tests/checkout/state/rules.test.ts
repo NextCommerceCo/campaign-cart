@@ -58,7 +58,7 @@ describe('checkout rules', () => {
     ).toEqual({});
   });
 
-  it('checks the billing address only when it differs, and express only the contact', () => {
+  it('checks the billing address only when it differs, and a list only the fields it names', () => {
     const different = checkout(SHIPPING, { sameAsShipping: false });
     expect(Object.keys(formErrors(different, 'all'))).toEqual([
       'billing_first_name',
@@ -68,9 +68,13 @@ describe('checkout rules', () => {
       'billing_country',
     ]);
     expect(formErrors(different, 'shipping')).toEqual({});
-    expect(
-      formErrors(checkout({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' }), 'express'),
-    ).toEqual({});
+    expect(formErrors(checkout({ email: 'jane@example.com', first_name: 'Jane' }), ['email', 'first_name'])).toEqual(
+      {},
+    );
+    expect(formErrors(checkout({ email: 'jane@' }), ['email', 'last_name'])).toEqual({
+      email: 'invalid',
+      last_name: 'blank',
+    });
     expect(formErrors(checkout(SHIPPING), 'all', true)).toEqual({ phone_number: 'blank' });
   });
 });

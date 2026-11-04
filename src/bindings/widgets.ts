@@ -8,7 +8,14 @@ const TOOLTIP_CSS = `.next-tooltip{position:fixed;top:0;left:0;z-index:99999;opa
 
 const GAP = 5;
 
-function bindAccordion(container: HTMLElement): void {
+/** What the widgets report; boot sends each on under its 0.4.x `next.on` name. */
+export interface WidgetEvents {
+  timerExpired(id: string): void;
+  accordion(id: string, open: boolean, element: HTMLElement): void;
+  scrollHint(state: { isVisible: boolean; scrollTop: number; scrollHeight: number; clientHeight: number }): void;
+}
+
+function bindAccordion(container: HTMLElement, events?: WidgetEvents): void {
   const id = container.getAttribute('data-next-accordion')!;
   const within = (attr: string) => [...container.querySelectorAll<HTMLElement>(`[${attr}="${id}"]`)];
   const triggers = within('data-next-accordion-trigger');
@@ -42,6 +49,7 @@ function bindAccordion(container: HTMLElement): void {
       else setTimeout(() => open && (panel.style.height = 'auto'), duration);
     }
     render();
+    events?.accordion(id, open, container);
   };
 
   for (const trigger of triggers) {
@@ -137,16 +145,19 @@ function scrollTarget(hint: HTMLElement): HTMLElement | null {
   return within(hint.parentElement) || within(hint.closest('.order-summary, .cart-items, .modal-content')) || null;
 }
 
-function bindScrollHint(hint: HTMLElement): void {
+function bindScrollHint(hint: HTMLElement, events?: WidgetEvents): void {
   const target = scrollTarget(hint);
   if (!target) return;
   const threshold = Number(hint.getAttribute('data-next-scroll-threshold') || 5);
   let frame = 0;
   const update = () => {
     frame = 0;
-    const shown = target.scrollHeight > target.clientHeight && target.scrollTop <= threshold;
+    const { scrollTop, scrollHeight, clientHeight } = target;
+    const scrolls = scrollHeight > clientHeight;
+    const shown = scrolls && scrollTop <= threshold;
     hint.classList.toggle('cart-items__scroll-hint--active', shown);
     hint.setAttribute('aria-hidden', String(!shown));
+    if (scrolls) events?.scrollHint({ isVisible: shown, scrollTop, scrollHeight, clientHeight });
   };
   const later = () => (frame ||= requestAnimationFrame(update));
   target.addEventListener('scroll', later, { passive: true });
@@ -165,7 +176,7 @@ function clock(seconds: number, format: string): string {
   return format === 'ss' ? pad(s) : `${pad(m)}:${pad(s)}`;
 }
 
-function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger): void {
+function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger, events?: WidgetEvents): void {
   const duration = Number(timer.getAttribute('data-duration'));
   if (!duration) return log.warn('data-next-timer needs data-duration (seconds)');
   const id = timer.getAttribute('data-persistence-id') || 'default-timer';
@@ -180,6 +191,7 @@ function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger): voi
     document
       .querySelectorAll<HTMLElement>(`[data-next-timer-expired][data-persistence-id="${id}"]`)
       .forEach((el) => (el.style.display = ''));
+    events?.timerExpired(id);
   };
   const interval = setInterval(tick, 1000);
   tick();
@@ -187,10 +199,17 @@ function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger): voi
 
 const startNow: TimerStart = () => Date.now();
 
-export function bindWidgets(root: ParentNode = document, { timerStart = startNow, log = new Logger() } = {}): void {
-  root.querySelectorAll<HTMLElement>('[data-next-timer]').forEach((timer) => bindTimer(timer, timerStart, log));
-  root.querySelectorAll<HTMLElement>('[data-next-accordion]').forEach(bindAccordion);
-  root.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]').forEach(bindScrollHint);
+export function bindWidgets(
+  root: ParentNode = document,
+  {
+    timerStart = startNow,
+    log = new Logger(),
+    events,
+  }: { timerStart?: TimerStart; log?: Logger; events?: WidgetEvents } = {},
+): void {
+  root.querySelectorAll<HTMLElement>('[data-next-timer]').forEach((timer) => bindTimer(timer, timerStart, log, events));
+  root.querySelectorAll<HTMLElement>('[data-next-accordion]').forEach((el) => bindAccordion(el, events));
+  root.querySelectorAll<HTMLElement>('[data-next-component="scroll-hint"]').forEach((el) => bindScrollHint(el, events));
   const tips = root.querySelectorAll<HTMLElement>('[data-next-tooltip]');
   if (tips.length && !document.getElementById('next-tooltip-styles')) {
     document.head.append(

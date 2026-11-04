@@ -1,8 +1,10 @@
 import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
 import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
+import type { ApiOrder, ApiOrderLine } from '../engine/types';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { newId } from '../engine/id';
+import { upsellId } from '../engine/order';
 import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
@@ -48,10 +50,26 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   let ready = false;
   let priced: SummaryLine[] | undefined;
-  let started = false;
-  let shippingSent = false;
-  let paymentSent = false;
+  const upsellPages = new Set<string>();
   const tier = () => engine.getState().cart.summary?.shipping_method?.name ?? 'Standard';
+
+  const oncePerCheckout = (
+    trigger: EventName,
+    name: AnalyticsName,
+    params: () => Record<string, unknown>,
+    reason: string,
+  ) => {
+    const checkout = engine.checkout;
+    if (!checkout || !engine.getState().checkout?.id) return skip(trigger, name, 'The checkout has not started');
+    if (checkout.reported(name)) return skip(trigger, name, 'Already sent for this checkout');
+    emit(name, params(), { trigger, reason });
+    checkout.markReported(name);
+  };
+
+  const rawOrder = (refId: string): ApiOrder | undefined => {
+    const order = engine.getState().order?.order;
+    return order?.ref_id === refId ? order : undefined;
+  };
 
   const onReady = () => {
     ready = true;
@@ -136,7 +154,11 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     else skip(trigger, 'add_to_cart', nothingAdded);
   };
 
-  const onPaid = ({ order, coupon }: EventMap['order.paid']) => {
+  const onPaid = ({ ref_id }: EventMap['order.paid']) => {
+    const order = rawOrder(ref_id);
+    if (!order) return skip('order.paid', 'purchase', 'The order is not in the state');
+    const { coupon } = engine.getState().order!;
+    const code = coupon?.refId === ref_id ? coupon.code : undefined;
     const transaction = String(order.number ?? order.ref_id);
     const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
     const incl = taxIncluded(engine, order);
@@ -152,16 +174,26 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
         affiliation: 'Online Store',
         items,
-        ...(coupon && { coupon }),
+        ...(code && { coupon: code }),
         ...(discount > 0 && { discount }),
       },
       { trigger: 'order.paid', reason: 'Once per order, when it is paid', id: transaction },
     );
   };
 
-  const onLoaded = ({ order, upsells }: EventMap['order.loaded']) => {
-    for (const { number, line } of upsells ?? []) {
-      const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
+  const onLoaded = ({ ref_id }: EventMap['order.loaded']) => {
+    const order = rawOrder(ref_id);
+    const ledger = engine.order;
+    if (!order || !ledger) return skip('order.loaded', 'upsell_purchase', 'The order is not in the state');
+    const done = ledger.reported();
+    const upsells = (order.lines ?? [])
+      .filter((l) => l.is_upsell)
+      .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
+      .filter((u) => !done.includes(u.id));
+    if (!upsells.length) return skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
+    const incl = taxIncluded(engine, order);
+    for (const { number, line } of upsells) {
+      const item = orderItem(engine, order, line, 0, incl);
       const transaction = `${order.ref_id}-US${number}`;
       emit(
         'upsell_purchase',
@@ -183,7 +215,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         { trigger: 'order.loaded', reason: `Accepted upsell ${number}`, id: transaction },
       );
     }
-    if (!upsells?.length) skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
+    ledger.markReported(upsells.map((u) => u.id));
   };
 
   engine.on(
@@ -191,7 +223,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     (e) => {
       if (e.name === 'sdk.ready') {
         onReady();
-        if (!(e.data as EventMap['sdk.ready']).lines.length) return reportCart([], 'sdk.ready');
+        if (!(e.data as EventMap['sdk.ready']).cart.lines.length) return reportCart([], 'sdk.ready');
         return priced && reportCart(priced, 'sdk.ready');
       }
       if (!ready) {
@@ -210,11 +242,12 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             reason: 'After every price update',
           });
         case 'checkout.started':
-          started = true;
-          return emit('begin_checkout', cartEcommerce(engine), {
-            trigger: e.name,
-            reason: 'Once, when the checkout form is ready',
-          });
+          return oncePerCheckout(
+            e.name,
+            'begin_checkout',
+            () => cartEcommerce(engine),
+            'Once per checkout, when its form is ready',
+          );
         case 'user.created': {
           const { currency, value } = cartEcommerce(engine);
           return emit(
@@ -224,35 +257,39 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           );
         }
         case 'address.entered':
-          if ((e.data as EventMap['address.entered']).type !== 'shipping') return;
-        // falls through
-        case 'shipping.selected':
-          if (!started || shippingSent) return;
-          shippingSent = true;
-          return emit(
+        case 'shipping.selected': {
+          if (e.name === 'address.entered' && (e.data as EventMap['address.entered']).type !== 'shipping') return;
+          const method = e.name === 'shipping.selected' ? (e.data as EventMap['shipping.selected']) : undefined;
+          return oncePerCheckout(
+            e.name,
             'add_shipping_info',
-            { ...cartEcommerce(engine), shipping_tier: tier() },
-            { trigger: e.name, reason: 'Once, when the shipping address is valid or a shipping method is picked' },
+            () => ({
+              ...cartEcommerce(engine),
+              ...(method?.price !== undefined && { shipping: method.price }),
+              shipping_tier: method?.name ?? tier(),
+            }),
+            'Once per checkout, when the shipping address is valid or a shipping method is picked',
           );
+        }
         case 'checkout.submitted': {
           const { valid, payment_method } = e.data as EventMap['checkout.submitted'];
-          if (!valid || paymentSent) return;
-          paymentSent = true;
-          return emit(
+          if (!valid) return;
+          return oncePerCheckout(
+            e.name,
             'add_payment_info',
-            {
+            () => ({
               ...cartEcommerce(engine),
               payment_type: payment_method === 'card_token' ? 'Credit Card' : payment_method,
-            },
-            { trigger: e.name, reason: 'Once, when a submit passes its checks' },
+            }),
+            'Once per checkout, when a submit passes its checks',
           );
         }
         case 'promotion.viewed':
         case 'promotion.clicked': {
-          const { source, template, image_url } = e.data as EventMap['promotion.viewed'];
+          const { id, name, creative } = e.data as EventMap['promotion.viewed'];
           return emit(
             e.name === 'promotion.viewed' ? 'view_promotion' : 'select_promotion',
-            { promotion_id: source, creative_name: template ?? image_url },
+            { promotion_id: id, ...(name && { promotion_name: name }), creative_name: creative },
             {
               trigger: e.name,
               reason: `Every time a promotion is ${e.name === 'promotion.viewed' ? 'shown' : 'clicked'}`,
@@ -265,14 +302,17 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           return onPaid(e.data as EventMap['order.paid']);
         case 'upsell.viewed': {
           const { ref_id, page } = e.data as EventMap['upsell.viewed'];
+          if (upsellPages.has(page)) return skip(e.name, 'view_upsell', 'Already sent for this upsell page');
+          upsellPages.add(page);
           return emit(
             'view_upsell',
             { order_id: ref_id, page_path: page, currency: currency(engine) },
-            { trigger: e.name, reason: 'Every time an upsell is shown' },
+            { trigger: e.name, reason: 'Once per upsell page, when an offer is shown' },
           );
         }
         case 'upsell.skipped': {
-          const { ref_id, package_id } = e.data as EventMap['upsell.skipped'];
+          const { ref_id, lines } = e.data as EventMap['upsell.skipped'];
+          const package_id = lines[0]?.package_id;
           const name = package_id ? engine.getPackage(package_id)?.name : undefined;
           return emit(
             'skip_upsell',
@@ -284,6 +324,13 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     },
     { replay: true },
   );
+  if (engine.getState().checkout?.id && engine.checkout && !engine.checkout.reported('begin_checkout'))
+    oncePerCheckout(
+      'checkout.started',
+      'begin_checkout',
+      () => cartEcommerce(engine),
+      'Not sent on the page that started this checkout',
+    );
 
   if (options.nextCampaign && !document.querySelector(`script[src="${NEXT_CAMPAIGN_SCRIPT}"]`)) {
     const script = Object.assign(document.createElement('script'), { src: NEXT_CAMPAIGN_SCRIPT, async: true });

@@ -18,7 +18,9 @@ const FILE = 'docs/event-examples.json';
 const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> = {
   'sdk.ready': true,
   'sdk.error': true,
+  'selector.viewed': true,
   'selector.selected': true,
+  'selector.updated': true,
   'selector.deselected': true,
   'selector.calculating': true,
   'selector.calculated': true,
@@ -27,6 +29,7 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'cart.calculated': true,
   'cart.added': true,
   'cart.removed': true,
+  'shipping.selected': true,
   'coupon.applied': true,
   'coupon.removed': true,
   'coupon.denied': true,
@@ -35,13 +38,16 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'user.updated': true,
   'address.entered': true,
   'address.updated': true,
-  'shipping.selected': true,
   'payment.selected': true,
+  'checkout.continued': true,
   'checkout.submitted': true,
+  'checkout.failed': true,
+  'payment.redirected': true,
+  'payment.failed': true,
   'order.created': true,
-  'order.failed': true,
   'order.loaded': true,
   'order.paid': true,
+  'order.updated': true,
   'upsell.viewed': true,
   'upsell.accepted': true,
   'upsell.skipped': true,
@@ -61,10 +67,14 @@ const CATALOG: Campaign = {
   })),
 };
 
+const CHECKOUT_ID = '4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f';
 const examples: Record<string, unknown> = {};
 const record = (engine: Engine) =>
   engine.on('*', (e) => {
-    if (e.name in PUBLIC && !(e.name in examples)) examples[e.name] = JSON.parse(JSON.stringify(e.data));
+    if (!(e.name in PUBLIC) || e.name in examples) return;
+    const data = JSON.parse(JSON.stringify(e.data));
+    if (e.name.startsWith('checkout.') && data.id) data.id = CHECKOUT_ID;
+    examples[e.name] = data;
   });
 
 async function page(
@@ -104,6 +114,8 @@ describe('event examples', () => {
       'select',
       'one',
     );
+    await landing.selectors.pick('main', 'two');
+    await landing.selectors.setQuantity('main', 2);
     await landing.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
     await landing.cart.setGroup('toggle:9', null, { dismiss: true });
     await flush();
@@ -130,6 +142,7 @@ describe('event examples', () => {
     await form.leave('city');
     form.setField('email', 'jane.doe@example.com');
     await form.leave('email');
+    form.nextStep();
     await checkout.cart.setShipping(1);
     form.setPaymentMethod('paypal');
     form.setPaymentMethod('card');
@@ -139,6 +152,15 @@ describe('event examples', () => {
     };
     await form.placeOrder({ ...urls, tokenize: async () => 'tok_1' });
 
+    const gateway = { order: () => json({ ref_id: 'R2', payment_complete_url: 'https://pay.test/R2' }) };
+    const redirect = await page({ session, local, api: gateway });
+    const viaGateway = redirect.attach((ctx) => createCheckout(ctx, redirect.cart, fakeRules().api));
+    await viaGateway.loadCountries();
+    viaGateway.setPaymentMethod('paypal');
+    await viaGateway.placeOrder(urls);
+    const back = await page({ session, local, params: { payment_failed: 'true', payment_method: 'paypal' } });
+    back.attach((ctx) => createOrder(ctx, back.cart)).paymentFailed();
+
     const paid = await page({ session, local, api: { order: () => json(ORDER) } });
     const again = paid.attach((ctx) => createCheckout(ctx, paid.cart, fakeRules().api));
     await again.loadCountries();
@@ -147,9 +169,9 @@ describe('event examples', () => {
     const upsell = await page({ local });
     const order = upsell.attach((ctx) => createOrder(ctx, upsell.cart));
     await order.load('R1');
-    order.view('/upsell/');
+    order.view({ lines: [{ packageId: 2, quantity: 1 }] }, '/upsell/');
     await order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/upsell/');
-    order.skip({ lines: [{ packageId: 3, quantity: 1 }] });
+    order.skip({ lines: [{ packageId: 3, quantity: 1 }] }, '/upsell-2/');
     const refused = await page({ local, api: { upsell: () => json({ message: 'Card declined' }, 400) } });
     const refusedOrder = refused.attach((ctx) => createOrder(ctx, refused.cart));
     await refusedOrder.load('R1');
@@ -158,7 +180,7 @@ describe('event examples', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
     document.body.innerHTML = `<template data-template="exit-offer"><button data-exit-intent-action="apply-coupon" data-coupon-code="SAVE10">Take 10% off</button></template>`;
     const popup = await page();
-    exitIntent(popup, { template: 'exit-offer', maxTriggers: 2 });
+    exitIntent(popup, { id: 'exit-offer', name: 'Exit offer', template: 'exit-offer', maxTriggers: 2 });
     const leave = () => document.dispatchEvent(new MouseEvent('mouseout', { clientY: -1, relatedTarget: null }));
     leave();
     document.querySelector<HTMLElement>('[data-exit-intent-action]')!.click();

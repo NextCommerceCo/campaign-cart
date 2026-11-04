@@ -16,10 +16,11 @@ type Sum = { ok: boolean; text: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
   'sdk.ready': 'Page loaded',
+  'cart.updated': 'Cart changed',
   'cart.calculated': 'Cart priced',
   'cart.added': 'Added to the cart',
   'cart.removed': 'Removed from the cart',
-  'checkout.started': 'Checkout opened',
+  'checkout.started': 'Checkout started',
   'user.created': 'User created',
   'address.entered': 'Address entered',
   'shipping.selected': 'Shipping picked',
@@ -46,11 +47,11 @@ const FUNNEL: Array<[string, string]> = [
   ['view_item', 'a page showing one package'],
   ['view_item_list', 'a page showing packages'],
   ['add_to_cart', 'something is added to the cart'],
-  ['begin_checkout', 'once, when the checkout form is ready'],
-  ['add_shipping_info', 'once, when the shipping address is valid or a shipping method is picked'],
-  ['add_payment_info', 'once, when a submit passes its checks'],
+  ['begin_checkout', 'once per checkout, when its form is ready'],
+  ['add_shipping_info', 'once per checkout, when the shipping address is valid or a shipping method is picked'],
+  ['add_payment_info', 'once per checkout, when a submit passes its checks'],
   ['purchase', 'once per order, when the page after payment loads it'],
-  ['view_upsell', 'each upsell shown'],
+  ['view_upsell', 'each upsell page with an offer shown'],
   ['upsell_purchase', 'each accepted upsell, when the order loads'],
 ];
 const VIEWS = ['view_item', 'view_item_list'];
@@ -82,13 +83,15 @@ const amount = (params: Record<string, unknown>) =>
 const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.005);
 const total = (amounts: Array<string | number | undefined>) => amounts.reduce((n: number, v) => n + Number(v ?? 0), 0);
 
-const addsUp = (event: AnalyticsEvent, data: Partial<EventMap['cart.calculated'] & EventMap['order.paid']>) => {
+const addsUp = (event: AnalyticsEvent, trigger: EngineEvent): Sum | undefined => {
   const { value, currency } = event.params;
   if (typeof value !== 'number') return undefined;
   const m = (n: number) => money(n, currency);
-  if (event.name === 'update_cart' && data.total !== undefined && data.lines) {
-    const lines = total(data.lines.map((l) => l.total));
-    const voucher = total((data.discounts ?? []).filter((d) => d.source === 'coupon').map((d) => d.amount));
+  if (event.name === 'update_cart' && trigger.name === 'cart.calculated') {
+    const cart = trigger.data as EventMap['cart.calculated'];
+    if (cart.total === undefined) return undefined;
+    const lines = total(cart.lines.map((l) => l.total));
+    const voucher = total((cart.discounts ?? []).filter((d) => d.source === 'coupon').map((d) => d.amount));
     if (near(value, lines)) return { ok: true, text: `value ${m(value)} = the cart lines ${m(lines)}` };
     if (voucher && near(value, lines + voucher))
       return {
@@ -97,10 +100,10 @@ const addsUp = (event: AnalyticsEvent, data: Partial<EventMap['cart.calculated']
       };
     return { ok: false, text: `value ${m(value)}, but the cart lines come to ${m(lines)}` };
   }
-  if (event.name === 'purchase' && data.order?.total_incl_tax) {
-    const { order } = data;
-    const due =
-      Number(order.total_incl_tax) - total((order.lines ?? []).filter((l) => l.is_upsell).map((l) => l.price_incl_tax));
+  if (event.name === 'purchase' && trigger.name === 'order.paid') {
+    const order = trigger.data as EventMap['order.paid'];
+    if (!order.total) return undefined;
+    const due = order.total - total(order.lines.filter((l) => l.upsell).map((l) => l.total));
     const shipping = Number(event.params.shipping ?? 0);
     const tax = Number(event.params.tax ?? 0);
     if (near(value + shipping, due))
@@ -194,8 +197,8 @@ export function analyticsFlow(ui: {
     const trigger = (run: Run) => received.filter((e) => e.name === run.trigger && e.at <= run.at + 5).at(-1);
     const sum = (run: Run): Sum | undefined => {
       const event = run.id ? events.get(run.id)?.data : undefined;
-      const data = trigger(run)?.data;
-      return event && data ? addsUp(event, data as Parameters<typeof addsUp>[1]) : undefined;
+      const cause = trigger(run);
+      return event && cause ? addsUp(event, cause) : undefined;
     };
     const hits = ga4Hits();
     const seen = new Map<Run, Hit>();
@@ -314,7 +317,7 @@ export function analyticsFlow(ui: {
         id: 'event',
         label: 'Event',
         body: () => [
-          event && json('analytics', "The SDK's event, as page scripts get it with next.on('analytics')", event),
+          event && json('analytics', "The SDK's event, as page scripts get it with next.analytics.on", event),
           trigger && json(run.trigger, `What triggered it: ${label(run.trigger)}`, trigger.data),
         ],
       },

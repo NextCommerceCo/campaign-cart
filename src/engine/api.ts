@@ -1,8 +1,8 @@
 import type { Logger } from './log';
 import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
 import type { Line, CartSummary } from './cart/types';
-import type { CheckoutError, OpenCart, Order, Send } from './types';
-import type { ErrorCode } from './events';
+import type { ApiOrder, CheckoutError, OpenCart, Send } from './types';
+import type { Failure } from './events';
 
 export class ApiError extends Error {
   constructor(
@@ -39,16 +39,16 @@ export class Api {
     return this.request<OpenCart>(`${this.base}/api/v1/carts/`, { method: 'POST', body: JSON.stringify(body) });
   }
 
-  createOrder(body: OrderBody): Promise<Order> {
-    return this.request<Order>(`${this.base}/api/v1/orders/`, { method: 'POST', body: JSON.stringify(body) });
+  createOrder(body: OrderBody): Promise<ApiOrder> {
+    return this.request<ApiOrder>(`${this.base}/api/v1/orders/`, { method: 'POST', body: JSON.stringify(body) });
   }
 
-  getOrder(refId: string, signal?: AbortSignal): Promise<Order> {
-    return this.request<Order>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/`, { signal });
+  getOrder(refId: string, signal?: AbortSignal): Promise<ApiOrder> {
+    return this.request<ApiOrder>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/`, { signal });
   }
 
-  addUpsell(refId: string, body: { lines: Line[]; currency?: string; vouchers?: string[] }): Promise<Order> {
-    return this.request<Order>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/upsells/`, {
+  addUpsell(refId: string, body: { lines: Line[]; currency?: string; vouchers?: string[] }): Promise<ApiOrder> {
+    return this.request<ApiOrder>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/upsells/`, {
       method: 'POST',
       body: JSON.stringify(body),
     });
@@ -80,7 +80,7 @@ export class Api {
     try {
       body = text ? JSON.parse(text) : null;
     } catch {}
-    if (!res.ok) throw new ApiError(`${init.method ?? 'GET'} ${url} → ${res.status}`, res.status, body);
+    if (!res.ok) throw new ApiError(`${call.slice(4)} → ${res.status}`, res.status, body);
     return body as T;
   }
 }
@@ -101,17 +101,30 @@ const byStatus = (status: number) =>
         ? 'server'
         : 'failed';
 
-export function errorCode(err: unknown): { code: ErrorCode; status?: number } {
+export function failureOf(err: unknown): Failure & { message: string } {
+  const message = err instanceof Error ? err.message : String(err);
   if (err instanceof Error && 'status' in err && typeof err.status === 'number') {
     const status = err.status;
     const body = (err instanceof ApiError && err.body && typeof err.body === 'object' ? err.body : {}) as ErrorBody;
-    if (body.payment_response_code || body.payment_details) return { code: 'declined', status };
+    if (body.payment_response_code || body.payment_details)
+      return {
+        code: 'declined',
+        status,
+        message,
+        ...(body.payment_response_code && { decline_code: body.payment_response_code }),
+      };
     const code = byStatus(status);
-    return { code: code === 'failed' ? 'rejected' : code, status };
+    return { code: code === 'failed' ? 'rejected' : code, status, message };
   }
   if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError'))
-    return { code: 'timeout' };
-  return { code: 'network' };
+    return { code: 'timeout', message };
+  return { code: 'network', message };
+}
+
+/** A failed order or upsell request as a Failure, with the API's own message when it gave one. */
+export function orderFailure(err: unknown): Failure {
+  const { message } = orderError(err);
+  return { ...failureOf(err), ...(message && { message }) };
 }
 
 export function orderError(err: unknown): CheckoutError {
