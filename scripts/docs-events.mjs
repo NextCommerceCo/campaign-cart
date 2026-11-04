@@ -3,7 +3,7 @@
  * Writes the Event Reference: one page per public event, from `EventMap` in `src/engine/events.ts`
  * (its TSDoc and `@group`). The page's Data table lists the event's own fields; every object they
  * carry (`CartItem`, `Order`, …) gets its own table further down the same page, once, from the same
- * types' TSDoc. A field tagged `@priced` or `@campaign` says when it is there, in the When column.
+ * types' TSDoc. A field tagged `@priced` or `@campaign`, or optional, says so in the Present column.
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
  * staged `events.md`. Nothing here is committed.
@@ -17,6 +17,8 @@ const GROUP = 'Event Reference';
 const SOURCES = ['src/engine/events.ts', 'src/engine/cart/types.ts', 'src/engine/types.ts'];
 const MARKER = '<!-- event-index -->';
 const WHEN = ['@priced', '@campaign'];
+const PRESENT =
+  '**Present**: `always`; `optional` when it may be missing; `campaign` once the campaign is loaded; `priced` once the server priced the cart.';
 
 const firstSentence = (s) => s.match(/^.*?\.(?=\s|$)/s)?.[0] ?? s;
 const cell = (s) => s.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
@@ -105,10 +107,9 @@ function tables() {
   const rows = (fields, prefix = '') =>
     fields.flatMap((f) => {
       const name = `${prefix}${f.name}`;
-      const when = whenOf(f);
-      const optional = f.flags.isOptional && !when ? ' · optional' : '';
+      const present = whenOf(f) ?? (f.flags.isOptional ? 'optional' : 'always');
       const literal = f.type?.type === 'array' ? f.type.elementType : f.type;
-      const row = { name, optional, type: typeMd(f.type), when, about: text(f.comment?.summary) };
+      const row = { name, present, type: typeMd(f.type), about: text(f.comment?.summary) };
       const nested =
         literal?.type === 'reflection'
           ? rows(literal.declaration.children ?? [], `${name}${literal === f.type ? '.' : '[].'}`)
@@ -119,11 +120,10 @@ function tables() {
   const table = (fields) => {
     const body = rows(fields);
     if (!body.length) return 'None.';
-    const timed = body.some((r) => r.when);
-    const line = (r) =>
-      `| \`${r.name}\`${r.optional} | ${cell(r.type)} |${timed ? ` ${r.when ?? 'always'} |` : ''} ${cell(r.about)} |`;
-    const head = timed
-      ? ['| Field | Type | When | |', '| --- | --- | --- | --- |']
+    const varies = body.some((r) => r.present !== 'always');
+    const line = (r) => `| \`${r.name}\` | ${cell(r.type)} |${varies ? ` ${r.present} |` : ''} ${cell(r.about)} |`;
+    const head = varies
+      ? ['| Field | Type | Present | |', '| --- | --- | --- | --- |']
       : ['| Field | Type | |', '| --- | --- | --- |'];
     return [...head, ...body.map(line)].join('\n');
   };
@@ -139,6 +139,7 @@ function tables() {
 }
 
 function page(event, order, example, version) {
+  const data = tables()(fieldsOf(event.member.type));
   const envelope = {
     event_id: 'evt_mhk2f1a00k3x',
     event_type: event.name,
@@ -163,7 +164,7 @@ next.on('${event.name}', (data, event) => {});
 
 ## Data
 
-${tables()(fieldsOf(event.member.type))}
+${data.includes('| Present |') ? `${PRESENT}\n\n` : ''}${data}
 
 ## Example
 
