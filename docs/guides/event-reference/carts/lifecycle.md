@@ -28,6 +28,8 @@ group: 'Event Reference/Carts'
 | `calculating`, `priced`, `unpriced` | The last package is removed, or the cart is cleared                                        | `empty`       | `cart.updated`, then `cart.removed` for the packages already reported                                                                           |
 
 Before the campaign loads, a change sends `cart.updated` only; pricing starts once it has loaded.
+While the checkout has the cart frozen (submitting, placing), a change is refused and sends
+nothing, and a swap selector keeps its pick.
 
 ## Errors
 
