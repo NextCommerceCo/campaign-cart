@@ -268,6 +268,7 @@ export function createCart(ctx: Context) {
       if (!lines().length) announce();
       return;
     }
+    if (!state().calculating) set({ calculating: true });
     if (!busy) {
       busy = true;
       ctx.emit('cart.calculating', cartOf());

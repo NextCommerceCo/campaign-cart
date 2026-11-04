@@ -86,6 +86,33 @@ describe('cart', () => {
     expect(engine.getState().cart.calculating).toBe(false);
     expect(updated).toEqual([true]);
   });
+  it('shows calculating in state while a saved cart is priced on the next page', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.cart.addItem(2);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const api = fakeApi();
+    let requests = 0;
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      requests++;
+      await gate;
+      return api.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ session, fetch });
+    const calculating: boolean[] = [];
+    engine.on('cart.calculating', () => calculating.push(engine.getState().cart.calculating));
+    await engine.start();
+    await flush();
+    expect(requests).toBe(1);
+    expect(calculating).toEqual([true]);
+    expect(engine.getState().cart.calculating).toBe(true);
+    release();
+    await engine.cart.settled();
+    expect(engine.getState().cart.calculating).toBe(false);
+    expect(engine.getState().cart.summary?.total).toBe('89.00');
+  });
   it('swaps one group without touching another', async () => {
     const { engine } = makeEngine();
     await engine.start();
@@ -253,6 +280,26 @@ describe('cart', () => {
       'selector.selected {"selector_id":"toggle:9","type":"toggle","lines":[{"package_id":9,"quantity":1,"product_id":900,"image":"https://cdn.test/9.png"}]}',
       'selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":[]}',
     ]);
+  });
+
+  it('names the package and quantity a toggle is priced at, and its price once it arrives', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const seen: Array<EventMap['selector.calculating']> = [];
+    engine.on('selector.calculating', (e) => seen.push(e.data));
+    engine.on('selector.calculated', (e) => seen.push(e.data));
+    engine.on('selector.selected', (e) => seen.push(e.data));
+    engine.toggles.price(9, 2);
+    await flush();
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
+    const [calculating, calculated, selected] = seen;
+    expect(calculating).toEqual({
+      selector_id: 'toggle:9',
+      type: 'toggle',
+      lines: [{ package_id: 9, quantity: 2, product_id: 900, image: 'https://cdn.test/9.png' }],
+    });
+    expect(calculated!.lines).toMatchObject([{ package_id: 9, quantity: 2, price: 9, total: 18 }]);
+    expect(calculated).toEqual(selected);
   });
 
   it('keeps working in memory when every storage is blocked', async () => {
