@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
-import { createOrder, orderValue, purchaseId } from '../../src/order/state';
+import { createOrder, orderValue } from '../../src/order/state';
 import { format } from '../../src/engine/format';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { makeEngine, type MakeEngine } from '../fixtures/engine';
@@ -16,10 +16,12 @@ async function setup(opts: MakeEngine & { api?: FakeApiOptions } = {}) {
   await made.engine.start();
   const order = made.engine.attach((ctx) => createOrder(ctx, made.engine.cart));
   const loaded = vi.fn();
+  const paid = vi.fn();
   made.engine.on('order.loaded', (e) => loaded(e.data));
+  made.engine.on('order.paid', (e) => paid(e.data));
   const gets = () => api.calls.filter((c) => c.method === 'GET' && c.url.includes('/orders/'));
   const upsells = () => api.calls.filter((c) => c.url.endsWith('/upsells/'));
-  return { ...made, api, order, loaded, gets, upsells };
+  return { ...made, api, order, loaded, paid, gets, upsells };
 }
 
 describe('order', () => {
@@ -34,21 +36,22 @@ describe('order', () => {
     expect(next.engine.getState().order?.order?.number).toBe(1001);
   });
 
-  it('reports a purchase once, only when paid, and never on the failure landing', async () => {
+  it('sends order.paid once per order, only when paid, and never on the failure landing', async () => {
     const local = new MemoryStorage();
     const first = await setup({ local });
     await first.order.load('R1');
-    expect(first.loaded).toHaveBeenLastCalledWith(expect.objectContaining({ purchase: '1001' }));
-    first.order.markReported([purchaseId(ORDER)]);
+    expect(first.paid).toHaveBeenCalledTimes(1);
+    expect(first.paid.mock.calls[0]![0].order.number).toBe(1001);
     const again = await setup({ local });
     await again.order.load('R1');
-    expect(again.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(again.loaded).toHaveBeenCalledTimes(1);
+    expect(again.paid).not.toHaveBeenCalled();
 
     const unpaid = await setup({
       api: { getOrder: () => json({ ...ORDER, payment_complete_url: 'https://pay.test' }) },
     });
     await unpaid.order.load('R2');
-    expect(unpaid.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(unpaid.paid).not.toHaveBeenCalled();
     const failed = await setup({
       params: { payment_failed: 'true' },
       api: { getOrder: (ref) => json({ ...ORDER, ref_id: ref, payment_complete_url: 'https://pay.test' }) },
@@ -56,17 +59,17 @@ describe('order', () => {
     const refused = vi.fn();
     failed.engine.on('order.failed', (e) => refused(e.data));
     await failed.order.load('R3');
-    expect(failed.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(failed.paid).not.toHaveBeenCalled();
     expect(refused).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R3' });
   });
 
   it('never takes a paid order for a failed payment, whatever the URL says', async () => {
-    const paid = await setup({ params: { payment_failed: 'true' } });
+    const page = await setup({ params: { payment_failed: 'true' } });
     const refused = vi.fn();
-    paid.engine.on('order.failed', (e) => refused(e.data));
-    await paid.order.load('R4');
+    page.engine.on('order.failed', (e) => refused(e.data));
+    await page.order.load('R4');
     expect(refused).not.toHaveBeenCalled();
-    expect(paid.loaded.mock.calls[0]![0].purchase).toEqual(expect.any(String));
+    expect(page.paid).toHaveBeenCalledTimes(1);
   });
 
   it('clears only the cart kept for that order’s gateway, and never on the failure landing', async () => {
@@ -95,7 +98,7 @@ describe('order', () => {
     const landing = await setup({ session: failed, api: { getOrder: unpaid } });
     await landing.order.load('R1', '/oops/');
     expect(landing.engine.cart.lines()).toHaveLength(1);
-    expect(landing.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(landing.paid).not.toHaveBeenCalled();
 
     const other = await setup();
     await other.engine.cart.addItem(2);
@@ -139,14 +142,13 @@ describe('order', () => {
     const local = new MemoryStorage();
     const first = await setup({ session, local });
     await first.order.load('R1');
-    first.order.markReported([purchaseId(ORDER)]);
     await first.order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/up-1/');
     const next = await setup({ session, local });
     await next.order.load('R1');
     expect(next.loaded.mock.calls[0]![0]).toMatchObject({
       upsells: [{ id: 'R1:99', number: 1, line: { is_upsell: true } }],
     });
-    expect(next.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(next.paid).not.toHaveBeenCalled();
   });
 
   it('does not post an offer the order cannot take, or two at once', async () => {

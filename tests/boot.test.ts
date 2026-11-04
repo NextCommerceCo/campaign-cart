@@ -108,10 +108,10 @@ describe('boot', () => {
     const api = fakeApi();
     vi.stubGlobal('fetch', api.fetch);
     const next = boot(config, Promise.resolve(campaign));
-    const loaded = vi.fn();
-    next.on('order.loaded', (data) => loaded(data));
-    await vi.waitFor(() => expect(loaded).toHaveBeenCalledTimes(1));
-    expect(loaded.mock.calls[0]![0]).toMatchObject({ order: { ref_id: 'R1' }, purchase: expect.any(String) });
+    const paid = vi.fn();
+    next.on('order.paid', (data) => paid(data));
+    await vi.waitFor(() => expect(paid).toHaveBeenCalledTimes(1));
+    expect(paid.mock.calls[0]![0]).toMatchObject({ order: { ref_id: 'R1' } });
     history.replaceState(null, '', '/');
   });
 

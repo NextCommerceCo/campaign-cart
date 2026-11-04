@@ -148,11 +148,8 @@ describe('the workflows match the analytics code', () => {
       valid: true,
       errors: {},
     });
-    engine.events.emit('order.loaded', {
-      order: ORDER,
-      purchase: ORDER.ref_id,
-      upsells: [{ id: 'u1', number: 1, line: ORDER.lines![0]! }],
-    });
+    engine.events.emit('order.loaded', { order: ORDER, upsells: [{ id: 'u1', number: 1, line: ORDER.lines![0]! }] });
+    engine.events.emit('order.paid', { order: ORDER });
     engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/upsell' });
     engine.events.emit('upsell.skipped', { ref_id: 'R1' });
     const source = 'exit_intent';
@@ -242,7 +239,7 @@ describe('analytics workflow', () => {
       ['done', 'begin_checkout', 'This page'],
       ['todo', 'add_shipping_info', 'Not yet: once, when the shipping address is valid or a shipping method is picked'],
       ['todo', 'add_payment_info', 'Not yet: once, when a submit passes its checks'],
-      ['todo', 'purchase', 'Not yet: when a paid order loads, on the upsell or receipt page'],
+      ['todo', 'purchase', 'Not yet: once per order, when the page after payment loads it'],
     ]);
     const clickable = [...root.querySelectorAll<HTMLElement>('.afunnel > button')];
     expect(clickable.map((b) => b.querySelector('code')!.textContent)).toEqual([
@@ -256,9 +253,9 @@ describe('analytics workflow', () => {
 
   it('adds the upsell steps once the tab reaches an upsell page', () => {
     const { engine, paint, send, steps } = setup(ON, [page('checkout'), page('upsell')]);
-    engine.events.emit('order.loaded', { order: ORDER });
+    engine.events.emit('order.paid', { order: ORDER });
     send(
-      'order.loaded',
+      'order.paid',
       'purchase',
       { currency: 'USD', value: 89, shipping: 9.99, tax: 7.12, transaction_id: 'R1', items: [EARBUDS] },
       'p1',
@@ -375,8 +372,8 @@ describe('analytics workflow', () => {
 
   it('puts missing GA4 fields and a push that did not arrive in the verdict, the funnel and the row', () => {
     const { engine, flow, paint, send, rows, verdict, steps, open } = setup();
-    engine.events.emit('order.loaded', { order: ORDER });
-    send('order.loaded', 'purchase', { value: 89, shipping: 9.99, tax: 7.12, items: [] }, 'p1', false);
+    engine.events.emit('order.paid', { order: ORDER });
+    send('order.paid', 'purchase', { value: 89, shipping: 9.99, tax: 7.12, items: [] }, 'p1', false);
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
     win.dataLayer = [];
     paint();
@@ -385,7 +382,7 @@ describe('analytics workflow', () => {
     expect(rows()[0]!.slice(0, 3)).toEqual([
       'warn',
       'purchase',
-      'Order loaded · ⚠ items is empty · ⚠ value is set without currency · ⚠ transaction_id is missing · ⚠ not in dataLayer',
+      'Order paid · ⚠ items is empty · ⚠ value is set without currency · ⚠ transaction_id is missing · ⚠ not in dataLayer',
     ]);
     const detail = Object.fromEntries(open('purchase'));
     expect(detail.Problems).toBe('⚠ items is empty⚠ value is set without currency⚠ transaction_id is missing');
@@ -426,8 +423,8 @@ describe('analytics workflow', () => {
     const { engine, paint, send, steps, open } = setup();
     const bought = (order: Order, params: Record<string, unknown>, id: string) => {
       vi.setSystemTime(Date.now() + 1000);
-      engine.events.emit('order.loaded', { order });
-      send('order.loaded', 'purchase', { currency: 'USD', transaction_id: 'R1', items: [EARBUDS], ...params }, id);
+      engine.events.emit('order.paid', { order });
+      send('order.paid', 'purchase', { currency: 'USD', transaction_id: 'R1', items: [EARBUDS], ...params }, id);
       paint();
       return Object.fromEntries(open('purchase'))['Adds up'];
     };

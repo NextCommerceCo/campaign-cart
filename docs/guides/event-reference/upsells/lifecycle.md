@@ -15,14 +15,14 @@ group: 'Event Reference/Upsells'
 | `skipped`  | The shopper went on without the offer                  |
 | `failed`   | Adding the offer failed, such as a decline             |
 
-| From     | What happens                                        | To         | Events                                       |
-| -------- | --------------------------------------------------- | ---------- | -------------------------------------------- |
-| none     | The upsell page loads the order and shows the offer | `shown`    | `order.loaded`, `upsell.viewed`              |
-| `shown`  | The shopper accepts                                 | `adding`   | none                                         |
-| `adding` | The offer is added                                  | `accepted` | `upsell.accepted` (with the updated `order`) |
-| `adding` | Adding fails                                        | `failed`   | `sdk.error` (`upsell.add`), `upsell.failed`  |
-| `failed` | The shopper accepts again                           | `adding`   | none                                         |
-| `shown`  | The shopper skips it                                | `skipped`  | `upsell.skipped`                             |
+| From     | What happens                                        | To         | Events                                                       |
+| -------- | --------------------------------------------------- | ---------- | ------------------------------------------------------------ |
+| none     | The upsell page loads the order and shows the offer | `shown`    | `order.loaded`, `order.paid` the first time, `upsell.viewed` |
+| `shown`  | The shopper accepts                                 | `adding`   | none                                                         |
+| `adding` | The offer is added                                  | `accepted` | `upsell.accepted` (with the updated `order`)                 |
+| `adding` | Adding fails                                        | `failed`   | `sdk.error` (`upsell.add`), `upsell.failed`                  |
+| `failed` | The shopper accepts again                           | `adding`   | none                                                         |
+| `shown`  | The shopper skips it                                | `skipped`  | `upsell.skipped`                                             |
 
 An offer already accepted on that page is not charged again, and an order that does not take
 upsells is never sent one.

@@ -437,10 +437,10 @@ describe('checkout', () => {
     const next = makeEngine({ session, fetch: fakeApi().fetch }).engine;
     await next.start();
     next.order = next.attach((ctx) => createOrder(ctx, next.cart));
-    const loaded = vi.fn();
-    next.on('order.loaded', (e) => loaded(e.data));
+    const paid = vi.fn();
+    next.on('order.paid', (e) => paid(e.data));
     await next.order.load('R1');
-    expect(loaded).toHaveBeenCalledWith(expect.objectContaining({ purchase: '1001', coupon: 'SAVE10' }));
+    expect(paid).toHaveBeenCalledWith(expect.objectContaining({ coupon: 'SAVE10' }));
   });
 
   it('keeps the cart when the gateway takes over, so a failed payment can retry', async () => {

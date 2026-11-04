@@ -25,6 +25,7 @@ const LABELS: Partial<Record<EventName, string>> = {
   'shipping.selected': 'Shipping picked',
   'checkout.submitted': 'Order submitted',
   'order.loaded': 'Order loaded',
+  'order.paid': 'Order paid',
   'upsell.viewed': 'Upsell shown',
   'upsell.skipped': 'Upsell skipped',
   'promotion.viewed': 'Promotion shown',
@@ -48,7 +49,7 @@ const FUNNEL: Array<[string, string]> = [
   ['begin_checkout', 'once, when the checkout form is ready'],
   ['add_shipping_info', 'once, when the shipping address is valid or a shipping method is picked'],
   ['add_payment_info', 'once, when a submit passes its checks'],
-  ['purchase', 'when a paid order loads, on the upsell or receipt page'],
+  ['purchase', 'once per order, when the page after payment loads it'],
   ['view_upsell', 'each upsell shown'],
   ['upsell_purchase', 'each accepted upsell, when the order loads'],
 ];
@@ -81,7 +82,7 @@ const amount = (params: Record<string, unknown>) =>
 const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.005);
 const total = (amounts: Array<string | number | undefined>) => amounts.reduce((n: number, v) => n + Number(v ?? 0), 0);
 
-const addsUp = (event: AnalyticsEvent, data: Partial<EventMap['cart.calculated'] & EventMap['order.loaded']>) => {
+const addsUp = (event: AnalyticsEvent, data: Partial<EventMap['cart.calculated'] & EventMap['order.paid']>) => {
   const { value, currency } = event.params;
   if (typeof value !== 'number') return undefined;
   const m = (n: number) => money(n, currency);

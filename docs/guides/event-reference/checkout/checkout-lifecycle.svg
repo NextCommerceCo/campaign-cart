@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 882" width="720" height="882" role="img" aria-labelledby="checkout-lifecycle-title checkout-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="checkout-lifecycle-title">Checkout lifecycle</title>
-  <desc id="checkout-lifecycle-desc">The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.</desc>
+  <desc id="checkout-lifecycle-desc">The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …). The page after payment loads the paid order and sends order.paid, once per order; a payment that fails comes back to the checkout with the cart kept.</desc>
   <defs>
     <marker id="checkout-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -29,8 +29,7 @@
     <text x="490" y="526" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">redirected</text>
     <text x="490" y="550" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.created</text>
     <path d="M620 574 V725 H446" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="608" y="624" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">payment completed</text>
-    <text x="608" y="641" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
+    <text x="608" y="632" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">payment completed</text>
     <path d="M620 516 V225 H446" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="530" y="219" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">payment fails</text>
     <text x="530" y="241" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.failed</text>
@@ -50,7 +49,7 @@
     <text x="330" y="561" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the order is sent</text>
     <rect x="220" y="696" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
     <text x="330" y="721" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">paid</text>
-    <text x="330" y="741" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the cart is emptied</text>
+    <text x="330" y="741" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
     <rect x="540" y="516" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
     <text x="620" y="541" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">awaiting payment</text>
     <text x="620" y="561" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment_complete_url</text>

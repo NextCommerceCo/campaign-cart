@@ -480,11 +480,18 @@ export interface EventMap {
    */
   'order.loaded': {
     order: Order;
-    /** The transaction id when this page reports the purchase: once, only when paid. */
-    purchase?: string;
-    coupon?: string;
     /** Accepted upsells not reported yet. */
     upsells?: Array<{ id: string; number: number; line: OrderLine }>;
+  };
+  /**
+   * The order is paid: once per order, after `order.loaded` on the first page that loads it
+   * paid, the page after the checkout or after the payment gateway.
+   * @group Orders
+   */
+  'order.paid': {
+    order: Order;
+    /** The coupon code applied at checkout. */
+    coupon?: string;
   };
   /**
    * An offer was shown.

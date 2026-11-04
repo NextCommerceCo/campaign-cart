@@ -42,7 +42,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   shop_pay: 'Shop Pay',
 };
 
-export const purchaseId = (order: Order) => String(order.number ?? order.ref_id);
+const purchaseId = (order: Order) => String(order.number ?? order.ref_id);
 export const upsellId = (order: Order, line: OrderLine) => `${order.ref_id}:${line.id}`;
 
 function paymentLabel(method: Order['payment_method']): string {
@@ -162,6 +162,8 @@ export function createOrder(ctx: Context, cart: CartActions) {
   set({ status: 'idle', accepted: [], ...ctx.saved<Partial<OrderState>>('order') });
 
   const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
+  const markReported = (ids: string[]) =>
+    ctx.local.set(REPORTED, [...new Set([...reported(), ...ids])].slice(-REPORTED_KEEP));
 
   const offerLines = (offer: Offer) => {
     const selector = offer.selectorId ? ctx.getState().selectors[offer.selectorId] : undefined;
@@ -183,18 +185,15 @@ export function createOrder(ctx: Context, cart: CartActions) {
       ctx.forget('checkout');
     }
     const done = reported();
-    const purchase = paid && !done.includes(purchaseId(order)) ? purchaseId(order) : undefined;
     const upsells = (order.lines ?? [])
       .filter((l) => l.is_upsell)
       .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
       .filter((u) => !done.includes(u.id));
+    ctx.emit('order.loaded', { order, ...(upsells.length && { upsells }) });
+    if (!paid || done.includes(purchaseId(order))) return;
+    markReported([purchaseId(order)]);
     const { coupon } = state();
-    ctx.emit('order.loaded', {
-      order,
-      ...(purchase && { purchase }),
-      ...(purchase && coupon?.refId === order.ref_id && { coupon: coupon.code }),
-      ...(upsells.length && { upsells }),
-    });
+    ctx.emit('order.paid', { order, ...(coupon?.refId === order.ref_id && { coupon: coupon.code }) });
   };
 
   return {
@@ -271,9 +270,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       }
     },
 
-    markReported(ids: string[]): void {
-      ctx.local.set(REPORTED, [...new Set([...reported(), ...ids])].slice(-REPORTED_KEEP));
-    },
+    markReported,
   };
 }
 

@@ -92,7 +92,7 @@ const loopUp = (from, to, title, events = [], { x = 170, fromH = H, at = 29 } = 
 
 /** Each `[action, result]` error is a line under the drawing: `sdk.error · action → result`. */
 function svg(name, { title, desc, rows, boxes, parts, note, errors = [] }) {
-  const top = rowY(rows - 1) + 58 + 34;
+  const top = Math.max(...boxes.map((b) => rowY(b.row) + box(b).h)) + 34;
   const lines = [
     ...(note ? [`<tspan style="fill: ${C.muted}">${esc(note)}</tspan>`] : []),
     ...errors.map(
@@ -220,7 +220,7 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …). The page after payment loads the paid order and sends order.paid, once per order; a payment that fails comes back to the checkout with the cart kept.',
     rows: 5,
     rowYs: [16, 196, 336, 516, 696],
     boxes: [
@@ -228,7 +228,7 @@ const LIFECYCLES = {
       { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
       { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
       { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
-      { row: 4, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
+      { row: 4, title: 'paid', sub: [code('order.paid')], tone: 'success' },
       { col: 'side', row: 3, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
     ],
     parts: () => {
@@ -253,8 +253,7 @@ const LIFECYCLES = {
         ],
         [
           arrow(`M${SIDE.cx} ${gateway + H} V${rowY(4) + 29} H${right + 6}`),
-          label(SIDE.cx - 12, gateway + H + 50, 'payment completed', { anchor: 'end', size: 12 }),
-          label(SIDE.cx - 12, gateway + H + 67, 'order.loaded', { anchor: 'end', code: true }),
+          label(SIDE.cx - 12, gateway + H + 58, 'payment completed', { anchor: 'end', size: 12 }),
         ],
         [
           arrow(`M${SIDE.cx} ${gateway} V${filling + 29} H${right + 6}`, { dashed: true }),
@@ -325,12 +324,12 @@ const LIFECYCLES = {
   },
   orders: {
     title: 'Order lifecycle',
-    desc: 'order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, with purchase the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without purchase, and the cart is kept.',
+    desc: 'order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, then order.paid the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without order.paid, and the cart is kept.',
     rows: 3,
     boxes: [
       { row: 0, title: 'created', sub: [code('order.created')] },
       { row: 1, title: 'at the gateway', sub: ['the shopper pays'], tone: 'waiting' },
-      { row: 2, title: 'loaded', sub: [code('order.loaded')], tone: 'success' },
+      { row: 2, title: 'loaded', sub: [code('order.loaded'), code('order.paid')], tone: 'success' },
       {
         col: 'side',
         row: 2,
@@ -353,7 +352,7 @@ const LIFECYCLES = {
         label(SIDE.cx + 12, rowY(1) + 80, 'payment fails', { size: 12 }),
       ],
     ],
-    note: 'purchase comes once, when a paid order first loads · a failed gateway payment is not an sdk.error',
+    note: 'order.paid comes once per order, when a paid order first loads · a failed gateway payment is not an sdk.error',
     errors: [['order.load', 'the page has no order values']],
   },
   upsells: {

@@ -64,6 +64,7 @@ const EVENT_NAMES: EventName[] = [
   'order.created',
   'order.failed',
   'order.loaded',
+  'order.paid',
   'upsell.viewed',
   'upsell.accepted',
   'upsell.skipped',

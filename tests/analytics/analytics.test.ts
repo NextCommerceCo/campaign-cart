@@ -264,7 +264,7 @@ describe('analytics', () => {
     };
     const engine = await ready();
     startAnalytics(engine, options);
-    engine.events.emit('order.loaded', { order, purchase: '1001', coupon: 'SAVE10' });
+    engine.events.emit('order.paid', { order, coupon: 'SAVE10' });
     const purchase = win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!;
     expect(purchase.ecommerce.coupon).toBe('SAVE10');
     expect(purchase.ecommerce.items[0]).toMatchObject({
@@ -287,8 +287,8 @@ describe('analytics', () => {
       startAnalytics(engine, options);
       return names();
     };
-    expect(await run()).toEqual(['dl_user_data', 'dl_purchase', 'dl_upsell_purchase']);
-    const [, purchase, upsell] = win.NextDataLayer!;
+    expect(await run()).toEqual(['dl_user_data', 'dl_upsell_purchase', 'dl_purchase']);
+    const [, upsell, purchase] = win.NextDataLayer!;
     expect(purchase.event_id).toBe('1001');
     expect(upsell.event_id).toBe('R1-US1');
     expect(purchase.ecommerce).toMatchObject({
@@ -550,7 +550,7 @@ describe('analytics events (GA4 names)', () => {
     await engine.order.load('R1');
     const seen = listen(engine);
     startAnalytics(engine, options);
-    const [, purchase, upsell] = seen;
+    const [, upsell, purchase] = seen;
     expect(purchase).toMatchObject({ name: 'purchase', id: '1001', params: { transaction_id: '1001', value: 89 } });
     expect(upsell).toMatchObject({
       name: 'upsell_purchase',

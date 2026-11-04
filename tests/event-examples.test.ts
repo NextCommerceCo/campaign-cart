@@ -41,6 +41,7 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'order.created': true,
   'order.failed': true,
   'order.loaded': true,
+  'order.paid': true,
   'upsell.viewed': true,
   'upsell.accepted': true,
   'upsell.skipped': true,

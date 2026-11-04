@@ -136,31 +136,31 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     else skip(trigger, 'add_to_cart', nothingAdded);
   };
 
-  const onOrder = ({ order, purchase, coupon, upsells }: EventMap['order.loaded']) => {
-    const reported: string[] = [];
-    if (purchase) {
-      const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
-      const incl = taxIncluded(engine, order);
-      const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
-      const discount = Number(order.total_discounts ?? 0);
-      emit(
-        'purchase',
-        {
-          currency: order.currency ?? currency(engine),
-          transaction_id: purchase,
-          value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
-          tax: Number(order.total_tax ?? 0),
-          shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
-          affiliation: 'Online Store',
-          items,
-          ...(coupon && { coupon }),
-          ...(discount > 0 && { discount }),
-        },
-        { trigger: 'order.loaded', reason: 'A paid order not reported before', id: purchase },
-      );
-      reported.push(purchase);
-    } else skip('order.loaded', 'purchase', 'Already reported, or not paid');
-    for (const { id, number, line } of upsells ?? []) {
+  const onPaid = ({ order, coupon }: EventMap['order.paid']) => {
+    const transaction = String(order.number ?? order.ref_id);
+    const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
+    const incl = taxIncluded(engine, order);
+    const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
+    const discount = Number(order.total_discounts ?? 0);
+    emit(
+      'purchase',
+      {
+        currency: order.currency ?? currency(engine),
+        transaction_id: transaction,
+        value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
+        tax: Number(order.total_tax ?? 0),
+        shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
+        affiliation: 'Online Store',
+        items,
+        ...(coupon && { coupon }),
+        ...(discount > 0 && { discount }),
+      },
+      { trigger: 'order.paid', reason: 'Once per order, when it is paid', id: transaction },
+    );
+  };
+
+  const onLoaded = ({ order, upsells }: EventMap['order.loaded']) => {
+    for (const { number, line } of upsells ?? []) {
       const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
       const transaction = `${order.ref_id}-US${number}`;
       emit(
@@ -182,10 +182,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         },
         { trigger: 'order.loaded', reason: `Accepted upsell ${number}`, id: transaction },
       );
-      reported.push(id);
     }
-    if (!upsells?.length) skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
-    if (reported.length) engine.order?.markReported(reported);
+    if (upsells?.length) engine.order?.markReported(upsells.map((u) => u.id));
+    else skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
   };
 
   engine.on(
@@ -262,7 +261,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           );
         }
         case 'order.loaded':
-          return onOrder(e.data as EventMap['order.loaded']);
+          return onLoaded(e.data as EventMap['order.loaded']);
+        case 'order.paid':
+          return onPaid(e.data as EventMap['order.paid']);
         case 'upsell.viewed': {
           const { ref_id, page } = e.data as EventMap['upsell.viewed'];
           return emit(

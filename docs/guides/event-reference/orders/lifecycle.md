@@ -14,13 +14,13 @@ group: 'Event Reference/Orders'
 | `loaded`         | A post-purchase page loaded the order                          |
 | `payment failed` | The shopper came back from a gateway that failed               |
 
-| From             | What happens                                             | To               | Events                                                                                               |
-| ---------------- | -------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------- |
-| none             | The checkout creates the order                           | `created`        | `order.created`                                                                                      |
-| `created`        | It is paid at once; the next page loads it               | `loaded`         | `order.loaded` (with `purchase` the first time)                                                      |
-| `created`        | It must be paid at a payment gateway                     | `at the gateway` | none                                                                                                 |
-| `at the gateway` | Paid; the order page loads it                            | `loaded`         | `order.loaded` (with `purchase` the first time); the cart kept for it is emptied without cart events |
-| `at the gateway` | The payment fails; the shopper lands on the failure page | `payment failed` | `order.failed` (`stage: 'payment'`), `order.loaded` without `purchase`; the cart is kept             |
+| From             | What happens                                             | To               | Events                                                                                                |
+| ---------------- | -------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------- |
+| none             | The checkout creates the order                           | `created`        | `order.created`                                                                                       |
+| `created`        | It is paid at once; the next page loads it               | `loaded`         | `order.loaded`, then `order.paid` the first time                                                      |
+| `created`        | It must be paid at a payment gateway                     | `at the gateway` | none                                                                                                  |
+| `at the gateway` | Paid; the order page loads it                            | `loaded`         | `order.loaded`, then `order.paid` the first time; the cart kept for it is emptied without cart events |
+| `at the gateway` | The payment fails; the shopper lands on the failure page | `payment failed` | `order.failed` (`stage: 'payment'`), `order.loaded` without `order.paid`; the cart is kept            |
 
 ## Errors
 
