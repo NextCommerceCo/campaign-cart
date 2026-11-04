@@ -50,6 +50,16 @@ function box({ col = 'main', row, title, sub = [], tone = 'neutral' }) {
 const label = (x, y, text, { anchor = 'start', code = false, size } = {}) =>
   `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill: ${code ? C.code : C.fg}; font-size: ${size ?? (code ? 12 : 13)}px${code ? '; font-family: var(--clean-font-mono, ui-monospace, monospace)' : ''}">${esc(text)}</text>`;
 
+/** A label of `[text, code]` parts, such as `no ` and `payment_complete_url`. */
+const mixed = (x, y, parts) =>
+  `<text x="${x}" y="${y}" style="fill: ${C.fg}; font-size: 13px">${parts
+    .map(([text, isCode]) =>
+      isCode
+        ? `<tspan style="fill: ${C.code}; font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">${esc(text)}</tspan>`
+        : esc(text),
+    )
+    .join('')}</text>`;
+
 /** A labelled arrow: `d` is the path, `labels` are [x, y, text, options]. */
 const arrow = (d, { dashed = false } = {}) =>
   `<path d="${d}" marker-end="url(#ARROW)" style="fill: none; stroke: ${C.muted}; stroke-width: 1.5${dashed ? '; stroke-dasharray: 5 4' : ''}" />`;
@@ -220,14 +230,14 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …). The page after payment loads the paid order and sends order.paid, once per order; a payment that fails comes back to the checkout with the cart kept.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order sends order.created once. Without a payment_complete_url it is paid and the shopper goes to the next page; with one the shopper is redirected there to pay (PayPal, 3-D Secure, …): paid, the gateway sends them to the next page; failed, back to the checkout with the cart kept (order.failed). The next page loads the paid order and sends order.paid, once per order. A paid order empties the cart.',
     rows: 5,
     rowYs: [16, 196, 336, 516, 696],
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
       { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
       { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
-      { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
+      { row: 3, title: 'placing', sub: [code('order.created')], tone: 'waiting' },
       { row: 4, title: 'paid', sub: [code('order.paid')], tone: 'success' },
       { col: 'side', row: 3, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
     ],
@@ -245,15 +255,21 @@ const LIFECYCLES = {
           label(36, gateway - 56, 'refused'),
           label(36, gateway - 36, 'order.failed', { code: true }),
         ],
-        down(3, 4, 'the order is paid', ['order.created']),
         [
-          arrow(`M${right} ${gateway + 18} H${SIDE.x - 6}`),
-          label((right + SIDE.x) / 2, gateway + 10, 'redirected', { anchor: 'middle', size: 12 }),
-          label((right + SIDE.x) / 2, gateway + 34, 'order.created', { anchor: 'middle', code: true }),
+          arrow(`M${MAIN.cx} ${gateway + H} V${rowY(4) - 6}`),
+          mixed(MAIN.cx + 14, gateway + 116, [
+            ['no ', false],
+            ['payment_complete_url', true],
+          ]),
+          label(MAIN.cx + 14, gateway + 134, 'the next page'),
+        ],
+        [
+          arrow(`M${right} ${gateway + 29} H${SIDE.x - 6}`),
+          label((right + SIDE.x) / 2, gateway + 21, 'redirected', { anchor: 'middle', size: 12 }),
         ],
         [
           arrow(`M${SIDE.cx} ${gateway + H} V${rowY(4) + 29} H${right + 6}`),
-          label(SIDE.cx - 12, gateway + H + 58, 'payment completed', { anchor: 'end', size: 12 }),
+          label((right + SIDE.cx) / 2, rowY(4) + 21, 'paid: the next page', { anchor: 'middle', size: 12 }),
         ],
         [
           arrow(`M${SIDE.cx} ${gateway} V${filling + 29} H${right + 6}`, { dashed: true }),
