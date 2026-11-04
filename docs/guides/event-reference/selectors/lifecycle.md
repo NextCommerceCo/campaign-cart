@@ -11,35 +11,42 @@ An option is a card in a selector (`data-next-bundle-card`); `option_id` is its 
 
 | State         | Means                                                                          |
 | ------------- | ------------------------------------------------------------------------------ |
-| `picked`      | The selector is registered and an option is picked                             |
+| `picked`      | The selector is on the page and an option is picked                            |
 | `calculating` | The options with no price from the last 10 minutes are being priced            |
 | `priced`      | Every option has a price                                                       |
 | `unpriced`    | Pricing failed; each option keeps its last price, else shows its package price |
 
-| From                                | What happens                                                                                                                           | To                                                                    | Events, in order                                                          |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| none                                | The selector picks its option: `?forceBundleId`, the one in the cart, `data-next-selected`, else the first                             | `picked`                                                              | `selector.selected`                                                       |
-| `picked`                            | Some options have no price from the last 10 minutes                                                                                    | `calculating`                                                         | `selector.calculating`                                                    |
-| `picked`                            | Every option has a price from the last 10 minutes                                                                                      | `priced`                                                              | `selector.calculated`                                                     |
-| `calculating`                       | The prices arrive                                                                                                                      | `priced`                                                              | `selector.calculated`                                                     |
-| `calculating`                       | Pricing fails                                                                                                                          | `unpriced`                                                            | `sdk.error` (`selector.calculate`)                                        |
-| any                                 | Another option is picked                                                                                                               | same state                                                            | `selector.selected`                                                       |
-| `calculating`, `priced`, `unpriced` | The picked option's quantity changes, or a slot of the picked option (one unit of a configurable line) changes its variant or property | `calculating`, or `priced` if every price is from the last 10 minutes | `selector.selected`, then `selector.calculating` or `selector.calculated` |
-| `calculating`, `priced`, `unpriced` | The cart's coupons change                                                                                                              | as above                                                              | `selector.calculating` or `selector.calculated`                           |
+| From                                | What happens                                                                                                                           | To                                                                    | Events, in order                                                                                                        |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| none                                | The selector is bound and picks its option: `?forceBundleId`, the one in the cart, `data-next-selected`, else the first                | `picked`                                                              | `selector.viewed`, once per selector on the page                                                                        |
+| `picked`                            | Some options have no price from the last 10 minutes                                                                                    | `calculating`                                                         | `selector.calculating`                                                                                                  |
+| `picked`                            | Every option has a price from the last 10 minutes                                                                                      | `priced`                                                              | `selector.calculated`                                                                                                   |
+| `calculating`                       | The prices arrive                                                                                                                      | `priced`                                                              | `selector.calculated`                                                                                                   |
+| `calculating`                       | Pricing fails                                                                                                                          | `unpriced`                                                            | `sdk.error` (`selector.calculate`)                                                                                      |
+| `priced`                            | Prices from the last 10 minutes are checked again, once a page                                                                         | `priced`                                                              | `selector.calculated` with the fresh prices; if the check fails, `sdk.error` (`selector.calculate`) and the prices stay |
+| any                                 | Another option is picked                                                                                                               | same state                                                            | `selector.selected`                                                                                                     |
+| `calculating`, `priced`, `unpriced` | The picked option's quantity changes, or a slot of the picked option (one unit of a configurable line) changes its variant or property | `calculating`, or `priced` if every price is from the last 10 minutes | `selector.updated`, then `selector.calculating` or `selector.calculated`                                                |
+| `calculating`, `priced`, `unpriced` | The cart's coupons change                                                                                                              | as above                                                              | `selector.calculating` or `selector.calculated`, right after the change's `cart.updated`                                |
 
-In swap mode, the default, picking also puts the option in the cart, so `cart.updated` follows.
-While the checkout has the cart frozen (submitting, placing), a swap selector ignores picks,
-quantity and slot changes and sends nothing.
+In swap mode, the default, picking also puts the option in the cart, so `cart.updated` follows;
+so does a quantity or slot change, after `selector.updated`. While an order is being placed the
+cart is frozen: a swap selector ignores picks, quantity and slot changes and sends nothing.
+Markup bound again under the same selector id, such as with `next.bind`, sends no second
+`selector.viewed`; it sends `selector.selected` if its pick changed.
+
+Prices are kept 10 minutes in this browser. A later page shows them at once with
+`selector.calculated`, checks them once in the background without `selector.calculating`, and
+sends `selector.calculated` again when the fresh prices arrive.
 
 Every selector event carries the same `Selector`: the picked option and its lines, with the
-product as in the cart, priced once the option has a price. The price that is paid comes with the
-cart on `cart.*`.
+product as in the cart, priced once the option has a price, and every option with its price. The
+price that is paid comes with the cart on `cart.*`.
 
-A toggle (a bump such as a warranty) sends `selector.selected` when it is switched on and
-`selector.deselected` when it is switched off from its card, with `type: 'toggle'`. While it is off
-it is priced as if added (`selector.calculating`, `selector.calculated` with its line), again
-whenever the cart's lines or coupons change; once on, its price comes with the cart on `cart.*`. Removing its line in the
-cart, or clearing the cart, sends no `selector.deselected`.
+A toggle (a bump such as a warranty) has `type: 'toggle'` and no options. It sends
+`selector.selected` when it is switched on, and `selector.deselected` when its line leaves the
+cart: switched off from its card, removed, set to 0, or the cart cleared. Both come just before the
+change's `cart.updated`. While it is off it is priced as if added, without selector events; once
+on, its price comes with the cart on `cart.*`.
 
 ## Errors
 

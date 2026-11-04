@@ -46,10 +46,13 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 docs/
   architecture/            design.md · engine.md · structure.md · parity-0.4.md (what 0.4.43 pages use,
                            and how each is supported) · redesign-review.md (research before the rewrite)
-  guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4
+  guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4;
+                           event-reference/<group>/lifecycle.md, drawn by hand, one per event group
+  event-examples.json      an example payload of every public event, recorded by tests/event-examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
+scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event Reference page per EventMap event
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
 vendor/tsugi/payment-icons.css  tsugi's payment icons the payment step shows, inlined; a chunk of its own
@@ -76,14 +79,18 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
+    order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
+    id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
     cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors (and a package's
                                                 variant choices, for slots and debug), toggles, their types
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)
+    environment.ts                 the page and browser every event's context carries
     dom.ts                         setText, setVisible, setState, token stamping
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-summary.ts cart-controls.ts links.ts
+    promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
     widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
@@ -99,7 +106,6 @@ src/
     index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
   analytics/           analytics   subscriber, loaded on idle
     index.ts                       startAnalytics: engine events → GA4-named `analytics` events
-    context.ts                     page context and event ids
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
@@ -125,10 +131,12 @@ src/
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
-    legacy.ts          boot        window.next 0.4.x API, selector ids, event names
-    exit-intent.ts     exit-intent loaded on the first next.exitIntent() call
-    checkout.ts        checkout    page field names, os-* names, old config, step guard, prospect DOM event
-    order.ts           order       accept / decline words, old next-url and offer attributes
+    legacy.ts          boot        window.next 0.4.x API, selector ids, 0.4.x event names and payloads (lazy chunks
+                                   add their own with addLegacyEvents)
+    exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
+    checkout.ts        checkout    page field names, os-* names, old config (express checks), step guard,
+                                   the 0.4.x Open Cart DOM event, the checkout's 0.4.x event names
+    order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
     analytics.ts       analytics   dl_* events (Elevar format) into NextDataLayer / dataLayer, built from `analytics`
 ```
 
@@ -183,6 +191,7 @@ tests/
   engine/ checkout/state/ order/state.test.ts   headless code, runs in Node — proves it never needs a DOM
   bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
+  event-examples.test.ts           records docs/event-examples.json; fails on a public event without an example
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts order.ts rules.ts
     pages/<campaign>/<page>.html           my-campaigns pages, copied verbatim, source on line 1
@@ -202,13 +211,14 @@ cannot drift silently.
 
 - `docs/architecture/` — why the code is shaped this way.
 - `docs/guides/` — for people building campaign pages: every attribute, the `window.next` API,
-  every event, and the 0.4.x → new migration table. Written by hand, kept short.
+  every event, and the 0.4.x → new migration table. Written by hand, kept short; each event's own
+  page is generated from `EventMap` and `docs/event-examples.json`.
 
 ## Recipes
 
-| Adding           | Where                                                                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                 |
-| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `events.ts` and `docs/guides/events.md`                                                                      |
-| A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs` |
-| A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                            |
+| Adding           | Where                                                                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                        |
+| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `EventMap` (`events.ts`) with TSDoc and `@group`, public in `boot.ts`, an example in `tests/event-examples.test.ts` |
+| A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs`        |
+| A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                                   |

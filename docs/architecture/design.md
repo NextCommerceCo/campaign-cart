@@ -116,7 +116,7 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 - **Never stored:** totals (they come from the server on each page), personal data in
   cookies, anything about the card. The old SDK's `next_user_data` cookie is deleted.
 - **Storage blocked** (private mode, in-app webviews): everything keeps working in memory
-  and `sdk.error` is emitted with `action: 'storage'`.
+  and `sdk.error` is emitted with `action: 'storage.write'`.
 - **Back button:** a page restored from the back-forward cache reloads, so it never acts
   on a stale cart.
 - **Reset:** `?reset=1` clears this funnel's keys once and is removed from the URL.
@@ -124,18 +124,19 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 ## 7. Tracking
 
 Analytics is a subscriber in its own chunk. It loads when the browser is idle after
-`next:ready` and replays the events it missed, so it never delays prices.
+`sdk.ready` and replays the events it missed, so it never delays prices.
 
-- **`dl_*` events in the 0.4.x shape** (`event`, `event_id`, `event_time`,
+- **Tracking events under GA4 names** (`add_to_cart`, `begin_checkout`, `purchase`, …), made from
+  the engine's events, for page scripts through `next.analytics.on`. `begin_checkout`,
+  `add_shipping_info` and `add_payment_info` go once per checkout, `purchase` once per order and
+  only when paid, `upsell_purchase` once per accepted upsell; `add_to_cart` and
+  `remove_from_cart` compare the priced cart with what the tab already reported, so a cart filled
+  before the page loaded is reported once. The list is in `docs/guides/events.md`.
+- **Each also as its `dl_*` event in the 0.4.x shape** (`event`, `event_id`, `event_time`,
   `user_properties`, `ecommerce {currency, value, items}`, `attribution`, `campaign_*`).
   Each one goes through `window.NextDataLayerTransformFn` first (a falsy return drops it),
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
-- **Events today:** `dl_user_data` and `dl_view_item(_list)` on ready; `dl_add_to_cart` and
-  `dl_remove_from_cart` from the priced cart against what was already reported in the tab, so a
-  cart filled before the page loaded is reported once; `dl_cart_updated` after each server
-  calculation. Checkout and upsell events come with
-  their chunks.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
   `page_location` has no query string.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends one `page_view`.
@@ -153,7 +154,8 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   changes which code loads or where it loads from.
 - Setup mistakes always print in the console: missing key, unknown attribute, unknown
   field.
-- SDK errors go out as the `error` event (debug panel, analytics); a collector endpoint is a backend ask (B3).
+- SDK errors go out as the `sdk.error` event (debug panel, page scripts), and a failed order,
+  payment or upsell also as its `*.failed` event; a collector endpoint is a backend ask (B3).
 
 ## 9. Release
 

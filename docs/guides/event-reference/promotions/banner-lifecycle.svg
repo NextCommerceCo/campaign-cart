@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 302" width="720" height="302" role="img" aria-labelledby="promotions-banner-lifecycle-title promotions-banner-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="promotions-banner-lifecycle-title">Banner lifecycle</title>
+  <desc id="promotions-banner-lifecycle-desc">An element marked data-next-promotion sends promotion.viewed once a page, when half of it is in view, and promotion.clicked on every click, before it is viewed too. A banner never sends promotion.closed.</desc>
+  <defs>
+    <marker id="promotions-banner-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <path d="M330 74 V190" marker-end="url(#promotions-banner-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">half of it is in view</text>
+    <path d="M440 34 H470 V58 H446" marker-end="url(#promotions-banner-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="40" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">clicked</text>
+    <text x="482" y="57" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.clicked</text>
+    <path d="M440 214 H470 V238 H446" marker-end="url(#promotions-banner-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="220" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">clicked</text>
+    <text x="482" y="237" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.clicked</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">on the page</text>
+    <text x="330" y="61" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">less than half in view</text>
+    <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">viewed</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.viewed</text>
+  </g>
+  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">data-next-promotion="&lt;id&gt;": viewed once a page, clicked on every click, never closed</tspan></text>
+</svg>

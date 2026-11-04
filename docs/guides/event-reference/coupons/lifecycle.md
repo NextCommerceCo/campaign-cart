@@ -5,33 +5,48 @@ group: 'Event Reference/Coupons'
 
 # Coupon lifecycle
 
-![Coupon lifecycle: entered, applied, denied and removed, with the events each step sends](coupon-lifecycle.svg)
+![Coupon lifecycle: held, checking, applied, denied and removed, with the events each step sends](coupon-lifecycle.svg)
 
-| State     | Means                                      |
-| --------- | ------------------------------------------ |
-| `entered` | A code is being checked against the cart   |
-| `applied` | The code is on the cart                    |
-| `denied`  | The code takes nothing off; it is not kept |
-| `removed` | The code was taken off the cart            |
+| State      | Means                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `held`     | Entered while the cart is empty or the campaign has not loaded; waits for the cart's first price. Kept across pages in this tab |
+| `checking` | The cart is priced with and without the code                                                                                    |
+| `applied`  | The code takes money off and is on the cart                                                                                     |
+| `denied`   | The code is not applied; the cart does not change                                                                               |
+| `removed`  | The code was taken off the cart                                                                                                 |
 
-| From      | What happens                                                                    | To        | Events, in order                                                                         |
-| --------- | ------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------- |
-| `entered` | The code takes money off, or the cart is still empty                            | `applied` | `cart.updated`, `coupon.applied`; a cart with packages is then priced                    |
-| `entered` | The code takes nothing off                                                      | `denied`  | `coupon.denied`; the cart does not change                                                |
-| `applied` | A code applied to an empty cart takes nothing off once the cart is first priced | `denied`  | `coupon.denied`, then `cart.updated` as the code comes off, and the cart is priced again |
-| `applied` | The code is taken off                                                           | `removed` | `cart.updated`, `coupon.removed`; a cart with packages is then priced                    |
-| `applied` | The cart is cleared                                                             | `removed` | `cart.updated` only; no `coupon.removed`                                                 |
+| From               | What happens                                                                           | To         | Events, in order                                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| none               | A code is entered and the cart has lines                                               | `checking` | none                                                                                                                     |
+| none               | A code is entered while the cart is empty, or before the campaign loads                | `held`     | none                                                                                                                     |
+| none               | The code is already on the cart (a bundle card's own code too), held, or being checked | `denied`   | `coupon.denied` (`reason: 'duplicate'`)                                                                                  |
+| `held`             | The cart is priced for the first time                                                  | `checking` | none, after `cart.calculated`                                                                                            |
+| `checking`         | The code takes money off                                                               | `applied`  | `cart.updated`, `coupon.applied` (with `amount` and `discounts`), then `cart.calculating`, `cart.calculated`             |
+| `checking`         | The code takes nothing off this cart                                                   | `denied`   | `coupon.denied` (`reason: 'no_discount'`)                                                                                |
+| `checking`         | The code cannot be checked                                                             | `denied`   | `sdk.error` (`coupon.check`), `coupon.denied` (`reason: 'check_failed'`, with `message`)                                 |
+| `held`, `checking` | `removeCoupon`, or the cart is cleared                                                 | none       | none; `applyCoupon` resolves `false`                                                                                     |
+| `applied`          | `removeCoupon`                                                                         | `removed`  | `cart.updated`, `coupon.removed` (`reason: 'shopper'`), then `cart.calculating`, `cart.calculated` if the cart has lines |
+| `applied`          | The cart is cleared                                                                    | `removed`  | `cart.updated`, `cart.removed`, `coupon.removed` (`reason: 'cleared'`)                                                   |
 
-While the checkout has the cart frozen (submitting, placing), `applyCoupon` resolves `false`,
-`removeCoupon` does nothing, and no coupon event is sent.
+`next.actions.applyCoupon` resolves `true` once the code is applied, and `false` when it is denied
+or dropped. For a held code it resolves when the code is checked, if that happens on the same page;
+a held code still waiting on a later page is checked there once the cart is priced. The 0.4.x
+`next.applyCoupon` resolves `true` at once for a code it holds.
 
-A coupon event carries the `code`. What it takes off is in the cart's `discounts`, or
-`shipping_method.discounts` for shipping, with `source` `coupon` and the same `code`, on the next `cart.calculated`, and follows the cart as it changes.
+While an order is being placed the cart is frozen: `applyCoupon` resolves `false`, `removeCoupon`
+does nothing, and no coupon event is sent. A code whose check ends after the cart froze is not
+applied and sends nothing; a held code stays held.
+
+Codes are uppercase. `coupon.applied` carries what the code takes off this cart, as `amount` and
+the `discounts` with its `code`. The cart's own `discounts`, or `shipping_method.discounts` for
+shipping, list it with `source` `coupon` and the same `code` from the next `cart.calculated`, and
+follow the cart as it changes. Applying or removing a code prices every selector's options again;
+see the selector lifecycle.
 
 ## Errors
 
 Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
 
-| `action`       | When                       | What the SDK does next                                  |
-| -------------- | -------------------------- | ------------------------------------------------------- |
-| `coupon.check` | A coupon cannot be checked | The code is not applied; `applyCoupon` resolves `false` |
+| `action`       | When                     | What the SDK does next                                                        |
+| -------------- | ------------------------ | ----------------------------------------------------------------------------- |
+| `coupon.check` | A code cannot be checked | `coupon.denied` with `reason: 'check_failed'`; `applyCoupon` resolves `false` |

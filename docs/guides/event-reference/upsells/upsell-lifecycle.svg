@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 542" width="720" height="542" role="img" aria-labelledby="upsells-lifecycle-title upsells-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 681" width="720" height="681" role="img" aria-labelledby="upsells-lifecycle-title upsells-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="upsells-lifecycle-title">Upsell lifecycle</title>
-  <desc id="upsells-lifecycle-desc">An offer is shown (upsell.viewed, once a page). Accepting posts it to the order: upsell.accepted with the updated order, then the shopper is redirected to the next page, which sends order.loaded with the offer in upsells. Skipping sends upsell.skipped and moves on. When adding fails, such as a decline, sdk.error then upsell.failed are sent and the shopper is redirected on after a second. An offer already accepted on that page sends nothing and moves on. If the order cannot load or take upsells, the offer stays hidden and upsell.viewed is not sent.</desc>
+  <desc id="upsells-lifecycle-desc">An offer is shown (upsell.viewed, once per offer) when the order takes upsells. Accepting sends it to the order. Added, upsell.accepted then order.updated, and the shopper is redirected to the next page. Declined or refused, sdk.error then upsell.failed, and the shopper is redirected on after a second. With no answer (a timeout or a server error), the order is loaded again: if it has the offer, it was accepted; if not, it failed. Skipping sends upsell.skipped and moves on. An offer already accepted on that page sends nothing and moves on.</desc>
   <defs>
     <marker id="upsells-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -9,12 +9,16 @@
   <g>
     <path d="M330 74 V190" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">accept</text>
-    <path d="M330 254 V370" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">added to the order</text>
     <path d="M440 34 H534" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="490" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">skip</text>
-    <path d="M440 214 H534" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
-    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">adding fails</text>
+    <path d="M330 254 V341" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M330 347 L342 359 L330 371 L318 359 Z" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M330 371 V474" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="403" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">added, or no answer</text>
+    <text x="344" y="421" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">and the order has it</text>
+    <path d="M342 359 H534" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="441" y="351" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">declined, refused,</text>
+    <text x="441" y="377" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or not on the order</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
@@ -23,19 +27,21 @@
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">adding</text>
     <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the offer is sent</text>
-    <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
-    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">accepted</text>
-    <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.accepted</text>
+    <rect x="220" y="480" width="220" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="505" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">accepted</text>
+    <text x="330" y="525" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.accepted</text>
+    <text x="330" y="540" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.updated</text>
     <rect x="540" y="16" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
     <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">skipped</text>
     <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.skipped</text>
-    <rect x="540" y="196" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
-    <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
-    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
-    <text x="620" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
+    <rect x="540" y="330" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <text x="620" y="355" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
+    <text x="620" y="375" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
+    <text x="620" y="390" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
   </g>
-  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Accepted, skipped or failed, the shopper is redirected to the next page (failed: after a second)</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">An offer already accepted on that page sends nothing; redirected to the next page</tspan></text>
-  <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">The next page sends order.loaded, with an accepted offer in upsells once</tspan></text>
-  <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · upsell.add</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed: upsell.failed; redirected to the next page after a second</tspan></text>
+  <text x="360" y="587" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">No answer (a timeout or a server error): the order is loaded again to see if it has the offer</tspan></text>
+  <text x="360" y="607" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Then the next page: accepted after a moment, skipped at once, failed after a second</tspan></text>
+  <text x="360" y="627" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">upsell.viewed: once per offer, when the order takes upsells and the offer’s price is in</tspan></text>
+  <text x="360" y="647" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">An offer already accepted on this page sends nothing; one with nothing to add logs a warning</tspan></text>
+  <text x="360" y="667" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · upsell.add</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed: upsell.failed; redirected to the next page after a second</tspan></text>
 </svg>
