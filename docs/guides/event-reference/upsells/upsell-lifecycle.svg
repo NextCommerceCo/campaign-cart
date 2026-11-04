@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="upsells-lifecycle-title upsells-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="upsells-lifecycle-title">Upsell lifecycle</title>
+  <desc id="upsells-lifecycle-desc">An offer is shown (upsell.viewed). Accepting it adds it to the order: upsell.accepted with the updated order, then the next page. Skipping it sends upsell.skipped and moves on. When adding the offer fails, such as a decline, upsell.failed is sent and the shopper can accept again. An offer already accepted on that page is not charged again.</desc>
+  <defs>
+    <marker id="upsells-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <path d="M330 74 V190" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">accept</text>
+    <path d="M330 254 V370" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">added to the order</text>
+    <path d="M440 34 H534" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="490" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">skip</text>
+    <path d="M440 214 H534" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">refused</text>
+    <path d="M540 238 H446" marker-end="url(#upsells-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="490" y="257" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">accept again</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">shown</text>
+    <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.viewed</text>
+    <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">adding</text>
+    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the offer is posted</text>
+    <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">accepted</text>
+    <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.accepted</text>
+    <rect x="540" y="16" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">skipped</text>
+    <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.skipped</text>
+    <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
+  </g>
+  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">An offer already accepted on that page is not charged again</text>
+</svg>

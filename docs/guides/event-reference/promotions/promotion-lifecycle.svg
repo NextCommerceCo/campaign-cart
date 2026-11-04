@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="promotions-lifecycle-title">Promotion lifecycle</title>
+  <desc id="promotions-lifecycle-desc">The exit-intent popup waits until the mouse leaves the page (or, on a phone with mobileScrollTrigger, a scroll back up). It opens (promotion.viewed). A click on its image or a template button sends promotion.clicked and closes it. Esc or the overlay sends promotion.closed with reason dismissed; the close button sends it with reason closed. It can open again up to maxTriggers times in the session.</desc>
+  <defs>
+    <marker id="promotions-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <path d="M330 74 V190" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the mouse leaves the page</text>
+    <path d="M330 254 V370" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">image or button clicked</text>
+    <path d="M440 214 H534" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">Esc or close</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">waiting</text>
+    <text x="330" y="61" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">for the shopper to leave</text>
+    <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">open</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.viewed</text>
+    <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">clicked</text>
+    <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.clicked</text>
+    <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">closed</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.closed</text>
+  </g>
+  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">It can open again, up to maxTriggers times a session · reason: dismissed (Esc, overlay) or closed</text>
+</svg>

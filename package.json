@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "docs": "node scripts/docs-stage.mjs && typedoc && node scripts/docs-versions.mjs --local",
     "docs:serve": "node scripts/docs-serve.mjs --watch",
+    "docs:lifecycles": "node scripts/docs-lifecycles.mjs",
     "docs:check": "patch-package --error-on-fail && node scripts/docs-stage.mjs && typedoc --treatWarningsAsErrors && node scripts/docs-versions.mjs --local",
     "postinstall": "patch-package"
   },
