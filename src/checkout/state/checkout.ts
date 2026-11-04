@@ -2,7 +2,7 @@ import { orderError } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
 import { nextUrl } from '../../engine/params';
-import { EXPRESS_METHODS, LANGUAGE, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
+import { EXPRESS_METHODS, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
 import {
   ADDRESS,
@@ -85,7 +85,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
   };
   const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);
   const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => ({
-    language: stored?.language || LANGUAGE,
+    language: stored?.language || ctx.getState().campaign?.language || '',
     ...(stored?.ip && { ip: stored.ip }),
     user_agent: stored?.user_agent || ctx.getState().visit.landing?.device || '',
   });
@@ -119,7 +119,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     try {
       const saved = await ctx.api.createCart({
         lines: cart.lines(),
-        user: userOf(state().fields, now.phone),
+        user: userOf(state().fields, campaign.language, now.phone),
         currency: campaign.currency,
         attribution: ctx.attribution(),
       });

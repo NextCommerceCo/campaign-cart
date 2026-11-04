@@ -8,7 +8,6 @@ import { phoneOf } from './phone';
 import { hasField } from './rules';
 
 export const EXPRESS_METHODS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay'];
-export const LANGUAGE = 'en';
 
 export function paymentCode(word: string): string {
   const code = word.trim().toLowerCase().replace(/-/g, '_');
@@ -21,11 +20,11 @@ export interface OrderUrls {
   pageUrl: string;
 }
 
-export const userOf = (fields: Record<string, string>, phone?: string): OrderUser => ({
+export const userOf = (fields: Record<string, string>, language: string, phone?: string): OrderUser => ({
   email: fields.email?.trim() ?? '',
   first_name: fields.first_name?.trim() ?? '',
   last_name: fields.last_name?.trim() ?? '',
-  language: LANGUAGE,
+  language,
   ...(phone && { phone_number: phone }),
   accepts_marketing: fields.accepts_marketing !== 'false',
 });
@@ -88,7 +87,7 @@ export function orderBody(
   const phone = phoneOf(checkout, 'phone_number');
   return {
     ...body,
-    user: userOf(checkout.fields, phone),
+    user: userOf(checkout.fields, campaign.language, phone),
     shipping_address: address(checkout, '', phone),
     billing_same_as_shipping_address: checkout.sameAsShipping,
     ...(!checkout.sameAsShipping && {

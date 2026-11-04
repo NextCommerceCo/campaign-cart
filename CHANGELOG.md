@@ -8,6 +8,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 
 - **0.4.x event names still work, with the payload they had.** `cart:updated`, `shipping:method-changed`, `exit-intent:*` and the rest fire as before, each only at the moment it meant. New code should use the names in [Events](docs/guides/events.md).
 - **An event name the SDK does not know logs a warning and never fires.** `fomo:*` and `profile:*`, features the SDK no longer has, are accepted and never fire.
+- **The shopper's language sent with the Open Cart and the order is the campaign's.** It was always `en`, so a campaign set to another language saved its shoppers as English. The store now gets the campaign's language, such as `fr`.
 - **`dl_*` events are deprecated, and still sent.** Listen with `next.analytics.on(name, fn)` to get the same events under their GA4 names.
 - **The exit-intent popup now also pushes `dl_view_promotion` and `dl_select_promotion`**, next to the `dl_exit_intent_*` events it always sent. A GTM trigger on `dl_exit_intent_shown` keeps working; a new GA4 tag can use the promotion events instead.
 

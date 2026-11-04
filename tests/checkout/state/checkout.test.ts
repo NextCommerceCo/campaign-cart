@@ -3,6 +3,7 @@ import { createCheckout, redirectFor } from '../../../src/checkout/state/checkou
 import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
 import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
+import { campaign } from '../../fixtures/campaign';
 import { flush, makeEngine, type MakeEngine, wait } from '../../fixtures/engine';
 import { fakeRules } from '../../fixtures/rules';
 import { MemoryStorage } from '../../fixtures/storage';
@@ -40,6 +41,25 @@ describe('checkout', () => {
       'klarna',
       'card_token',
     ]);
+  });
+
+  it('sends the shopper with the campaign’s language, not always English', async () => {
+    const { engine, checkout, fill, posts } = await setup({
+      campaign: Promise.resolve({ ...campaign, language: 'fr' }),
+    });
+    await engine.cart.addItem(1);
+    fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
+    await checkout.leave('last_name');
+    expect(posts('/carts/')[0]!.body).toMatchObject({ user: { language: 'fr' } });
+    const body = orderBody(engine.getState(), {
+      method: 'card_token',
+      token: 'tok_1',
+      lines: engine.cart.lines(),
+      vouchers: [],
+      attribution: engine.attribution(),
+      urls: URLS,
+    });
+    expect(body.user).toMatchObject({ language: 'fr' });
   });
 
   it('builds the 0.4.x order body, and a short one for express methods', async () => {
