@@ -1,6 +1,6 @@
 import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/cart';
-import type { ApiLine } from '../../engine/cart/types';
+import type { Line } from '../../engine/cart/types';
 import type { State } from '../../engine/types';
 import type { Address, CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
@@ -49,7 +49,7 @@ export function orderBody(
   order: {
     method: string;
     token?: string;
-    lines: ApiLine[];
+    lines: Line[];
     vouchers: string[];
     attribution: Attribution;
     urls: OrderUrls;

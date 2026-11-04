@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { Logger } from '../engine/log';
-import type { ApiLine, CartLine } from '../engine/cart/types';
+import type { Line, CartLine } from '../engine/cart/types';
 import type { EventName } from '../engine/events';
 import type { Campaign, Package, ShippingOption, State } from '../engine/types';
 import type { ExitIntentOptions } from './exit-intent';
@@ -40,7 +40,7 @@ const selection = (toggle: boolean): LegacyEvent => ({
   data: (d) => ({
     selectorId: d.selector_id,
     cardId: d.card_id,
-    items: (d.lines as ApiLine[]).map((l) => ({ packageId: l.package_id, quantity: l.quantity })),
+    items: (d.lines as Line[]).map((l) => ({ packageId: l.package_id, quantity: l.quantity })),
   }),
 });
 

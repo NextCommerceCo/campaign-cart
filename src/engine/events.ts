@@ -1,6 +1,6 @@
 import type { Logger } from './log';
 import type { Attribution } from './attribution';
-import type { ApiLine, CartSummary } from './cart/types';
+import type { Line, CartSummary } from './cart/types';
 import type { Campaign, CheckoutError, OpenCart, Order, OrderLine } from './types';
 
 export interface PromotionDetail {
@@ -25,9 +25,13 @@ export interface Contact {
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
 
+/** A package added to or removed from the cart, and the price it was charged. */
 export interface CartChangeLine {
+  /** The package's `ref_id` in the campaign. */
   package_id: number;
+  /** How many packages were added or removed. */
   quantity: number;
+  /** Unit price after discounts, as the server priced it ({@link SummaryLine}'s `unit_price`). */
   unit_price: string;
 }
 
@@ -84,7 +88,7 @@ export interface EventMap {
    */
   'sdk.ready': {
     /** The cart's lines at that moment. */
-    lines: ApiLine[];
+    lines: Line[];
   };
   /**
    * An action failed.
@@ -108,7 +112,7 @@ export interface EventMap {
     /** The picked card's id; none for a toggle. */
     card_id?: string;
     /** The lines the selection puts in the cart, at the card's quantity. */
-    lines: ApiLine[];
+    lines: Line[];
   };
   /**
    * A toggle is switched off.
@@ -138,7 +142,7 @@ export interface EventMap {
    */
   'cart.updated': {
     /** Every line in the cart, the same package's lines merged. */
-    lines: ApiLine[];
+    lines: Line[];
     /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
     coupons: string[];
     /** The picked shipping method's `ref_id`. */
@@ -150,7 +154,7 @@ export interface EventMap {
    */
   'cart.calculating': {
     /** The lines being priced. */
-    lines: ApiLine[];
+    lines: Line[];
   };
   /**
    * Server totals arrived.
@@ -194,7 +198,7 @@ export interface EventMap {
    * Once, when the checkout form is bound with a cart.
    * @group Checkout
    */
-  'checkout.started': { lines: ApiLine[] };
+  'checkout.started': { lines: Line[] };
   /**
    * Once per tab, when the store creates the Cart: a valid email and a first and last name are
    * in, checked when the shopper leaves a field. It is the Cart in the dashboard's Open Carts,
@@ -304,7 +308,7 @@ export interface EventMap {
    */
   'upsell.accepted': {
     ref_id: string;
-    lines: ApiLine[];
+    lines: Line[];
     /** The order with the offer added. */
     order: Order;
   };

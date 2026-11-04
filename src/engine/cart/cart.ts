@@ -1,7 +1,7 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
 import type { CartChangeLine } from '../events';
-import type { ApiLine, CartGroup, CartLine, CartState, CartSummary, ReportedLine, SummaryLine } from './types';
+import type { Line, CartGroup, CartLine, CartState, CartSummary, ReportedLine, SummaryLine } from './types';
 
 export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 
@@ -10,8 +10,8 @@ export const lineKey = (l: CartLine) =>
 
 export const apiLines = (lines: CartLine[]) => mergeLines({ lines: { lines, vouchers: [] } });
 
-export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
-  const merged = new Map<string, ApiLine>();
+export function mergeLines(groups: Record<string, CartGroup>): Line[] {
+  const merged = new Map<string, Line>();
   for (const group of Object.values(groups)) {
     for (const line of group.lines) {
       const key = lineKey(line);

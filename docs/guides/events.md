@@ -35,6 +35,12 @@ the shopper leaves a field (its `change`), not on each key.
 
 <!-- event-index -->
 
+## Objects
+
+What the events carry: each object's fields, the events that send it, and an example.
+
+<!-- object-index -->
+
 ## 0.4.x names
 
 0.4.x names still work and get the payload they had: `cart:updated`, `bundle:selection-changed`,

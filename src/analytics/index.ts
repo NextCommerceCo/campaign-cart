@@ -1,9 +1,9 @@
 import type { Engine } from '../engine/engine';
-import type { SummaryLine } from '../engine/cart/types';
+import type { Line, SummaryLine } from '../engine/cart/types';
 import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { eventIds, pageContext } from './context';
-import { cartEcommerce, cents, currency, ecommerce, type Line, orderItem, taxIncluded } from './ecommerce';
+import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
   apiKey: string;

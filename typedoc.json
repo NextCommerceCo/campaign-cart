@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/boot.ts", "src/engine/events.ts"],
+  "entryPoints": ["src/boot.ts"],
   "exclude": ["tests/**"],
   "tsconfig": "tsconfig.json",
   "name": "Campaign Cart SDK",
@@ -15,7 +15,7 @@
   "cleanJsdocTheme": {
     "siteName": "Campaign Cart SDK",
     "docs": "docs/.staged",
-    "docGroups": ["Start Here", "Reference", "Event Reference"],
+    "docGroups": ["Start Here", "Reference", "Event Reference", "Objects"],
     "fonts": {
       "heading": "Inter",
       "body": "Inter",

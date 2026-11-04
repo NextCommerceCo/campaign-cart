@@ -1,8 +1,6 @@
 import type { Engine } from '../engine/engine';
-import type { SummaryLine } from '../engine/cart/types';
+import type { Line, SummaryLine } from '../engine/cart/types';
 import type { Order, OrderLine } from '../engine/types';
-
-export type Line = { package_id: number; quantity: number };
 
 export const cents = (n: number) => Math.round(n * 100) / 100;
 

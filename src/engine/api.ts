@@ -1,6 +1,6 @@
 import type { Logger } from './log';
 import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
-import type { ApiLine, CartSummary } from './cart/types';
+import type { Line, CartSummary } from './cart/types';
 import type { CheckoutError, OpenCart, Order, Send } from './types';
 
 export class ApiError extends Error {
@@ -23,7 +23,7 @@ export class Api {
   ) {}
 
   calculate(
-    body: { lines: ApiLine[]; vouchers: string[]; currency?: string; shipping_method?: number },
+    body: { lines: Line[]; vouchers: string[]; currency?: string; shipping_method?: number },
     { signal, upsell }: { signal?: AbortSignal; upsell?: boolean } = {},
   ): Promise<CartSummary> {
     return this.request<CartSummary>(`${this.base}/api/v1/carts/calculate/${upsell ? '?upsell=true' : ''}`, {
@@ -45,7 +45,7 @@ export class Api {
     return this.request<Order>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/`, { signal });
   }
 
-  addUpsell(refId: string, body: { lines: ApiLine[]; currency?: string; vouchers?: string[] }): Promise<Order> {
+  addUpsell(refId: string, body: { lines: Line[]; currency?: string; vouchers?: string[] }): Promise<Order> {
     return this.request<Order>(`${this.base}/api/v1/orders/${encodeURIComponent(refId)}/upsells/`, {
       method: 'POST',
       body: JSON.stringify(body),

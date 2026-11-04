@@ -1,4 +1,4 @@
-import type { ApiLine } from '../engine/cart/types';
+import type { Line } from '../engine/cart/types';
 import type { Context } from '../engine/engine';
 import type { AnalyticsTrace, EngineEvent, EventMap, EventName } from '../engine/events';
 
@@ -46,19 +46,19 @@ export interface Arrival {
   scope: string;
   reload: boolean;
   reset: boolean;
-  lines: ApiLine[];
+  lines: Line[];
 }
 
 const PAGES = 25;
 const MARKS = 60;
 
-const quantities = (lines: ApiLine[]) => {
+const quantities = (lines: Line[]) => {
   const byPackage = new Map<number, number>();
   for (const l of lines) byPackage.set(l.package_id, (byPackage.get(l.package_id) ?? 0) + l.quantity);
   return byPackage;
 };
 
-const count = (lines: ApiLine[]) => lines.reduce((n, l) => n + l.quantity, 0);
+const count = (lines: Line[]) => lines.reduce((n, l) => n + l.quantity, 0);
 
 export function createDebug(ctx: Context, arrival: Arrival) {
   const saved = ctx.saved<DebugState>('debug');

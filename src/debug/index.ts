@@ -1,4 +1,4 @@
-import type { ApiLine } from '../engine/cart/types';
+import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
 import { format } from '../engine/format';
@@ -33,7 +33,7 @@ export interface DebugInfo {
   apiBase: string;
   scope: string;
   funnel: string;
-  arrived: { lines: ApiLine[]; reset: boolean };
+  arrived: { lines: Line[]; reset: boolean };
   reset: () => void;
   off: () => void;
   analytics: () => ProviderConfig;

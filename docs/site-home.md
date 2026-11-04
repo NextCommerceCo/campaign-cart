@@ -26,11 +26,11 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 **Reference**: [Attributes](./guides/attributes.md) for everything the SDK reads from a page, [JavaScript API](./guides/javascript-api.md) for `window.next`, and [Events](./guides/events.md) for what `next.on` and `next.analytics.on` receive.
 
-**API types**: generated from the source so they always match the shipped code: [NextApi](/module/boot/nextapi) (`window.next`), [EventMap](/module/engine-events/eventmap) (each event's data) and [SdkEvent](/module/boot/sdkevent) (the envelope).
+**[Event Reference](./guides/events.md#event-reference)**: every event `next.on` receives, with its fields and an example, and the [Objects](./guides/events.md#objects) they carry. [`window.next`](/nextapi) and the [event envelope](/sdkevent) are generated from the source.
 
 ## Reading this site
 
 - [**Start Here**](./guides/migrating-from-0.4.md) is for a page moving from 0.4.x.
 - [**Reference**](./guides/attributes.md) is for looking things up mid-build: an [attribute](./guides/attributes.md) you found in markup, a [method](./guides/javascript-api.md), an [event](./guides/events.md).
-- Pages under **Classes**, **Interfaces** and **Type Aliases** are generated from the source: the exact fields and signatures.
+- **Event Reference** and **Objects** are generated from the SDK's types, so their fields always match the shipped code.
 - The version selector at the top of the page switches between released SDK versions. A page pinned to an older version documents that version, not this one.

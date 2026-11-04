@@ -54,68 +54,116 @@ export interface VisitState {
   timers: Record<string, number>;
 }
 
+/** Why a field or a submit did not pass. */
 export interface CheckoutError {
+  /** `blank`, `invalid`, `not_selected`, `declined`, … */
   code: string;
+  /** The message shown, in the page's language. */
   message?: string;
+  /** The gateway's decline code, for a declined card. */
   decline?: string;
+  /** `true` when the address service only warns: the order can still be sent. */
   warning?: boolean;
 }
 
+/** One line of an {@link Order}. Prices are decimal strings in the order's currency. */
 export interface OrderLine {
+  /** Order line ID. */
   id: number | string;
+  /** The package's `ref_id` in the campaign. */
   package?: number;
+  /** Product image. */
   image?: string;
+  /** `true` for a line an upsell added. */
   is_upsell?: boolean;
+  /** Line price before tax. */
   price_excl_tax: string;
+  /** Line price before tax and discounts. */
   price_excl_tax_excl_discounts?: string;
+  /** Line price including tax. */
   price_incl_tax: string;
+  /** Line price including tax, before discounts. */
   price_incl_tax_excl_discounts?: string;
+  /** The product's Stock Keeping Unit. */
   product_sku?: string;
+  /** The product's name as shown to customers. */
   product_title: string;
   product_description?: string;
   variant_title?: string;
+  /** Total product units from the package. */
   quantity: number;
   product_id?: number;
   variant_id?: number;
 }
 
+/** A shipping or billing address on an {@link Order}. */
 export interface OrderAddress {
   first_name?: string;
   last_name?: string;
+  /** Street address: house number and street name. */
   line1?: string;
+  /** Apartment, suite, unit, building or floor. */
   line2?: string;
+  /** City. */
   line4?: string;
+  /** State, province or region code. */
   state?: string;
+  /** Postal or ZIP code. */
   postcode?: string;
+  /** ISO 3166-1 alpha-2. */
   country?: string;
+  /** E.164. */
   phone_number?: string;
 }
 
+/**
+ * The Cart the store created from the shopper's contact details: an Open Cart in the dashboard.
+ * The Campaigns API answers with more fields (`user`, `lines`, `discounts`, the other totals).
+ */
 export interface OpenCart {
+  /** The store's checkout for this cart. */
   checkout_url: string;
+  /** ISO 4217, such as `USD`. */
   currency: string;
+  /** Total price including tax. */
   total_incl_tax: string;
   [field: string]: unknown;
 }
 
+/** An order from the Campaigns API. Prices are decimal strings in `currency`. */
 export interface Order {
+  /** Order reference ID: the `ref_id` in post-purchase page URLs. */
   ref_id: string;
+  /** Order number, as the customer sees it. */
   number?: string | number;
+  /** ISO 4217, such as `USD`. */
   currency?: string;
   lines?: OrderLine[];
+  /** Total price before tax. */
   total_excl_tax?: string;
+  /** Total price including tax. */
   total_incl_tax?: string;
+  /** Total tax on the order. */
   total_tax?: string;
+  /** Total discount on the order. */
   total_discounts?: string;
+  /** Shipping price before tax. */
   shipping_excl_tax?: string;
+  /** Shipping price including tax. */
   shipping_incl_tax?: string;
+  /** Shipping method name. */
   shipping_method?: string;
+  /** The customer. */
   user?: { first_name?: string; last_name?: string; email?: string; phone_number?: string };
   shipping_address?: OrderAddress;
   billing_address?: OrderAddress;
+  /** Payment method used for the order. */
   payment_method?: string | { code?: string } | null;
+  /** `true` when upsells can be added to this order. */
   supports_post_purchase_upsells?: boolean;
+  /** Where the shopper pays, for a method that sends them to a payment gateway. */
   payment_complete_url?: string | null;
+  /** The order's status page. */
   order_status_url?: string;
 }
 

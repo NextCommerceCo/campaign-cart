@@ -1,5 +1,5 @@
 import type { Attribution } from '../../engine/attribution';
-import type { ApiLine } from '../../engine/cart/types';
+import type { Line } from '../../engine/cart/types';
 import type { CheckoutError } from '../../engine/types';
 
 export interface AddressSuggestion {
@@ -104,7 +104,7 @@ export interface OrderUser {
 }
 
 export interface OrderBody {
-  lines: ApiLine[];
+  lines: Line[];
   shipping_address?: Address;
   billing_same_as_shipping_address?: boolean;
   billing_address?: Address;
@@ -119,7 +119,7 @@ export interface OrderBody {
 }
 
 export interface ProspectBody {
-  lines: ApiLine[];
+  lines: Line[];
   user: OrderUser;
   currency: string;
   attribution: Attribution;
