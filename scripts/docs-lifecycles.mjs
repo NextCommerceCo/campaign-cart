@@ -174,18 +174,18 @@ const LIFECYCLES = {
   },
   selectors: {
     title: 'Selector lifecycle',
-    desc: "A selector is registered and its first option picked (selector.selected), then pricing the options that have no price yet (selector.calculating), then quoted (selector.calculated). When every option already has a price from the last 10 minutes it goes straight to quoted (selector.calculated). Pricing that fails sends sdk.error and the options show package prices. Changing the picked option's quantity or a slot sends selector.selected and prices it again.",
+    desc: "A selector is registered and its first option picked (selector.selected), then calculating the options that have no price yet (selector.calculating), then priced (selector.calculated). When every option already has a price from the last 10 minutes it goes straight to priced (selector.calculated). Pricing that fails moves calculating to unpriced (sdk.error) and the options show package prices. Changing the picked option's quantity or a slot sends selector.selected and calculates again.",
     rows: 3,
     boxes: [
       { row: 0, title: 'picked', sub: [code('selector.selected')] },
-      { row: 1, title: 'quoting', sub: ['options without a price'], tone: 'active' },
-      { row: 2, title: 'quoted', sub: ['every option has a price'], tone: 'success' },
-      { col: 'side', row: 1, title: 'unquoted', sub: [code('selector.quote')], tone: 'failure' },
+      { row: 1, title: 'calculating', sub: ['prices on the way'], tone: 'active' },
+      { row: 2, title: 'priced', sub: ['every option has a price'], tone: 'success' },
+      { col: 'side', row: 1, title: 'unpriced', sub: [code('selector.calculate')], tone: 'failure' },
     ],
     parts: () => [
       down(0, 1, 'options need a price', ['selector.calculating']),
       down(1, 2, 'prices arrive', ['selector.calculated']),
-      toSide(1, 'quoting fails'),
+      toSide(1, 'pricing fails'),
       loopUp(2, 1, 'quantity changes', ['selector.selected', 'selector.calculating']),
       [
         arrow(`M${MAIN.x + MAIN.w} ${rowY(0) + 29} H712 V${rowY(2) + 29} H${MAIN.x + MAIN.w + 6}`, { dashed: true }),
@@ -194,7 +194,7 @@ const LIFECYCLES = {
       ],
     ],
     note: 'A toggle sends selector.selected when switched on and selector.deselected when switched off',
-    errors: [['selector.quote', 'unquoted; the options show package prices']],
+    errors: [['selector.calculate', 'unpriced; the options show package prices']],
   },
   coupons: {
     title: 'Coupon lifecycle',

@@ -29,7 +29,7 @@ export function createToggles(ctx: Context) {
           ctx.emit('selector.calculated', publicToggle(ctx.getState(), group));
         })
         .catch((err: unknown) => {
-          if (inFlight.get(packageId) === controller) ctx.fail('selector.quote', err);
+          if (inFlight.get(packageId) === controller) ctx.fail('selector.calculate', err);
         })
         .finally(() => {
           if (inFlight.get(packageId) === controller) inFlight.delete(packageId);

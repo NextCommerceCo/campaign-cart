@@ -157,7 +157,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     } catch (err) {
       if (inFlight.get(id) !== controller) return;
       set(id, { quoting: false });
-      ctx.fail('selector.quote', err);
+      ctx.fail('selector.calculate', err);
     } finally {
       if (inFlight.get(id) === controller) inFlight.delete(id);
     }

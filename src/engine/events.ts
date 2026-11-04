@@ -29,7 +29,7 @@ export type SelectorType = 'bundle' | 'offer' | 'toggle';
 export type ErrorAction =
   | 'campaign.load'
   | 'cart.calculate'
-  | 'selector.quote'
+  | 'selector.calculate'
   | 'coupon.check'
   | 'contact.save'
   | 'address.rules'

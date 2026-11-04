@@ -300,7 +300,7 @@ describe('selectors', () => {
     expect(seen[0]!.lines[0]).not.toHaveProperty('price');
   });
 
-  it('falls back to package prices when the quote fails', async () => {
+  it('falls back to package prices when pricing fails', async () => {
     const failing = (async () => new Response('{}', { status: 500 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing });
     const errors: string[] = [];
@@ -308,7 +308,7 @@ describe('selectors', () => {
     await engine.start();
     await engine.selectors.register('offer', CARDS, 'offer');
     await flush();
-    expect(errors).toEqual(['selector.quote']);
+    expect(errors).toEqual(['selector.calculate']);
     expect(price(engine, 'bundle.one.price')).toBe('$49.00');
   });
 });
