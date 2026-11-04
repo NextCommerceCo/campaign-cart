@@ -80,15 +80,18 @@ export interface SdkEvent<K extends EventName = EventName> {
   object: string;
   data: EventMap[K];
   created_at: string;
+  /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
+  session_id: string;
   sdk_version: string;
 }
 
-const envelope = <K extends EventName>(e: EngineEvent<K>): SdkEvent<K> => ({
+const envelope = <K extends EventName>(e: EngineEvent<K>, sessionId: string): SdkEvent<K> => ({
   event_id: e.id,
   event_type: e.name,
   object: e.name.split('.')[0]!,
   data: e.data,
   created_at: new Date(e.at).toISOString(),
+  session_id: sessionId,
   sdk_version: __VERSION__,
 });
 
@@ -127,6 +130,12 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     campaign,
     storagePrefix: `next:${scope}`,
     storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
+    cookies: {
+      get: cookie,
+      set: (name, value, days) => {
+        document.cookie = `${name}=${value}; path=/; max-age=${days * 86400}; SameSite=Lax`;
+      },
+    },
     currency: config.currency,
     params: Object.fromEntries(params),
     visit: {
@@ -190,7 +199,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         (e) => {
           const data = e.data as Record<string, unknown>;
           if (legacy?.when && !legacy.when(data)) return;
-          fn((legacy?.data ? legacy.data(data, engine.getState()) : data) as never, envelope(e) as never);
+          fn(
+            (legacy?.data ? legacy.data(data, engine.getState()) : data) as never,
+            envelope(e, engine.sessionId()) as never,
+          );
         },
         { replay: event !== '*' && REPLAYED.includes(event) },
       );

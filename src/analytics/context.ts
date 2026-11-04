@@ -27,5 +27,6 @@ export function pageContext(engine: Engine): AnalyticsContext {
     campaign_currency: campaign?.currency,
     campaign_language: campaign?.language,
     attribution: { ...attribution, metadata },
+    session_id: engine.sessionId(),
   };
 }

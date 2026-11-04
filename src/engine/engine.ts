@@ -7,6 +7,7 @@ import { type EngineEvent, type ErrorAction, Events } from './events';
 import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
+import { campaignSession, type Cookies } from './session';
 import { StorageAdapter } from './storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
 import type { EventMap, EventName } from './events';
@@ -27,6 +28,7 @@ export interface EngineOptions {
   now?: () => number;
   logLevel?: LogLevel;
   debug?: boolean;
+  cookies?: Cookies;
 }
 
 export interface Context {
@@ -53,6 +55,7 @@ export class Engine {
   readonly selectors: SelectorActions;
   readonly toggles: ToggleActions;
   readonly debug: boolean;
+  readonly sessionId: () => string;
   checkout?: CheckoutActions;
   order?: OrderActions;
   private state: State;
@@ -68,7 +71,8 @@ export class Engine {
   constructor(private options: EngineOptions) {
     this.log = new Logger(options.logLevel, options.now);
     this.events = new Events(this.log);
-    this.api = new Api(options.apiKey, options.send, options.apiBase, this.log);
+    this.sessionId = campaignSession(options.cookies, options.storage.local);
+    this.api = new Api(options.apiKey, options.send, options.apiBase, this.log, this.sessionId);
     const adapter = (name: string, backends: Array<Storage | null>) =>
       new StorageAdapter({
         prefix: options.storagePrefix,

@@ -115,6 +115,7 @@ export function startLegacyDataLayer(
       campaign_currency: context.campaign_currency,
       campaign_language: context.campaign_language,
       attribution: context.attribution,
+      session_id: context.session_id,
       _metadata: { source: 'NextDataLayer', version: options.version },
       ...data,
     });

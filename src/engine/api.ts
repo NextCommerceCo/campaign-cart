@@ -21,6 +21,7 @@ export class Api {
     private send: Send,
     private base: string,
     private log: Logger,
+    private sessionId: () => string,
   ) {}
 
   calculate(
@@ -63,7 +64,12 @@ export class Api {
     const started = Date.now();
     const res = await this.send(url, {
       ...init,
-      headers: { Authorization: this.apiKey, 'Content-Type': 'application/json', ...init.headers },
+      headers: {
+        Authorization: this.apiKey,
+        'Content-Type': 'application/json',
+        'X-Next-Campaign-Session-Id': this.sessionId(),
+        ...init.headers,
+      },
     }).catch((err: unknown) => {
       this.log.debug(`${call} failed`, err);
       throw err;

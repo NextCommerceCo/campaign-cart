@@ -172,6 +172,8 @@ export interface AnalyticsContext {
   campaign_name?: string;
   campaign_currency?: string;
   campaign_language?: string;
+  /** The campaign session, as in the event envelope. */
+  session_id: string;
   attribution: Attribution;
 }
 

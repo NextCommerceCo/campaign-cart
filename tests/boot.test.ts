@@ -131,6 +131,8 @@ describe('boot', () => {
   });
 
   it('hands each event with an envelope like a webhook, and keeps ready for scripts that listen late', async () => {
+    const api = fakeApi();
+    vi.stubGlobal('fetch', api.fetch);
     const next = boot(config, Promise.resolve(campaign));
     await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
     const ready = vi.fn();
@@ -143,14 +145,19 @@ describe('boot', () => {
         object: 'sdk',
         data: { lines: expect.any(Array) },
         created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+        session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
         sdk_version: expect.any(String),
       },
     );
+    const session = ready.mock.calls[0]![1].session_id;
+    expect(document.cookie).toContain(`ncsid=${session}`);
     const added = vi.fn();
     next.on('cart.added', added);
     await next.actions.addItem(1);
     await vi.waitFor(() => expect(added).toHaveBeenCalledTimes(1));
-    expect(added.mock.calls[0]![1]).toMatchObject({ event_type: 'cart.added', object: 'cart' });
+    expect(added.mock.calls[0]![1]).toMatchObject({ event_type: 'cart.added', object: 'cart', session_id: session });
+    expect(api.calls.at(-1)!.headers['X-Next-Campaign-Session-Id']).toBe(session);
+    document.cookie = 'ncsid=; path=/; max-age=0';
   });
 
   it('gives 0.4.x names the payload they had, only for the moment they meant', async () => {

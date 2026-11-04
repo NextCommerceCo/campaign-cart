@@ -20,6 +20,7 @@ next.on('order.created', (data, event) => {
   event.object; // 'order'
   event.data; // same as data
   event.created_at; // ISO time
+  event.session_id; // the campaign session, a UUID v4 as 32 hex digits
   event.sdk_version;
 });
 ```
@@ -72,7 +73,7 @@ Names and `params` follow GA4 ecommerce; `update_cart`, `upsell_purchase`,
 `item_name`, `item_variant`, `price`, `discount`, `quantity`, `index`, …). `id` is unique per
 event, and is the transaction id for `purchase` and `upsell_purchase`; `purchase` is sent once, only
 when paid. `context` has `page_location`, `page_title`, `page_referrer`, `campaign_name`,
-`campaign_currency`, `campaign_language` and `attribution`. No personal data is sent.
+`campaign_currency`, `campaign_language`, `attribution` and `session_id`. No personal data is sent.
 
 `generate_lead` is sent once, on `contact.entered`. `add_shipping_info` is sent once, after
 `checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that
