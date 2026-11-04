@@ -6,9 +6,10 @@
  * types' TSDoc. A field tagged `@priced` or `@campaign`, or optional, says so in the Present column.
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
- * staged `events.md`. Nothing here is committed.
+ * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
+ * Nothing here is committed.
  */
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { slugifyHeading, slugifyPath } from '@clean-jsdoc-theme/utils';
 import { Application, OptionDefaults, ReflectionKind, TSConfigReader } from 'typedoc';
@@ -199,13 +200,18 @@ export async function stageEventReference(root, out) {
       member,
     }))
     .filter((e) => e.group);
-  await rm(join(out, slugifyPath([GROUP])), { recursive: true, force: true });
   for (const [i, event] of events.entries()) {
     if (!(event.name in examples))
       throw new Error(`docs-events: no example for ${event.name}; run UPDATE_DOCS=1 npm test`);
     const file = join(out, slugifyPath([GROUP, event.group]), `${event.name}.md`);
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, page(event, i + 1, examples[event.name], version));
+  }
+  for (const group of new Set(events.map((e) => e.group))) {
+    const lifecycle = join(out, slugifyPath([GROUP, group]), 'lifecycle.md');
+    const text = await readFile(lifecycle, 'utf8').catch(() => undefined);
+    const first = events.findIndex((e) => e.group === group) + 1;
+    if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
   }
   const overview = join(out, 'events.md');
   const staged = await readFile(overview, 'utf8');
