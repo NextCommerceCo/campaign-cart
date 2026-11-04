@@ -36,6 +36,17 @@ describe('order', () => {
     expect(next.engine.getState().order?.order?.number).toBe(1001);
   });
 
+  it('shows no order when it cannot load again after 15 minutes', async () => {
+    const session = new MemoryStorage();
+    const first = await setup({ session });
+    await first.order.load('R1');
+    const later = await setup({ session, api: { getOrder: () => json({ message: 'down' }, 500) } });
+    vi.spyOn(later.engine.log, 'error').mockImplementation(() => {});
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 16 * 60 * 1000);
+    await later.order.load('R1').finally(() => clock.mockRestore());
+    expect(later.engine.getState().order).toMatchObject({ status: 'failed', order: undefined });
+  });
+
   it('sends order.paid once per order, only when paid, and never on the failure landing', async () => {
     const local = new MemoryStorage();
     const first = await setup({ local });

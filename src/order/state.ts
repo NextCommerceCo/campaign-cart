@@ -214,7 +214,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
         settle(loaded);
       } catch (err) {
         if (current !== seq) return;
-        set({ status: 'failed', error: orderError(err) });
+        set({ status: 'failed', order: undefined, error: orderError(err) });
         ctx.fail('order.load', err);
       }
     },
