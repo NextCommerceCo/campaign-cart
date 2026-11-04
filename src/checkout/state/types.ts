@@ -1,6 +1,6 @@
 import type { Attribution } from '../../engine/attribution';
 import type { Line } from '../../engine/cart/types';
-import type { Address, Contact } from '../../engine/events';
+import type { Address, User } from '../../engine/events';
 import type { CheckoutError, OpenCart } from '../../engine/types';
 
 export interface AddressSuggestion {
@@ -79,7 +79,7 @@ export interface CheckoutState {
   rulesDown?: boolean;
   prospectSaved: boolean;
   openCart?: OpenCart;
-  contact?: Contact;
+  user?: User;
   shippingAddress?: Address;
   billingAddress?: Address;
   cardReady?: boolean;

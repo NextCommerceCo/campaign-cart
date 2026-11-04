@@ -87,8 +87,8 @@ export function announceProspect(engine: Engine, form: HTMLFormElement): void {
       prospect_id: cart.checkout_url,
       created_at: cart.created_at,
       expires_at: cart.expires_at,
-      email: data.contact?.email,
-      ...(data.contact?.phone && { phone: data.contact.phone }),
+      email: data.user?.email,
+      ...(data.user?.phone && { phone: data.user.phone }),
     };
     form.dispatchEvent(
       new CustomEvent('next:prospect-cart-created', { bubbles: true, detail: { cart, prospectCart } }),

@@ -141,9 +141,10 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
 export function publicCheckout(state: State, summary?: CartSummary): Checkout {
   const checkout = state.checkout;
   return {
-    ...publicCart(state, summary),
-    ...(checkout?.contact && { contact: checkout.contact }),
+    cart: publicCart(state, summary),
+    ...(checkout?.user && { user: checkout.user }),
     ...(checkout?.shippingAddress && { shipping_address: checkout.shippingAddress }),
+    ...(checkout && { billing_same_as_shipping: checkout.sameAsShipping }),
     ...(checkout?.billingAddress && !checkout.sameAsShipping && { billing_address: checkout.billingAddress }),
     ...(checkout && { payment_method: checkout.paymentMethod }),
   };

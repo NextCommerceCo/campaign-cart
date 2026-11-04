@@ -151,7 +151,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );
   on('shipping.selected', (e) =>
-    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.shipping_method?.id)}` }),
+    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.cart.shipping_method?.id)}` }),
   );
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
   on('address.entered', (e) =>

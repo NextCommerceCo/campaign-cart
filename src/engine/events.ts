@@ -15,7 +15,8 @@ export interface PromotionDetail {
 
 export type AddressType = 'shipping' | 'billing';
 
-export interface Contact {
+/** The shopper, as the store's `user` on the Open Cart and the order. */
+export interface User {
   /** As typed, trimmed. */
   email: string;
   first_name: string;
@@ -153,12 +154,16 @@ export interface Cart {
 }
 
 /** The cart and what the shopper has entered so far, the same on every checkout event. */
-export interface Checkout extends Cart {
-  /** The shopper's contact, from `contact.entered` on. */
-  contact?: Contact;
+export interface Checkout {
+  /** The same cart `cart.*` events carry. */
+  cart: Cart;
+  /** The shopper, from `contact.entered` on. */
+  user?: User;
   /** From `address.entered` for the shipping address on. */
   shipping_address?: Address;
-  /** Only when billing is separate from shipping, from `address.entered` for it on. */
+  /** On a checkout page: `false` once the shopper asks for a separate billing address. */
+  billing_same_as_shipping?: boolean;
+  /** When `billing_same_as_shipping` is `false`, from `address.entered` for it on. */
   billing_address?: Address;
   /** The API's code for the chosen payment method, on a checkout page: `card_token`, `paypal`, `apple_pay`, … */
   payment_method?: string;

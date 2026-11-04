@@ -14,7 +14,7 @@ import {
   type Scope,
   validEmail,
 } from './rules';
-import type { AddressType, Contact } from '../../engine/events';
+import type { AddressType, User } from '../../engine/events';
 import type { CheckoutError, Order } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
@@ -68,7 +68,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
 
-  const contactOf = (): Contact | undefined => {
+  const contactOf = (): User | undefined => {
     const { fields } = state();
     const [email, first_name, last_name] = ['email', 'first_name', 'last_name'].map((n) => fields[n]?.trim() ?? '');
     if (!validEmail(email!) || first_name!.length < 2 || last_name!.length < 2) return;
@@ -82,7 +82,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       accepts_marketing,
     };
   };
-  const contactKey = (contact?: Contact) => JSON.stringify(contact ?? null);
+  const contactKey = (user?: User) => JSON.stringify(user ?? null);
   let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
   const addresses: Partial<Record<AddressType, string>> = {};
 
@@ -104,7 +104,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     if (state().prospectSaved) {
       if (contactKey(now) === contact) return;
       contact = contactKey(now);
-      set({ contact: now });
+      set({ user: now });
       ctx.emit('contact.updated', cart.currentCheckout());
       return;
     }
@@ -116,7 +116,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         currency: campaign.currency,
         attribution: ctx.attribution(),
       });
-      set({ prospectSaved: true, openCart: saved, contact: now });
+      set({ prospectSaved: true, openCart: saved, user: now });
       contact = contactKey(now);
       ctx.emit('contact.entered', cart.currentCheckout());
     } catch (err) {

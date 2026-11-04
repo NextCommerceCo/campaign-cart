@@ -185,25 +185,27 @@ describe('checkout', () => {
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(1);
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { email: 'jane@example.com', first_name: 'Jane' } });
-    const contact = { email: 'jane@example.com', first_name: 'Jane', last_name: 'Does', accepts_marketing: true };
-    expect(saved).toHaveBeenCalledWith(expect.objectContaining({ contact, payment_method: 'card_token' }));
+    const user = { email: 'jane@example.com', first_name: 'Jane', last_name: 'Does', accepts_marketing: true };
+    expect(saved).toHaveBeenCalledWith(
+      expect.objectContaining({ user, billing_same_as_shipping: true, payment_method: 'card_token' }),
+    );
     expect(engine.getState().checkout?.openCart).toEqual(OPEN_CART);
     await checkout.leave('last_name');
     checkout.setField('email', 'jane@');
     await checkout.leave('email');
     expect(updated).not.toHaveBeenCalled();
     const next = await setup({ session });
-    expect(next.engine.cart.currentCheckout().contact).toEqual(contact);
+    expect(next.engine.cart.currentCheckout().user).toEqual(user);
     const updates = vi.fn();
     next.engine.on('cart.updated', (e) => updates(e.data));
     await next.engine.cart.addItem(2);
-    expect(updates.mock.calls[0]![0]).not.toHaveProperty('contact');
+    expect(updates.mock.calls[0]![0]).not.toHaveProperty('user');
     next.engine.on('contact.updated', (e) => updated(e.data));
     next.checkout.setField('email', 'jane@example.org');
     await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
     expect(updated).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ contact: { ...contact, email: 'jane@example.org' } }),
+      expect.objectContaining({ user: { ...user, email: 'jane@example.org' } }),
     );
   });
 

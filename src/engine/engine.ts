@@ -249,7 +249,7 @@ export class Engine {
     }
     if (slice === 'checkout' && checkout) {
       const { fields, phones, sameAsShipping, paymentMethod, step, prospectSaved, pendingRef, failurePath } = checkout;
-      const { contact, shippingAddress, billingAddress } = checkout;
+      const { user, shippingAddress, billingAddress } = checkout;
       this.session.set('checkout', {
         fields,
         phones,
@@ -257,7 +257,7 @@ export class Engine {
         paymentMethod,
         step,
         prospectSaved,
-        contact,
+        user,
         shippingAddress,
         billingAddress,
         pendingRef,
