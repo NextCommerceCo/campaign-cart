@@ -33,6 +33,6 @@
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.closed</text>
   </g>
   <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Starts when the page calls next.exitIntent({ image | template }) · opens up to maxTriggers times a tab session (1)</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">apply-coupon applies its code before promotion.clicked: coupon.applied or coupon.denied first</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">apply-coupon waits for its code and the new price: coupon.applied (or coupon.denied) first, then promotion.clicked</tspan></text>
   <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">reason: dismissed (Esc, overlay) or closed (the × of showCloseButton)</tspan></text>
 </svg>

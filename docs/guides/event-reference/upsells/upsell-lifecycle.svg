@@ -22,7 +22,7 @@
     <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.viewed</text>
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">adding</text>
-    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the offer is posted</text>
+    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the offer is sent</text>
     <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
     <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">accepted</text>
     <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.accepted</text>
@@ -35,7 +35,7 @@
     <text x="620" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
   </g>
   <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Accepted, skipped or failed, the shopper is redirected to the next page (failed: after a second)</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">An offer already accepted on that page sends nothing and moves on</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">An offer already accepted on that page sends nothing; redirected to the next page</tspan></text>
   <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">The next page sends order.loaded, with an accepted offer in upsells once</tspan></text>
-  <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · upsell.add</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed, with upsell.failed; the shopper moves on</tspan></text>
+  <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · upsell.add</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed: upsell.failed; redirected to the next page after a second</tspan></text>
 </svg>

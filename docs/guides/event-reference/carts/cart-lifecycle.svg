@@ -43,7 +43,7 @@
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
   </g>
   <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">cart.removed, cart.added: only the packages that changed since the last report, also when pricing fails</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A change while calculating sends cart.updated only</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A change sends cart.updated, then cart.calculating (from unpriced too); while calculating, cart.updated only</tspan></text>
   <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Removing the last package, or clearing the cart, empties it: cart.updated, then cart.removed</tspan></text>
   <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · cart.calculate</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unpriced; the summary keeps its earlier totals</tspan></text>
 </svg>

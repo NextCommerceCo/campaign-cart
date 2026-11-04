@@ -411,7 +411,7 @@ export interface EventMap {
   /**
    * Once per tab until an order is paid, when the store saves the shopper with a new Open Cart:
    * what `data-next-lead` asks for is in (by default a first and last name and a valid email),
-   * checked when a field changes. The store keeps the user for marketing, as `accepts_marketing`
+   * checked when the shopper leaves a field they changed. The store keeps the user for marketing, as `accepts_marketing`
    * allows, and the cart for `cart.abandoned`.
    * @group Checkout
    */
@@ -424,8 +424,8 @@ export interface EventMap {
   'user.updated': User;
   /**
    * Once per `type` per tab until an order is paid, when that address is valid: every field its
-   * country requires is filled and valid, and so is each optional one filled. Checked when a field
-   * changes.
+   * country requires is filled and valid, and so is each optional one filled. Checked when the
+   * shopper leaves a field they changed, once `checkout.started` has fired.
    * @group Checkout
    */
   'address.entered': Address & {
@@ -448,7 +448,8 @@ export interface EventMap {
    */
   'payment.selected': Payment;
   /**
-   * Each submit, once its checks ran: the fields, then the card tokenized. A valid submit is
+   * Each submit that places the order (not a step of a multi-step form), once its checks ran: the
+   * fields, then the card tokenized. A valid submit is
    * followed by `order.created` or `order.failed`.
    * @group Checkout
    */

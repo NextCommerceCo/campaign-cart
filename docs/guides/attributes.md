@@ -99,7 +99,7 @@ asking the server again; a coupon or a new quantity prices that card again.
 ### Lead capture
 
 The checkout saves the shopper as a lead, the Open Cart that `cart.abandoned` follows up, as soon as
-they have entered a first and last name and an email. `user.created` fires then. To wait for a phone
+they have entered a first and last name of at least two characters each and an email. `user.created` fires then. To wait for a phone
 number too, set `data-next-lead` on the form:
 
 ```html
@@ -116,7 +116,7 @@ number too, set `data-next-lead` on the form:
 `email phone`, `Email + Phone` or `phone,email` read the same as `email+phone`. A value the checkout
 cannot read logs a warning and uses `email`. _0.4.x:_ `data-trigger-on` (`emailEntry`, `phoneEntry`,
 `emailAndPhone`, `manual`, `formStart`) and `data-auto-create="false"` still work; `formStart` saves
-at the first field the shopper fills, without waiting for a name or an email.
+as soon as an email, a name or a phone is filled, without waiting for the rest.
 
 ## Upsell and receipt
 

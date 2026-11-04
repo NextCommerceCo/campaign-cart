@@ -169,7 +169,7 @@ const LIFECYCLES = {
     ],
     note: [
       'cart.removed, cart.added: only the packages that changed since the last report, also when pricing fails',
-      'A change while calculating sends cart.updated only',
+      'A change sends cart.updated, then cart.calculating (from unpriced too); while calculating, cart.updated only',
       'Removing the last package, or clearing the cart, empties it: cart.updated, then cart.removed',
     ],
     errors: [['cart.calculate', 'unpriced; the summary keeps its earlier totals']],
@@ -210,7 +210,8 @@ const LIFECYCLES = {
         down(0, 1, 'options need a price', ['selector.calculating']),
         down(1, 2, 'prices arrive', ['selector.calculated']),
         toSide(1, 'pricing fails', { dashed: true }),
-        fromSide(1, 'a change'),
+        fromSide(1, 'quantity, slot'),
+        [label((right + SIDE.x) / 2, rowY(1) + 77, 'or coupon', { anchor: 'middle', size: 12 })],
         loopUp(2, 1, 'quantity or slot', ['selector.selected', 'selector.calculating']),
         [
           arrow(`M${right} ${rowY(0) + 29} H712 V${rowY(2) + 46} H${right + 6}`),
@@ -320,7 +321,8 @@ const LIFECYCLES = {
       ];
     },
     note: [
-      'The next page is next-success-url, where the SDK sends order.loaded, then order.paid once per order',
+      'The next page is next-success-url: order.loaded, then order.paid once per order; without it, neither comes',
+      'After a failed payment, checkout.started and order.failed come in either order',
       'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
       'checkout.started comes on every checkout page load with a cart: each step, a reload, a return',
       'A multi-step form (data-next-checkout-step) checks each step on submit, then opens the next step',
@@ -330,12 +332,12 @@ const LIFECYCLES = {
       ['address.rules', 'falls back to the campaign countries and simpler checks'],
       ['address.autocomplete', 'no address suggestions'],
       ['order.create', 'not created: back to filling, with order.failed'],
-      ['order.load', 'on the next page: no order.loaded or order.paid'],
+      ['order.load', 'on the next page: no order.loaded or order.paid; after a gateway the cart is kept'],
     ],
   },
   'checkout/user': {
     title: 'User lifecycle',
-    desc: 'Lead capture. There is no user until the shopper has entered what data-next-lead asks for, checked each time a field changes: by default a first and last name of two letters or more and a valid email. Then the checkout saves them with an Open Cart and sends user.created, once per tab until an order is paid. If saving fails it sends sdk.error and tries again on the next field change. After that, a change that is still valid sends user.updated and an invalid one sends nothing; the Open Cart keeps the first details, the order takes the latest. With data-next-lead off it never saves.',
+    desc: 'Lead capture. There is no user until the shopper has entered what data-next-lead asks for, checked each time the shopper leaves a field they changed: by default a first and last name of at least two characters each and a valid email. Then the checkout saves them with an Open Cart and sends user.created, once per tab until an order is paid. If saving fails it sends sdk.error and tries again on the next field change. After that, a change that is still valid sends user.updated and an invalid one sends nothing; the Open Cart keeps the first details, the order takes the latest. With data-next-lead off it never saves.',
     rows: 3,
     boxes: [
       { row: 0, title: 'no user yet', sub: ['details not complete'] },
@@ -365,7 +367,7 @@ const LIFECYCLES = {
   },
   'checkout/address': {
     title: 'Address lifecycle',
-    desc: 'For each type, shipping and billing, checked when a field changes once checkout.started has fired. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once per type per tab until an order is paid. A later valid change, the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept. Billing counts only while separate from shipping.',
+    desc: 'For each type, shipping and billing, checked when the shopper leaves a field they changed, once checkout.started has fired. Nothing is sent until every field the country requires is valid, and so is each optional field the shopper filled. Then address.entered, once per type per tab until an order is paid. A later valid change, the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept. Billing counts only while separate from shipping.',
     rows: 2,
     boxes: [
       { row: 0, title: 'incomplete', sub: ['a field is missing or wrong'] },
@@ -384,7 +386,7 @@ const LIFECYCLES = {
     },
     note: [
       'Per type, once per tab until an order is paid · billing only while separate from shipping',
-      'An invalid change sends nothing; the last valid address is kept',
+      'An invalid change sends nothing; the last valid address is kept · checked once checkout.started has fired',
     ],
     errors: [
       ['address.rules', 'falls back to the campaign countries and simpler checks'],
@@ -429,7 +431,11 @@ const LIFECYCLES = {
           label(108, rowY(1) + 38, 'redirected to', { anchor: 'end' }),
           label(108, rowY(1) + 56, 'the next page', { anchor: 'end' }),
         ],
-        toSide(1, 'payment fails', { dashed: true }),
+        [
+          arrow(`M${right} ${rowY(1) + 18} H${SIDE.x - 6}`, { dashed: true }),
+          label((right + SIDE.x) / 2, rowY(1) - 6, 'payment fails:', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.x) / 2, rowY(1) + 10, 'redirected back', { anchor: 'middle', size: 12 }),
+        ],
         [
           arrow(`M${right} ${rowY(2) + 18} H470 V${rowY(2) + 46} H${right + 6}`),
           label(482, rowY(2) + 26, 'each later page', { size: 12 }),
@@ -438,10 +444,13 @@ const LIFECYCLES = {
       ];
     },
     note: [
-      'order.paid comes once per order in this browser · a page with ref_id or order_ref_id loads the order',
-      'A refused order is never created: order.failed with stage order, on the checkout',
+      'order.paid comes once per order in this browser · only a page with ref_id or order_ref_id loads the order',
+      "Without next-success-url, an order paid at once goes to the store's order status page: neither event comes",
     ],
-    errors: [['order.load', 'the page has no order values; offers stay hidden']],
+    errors: [
+      ['order.create', 'not created: order.failed with stage order; the shopper stays on the checkout'],
+      ['order.load', 'no order.loaded or order.paid; the page shows no order values'],
+    ],
   },
   upsells: {
     title: 'Upsell lifecycle',
@@ -449,7 +458,7 @@ const LIFECYCLES = {
     rows: 3,
     boxes: [
       { row: 0, title: 'shown', sub: [code('upsell.viewed')] },
-      { row: 1, title: 'adding', sub: ['the offer is posted'], tone: 'active' },
+      { row: 1, title: 'adding', sub: ['the offer is sent'], tone: 'active' },
       { row: 2, title: 'accepted', sub: [code('upsell.accepted')], tone: 'success' },
       { col: 'side', row: 0, title: 'skipped', sub: [code('upsell.skipped')] },
       { col: 'side', row: 1, title: 'failed', sub: [code('sdk.error'), code('upsell.failed')], tone: 'failure' },
@@ -462,10 +471,10 @@ const LIFECYCLES = {
     ],
     note: [
       'Accepted, skipped or failed, the shopper is redirected to the next page (failed: after a second)',
-      'An offer already accepted on that page sends nothing and moves on',
+      'An offer already accepted on that page sends nothing; redirected to the next page',
       'The next page sends order.loaded, with an accepted offer in upsells once',
     ],
-    errors: [['upsell.add', 'failed, with upsell.failed; the shopper moves on']],
+    errors: [['upsell.add', 'failed: upsell.failed; redirected to the next page after a second']],
   },
   promotions: {
     title: 'Promotion lifecycle',
@@ -492,7 +501,7 @@ const LIFECYCLES = {
     },
     note: [
       'Starts when the page calls next.exitIntent({ image | template }) · opens up to maxTriggers times a tab session (1)',
-      'apply-coupon applies its code before promotion.clicked: coupon.applied or coupon.denied first',
+      'apply-coupon waits for its code and the new price: coupon.applied (or coupon.denied) first, then promotion.clicked',
       'reason: dismissed (Esc, overlay) or closed (the × of showCloseButton)',
     ],
   },

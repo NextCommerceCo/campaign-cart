@@ -16,7 +16,8 @@
     <path d="M440 214 H534" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">pricing fails</text>
     <path d="M540 238 H446" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
-    <text x="490" y="257" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a change</text>
+    <text x="490" y="257" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">quantity, slot</text>
+    <text x="490" y="273" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or coupon</text>
     <path d="M220 405 H170 V225 H214" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="158" y="298" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">quantity or slot</text>
     <text x="158" y="318" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.selected</text>
