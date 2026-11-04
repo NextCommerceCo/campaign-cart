@@ -7,6 +7,7 @@ import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/
 import { nodes } from '../../src/debug/view';
 import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/events';
 import type { Order } from '../../src/engine/types';
+import { OPEN_CART } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 
@@ -128,7 +129,7 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.removeItem(1);
     engine.events.emit('checkout.started', { lines: [] });
     engine.events.emit('contact.entered', {
-      cart: {},
+      cart: OPEN_CART,
       email: 'jane@example.com',
       first_name: 'Jane',
       last_name: 'Doe',

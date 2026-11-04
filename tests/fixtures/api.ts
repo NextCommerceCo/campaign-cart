@@ -20,6 +20,17 @@ export interface FakeApiOptions {
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 
+export const OPEN_CART = {
+  user: { email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe', accepts_marketing: true },
+  lines: [{ id: 501, product_id: 11, quantity: 1, product_title: 'Olympus Earbuds', price_incl_tax: '89.00' }],
+  discounts: [],
+  total_discounts: '0.00',
+  total_incl_tax: '89.00',
+  total_excl_tax: '89.00',
+  currency: 'USD',
+  checkout_url: 'https://shop.test/c/7',
+};
+
 export const ADDRESSES = [
   {
     label: '1 Main St, Austin, TX 73301, USA',
@@ -51,7 +62,7 @@ export function fakeApi(options: FakeApiOptions = {}) {
     if (url.endsWith('/orders/')) {
       return options.order?.(body) ?? json({ ref_id: 'R1', order_status_url: 'https://shop.test/status/R1' });
     }
-    if (url.endsWith('/carts/')) return json({ id: 7, checkout_url: 'https://shop.test/c/7' });
+    if (url.endsWith('/carts/')) return json(OPEN_CART);
     if (url.includes('/addresses/autocomplete/')) {
       const query = new URL(url).searchParams.get('query_text') ?? '';
       return json({ results: ADDRESSES.filter((a) => a.label.toLowerCase().includes(query.toLowerCase())) });

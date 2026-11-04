@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCheckout, redirectFor } from '../../../src/checkout/state/checkout';
 import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
 import { createOrder } from '../../../src/order/state';
-import { fakeApi, type FakeApiOptions, json } from '../../fixtures/api';
+import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
 import { flush, makeEngine, type MakeEngine, wait } from '../../fixtures/engine';
 import { fakeRules } from '../../fixtures/rules';
 import { MemoryStorage } from '../../fixtures/storage';
@@ -186,7 +186,7 @@ describe('checkout', () => {
     expect(posts('/carts/')).toHaveLength(1);
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { email: 'jane@example.com', first_name: 'Jane' } });
     expect(saved).toHaveBeenCalledWith({
-      cart: { id: 7, checkout_url: 'https://shop.test/c/7' },
+      cart: OPEN_CART,
       email: 'jane@example.com',
       first_name: 'Jane',
       last_name: 'Does',

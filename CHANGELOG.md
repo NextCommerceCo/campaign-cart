@@ -14,6 +14,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 ### Events
 
 - **Every event is named `namespace.action`, with one dot**: the thing that changed, then what happened to it, as in Next Commerce webhooks: `cart.added`, `checkout.started`, `order.created`. See [Events](docs/guides/events.md).
+- **Each event has its own page in the Event Reference**, like the webhook reference: when it fires, every field of its data, and an example recorded from a real checkout.
 - **A listener gets the data and a webhook-style envelope.** In `next.on('order.created', (data, event) => …)`, `event` has `event_id`, `event_type`, `object`, `data`, `created_at` and `sdk_version`.
 - **`sdk.ready` reaches a listener added after it fired**, and `ready` is the same event. Other events come once each, in order.
 - **The cart says when it is being priced**: `cart.calculating`, then `cart.calculated` with the server's totals, once for a burst of clicks. `cart.added` and `cart.removed` carry the net change of that price run, at the price it was charged.

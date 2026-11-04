@@ -542,7 +542,10 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     fill({ lname: 'Does' });
     await flush();
     expect(created).toHaveBeenCalledTimes(1);
-    expect(created.mock.calls[0]![0].prospectCart).toMatchObject({ id: 7, email: 'jane@example.com' });
+    expect(created.mock.calls[0]![0].prospectCart).toMatchObject({
+      prospect_id: 'https://shop.test/c/7',
+      email: 'jane@example.com',
+    });
   });
 
   it('sends the marketing checkbox as the page left it on the prospect cart, like 0.4.x', async () => {

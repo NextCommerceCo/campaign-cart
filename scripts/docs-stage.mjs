@@ -20,6 +20,7 @@
 import { readFile, writeFile, copyFile, mkdir, rm, readdir, rename } from 'node:fs/promises';
 import { join, dirname, relative, posix } from 'node:path';
 import { slugifyHeading } from '@clean-jsdoc-theme/utils';
+import { stageEventReference } from './docs-events.mjs';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'docs/guides');
@@ -103,4 +104,6 @@ await writeFile(
 );
 await rename(temporaryHome, stagedHome);
 
-console.log(`docs: staged ${count} guide file(s) into docs/.staged`);
+const events = await stageEventReference(ROOT, OUT);
+
+console.log(`docs: staged ${count} guide file(s) and ${events} event page(s) into docs/.staged`);

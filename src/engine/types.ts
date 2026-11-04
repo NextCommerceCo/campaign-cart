@@ -91,6 +91,13 @@ export interface OrderAddress {
   phone_number?: string;
 }
 
+export interface OpenCart {
+  checkout_url: string;
+  currency: string;
+  total_incl_tax: string;
+  [field: string]: unknown;
+}
+
 export interface Order {
   ref_id: string;
   number?: string | number;

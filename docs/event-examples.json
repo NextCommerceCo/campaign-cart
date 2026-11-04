@@ -1,0 +1,474 @@
+{
+  "sdk.ready": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
+      }
+    ]
+  },
+  "sdk.error": {
+    "action": "load",
+    "message": "Failed to fetch"
+  },
+  "selector.selected": {
+    "selector_id": "main",
+    "type": "bundle",
+    "card_id": "one",
+    "items": [
+      {
+        "packageId": 1,
+        "quantity": 1
+      }
+    ]
+  },
+  "selector.deselected": {
+    "selector_id": "toggle:9",
+    "type": "toggle"
+  },
+  "selector.calculating": {
+    "selector_id": "main",
+    "type": "bundle"
+  },
+  "selector.calculated": {
+    "selector_id": "main",
+    "type": "bundle",
+    "quotes": {
+      "one": {
+        "lines": [
+          {
+            "package_id": 1,
+            "quantity": 1,
+            "unit_price": "49.00",
+            "original_unit_price": "99.00",
+            "package_price": "49.00",
+            "original_package_price": "99.00",
+            "subtotal": "49.00",
+            "total_discount": "0.00",
+            "total": "49.00",
+            "discounts": []
+          }
+        ],
+        "offer_discounts": [],
+        "voucher_discounts": [],
+        "subtotal": "49.00",
+        "total_discount": "0.00",
+        "total": "49.00",
+        "currency": "USD",
+        "shipping_method": {
+          "id": 1,
+          "name": "Standard",
+          "code": "standard",
+          "price": "0.00",
+          "original_price": "0.00"
+        }
+      },
+      "two": {
+        "lines": [
+          {
+            "package_id": 2,
+            "quantity": 1,
+            "unit_price": "44.50",
+            "original_unit_price": "99.00",
+            "package_price": "89.00",
+            "original_package_price": "198.00",
+            "subtotal": "89.00",
+            "total_discount": "0.00",
+            "total": "89.00",
+            "discounts": []
+          }
+        ],
+        "offer_discounts": [],
+        "voucher_discounts": [],
+        "subtotal": "89.00",
+        "total_discount": "0.00",
+        "total": "89.00",
+        "currency": "USD",
+        "shipping_method": {
+          "id": 1,
+          "name": "Standard",
+          "code": "standard",
+          "price": "0.00",
+          "original_price": "0.00"
+        }
+      }
+    },
+    "from_cache": false
+  },
+  "cart.updated": {
+    "cart": {
+      "groups": {
+        "items": {
+          "lines": [
+            {
+              "packageId": 1,
+              "quantity": 1
+            },
+            {
+              "packageId": 2,
+              "quantity": 1
+            }
+          ],
+          "vouchers": []
+        }
+      },
+      "coupons": [],
+      "dismissed": [],
+      "calculating": true,
+      "frozen": false
+    }
+  },
+  "cart.calculating": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
+      }
+    ]
+  },
+  "cart.calculated": {
+    "summary": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "unit_price": "49.00",
+          "original_unit_price": "99.00",
+          "package_price": "49.00",
+          "original_package_price": "99.00",
+          "subtotal": "49.00",
+          "total_discount": "0.00",
+          "total": "49.00",
+          "discounts": []
+        },
+        {
+          "package_id": 2,
+          "quantity": 1,
+          "unit_price": "44.50",
+          "original_unit_price": "99.00",
+          "package_price": "89.00",
+          "original_package_price": "198.00",
+          "subtotal": "89.00",
+          "total_discount": "0.00",
+          "total": "89.00",
+          "discounts": []
+        }
+      ],
+      "offer_discounts": [],
+      "voucher_discounts": [],
+      "subtotal": "138.00",
+      "total_discount": "0.00",
+      "total": "138.00",
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "name": "Standard",
+        "code": "standard",
+        "price": "0.00",
+        "original_price": "0.00"
+      }
+    }
+  },
+  "cart.added": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "unit_price": "49.00"
+      },
+      {
+        "package_id": 2,
+        "quantity": 1,
+        "unit_price": "44.50"
+      }
+    ],
+    "priced": true
+  },
+  "cart.removed": {
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 1,
+        "unit_price": "44.50"
+      }
+    ],
+    "priced": true
+  },
+  "coupon.applied": {
+    "code": "SAVE10"
+  },
+  "coupon.removed": {
+    "code": "SAVE10"
+  },
+  "coupon.denied": {
+    "code": "NOPE"
+  },
+  "checkout.started": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
+      }
+    ]
+  },
+  "contact.entered": {
+    "email": "jane@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "cart": {
+      "user": {
+        "email": "jane@example.com",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "accepts_marketing": true
+      },
+      "lines": [
+        {
+          "id": 501,
+          "product_id": 11,
+          "quantity": 1,
+          "product_title": "Olympus Earbuds",
+          "price_incl_tax": "89.00"
+        }
+      ],
+      "discounts": [],
+      "total_discounts": "0.00",
+      "total_incl_tax": "89.00",
+      "total_excl_tax": "89.00",
+      "currency": "USD",
+      "checkout_url": "https://shop.test/c/7"
+    }
+  },
+  "contact.updated": {
+    "email": "jane.doe@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe"
+  },
+  "address.entered": {
+    "type": "shipping",
+    "country": "US"
+  },
+  "address.updated": {
+    "type": "shipping",
+    "country": "US"
+  },
+  "shipping.selected": {
+    "method_id": 1,
+    "method": {
+      "ref_id": 1,
+      "code": "standard",
+      "price": "0.00"
+    }
+  },
+  "payment.selected": {
+    "method": "paypal"
+  },
+  "checkout.submitted": {
+    "payment_method": "card_token",
+    "valid": true,
+    "errors": {}
+  },
+  "order.created": {
+    "order": {
+      "ref_id": "R1",
+      "number": 1001,
+      "currency": "USD",
+      "lines": [
+        {
+          "id": 11,
+          "product_title": "Earbuds",
+          "product_sku": "EB-2",
+          "image": "https://img.test/eb.png",
+          "quantity": 2,
+          "price_excl_tax": "89.00",
+          "price_incl_tax": "96.12",
+          "price_incl_tax_excl_discounts": "198.00",
+          "is_upsell": false
+        }
+      ],
+      "total_excl_tax": "89.00",
+      "total_incl_tax": "106.11",
+      "total_tax": "7.12",
+      "total_discounts": "0.00",
+      "shipping_excl_tax": "9.99",
+      "shipping_incl_tax": "9.99",
+      "shipping_method": "Express",
+      "user": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane@example.com"
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "line4": "Austin",
+        "state": "TX",
+        "postcode": "73301",
+        "country": "US"
+      },
+      "billing_address": {
+        "first_name": "Ann",
+        "last_name": "Lee",
+        "line1": "2 Side St",
+        "line4": "Reno",
+        "state": "NV",
+        "country": "US"
+      },
+      "payment_method": "card_token",
+      "supports_post_purchase_upsells": true
+    }
+  },
+  "order.failed": {
+    "stage": "order",
+    "code": "declined",
+    "message": "Insufficient funds",
+    "decline": "51"
+  },
+  "order.loaded": {
+    "order": {
+      "ref_id": "R1",
+      "number": 1001,
+      "currency": "USD",
+      "lines": [
+        {
+          "id": 11,
+          "product_title": "Earbuds",
+          "product_sku": "EB-2",
+          "image": "https://img.test/eb.png",
+          "quantity": 2,
+          "price_excl_tax": "89.00",
+          "price_incl_tax": "96.12",
+          "price_incl_tax_excl_discounts": "198.00",
+          "is_upsell": false
+        }
+      ],
+      "total_excl_tax": "89.00",
+      "total_incl_tax": "106.11",
+      "total_tax": "7.12",
+      "total_discounts": "0.00",
+      "shipping_excl_tax": "9.99",
+      "shipping_incl_tax": "9.99",
+      "shipping_method": "Express",
+      "user": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane@example.com"
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "line4": "Austin",
+        "state": "TX",
+        "postcode": "73301",
+        "country": "US"
+      },
+      "billing_address": {
+        "first_name": "Ann",
+        "last_name": "Lee",
+        "line1": "2 Side St",
+        "line4": "Reno",
+        "state": "NV",
+        "country": "US"
+      },
+      "payment_method": "card_token",
+      "supports_post_purchase_upsells": true
+    },
+    "purchase": "1001"
+  },
+  "upsell.viewed": {
+    "ref_id": "R1",
+    "page": "/upsell/"
+  },
+  "upsell.accepted": {
+    "ref_id": "R1",
+    "lines": [
+      {
+        "package_id": 2,
+        "quantity": 1
+      }
+    ],
+    "order": {
+      "ref_id": "R1",
+      "number": 1001,
+      "currency": "USD",
+      "lines": [
+        {
+          "id": 11,
+          "product_title": "Earbuds",
+          "product_sku": "EB-2",
+          "image": "https://img.test/eb.png",
+          "quantity": 2,
+          "price_excl_tax": "89.00",
+          "price_incl_tax": "96.12",
+          "price_incl_tax_excl_discounts": "198.00",
+          "is_upsell": false
+        },
+        {
+          "id": 99,
+          "product_title": "Bump",
+          "quantity": 1,
+          "price_excl_tax": "20.00",
+          "price_incl_tax": "20.00",
+          "is_upsell": true
+        }
+      ],
+      "total_excl_tax": "89.00",
+      "total_incl_tax": "106.11",
+      "total_tax": "7.12",
+      "total_discounts": "0.00",
+      "shipping_excl_tax": "9.99",
+      "shipping_incl_tax": "9.99",
+      "shipping_method": "Express",
+      "user": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane@example.com"
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "line4": "Austin",
+        "state": "TX",
+        "postcode": "73301",
+        "country": "US"
+      },
+      "billing_address": {
+        "first_name": "Ann",
+        "last_name": "Lee",
+        "line1": "2 Side St",
+        "line4": "Reno",
+        "state": "NV",
+        "country": "US"
+      },
+      "payment_method": "card_token",
+      "supports_post_purchase_upsells": true
+    }
+  },
+  "upsell.skipped": {
+    "ref_id": "R1",
+    "package_id": 3
+  },
+  "upsell.failed": {
+    "ref_id": "R1",
+    "code": "rejected",
+    "message": "Card declined"
+  },
+  "promotion.viewed": {
+    "source": "exit_intent",
+    "template": "exit-offer"
+  },
+  "promotion.clicked": {
+    "source": "exit_intent",
+    "template": "exit-offer",
+    "action": "apply-coupon",
+    "coupon_code": "SAVE10"
+  },
+  "promotion.closed": {
+    "source": "exit_intent",
+    "template": "exit-offer",
+    "reason": "dismissed"
+  }
+}

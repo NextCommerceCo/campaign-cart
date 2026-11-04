@@ -27,91 +27,15 @@ next.on('order.created', (data, event) => {
 Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
 added after it fired; for anything else read `next.getState()`.
 
-### SDK
+## Event Reference
 
-| Event       | Data                | When                                                                                                     |
-| ----------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
-| `sdk.ready` | `lines`             | Once, when the campaign and the page's values are in. `ready` is the same event                          |
-| `sdk.error` | `action`, `message` | An action failed: `load`, `calculate`, `quote`, `coupon`, `order`, `upsell`, `storage` (blocked or full) |
+Each event has its own page with its fields and an example, generated from `EventMap` in
+`src/engine/events.ts`. The `contact`, `address`, `shipping` and `payment` events are checked when
+the shopper leaves a field (its `change`), not on each key.
 
-### Selectors
+<!-- event-index -->
 
-Bundle cards, upsell offer cards and toggles (bumps such as a warranty). `type` is `bundle`, `offer`
-or `toggle`.
-
-| Event                  | Data                                          | When                                                                                     |
-| ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `selector.selected`    | `selector_id`, `type`, `card_id?`, `items`    | A card is picked, its quantity or a slot changed, or a toggle is switched on             |
-| `selector.deselected`  | `selector_id`, `type`                         | A toggle is switched off                                                                 |
-| `selector.calculating` | `selector_id`, `type`                         | Pricing the cards that have no quote yet starts                                          |
-| `selector.calculated`  | `selector_id`, `type`, `quotes`, `from_cache` | Every card has a price. Quotes are kept 10 minutes, so a later page may get this at once |
-
-### Carts
-
-| Event              | Data                                                       | When                                                                                                                                                          |
-| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cart.updated`     | `cart`                                                     | Lines, coupons or shipping changed, at once                                                                                                                   |
-| `cart.calculating` | `lines`                                                    | Pricing starts; once for a burst of changes                                                                                                                   |
-| `cart.added`       | `lines` (`package_id`, `quantity`, `unit_price`), `priced` | Packages the page added since the last price, net, just before `cart.calculated`. `priced: false` when pricing failed: `unit_price` is then the package price |
-| `cart.removed`     | `lines`, `priced`                                          | Packages the page removed since the last price, at the price they had                                                                                         |
-| `cart.calculated`  | `summary`                                                  | Server totals arrived                                                                                                                                         |
-
-A `+ + −` within one price run sends one `cart.added` for the net change; `+` then `−` sends none.
-
-### Coupons
-
-| Event            | Data   | When                                                    |
-| ---------------- | ------ | ------------------------------------------------------- |
-| `coupon.applied` | `code` | A code was added to the cart                            |
-| `coupon.removed` | `code` | A code was removed                                      |
-| `coupon.denied`  | `code` | The server gives no discount for a code; it is not kept |
-
-### Checkout
-
-The checkout form's steps, in the order a shopper usually takes them. `contact`, `address`,
-`shipping` and `payment` events are checked when the shopper leaves a field (the field's `change`),
-not on each key.
-
-| Event                | Data                                                 | When                                                                                                                                                                                                          |
-| -------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkout.started`   | `lines`                                              | Once, when the checkout form is bound with a cart                                                                                                                                                             |
-| `contact.entered`    | `email`, `first_name`, `last_name`, `phone?`, `cart` | Once per tab, when the store creates the Cart: a valid email and a first and last name are in. It is the Cart in the dashboard's Open Carts, later `cart.abandoned`                                           |
-| `contact.updated`    | `email`, `first_name`, `last_name`, `phone?`         | The contact changed after `contact.entered` and is still valid. The Cart on the store keeps the first contact                                                                                                 |
-| `address.entered`    | `type`, `country`                                    | Once per `type` (`shipping` or `billing`), when that address is valid: every field its country requires is filled and valid, and so is each optional one filled. `billing` only when it is a separate address |
-| `address.updated`    | `type`, `country`                                    | The address changed after `address.entered` and is still valid                                                                                                                                                |
-| `shipping.selected`  | `method_id`, `method?`                               | A shipping method was picked. A bundle card can set it on the landing page too                                                                                                                                |
-| `payment.selected`   | `method`                                             | The payment method changed                                                                                                                                                                                    |
-| `checkout.submitted` | `payment_method`, `valid`, `errors`                  | Each submit, once its checks ran: the fields, then the card tokenized. `valid: false` names what stopped it. A valid submit is followed by `order.created` or `order.failed`                                  |
-
-### Orders
-
-| Event           | Data                                               | When                                                                                                                  |
-| --------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `order.created` | `order`                                            | The order was created                                                                                                 |
-| `order.failed`  | `stage`, `code`, `message?`, `decline?`, `ref_id?` | `stage: 'order'`: the server refused it. `stage: 'payment'`: the shopper came back from a payment gateway that failed |
-| `order.loaded`  | `order`, `purchase?`, `upsells?`                   | On post-purchase pages                                                                                                |
-
-### Upsells
-
-| Event             | Data                         | When                                       |
-| ----------------- | ---------------------------- | ------------------------------------------ |
-| `upsell.viewed`   | `ref_id`, `page`             | An offer was shown                         |
-| `upsell.accepted` | `ref_id`, `lines`, `order`   | The offer was added; `order` is updated    |
-| `upsell.skipped`  | `ref_id`, `package_id?`      | The shopper went on without it             |
-| `upsell.failed`   | `ref_id`, `code`, `message?` | Adding the offer failed, such as a decline |
-
-### Promotions
-
-`source` names the promotion. The exit-intent popup (`next.exitIntent`) is `exit_intent`, the only
-one so far.
-
-| Event               | Data                                                           | When                                            |
-| ------------------- | -------------------------------------------------------------- | ----------------------------------------------- |
-| `promotion.viewed`  | `source`, `image_url?`, `template?`                            | The popup opened                                |
-| `promotion.clicked` | `source`, `image_url?`, `template?`, `action?`, `coupon_code?` | The image was clicked, or a template action ran |
-| `promotion.closed`  | `source`, `image_url?`, `template?`, `reason`                  | `reason: 'dismissed'` (Esc) or `'closed'`       |
-
-### 0.4.x names
+## 0.4.x names
 
 0.4.x names still work and get the payload they had: `cart:updated`, `bundle:selection-changed`,
 `shipping:method-changed`, `coupon:validation-failed`, `exit-intent:*` (each only for the moment it

@@ -1,7 +1,7 @@
 import type { Logger } from './log';
 import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
 import type { ApiLine, CartSummary } from './cart/types';
-import type { CheckoutError, Order, Send } from './types';
+import type { CheckoutError, OpenCart, Order, Send } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -33,8 +33,8 @@ export class Api {
     });
   }
 
-  createCart(body: ProspectBody): Promise<unknown> {
-    return this.request(`${this.base}/api/v1/carts/`, { method: 'POST', body: JSON.stringify(body) });
+  createCart(body: ProspectBody): Promise<OpenCart> {
+    return this.request<OpenCart>(`${this.base}/api/v1/carts/`, { method: 'POST', body: JSON.stringify(body) });
   }
 
   createOrder(body: OrderBody): Promise<Order> {

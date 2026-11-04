@@ -3,7 +3,7 @@ import { startAnalytics } from '../../src/analytics';
 import type { Engine } from '../../src/engine/engine';
 import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/events';
 import { createOrder } from '../../src/order/state';
-import { fakeApi, json } from '../fixtures/api';
+import { fakeApi, json, OPEN_CART } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 import { MemoryStorage } from '../fixtures/storage';
@@ -465,7 +465,7 @@ describe('analytics events (GA4 names)', () => {
     await flush();
     engine.events.emit('checkout.started', { lines: engine.cart.lines() });
     engine.events.emit('contact.entered', {
-      cart: {},
+      cart: OPEN_CART,
       email: 'jane@example.com',
       first_name: 'Jane',
       last_name: 'Doe',
