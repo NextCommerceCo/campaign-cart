@@ -21,7 +21,8 @@ group: 'Event Reference/SDK'
 | `ready`    | The API fails after a saved copy made it ready                                          | `ready`  | `sdk.error` (`campaign.load`)                                            |
 | `ready`    | A step fails; see Errors below                                                          | `ready`  | `sdk.error`                                                              |
 
-A listener added later still gets the page's earlier `sdk.error` events, like `sdk.ready`. A failed
+A listener added later still gets the page's `sdk.error` events from its last 100 events;
+`sdk.ready` it always gets. A failed
 campaign load also sets `html[data-next-error="campaign"]`.
 
 ## Errors

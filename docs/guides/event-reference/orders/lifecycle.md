@@ -7,12 +7,12 @@ group: 'Event Reference/Orders'
 
 ![Order lifecycle: created, awaiting payment, paid and payment failed, with the events each step sends](order-lifecycle.svg)
 
-| State              | Means                                                                         |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `created`          | The checkout created the order                                                |
-| `awaiting payment` | The order has a `payment_complete_url`; the shopper pays at the gateway       |
-| `paid`             | The order is paid, and a page after the checkout loaded it                    |
-| `payment failed`   | The gateway payment failed; the shopper is back on the checkout with the cart |
+| State              | Means                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `created`          | The checkout created the order                                                                           |
+| `awaiting payment` | The order has a `payment_complete_url`; the shopper pays at the gateway                                  |
+| `paid`             | The order is paid, and a page after the checkout loaded it                                               |
+| `payment failed`   | The gateway payment failed; the shopper is back on the checkout, or on `next-failure-url`, with the cart |
 
 | From               | What happens                                                                            | To                 | Events, in order                                                                                                                                             |
 | ------------------ | --------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |

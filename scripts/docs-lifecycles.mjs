@@ -187,7 +187,7 @@ const LIFECYCLES = {
     note: [
       'A copy saved in this browser in the last 10 minutes makes it ready at once; an API failure then sends sdk.error',
       'Once ready, a failed step sends sdk.error and the SDK stays ready',
-      "A listener added later still gets the page's earlier sdk.error events",
+      "A listener added later still gets sdk.error events from the page's last 100 events",
     ],
     errors: [
       ['campaign.load', 'failed without a saved copy, else stays ready · data-next-error="campaign"'],
@@ -321,7 +321,8 @@ const LIFECYCLES = {
       ];
     },
     note: [
-      'The next page is next-success-url: order.loaded, then order.paid once per order; without it, neither comes',
+      'The next page is next-success-url: order.loaded, then order.paid once per order',
+      "Without it, an order paid at once goes to the store's order status page: neither event comes",
       'After a failed payment, checkout.started and order.failed come in either order',
       'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
       'checkout.started comes on every checkout page load with a cart: each step, a reload, a return',

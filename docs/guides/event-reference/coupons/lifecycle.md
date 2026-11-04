@@ -25,8 +25,8 @@ group: 'Event Reference/Coupons'
 While the checkout has the cart frozen (submitting, placing), `applyCoupon` resolves `false`,
 `removeCoupon` does nothing, and no coupon event is sent.
 
-A coupon event carries the `code`. What it takes off is in the cart's `discounts`, with `source`
-`coupon` and the same `code`, on the next `cart.calculated`, and follows the cart as it changes.
+A coupon event carries the `code`. What it takes off is in the cart's `discounts`, or
+`shipping_method.discounts` for shipping, with `source` `coupon` and the same `code`, on the next `cart.calculated`, and follows the cart as it changes.
 
 ## Errors
 
