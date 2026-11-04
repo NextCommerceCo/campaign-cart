@@ -79,21 +79,40 @@ export function clearStepGuard(): void {
 }
 
 const UNREAD: Record<string, string> = {
-  'data-prospect-config': 'set data-trigger-on instead',
+  'data-prospect-config': 'set data-next-lead instead',
   'data-min-phone-digits': 'the address service checks the phone number',
   'data-email-field': 'mark the input with data-next-checkout-field',
   'data-phone-field': 'mark the input with data-next-checkout-field',
 };
 
+const TRIGGERS: Record<string, 'email' | 'phone' | 'email+phone' | 'off' | 'formStart'> = {
+  emailEntry: 'email',
+  phoneEntry: 'phone',
+  emailAndPhone: 'email+phone',
+  manual: 'off',
+  formStart: 'formStart',
+};
+
 /**
- * @deprecated 0.4.x options on the checkout form. `data-auto-create="false"` is
- * `data-trigger-on="manual"`; the rest are no longer read, and say so.
+ * @deprecated 0.4.x lead options on the checkout form. `data-trigger-on` and
+ * `data-auto-create="false"` become `data-next-lead`; the rest are no longer read, and say so.
  */
-export function legacyTriggerOn(engine: Engine, form: HTMLFormElement): 'manual' | undefined {
+export function legacyLead(engine: Engine, form: HTMLFormElement) {
   for (const [name, instead] of Object.entries(UNREAD)) {
     if (form.hasAttribute(name)) engine.log.warn(`${name} on the checkout form is no longer read; ${instead}`);
   }
-  return form.getAttribute('data-auto-create') === 'false' ? 'manual' : undefined;
+  const trigger = form.getAttribute('data-trigger-on');
+  if (trigger !== null) {
+    const lead = TRIGGERS[trigger];
+    if (!lead) engine.log.warn(`data-trigger-on="${trigger}" is not one of ${Object.keys(TRIGGERS).join(', ')}`);
+    else engine.log.info(`data-trigger-on="${trigger}" is deprecated: use data-next-lead`);
+    if (lead) return lead;
+  }
+  if (form.getAttribute('data-auto-create') === 'false') {
+    engine.log.info('data-auto-create="false" is deprecated: use data-next-lead="off"');
+    return 'off';
+  }
+  return undefined;
 }
 
 /** @deprecated `next:prospect-cart-created` on the form. Use `next.on('user.created')`. */

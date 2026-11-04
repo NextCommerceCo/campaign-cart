@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCheckout, redirectFor, type TriggerOn } from '../../../src/checkout/state/checkout';
+import { createCheckout, type Lead, redirectFor } from '../../../src/checkout/state/checkout';
 import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
 import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
@@ -26,16 +26,14 @@ async function setup(
     geo?: string;
     rulesDown?: boolean;
     geoDelay?: number;
-    triggerOn?: TriggerOn;
+    lead?: Lead;
   } = {},
 ) {
   const api = fakeApi(opts.api);
   const made = makeEngine({ ...opts, fetch: api.fetch });
   await made.engine.start();
   const rules = fakeRules({ geo: opts.geo, down: opts.rulesDown, geoDelay: opts.geoDelay });
-  const checkout = made.engine.attach((ctx) =>
-    createCheckout(ctx, made.engine.cart, rules.api, { triggerOn: opts.triggerOn }),
-  );
+  const checkout = made.engine.attach((ctx) => createCheckout(ctx, made.engine.cart, rules.api, { lead: opts.lead }));
   const fill = (fields: Record<string, string>) => Object.entries(fields).forEach(([k, v]) => checkout.setField(k, v));
   const posts = (path: string) => api.calls.filter((c) => c.url.endsWith(path));
   return { ...made, api, rules, checkout, fill, posts };
@@ -241,9 +239,9 @@ describe('checkout', () => {
     expect(updated).toHaveBeenCalledExactlyOnceWith({ ...user, email: 'jane@example.org' });
   });
 
-  it('creates the user on the email, the phone, both, the first field or never, as data-trigger-on says', async () => {
-    const created = async (triggerOn: TriggerOn, fields: Record<string, string>, leave: string) => {
-      const { engine, checkout, fill, posts } = await setup({ triggerOn });
+  it('saves the lead on the email, the phone, both, the first field or never, as data-next-lead says', async () => {
+    const created = async (lead: Lead, fields: Record<string, string>, leave: string) => {
+      const { engine, checkout, fill, posts } = await setup({ lead });
       const users: unknown[] = [];
       engine.on('user.created', (e) => users.push(e.data));
       await engine.cart.addItem(1);
@@ -255,16 +253,16 @@ describe('checkout', () => {
     const email = { ...named, email: 'jane@example.com' };
     const phone = { ...named, phone_number: '(415) 555-2671' };
 
-    expect((await created('emailEntry', email, 'last_name')).body).toMatchObject({ email: 'jane@example.com' });
-    expect((await created('phoneEntry', email, 'last_name')).users).toEqual([]);
-    const byPhone = await created('phoneEntry', phone, 'phone_number');
+    expect((await created('email', email, 'last_name')).body).toMatchObject({ email: 'jane@example.com' });
+    expect((await created('phone', email, 'last_name')).users).toEqual([]);
+    const byPhone = await created('phone', phone, 'phone_number');
     expect(byPhone.body).toMatchObject({ phone_number: '+14155552671' });
     expect(byPhone.body).not.toHaveProperty('email');
     expect(byPhone.users).toMatchObject([{ first_name: 'Jane', phone: '+14155552671' }]);
-    expect((await created('emailAndPhone', email, 'last_name')).users).toEqual([]);
-    expect((await created('emailAndPhone', { ...email, ...phone }, 'phone_number')).users).toHaveLength(1);
+    expect((await created('email+phone', email, 'last_name')).users).toEqual([]);
+    expect((await created('email+phone', { ...email, ...phone }, 'phone_number')).users).toHaveLength(1);
     expect((await created('formStart', { first_name: 'J' }, 'first_name')).body).toMatchObject({ first_name: 'J' });
-    expect((await created('manual', { ...email, ...phone }, 'phone_number')).users).toEqual([]);
+    expect((await created('off', { ...email, ...phone }, 'phone_number')).users).toEqual([]);
   });
 
   it('reports begin once, the address when it is valid then each change, and each change of payment method', async () => {

@@ -78,7 +78,6 @@ asking the server again; a coupon or a new quantity prices that card again.
 | Attribute                                                                                                   | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `form[data-next-checkout]`                                                                                  | Loads the checkout chunk                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `data-trigger-on="emailEntry\|phoneEntry\|emailAndPhone\|formStart\|manual"` on the form                    | When the shopper becomes a user (`user.created`, the Open Cart): `emailEntry` (default) a valid email and a first and last name, `phoneEntry` a valid phone and the names, `emailAndPhone` both, `formStart` the first field filled in, `manual` never. _0.4.x:_ `data-auto-create="false"` is `manual`                                                                                                                      |
 | `data-next-checkout-field="<name>"`                                                                         | email, first_name, last_name, line1, line2, city, state, postcode, country, phone_number, accepts_marketing; `billing-` prefix for billing. _0.4.x:_ fname, lname, address1, address2, province, postal, phone, `os-checkout-field`                                                                                                                                                                                          |
 | `data-next-required="true"` / `required`                                                                    | On the phone field: make it required                                                                                                                                                                                                                                                                                                                                                                                         |
 | `input[name="use_shipping_address"]`, `data-next-component="different-billing-address"` / `"billing-form"`  | Same-as-shipping toggle, billing section, rows cloned from `shipping-field-row`                                                                                                                                                                                                                                                                                                                                              |
@@ -96,6 +95,27 @@ asking the server again; a coupon or a new quantity prices that card again.
 | `data-next-checkout-step="<next url>"`, `data-next-step-number`                                             | Multi-step checkout                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `data-next-checkout-review="<field>"`                                                                       | Shows what was entered (email, address, phone, shippingMethod.name, …)                                                                                                                                                                                                                                                                                                                                                       |
 | `<meta name="next-success-url">`, `next-failure-url`                                                        | Where the shopper goes after paying                                                                                                                                                                                                                                                                                                                                                                                          |
+
+### Lead capture
+
+The checkout saves the shopper as a lead, the Open Cart that `cart.abandoned` follows up, as soon as
+they have entered a first and last name and an email. `user.created` fires then. To wait for a phone
+number too, set `data-next-lead` on the form:
+
+```html
+<form data-next-checkout data-next-lead="email+phone"></form>
+```
+
+| `data-next-lead`  | The lead is saved once the name and                |
+| ----------------- | -------------------------------------------------- |
+| `email` (default) | a valid email                                      |
+| `phone`           | a valid phone number (read by the address service) |
+| `email+phone`     | both                                               |
+| `off`             | never by itself                                    |
+
+`email phone`, `Email + Phone` or `phone,email` read the same as `email+phone`. A value the checkout
+cannot read logs a warning and uses `email`. _0.4.x:_ `data-trigger-on` (`emailEntry`, `phoneEntry`,
+`emailAndPhone`, `manual`, `formStart`) and `data-auto-create="false"` still work.
 
 ## Upsell and receipt
 

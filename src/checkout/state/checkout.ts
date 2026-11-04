@@ -54,8 +54,8 @@ export function redirectFor(
   return nextUrl(url.href, current, params);
 }
 
-/** When the shopper becomes a user: the checkout form's `data-trigger-on`. */
-export type TriggerOn = 'emailEntry' | 'phoneEntry' | 'emailAndPhone' | 'formStart' | 'manual';
+/** What the shopper must have entered, with their name, to be saved as a lead: the form's `data-next-lead`. */
+export type Lead = 'email' | 'phone' | 'email+phone' | 'off' | 'formStart';
 
 export interface PlaceOrder extends OrderUrls {
   method?: string;
@@ -67,7 +67,7 @@ export function createCheckout(
   ctx: Context,
   cart: CartActions,
   rulesApi: RulesApi,
-  { triggerOn = 'emailEntry' }: { triggerOn?: TriggerOn } = {},
+  { lead = 'email' }: { lead?: Lead } = {},
 ) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
@@ -87,12 +87,12 @@ export function createCheckout(
     const hasPhone = !!phones.phone_number;
     const named = first_name.length >= 2 && last_name.length >= 2;
     const ready = {
-      emailEntry: hasEmail && named,
-      phoneEntry: hasPhone && named,
-      emailAndPhone: hasEmail && hasPhone && named,
+      email: hasEmail && named,
+      phone: hasPhone && named,
+      'email+phone': hasEmail && hasPhone && named,
+      off: false,
       formStart: !!(email || first_name || last_name || phone),
-      manual: false,
-    }[triggerOn];
+    }[lead];
     if (!ready) return;
     return {
       ...(hasEmail && { email }),
