@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="selectors-lifecycle-title selectors-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="selectors-lifecycle-title">Selector lifecycle</title>
-  <desc id="selectors-lifecycle-desc">A selector is registered and its first card picked (selector.selected), then quoting the cards that have no quote yet (selector.calculating), then quoted (selector.calculated). When every card already has a quote from the last 10 minutes it goes straight to quoted (selector.calculated with from_cache). Quoting that fails sends sdk.error and the cards show package prices. Changing the picked card's quantity or a slot sends selector.selected and quotes again.</desc>
+  <desc id="selectors-lifecycle-desc">A selector is registered and its first option picked (selector.selected), then pricing the options that have no price yet (selector.calculating), then quoted (selector.calculated). When every option already has a price from the last 10 minutes it goes straight to quoted (selector.calculated). Pricing that fails sends sdk.error and the options show package prices. Changing the picked option's quantity or a slot sends selector.selected and prices it again.</desc>
   <defs>
     <marker id="selectors-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -8,10 +8,10 @@
   </defs>
   <g>
     <path d="M330 74 V190" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="123.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">cards need a price</text>
+    <text x="344" y="123.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">options need a price</text>
     <text x="344" y="143.5" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.calculating</text>
     <path d="M330 254 V370" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="344" y="303.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">quotes arrive</text>
+    <text x="344" y="303.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">prices arrive</text>
     <text x="344" y="323.5" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.calculated</text>
     <path d="M440 214 H534" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="490" y="206" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">quoting fails</text>
@@ -20,8 +20,8 @@
     <text x="158" y="318" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.selected</text>
     <text x="158" y="335" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.calculating</text>
     <path d="M440 45 H712 V405 H446" marker-end="url(#selectors-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
-    <text x="700" y="372" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">all quotes cached</text>
-    <text x="700" y="389" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">from_cache: true</text>
+    <text x="700" y="372" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">all prices cached</text>
+    <text x="700" y="389" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.calculated</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
@@ -29,14 +29,14 @@
     <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.selected</text>
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">quoting</text>
-    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">cards without a quote</text>
+    <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">options without a price</text>
     <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
     <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">quoted</text>
-    <text x="330" y="421" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every card has a price</text>
+    <text x="330" y="421" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every option has a price</text>
     <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">unquoted</text>
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.quote</text>
   </g>
   <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A toggle sends selector.selected when switched on and selector.deselected when switched off</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · selector.quote</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unquoted; the cards show package prices</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · selector.quote</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unquoted; the options show package prices</tspan></text>
 </svg>

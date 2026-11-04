@@ -56,40 +56,49 @@ const discountOf = (d: SummaryDiscount, coupons: string[]): Discount => {
   };
 };
 
+export function cartItem(state: State, line: Line, priced?: SummaryLine): CartItem {
+  const p = state.campaign?.packages.find((pk) => pk.ref_id === line.package_id);
+  const interval = p?.is_recurring && p.interval ? p.interval : undefined;
+  return {
+    ...line,
+    ...(p?.product_id !== undefined && { product_id: p.product_id }),
+    ...(p?.product_name && { product_title: p.product_name }),
+    ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
+    ...(p?.product_variant_name && { variant_title: p.product_variant_name }),
+    ...(p?.image && { image: p.image }),
+    ...(priced && {
+      price: money(priced.package_price),
+      original_price: money(priced.original_package_price),
+      total_discount: money(priced.total_discount),
+      total: money(priced.total),
+      discounts: priced.discounts.map((d) => discountOf(d, state.cart.coupons)),
+    }),
+    ...(interval && {
+      subscription: {
+        interval,
+        interval_count: p!.interval_count ?? 1,
+        ...(priced?.price_recurring && {
+          price: money(priced.price_recurring),
+          original_price: money(priced.original_recurring_price ?? priced.price_recurring),
+        }),
+      },
+    }),
+  };
+}
+
+export function cartItems(state: State, lines: Line[], priced?: SummaryLine[]): CartItem[] {
+  const fresh =
+    priced?.length === lines.length &&
+    lines.every((l, i) => priced[i]!.package_id === l.package_id && priced[i]!.quantity === l.quantity);
+  return lines.map((l, i) => cartItem(state, l, fresh ? priced[i] : undefined));
+}
+
 export function publicCart(state: State, summary?: CartSummary): Cart {
   const { coupons, shippingId } = state.cart;
   const campaign = state.campaign;
-  const pkg = (id: number) => campaign?.packages.find((p) => p.ref_id === id);
-  const lines = mergeLines(state.cart.groups).map((line, i): CartItem => {
-    const p = pkg(line.package_id);
-    const priced = summary?.lines[i]?.package_id === line.package_id ? summary.lines[i] : undefined;
-    const interval = p?.is_recurring && p.interval ? p.interval : undefined;
-    return {
-      ...line,
-      ...(p?.product_id !== undefined && { product_id: p.product_id }),
-      ...(p?.product_name && { product_title: p.product_name }),
-      ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
-      ...(p?.product_variant_name && { variant_title: p.product_variant_name }),
-      ...(p?.image && { image: p.image }),
-      ...(priced && {
-        price: money(priced.package_price),
-        original_price: money(priced.original_package_price),
-        total_discount: money(priced.total_discount),
-        total: money(priced.total),
-        discounts: priced.discounts.map((d) => discountOf(d, coupons)),
-      }),
-      ...(interval && {
-        subscription: {
-          interval,
-          interval_count: p!.interval_count ?? 1,
-          ...(priced?.price_recurring && {
-            price: money(priced.price_recurring),
-            original_price: money(priced.original_recurring_price ?? priced.price_recurring),
-          }),
-        },
-      }),
-    };
-  });
+  const lines = mergeLines(state.cart.groups).map((line, i) =>
+    cartItem(state, line, summary?.lines[i]?.package_id === line.package_id ? summary.lines[i] : undefined),
+  );
   const listed = campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
   const priced = summary?.shipping_method;
   const shipping_method = priced
@@ -313,11 +322,16 @@ export function createCart(ctx: Context) {
   const setGroup = (id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}) => {
     const groups = { ...state().groups };
     const keep = !!group && group.lines.some((l) => l.quantity > 0);
-    if (id.startsWith('toggle:') && keep !== !!groups[id])
+    if (id.startsWith('toggle:') && keep !== !!groups[id]) {
+      const lines = apiLines(group?.lines ?? []);
+      const quoted = lines.map((l) => ctx.getState().toggles[l.package_id]?.line).filter((l) => !!l);
       ctx.emit(
         keep ? 'selector.selected' : 'selector.deselected',
-        keep ? { selector_id: id, type: 'toggle', lines: apiLines(group!.lines) } : { selector_id: id, type: 'toggle' },
+        keep
+          ? { selector_id: id, type: 'toggle', lines: cartItems(ctx.getState(), lines, quoted) }
+          : { selector_id: id, type: 'toggle' },
       );
+    }
     if (keep) groups[id] = group;
     else delete groups[id];
     const dismissed = state().dismissed.filter((d) => d !== id);

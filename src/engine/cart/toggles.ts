@@ -26,12 +26,7 @@ export function createToggles(ctx: Context) {
           const line = summary.lines.find((l) => l.package_id === packageId);
           if (inFlight.get(packageId) !== controller) return;
           ctx.update('toggles', { [packageId]: { key, quantity, line } });
-          ctx.emit('selector.calculated', {
-            selector_id: group,
-            type: 'toggle',
-            quotes: { [String(packageId)]: summary },
-            from_cache: false,
-          });
+          ctx.emit('selector.calculated', { selector_id: group, type: 'toggle' });
         })
         .catch((err: unknown) => {
           if (inFlight.get(packageId) === controller) ctx.fail('selector.quote', err);

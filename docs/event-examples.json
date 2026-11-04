@@ -15,11 +15,16 @@
   "selector.selected": {
     "selector_id": "main",
     "type": "bundle",
-    "card_id": "one",
+    "option_id": "one",
     "lines": [
       {
         "package_id": 1,
-        "quantity": 1
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png"
       }
     ]
   },
@@ -33,68 +38,7 @@
   },
   "selector.calculated": {
     "selector_id": "main",
-    "type": "bundle",
-    "quotes": {
-      "one": {
-        "lines": [
-          {
-            "package_id": 1,
-            "quantity": 1,
-            "unit_price": "49.00",
-            "original_unit_price": "99.00",
-            "package_price": "49.00",
-            "original_package_price": "99.00",
-            "subtotal": "49.00",
-            "total_discount": "0.00",
-            "total": "49.00",
-            "discounts": []
-          }
-        ],
-        "offer_discounts": [],
-        "voucher_discounts": [],
-        "subtotal": "49.00",
-        "total_discount": "0.00",
-        "total": "49.00",
-        "currency": "USD",
-        "shipping_method": {
-          "id": 1,
-          "name": "Standard",
-          "code": "standard",
-          "price": "0.00",
-          "original_price": "0.00"
-        }
-      },
-      "two": {
-        "lines": [
-          {
-            "package_id": 2,
-            "quantity": 1,
-            "unit_price": "44.50",
-            "original_unit_price": "99.00",
-            "package_price": "89.00",
-            "original_package_price": "198.00",
-            "subtotal": "89.00",
-            "total_discount": "0.00",
-            "total": "89.00",
-            "discounts": []
-          }
-        ],
-        "offer_discounts": [],
-        "voucher_discounts": [],
-        "subtotal": "89.00",
-        "total_discount": "0.00",
-        "total": "89.00",
-        "currency": "USD",
-        "shipping_method": {
-          "id": 1,
-          "name": "Standard",
-          "code": "standard",
-          "price": "0.00",
-          "original_price": "0.00"
-        }
-      }
-    },
-    "from_cache": false
+    "type": "bundle"
   },
   "cart.updated": {
     "lines": [

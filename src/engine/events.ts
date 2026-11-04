@@ -1,7 +1,7 @@
 import type { Logger } from './log';
 import { newId } from './id';
 import type { Attribution } from './attribution';
-import type { Line, CartSummary } from './cart/types';
+import type { Line } from './cart/types';
 import type { Campaign, CheckoutError, OpenCart, Order, OrderLine } from './types';
 
 export interface PromotionDetail {
@@ -232,17 +232,17 @@ export interface EventMap {
   /** @internal */
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   /**
-   * A card is picked, its quantity or a slot changed, or a toggle is switched on.
+   * An option is picked, its quantity or a slot changed, or a toggle is switched on.
    * @group Selectors
    */
   'selector.selected': {
-    /** `data-next-selector-id`, or the toggle's group. */
+    /** `data-next-selector-id`, or `toggle:<package_id>` for a toggle. */
     selector_id: string;
     type: SelectorType;
-    /** The picked card's id; none for a toggle. */
-    card_id?: string;
-    /** The lines the selection puts in the cart, at the card's quantity. */
-    lines: Line[];
+    /** The picked option's `data-next-bundle-id`; none for a toggle. */
+    option_id?: string;
+    /** The lines the option puts in the cart, at its quantity, priced once the option has a price. */
+    lines: CartItem[];
   };
   /**
    * A toggle is switched off.
@@ -250,22 +250,16 @@ export interface EventMap {
    */
   'selector.deselected': { selector_id: string; type: SelectorType };
   /**
-   * Pricing the cards that have no quote yet starts.
+   * Pricing the options that have no price yet starts.
    * @group Selectors
    */
   'selector.calculating': { selector_id: string; type: SelectorType };
   /**
-   * Every card has a price. Quotes are kept 10 minutes, so a later page may get this at once.
+   * Every option's price is on the page. Prices are kept 10 minutes, so a later page may get this
+   * at once.
    * @group Selectors
    */
-  'selector.calculated': {
-    selector_id: string;
-    type: SelectorType;
-    /** Each card's server price, by card id. */
-    quotes: Record<string, CartSummary>;
-    /** `true` when every quote came from the 10-minute cache. */
-    from_cache: boolean;
-  };
+  'selector.calculated': { selector_id: string; type: SelectorType };
   /**
    * Lines, coupons or shipping changed, at once, before the server prices them.
    * @group Carts

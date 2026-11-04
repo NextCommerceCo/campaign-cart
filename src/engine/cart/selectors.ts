@@ -1,4 +1,4 @@
-import { apiLines, type CartActions, lineKey, mergeLines } from './cart';
+import { apiLines, type CartActions, cartItems, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
 import { forcedBundle } from '../params';
 import type { CartGroup, CartLine, CartSummary, Selector, SelectorCard, SelectorMode, Slot } from './types';
@@ -68,6 +68,16 @@ export function createSelectors(ctx: Context, cart: CartActions) {
 
   const get = (id: string): Selector | undefined => ctx.getState().selectors[id];
   const set = (id: string, patch: Partial<Selector>) => ctx.update('selectors', { [id]: { ...get(id)!, ...patch } });
+  const selected = (id: string, card: SelectorCard) => {
+    const selector = get(id)!;
+    const lines = apiLines(cardLines(selector, card));
+    ctx.emit('selector.selected', {
+      selector_id: id,
+      type: typeOf(selector),
+      option_id: card.id,
+      lines: cartItems(ctx.getState(), lines, selector.quotes?.[card.id]?.lines),
+    });
+  };
 
   const addToCart = async (id: string): Promise<void> => {
     const selector = get(id);
@@ -86,12 +96,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     if (!selector || !card) return Promise.resolve();
     if (selector.picked !== cardId) {
       set(id, { picked: cardId });
-      ctx.emit('selector.selected', {
-        selector_id: id,
-        type: typeOf(selector),
-        card_id: cardId,
-        lines: apiLines(cardLines(selector, card)),
-      });
+      selected(id, card);
     }
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
@@ -120,18 +125,18 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       Object.entries(ctx.local.get<SavedQuotes>(QUOTES) ?? {}).filter(([, q]) => now - q.at < QUOTE_MAX_AGE),
     );
     const type = typeOf(selector);
-    const settle = (fromCache: boolean) => {
+    const settle = () => {
       const quotes = Object.fromEntries(
         requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary]),
       );
       set(id, { quotes, quoting: false });
-      ctx.emit('selector.calculated', { selector_id: id, type, quotes, from_cache: fromCache });
+      ctx.emit('selector.calculated', { selector_id: id, type });
     };
     const missing = requests.filter((r) => !saved[r.key]);
     inFlight.get(id)?.abort();
     if (!missing.length) {
       inFlight.delete(id);
-      return settle(true);
+      return settle();
     }
     const controller = new AbortController();
     inFlight.set(id, controller);
@@ -146,7 +151,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       missing.forEach((r, i) => (saved[r.key] = { at, summary: summaries[i]! }));
       const newest = Object.entries(saved).sort(([, a], [, b]) => b.at - a.at);
       ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
-      settle(false);
+      settle();
     } catch (err) {
       if (inFlight.get(id) !== controller) return;
       set(id, { quoting: false });
@@ -191,12 +196,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const slots = cardSlots(selector, card).map((s, i) => (i === index ? { ...s, ...slot } : s));
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
       if (selector.picked !== cardId) return Promise.resolve();
-      ctx.emit('selector.selected', {
-        selector_id: id,
-        type: typeOf(selector),
-        card_id: cardId,
-        lines: apiLines(cardLines(get(id)!, card)),
-      });
+      selected(id, card);
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
@@ -208,12 +208,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const next = clamp(card, quantity);
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
-      ctx.emit('selector.selected', {
-        selector_id: id,
-        type: typeOf(selector),
-        card_id: card.id,
-        lines: apiLines(cardLines(get(id)!, card)),
-      });
+      selected(id, card);
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();

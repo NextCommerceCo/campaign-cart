@@ -82,7 +82,7 @@ describe('selectors', () => {
     const { engine, api } = makeEngine();
     await engine.start();
     const seen: string[] = [];
-    engine.on('selector.selected', (e) => seen.push(e.data.card_id!));
+    engine.on('selector.selected', (e) => seen.push(e.data.option_id!));
     await engine.selectors.register('main', CARDS, 'swap');
     const calls = api.calls.length;
     await engine.selectors.pick('main', 'one');
@@ -254,25 +254,51 @@ describe('selectors', () => {
     }
   });
 
-  it('announces a price run for the cards, and quotes a later page serves from the cache', async () => {
+  it('announces a price run for the options, and a later page priced from the cache at once', async () => {
     const local = new MemoryStorage();
     const page = async () => {
       const { engine } = makeEngine({ fetch: fakeApi().fetch, local });
       const seen: unknown[] = [];
       engine.on('*', (e) => {
-        if (e.name === 'selector.calculating') seen.push(e.name);
-        if (e.name === 'selector.calculated') {
-          const { quotes, from_cache } = e.data as EventMap['selector.calculated'];
-          seen.push([e.name, Object.keys(quotes), from_cache]);
-        }
+        if (e.name === 'selector.calculating' || e.name === 'selector.calculated') seen.push([e.name, e.data]);
       });
       await engine.start();
       await engine.selectors.register('main', CARDS, 'swap', 'one');
       await flush();
-      return seen;
+      return [seen, Object.keys(engine.getState().selectors.main?.quotes ?? {})];
     };
-    expect(await page()).toEqual(['selector.calculating', ['selector.calculated', ['one', 'two'], false]]);
-    expect(await page()).toEqual([['selector.calculated', ['one', 'two'], true]]);
+    const data = { selector_id: 'main', type: 'bundle' };
+    expect(await page()).toEqual([
+      [
+        ['selector.calculating', data],
+        ['selector.calculated', data],
+      ],
+      ['one', 'two'],
+    ]);
+    expect(await page()).toEqual([[['selector.calculated', data]], ['one', 'two']]);
+  });
+
+  it('names the picked option and its products, priced once the option has a price', async () => {
+    const { engine } = makeEngine({ fetch: fakeApi().fetch });
+    await engine.start();
+    const seen: Array<EventMap['selector.selected']> = [];
+    engine.on('selector.selected', (e) => seen.push(e.data));
+    await engine.selectors.register('main', CARDS, 'select', 'one');
+    await flush();
+    await engine.selectors.pick('main', 'two');
+    expect(seen).toMatchObject([
+      {
+        selector_id: 'main',
+        type: 'bundle',
+        option_id: 'one',
+        lines: [{ package_id: 1, quantity: 1, product_id: 400 }],
+      },
+      {
+        option_id: 'two',
+        lines: [{ package_id: 2, quantity: 1, product_id: 400, price: expect.any(Number), total: expect.any(Number) }],
+      },
+    ]);
+    expect(seen[0]!.lines[0]).not.toHaveProperty('price');
   });
 
   it('falls back to package prices when the quote fails', async () => {

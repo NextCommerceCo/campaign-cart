@@ -39,7 +39,7 @@ const selection = (toggle: boolean): LegacyEvent => ({
   when: (d) => (d.type === 'toggle') === toggle,
   data: (d) => ({
     selectorId: d.selector_id,
-    cardId: d.card_id,
+    cardId: d.option_id,
     items: (d.lines as Line[]).map((l) => ({ packageId: l.package_id, quantity: l.quantity })),
   }),
 });
