@@ -171,6 +171,7 @@ export function createCart(ctx: Context) {
   let pending: Promise<void> | undefined;
   let running: Promise<void> | undefined;
   let busy = false;
+  let unpriced = false;
 
   const state = () => ctx.getState().cart;
   const lines = () => mergeLines(state().groups);
@@ -287,6 +288,7 @@ export function createCart(ctx: Context) {
       );
       if (current !== seq) return;
       busy = false;
+      unpriced = false;
       set({ summary, calculating: false });
       announce(summary);
       ctx.emit('cart.calculated', cartOf(summary));
@@ -294,6 +296,7 @@ export function createCart(ctx: Context) {
     } catch (err) {
       if (current !== seq) return;
       busy = false;
+      unpriced = true;
       set({ calculating: false });
       ctx.fail('cart.calculate', err);
       announce();
@@ -432,7 +435,7 @@ export function createCart(ctx: Context) {
       else {
         await settled();
         try {
-          const without = state().summary ?? (await price(vouchers()));
+          const without = (!unpriced && state().summary) || (await price(vouchers()));
           if (!addsDiscount(without, await price([...vouchers(), normalized]))) {
             ctx.emit('coupon.denied', { code: normalized });
             return false;

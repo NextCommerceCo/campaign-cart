@@ -207,6 +207,26 @@ describe('cart', () => {
     expect(seen).toEqual([['cart.removed', { lines: [], coupons: [], currency: 'USD', changes: [change] }]]);
   });
 
+  it('checks a coupon against a fresh price when the last pricing failed', async () => {
+    const api = fakeApi();
+    let failing = false;
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      failing && String(input).includes('/carts/calculate')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init)) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    await engine.cart.addItem(1);
+    await engine.cart.addItem(2);
+    await engine.cart.settled();
+    failing = true;
+    await engine.cart.removeItem(2);
+    await engine.cart.settled();
+    failing = false;
+    expect(await engine.cart.applyCoupon('NOPE')).toBe(false);
+  });
+
   it('announces an addition at the package price when pricing fails', async () => {
     const api = fakeApi();
     const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
