@@ -3,7 +3,7 @@ import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import type { CheckoutActions } from '../checkout/state/checkout';
 import type { OrderActions } from '../order/state';
-import { type EngineEvent, type ErrorAction, Events } from './events';
+import { type EngineEvent, type ErrorAction, type EventCampaign, Events } from './events';
 import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
@@ -157,6 +157,11 @@ export class Engine {
 
   getPackage(id: number): Package | undefined {
     return this.state.campaign?.packages.find((p) => p.ref_id === id);
+  }
+
+  eventCampaign(): EventCampaign | undefined {
+    const c = this.state.campaign;
+    return c && { id: c.id, name: c.name, currency: c.currency, language: c.language };
   }
 
   attribution(): Attribution {

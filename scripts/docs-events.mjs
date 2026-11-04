@@ -147,6 +147,7 @@ function page(event, order, example, version) {
     object: event.name.split('.')[0],
     data: example,
     created_at: '2026-11-04T08:30:00.000Z',
+    campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
     session_id: '0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d',
     sdk_version: version,
   };

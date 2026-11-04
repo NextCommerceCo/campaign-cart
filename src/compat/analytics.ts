@@ -77,7 +77,7 @@ const legacyCart = (engine: Engine) => {
  */
 export function startLegacyDataLayer(
   engine: Engine,
-  options: { version: string; dataLayer?: boolean },
+  options: { apiKey: string; version: string; dataLayer?: boolean },
 ): (e: EngineEvent) => void {
   const win = window as Win;
   win.NextDataLayer ??= [];
@@ -111,11 +111,13 @@ export function startLegacyDataLayer(
       page_location: context.page_location,
       page_title: context.page_title,
       page_referrer: context.page_referrer,
-      campaign_name: context.campaign_name,
-      campaign_currency: context.campaign_currency,
-      campaign_language: context.campaign_language,
+      campaign_id: context.campaign && String(context.campaign.id),
+      campaign_name: context.campaign?.name,
+      campaign_currency: context.campaign?.currency,
+      campaign_language: context.campaign?.language,
+      campaign_api_key: options.apiKey,
+      campaign_session_id: context.session_id,
       attribution: context.attribution,
-      session_id: context.session_id,
       _metadata: { source: 'NextDataLayer', version: options.version },
       ...data,
     });

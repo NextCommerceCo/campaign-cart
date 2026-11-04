@@ -5,7 +5,7 @@ import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { AnalyticsEvent, AnalyticsName, EventMap, EventName } from './engine/events';
+import type { AnalyticsEvent, AnalyticsName, EventCampaign, EventMap, EventName } from './engine/events';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
@@ -80,20 +80,26 @@ export interface SdkEvent<K extends EventName = EventName> {
   object: string;
   data: EventMap[K];
   created_at: string;
+  /** The campaign the page runs, once it has loaded. */
+  campaign?: EventCampaign;
   /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
   session_id: string;
   sdk_version: string;
 }
 
-const envelope = <K extends EventName>(e: EngineEvent<K>, sessionId: string): SdkEvent<K> => ({
-  event_id: e.id,
-  event_type: e.name,
-  object: e.name.split('.')[0]!,
-  data: e.data,
-  created_at: new Date(e.at).toISOString(),
-  session_id: sessionId,
-  sdk_version: __VERSION__,
-});
+const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => {
+  const campaign = engine.eventCampaign();
+  return {
+    event_id: e.id,
+    event_type: e.name,
+    object: e.name.split('.')[0]!,
+    data: e.data,
+    created_at: new Date(e.at).toISOString(),
+    ...(campaign && { campaign }),
+    session_id: engine.sessionId(),
+    sdk_version: __VERSION__,
+  };
+};
 
 export interface NextApi extends LegacyApi {
   version: string;
@@ -199,10 +205,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         (e) => {
           const data = e.data as Record<string, unknown>;
           if (legacy?.when && !legacy.when(data)) return;
-          fn(
-            (legacy?.data ? legacy.data(data, engine.getState()) : data) as never,
-            envelope(e, engine.sessionId()) as never,
-          );
+          fn((legacy?.data ? legacy.data(data, engine.getState()) : data) as never, envelope(e, engine) as never);
         },
         { replay: event !== '*' && REPLAYED.includes(event) },
       );

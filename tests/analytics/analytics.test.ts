@@ -49,13 +49,18 @@ describe('analytics', () => {
     expect(event).toMatchObject({
       event: 'dl_user_data',
       user_properties: { visitor_type: 'guest' },
+      campaign_id: '1310',
       campaign_name: 'Olympus',
       campaign_currency: 'USD',
+      campaign_language: 'en',
+      campaign_api_key: 'pk_test',
+      campaign_session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
       cart_total: '0',
       ecommerce: { currency: 'USD', value: 0, items: [] },
       attribution: { utm_source: 'fb', funnel: 'Olympus' },
     });
     expect(event.event_id).toMatch(/^[0-9a-f]{32}$/);
+    expect(event).not.toHaveProperty('session_id');
     expect(JSON.stringify(event)).not.toContain('jane@x.com');
     expect(win.dataLayer).toEqual([{ ecommerce: null }, event]);
   });
@@ -453,7 +458,10 @@ describe('analytics events (GA4 names)', () => {
       items: [expect.objectContaining({ item_id: '11' })],
       first_in_session: true,
     });
-    expect(add.context).toMatchObject({ campaign_name: 'Olympus', page_location: location.origin + location.pathname });
+    expect(add.context).toMatchObject({
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      page_location: location.origin + location.pathname,
+    });
     expect(seen.at(-2)!.params).toMatchObject({ shipping_tier: 'Standard' });
     expect(seen.at(-1)!.params).toMatchObject({ payment_type: 'Credit Card' });
   });

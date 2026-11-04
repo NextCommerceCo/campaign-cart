@@ -28,6 +28,7 @@ const CAMPAIGN: Campaign = {
 class FakeNextPayment {
   static fail: string | undefined;
   static submitted: Array<Record<string, string>> = [];
+  static metadata: Record<string, string> | undefined;
   onReady = () => {};
   onFieldStateChange = (_: unknown) => {};
   onValidation = (_: unknown) => {};
@@ -36,8 +37,9 @@ class FakeNextPayment {
   constructor() {
     queueMicrotask(() => this.onReady());
   }
-  submit(card: Record<string, string>) {
+  submit(card: Record<string, string>, options?: { metadata?: Record<string, string> }) {
     FakeNextPayment.submitted.push(card);
+    FakeNextPayment.metadata = options?.metadata;
     queueMicrotask(() =>
       FakeNextPayment.fail
         ? this.onError({ message: FakeNextPayment.fail })
@@ -189,6 +191,12 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await submit();
     await flush();
     expect(FakeNextPayment.submitted[0]).toMatchObject({ full_name: 'Jane Doe', month: '12' });
+    expect(FakeNextPayment.metadata).toEqual({
+      source: 'next-campaign-cart',
+      sdk_version: expect.any(String),
+      campaign_id: '1310',
+      page: `${location.origin}/olympus/checkout/`,
+    });
     expect(orders()[0]!.body).toMatchObject({
       payment_detail: { payment_method: 'card_token', card_token: 'tok_1' },
       shipping_address: { first_name: 'Jane', line1: '1 Main St', line4: 'Austin', state: 'CA', postcode: '90210' },

@@ -21,7 +21,11 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
-  const legacyExitIntent = startLegacyDataLayer(engine, { version: options.version, dataLayer: options.dataLayer });
+  const legacyExitIntent = startLegacyDataLayer(engine, {
+    apiKey: options.apiKey,
+    version: options.version,
+    dataLayer: options.dataLayer,
+  });
 
   const trace = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
     const data: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };

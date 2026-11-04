@@ -147,6 +147,17 @@ export interface CartChange {
   price: number;
 }
 
+/** The campaign the page runs, on every event once it has loaded. */
+export interface EventCampaign {
+  /** The campaign's `id` in the Campaigns API and the dashboard. */
+  id: number;
+  name: string;
+  /** The currency the page shows: the campaign's, or the one `?currency=` asked for. */
+  currency: string;
+  /** The campaign's language code, like `en`. */
+  language: string;
+}
+
 export type AnalyticsName =
   | 'page_view'
   | 'view_item'
@@ -169,9 +180,8 @@ export interface AnalyticsContext {
   page_location: string;
   page_title: string;
   page_referrer: string;
-  campaign_name?: string;
-  campaign_currency?: string;
-  campaign_language?: string;
+  /** As in the event envelope. */
+  campaign?: EventCampaign;
   /** The campaign session, as in the event envelope. */
   session_id: string;
   attribution: Attribution;

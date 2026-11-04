@@ -36,6 +36,7 @@ export interface ShippingOption {
 }
 
 export interface Campaign {
+  id: number;
   name: string;
   currency: string;
   language: string;

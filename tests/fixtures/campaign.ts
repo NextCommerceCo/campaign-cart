@@ -1,6 +1,7 @@
 import type { Campaign } from '../../src/engine/types';
 
 export const campaign: Campaign = {
+  id: 1310,
   name: 'Olympus',
   currency: 'USD',
   language: 'en',

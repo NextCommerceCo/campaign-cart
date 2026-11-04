@@ -11,7 +11,6 @@ const withoutQuery = (url: string) => {
 };
 
 export function pageContext(engine: Engine): AnalyticsContext {
-  const { campaign } = engine.getState();
   const attribution = engine.attribution();
   const metadata = Object.fromEntries(
     Object.entries(attribution.metadata).map(([k, v]) => [
@@ -23,9 +22,7 @@ export function pageContext(engine: Engine): AnalyticsContext {
     page_location: location.origin + location.pathname,
     page_title: document.title,
     page_referrer: withoutQuery(document.referrer),
-    campaign_name: campaign?.name,
-    campaign_currency: campaign?.currency,
-    campaign_language: campaign?.language,
+    campaign: engine.eventCampaign(),
     attribution: { ...attribution, metadata },
     session_id: engine.sessionId(),
   };

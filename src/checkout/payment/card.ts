@@ -97,8 +97,9 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   const cvv = control(form, 'cvv');
   const month = control<HTMLSelectElement>(form, 'exp-month', 'cc-month');
   const year = control<HTMLSelectElement>(form, 'exp-year', 'cc-year');
-  const envKey = engine.getState().campaign?.payment_env_key;
-  if (!number || !cvv || !envKey) return undefined;
+  const campaign = engine.getState().campaign;
+  const envKey = campaign?.payment_env_key;
+  if (!number || !cvv || !campaign || !envKey) return undefined;
 
   for (const [el, field] of [
     [number, 'number'],
@@ -256,6 +257,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
             metadata: {
               source: 'next-campaign-cart',
               sdk_version: __VERSION__,
+              campaign_id: String(campaign.id),
               page: location.origin + location.pathname,
             },
           },

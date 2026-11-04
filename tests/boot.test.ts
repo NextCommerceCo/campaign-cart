@@ -112,6 +112,15 @@ describe('boot', () => {
     expect(document.documentElement.getAttribute('data-next-error')).toBe('campaign');
   });
 
+  it('leaves campaign off the envelope while the campaign has not loaded', async () => {
+    const next = boot(config, Promise.reject(new Error('down')));
+    const error = vi.fn();
+    next.on('sdk.error', error);
+    await flush();
+    expect(error.mock.calls[0]![1]).toMatchObject({ data: { action: 'campaign.load' } });
+    expect(error.mock.calls[0]![1]).not.toHaveProperty('campaign');
+  });
+
   it('maps old next.on names to the new events and passes the payload', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
@@ -145,6 +154,7 @@ describe('boot', () => {
         object: 'sdk',
         data: { lines: expect.any(Array) },
         created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+        campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
         session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
         sdk_version: expect.any(String),
       },
