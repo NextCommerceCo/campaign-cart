@@ -4,7 +4,7 @@ import { format } from '../../../src/engine/format';
 import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
-import type { EventMap } from '../../../src/engine/events';
+import type { EventMap, Selector } from '../../../src/engine/events';
 import { MemoryStorage } from '../../fixtures/storage';
 
 const CARDS: SelectorCard[] = [
@@ -258,24 +258,23 @@ describe('selectors', () => {
     const local = new MemoryStorage();
     const page = async () => {
       const { engine } = makeEngine({ fetch: fakeApi().fetch, local });
-      const seen: unknown[] = [];
+      const seen: Array<[string, Selector]> = [];
       engine.on('*', (e) => {
-        if (e.name === 'selector.calculating' || e.name === 'selector.calculated') seen.push([e.name, e.data]);
+        if (e.name.startsWith('selector.')) seen.push([e.name, e.data as Selector]);
       });
       await engine.start();
       await engine.selectors.register('main', CARDS, 'swap', 'one');
       await flush();
-      return [seen, Object.keys(engine.getState().selectors.main?.quotes ?? {})];
+      return seen;
     };
-    const data = { selector_id: 'main', type: 'bundle' };
-    expect(await page()).toEqual([
-      [
-        ['selector.calculating', data],
-        ['selector.calculated', data],
-      ],
-      ['one', 'two'],
-    ]);
-    expect(await page()).toEqual([[['selector.calculated', data]], ['one', 'two']]);
+    const first = await page();
+    expect(first.map(([name]) => name)).toEqual(['selector.selected', 'selector.calculating', 'selector.calculated']);
+    for (const [, data] of first) expect(data).toMatchObject({ selector_id: 'main', type: 'bundle', option_id: 'one' });
+    expect(first[0]![1].lines[0]).not.toHaveProperty('price');
+    expect(first[2]![1].lines).toMatchObject([{ package_id: 1, price: expect.any(Number), total: expect.any(Number) }]);
+    const second = await page();
+    expect(second.map(([name]) => name)).toEqual(['selector.selected', 'selector.calculated']);
+    expect(second[1]![1].lines[0]).toHaveProperty('price');
   });
 
   it('names the picked option and its products, priced once the option has a price', async () => {

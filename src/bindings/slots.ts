@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
-import type { SummaryDiscount, Selector, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
+import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
 import { cents, discountPercent, format } from '../engine/format';
 import { cardQuote } from '../engine/values';
@@ -104,7 +104,7 @@ function renderStage(
     boxes: Array<{ box: HTMLElement; tpl: string }>;
   }> = [];
 
-  const valuesOf = (selector: Selector, card: SelectorCard, slot: Slot, index: number) =>
+  const valuesOf = (selector: SelectorState, card: SelectorCard, slot: Slot, index: number) =>
     itemValues(
       engine,
       engine.getPackage(slot.packageId),

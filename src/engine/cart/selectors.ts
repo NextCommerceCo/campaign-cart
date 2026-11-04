@@ -1,7 +1,8 @@
 import { apiLines, type CartActions, cartItems, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
+import type { Selector } from '../events';
 import { forcedBundle } from '../params';
-import type { CartGroup, CartLine, CartSummary, Selector, SelectorCard, SelectorMode, Slot } from './types';
+import type { CartGroup, CartLine, CartSummary, SelectorState, SelectorCard, SelectorMode, Slot } from './types';
 import type { Package } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
@@ -11,12 +12,12 @@ const QUOTE_MAX_AGE = 10 * 60 * 1000;
 const QUOTE_LIMIT = 24;
 type SavedQuotes = Record<string, { at: number; summary: CartSummary }>;
 
-const typeOf = (selector: Selector): 'bundle' | 'offer' => (selector.mode === 'offer' ? 'offer' : 'bundle');
+const typeOf = (selector: SelectorState): 'bundle' | 'offer' => (selector.mode === 'offer' ? 'offer' : 'bundle');
 
 const clamp = (card: SelectorCard, quantity: number) =>
   Math.min(Math.max(Math.round(quantity), card.min ?? 1), card.max ?? 999);
 
-export const cardQuantity = (selector: Selector, card: SelectorCard) =>
+export const cardQuantity = (selector: SelectorState, card: SelectorCard) =>
   selector.quantities?.[card.id] ?? clamp(card, card.quantity ?? 1);
 
 const slotLine = (slot: Slot): CartLine => ({
@@ -25,14 +26,14 @@ const slotLine = (slot: Slot): CartLine => ({
   ...(slot.properties && Object.keys(slot.properties).length && { properties: slot.properties }),
 });
 
-export function cardSlots(selector: Selector, card: SelectorCard): Slot[] {
+export function cardSlots(selector: SelectorState, card: SelectorCard): Slot[] {
   const times = cardQuantity(selector, card);
   const chosen = selector.slots?.[card.id] ?? [];
   const base = card.lines.flatMap((l) => (l.configurable ? Array(l.quantity * times).fill(l.packageId) : []));
   return base.map((packageId: number, i) => chosen[i] ?? { packageId });
 }
 
-export function cardLines(selector: Selector, card: SelectorCard): CartLine[] {
+export function cardLines(selector: SelectorState, card: SelectorCard): CartLine[] {
   const times = cardQuantity(selector, card);
   const fixed = card.lines
     .filter((l) => !l.configurable)
@@ -40,7 +41,7 @@ export function cardLines(selector: Selector, card: SelectorCard): CartLine[] {
   return [...fixed, ...cardSlots(selector, card).map(slotLine)];
 }
 
-export function pickedCard(selector: Selector | undefined): SelectorCard | undefined {
+export function pickedCard(selector: SelectorState | undefined): SelectorCard | undefined {
   return selector?.cards.find((c) => c.id === selector.picked);
 }
 
@@ -66,17 +67,19 @@ function quantityIn(card: SelectorCard, group: CartGroup): number | undefined {
 export function createSelectors(ctx: Context, cart: CartActions) {
   const inFlight = new Map<string, AbortController>();
 
-  const get = (id: string): Selector | undefined => ctx.getState().selectors[id];
-  const set = (id: string, patch: Partial<Selector>) => ctx.update('selectors', { [id]: { ...get(id)!, ...patch } });
-  const selected = (id: string, card: SelectorCard) => {
+  const get = (id: string): SelectorState | undefined => ctx.getState().selectors[id];
+  const set = (id: string, patch: Partial<SelectorState>) =>
+    ctx.update('selectors', { [id]: { ...get(id)!, ...patch } });
+  const publicSelector = (id: string): Selector => {
     const selector = get(id)!;
-    const lines = apiLines(cardLines(selector, card));
-    ctx.emit('selector.selected', {
+    const card = pickedCard(selector);
+    const lines = card ? apiLines(cardLines(selector, card)) : [];
+    return {
       selector_id: id,
       type: typeOf(selector),
-      option_id: card.id,
-      lines: cartItems(ctx.getState(), lines, selector.quotes?.[card.id]?.lines),
-    });
+      ...(card && { option_id: card.id }),
+      lines: cartItems(ctx.getState(), lines, card && selector.quotes?.[card.id]?.lines),
+    };
   };
 
   const addToCart = async (id: string): Promise<void> => {
@@ -96,7 +99,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     if (!selector || !card) return Promise.resolve();
     if (selector.picked !== cardId) {
       set(id, { picked: cardId });
-      selected(id, card);
+      ctx.emit('selector.selected', publicSelector(id));
     }
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
@@ -124,13 +127,12 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     const saved = Object.fromEntries(
       Object.entries(ctx.local.get<SavedQuotes>(QUOTES) ?? {}).filter(([, q]) => now - q.at < QUOTE_MAX_AGE),
     );
-    const type = typeOf(selector);
     const settle = () => {
       const quotes = Object.fromEntries(
         requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary]),
       );
       set(id, { quotes, quoting: false });
-      ctx.emit('selector.calculated', { selector_id: id, type });
+      ctx.emit('selector.calculated', publicSelector(id));
     };
     const missing = requests.filter((r) => !saved[r.key]);
     inFlight.get(id)?.abort();
@@ -141,7 +143,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     const controller = new AbortController();
     inFlight.set(id, controller);
     set(id, { quoting: true });
-    ctx.emit('selector.calculating', { selector_id: id, type });
+    ctx.emit('selector.calculating', publicSelector(id));
     try {
       const summaries = await Promise.all(
         missing.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
@@ -184,8 +186,9 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       ctx.update('selectors', {
         [id]: { mode, cards, quantities, ...(slots && { slots: { [restored!.id]: slots } }) },
       });
+      const picking = initial ? pick(id, initial.id) : Promise.resolve();
       void quote(id);
-      return initial ? pick(id, initial.id) : Promise.resolve();
+      return picking;
     },
     pick,
     addToCart,
@@ -196,7 +199,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const slots = cardSlots(selector, card).map((s, i) => (i === index ? { ...s, ...slot } : s));
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
       if (selector.picked !== cardId) return Promise.resolve();
-      selected(id, card);
+      ctx.emit('selector.selected', publicSelector(id));
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
@@ -208,7 +211,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const next = clamp(card, quantity);
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
-      selected(id, card);
+      ctx.emit('selector.selected', publicSelector(id));
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();

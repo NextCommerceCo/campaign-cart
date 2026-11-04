@@ -147,6 +147,20 @@ export interface CartChange {
   price: number;
 }
 
+/** A selector and the option picked in it, the same on every `selector.*` event. */
+export interface Selector {
+  /** `data-next-selector-id`, or `toggle:<package_id>` for a toggle. */
+  selector_id: string;
+  type: SelectorType;
+  /** The picked option's `data-next-bundle-id`; none for a toggle. */
+  option_id?: string;
+  /**
+   * The lines the picked option puts in the cart, at its quantity; a toggle's line while it is on.
+   * Priced once the option has a price.
+   */
+  lines: CartItem[];
+}
+
 /** The campaign the page runs, on every event once it has loaded. */
 export interface EventCampaign {
   /** The campaign's `id` in the Campaigns API and the dashboard. */
@@ -235,31 +249,23 @@ export interface EventMap {
    * An option is picked, its quantity or a slot changed, or a toggle is switched on.
    * @group Selectors
    */
-  'selector.selected': {
-    /** `data-next-selector-id`, or `toggle:<package_id>` for a toggle. */
-    selector_id: string;
-    type: SelectorType;
-    /** The picked option's `data-next-bundle-id`; none for a toggle. */
-    option_id?: string;
-    /** The lines the option puts in the cart, at its quantity, priced once the option has a price. */
-    lines: CartItem[];
-  };
+  'selector.selected': Selector;
   /**
    * A toggle is switched off.
    * @group Selectors
    */
-  'selector.deselected': { selector_id: string; type: SelectorType };
+  'selector.deselected': Selector;
   /**
    * Pricing the options that have no price yet starts.
    * @group Selectors
    */
-  'selector.calculating': { selector_id: string; type: SelectorType };
+  'selector.calculating': Selector;
   /**
    * Every option's price is on the page. Prices are kept 10 minutes, so a later page may get this
    * at once.
    * @group Selectors
    */
-  'selector.calculated': { selector_id: string; type: SelectorType };
+  'selector.calculated': Selector;
   /**
    * Lines, coupons or shipping changed, at once, before the server prices them.
    * @group Carts

@@ -251,7 +251,7 @@ describe('cart', () => {
     await engine.cart.setGroup('toggle:9', null);
     expect(seen).toEqual([
       'selector.selected {"selector_id":"toggle:9","type":"toggle","lines":[{"package_id":9,"quantity":1,"product_id":900,"image":"https://cdn.test/9.png"}]}',
-      'selector.deselected {"selector_id":"toggle:9","type":"toggle"}',
+      'selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":[]}',
     ]);
   });
 

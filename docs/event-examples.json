@@ -30,15 +30,45 @@
   },
   "selector.deselected": {
     "selector_id": "toggle:9",
-    "type": "toggle"
+    "type": "toggle",
+    "lines": []
   },
   "selector.calculating": {
     "selector_id": "main",
-    "type": "bundle"
+    "type": "bundle",
+    "option_id": "one",
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png"
+      }
+    ]
   },
   "selector.calculated": {
     "selector_id": "main",
-    "type": "bundle"
+    "type": "bundle",
+    "option_id": "one",
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ]
   },
   "cart.updated": {
     "lines": [

@@ -3,7 +3,7 @@ import { mergeLines } from './cart/cart';
 import { cardLines } from './cart/selectors';
 import { toggleGroup } from './cart/toggles';
 import { bool, cents, money, pct, type Value } from './format';
-import type { CartLine, CartSummary, Selector, SelectorCard, SummaryLine } from './cart/types';
+import type { CartLine, CartSummary, SelectorState, SelectorCard, SummaryLine } from './cart/types';
 import type { Package, State } from './types';
 
 export interface CardRef {
@@ -227,7 +227,7 @@ const quantitiesKey = (pairs: Array<{ package_id: number; quantity: number }>) =
     .sort()
     .join();
 
-export function cardQuote(selector: Selector, card: SelectorCard): CartSummary | undefined {
+export function cardQuote(selector: SelectorState, card: SelectorCard): CartSummary | undefined {
   const quoted = selector.quotes?.[card.id];
   const current = mergeLines({ card: { lines: cardLines(selector, card), vouchers: [] } });
   return quoted && quantitiesKey(quoted.lines) === quantitiesKey(current) ? quoted : undefined;

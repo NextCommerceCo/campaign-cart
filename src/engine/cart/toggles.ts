@@ -1,4 +1,4 @@
-import { mergeLines, toggleGroup } from './cart';
+import { mergeLines, publicToggle, toggleGroup } from './cart';
 import type { Context } from '../engine';
 
 export { toggleGroup };
@@ -19,14 +19,14 @@ export function createToggles(ctx: Context) {
       const controller = new AbortController();
       inFlight.set(packageId, controller);
       ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
-      ctx.emit('selector.calculating', { selector_id: group, type: 'toggle' });
+      ctx.emit('selector.calculating', publicToggle(ctx.getState(), group));
       ctx.api
         .calculate({ lines, vouchers: cart.coupons, currency: campaign.currency }, { signal: controller.signal })
         .then((summary) => {
           const line = summary.lines.find((l) => l.package_id === packageId);
           if (inFlight.get(packageId) !== controller) return;
           ctx.update('toggles', { [packageId]: { key, quantity, line } });
-          ctx.emit('selector.calculated', { selector_id: group, type: 'toggle' });
+          ctx.emit('selector.calculated', publicToggle(ctx.getState(), group));
         })
         .catch((err: unknown) => {
           if (inFlight.get(packageId) === controller) ctx.fail('selector.quote', err);

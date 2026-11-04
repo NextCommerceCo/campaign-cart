@@ -133,7 +133,7 @@ export interface SelectorCard extends CartGroup {
   max?: number;
 }
 
-export interface Selector {
+export interface SelectorState {
   mode: SelectorMode;
   cards: SelectorCard[];
   picked?: string;

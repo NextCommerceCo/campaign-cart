@@ -1,6 +1,6 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChange, CartItem, Discount } from '../events';
+import type { Cart, CartChange, CartItem, Discount, Selector } from '../events';
 import type {
   Line,
   CartGroup,
@@ -91,6 +91,12 @@ export function cartItems(state: State, lines: Line[], priced?: SummaryLine[]): 
     priced?.length === lines.length &&
     lines.every((l, i) => priced[i]!.package_id === l.package_id && priced[i]!.quantity === l.quantity);
   return lines.map((l, i) => cartItem(state, l, fresh ? priced[i] : undefined));
+}
+
+export function publicToggle(state: State, id: string, group?: CartGroup): Selector {
+  const lines = apiLines(group?.lines ?? []);
+  const quoted = lines.map((l) => state.toggles[l.package_id]?.line).filter((l) => !!l);
+  return { selector_id: id, type: 'toggle', lines: cartItems(state, lines, quoted) };
 }
 
 export function publicCart(state: State, summary?: CartSummary): Cart {
@@ -322,16 +328,11 @@ export function createCart(ctx: Context) {
   const setGroup = (id: string, group: CartGroup | null, options: { dismiss?: boolean } = {}) => {
     const groups = { ...state().groups };
     const keep = !!group && group.lines.some((l) => l.quantity > 0);
-    if (id.startsWith('toggle:') && keep !== !!groups[id]) {
-      const lines = apiLines(group?.lines ?? []);
-      const quoted = lines.map((l) => ctx.getState().toggles[l.package_id]?.line).filter((l) => !!l);
+    if (id.startsWith('toggle:') && keep !== !!groups[id])
       ctx.emit(
         keep ? 'selector.selected' : 'selector.deselected',
-        keep
-          ? { selector_id: id, type: 'toggle', lines: cartItems(ctx.getState(), lines, quoted) }
-          : { selector_id: id, type: 'toggle' },
+        publicToggle(ctx.getState(), id, keep ? group! : undefined),
       );
-    }
     if (keep) groups[id] = group;
     else delete groups[id];
     const dismissed = state().dismissed.filter((d) => d !== id);

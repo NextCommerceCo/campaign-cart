@@ -26,8 +26,9 @@ An option is a card in a selector (`data-next-bundle-card`); `option_id` is its 
 | `quoted`             | Another option is picked                                           | `quoted`   | `selector.selected`                                           |
 | `quoted`, `unquoted` | The picked option's quantity, a slot, or the cart's coupons change | `quoting`  | `selector.selected` (not for coupons), `selector.calculating` |
 
-`selector.selected` carries the option's lines with the product, as in the cart, and their prices
-once the option has a price. The price that is paid comes with the cart on `cart.*`.
+Every selector event carries the same `Selector`: the picked option and its lines, with the
+product as in the cart, priced once the option has a price. The price that is paid comes with the
+cart on `cart.*`.
 
 A toggle (a bump such as a warranty) sends `selector.selected` when it is switched on and
 `selector.deselected` when it is switched off, with `type: 'toggle'`, and is priced the same way.

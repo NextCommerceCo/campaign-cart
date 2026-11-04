@@ -2,7 +2,7 @@ import type { CheckoutState } from '../checkout/state/types';
 import type { OrderState } from '../order/state';
 import type { DebugState } from '../debug/state';
 import type { Visit } from './attribution';
-import type { CartState, Selector, Toggle } from './cart/types';
+import type { CartState, SelectorState, Toggle } from './cart/types';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -171,7 +171,7 @@ export interface Order {
 export interface State {
   campaign?: Campaign;
   cart: CartState;
-  selectors: Record<string, Selector>;
+  selectors: Record<string, SelectorState>;
   toggles: Record<number, Toggle>;
   visit: VisitState;
   checkout?: CheckoutState;
