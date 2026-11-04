@@ -264,7 +264,7 @@ export function createCart(ctx: Context) {
       if (current !== seq) return;
       busy = false;
       set({ calculating: false, priceFailed: true });
-      ctx.fail('calculate', err);
+      ctx.fail('cart.calculate', err);
       announce();
     }
   };
@@ -303,7 +303,7 @@ export function createCart(ctx: Context) {
     const known = (l: CartLine) => !!ctx.getPackage(l.packageId);
     const unknown = Object.values(groups).flatMap((g) => g.lines.filter((l) => !known(l)));
     if (!unknown.length) return groups;
-    ctx.fail('cart', new Error(`removed unknown package ids ${unknown.map((l) => l.packageId).join(', ')}`));
+    ctx.log.warn(`removed package ids the campaign does not have: ${unknown.map((l) => l.packageId).join(', ')}`);
     return Object.fromEntries(
       Object.entries(groups)
         .map(([id, g]) => [id, { ...g, lines: g.lines.filter(known) }] as const)
@@ -405,7 +405,7 @@ export function createCart(ctx: Context) {
             return false;
           }
         } catch (err) {
-          ctx.fail('coupon', err);
+          ctx.fail('coupon.check', err);
           return false;
         }
         if (state().coupons.includes(normalized)) return false;

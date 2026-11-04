@@ -25,6 +25,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 - **`shipping.selected`, `payment.selected` and `checkout.submitted`** follow the rest of the checkout. `checkout.submitted` says whether the submit passed its checks and, if not, which fields stopped it.
 - **Orders and upsells send `order.created`, `order.failed`, `order.loaded`, `upsell.viewed`, `upsell.accepted`, `upsell.skipped` and `upsell.failed`.** `order.failed` says whether the server refused the order or the shopper came back from a payment gateway that failed.
 - **The exit-intent popup sends `promotion.viewed`, `promotion.clicked` and `promotion.closed`**, with `source: 'exit_intent'`.
+- **`sdk.error` says which step failed and why.** `action` names the step, like the events (`cart.calculate`, `order.create`, `contact.save`, …), `code` the reason (`network`, `timeout`, `server`, `rejected`, `declined`, `auth`, `too_many_requests`, `unavailable`), and `status` the HTTP status when the API answered. Each group's lifecycle page lists its errors and what the SDK does next.
 
 ### Tracking
 

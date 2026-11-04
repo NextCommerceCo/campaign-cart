@@ -267,7 +267,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     else reveal();
   });
   engine.on('sdk.error', (e) => {
-    if (e.data.action === 'load') html.setAttribute('data-next-error', 'campaign');
+    if (e.data.action === 'campaign.load') html.setAttribute('data-next-error', 'campaign');
   });
   void engine.start();
 

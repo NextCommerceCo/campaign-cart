@@ -197,7 +197,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   );
   on('promotion.viewed', (e) => change({}, { at: e.at, text: 'Exit popup shown' }));
   on('sdk.error', (e) =>
-    e.data.action === 'storage'
+    e.data.action === 'storage.write'
       ? change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.message}` })
       : change({}, { at: e.at, tone: 'error', text: `${e.data.action} failed: ${e.data.message}` }),
   );

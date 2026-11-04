@@ -1,9 +1,9 @@
-import { Api } from './api';
+import { Api, errorCode } from './api';
 import { type Attribution, buildAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import type { CheckoutActions } from '../checkout/state/checkout';
 import type { OrderActions } from '../order/state';
-import { type EngineEvent, Events } from './events';
+import { type EngineEvent, type ErrorAction, Events } from './events';
 import { type LogLevel, Logger } from './log';
 import { keptParams, parseForcePackages } from './params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
@@ -34,7 +34,7 @@ export interface Context {
   update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
   on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
-  fail(action: string, err: unknown): void;
+  fail(action: ErrorAction, err: unknown): void;
   log: Logger;
   getPackage(id: number): Package | undefined;
   attribution(): Attribution;
@@ -75,7 +75,12 @@ export class Engine {
         version: 1,
         backends,
         now: options.now,
-        onDegrade: (reason) => this.events.emit('sdk.error', { action: 'storage', message: `${name}: ${reason}` }),
+        onDegrade: (reason) =>
+          this.events.emit('sdk.error', {
+            action: 'storage.write',
+            code: 'unavailable',
+            message: `${name}: ${reason}`,
+          }),
       });
     this.session = adapter('session', [options.storage.session]);
     this.local = adapter('local', [options.storage.local, options.storage.session]);
@@ -191,7 +196,7 @@ export class Engine {
     try {
       campaign = await this.options.campaign;
     } catch (err) {
-      return this.fail('load', err);
+      return this.fail('campaign.load', err);
     }
     this.update('campaign', campaign);
     this.events.emit('campaign.loaded', { campaign, fromCache: false });
@@ -252,9 +257,10 @@ export class Engine {
     return `campaign:${this.options.currency ?? 'default'}`;
   }
 
-  private fail(action: string, err: unknown): void {
+  private fail(action: ErrorAction, err: unknown): void {
     const message = err instanceof Error ? err.message : String(err);
-    this.log.info(`${action} failed: ${message}`);
-    this.events.emit('sdk.error', { action, message });
+    const { code, status } = errorCode(err);
+    this.log.info(`${action} failed (${code}): ${message}`);
+    this.events.emit('sdk.error', { action, code, ...(status && { status }), message });
   }
 }

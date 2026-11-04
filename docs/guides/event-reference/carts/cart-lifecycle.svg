@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="carts-lifecycle-title carts-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="carts-lifecycle-title carts-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="carts-lifecycle-title">Cart lifecycle</title>
   <desc id="carts-lifecycle-desc">empty, then calculating after a package is added (cart.updated, cart.calculating), then priced when the prices arrive (cart.removed, cart.added, cart.calculated). Pricing that fails moves calculating to unpriced (sdk.error), and the cart summary gets the next-price-failed class; the next change goes back to calculating. A change to a priced cart goes back to calculating (cart.updated, cart.calculating). Removing the last package empties the cart from any state (cart.updated, cart.removed).</desc>
   <defs>
@@ -36,8 +36,9 @@
     <text x="330" y="421" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the cart carries prices</text>
     <rect x="540" y="196" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">unpriced</text>
-    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">cart.calculate</text>
     <text x="620" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">next-price-failed</text>
   </g>
-  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">From any state, removing the last package empties the cart: cart.updated · cart.removed</text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">From any state, removing the last package empties the cart: cart.updated · cart.removed</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · cart.calculate</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unpriced; the summary gets next-price-failed</tspan></text>
 </svg>

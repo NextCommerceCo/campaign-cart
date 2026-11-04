@@ -34,7 +34,7 @@ export function createToggles(ctx: Context) {
           });
         })
         .catch((err: unknown) => {
-          if (inFlight.get(packageId) === controller) ctx.fail('quote', err);
+          if (inFlight.get(packageId) === controller) ctx.fail('selector.quote', err);
         })
         .finally(() => {
           if (inFlight.get(packageId) === controller) inFlight.delete(packageId);

@@ -54,7 +54,7 @@ describe('Engine', () => {
     const errors: unknown[] = [];
     engine.on('sdk.error', (e) => errors.push(e.data));
     await engine.start();
-    expect(errors).toEqual([{ action: 'load', message: 'down' }]);
+    expect(errors).toEqual([{ action: 'campaign.load', code: 'network', message: 'down' }]);
   });
   it('restores the cart from this tab and the campaign snapshot on the next page', async () => {
     const local = new MemoryStorage();
@@ -89,7 +89,7 @@ describe('Engine', () => {
     const degraded: unknown[] = [];
     first.engine.on('sdk.error', (e) => degraded.push(e.data));
     await first.engine.start();
-    expect(degraded).toEqual([{ action: 'storage', message: 'local: QuotaExceededError' }]);
+    expect(degraded).toEqual([{ action: 'storage.write', code: 'unavailable', message: 'local: QuotaExceededError' }]);
     expect(makeEngine({ local, session }).engine.getState().campaign).toBeDefined();
   });
   it('reports blocked storage at boot to late subscribers', () => {
@@ -97,8 +97,8 @@ describe('Engine', () => {
     const degraded: unknown[] = [];
     engine.on('sdk.error', (e) => degraded.push(e.data), { replay: true });
     expect(degraded).toEqual([
-      { action: 'storage', message: 'session: unavailable' },
-      { action: 'storage', message: 'local: unavailable' },
+      { action: 'storage.write', code: 'unavailable', message: 'session: unavailable' },
+      { action: 'storage.write', code: 'unavailable', message: 'local: unavailable' },
     ]);
   });
   it('keeps URL params for the session but not one-shot ones', () => {

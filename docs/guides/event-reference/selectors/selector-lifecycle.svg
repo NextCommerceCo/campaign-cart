@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="selectors-lifecycle-title selectors-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="selectors-lifecycle-title selectors-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="selectors-lifecycle-title">Selector lifecycle</title>
   <desc id="selectors-lifecycle-desc">A selector is registered and its first card picked (selector.selected), then quoting the cards that have no quote yet (selector.calculating), then quoted (selector.calculated). When every card already has a quote from the last 10 minutes it goes straight to quoted (selector.calculated with from_cache). Quoting that fails sends sdk.error and the cards show package prices. Changing the picked card's quantity or a slot sends selector.selected and quotes again.</desc>
   <defs>
@@ -35,7 +35,8 @@
     <text x="330" y="421" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every card has a price</text>
     <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">unquoted</text>
-    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · 'quote'</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.quote</text>
   </g>
-  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">A toggle sends selector.selected when switched on and selector.deselected when switched off</text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A toggle sends selector.selected when switched on and selector.deselected when switched off</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · selector.quote</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unquoted; the cards show package prices</tspan></text>
 </svg>

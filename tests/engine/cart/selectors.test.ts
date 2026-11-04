@@ -283,7 +283,7 @@ describe('selectors', () => {
     await engine.start();
     await engine.selectors.register('offer', CARDS, 'offer');
     await flush();
-    expect(errors).toEqual(['quote']);
+    expect(errors).toEqual(['selector.quote']);
     expect(price(engine, 'bundle.one.price')).toBe('$49.00');
   });
 });

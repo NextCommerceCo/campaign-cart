@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="orders-lifecycle-title orders-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="orders-lifecycle-title orders-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="orders-lifecycle-title">Order lifecycle</title>
   <desc id="orders-lifecycle-desc">order.created on the checkout page. Paid at once, the next page loads the order (order.loaded, with purchase the first time). When the order is paid at a payment gateway, the shopper comes back: paid, the order page loads it (order.loaded) and the cart kept for the gateway is emptied; failed, the failure page sends order.failed with stage payment, then order.loaded without purchase, and the cart is kept.</desc>
   <defs>
@@ -33,5 +33,6 @@
     <text x="620" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.failed</text>
     <text x="620" y="436" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">stage: 'payment'</text>
   </g>
-  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">order.loaded carries purchase once, the first time the order is loaded paid</text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">purchase comes once, when a paid order first loads · a failed gateway payment is not an sdk.error</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · order.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the page has no order values</tspan></text>
 </svg>

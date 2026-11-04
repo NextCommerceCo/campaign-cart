@@ -21,3 +21,11 @@ group: 'Event Reference/Orders'
 | `created`        | It must be paid at a payment gateway                     | `at the gateway` | none                                                                                                 |
 | `at the gateway` | Paid; the order page loads it                            | `loaded`         | `order.loaded` (with `purchase` the first time); the cart kept for it is emptied without cart events |
 | `at the gateway` | The payment fails; the shopper lands on the failure page | `payment failed` | `order.failed` (`stage: 'payment'`), `order.loaded` without `purchase`; the cart is kept             |
+
+## Errors
+
+Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
+
+| `action`     | When                                       | What the SDK does next         |
+| ------------ | ------------------------------------------ | ------------------------------ |
+| `order.load` | A post-purchase page cannot load the order | The page shows no order values |

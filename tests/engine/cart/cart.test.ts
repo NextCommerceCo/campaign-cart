@@ -103,10 +103,11 @@ describe('cart', () => {
     await engine.cart.setGroup('toggle:9', null, { dismiss: true });
     expect(engine.getState().cart.dismissed).toEqual(['toggle:9']);
   });
-  it('removes package ids the campaign does not have', async () => {
+  it('removes package ids the campaign does not have, with a warning rather than an error', async () => {
     const { engine } = makeEngine();
     const errors: unknown[] = [];
     engine.on('sdk.error', (e) => errors.push(e.data));
+    const warn = vi.spyOn(engine.log, 'warn').mockImplementation(() => {});
     void engine.cart.setGroup('items', {
       lines: [
         { packageId: 1, quantity: 1 },
@@ -117,7 +118,8 @@ describe('cart', () => {
     await engine.start();
     await flush();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
-    expect(errors).toHaveLength(1);
+    expect(errors).toEqual([]);
+    expect(warn).toHaveBeenCalledWith('removed package ids the campaign does not have: 404');
   });
   it('announces shipping and selection changes with their data', async () => {
     const { engine } = makeEngine();

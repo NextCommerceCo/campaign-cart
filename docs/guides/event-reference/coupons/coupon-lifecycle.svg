@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" width="720" height="450" role="img" aria-labelledby="coupons-lifecycle-title coupons-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 482" width="720" height="482" role="img" aria-labelledby="coupons-lifecycle-title coupons-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="coupons-lifecycle-title">Coupon lifecycle</title>
   <desc id="coupons-lifecycle-desc">A code is entered and checked against the cart. When it takes money off, or the cart is still empty, it is applied (coupon.applied, then cart.updated). When it takes nothing off it is denied (coupon.denied) and not kept. A code applied to an empty cart is checked after the first price and denied then if it takes nothing off (coupon.denied, cart.updated). Removing an applied code sends coupon.removed.</desc>
   <defs>
@@ -33,4 +33,5 @@
     <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">denied</text>
     <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">coupon.denied</text>
   </g>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · coupon.check</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the code is not applied; applyCoupon resolves false</tspan></text>
 </svg>

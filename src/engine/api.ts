@@ -2,6 +2,7 @@ import type { Logger } from './log';
 import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
 import type { Line, CartSummary } from './cart/types';
 import type { CheckoutError, OpenCart, Order, Send } from './types';
+import type { ErrorCode } from './events';
 
 export class ApiError extends Error {
   constructor(
@@ -93,6 +94,18 @@ const byStatus = (status: number) =>
       : status >= 500
         ? 'server'
         : 'failed';
+
+export function errorCode(err: unknown): { code: ErrorCode; status?: number } {
+  if (err instanceof ApiError) {
+    const body = (err.body && typeof err.body === 'object' ? err.body : {}) as ErrorBody;
+    if (body.payment_response_code || body.payment_details) return { code: 'declined', status: err.status };
+    const code = byStatus(err.status);
+    return { code: code === 'failed' ? 'rejected' : code, status: err.status };
+  }
+  if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError'))
+    return { code: 'timeout' };
+  return { code: 'network' };
+}
 
 export function orderError(err: unknown): CheckoutError {
   if (!(err instanceof ApiError)) return { code: 'failed' };

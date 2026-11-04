@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 482" width="720" height="482" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="promotions-lifecycle-title">Promotion lifecycle</title>
   <desc id="promotions-lifecycle-desc">The exit-intent popup waits until the mouse leaves the page (or, on a phone with mobileScrollTrigger, a scroll back up). It opens (promotion.viewed). A click on its image or a template button sends promotion.clicked and closes it. Esc or the overlay sends promotion.closed with reason dismissed; the close button sends it with reason closed. It can open again up to maxTriggers times in the session.</desc>
   <defs>
@@ -28,5 +28,5 @@
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">closed</text>
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.closed</text>
   </g>
-  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">It can open again, up to maxTriggers times a session · reason: dismissed (Esc, overlay) or closed</text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">It can open again, up to maxTriggers times a session · reason: dismissed (Esc, overlay) or closed</tspan></text>
 </svg>

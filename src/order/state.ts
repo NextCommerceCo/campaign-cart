@@ -220,7 +220,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       } catch (err) {
         if (current !== seq) return;
         set({ status: 'failed', error: orderError(err) });
-        ctx.fail('order', err);
+        ctx.fail('order.load', err);
       }
     },
 
@@ -260,7 +260,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       } catch (err) {
         const error = orderError(err);
         set({ status: 'ready', error });
-        ctx.fail('upsell', err);
+        ctx.fail('upsell.add', err);
         ctx.emit('upsell.failed', {
           ref_id: refId,
           code: error.code,

@@ -25,6 +25,22 @@ export interface Contact {
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
 
+export type ErrorAction =
+  | 'campaign.load'
+  | 'cart.calculate'
+  | 'selector.quote'
+  | 'coupon.check'
+  | 'contact.save'
+  | 'address.rules'
+  | 'address.autocomplete'
+  | 'order.create'
+  | 'order.load'
+  | 'upsell.add'
+  | 'storage.write';
+
+export type ErrorCode =
+  'network' | 'timeout' | 'server' | 'rejected' | 'declined' | 'auth' | 'too_many_requests' | 'unavailable';
+
 /** A discount on the cart's products or on its shipping. Amounts are in the cart's currency. */
 export interface Discount {
   /** The offer's name. */
@@ -186,12 +202,18 @@ export interface EventMap {
     lines: Line[];
   };
   /**
-   * An action failed.
+   * A step failed. The SDK lifecycle lists each `action`, what the SDK does next, and the event
+   * sent with it.
    * @group SDK
    */
   'sdk.error': {
-    /** `load`, `calculate`, `quote`, `coupon`, `order`, `upsell`, or `storage` (blocked or full). */
-    action: string;
+    /** The step that failed, named like the events. */
+    action: ErrorAction;
+    /** Why: `network` (no answer), `timeout`, `server` (5xx), `rejected` (4xx), `declined` (the payment gateway), `auth` (401, 403), `too_many_requests` (429), or `unavailable` (storage blocked or full). */
+    code: ErrorCode;
+    /** The HTTP status, when the API answered. */
+    status?: number;
+    /** For developers and logs, never for shoppers. */
     message: string;
   };
   /** @internal */

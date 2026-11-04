@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 474" width="720" height="474" role="img" aria-labelledby="upsells-lifecycle-title upsells-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 502" width="720" height="502" role="img" aria-labelledby="upsells-lifecycle-title upsells-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="upsells-lifecycle-title">Upsell lifecycle</title>
   <desc id="upsells-lifecycle-desc">An offer is shown (upsell.viewed). Accepting it adds it to the order: upsell.accepted with the updated order, then the next page. Skipping it sends upsell.skipped and moves on. When adding the offer fails, such as a decline, upsell.failed is sent and the shopper can accept again. An offer already accepted on that page is not charged again.</desc>
   <defs>
@@ -31,9 +31,11 @@
     <rect x="540" y="16" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
     <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">skipped</text>
     <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.skipped</text>
-    <rect x="540" y="196" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <rect x="540" y="196" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
-    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
+    <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.add</text>
+    <text x="620" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.failed</text>
   </g>
-  <text x="360" y="466" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">An offer already accepted on that page is not charged again</text>
+  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">An offer already accepted on that page is not charged again</tspan></text>
+  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · upsell.add</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed, with upsell.failed; the shopper can accept again</tspan></text>
 </svg>

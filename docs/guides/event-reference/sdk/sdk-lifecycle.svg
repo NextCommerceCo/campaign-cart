@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 294" width="720" height="294" role="img" aria-labelledby="sdk-lifecycle-title sdk-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 342" width="720" height="342" role="img" aria-labelledby="sdk-lifecycle-title sdk-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="sdk-lifecycle-title">SDK lifecycle</title>
   <desc id="sdk-lifecycle-desc">starting, then ready once the campaign is in, from the tab's copy or the API (sdk.ready, once). When the campaign cannot load and the tab has no copy, the SDK stops at failed (sdk.error with action load) and never sends sdk.ready. Once ready, an action that fails sends sdk.error and the SDK stays ready.</desc>
   <defs>
@@ -22,7 +22,9 @@
     <text x="330" y="241" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">values are on the page</text>
     <rect x="540" y="16" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
     <text x="620" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
-    <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · 'load'</text>
+    <text x="620" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">campaign.load</text>
   </g>
-  <text x="360" y="286" text-anchor="middle" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">Once ready, a failed action sends sdk.error and the SDK stays ready</text>
+  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Once ready, a failed step sends sdk.error and the SDK stays ready</tspan></text>
+  <text x="360" y="308" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · campaign.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed, when the tab has no copy of the campaign</tspan></text>
+  <text x="360" y="328" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · storage.write</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → works on without saving across pages</tspan></text>
 </svg>

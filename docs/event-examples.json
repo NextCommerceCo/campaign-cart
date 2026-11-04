@@ -8,7 +8,8 @@
     ]
   },
   "sdk.error": {
-    "action": "load",
+    "action": "campaign.load",
+    "code": "network",
     "message": "Failed to fetch"
   },
   "selector.selected": {

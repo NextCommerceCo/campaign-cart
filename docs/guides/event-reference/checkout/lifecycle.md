@@ -23,7 +23,18 @@ group: 'Event Reference/Checkout'
 | `stopped` | The shopper fixes it and submits again                         | `filling` | none                                                                                                                              |
 | `filling` | A submit passes its checks, and the card is tokenized          | `placing` | `checkout.submitted` (`valid: true`)                                                                                              |
 | `placing` | The server creates the order                                   | `placed`  | `order.created`                                                                                                                   |
-| `placing` | The server refuses the order                                   | `filling` | `sdk.error` (`action: 'order'`), `order.failed` (`stage: 'order'`)                                                                |
+| `placing` | The server refuses the order                                   | `filling` | `sdk.error` (`order.create`), `order.failed` (`stage: 'order'`)                                                                   |
 
 A created order empties the cart without cart events, unless the shopper pays at a payment
 gateway; then the cart is kept until the paid order is loaded. See the order lifecycle.
+
+## Errors
+
+Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
+
+| `action`               | When                                              | What the SDK does next                                  |
+| ---------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `contact.save`         | The Open Cart cannot be created                   | Tries again when the shopper leaves a field             |
+| `address.rules`        | The country list or a country's rules cannot load | Uses the campaign's countries and simpler checks        |
+| `address.autocomplete` | Address suggestions cannot load                   | Shows no suggestions                                    |
+| `order.create`         | The server refuses the order                      | Back to filling with `order.failed`; the cart unfreezes |

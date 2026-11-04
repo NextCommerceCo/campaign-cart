@@ -90,14 +90,25 @@ const loopUp = (from, to, title, events = [], { x = 170, fromH = H } = {}) => {
   ];
 };
 
-function svg(name, { title, desc, rows, boxes, parts, note }) {
-  const height = rowY(rows - 1) + 58 + (note ? 40 : 16) + Math.max(...boxes.map((b) => b.extra ?? 0), 0);
+/** Each `[action, result]` error is a line under the drawing: `sdk.error · action → result`. */
+function svg(name, { title, desc, rows, boxes, parts, note, errors = [] }) {
+  const top = rowY(rows - 1) + 58 + 34;
+  const lines = [
+    ...(note ? [`<tspan style="fill: ${C.muted}">${esc(note)}</tspan>`] : []),
+    ...errors.map(
+      ([action, result]) =>
+        `<tspan style="fill: ${C.failure}; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · ${esc(action)}</tspan><tspan style="fill: ${C.muted}"> → ${esc(result)}</tspan>`,
+    ),
+  ];
+  const height = top + (lines.length ? lines.length * 20 - 6 : -18);
   const id = `${name}-lifecycle`;
   const drawn = boxes.map((b) => box(b).svg).join('\n    ');
   const body = parts().flat().join('\n    ').replaceAll('#ARROW', `#${id}-arrow`);
-  const footer = note
-    ? `\n  <text x="360" y="${height - 8}" text-anchor="middle" style="fill: ${C.muted}; font-size: 12px">${esc(note)}</text>`
-    : '';
+  const footer = lines
+    .map(
+      (line, i) => `\n  <text x="360" y="${top + i * 20}" text-anchor="middle" style="font-size: 12px">${line}</text>`,
+    )
+    .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 ${height}" width="720" height="${height}" role="img" aria-labelledby="${id}-title ${id}-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="${id}-title">${esc(title)}</title>
   <desc id="${id}-desc">${esc(desc)}</desc>
@@ -127,7 +138,13 @@ const LIFECYCLES = {
       { row: 0, title: 'empty', sub: ['no lines'] },
       { row: 1, title: 'calculating', sub: ['prices on the way'], tone: 'active' },
       { row: 2, title: 'priced', sub: ['the cart carries prices'], tone: 'success' },
-      { col: 'side', row: 1, title: 'unpriced', sub: [code('sdk.error'), code('next-price-failed')], tone: 'failure' },
+      {
+        col: 'side',
+        row: 1,
+        title: 'unpriced',
+        sub: [code('cart.calculate'), code('next-price-failed')],
+        tone: 'failure',
+      },
     ],
     parts: () => [
       down(0, 1, 'add a package', ['cart.updated', 'cart.calculating']),
@@ -137,6 +154,7 @@ const LIFECYCLES = {
       loopUp(2, 1, 'a change', ['cart.updated', 'cart.calculating']),
     ],
     note: 'From any state, removing the last package empties the cart: cart.updated · cart.removed',
+    errors: [['cart.calculate', 'unpriced; the summary gets next-price-failed']],
   },
   sdk: {
     title: 'SDK lifecycle',
@@ -145,10 +163,14 @@ const LIFECYCLES = {
     boxes: [
       { row: 0, title: 'starting', sub: ['loading the campaign'] },
       { row: 1, title: 'ready', sub: ['values are on the page'], tone: 'success' },
-      { col: 'side', row: 0, title: 'failed', sub: [code("sdk.error · 'load'")], tone: 'failure' },
+      { col: 'side', row: 0, title: 'failed', sub: [code('campaign.load')], tone: 'failure' },
     ],
     parts: () => [down(0, 1, 'the campaign is in', ['sdk.ready']), toSide(0, 'no campaign')],
-    note: 'Once ready, a failed action sends sdk.error and the SDK stays ready',
+    note: 'Once ready, a failed step sends sdk.error and the SDK stays ready',
+    errors: [
+      ['campaign.load', 'failed, when the tab has no copy of the campaign'],
+      ['storage.write', 'works on without saving across pages'],
+    ],
   },
   selectors: {
     title: 'Selector lifecycle',
@@ -158,7 +180,7 @@ const LIFECYCLES = {
       { row: 0, title: 'picked', sub: [code('selector.selected')] },
       { row: 1, title: 'quoting', sub: ['cards without a quote'], tone: 'active' },
       { row: 2, title: 'quoted', sub: ['every card has a price'], tone: 'success' },
-      { col: 'side', row: 1, title: 'unquoted', sub: [code("sdk.error · 'quote'")], tone: 'failure' },
+      { col: 'side', row: 1, title: 'unquoted', sub: [code('selector.quote')], tone: 'failure' },
     ],
     parts: () => [
       down(0, 1, 'cards need a price', ['selector.calculating']),
@@ -172,6 +194,7 @@ const LIFECYCLES = {
       ],
     ],
     note: 'A toggle sends selector.selected when switched on and selector.deselected when switched off',
+    errors: [['selector.quote', 'unquoted; the cards show package prices']],
   },
   coupons: {
     title: 'Coupon lifecycle',
@@ -193,6 +216,7 @@ const LIFECYCLES = {
         label(SIDE.cx - 12, rowY(1) + 6, 'first price', { anchor: 'end', size: 12 }),
       ],
     ],
+    errors: [['coupon.check', 'the code is not applied; applyCoupon resolves false']],
   },
   checkout: {
     title: 'Checkout lifecycle',
@@ -224,9 +248,15 @@ const LIFECYCLES = {
       down(2, 3, 'the order is created', ['order.created']),
       toSide(1, 'a check fails'),
       fromSide(1, 'fix and submit'),
-      loopUp(2, 1, 'refused', ['order.failed']),
+      loopUp(2, 1, 'refused', ['order.create', 'order.failed']),
     ],
     note: 'A created order empties the cart without cart events, unless the shopper pays at a payment gateway',
+    errors: [
+      ['contact.save', 'no Open Cart yet; tried again on the next field'],
+      ['address.rules', 'the campaign countries and simpler checks'],
+      ['address.autocomplete', 'no address suggestions'],
+      ['order.create', 'refused: back to filling, with order.failed'],
+    ],
   },
   orders: {
     title: 'Order lifecycle',
@@ -258,7 +288,8 @@ const LIFECYCLES = {
         label(SIDE.cx + 12, rowY(1) + 80, 'payment fails', { size: 12 }),
       ],
     ],
-    note: 'order.loaded carries purchase once, the first time the order is loaded paid',
+    note: 'purchase comes once, when a paid order first loads · a failed gateway payment is not an sdk.error',
+    errors: [['order.load', 'the page has no order values']],
   },
   upsells: {
     title: 'Upsell lifecycle',
@@ -269,7 +300,7 @@ const LIFECYCLES = {
       { row: 1, title: 'adding', sub: ['the offer is posted'], tone: 'active' },
       { row: 2, title: 'accepted', sub: [code('upsell.accepted')], tone: 'success' },
       { col: 'side', row: 0, title: 'skipped', sub: [code('upsell.skipped')] },
-      { col: 'side', row: 1, title: 'failed', sub: [code('upsell.failed')], tone: 'failure' },
+      { col: 'side', row: 1, title: 'failed', sub: [code('upsell.add'), code('upsell.failed')], tone: 'failure' },
     ],
     parts: () => [
       down(0, 1, 'accept'),
@@ -279,6 +310,7 @@ const LIFECYCLES = {
       fromSide(1, 'accept again'),
     ],
     note: 'An offer already accepted on that page is not charged again',
+    errors: [['upsell.add', 'failed, with upsell.failed; the shopper can accept again']],
   },
   promotions: {
     title: 'Promotion lifecycle',

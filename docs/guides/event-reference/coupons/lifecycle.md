@@ -20,3 +20,11 @@ group: 'Event Reference/Coupons'
 | `entered` | The code takes nothing off                                          | `denied`  | `coupon.denied`                                           |
 | `applied` | A code applied to an empty cart takes nothing off once it is priced | `denied`  | `coupon.denied`, `cart.updated`                           |
 | `applied` | The code is removed                                                 | `removed` | `cart.updated`, `coupon.removed`                          |
+
+## Errors
+
+Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
+
+| `action`       | When                       | What the SDK does next                                  |
+| -------------- | -------------------------- | ------------------------------------------------------- |
+| `coupon.check` | A coupon cannot be checked | The code is not applied; `applyCoupon` resolves `false` |

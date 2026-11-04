@@ -86,7 +86,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       set({ rules: { ...state().rules, [code]: rules } });
     } catch (err) {
       set({ rulesDown: true });
-      ctx.fail('country', err);
+      ctx.fail('address.rules', err);
     }
   };
 
@@ -112,7 +112,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       contact = contactKey(now);
       ctx.emit('contact.entered', { ...now, cart: saved });
     } catch (err) {
-      ctx.fail('prospect', err);
+      ctx.fail('contact.save', err);
     } finally {
       prospecting = false;
     }
@@ -277,7 +277,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       try {
         return (await ctx.api.autocomplete(query, country, signal)).results ?? [];
       } catch (err) {
-        if (!signal?.aborted) ctx.fail('autocomplete', err);
+        if (!signal?.aborted) ctx.fail('address.autocomplete', err);
         return [];
       }
     },
@@ -291,7 +291,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       try {
         countries = (await rulesApi.countries()).filter(keep);
       } catch (err) {
-        ctx.fail('countries', err);
+        ctx.fail('address.rules', err);
         countries = (campaign?.available_shipping_countries ?? []).map((c) => ({ code: c.code, name: c.label }));
         countries = countries.filter(keep);
       }
@@ -376,7 +376,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         return order;
       } catch (err) {
         const error = orderError(err);
-        ctx.fail('order', err);
+        ctx.fail('order.create', err);
         ctx.emit('order.failed', {
           stage: 'order',
           code: error.code,
