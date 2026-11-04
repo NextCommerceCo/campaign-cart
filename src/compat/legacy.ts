@@ -1,8 +1,8 @@
 import type { Engine } from '../engine/engine';
 import type { Logger } from '../engine/log';
-import type { CartLine } from '../engine/cart/types';
+import type { ApiLine, CartLine } from '../engine/cart/types';
 import type { EventName } from '../engine/events';
-import type { Campaign, Package, ShippingOption } from '../engine/types';
+import type { Campaign, Package, ShippingOption, State } from '../engine/types';
 import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */
@@ -15,7 +15,7 @@ type Data = Record<string, unknown>;
 export interface LegacyEvent {
   event: EventName;
   when?: (data: Data) => boolean;
-  data?: (data: Data) => unknown;
+  data?: (data: Data, state: State) => unknown;
 }
 
 const exitIntent = ({ image_url, template, action, coupon_code }: Data) => ({
@@ -23,7 +23,7 @@ const exitIntent = ({ image_url, template, action, coupon_code }: Data) => ({
   template,
   ...(action !== undefined && { action, couponCode: coupon_code }),
 });
-const cart: LegacyEvent = { event: 'cart.updated', data: (d) => d.cart };
+const cart: LegacyEvent = { event: 'cart.updated', data: (_, state) => state.cart };
 const shipping: LegacyEvent = {
   event: 'shipping.selected',
   data: (d) => ({ methodId: d.method_id, method: d.method }),
@@ -37,7 +37,11 @@ const submitted: LegacyEvent = { event: 'checkout.submitted', when: (d) => d.val
 const selection = (toggle: boolean): LegacyEvent => ({
   event: 'selector.selected',
   when: (d) => (d.type === 'toggle') === toggle,
-  data: (d) => ({ selectorId: d.selector_id, cardId: d.card_id, items: d.items }),
+  data: (d) => ({
+    selectorId: d.selector_id,
+    cardId: d.card_id,
+    items: (d.lines as ApiLine[]).map((l) => ({ packageId: l.package_id, quantity: l.quantity })),
+  }),
 });
 
 /** @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. */

@@ -190,7 +190,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         (e) => {
           const data = e.data as Record<string, unknown>;
           if (legacy?.when && !legacy.when(data)) return;
-          fn((legacy?.data ? legacy.data(data) : data) as never, envelope(e) as never);
+          fn((legacy?.data ? legacy.data(data, engine.getState()) : data) as never, envelope(e) as never);
         },
         { replay: event !== '*' && REPLAYED.includes(event) },
       );

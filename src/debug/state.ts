@@ -1,7 +1,6 @@
-import { mergeLines } from '../engine/cart/cart';
-import type { ApiLine, CartState } from '../engine/cart/types';
+import type { ApiLine } from '../engine/cart/types';
 import type { Context } from '../engine/engine';
-import type { AnalyticsTrace, EngineEvent, EventName } from '../engine/events';
+import type { AnalyticsTrace, EngineEvent, EventMap, EventName } from '../engine/events';
 
 export type PageKind = 'product' | 'checkout' | 'upsell' | 'receipt' | 'page';
 
@@ -123,8 +122,8 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   const name = (id: number) => ctx.getPackage(id)?.name ?? `package ${id}`;
   let seen = quantities(lines);
   let coupons = ctx.getState().cart.coupons;
-  const cartChanged = (cart: CartState, at: number) => {
-    const merged = mergeLines(cart.groups);
+  const cartChanged = (cart: EventMap['cart.updated'], at: number) => {
+    const merged = cart.lines;
     const now = quantities(merged);
     const marks: Mark[] = [];
     for (const id of new Set([...seen.keys(), ...now.keys()])) {
@@ -146,7 +145,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   const shippingCode = (id: number | undefined) =>
     ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === id)?.code ?? `method ${id}`;
   const on = <K extends EventName>(event: K, fn: (e: EngineEvent<K>) => void) => ctx.on(event, fn, { replay: true });
-  on('cart.updated', (e) => cartChanged(e.data.cart, e.at));
+  on('cart.updated', (e) => cartChanged(e.data, e.at));
   on('cart.calculated', (e) => change({ total: e.data.summary.total, currency: e.data.summary.currency }));
   on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),

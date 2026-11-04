@@ -15,9 +15,9 @@
     "selector_id": "main",
     "type": "bundle",
     "card_id": "one",
-    "items": [
+    "lines": [
       {
-        "packageId": 1,
+        "package_id": 1,
         "quantity": 1
       }
     ]
@@ -96,27 +96,17 @@
     "from_cache": false
   },
   "cart.updated": {
-    "cart": {
-      "groups": {
-        "items": {
-          "lines": [
-            {
-              "packageId": 1,
-              "quantity": 1
-            },
-            {
-              "packageId": 2,
-              "quantity": 1
-            }
-          ],
-          "vouchers": []
-        }
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1
       },
-      "coupons": [],
-      "dismissed": [],
-      "calculating": true,
-      "frozen": false
-    }
+      {
+        "package_id": 2,
+        "quantity": 1
+      }
+    ],
+    "coupons": []
   },
   "cart.calculating": {
     "lines": [

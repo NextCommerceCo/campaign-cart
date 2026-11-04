@@ -8,6 +8,8 @@ export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 export const lineKey = (l: CartLine) =>
   `${l.packageId}|${l.isUpsell ? 1 : 0}|${JSON.stringify(Object.entries(l.properties ?? {}).sort())}`;
 
+export const apiLines = (lines: CartLine[]) => mergeLines({ lines: { lines, vouchers: [] } });
+
 export function mergeLines(groups: Record<string, CartGroup>): ApiLine[] {
   const merged = new Map<string, ApiLine>();
   for (const group of Object.values(groups)) {
@@ -189,7 +191,8 @@ export function createCart(ctx: Context) {
       calculating: hasLines && !!ctx.getState().campaign,
     });
     track(before, prices);
-    ctx.emit('cart.updated', { cart: state() });
+    const { coupons, shippingId } = state();
+    ctx.emit('cart.updated', { lines: mergeLines(state().groups), coupons, shipping_method_id: shippingId });
     return recalculate();
   };
 
@@ -211,7 +214,7 @@ export function createCart(ctx: Context) {
     if (id.startsWith('toggle:') && keep !== !!groups[id])
       ctx.emit(
         keep ? 'selector.selected' : 'selector.deselected',
-        keep ? { selector_id: id, type: 'toggle', items: group!.lines } : { selector_id: id, type: 'toggle' },
+        keep ? { selector_id: id, type: 'toggle', lines: apiLines(group!.lines) } : { selector_id: id, type: 'toggle' },
       );
     if (keep) groups[id] = group;
     else delete groups[id];

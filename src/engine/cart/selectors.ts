@@ -1,4 +1,4 @@
-import { type CartActions, lineKey, mergeLines } from './cart';
+import { apiLines, type CartActions, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
 import { forcedBundle } from '../params';
 import type { CartGroup, CartLine, CartSummary, Selector, SelectorCard, SelectorMode, Slot } from './types';
@@ -90,7 +90,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
         selector_id: id,
         type: typeOf(selector),
         card_id: cardId,
-        items: cardLines(selector, card),
+        lines: apiLines(cardLines(selector, card)),
       });
     }
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
@@ -195,7 +195,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
         selector_id: id,
         type: typeOf(selector),
         card_id: cardId,
-        items: cardLines(get(id)!, card),
+        lines: apiLines(cardLines(get(id)!, card)),
       });
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
@@ -212,7 +212,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
         selector_id: id,
         type: typeOf(selector),
         card_id: card.id,
-        items: cardLines(get(id)!, card),
+        lines: apiLines(cardLines(get(id)!, card)),
       });
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;

@@ -78,7 +78,7 @@ describe('cart', () => {
     const { engine } = makeEngine();
     await engine.start();
     const updated: boolean[] = [];
-    engine.on('cart.updated', (e) => updated.push(e.data.cart.calculating));
+    engine.on('cart.updated', () => updated.push(engine.getState().cart.calculating));
     const pending = engine.cart.addItem(1);
     expect(engine.getState().cart.calculating).toBe(true);
     await pending;
@@ -132,7 +132,7 @@ describe('cart', () => {
     );
     expect(seen).toEqual([
       { method_id: 2 },
-      { selector_id: 'main', type: 'bundle', card_id: 'two', items: [{ packageId: 2, quantity: 1 }] },
+      { selector_id: 'main', type: 'bundle', card_id: 'two', lines: [{ package_id: 2, quantity: 1 }] },
     ]);
   });
   it('announces one price run per burst of changes, and the net change once the cart is priced', async () => {
@@ -203,7 +203,7 @@ describe('cart', () => {
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
     await engine.cart.setGroup('toggle:9', null);
     expect(seen).toEqual([
-      'selector.selected {"selector_id":"toggle:9","type":"toggle","items":[{"packageId":9,"quantity":1}]}',
+      'selector.selected {"selector_id":"toggle:9","type":"toggle","lines":[{"package_id":9,"quantity":1}]}',
       'selector.deselected {"selector_id":"toggle:9","type":"toggle"}',
     ]);
   });

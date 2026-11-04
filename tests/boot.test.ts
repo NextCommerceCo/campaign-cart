@@ -168,7 +168,7 @@ describe('boot', () => {
     );
     const popup = (name: string, data: Record<string, unknown>) => {
       const alias = LEGACY_EVENTS[name]!;
-      return alias.when && !alias.when(data) ? 'skipped' : (alias.data?.(data) ?? data);
+      return alias.when && !alias.when(data) ? 'skipped' : (alias.data?.(data, next.getState()) ?? data);
     };
     const click = { source: 'exit_intent', image_url: 'x.png' };
     const used = { source: 'exit_intent', template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' };

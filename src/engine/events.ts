@@ -1,6 +1,6 @@
 import type { Logger } from './log';
 import type { Attribution } from './attribution';
-import type { ApiLine, CartLine, CartState, CartSummary } from './cart/types';
+import type { ApiLine, CartSummary } from './cart/types';
 import type { Campaign, CheckoutError, OpenCart, Order, OrderLine } from './types';
 
 export interface PromotionDetail {
@@ -105,10 +105,10 @@ export interface EventMap {
     /** `data-next-selector-id`, or the toggle's group. */
     selector_id: string;
     type: SelectorType;
-    /** The picked card's package or id; none for a toggle. */
+    /** The picked card's id; none for a toggle. */
     card_id?: string;
-    /** The lines the selection puts in the cart. */
-    items: CartLine[];
+    /** The lines the selection puts in the cart, at the card's quantity. */
+    lines: ApiLine[];
   };
   /**
    * A toggle is switched off.
@@ -137,8 +137,12 @@ export interface EventMap {
    * @group Carts
    */
   'cart.updated': {
-    /** The whole cart: named groups of lines, coupons, shipping, and the last summary. */
-    cart: CartState;
+    /** Every line in the cart, the same package's lines merged. */
+    lines: ApiLine[];
+    /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
+    coupons: string[];
+    /** The picked shipping method's `ref_id`. */
+    shipping_method_id?: number;
   };
   /**
    * Pricing starts; once for a burst of changes.

@@ -1,4 +1,3 @@
-import { mergeLines } from '../engine/cart/cart';
 import type { Engine } from '../engine/engine';
 import type { SummaryLine } from '../engine/cart/types';
 import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
@@ -206,9 +205,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       legacyExitIntent(e);
       switch (e.name) {
         case 'cart.updated':
-          return mergeLines((e.data as EventMap['cart.updated']).cart.groups).length
-            ? undefined
-            : reportCart([], 'cart.updated');
+          return (e.data as EventMap['cart.updated']).lines.length ? undefined : reportCart([], 'cart.updated');
         case 'cart.calculated':
           reportCart((e.data as EventMap['cart.calculated']).summary.lines, 'cart.calculated');
           return emit('update_cart', cartEcommerce(engine), {
