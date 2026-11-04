@@ -17,7 +17,8 @@ export async function bindOrder(
   engine.subscribe(render);
 
   const { params } = engine.getState().visit;
-  const refId = params.ref_id || params.order_ref_id;
+  const refId =
+    params.ref_id || params.order_ref_id || (params.payment_failed === 'true' ? order.pending() : undefined);
   if (refId) await order.load(refId, location.pathname);
   render();
   return order;

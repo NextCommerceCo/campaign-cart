@@ -270,6 +270,11 @@ export function createOrder(ctx: Context, cart: CartActions) {
       }
     },
 
+    /** The order sent to a payment gateway from this tab: the gateway's failure redirect carries no ref_id. */
+    pending(): string | undefined {
+      return ctx.saved<Partial<CheckoutState>>('checkout')?.pendingRef;
+    },
+
     markReported,
   };
 }

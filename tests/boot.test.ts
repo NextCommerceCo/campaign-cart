@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
 import { boot } from '../src/boot';
+import { createCheckout } from '../src/checkout/state/checkout';
 import { LEGACY_EVENTS } from '../src/compat/legacy';
+import { funnelFromPath, storageScope } from '../src/engine/scope';
 import type { Campaign } from '../src/engine/types';
-import { fakeApi } from './fixtures/api';
+import { fakeApi, json } from './fixtures/api';
 import { campaign } from './fixtures/campaign';
-import { flush } from './fixtures/engine';
+import { flush, makeEngine } from './fixtures/engine';
+import { ORDER } from './fixtures/order';
+import { fakeRules } from './fixtures/rules';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
 
@@ -113,6 +117,35 @@ describe('boot', () => {
     await vi.waitFor(() => expect(paid).toHaveBeenCalledTimes(1));
     expect(paid.mock.calls[0]![0]).toMatchObject({ order: { ref_id: 'R1' } });
     history.replaceState(null, '', '/');
+  });
+
+  it('sends order.failed for the gateway order when a failed payment comes back without a ref_id', async () => {
+    const unpaid = () => json({ ...ORDER, payment_complete_url: 'https://pay.test/R1' });
+    const api = fakeApi({ order: unpaid, getOrder: unpaid });
+    const { engine } = makeEngine({
+      fetch: api.fetch,
+      local: localStorage,
+      session: sessionStorage,
+      storagePrefix: `next:${storageScope(config.apiKey, funnelFromPath('/checkout/'))}`,
+    });
+    await engine.start();
+    await engine.cart.addItem(1);
+    const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+    ['email', 'first_name', 'last_name'].forEach((f, i) =>
+      checkout.setField(f, ['jane@example.com', 'Jane', 'Doe'][i]!),
+    );
+    const pageUrl = `${location.origin}/checkout/`;
+    await checkout.placeOrder({ method: 'paypal', failureUrl: `${pageUrl}?payment_failed=true`, pageUrl });
+
+    history.replaceState(null, '', '/checkout/?payment_failed=true&payment_method=paypal');
+    vi.stubGlobal('fetch', api.fetch);
+    const next = boot(config, Promise.resolve(campaign));
+    const failed = vi.fn();
+    next.on('order.failed', (data) => failed(data));
+    await vi.waitFor(() =>
+      expect(failed).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R1' }),
+    );
+    expect(Object.values(next.getState().cart.groups).flatMap((g) => g.lines)).toHaveLength(1);
   });
 
   it('marks the page when the campaign cannot load, even with a snapshot', async () => {
