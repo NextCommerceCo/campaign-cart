@@ -7,12 +7,12 @@ group: 'Event Reference/Carts'
 
 ![Cart lifecycle: empty, calculating, priced and unpriced, with the events each step sends](cart-lifecycle.svg)
 
-| State         | Means                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `empty`       | No lines                                                     |
-| `calculating` | Lines changed; the server's prices are on the way            |
-| `priced`      | The cart carries the server's prices                         |
-| `unpriced`    | Pricing failed; the cart has no prices until the next change |
+| State         | Means                                                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `empty`       | No lines                                                                                                                                              |
+| `calculating` | Lines changed; the server's prices are on the way                                                                                                     |
+| `priced`      | The cart carries the server's prices                                                                                                                  |
+| `unpriced`    | Pricing failed: events carry no prices, and `data-next-cart-summary` gets `next-price-failed` while it still shows the totals from before that change |
 
 | From                                | What happens                                                            | To            | Events, in order                                                                            |
 | ----------------------------------- | ----------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------- |

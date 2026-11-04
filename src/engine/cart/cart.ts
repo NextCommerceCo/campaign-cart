@@ -263,7 +263,7 @@ export function createCart(ctx: Context) {
     } catch (err) {
       if (current !== seq) return;
       busy = false;
-      set({ calculating: false });
+      set({ calculating: false, priceFailed: true });
       ctx.fail('calculate', err);
       announce();
     }
@@ -292,6 +292,7 @@ export function createCart(ctx: Context) {
       ...patch,
       ...(!hasLines && { summary: undefined }),
       calculating: hasLines && !!ctx.getState().campaign,
+      priceFailed: false,
     });
     track(before, prices);
     ctx.emit('cart.updated', cartOf());

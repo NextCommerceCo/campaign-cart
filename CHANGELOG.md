@@ -33,6 +33,10 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 - **`view_promotion` and `select_promotion` are sent when the exit-intent popup opens and when it is clicked**, and pushed as `dl_view_promotion` and `dl_select_promotion`.
 - **`add_shipping_info` waits for a valid shipping address**, or for a shipping method to be picked.
 
+### Cart summary
+
+- **`data-next-cart-summary` gets `next-price-failed` when the server could not price the cart.** Its totals are still the ones from before that change, so a page can hide them or show a message. The next change prices the cart again and removes the class.
+
 ## [0.4.43] — 2026-10-20 — Shop Pay Support
 
 Shoppers can now pay with Shop Pay, either from the payment options on the checkout form or from the express buttons at the top of the page.
