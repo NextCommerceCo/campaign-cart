@@ -42,7 +42,7 @@ function box({ col = 'main', row, title, sub = [], tone = 'neutral' }) {
   return {
     h,
     svg: `<rect x="${c.x}" y="${y}" width="${c.w}" height="${h}" rx="10" style="fill: ${C.fill}; stroke: ${C[tone]}; stroke-width: 1.5" />
-    <text x="${c.cx}" y="${y + 25}" style="fill: ${C.fg}; font-size: ${title.length > 16 ? 13 : 16}px; font-weight: 600">${esc(title)}</text>
+    <text x="${c.cx}" y="${y + 25}" style="fill: ${C.fg}; font-size: ${title.length > 14 ? 14 : 16}px; font-weight: 600">${esc(title)}</text>
     ${lines}`,
   };
 }
@@ -221,7 +221,7 @@ const LIFECYCLES = {
   checkout: {
     title: 'Checkout lifecycle',
     rowYs: [16, 196, 436, 616],
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and the shopper keeps filling. A submit that passes, or an express button, sends checkout.submitted with valid true and places the order, with the cart frozen. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or still needs its payment completed at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and the shopper keeps filling. A submit that passes, or an express button, sends checkout.submitted with valid true and places the order, with the cart frozen. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
     rows: 4,
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
@@ -240,7 +240,7 @@ const LIFECYCLES = {
       },
       { row: 2, title: 'placing', sub: ['the cart is frozen'], tone: 'waiting' },
       { row: 3, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
-      { col: 'side', row: 2, title: 'completing payment', sub: [code('payment_complete_url')], tone: 'waiting' },
+      { col: 'side', row: 2, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
     ],
     parts: () => {
       const right = MAIN.x + MAIN.w;
@@ -276,7 +276,7 @@ const LIFECYCLES = {
         ],
       ];
     },
-    note: 'A paid order empties the cart without cart events; while its payment is completed the cart is kept',
+    note: 'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
     errors: [
       ['user.save', 'no Open Cart yet; tried again on the next field'],
       ['address.rules', 'the campaign countries and simpler checks'],
