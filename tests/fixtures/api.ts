@@ -21,7 +21,15 @@ export interface FakeApiOptions {
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 
 export const OPEN_CART = {
-  user: { email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe', accepts_marketing: true },
+  user: {
+    email: 'jane@example.com',
+    first_name: 'Jane',
+    last_name: 'Doe',
+    accepts_marketing: true,
+    language: 'en',
+    ip: '203.0.113.7',
+    user_agent: 'Mozilla/5.0 (test)',
+  },
   lines: [{ id: 501, product_id: 11, quantity: 1, product_title: 'Olympus Earbuds', price_incl_tax: '89.00' }],
   discounts: [],
   total_discounts: '0.00',

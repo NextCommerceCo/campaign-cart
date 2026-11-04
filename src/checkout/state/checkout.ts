@@ -2,7 +2,7 @@ import { orderError } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
 import { nextUrl } from '../../engine/params';
-import { EXPRESS_METHODS, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
+import { EXPRESS_METHODS, LANGUAGE, orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
 import {
   ADDRESS,
@@ -15,7 +15,7 @@ import {
   validEmail,
 } from './rules';
 import type { AddressType, User } from '../../engine/events';
-import type { CheckoutError, Order } from '../../engine/types';
+import type { CheckoutError, OpenCart, Order } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
 const PHONE_WAIT = 2000;
@@ -68,7 +68,8 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
 
-  const contactOf = (): User | undefined => {
+  type Entered = Omit<User, 'language' | 'ip' | 'user_agent'>;
+  const contactOf = (): Entered | undefined => {
     const { fields } = state();
     const [email, first_name, last_name] = ['email', 'first_name', 'last_name'].map((n) => fields[n]?.trim() ?? '');
     if (!validEmail(email!) || first_name!.length < 2 || last_name!.length < 2) return;
@@ -82,7 +83,12 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       accepts_marketing,
     };
   };
-  const contactKey = (user?: User) => JSON.stringify(user ?? null);
+  const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);
+  const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => ({
+    language: stored?.language || LANGUAGE,
+    ...(stored?.ip && { ip: stored.ip }),
+    user_agent: stored?.user_agent || ctx.getState().visit.landing?.device || '',
+  });
   let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
   const addresses: Partial<Record<AddressType, string>> = {};
 
@@ -104,7 +110,8 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     if (state().prospectSaved) {
       if (contactKey(now) === contact) return;
       contact = contactKey(now);
-      set({ user: now });
+      const { language, ip, user_agent } = state().user ?? recorded();
+      set({ user: { ...now, language, ...(ip && { ip }), user_agent } });
       ctx.emit('contact.updated', cart.currentCheckout());
       return;
     }
@@ -116,7 +123,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         currency: campaign.currency,
         attribution: ctx.attribution(),
       });
-      set({ prospectSaved: true, openCart: saved, user: now });
+      set({ prospectSaved: true, openCart: saved, user: { ...now, ...recorded(saved.user) } });
       contact = contactKey(now);
       ctx.emit('contact.entered', cart.currentCheckout());
     } catch (err) {

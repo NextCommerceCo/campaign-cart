@@ -8,7 +8,7 @@ import { phoneOf } from './phone';
 import { hasField } from './rules';
 
 export const EXPRESS_METHODS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay'];
-const LANGUAGE = 'en';
+export const LANGUAGE = 'en';
 
 export function paymentCode(word: string): string {
   const code = word.trim().toLowerCase().replace(/-/g, '_');

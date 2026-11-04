@@ -185,7 +185,15 @@ describe('checkout', () => {
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(1);
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { email: 'jane@example.com', first_name: 'Jane' } });
-    const user = { email: 'jane@example.com', first_name: 'Jane', last_name: 'Does', accepts_marketing: true };
+    const user = {
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Does',
+      accepts_marketing: true,
+      language: 'en',
+      ip: '203.0.113.7',
+      user_agent: 'Mozilla/5.0 (test)',
+    };
     expect(saved).toHaveBeenCalledWith(
       expect.objectContaining({ user, billing_same_as_shipping: true, payment_method: 'card_token' }),
     );

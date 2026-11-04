@@ -128,6 +128,8 @@ export interface OpenCart {
   currency: string;
   /** Total price including tax. */
   total_incl_tax: string;
+  /** The shopper as the store recorded them, with the IP and user agent of the request. */
+  user?: { ip?: string | null; user_agent?: string | null; language?: string };
   [field: string]: unknown;
 }
 

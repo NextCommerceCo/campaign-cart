@@ -25,6 +25,12 @@ export interface User {
   phone?: string;
   /** The marketing checkbox, as sent with the Open Cart and the order. */
   accepts_marketing: boolean;
+  /** The language the store keeps for the shopper, such as `en`. */
+  language: string;
+  /** The shopper's IP address, as the store recorded it with the Open Cart. */
+  ip?: string;
+  /** As the store recorded it with the Open Cart, else the browser's. */
+  user_agent: string;
 }
 
 /** A postal address as the shopper entered it, once every field its country requires is valid. */

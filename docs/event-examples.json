@@ -323,7 +323,10 @@
       "email": "jane@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
@@ -374,7 +377,10 @@
       "email": "jane.doe@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
@@ -471,7 +477,10 @@
       "email": "jane@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
@@ -510,7 +519,10 @@
       "email": "jane.doe@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
@@ -561,7 +573,10 @@
       "email": "jane.doe@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
@@ -612,7 +627,10 @@
       "email": "jane.doe@example.com",
       "first_name": "Jane",
       "last_name": "Doe",
-      "accepts_marketing": true
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
     },
     "shipping_address": {
       "first_name": "Jane",
