@@ -1,9 +1,24 @@
-import { Engine } from '../../src/engine/engine';
+import { pageEnvironment } from '../../src/bindings/environment';
+import { Engine, type Environment } from '../../src/engine/engine';
 import type { Visit } from '../../src/engine/attribution';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from './api';
 import { campaign } from './campaign';
 import { MemoryStorage } from './storage';
+
+const HEADLESS: Environment = {
+  page_location: 'https://shop.test/',
+  page_title: 'Olympus',
+  page_referrer: '',
+  browser: {
+    user_agent: 'test',
+    language: 'en-US',
+    timezone: 'UTC',
+    screen: { width: 1280, height: 800 },
+    viewport: { width: 1280, height: 720 },
+    device_type: 'desktop',
+  },
+};
 
 export interface MakeEngine {
   local?: Storage;
@@ -23,6 +38,7 @@ export function makeEngine(opts: MakeEngine = {}) {
   const local = opts.local ?? new MemoryStorage();
   const session = opts.session ?? new MemoryStorage();
   const engine = new Engine({
+    environment: typeof document === 'undefined' ? () => HEADLESS : pageEnvironment,
     apiKey: 'pk_test',
     apiBase: 'https://api.test',
     send: opts.fetch ?? api.fetch,

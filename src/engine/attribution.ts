@@ -1,5 +1,14 @@
 declare const __VERSION__: string;
 
+export const withoutQuery = (url: string) => {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return '';
+  }
+};
+
 export interface Visit {
   landingPage: string;
   referrer: string;

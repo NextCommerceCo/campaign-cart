@@ -149,8 +149,34 @@ function page(event, order, example, version) {
     object: CHECKOUT_STEPS.includes(event.name.split('.')[0]) ? 'checkout' : event.name.split('.')[0],
     data: example,
     created_at: '2026-11-04T08:30:00.000Z',
-    campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
-    session_id: '0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d',
+    context: {
+      page_location: 'https://shop.example/olympus/',
+      page_title: 'Olympus Earbuds',
+      page_referrer: 'https://www.facebook.com/',
+      campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+      session_id: '0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d',
+      attribution: {
+        utm_source: 'facebook',
+        funnel: 'Olympus',
+        metadata: {
+          landing_page: 'https://shop.example/olympus/',
+          referrer: 'https://www.facebook.com/',
+          device: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+          device_type: 'mobile',
+          domain: 'shop.example',
+          sdk_version: version,
+          conversion_timestamp: 1793779800000,
+        },
+      },
+      browser: {
+        user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+        language: 'en-US',
+        timezone: 'America/New_York',
+        screen: { width: 390, height: 844 },
+        viewport: { width: 390, height: 664 },
+        device_type: 'mobile',
+      },
+    },
     sdk_version: version,
   };
   return `---

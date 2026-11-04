@@ -1,10 +1,9 @@
-import { pageContext } from '../analytics/context';
 import { cents, currency, ecommerce } from '../analytics/ecommerce';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
 import type { EngineEvent } from '../engine/events';
 import type {
-  AnalyticsContext,
+  EventContext,
   AnalyticsEvent,
   AnalyticsName,
   AnalyticsTrace,
@@ -102,7 +101,7 @@ export function startLegacyDataLayer(
     }
   };
 
-  const send = (name: string, id: string, time: string, context: AnalyticsContext, data: object) => {
+  const send = (name: string, id: string, time: string, context: EventContext, data: object) => {
     const event = transform({
       event: name,
       event_id: id,
@@ -111,6 +110,10 @@ export function startLegacyDataLayer(
       page_location: context.page_location,
       page_title: context.page_title,
       page_referrer: context.page_referrer,
+      user_agent: context.browser.user_agent,
+      screen_resolution: `${context.browser.screen.width}x${context.browser.screen.height}`,
+      viewport_size: `${context.browser.viewport.width}x${context.browser.viewport.height}`,
+      session_id: engine.tabId(),
       campaign_id: context.campaign && String(context.campaign.id),
       campaign_name: context.campaign?.name,
       campaign_currency: context.campaign?.currency,
@@ -190,7 +193,7 @@ export function startLegacyDataLayer(
   const exitIntent = (trigger: EventName, name: string, data: object) => {
     const event = `dl_exit_intent_${name}`;
     const id = newId();
-    send(event, id, new Date().toISOString(), pageContext(engine), { event_category: 'engagement', ...data });
+    send(event, id, new Date().toISOString(), engine.eventContext(), { event_category: 'engagement', ...data });
     const reason = 'Data layer only: there is no analytics event';
     const trace: AnalyticsTrace = { trace: 'analytics', trigger, name: event, sent: true, reason, id };
     engine.log.debug(`analytics ${event} sent: ${reason}`, trace);

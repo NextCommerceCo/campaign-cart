@@ -226,15 +226,35 @@ export type AnalyticsName =
   | 'view_promotion'
   | 'select_promotion';
 
-export interface AnalyticsContext {
+/** The browser an event happened in, read when the event is sent. */
+export interface Browser {
+  user_agent: string;
+  /** The browser's language, such as `th-TH`. The campaign's is `campaign.language`. */
+  language: string;
+  /** IANA time zone, such as `Asia/Bangkok`. */
+  timezone: string;
+  /** The screen, in CSS pixels. */
+  screen: { width: number; height: number };
+  /** The window's inner size, in CSS pixels. */
+  viewport: { width: number; height: number };
+  /** `mobile` when the main pointer is coarse (a finger). */
+  device_type: 'mobile' | 'desktop';
+}
+
+/** Where, for which campaign and in which browser an event happened: the same on SDK and tracking events. */
+export interface EventContext {
+  /** Origin and path, without the query string. */
   page_location: string;
   page_title: string;
+  /** Without the query string. */
   page_referrer: string;
-  /** As in the event envelope. */
+  /** Once the campaign has loaded. */
   campaign?: EventCampaign;
-  /** The campaign session, as in the event envelope. */
+  /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
   session_id: string;
+  /** As sent with the Open Cart and the order; URLs in `metadata` lose their query string. */
   attribution: Attribution;
+  browser: Browser;
 }
 
 export interface AnalyticsEvent {
@@ -242,7 +262,7 @@ export interface AnalyticsEvent {
   id: string;
   time: string;
   params: Record<string, unknown>;
-  context: AnalyticsContext;
+  context: EventContext;
 }
 
 export interface AnalyticsTrace {

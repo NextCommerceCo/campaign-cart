@@ -180,4 +180,34 @@ describe('Engine', () => {
     ]);
     expect(calls.every((e) => e.level === 'debug' && e.data === undefined)).toBe(true);
   });
+
+  it('keeps one tab id for every page of the tab, and a new one in another tab', () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine.tabId();
+    expect(first).toMatch(/^[0-9a-f]{32}$/);
+    expect(makeEngine({ session }).engine.tabId()).toBe(first);
+    expect(makeEngine().engine.tabId()).not.toBe(first);
+    const blocked = makeEngine({ session: new MemoryStorage('always') }).engine;
+    expect(blocked.tabId()).toBe(blocked.tabId());
+  });
+
+  it('describes the page, campaign, session, attribution and browser of every event', async () => {
+    const { engine } = makeEngine({
+      visit: {
+        landingPage: 'https://shop.test/?email=jane@x.com',
+        referrer: '',
+        device: 'test',
+        deviceType: 'desktop',
+      },
+    });
+    await engine.start();
+    const context = engine.eventContext();
+    expect(context).toMatchObject({
+      page_location: 'https://shop.test/',
+      campaign: { id: 1310, name: 'Olympus' },
+      session_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      attribution: { metadata: { landing_page: 'https://shop.test/' } },
+      browser: { user_agent: 'test', timezone: 'UTC', screen: { width: 1280, height: 800 } },
+    });
+  });
 });
