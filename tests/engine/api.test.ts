@@ -10,6 +10,10 @@ describe('errorCode', () => {
     expect(api(401)).toEqual({ code: 'auth', status: 401 });
     expect(api(429)).toEqual({ code: 'too_many_requests', status: 429 });
     expect(api(400, { payment_response_code: '51' })).toEqual({ code: 'declined', status: 400 });
+    expect(errorCode(Object.assign(new Error('campaign request failed: 403'), { status: 403 }))).toEqual({
+      code: 'auth',
+      status: 403,
+    });
     expect(errorCode(new DOMException('aborted', 'AbortError'))).toEqual({ code: 'timeout' });
     expect(errorCode(new TypeError('Failed to fetch'))).toEqual({ code: 'network' });
   });

@@ -15,7 +15,11 @@ if (!config.apiKey) {
 } else {
   const campaign = fetch(campaignUrl(config.apiBase, config.currency), {
     headers: { Authorization: config.apiKey },
-  }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`campaign request failed: ${r.status}`))));
+  }).then((r) =>
+    r.ok
+      ? r.json()
+      : Promise.reject(Object.assign(new Error(`campaign request failed: ${r.status}`), { status: r.status })),
+  );
   campaign.catch(() => {});
 
   const parsed =

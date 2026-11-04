@@ -102,11 +102,12 @@ const byStatus = (status: number) =>
         : 'failed';
 
 export function errorCode(err: unknown): { code: ErrorCode; status?: number } {
-  if (err instanceof ApiError) {
-    const body = (err.body && typeof err.body === 'object' ? err.body : {}) as ErrorBody;
-    if (body.payment_response_code || body.payment_details) return { code: 'declined', status: err.status };
-    const code = byStatus(err.status);
-    return { code: code === 'failed' ? 'rejected' : code, status: err.status };
+  if (err instanceof Error && 'status' in err && typeof err.status === 'number') {
+    const status = err.status;
+    const body = (err instanceof ApiError && err.body && typeof err.body === 'object' ? err.body : {}) as ErrorBody;
+    if (body.payment_response_code || body.payment_details) return { code: 'declined', status };
+    const code = byStatus(status);
+    return { code: code === 'failed' ? 'rejected' : code, status };
   }
   if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError'))
     return { code: 'timeout' };
