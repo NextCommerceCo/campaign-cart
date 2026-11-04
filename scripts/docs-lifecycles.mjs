@@ -108,7 +108,7 @@ const loopUp = (from, to, title, events = [], { x = 170, fromH = H, at = 29 } = 
 function svg(name, { title, desc, rows, boxes, parts, note, errors = [] }) {
   const top = Math.max(...boxes.map((b) => rowY(b.row) + box(b).h)) + 34;
   const lines = [
-    ...(note ? [`<tspan style="fill: ${C.muted}">${esc(note)}</tspan>`] : []),
+    ...[note ?? []].flat().map((line) => `<tspan style="fill: ${C.muted}">${esc(line)}</tspan>`),
     ...errors.map(
       ([action, result]) =>
         `<tspan style="fill: ${C.failure}; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · ${esc(action)}</tspan><tspan style="fill: ${C.muted}"> → ${esc(result)}</tspan>`,
@@ -234,7 +234,7 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order sends order.created once. Without a payment_complete_url it is paid and the shopper goes to the next page; with one the shopper is redirected there to pay (PayPal, 3-D Secure, …): paid, the gateway sends them to the next page; failed, back to the checkout with the cart kept (order.failed). The next page loads the paid order and sends order.paid, once per order. A paid order empties the cart.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order sends order.created once. Without a payment_complete_url it is paid and the shopper is redirected to the next page (next-success-url, or the order status page); with one the shopper is redirected there to pay (PayPal, 3-D Secure, …): paid, the gateway redirects them to the next page; failed, back to the checkout with the cart kept (order.failed). The next page loads the paid order and sends order.paid, once per order. A paid order empties the cart.',
     rows: 6,
     rowYs: [16, 196, 336, 516, 601, 766],
     boxes: [
@@ -272,7 +272,7 @@ const LIFECYCLES = {
             ['no ', false],
             ['payment_complete_url', true],
           ]),
-          label(MAIN.cx + 14, fork + 76, 'the next page'),
+          label(MAIN.cx + 14, fork + 76, 'redirected to the next page'),
         ],
         [
           arrow(`M${MAIN.cx + 12} ${fork} H${SIDE.x - 6}`),
@@ -281,7 +281,8 @@ const LIFECYCLES = {
         ],
         [
           arrow(`M${SIDE.cx} ${gateway + H} V${rowY(5) + 29} H${right + 6}`),
-          label((right + SIDE.cx) / 2, rowY(5) + 21, 'paid: the next page', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.cx) / 2, rowY(5) + 5, 'paid: redirected', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.cx) / 2, rowY(5) + 21, 'to the next page', { anchor: 'middle', size: 12 }),
         ],
         [
           arrow(`M${SIDE.cx} ${gateway} V${filling + 29} H${right + 6}`, { dashed: true }),
@@ -290,7 +291,10 @@ const LIFECYCLES = {
         ],
       ];
     },
-    note: 'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
+    note: [
+      'The next page is next-success-url, or the order status page; it loads the order and sends order.paid',
+      'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
+    ],
     errors: [
       ['user.save', 'no Open Cart yet; tried again on the next field'],
       ['address.rules', 'the campaign countries and simpler checks'],
