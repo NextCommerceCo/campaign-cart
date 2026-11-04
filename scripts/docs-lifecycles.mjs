@@ -220,24 +220,11 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    rowYs: [16, 196, 436, 616],
     desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and the shopper keeps filling. A submit that passes, or an express button, sends checkout.submitted with valid true and places the order, with the cart frozen. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
     rows: 4,
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
-      {
-        row: 1,
-        title: 'filling',
-        sub: [
-          'user.created',
-          'user.updated',
-          'address.entered',
-          'address.updated',
-          'shipping.selected',
-          'payment.selected',
-        ].map(code),
-        tone: 'active',
-      },
+      { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
       { row: 2, title: 'placing', sub: ['the cart is frozen'], tone: 'waiting' },
       { row: 3, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
       { col: 'side', row: 2, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
@@ -249,14 +236,12 @@ const LIFECYCLES = {
       return [
         down(0, 1, 'the shopper fills the form'),
         [
-          arrow(`M${right} ${filling + 30} H470 V${filling + 72} H${right + 6}`),
-          label(482, filling + 40, 'a check fails', { size: 12 }),
-          label(482, filling + 57, 'checkout.submitted', { code: true }),
-          label(482, filling + 73, 'valid: false', { code: true }),
+          arrow(`M400 ${filling} V${filling - 22} H470 V${filling + 16} H${right + 6}`),
+          label(482, filling - 14, 'a check fails', { size: 12 }),
+          label(482, filling + 3, 'checkout.submitted', { code: true }),
+          label(482, filling + 19, 'valid: false', { code: true }),
         ],
-        down(1, 2, 'a submit passes, or an express button', ['checkout.submitted', 'valid: true'], {
-          boxH: H + 75,
-        }),
+        down(1, 2, 'a submit passes, or an express button', ['checkout.submitted', 'valid: true']),
         loopUp(2, 1, 'refused', ['order.failed']),
         down(2, 3, 'the order is paid', ['order.created']),
         [
@@ -270,9 +255,9 @@ const LIFECYCLES = {
           label(SIDE.cx - 12, gateway + H + 67, 'order.loaded', { anchor: 'end', code: true }),
         ],
         [
-          arrow(`M${SIDE.cx} ${gateway} V${filling + 105} H${right + 6}`, { dashed: true }),
-          label(500, filling + 99, 'payment fails', { size: 12 }),
-          label(500, filling + 121, 'order.failed', { code: true }),
+          arrow(`M${SIDE.cx} ${gateway} V${filling + 44} H${right + 6}`, { dashed: true }),
+          label(500, filling + 38, 'payment fails', { size: 12 }),
+          label(500, filling + 60, 'order.failed', { code: true }),
         ],
       ];
     },
