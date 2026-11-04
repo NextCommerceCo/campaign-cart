@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';
-import { publicCoupon } from '../../../src/engine/cart/cart';
 import type { EventMap } from '../../../src/engine/events';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
@@ -229,40 +228,17 @@ describe('cart', () => {
     expect(cart).toMatchObject({ coupons: ['SAVE10'], currency: 'USD', subtotal: 49, total: 39 });
   });
 
-  it('announces a coupon applied, removed or denied, with what it takes off', async () => {
+  it('announces a coupon applied, removed or denied', async () => {
     const { engine } = makeEngine();
     await engine.start();
     await engine.cart.addItem(1);
-    const seen: unknown[] = [];
-    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push([e.name, e.data]));
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(`${e.name} ${(e.data as { code: string }).code}`));
     await engine.cart.applyCoupon('nope');
     await engine.cart.applyCoupon('save10');
     await engine.cart.removeCoupon('save10');
     await engine.cart.removeCoupon('save10');
-    const discount = { name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 };
-    expect(seen).toEqual([
-      ['coupon.denied', { code: 'NOPE' }],
-      ['coupon.applied', { code: 'SAVE10', discount }],
-      ['coupon.removed', { code: 'SAVE10', discount }],
-    ]);
-  });
-
-  it('counts what a coupon takes off the shipping in its discount', async () => {
-    const { engine } = makeEngine();
-    await engine.start();
-    await engine.cart.addItem(1);
-    const priced = engine.getState().cart.summary!;
-    const off = (amount: string) => ({ offer_id: 11, name: 'Ship free', description: 'SHIPFREE', amount });
-    const summary = {
-      ...priced,
-      lines: priced.lines.map((l) => ({ ...l, discounts: [off('2.00')] })),
-      shipping_method: { ...priced.shipping_method!, original_price: '4.99', discounts: [off('4.99')] },
-    };
-    expect(publicCoupon(engine.getState(), 'SHIPFREE', summary)).toEqual({
-      code: 'SHIPFREE',
-      discount: { name: 'Ship free', amount: 6.99, source: 'coupon', code: 'SHIPFREE', offer_id: 11 },
-    });
-    expect(publicCoupon(engine.getState(), 'SHIPFREE')).toEqual({ code: 'SHIPFREE' });
+    expect(seen).toEqual(['coupon.denied NOPE', 'coupon.applied SAVE10', 'coupon.removed SAVE10']);
   });
 
   it('announces a toggle switched on and off, but not a change of its quantity', async () => {
