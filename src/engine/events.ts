@@ -45,35 +45,35 @@ export interface Subscription {
   interval: 'day' | 'month';
   /** How many `interval`s between renewals. */
   interval_count: number;
-  /** What each renewal charges, after discounts. Once priced. */
+  /** What each renewal charges, after discounts. @priced */
   price?: number;
-  /** What each renewal charges before discounts. Once priced. */
+  /** What each renewal charges before discounts. @priced */
   original_price?: number;
 }
 
 /** A line of the cart. Its prices are there once the server priced the cart. */
 export interface CartItem extends Line {
-  /** The product in the store. From the campaign. */
+  /** The product in the store. @campaign */
   product_id?: number;
-  /** The product's name as customers see it, as on an order line. From the campaign. */
+  /** The product's name as customers see it, as on an order line. @campaign */
   product_title?: string;
-  /** The product variant. From the campaign. */
+  /** The product variant, for a product with variants. @campaign */
   variant_id?: number;
-  /** The variant's name, such as `Black / M`. From the campaign. */
+  /** The variant's name, such as `Black / M`, for a product with variants. @campaign */
   variant_title?: string;
-  /** The package's image URL. From the campaign. */
+  /** The package's image URL. @campaign */
   image?: string;
-  /** What one package costs after discounts. Once priced. */
+  /** What one package costs after discounts. @priced */
   price?: number;
-  /** What one package costs before discounts; equal to `price` when nothing is taken off. Once priced. */
+  /** What one package costs before discounts; equal to `price` when nothing is taken off. @priced */
   original_price?: number;
-  /** The discount on the line. Once priced. */
+  /** The discount on the line. @priced */
   total_discount?: number;
-  /** `price × quantity`. Once priced. */
+  /** `price × quantity`. @priced */
   total?: number;
-  /** The discounts on the line. Once priced. */
+  /** The discounts on the line. @priced */
   discounts?: Discount[];
-  /** For a package billed again every interval. */
+  /** For a package billed again every interval. @campaign */
   subscription?: Subscription;
 }
 
@@ -81,15 +81,15 @@ export interface CartItem extends Line {
 export interface ShippingMethod {
   /** The method's `ref_id`. */
   id: number;
-  /** Such as `standard`. */
+  /** Such as `standard`. @campaign */
   code?: string;
-  /** The method's name. Once priced. */
+  /** The method's name. @priced */
   name?: string;
-  /** What shipping costs after discounts; `0` is free shipping. Once priced. */
+  /** What shipping costs after discounts; `0` is free shipping. @priced */
   price?: number;
-  /** What shipping costs before discounts. Once priced. */
+  /** What shipping costs before discounts. @priced */
   original_price?: number;
-  /** The discounts on shipping, such as a free-shipping offer. Once priced. */
+  /** The discounts on shipping, such as a free-shipping offer. @priced */
   discounts?: Discount[];
 }
 
@@ -102,17 +102,17 @@ export interface Cart {
   lines: CartItem[];
   /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
   coupons: string[];
-  /** ISO 4217, such as `USD`. From the campaign. */
+  /** ISO 4217, such as `USD`. @campaign */
   currency?: string;
   /** The selected shipping method, and what shipping costs. */
   shipping_method?: ShippingMethod;
-  /** The products before discounts, without shipping. Once priced. */
+  /** The products before discounts, without shipping. @priced */
   subtotal?: number;
-  /** The discounts on the products, without shipping's: the sum of `discounts`. Once priced. */
+  /** The discounts on the products, without shipping's: the sum of `discounts`. @priced */
   total_discount?: number;
-  /** What the shopper pays. Once priced. */
+  /** What the shopper pays. @priced */
   total?: number;
-  /** The discounts on the products, one per offer. Once priced. */
+  /** The discounts on the products, one per offer. @priced */
   discounts?: Discount[];
 }
 
@@ -120,9 +120,9 @@ export interface Cart {
 export interface CartChange {
   /** The package's `ref_id` in the campaign. */
   package_id: number;
-  /** The product in the store. From the campaign. */
+  /** The product in the store. @campaign */
   product_id?: number;
-  /** The product variant. From the campaign. */
+  /** The product variant. @campaign */
   variant_id?: number;
   /** How many packages were added or removed. */
   quantity: number;

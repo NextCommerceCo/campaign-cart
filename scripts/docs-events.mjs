@@ -1,20 +1,22 @@
 // @ts-check
 /**
  * Writes the Event Reference: one page per public event, from `EventMap` in `src/engine/events.ts`
- * (its TSDoc and `@group`). An object a field carries (`Line`, `CartSummary`, `Order`, …) is spelled
- * out under that field as `field.child` rows, from the same types' TSDoc, the way the webhook
- * reference does. Examples are the payloads `tests/event-examples.test.ts` recorded in
- * `docs/event-examples.json`. Pages land in `docs/.staged/event-reference/`, and the index replaces
- * `<!-- event-index -->` in the staged `events.md`. Nothing here is committed.
+ * (its TSDoc and `@group`). The page's Data table lists the event's own fields; every object they
+ * carry (`CartItem`, `Order`, …) gets its own table further down the same page, once, from the same
+ * types' TSDoc. A field tagged `@priced` or `@campaign` says when it is there, in the When column.
+ * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
+ * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
+ * staged `events.md`. Nothing here is committed.
  */
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { slugifyPath } from '@clean-jsdoc-theme/utils';
-import { Application, ReflectionKind, TSConfigReader } from 'typedoc';
+import { slugifyHeading, slugifyPath } from '@clean-jsdoc-theme/utils';
+import { Application, OptionDefaults, ReflectionKind, TSConfigReader } from 'typedoc';
 
 const GROUP = 'Event Reference';
 const SOURCES = ['src/engine/events.ts', 'src/engine/cart/types.ts', 'src/engine/types.ts'];
 const MARKER = '<!-- event-index -->';
+const WHEN = ['@priced', '@campaign'];
 
 const firstSentence = (s) => s.match(/^.*?\.(?=\s|$)/s)?.[0] ?? s;
 const cell = (s) => s.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
@@ -33,6 +35,7 @@ async function eventMap(root) {
       tsconfig: join(root, 'tsconfig.json'),
       excludeInternal: true,
       sort: ['source-order'],
+      modifierTags: [...OptionDefaults.modifierTags, ...WHEN],
       readme: 'none',
       logLevel: 'Error',
     },
@@ -44,7 +47,7 @@ async function eventMap(root) {
   return map;
 }
 
-/** Fields of an event's data: a literal, an interface, or an intersection of them. */
+/** Fields of an event's data: a literal, an interface, or an intersection of them, the last of a name winning. */
 function fieldsOf(type) {
   if (!type) return [];
   if (type.type === 'intersection') {
@@ -59,53 +62,83 @@ function fieldsOf(type) {
 const objectOf = (type) =>
   type?.type === 'reference' && type.reflection?.kindOf(ReflectionKind.Interface) ? type.reflection : undefined;
 
-/** The object a field holds, and how its rows are named: `a.b`, `a[].b`, or `a.<key>.b` for a map. */
-function inner(type) {
-  if (type?.type === 'array') return { type: type.elementType, step: '[].' };
-  const value = type?.type === 'reference' && type.name === 'Record' ? type.typeArguments?.[1] : undefined;
-  if (value) return { type: value, step: '.<key>.' };
-  return { type, step: '.' };
-}
+/** Writes one page's tables, collecting the objects its fields carry so each gets a table once. */
+function tables() {
+  const objects = [];
+  const anchor = (r) => `#${slugifyHeading(r.name)}`;
 
-function typeMd(type) {
-  switch (type?.type) {
-    case 'reference': {
-      const r = type.reflection;
-      if (r?.kindOf(ReflectionKind.TypeAlias) && r.type?.type === 'union') return typeMd(r.type);
-      const args = type.typeArguments?.length ? `<${type.typeArguments.map(typeMd).join(', ')}>` : '';
-      return `\`${type.name}\`${args}`;
+  const typeMd = (type) => {
+    switch (type?.type) {
+      case 'reference': {
+        const r = type.reflection;
+        if (objectOf(type)) {
+          if (!objects.includes(r)) objects.push(r);
+          return `[\`${r.name}\`](${anchor(r)})`;
+        }
+        if (r?.kindOf(ReflectionKind.TypeAlias) && r.type?.type === 'union') return typeMd(r.type);
+        const linked = (a) => objectOf(a.type === 'array' ? a.elementType : a);
+        const args = type.typeArguments ?? [];
+        if (!args.some(linked)) return `\`${type.toString()}\``;
+        let md = '';
+        let code = `${type.name}<`;
+        args.forEach((a, i) => {
+          if (i) code += ', ';
+          if (!linked(a)) return void (code += a.toString());
+          md += `\`${code}\`${typeMd(a)}`;
+          code = '';
+        });
+        return `${md}\`${code}>\``;
+      }
+      case 'array':
+        return objectOf(type.elementType) ? `${typeMd(type.elementType)}\`[]\`` : `\`${type.toString()}\``;
+      case 'union':
+        return type.types.map(typeMd).join(' | ');
+      case 'reflection':
+        return '`object`';
+      default:
+        return `\`${type?.toString() ?? 'unknown'}\``;
     }
-    case 'array':
-      return `${typeMd(type.elementType)}[]`;
-    case 'union':
-      return type.types.map(typeMd).join(' | ');
-    case 'reflection':
-      return '`object`';
-    default:
-      return `\`${type?.toString() ?? 'unknown'}\``;
-  }
-}
+  };
 
-/** Table rows for fields, each object's own fields under it. */
-function rows(fields, prefix = '', seen = new Set()) {
-  return fields.flatMap((f) => {
-    const name = `${prefix}${f.name}`;
-    const { type, step } = inner(f.type);
-    const object = objectOf(type);
-    const about = text(f.comment?.summary) || text(object?.comment?.summary);
-    const row = `| \`${name}\`${f.flags.isOptional ? ' · optional' : ''} | ${cell(typeMd(f.type))} | ${cell(about)} |`;
-    const children =
-      type?.type === 'reflection'
-        ? type.declaration.children
-        : object && !seen.has(object)
-          ? object.children
-          : undefined;
-    return [row, ...(children ? rows(children, `${name}${step}`, new Set([...seen, object])) : [])];
-  });
+  const whenOf = (f) => WHEN.find((tag) => f.comment?.hasModifier(tag))?.slice(1);
+
+  const rows = (fields, prefix = '') =>
+    fields.flatMap((f) => {
+      const name = `${prefix}${f.name}`;
+      const when = whenOf(f);
+      const optional = f.flags.isOptional && !when ? ' · optional' : '';
+      const literal = f.type?.type === 'array' ? f.type.elementType : f.type;
+      const row = { name, optional, type: typeMd(f.type), when, about: text(f.comment?.summary) };
+      const nested =
+        literal?.type === 'reflection'
+          ? rows(literal.declaration.children ?? [], `${name}${literal === f.type ? '.' : '[].'}`)
+          : [];
+      return [row, ...nested];
+    });
+
+  const table = (fields) => {
+    const body = rows(fields);
+    if (!body.length) return 'None.';
+    const timed = body.some((r) => r.when);
+    const line = (r) =>
+      `| \`${r.name}\`${r.optional} | ${cell(r.type)} |${timed ? ` ${r.when ?? 'always'} |` : ''} ${cell(r.about)} |`;
+    const head = timed
+      ? ['| Field | Type | When | |', '| --- | --- | --- | --- |']
+      : ['| Field | Type | |', '| --- | --- | --- |'];
+    return [...head, ...body.map(line)].join('\n');
+  };
+
+  return (fields) => {
+    const sections = [table(fields)];
+    for (let i = 0; i < objects.length; i++) {
+      const r = objects[i];
+      sections.push(`### ${r.name}\n\n${text(r.comment?.summary)}\n\n${table(r.children ?? [])}`);
+    }
+    return sections.join('\n\n');
+  };
 }
 
 function page(event, order, example, version) {
-  const body = rows(fieldsOf(event.member.type));
   const envelope = {
     event_id: 'evt_mhk2f1a00k3x',
     event_type: event.name,
@@ -130,7 +163,7 @@ next.on('${event.name}', (data, event) => {});
 
 ## Data
 
-${body.length ? ['| Field | Type | |', '| --- | --- | --- |', ...body].join('\n') : 'None.'}
+${tables()(fieldsOf(event.member.type))}
 
 ## Example
 
