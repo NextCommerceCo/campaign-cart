@@ -55,7 +55,7 @@ describe('analytics', () => {
       ecommerce: { currency: 'USD', value: 0, items: [] },
       attribution: { utm_source: 'fb', funnel: 'Olympus' },
     });
-    expect(event.event_id).toMatch(/^\w+_1$/);
+    expect(event.event_id).toMatch(/^[0-9a-f]{32}$/);
     expect(JSON.stringify(event)).not.toContain('jane@x.com');
     expect(win.dataLayer).toEqual([{ ecommerce: null }, event]);
   });
@@ -393,7 +393,7 @@ describe('analytics', () => {
       'dl_add_to_cart',
       'dl_cart_updated',
     ]);
-    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '3', '4', '5']);
+    expect(new Set(win.NextDataLayer!.map((e) => e.event_id)).size).toBe(5);
   });
 
   it('loads the NextCampaign script once and sends one page_view', async () => {

@@ -1,6 +1,7 @@
 import { pageContext } from '../analytics/context';
 import { cents, currency, ecommerce } from '../analytics/ecommerce';
 import type { Engine } from '../engine/engine';
+import { newId } from '../engine/id';
 import type { EngineEvent } from '../engine/events';
 import type {
   AnalyticsContext,
@@ -76,7 +77,7 @@ const legacyCart = (engine: Engine) => {
  */
 export function startLegacyDataLayer(
   engine: Engine,
-  options: { version: string; dataLayer?: boolean; nextId: () => string },
+  options: { version: string; dataLayer?: boolean },
 ): (e: EngineEvent) => void {
   const win = window as Win;
   win.NextDataLayer ??= [];
@@ -185,7 +186,7 @@ export function startLegacyDataLayer(
 
   const exitIntent = (trigger: EventName, name: string, data: object) => {
     const event = `dl_exit_intent_${name}`;
-    const id = options.nextId();
+    const id = newId();
     send(event, id, new Date().toISOString(), pageContext(engine), { event_category: 'engagement', ...data });
     const reason = 'Data layer only: there is no analytics event';
     const trace: AnalyticsTrace = { trace: 'analytics', trigger, name: event, sent: true, reason, id };

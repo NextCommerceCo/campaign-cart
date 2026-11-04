@@ -29,9 +29,3 @@ export function pageContext(engine: Engine): AnalyticsContext {
     attribution: { ...attribution, metadata },
   };
 }
-
-export function eventIds(): () => string {
-  const page = Math.random().toString(36).slice(2, 10);
-  let seq = 0;
-  return () => `${page}_${++seq}`;
-}

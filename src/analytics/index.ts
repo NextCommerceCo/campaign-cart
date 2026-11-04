@@ -2,7 +2,8 @@ import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
 import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { startLegacyDataLayer } from '../compat/analytics';
-import { eventIds, pageContext } from './context';
+import { pageContext } from './context';
+import { newId } from '../engine/id';
 import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
@@ -20,12 +21,7 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
-  const nextId = eventIds();
-  const legacyExitIntent = startLegacyDataLayer(engine, {
-    version: options.version,
-    dataLayer: options.dataLayer,
-    nextId,
-  });
+  const legacyExitIntent = startLegacyDataLayer(engine, { version: options.version, dataLayer: options.dataLayer });
 
   const trace = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
     const data: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };
@@ -38,8 +34,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     params: Record<string, unknown>,
     why: { trigger: EventName; reason: string; id?: string },
   ) => {
-    const generated = nextId();
-    const id = why.id ?? generated;
+    const id = why.id ?? newId();
     const context = pageContext(engine);
     engine.events.emit('analytics', { name, id, time: new Date().toISOString(), params, context });
     trace(why.trigger, name, true, why.reason, id);

@@ -15,7 +15,7 @@ Commerce webhooks. `contact.entered` creates the Cart the `cart.abandoned` webho
 
 ```js
 next.on('order.created', (data, event) => {
-  event.event_id; // 'evt_…', unique
+  event.event_id; // a UUID v4 as 32 hex digits, unique
   event.event_type; // 'order.created'
   event.object; // 'order'
   event.data; // same as data

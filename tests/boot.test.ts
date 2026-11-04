@@ -138,7 +138,7 @@ describe('boot', () => {
     expect(ready).toHaveBeenCalledWith(
       { lines: expect.any(Array) },
       {
-        event_id: expect.stringMatching(/^evt_/),
+        event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
         event_type: 'sdk.ready',
         object: 'sdk',
         data: { lines: expect.any(Array) },

@@ -1,4 +1,5 @@
 import type { Logger } from './log';
+import { newId } from './id';
 import type { Attribution } from './attribution';
 import type { Line, CartSummary } from './cart/types';
 import type { Campaign, CheckoutError, OpenCart, Order, OrderLine } from './types';
@@ -464,10 +465,6 @@ export interface EngineEvent<K extends EventName = EventName> {
   at: number;
 }
 
-let sequence = 0;
-const eventId = () =>
-  `evt_${Date.now().toString(36)}${(sequence++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-
 type Listener = (event: EngineEvent) => void;
 
 const BUFFER_SIZE = 100;
@@ -482,7 +479,7 @@ export class Events {
   constructor(private log: Logger) {}
 
   emit<K extends EventName>(name: K, data: EventMap[K]): void {
-    const event: EngineEvent = { id: eventId(), name, data, at: Date.now() };
+    const event: EngineEvent = { id: newId(), name, data, at: Date.now() };
     this.buffer.push(event);
     if (this.buffer.length > BUFFER_SIZE)
       this.buffer.splice(
