@@ -36,6 +36,21 @@ Cart as `cart`, the `user`, the addresses, `billing_same_as_shipping` and `payme
 `valid` and `errors` on `checkout.submitted`), `user.*` the User, `address.*` the Address with its
 `type`, `shipping.selected` the ShippingMethod and `payment.selected` the Payment.
 
+## User
+
+`user.created` fires once per tab, when the checkout saves the shopper as a lead: their first and
+last name and email by default, or what `data-next-lead` asks for (see Lead capture in
+[Attributes](../../attributes.md#lead-capture)). The Open Cart keeps those first details;
+`user.updated` fires when they change and are still valid. `language`, `ip` and `user_agent` are
+what the store recorded with the Open Cart.
+
+## Address
+
+`address.entered` fires once per `type`, when that address is valid: every field its country
+requires passes its check, and so does each optional field the shopper filled. `address.updated`
+fires when it changes and is still valid. A `billing` address is sent only while billing is
+separate from shipping; `billing_same_as_shipping` on the Checkout says which.
+
 ## Errors
 
 Each sends `sdk.error` with this `action`. The SDK lifecycle lists every action and `code`.
