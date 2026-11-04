@@ -234,7 +234,7 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order sends order.created once. Without a payment_complete_url it is paid and the shopper is redirected to the next page (next-success-url, or the order status page); with one the shopper is redirected there to pay (PayPal, 3-D Secure, …): paid, the gateway redirects them to the next page; failed, back to the checkout with the cart kept (order.failed). The next page loads the paid order and sends order.paid, once per order. A paid order empties the cart.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order sends order.created once. Without a payment_complete_url it is paid and the shopper is redirected to the next page (next-success-url, or the order status page); with one the shopper is redirected there to pay (PayPal, 3-D Secure, …): paid, the gateway redirects them to the next page; failed, back to the checkout with the cart kept (order.failed). The next page sends order.loaded, then order.paid once per order. A paid order empties the cart.',
     rows: 6,
     rowYs: [16, 196, 336, 516, 601, 766],
     boxes: [
@@ -242,7 +242,7 @@ const LIFECYCLES = {
       { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
       { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
       { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
-      { row: 5, title: 'paid', sub: [code('order.paid')], tone: 'success' },
+      { row: 5, title: 'paid', sub: [code('order.loaded'), code('order.paid')], tone: 'success' },
       { col: 'side', row: 4, title: 'awaiting payment', sub: ['paying at the gateway'], tone: 'waiting' },
     ],
     parts: () => {
@@ -292,7 +292,7 @@ const LIFECYCLES = {
       ];
     },
     note: [
-      'The next page is next-success-url, or the order status page; it loads the order and sends order.paid',
+      'The next page is next-success-url, or the order status page: order.loaded, then order.paid once per order',
       'A paid order empties the cart without cart events; while payment is awaited the cart is kept',
     ],
     errors: [
