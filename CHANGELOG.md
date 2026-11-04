@@ -9,7 +9,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 - **0.4.x event names still work, with the payload they had.** `cart:updated`, `shipping:method-changed`, `exit-intent:*` and the rest fire as before, each only at the moment it meant. New code should use the names in [Events](docs/guides/events.md).
 - **An event name the SDK does not know logs a warning and never fires.** `fomo:*` and `profile:*`, features the SDK no longer has, are accepted and never fire.
 - **`dl_*` events are deprecated, and still sent.** Listen with `next.analytics.on(name, fn)` to get the same events under their GA4 names.
-- **`generate_lead`, `view_promotion` and `select_promotion` have no `dl_*` event.** Only `next.analytics.on` gets them.
+- **The exit-intent popup now also pushes `dl_view_promotion` and `dl_select_promotion`**, next to the `dl_exit_intent_*` events it always sent. A GTM trigger on `dl_exit_intent_shown` keeps working; a new GA4 tag can use the promotion events instead.
 
 ### Events
 
@@ -28,8 +28,8 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 ### Tracking
 
 - **`next.analytics.on('add_to_cart', fn)` listens to one tracking event by its GA4 name.** `'*'` gets every one, including those sent before the listener was added.
-- **`generate_lead` is sent once, when the contact details create the Open Cart.**
-- **`view_promotion` and `select_promotion` are sent when the exit-intent popup opens and when it is clicked.**
+- **`generate_lead` is sent once, when the contact details create the Open Cart**, and pushed as `dl_generate_lead` with `currency`, `value` and `lead_source`.
+- **`view_promotion` and `select_promotion` are sent when the exit-intent popup opens and when it is clicked**, and pushed as `dl_view_promotion` and `dl_select_promotion`.
 - **`add_shipping_info` waits for a valid shipping address**, or for a shipping method to be picked.
 
 ## [0.4.43] — 2026-10-20 — Shop Pay Support

@@ -19,7 +19,7 @@ type Win = Window & {
   NextDataLayerTransformFn?: (event: DataLayerEvent) => DataLayerEvent | null | undefined | false;
 };
 
-export const NAMES: Partial<Record<AnalyticsName, string>> = {
+export const NAMES: Record<AnalyticsName, string> = {
   page_view: 'dl_user_data',
   view_item: 'dl_view_item',
   view_item_list: 'dl_view_item_list',
@@ -33,6 +33,9 @@ export const NAMES: Partial<Record<AnalyticsName, string>> = {
   upsell_purchase: 'dl_upsell_purchase',
   view_upsell: 'dl_viewed_upsell',
   skip_upsell: 'dl_skipped_upsell',
+  generate_lead: 'dl_generate_lead',
+  view_promotion: 'dl_view_promotion',
+  select_promotion: 'dl_select_promotion',
 };
 
 export const EXIT_INTENT: Array<[EventName, string]> = [
@@ -169,15 +172,16 @@ export function startLegacyDataLayer(
           },
         };
       }
+      case 'generate_lead':
+        return params;
       default:
         return { ecommerce: params };
     }
   };
 
-  engine.on('analytics', ({ data }: { data: AnalyticsEvent }) => {
-    const name = NAMES[data.name];
-    if (name) send(name, data.id, data.time, data.context, payload(data));
-  });
+  engine.on('analytics', ({ data }: { data: AnalyticsEvent }) =>
+    send(NAMES[data.name], data.id, data.time, data.context, payload(data)),
+  );
 
   const exitIntent = (trigger: EventName, name: string, data: object) => {
     const event = `dl_exit_intent_${name}`;

@@ -169,9 +169,10 @@ falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` afte
 `{ ecommerce: null }`: `dl_user_data`, `dl_view_item(_list)`, `dl_add_to_cart`,
 `dl_remove_from_cart`, `dl_cart_updated`, `dl_begin_checkout`,
 `dl_add_shipping_info`, `dl_add_payment_info`, `dl_purchase` (once, only when paid),
-`dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`, `dl_exit_intent_shown` /
-`_accepted` / `_dismissed` / `_closed` / `_action`. `generate_lead`, `view_promotion` and
-`select_promotion` have no `dl_*` event. No personal data is sent. `dl_add_to_cart` carries
+`dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`, `dl_generate_lead`,
+`dl_view_promotion`, `dl_select_promotion`, `dl_exit_intent_shown` / `_accepted` / `_dismissed` /
+`_closed` / `_action`. The exit-intent popup sends both its `dl_exit_intent_*` event and
+`dl_view_promotion` / `dl_select_promotion`. No personal data is sent. `dl_add_to_cart` carries
 `first_in_session` at the top level. The purchase
 events use the transaction id as `event_id`, as 0.4.x did. `nextConfig.analytics.providers.gtm.enabled: false`
 keeps events out of `dataLayer` (only `NextDataLayer`).

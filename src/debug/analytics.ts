@@ -210,7 +210,7 @@ export function analyticsFlow(ui: {
         ...(event ? checks(event.data.name, event.data.params) : []),
         ...(adds && !adds.ok ? [adds.text] : []),
         ...(['NextDataLayer', 'dataLayer'] as Layer[])
-          .filter((l) => dlOf(run.name) && enabled(l) && !pushedTo(l, run.id))
+          .filter((l) => enabled(l) && !pushedTo(l, run.id))
           .map((l) => `not in ${l}`),
       ];
     };
@@ -264,16 +264,14 @@ export function analyticsFlow(ui: {
     const event = snap.event(run.id)?.data;
     const problems = event ? checks(event.name, event.params) : [];
     const items = event ? itemsOf(event.params) : [];
-    const layers = (['NextDataLayer', 'dataLayer'] as Layer[])
-      .filter((l) => dl && snap.enabled(l))
-      .map((layer) => {
-        const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-        const push = pushedTo(layer, run.id);
-        if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
-        return push['gtm.uniqueEventId'] !== undefined
-          ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
-          : chip('ok', name, '', LOGOS[layer]);
-      });
+    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
+      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
+      const push = pushedTo(layer, run.id);
+      if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
+      return push['gtm.uniqueEventId'] !== undefined
+        ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
+        : chip('ok', name, '', LOGOS[layer]);
+    });
     const hit = snap.seen(run);
     const reached = [
       ...layers,
@@ -285,14 +283,7 @@ export function analyticsFlow(ui: {
       ...(problems.length
         ? [['Problems', ...problems.map((p) => h('span', 'amber', `⚠ ${p}`))] as [string, ...Child[]]]
         : []),
-      ...(run.sent
-        ? [
-            [
-              'Reached',
-              h('div', 'chips', h('code', {}, dl ?? 'next.analytics.on only: no dl_* event'), ...reached),
-            ] as [string, ...Child[]],
-          ]
-        : []),
+      ...(run.sent ? [['Reached', h('div', 'chips', h('code', {}, dl), ...reached)] as [string, ...Child[]]] : []),
       ...(event ? [['Params', params(event)] as [string, ...Child[]]] : []),
       ...(adds
         ? [
@@ -310,7 +301,7 @@ export function analyticsFlow(ui: {
   };
 
   const tabsOf = (snap: Snapshot, run: Run): Tab[] => {
-    const dl = dlOf(run.name) ?? run.name;
+    const dl = dlOf(run.name);
     const event = snap.event(run.id)?.data;
     const trigger = snap.trigger(run);
     const next = pushedTo('NextDataLayer', run.id);

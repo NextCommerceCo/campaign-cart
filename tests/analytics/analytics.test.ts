@@ -362,7 +362,7 @@ describe('analytics', () => {
     });
     engine.events.emit('promotion.closed', { source, template: 'exit', reason: 'dismissed' });
     engine.events.emit('promotion.closed', { ...image, reason: 'closed' });
-    expect(win.NextDataLayer!.slice(1)).toMatchObject([
+    expect(win.NextDataLayer!.filter((e) => e.event.startsWith('dl_exit_intent_'))).toMatchObject([
       {
         event: 'dl_exit_intent_shown',
         event_category: 'engagement',
@@ -386,8 +386,14 @@ describe('analytics', () => {
     engine.events.emit('promotion.viewed', { source: 'exit_intent', image_url: 'https://cdn.test/exit.png' });
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
-    expect(names()).toEqual(['dl_user_data', 'dl_exit_intent_shown', 'dl_add_to_cart', 'dl_cart_updated']);
-    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '4', '5']);
+    expect(names()).toEqual([
+      'dl_user_data',
+      'dl_exit_intent_shown',
+      'dl_view_promotion',
+      'dl_add_to_cart',
+      'dl_cart_updated',
+    ]);
+    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '3', '4', '5']);
   });
 
   it('loads the NextCampaign script once and sends one page_view', async () => {
@@ -452,7 +458,7 @@ describe('analytics events (GA4 names)', () => {
     expect(seen.at(-1)!.params).toMatchObject({ payment_type: 'Credit Card' });
   });
 
-  it('reports a lead and promotions under GA4 names only, and add_shipping_info for the shipping address only', async () => {
+  it('reports a lead and promotions, and add_shipping_info for the shipping address only', async () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     const seen = listen(engine);
     startAnalytics(engine, options);
@@ -474,12 +480,22 @@ describe('analytics events (GA4 names)', () => {
       { name: 'select_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },
       { name: 'add_shipping_info' },
     ]);
-    expect(names().slice(-4)).toEqual([
-      'dl_begin_checkout',
+    expect(names().slice(-6)).toEqual([
+      'dl_generate_lead',
       'dl_exit_intent_shown',
+      'dl_view_promotion',
       'dl_exit_intent_action',
+      'dl_select_promotion',
       'dl_add_shipping_info',
     ]);
+    expect(win.NextDataLayer!.find((e) => e.event === 'dl_generate_lead')).toMatchObject({
+      currency: 'USD',
+      value: 89,
+      lead_source: 'checkout',
+    });
+    expect(win.NextDataLayer!.find((e) => e.event === 'dl_view_promotion')).toMatchObject({
+      ecommerce: { promotion_id: 'exit_intent', creative_name: 'exit' },
+    });
   });
 
   it('keys a purchase and an upsell by their transaction ids, with the upsell details nested', async () => {
