@@ -1,6 +1,7 @@
 import type { Attribution } from '../../engine/attribution';
 import type { Line } from '../../engine/cart/types';
-import type { CheckoutError } from '../../engine/types';
+import type { Address, Contact } from '../../engine/events';
+import type { CheckoutError, OpenCart } from '../../engine/types';
 
 export interface AddressSuggestion {
   label: string;
@@ -77,12 +78,16 @@ export interface CheckoutState {
   rules: Record<string, CountryRules>;
   rulesDown?: boolean;
   prospectSaved: boolean;
+  openCart?: OpenCart;
+  contact?: Contact;
+  shippingAddress?: Address;
+  billingAddress?: Address;
   cardReady?: boolean;
   pendingRef?: string;
   failurePath?: string;
 }
 
-export interface Address {
+export interface ApiAddress {
   first_name: string;
   last_name: string;
   line1: string;
@@ -105,9 +110,9 @@ export interface OrderUser {
 
 export interface OrderBody {
   lines: Line[];
-  shipping_address?: Address;
+  shipping_address?: ApiAddress;
   billing_same_as_shipping_address?: boolean;
-  billing_address?: Address;
+  billing_address?: ApiAddress;
   shipping_method: number;
   payment_detail: { payment_method: string; card_token?: string };
   user?: OrderUser;

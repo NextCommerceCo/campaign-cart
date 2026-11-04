@@ -2,7 +2,8 @@ import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/cart';
 import type { Line } from '../../engine/cart/types';
 import type { State } from '../../engine/types';
-import type { Address, CheckoutState, OrderBody, OrderUser } from './types';
+import type { Address } from '../../engine/events';
+import type { ApiAddress, CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
 
@@ -29,7 +30,7 @@ export const userOf = (fields: Record<string, string>, phone?: string): OrderUse
   accepts_marketing: fields.accepts_marketing !== 'false',
 });
 
-function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: string): Address {
+function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: string): ApiAddress {
   const { fields, rules } = checkout;
   const country = rules[fields[`${prefix}country`] ?? ''];
   const get = (name: string) => (hasField(country, name) && fields[prefix + name]?.trim()) || undefined;
@@ -41,6 +42,21 @@ function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: strin
     line4: get('city') ?? '',
     country: get('country') ?? '',
     ...Object.fromEntries(Object.entries(optional).filter(([, v]) => v)),
+  };
+}
+
+export function publicAddress(checkout: CheckoutState, prefix: '' | 'billing_'): Address {
+  const a = address(checkout, prefix, phoneOf(checkout, `${prefix}phone_number`));
+  return {
+    first_name: a.first_name,
+    last_name: a.last_name,
+    line1: a.line1,
+    ...(a.line2 && { line2: a.line2 }),
+    ...(a.line4 && { city: a.line4 }),
+    ...(a.state && { state: a.state }),
+    ...(a.postcode && { postcode: a.postcode }),
+    country: a.country,
+    ...(a.phone_number && { phone: a.phone_number }),
   };
 }
 

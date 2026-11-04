@@ -271,63 +271,335 @@
     "lines": [
       {
         "package_id": 1,
-        "quantity": 1
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png"
       }
-    ]
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "payment_method": "card_token"
   },
   "contact.entered": {
-    "email": "jane@example.com",
-    "first_name": "Jane",
-    "last_name": "Doe",
-    "cart": {
-      "user": {
-        "email": "jane@example.com",
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "accepts_marketing": true
-      },
-      "lines": [
-        {
-          "id": 501,
-          "product_id": 11,
-          "quantity": 1,
-          "product_title": "Olympus Earbuds",
-          "price_incl_tax": "89.00"
-        }
-      ],
-      "discounts": [],
-      "total_discounts": "0.00",
-      "total_incl_tax": "89.00",
-      "total_excl_tax": "89.00",
-      "currency": "USD",
-      "checkout_url": "https://shop.test/c/7"
-    }
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "contact": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "card_token"
   },
   "contact.updated": {
-    "email": "jane.doe@example.com",
-    "first_name": "Jane",
-    "last_name": "Doe"
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "contact": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "card_token"
   },
   "address.entered": {
-    "type": "shipping",
-    "country": "US"
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Austin",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "address_type": "shipping"
   },
   "address.updated": {
-    "type": "shipping",
-    "country": "US"
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "contact": {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "card_token",
+    "address_type": "shipping"
   },
   "shipping.selected": {
-    "method_id": 1,
-    "method": {
-      "ref_id": 1,
-      "code": "standard",
-      "price": "0.00"
-    }
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png"
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard"
+    },
+    "contact": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "card_token"
   },
   "payment.selected": {
-    "method": "paypal"
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "contact": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "payment_method": "paypal"
   },
   "checkout.submitted": {
+    "lines": [
+      {
+        "package_id": 1,
+        "quantity": 1,
+        "product_id": 400,
+        "product_title": "Olympus Earbuds",
+        "variant_id": 4001,
+        "variant_title": "Black",
+        "image": "https://cdn.test/1.png",
+        "price": 49,
+        "original_price": 99,
+        "total_discount": 0,
+        "total": 49,
+        "discounts": []
+      }
+    ],
+    "coupons": [],
+    "currency": "USD",
+    "shipping_method": {
+      "id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": 0,
+      "original_price": 0,
+      "discounts": []
+    },
+    "subtotal": 49,
+    "total_discount": 0,
+    "total": 49,
+    "discounts": [],
+    "contact": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
     "payment_method": "card_token",
     "valid": true,
     "errors": {}

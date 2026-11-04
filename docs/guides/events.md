@@ -29,6 +29,11 @@ next.on('order.created', (data, event) => {
 Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
 added after it fired; for anything else read `next.getState()`.
 
+The checkout steps (`checkout.*`, `contact.*`, `address.*`, `shipping.selected`,
+`payment.selected`) carry the same Cart as `cart.*`, and their `object` is `cart`. Once the shopper
+has entered them, the Cart has `contact`, `shipping_address`, `billing_address` and
+`payment_method` on every event, `cart.*` included, so send a tag only the fields it needs.
+
 ## Event Reference
 
 A group whose events follow a lifecycle starts with a page that draws it, such as the cart's.

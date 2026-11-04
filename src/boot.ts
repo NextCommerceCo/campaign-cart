@@ -87,12 +87,18 @@ export interface SdkEvent<K extends EventName = EventName> {
   sdk_version: string;
 }
 
+const CART_STEPS = ['checkout', 'contact', 'address', 'shipping', 'payment'];
+const objectOf = (name: EventName) => {
+  const namespace = name.split('.')[0]!;
+  return CART_STEPS.includes(namespace) ? 'cart' : namespace;
+};
+
 const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => {
   const campaign = engine.eventCampaign();
   return {
     event_id: e.id,
     event_type: e.name,
-    object: e.name.split('.')[0]!,
+    object: objectOf(e.name),
     data: e.data,
     created_at: new Date(e.at).toISOString(),
     ...(campaign && { campaign }),

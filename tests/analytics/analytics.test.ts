@@ -3,7 +3,7 @@ import { startAnalytics } from '../../src/analytics';
 import type { Engine } from '../../src/engine/engine';
 import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/events';
 import { createOrder } from '../../src/order/state';
-import { fakeApi, json, OPEN_CART } from '../fixtures/api';
+import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 import { MemoryStorage } from '../fixtures/storage';
@@ -203,9 +203,14 @@ describe('analytics', () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
-    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
+    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.submitted', {
+      ...engine.cart.current(),
+      payment_method: 'card_token',
+      valid: true,
+      errors: {},
+    });
     const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
     expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
     expect(shipping).toMatchObject({
@@ -223,7 +228,7 @@ describe('analytics', () => {
     await flush();
     await engine.cart.applyCoupon('SAVE10');
     await flush();
-    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
+    engine.events.emit('checkout.started', engine.cart.current());
     const updated = win.NextDataLayer!.filter((e) => e.event === 'dl_cart_updated').at(-1);
     const begin = win.NextDataLayer!.at(-1);
     expect(updated.ecommerce).toMatchObject({ coupon: 'SAVE10', shipping: 0 });
@@ -431,9 +436,14 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, options);
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
-    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
-    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
+    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.submitted', {
+      ...engine.cart.current(),
+      payment_method: 'card_token',
+      valid: true,
+      errors: {},
+    });
     expect(seen.map((e) => e.name)).toEqual([
       'page_view',
       'add_to_cart',
@@ -471,17 +481,12 @@ describe('analytics events (GA4 names)', () => {
     const seen = listen(engine);
     startAnalytics(engine, options);
     await flush();
-    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('contact.entered', {
-      cart: OPEN_CART,
-      email: 'jane@example.com',
-      first_name: 'Jane',
-      last_name: 'Doe',
-    });
-    engine.events.emit('address.entered', { type: 'billing', country: 'US' });
+    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('contact.entered', engine.cart.current());
+    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'billing' });
     engine.events.emit('promotion.viewed', { source: 'exit_intent', template: 'exit' });
     engine.events.emit('promotion.clicked', { source: 'exit_intent', template: 'exit', action: 'apply-coupon' });
-    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
+    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
     expect(seen.slice(-4)).toMatchObject([
       { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
       { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },

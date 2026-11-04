@@ -7,7 +7,6 @@ import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/
 import { nodes } from '../../src/debug/view';
 import type { AnalyticsEvent, AnalyticsTrace, EventName } from '../../src/engine/events';
 import type { Order } from '../../src/engine/types';
-import { OPEN_CART } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 
@@ -127,15 +126,15 @@ describe('the workflows match the analytics code', () => {
     await engine.start();
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
-    engine.events.emit('checkout.started', { lines: [] });
-    engine.events.emit('contact.entered', {
-      cart: OPEN_CART,
-      email: 'jane@example.com',
-      first_name: 'Jane',
-      last_name: 'Doe',
+    engine.events.emit('checkout.started', engine.cart.current());
+    engine.events.emit('contact.entered', engine.cart.current());
+    engine.events.emit('address.entered', { ...engine.cart.current(), address_type: 'shipping' });
+    engine.events.emit('checkout.submitted', {
+      ...engine.cart.current(),
+      payment_method: 'card_token',
+      valid: true,
+      errors: {},
     });
-    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
-    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     engine.events.emit('order.loaded', {
       order: ORDER,
       purchase: ORDER.ref_id,
@@ -219,7 +218,7 @@ describe('analytics workflow', () => {
     send('sdk.ready', 'page_view', { page_title: 'Checkout' }, 'pv');
     engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
-    engine.events.emit('checkout.started', { lines: [] });
+    engine.events.emit('checkout.started', engine.cart.current());
     send('checkout.started', 'begin_checkout', { currency: 'USD', value: 49, items: [EARBUDS] }, 'bc');
     paint();
     expect(verdict()).toBe('Every event so far was pushed with the fields GA4 requires');

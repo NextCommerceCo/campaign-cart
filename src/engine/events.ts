@@ -2,7 +2,7 @@ import type { Logger } from './log';
 import { newId } from './id';
 import type { Attribution } from './attribution';
 import type { Line } from './cart/types';
-import type { Campaign, CheckoutError, OpenCart, Order, OrderLine } from './types';
+import type { Campaign, CheckoutError, Order, OrderLine } from './types';
 
 export interface PromotionDetail {
   /** Which promotion: `exit_intent` is the exit-intent popup, the only one so far. */
@@ -20,6 +20,25 @@ export interface Contact {
   email: string;
   first_name: string;
   last_name: string;
+  /** In E.164 once the address service read it, else the digits typed. */
+  phone?: string;
+  /** The marketing checkbox, as sent with the Open Cart and the order. */
+  accepts_marketing: boolean;
+}
+
+/** A postal address as the shopper entered it, once every field its country requires is valid. */
+export interface Address {
+  first_name: string;
+  last_name: string;
+  line1: string;
+  line2?: string;
+  /** None in a country whose addresses have no city, such as Singapore. */
+  city?: string;
+  /** The state or province code, in a country that has them. */
+  state?: string;
+  postcode?: string;
+  /** ISO 3166-1 alpha-2. */
+  country: string;
   /** In E.164 once the address service read it, else the digits typed. */
   phone?: string;
 }
@@ -131,6 +150,14 @@ export interface Cart {
   total?: number;
   /** The discounts on the products, one per offer. @priced */
   discounts?: Discount[];
+  /** The shopper's contact, from `contact.entered` on. */
+  contact?: Contact;
+  /** From `address.entered` for the shipping address on. */
+  shipping_address?: Address;
+  /** Only when billing is separate from shipping, from `address.entered` for it on. */
+  billing_address?: Address;
+  /** The API's code for the chosen payment method, on a checkout page: `card_token`, `paypal`, `apple_pay`, … */
+  payment_method?: string;
 }
 
 /** A package added to or removed from the cart. */
@@ -317,63 +344,50 @@ export interface EventMap {
    * Once, when the checkout form is bound with a cart.
    * @group Checkout
    */
-  'checkout.started': { lines: Line[] };
+  'checkout.started': Cart;
   /**
    * Once per tab, when the store creates the Cart: a valid email and a first and last name are
    * in, checked when the shopper leaves a field. It is the Cart in the dashboard's Open Carts,
    * and later `cart.abandoned`.
    * @group Checkout
    */
-  'contact.entered': Contact & {
-    /** The Cart the store created. */
-    cart: OpenCart;
-  };
+  'contact.entered': Cart;
   /**
    * The contact changed after `contact.entered` and is still valid. The Open Cart keeps the first
    * contact.
    * @group Checkout
    */
-  'contact.updated': Contact;
+  'contact.updated': Cart;
   /**
    * Once per `type`, when that address is valid: every field its country requires is filled and
    * valid, and so is each optional one filled. Checked when the shopper leaves a field.
    * @group Checkout
    */
-  'address.entered': {
-    /** `billing` only when the billing address is separate from the shipping one. */
-    type: AddressType;
-    /** ISO 3166-1 alpha-2. */
-    country: string;
+  'address.entered': Cart & {
+    /** Which address: `billing` only when it is separate from the shipping one. */
+    address_type: AddressType;
   };
   /**
    * The address changed after `address.entered` and is still valid.
    * @group Checkout
    */
-  'address.updated': { type: AddressType; country: string };
+  'address.updated': Cart & { address_type: AddressType };
   /**
    * A shipping method was picked. A bundle card can set it on the landing page too.
    * @group Checkout
    */
-  'shipping.selected': {
-    /** The method's `ref_id`; none when it was cleared. */
-    method_id: number | undefined;
-    method?: { ref_id: number; code: string; price: string };
-  };
+  'shipping.selected': Cart;
   /**
    * The payment method changed.
    * @group Checkout
    */
-  'payment.selected': {
-    /** The API's code: `card_token`, `paypal`, `apple_pay`, `google_pay`, `klarna`, … */
-    method: string;
-  };
+  'payment.selected': Cart;
   /**
    * Each submit, once its checks ran: the fields, then the card tokenized. A valid submit is
    * followed by `order.created` or `order.failed`.
    * @group Checkout
    */
-  'checkout.submitted': {
-    payment_method: string;
+  'checkout.submitted': Cart & {
     /** `true` when the order is being sent. */
     valid: boolean;
     /** What stopped it, by field name; empty when valid. */

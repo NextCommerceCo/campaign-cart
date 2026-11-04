@@ -124,6 +124,7 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
     const seen = byOffer.get(d.offer_id);
     byOffer.set(d.offer_id, seen ? { ...seen, amount: sum([seen.amount, d.amount]) } : d);
   }
+  const checkout = state.checkout;
   return {
     lines,
     coupons,
@@ -135,6 +136,10 @@ export function publicCart(state: State, summary?: CartSummary): Cart {
       total: money(summary.total),
       discounts: [...byOffer.values()],
     }),
+    ...(checkout?.contact && { contact: checkout.contact }),
+    ...(checkout?.shippingAddress && { shipping_address: checkout.shippingAddress }),
+    ...(checkout?.billingAddress && !checkout.sameAsShipping && { billing_address: checkout.billingAddress }),
+    ...(checkout && { payment_method: checkout.paymentMethod }),
   };
 }
 
@@ -201,6 +206,7 @@ export function createCart(ctx: Context) {
   };
 
   const cartOf = (summary?: CartSummary): Cart => publicCart(ctx.getState(), summary);
+  const currentCart = () => cartOf(state().calculating ? undefined : state().summary);
 
   const announce = (summary?: CartSummary) => {
     const added: CartChange[] = [];
@@ -373,6 +379,7 @@ export function createCart(ctx: Context) {
   return {
     lines,
     vouchers,
+    current: currentCart,
     recalculate,
     settled,
     freeze: (frozen: boolean) => set({ frozen }),
@@ -439,11 +446,7 @@ export function createCart(ctx: Context) {
     setShipping(shippingId: number | undefined) {
       if (shippingId === state().shippingId) return Promise.resolve();
       const done = commit({ shippingId });
-      const method = ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
-      ctx.emit('shipping.selected', {
-        method_id: shippingId,
-        ...(method && { method: { ref_id: method.ref_id, code: method.code, price: method.price } }),
-      });
+      ctx.emit('shipping.selected', currentCart());
       return done;
     },
   };

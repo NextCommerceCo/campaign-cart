@@ -26,7 +26,11 @@ const exitIntent = ({ image_url, template, action, coupon_code }: Data) => ({
 const cart: LegacyEvent = { event: 'cart.updated', data: (_, state) => state.cart };
 const shipping: LegacyEvent = {
   event: 'shipping.selected',
-  data: (d) => ({ methodId: d.method_id, method: d.method }),
+  data: (d, state) => {
+    const methodId = (d.shipping_method as { id: number } | undefined)?.id;
+    const method = state.campaign?.shipping_methods.find((m) => m.ref_id === methodId);
+    return { methodId, ...(method && { method: { ref_id: method.ref_id, code: method.code, price: method.price } }) };
+  },
 };
 const exit = (event: EventName, when: (d: Data) => boolean = () => true): LegacyEvent => ({
   event,

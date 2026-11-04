@@ -150,12 +150,14 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );
-  on('shipping.selected', (e) => change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.method_id)}` }));
+  on('shipping.selected', (e) =>
+    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.shipping_method?.id)}` }),
+  );
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
   on('address.entered', (e) =>
-    change({}, { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
+    change({}, { at: e.at, text: `${e.data.address_type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
   );
-  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
+  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.payment_method} chosen` }));
   on('checkout.submitted', (e) =>
     change(
       {},

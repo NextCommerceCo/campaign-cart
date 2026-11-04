@@ -81,14 +81,14 @@ export function clearStepGuard(): void {
 /** @deprecated `next:prospect-cart-created` on the form. Use `next.on('contact.entered')`. */
 export function announceProspect(engine: Engine, form: HTMLFormElement): void {
   engine.on('contact.entered', ({ data }) => {
-    const cart = (data.cart ?? {}) as Record<string, unknown>;
+    const cart = (engine.getState().checkout?.openCart ?? {}) as Record<string, unknown>;
     const prospectCart = {
       id: cart.id,
       prospect_id: cart.checkout_url,
       created_at: cart.created_at,
       expires_at: cart.expires_at,
-      email: data.email,
-      ...(data.phone && { phone: data.phone }),
+      email: data.contact?.email,
+      ...(data.contact?.phone && { phone: data.contact.phone }),
     };
     form.dispatchEvent(
       new CustomEvent('next:prospect-cart-created', { bubbles: true, detail: { cart, prospectCart } }),

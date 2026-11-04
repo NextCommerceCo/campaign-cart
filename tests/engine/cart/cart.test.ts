@@ -134,7 +134,7 @@ describe('cart', () => {
       'select',
     );
     expect(seen).toEqual([
-      { method_id: 2 },
+      { lines: [], coupons: [], shipping_method: { id: 2 } },
       {
         selector_id: 'main',
         type: 'bundle',

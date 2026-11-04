@@ -167,6 +167,10 @@ describe('boot', () => {
     await vi.waitFor(() => expect(added).toHaveBeenCalledTimes(1));
     expect(added.mock.calls[0]![1]).toMatchObject({ event_type: 'cart.added', object: 'cart', session_id: session });
     expect(api.calls.at(-1)!.headers['X-Next-Campaign-Session-Id']).toBe(session);
+    const shipped = vi.fn();
+    next.on('shipping.selected', shipped);
+    await next.actions.setShipping(1);
+    expect(shipped.mock.calls[0]![1]).toMatchObject({ event_type: 'shipping.selected', object: 'cart' });
     document.cookie = 'ncsid=; path=/; max-age=0';
   });
 

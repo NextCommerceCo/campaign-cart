@@ -185,26 +185,22 @@ describe('checkout', () => {
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(1);
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { email: 'jane@example.com', first_name: 'Jane' } });
-    expect(saved).toHaveBeenCalledWith({
-      cart: OPEN_CART,
-      email: 'jane@example.com',
-      first_name: 'Jane',
-      last_name: 'Does',
-    });
+    const contact = { email: 'jane@example.com', first_name: 'Jane', last_name: 'Does', accepts_marketing: true };
+    expect(saved).toHaveBeenCalledWith(expect.objectContaining({ contact, payment_method: 'card_token' }));
+    expect(engine.getState().checkout?.openCart).toEqual(OPEN_CART);
     await checkout.leave('last_name');
     checkout.setField('email', 'jane@');
     await checkout.leave('email');
     expect(updated).not.toHaveBeenCalled();
     const next = await setup({ session });
+    expect(next.engine.cart.current().contact).toEqual(contact);
     next.engine.on('contact.updated', (e) => updated(e.data));
     next.checkout.setField('email', 'jane@example.org');
     await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
-    expect(updated).toHaveBeenCalledExactlyOnceWith({
-      email: 'jane@example.org',
-      first_name: 'Jane',
-      last_name: 'Does',
-    });
+    expect(updated).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ contact: { ...contact, email: 'jane@example.org' } }),
+    );
   });
 
   it('reports begin once, the address when it is valid then each change, and each change of payment method', async () => {
@@ -233,7 +229,9 @@ describe('checkout', () => {
   it('reports the billing address once it is valid, only when it differs from the shipping address', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: unknown[] = [];
-    engine.on('address.entered', (e) => seen.push(e.data));
+    engine.on('address.entered', (e) =>
+      seen.push([e.data.address_type, e.data.shipping_address, e.data.billing_address]),
+    );
     await engine.cart.addItem(1);
     checkout.begin();
     await checkout.loadCountries();
@@ -246,12 +244,13 @@ describe('checkout', () => {
     });
     fill({ billing_postcode: '89501' });
     await checkout.leave('billing_postcode');
-    expect(seen).toEqual([{ type: 'shipping', country: 'US' }]);
+    const { email: _, ...address } = SHIPPING;
+    const shipping = ['shipping', address, undefined];
+    expect(seen).toEqual([shipping]);
     checkout.setSameAsShipping(false);
-    expect(seen).toEqual([
-      { type: 'shipping', country: 'US' },
-      { type: 'billing', country: 'US' },
-    ]);
+    expect(seen).toEqual([shipping, ['billing', address, { ...billing, postcode: '89501', country: 'US' }]]);
+    checkout.setSameAsShipping(true);
+    expect(engine.cart.current().billing_address).toBeUndefined();
   });
 
   it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
