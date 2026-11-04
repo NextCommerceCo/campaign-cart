@@ -57,6 +57,34 @@ describe('getCartData (0.4.x shape)', () => {
     expect(data.cartTotals.total).toBe('89.00');
   });
 
+  it('gives no totals after a failed price, as before the first price, for lines never priced together', async () => {
+    const api = fakeApi();
+    let failing = false;
+    vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+      failing && String(input).includes('/carts/calculate')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init),
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    await next.addItem({ packageId: 2 });
+    expect(next.getCartData().cartTotals.total).toBe('89.00');
+    failing = true;
+    await next.addItem({ packageId: 9 });
+    const data = next.getCartData();
+    expect(data.cartLines.map((l) => [l.packageId, l.total])).toEqual([
+      [2, undefined],
+      [9, undefined],
+    ]);
+    expect(data.cartTotals).toEqual({
+      subtotal: undefined,
+      total: undefined,
+      discount: undefined,
+      currency: undefined,
+    });
+  });
+
   it('lists a code entered on an empty cart as applied at once, as 0.4.x did', async () => {
     const next = boot(config, Promise.resolve(campaign));
     await flush();
@@ -163,6 +191,49 @@ describe('0.4.x event names', () => {
     expect(added).toEqual([{ packageId: 1, quantity: 1, source: 'direct' }]);
     expect(removed).toHaveLength(1);
     expect(changed).toHaveLength(1);
+  });
+
+  it('item events keep the cart action that made them when a synced toggle follows a swap pick', async () => {
+    document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
+      <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div>
+      <div id="two" data-next-bundle-card data-next-bundle-id="two" data-next-bundle-items='[{"packageId":2,"quantity":1}]'></div></div>
+      <div id="plan" data-next-toggle-card data-next-package-id="9" data-next-product-sync="400"></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    document.querySelector<HTMLElement>('#plan')!.click();
+    await flush();
+    const added = heard(next, 'cart:item-added');
+    const removed = heard(next, 'cart:item-removed');
+    document.querySelector<HTMLElement>('#two')!.click();
+    await flush();
+    expect(next.getState().cart.groups).toMatchObject({
+      'bundle:main': { lines: [{ packageId: 2, quantity: 1 }] },
+      'toggle:9': { lines: [{ packageId: 9, quantity: 2 }] },
+    });
+    expect(added).toEqual([{ packageId: 9, quantity: 1 }]);
+    expect(removed).toEqual([]);
+  });
+
+  it('item events and action:success keep the click or call that made them when a synced toggle follows', async () => {
+    document.body.innerHTML = `<button id="add" data-next-action="add-to-cart" data-next-package-id="1">Add</button>
+      <div data-next-toggle-card data-next-package-id="9" data-next-product-sync="400" data-next-selected="true"></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const added = heard(next, 'cart:item-added');
+    const changed = heard(next, 'cart:quantity-changed');
+    const success = heard(next, 'action:success');
+    document.querySelector<HTMLElement>('#add')!.click();
+    await flush();
+    await next.actions.setQuantity(1, 3);
+    await flush();
+    expect(next.getState().cart.groups['toggle:9']?.lines).toEqual([{ packageId: 9, quantity: 3 }]);
+    expect(added).toEqual([
+      { packageId: 9, quantity: 1 },
+      { packageId: 1, quantity: 1, source: 'direct' },
+      { packageId: 9, quantity: 2 },
+    ]);
+    expect(changed).toEqual([{ packageId: 1, quantity: 3, oldQuantity: 1 }]);
+    expect(success).toEqual([{ action: 'AddToCartEnhancer', data: { element: document.getElementById('add') } }]);
   });
 
   it('cart:item-added names the selector a select-mode add-to-cart button took its card from', async () => {
@@ -704,6 +775,15 @@ describe('0.4.x page moments', () => {
       '[next] next.on: "cart:package-swapped" is no longer sent: package selectors are gone; listen for cart.added and cart.removed',
     ]);
   });
+
+  it('says upsell:accepted is no longer sent: offers send upsell:added', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const next = boot(config, Promise.resolve(campaign));
+    next.on('upsell:accepted' as never, vi.fn());
+    expect(warn.mock.calls.map(([text]) => text)).toEqual([
+      '[next] next.on: "upsell:accepted" is no longer sent: offers send upsell:added',
+    ]);
+  });
 });
 
 describe('coupons (0.4.x)', () => {
@@ -809,6 +889,19 @@ describe('exitIntent', () => {
     expect(action).toEqual([]);
     finish();
     await flush();
+    expect(action).toEqual([{ action: 'custom' }]);
+  });
+
+  it('sends exit-intent:action for a custom button whose action removes the popup, once the action has run', async () => {
+    document.body.innerHTML = `<template data-template="exit-intent"><button data-exit-intent-action="custom">Go</button></template>`;
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const action = heard(next, 'exit-intent:action');
+    const remove: () => void = await next.exitIntent({ template: 'exit-intent', action: () => remove() });
+    leave();
+    document.querySelector<HTMLElement>('[data-exit-intent-action]')!.click();
+    await flush();
+    expect(document.querySelector('.exit-intent-popup')).toBeNull();
     expect(action).toEqual([{ action: 'custom' }]);
   });
 

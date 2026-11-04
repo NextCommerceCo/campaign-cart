@@ -107,8 +107,6 @@ export interface CartState {
   frozen: boolean;
   reported?: ReportedLine[];
   added?: boolean;
-  /** The cart action behind the latest change, for the 0.4.x item events; never saved. */
-  lastOperation?: CartOperation;
 }
 
 export interface CartOperation {

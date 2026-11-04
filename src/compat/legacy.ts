@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { Logger } from '../engine/log';
-import { mergeLines } from '../engine/cart/cart';
+import { mergeLines, normalizeCode, operations } from '../engine/cart/cart';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { CartLine, CartSummary, Line, SummaryLine } from '../engine/cart/types';
 import type { CartChange, Checkout, EngineEvent, EventMap, EventName, Selector } from '../engine/events';
@@ -137,7 +137,7 @@ function legacyCart(state: State) {
       ...new Set([
         ...cart.coupons,
         ...cart.held,
-        ...Object.values(cart.groups).flatMap((g) => g.vouchers.map((v) => v.trim().toUpperCase())),
+        ...Object.values(cart.groups).flatMap((g) => g.vouchers.map(normalizeCode)),
       ]),
     ],
     currency: summary?.currency ?? campaign?.currency,
@@ -167,8 +167,8 @@ const itemEvent = (map: (c: CartChange, op?: string, source?: string) => object 
   alias<'cart.added' | 'cart.removed'>({
     from: ['cart.added', 'cart.removed'],
     each: true,
-    data: ({ data }, { cart: { lastOperation }, selectors }) => {
-      const { action, group = '' } = lastOperation ?? {};
+    data: ({ data }, { selectors }) => {
+      const { action, group = '' } = operations.get(data.changes) ?? {};
       const bundle = group.startsWith('bundle:') ? selectors[group.slice(7)] : undefined;
       if (action === 'clear' || action === 'setGroups' || bundle?.mode === 'swap') return [];
       const source = action === 'addItem' ? 'direct' : bundle ? 'selector' : undefined;
@@ -185,9 +185,14 @@ const selector = (from: Picked['name'][], data: (s: Selector, state: LegacyState
     when: ({ data: s }) => s.type !== 'toggle' && (offer === undefined || (s.type === 'offer') === offer),
     data: (e, state) => data(e.data, state),
   });
-const items = (s: Selector) => s.lines.map((l) => ({ packageId: l.package_id, quantity: l.quantity }));
-const onePackage = ({ lines: [line, ...more] }: Selector) =>
-  line && !more.length ? { packageId: line.package_id, quantity: line.quantity } : {};
+const items = (s: Selector) => ({
+  selectorId: s.selector_id,
+  items: s.lines.map((l) => ({ packageId: l.package_id, quantity: l.quantity })),
+});
+const onePackage = ({ selector_id, lines: [line, ...more] }: Selector) => ({
+  selectorId: selector_id,
+  ...(line && !more.length && { packageId: line.package_id, quantity: line.quantity }),
+});
 const firstPackage = (s: Selector) => s.lines[0]?.package_id;
 const selectorQuantity = ({ selector_id }: Selector, { selectors }: State) => {
   const state = selectors[selector_id];
@@ -206,7 +211,7 @@ const toggleCards = () =>
     Number(el.getAttribute('data-next-package-id')),
   );
 
-const shippingOption = (state: State, id: number) => state.campaign?.shipping_methods.find((m) => m.ref_id === id);
+const shippingOption = (state: State, id?: number) => state.campaign?.shipping_methods.find((m) => m.ref_id === id);
 const shipping = alias({
   from: ['shipping.selected'],
   when: (e, state) => !!shippingOption(state, e.data.id),
@@ -221,6 +226,8 @@ const COUPON_TEXTS: Record<EventMap['coupon.denied']['reason'], string> = {
 
 /** The click being dispatched, if any: 0.4.x `action:success` named the add-to-cart button whose click changed the cart. */
 let click: Event | undefined;
+/** Each click's first `cart.added`: 0.4.43 sent one `action:success` per button, whatever its change set off. */
+const firstAdded = new WeakMap<Event, EngineEvent>();
 
 const requestedCurrency = () => new URLSearchParams(location.search).get('currency')?.toUpperCase();
 
@@ -248,10 +255,12 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     from: ['cart.added', 'coupon.applied', 'coupon.denied'],
     each: true,
     data: (e) => {
-      const field = document.querySelector('[data-next-coupon] .next-loading')?.closest('[data-next-coupon]');
-      const button = click?.eventPhase && (click.target as Element).closest?.('[data-next-action="add-to-cart"]');
-      const [action, element] = e.name === 'cart.added' ? ['AddToCartEnhancer', button] : ['CouponEnhancer', field];
-      return element ? [{ action, data: { element } }] : [];
+      const added = e.name === 'cart.added';
+      if (added && click?.eventPhase) firstAdded.set(click, firstAdded.get(click) ?? e);
+      const element = added
+        ? firstAdded.get(click!) === e && (click!.target as Element).closest?.('[data-next-action="add-to-cart"]')
+        : document.querySelector('[data-next-coupon] .next-loading')?.closest('[data-next-coupon]');
+      return element ? [{ action: added ? 'AddToCartEnhancer' : 'CouponEnhancer', data: { element } }] : [];
     },
   }),
   'cart:updated': alias({
@@ -278,15 +287,14 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     from: ['coupon.denied'],
     data: ({ data }) => ({ code: data.code, message: COUPON_TEXTS[data.reason].replace('{code}', data.code) }),
   }),
-  'bundle:selection-changed': selector([...SELECTIONS], (s) => ({ selectorId: s.selector_id, items: items(s) })),
-  'bundle:selected': selector(['selector.selected'], (s) => ({ selectorId: s.selector_id, items: items(s) })),
+  'bundle:selection-changed': selector([...SELECTIONS], items),
+  'bundle:selected': selector(['selector.selected'], items),
   'bundle:quantity-changed': selector(['selector.updated'], (s, state) => ({
-    selectorId: s.selector_id,
+    ...items(s),
     bundleId: s.option_id,
     quantity: selectorQuantity(s, state),
-    items: items(s),
   })),
-  'selector:selection-changed': selector([...SELECTIONS], (s) => ({ selectorId: s.selector_id, ...onePackage(s) })),
+  'selector:selection-changed': selector([...SELECTIONS], onePackage),
   'selector:item-selected': selector(['selector.selected'], (s, state) => {
     const mode = state.selectors[s.selector_id]?.mode === 'swap' ? 'swap' : 'select';
     return {
@@ -297,7 +305,7 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
       pendingAction: mode === 'select' || undefined,
     };
   }),
-  'selector:quantity-changed': selector(['selector.updated'], (s) => ({ selectorId: s.selector_id, ...onePackage(s) })),
+  'selector:quantity-changed': selector(['selector.updated'], onePackage),
   'upsell-selector:item-selected': offerPick,
   'upsell:option-selected': offerPick,
   'upsell:quantity-changed': selector(
@@ -326,7 +334,6 @@ const LATER = [
   'action:failed',
   'exit-intent:shown',
   'exit-intent:clicked',
-  'exit-intent:action',
   'exit-intent:dismissed',
   'exit-intent:closed',
   'payment:tokenized',
@@ -350,8 +357,6 @@ export interface LegacyPopup {
   imageUrl: string;
   /** The template the popup shows; '' for an image popup. */
   template: string;
-  /** The `data-exit-intent-action` whose run finished. */
-  ran?: string;
 }
 
 interface Registry {
@@ -359,6 +364,8 @@ interface Registry {
   shapes: Record<string, Shape>;
   popups: Record<string, LegacyPopup>;
   fire?(name: string, data: unknown, keep?: boolean): void;
+  /** The data layer's `dl_exit_intent_action` for a custom popup button, once its action has run. */
+  customAction?(): void;
 }
 const registries = new WeakMap<Engine, Registry>();
 /** @deprecated One engine's 0.4.x names added by lazy chunks, page moment shapes and exit popups (by Promotion id). */
@@ -395,6 +402,7 @@ const MOMENTS = [
   'express-checkout:initialized',
   'upsell:initialized',
   'upsell:adding',
+  'exit-intent:action',
   'timer:expired',
   'accordion:opened',
   'accordion:closed',
@@ -407,6 +415,7 @@ const UNSENT: Record<string, string> = {
   'cart:package-swapped': 'package selectors are gone; listen for cart.added and cart.removed',
   'order:redirect-missing': 'the checkout always sends the shopper on',
   'address:messages-loaded': 'the checkout no longer loads the address service’s texts',
+  'upsell:accepted': 'offers send upsell:added',
 };
 
 const own = <T>(table: Record<string, T>, name: string) =>
@@ -554,13 +563,12 @@ export interface LegacyApi {
 }
 
 export function legacyApi(engine: Engine): LegacyApi {
-  const products = (lines: CartLine[]) => ({ lines, vouchers: [] });
   return {
     addItem: ({ packageId, quantity = 1 }) => engine.cart.addItem(packageId, quantity),
     clearCart: () => engine.cart.setGroups({}),
-    swapCart: (items) => engine.cart.setGroups({ items: products(items) }),
+    swapCart: (lines) => engine.cart.setGroups({ items: { lines, vouchers: [] } }),
     applyCoupon: (code) => {
-      const held = () => engine.getState().cart.held.includes(code.trim().toUpperCase());
+      const held = () => engine.getState().cart.held.includes(normalizeCode(code));
       const wasHeld = held();
       const applied = engine.cart.applyCoupon(code);
       return !wasHeld && held() ? Promise.resolve(true) : applied;
@@ -569,9 +577,10 @@ export function legacyApi(engine: Engine): LegacyApi {
     getCampaignData: () => engine.getState().campaign,
     getCartData: () => {
       const { cart, campaign } = engine.getState();
+      const s = 'total' in engine.cart.current() ? cart.summary : undefined;
       const lines = engine.cart.lines().map((l) => {
         const pkg = engine.getPackage(l.package_id);
-        const line = cart.summary?.lines.find((s) => s.package_id === l.package_id);
+        const line = s?.lines.find((p) => p.package_id === l.package_id);
         return {
           packageId: l.package_id,
           quantity: l.quantity,
@@ -581,7 +590,6 @@ export function legacyApi(engine: Engine): LegacyApi {
           total: line?.total,
         };
       });
-      const s = cart.summary;
       return {
         cartLines: lines,
         items: lines,
@@ -593,10 +601,7 @@ export function legacyApi(engine: Engine): LegacyApi {
     exitIntent: (options) => import('./exit-intent').then((m) => m.exitIntent(engine, options)),
     getShippingMethods: () => engine.getState().campaign?.shipping_methods ?? [],
     setShippingMethod: (id) => engine.cart.setShipping(id),
-    getSelectedShippingMethod: () => {
-      const { campaign, cart } = engine.getState();
-      return campaign?.shipping_methods.find((m) => m.ref_id === cart.shippingId);
-    },
+    getSelectedShippingMethod: () => shippingOption(engine.getState(), engine.getState().cart.shippingId),
   };
 }
 

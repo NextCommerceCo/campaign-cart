@@ -169,7 +169,8 @@ const hasOfferLines = (before: ApiOrder, after: ApiOrder, lines: Line[], package
     if (!pkg) return false;
     const at = added.findIndex(
       (l) =>
-        l.quantity === quantity && sameId(l.product_id, pkg.product_id) && sameId(l.variant_id, pkg.product_variant_id),
+        l.quantity === quantity * (pkg.qty ?? 1) &&
+        (l.variant_id == null ? sameId(l.product_id, pkg.product_id) : l.variant_id === pkg.product_variant_id),
     );
     if (at < 0) return false;
     added.splice(at, 1);

@@ -128,8 +128,8 @@ falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` afte
 `dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`, `dl_generate_lead`,
 `dl_view_promotion`, `dl_select_promotion`, `dl_exit_intent_shown` / `_accepted` / `_dismissed` /
 `_closed` / `_action`. The exit-intent popup sends both its `dl_exit_intent_*` event and
-`dl_view_promotion` / `dl_select_promotion`; `_closed` is its × button, `_dismissed` Esc, the
-overlay or the page removing it, and a close after a click sends neither. No personal data is
+`dl_view_promotion` / `dl_select_promotion`; `_closed` is its × button, `_dismissed` Esc or the
+overlay, and a close after a click, or the page removing it, sends neither. No personal data is
 sent. Each push carries
 `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key` and
 `campaign_session_id` at the top level, as 0.4.30 did. `dl_add_to_cart` carries

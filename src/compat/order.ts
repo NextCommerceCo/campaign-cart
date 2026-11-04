@@ -18,7 +18,6 @@ const leaves = () =>
     ['meta[name="next-upsell-accept-url"]', ...NEXT_URL_ATTRS.map((a) => `[data-next-upsell] [${a}]`)].join(', '),
   );
 
-/** `upsell:accepted` came from `data-next-action="accept-upsell"` buttons, which are removed; an offer sent `upsell:added`. */
 const ORDER_EVENTS = {
   'order:completed': legacyEvent({
     from: ['order.paid', 'order.loaded'],

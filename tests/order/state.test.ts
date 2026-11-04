@@ -6,7 +6,9 @@ import { format } from '../../src/engine/format';
 import { publicOrder } from '../../src/engine/order';
 import type { EngineEvent } from '../../src/engine/events';
 import type { CheckoutState } from '../../src/checkout/state/types';
+import type { ApiOrderLine } from '../../src/engine/types';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
 import { makeEngine, type MakeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 import { fakeRules } from '../fixtures/rules';
@@ -285,7 +287,7 @@ describe('order', () => {
 
   it('takes an upsell as accepted when its request failed unanswered but the order now has it', async () => {
     let reads = 0;
-    const upsold = withUpsell(ORDER, 99, 1, { product_id: 400 });
+    const upsold = withUpsell(ORDER, 99, 2, { product_id: 400 });
     const { order, sent, gets, upsells, engine } = await setup({
       api: {
         upsell: () => json({ message: 'Bad gateway' }, 502),
@@ -305,7 +307,7 @@ describe('order', () => {
   });
 
   it('takes a later offer as accepted only when the order has its own line, not an earlier offer’s late one', async () => {
-    const first = withUpsell(ORDER, 99, 1, { product_id: 400 });
+    const first = withUpsell(ORDER, 99, 2, { product_id: 400 });
     const reads = [ORDER, ORDER, first, withUpsell(first, 100, 1, { product_id: 900 })];
     const { order, sent } = await setup({
       api: { upsell: () => json({ message: 'Bad gateway' }, 502), getOrder: () => json(reads.shift()) },
@@ -317,6 +319,26 @@ describe('order', () => {
     expect(await order.accept(plan, '/up-2/')).toBe('accepted');
     expect(sent('upsell.failed')).toHaveLength(2);
     expect(sent('upsell.accepted')).toMatchObject([{ page: '/up-2/', lines: [{ package_id: 9 }] }]);
+  });
+
+  it('finds the offer’s line by its variant, a standalone product’s by its product, counting product units', async () => {
+    const variants = { 1: 51, 2: 52 } as Record<number, number>;
+    const packages = campaign.packages.map((p) => ({ ...p, product_variant_id: variants[p.ref_id] }));
+    const accept = async (line: Partial<ApiOrderLine>, quantity: number, offer = PLAIN) => {
+      let reads = 0;
+      const upsold = withUpsell(ORDER, 99, quantity, line);
+      const { order } = await setup({
+        campaign: Promise.resolve({ ...campaign, packages }),
+        api: { upsell: () => json({ message: 'Bad gateway' }, 502), getOrder: () => json(reads++ ? upsold : ORDER) },
+      });
+      await order.load('R1');
+      return order.accept(offer, '/up-1/');
+    };
+    const one = { lines: [{ packageId: 1, quantity: 1 }] };
+    expect(await accept({ product_id: 400, variant_id: null }, 1, one)).toBe('accepted');
+    expect(await accept({ product_id: 400, variant_id: 52 }, 2)).toBe('accepted');
+    expect(await accept({ product_id: 400, variant_id: 52 }, 1)).toBe('failed');
+    expect(await accept({ product_id: 400, variant_id: 51 }, 2)).toBe('failed');
   });
 
   it('keeps an upsell failed when the order does not have it, or when the API refused it', async () => {

@@ -601,6 +601,20 @@ describe('analytics', () => {
       ]);
     });
 
+    it('sends a custom button’s dl_exit_intent_action when its action removes the popup', async () => {
+      const engine = await ready(TEMPLATE);
+      startAnalytics(engine, options);
+      const remove: () => void = exitIntent(engine, { template: 'exit', action: () => remove() });
+      leave();
+      click('[data-exit-intent-action="custom"]');
+      await flush();
+      expect(document.querySelector('.exit-intent-popup')).toBeNull();
+      expect(exits()).toMatchObject([
+        { event: 'dl_exit_intent_shown' },
+        { event: 'dl_exit_intent_action', event_action: 'exit_intent_custom', exit_intent: { action: 'custom' } },
+      ]);
+    });
+
     it('sends no dl_exit_intent_action for a custom action that fails, as 0.4.43', async () => {
       const engine = await ready(TEMPLATE);
       vi.spyOn(console, 'error').mockImplementation(() => {});

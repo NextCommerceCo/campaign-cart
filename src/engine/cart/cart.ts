@@ -16,6 +16,9 @@ import type {
 
 const TOGGLE = 'toggle:';
 
+/** The cart action behind the `changes` of each `cart.added` and `cart.removed`, for the 0.4.x item events. */
+export const operations = new WeakMap<CartChange[], CartOperation | undefined>();
+
 export const toggleGroup = (packageId: number) => TOGGLE + packageId;
 
 export const lineKey = (l: CartLine) =>
@@ -42,7 +45,7 @@ export function mergeLines(groups: Record<string, CartGroup>): Line[] {
   return [...merged.values()].filter((l) => l.quantity > 0);
 }
 
-const normalizeCode = (code: string) => code.trim().toUpperCase();
+export const normalizeCode = (code: string) => code.trim().toUpperCase();
 
 const cents = (amount: string | undefined) => Math.round(Number(amount ?? 0) * 100);
 const money = (amount: string | undefined) => cents(amount) / 100;
@@ -375,7 +378,7 @@ export function createCart(ctx: Context) {
     }
   };
 
-  const commit = (patch: Partial<CartState>, lastOperation?: CartOperation): Promise<void> => {
+  const commit = (patch: Partial<CartState>, operation?: CartOperation): Promise<void> => {
     if (state().frozen) return Promise.resolve();
     const before = state().groups;
     const after = patch.groups ?? before;
@@ -383,7 +386,6 @@ export function createCart(ctx: Context) {
     const hasLines = mergeLines(after).length > 0;
     set({
       ...patch,
-      lastOperation,
       ...(!hasLines && { summary: undefined }),
       calculating: hasLines && !!ctx.getState().campaign,
     });
@@ -396,6 +398,7 @@ export function createCart(ctx: Context) {
     const cart = cartOf();
     ctx.emit('cart.updated', cart);
     const { added, removed } = changesOf(quantities(before), quantities(after), priced);
+    operations.set(added, operation).set(removed, operation);
     if (removed.length) ctx.emit('cart.removed', { ...cart, changes: removed });
     if (added.length) ctx.emit('cart.added', { ...cart, changes: added });
     return recalculate();

@@ -50,7 +50,7 @@ export const WIRING: Wire[] = [
   { from: ['promotion.clicked'], ga: 'select_promotion', dl: 'dl_select_promotion' },
   { from: ['promotion.viewed'], dl: 'dl_exit_intent_shown' },
   { from: ['promotion.clicked'], dl: 'dl_exit_intent_accepted' },
-  { from: ['promotion.clicked', 'promotion.closed'], dl: 'dl_exit_intent_action' },
+  { from: ['promotion.clicked'], dl: 'dl_exit_intent_action' },
   { from: ['promotion.closed'], dl: 'dl_exit_intent_dismissed' },
   { from: ['promotion.closed'], dl: 'dl_exit_intent_closed' },
 ];

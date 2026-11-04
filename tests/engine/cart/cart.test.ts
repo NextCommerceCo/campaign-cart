@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
-import { publicCart } from '../../../src/engine/cart/cart';
+import { operations, publicCart } from '../../../src/engine/cart/cart';
 import { MemoryStorage } from '../../fixtures/storage';
 import type { EventMap, Selector } from '../../../src/engine/events';
 import { campaign } from '../../fixtures/campaign';
@@ -90,20 +90,26 @@ describe('cart', () => {
     expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
   });
 
-  it('records the cart action behind each change as it is announced, and never saves it', async () => {
-    const session = new MemoryStorage();
-    const { engine } = makeEngine({ session });
+  it('records the cart action behind each change on its payload, whatever a listener changes before it is delivered', async () => {
+    const { engine } = makeEngine();
     await engine.start();
     const seen: Array<[string, unknown]> = [];
-    engine.on('*', (e) => e.name.startsWith('cart.') && seen.push([e.name, engine.getState().cart.lastOperation]));
+    engine.on('*', (e) => {
+      if (e.name === 'cart.added' || e.name === 'cart.removed')
+        seen.push([e.name, operations.get((e.data as EventMap['cart.added']).changes)]);
+    });
     await engine.cart.addItem(1);
     await engine.cart.setQuantity(1, 3);
     await engine.cart.removeItem(1);
     await engine.cart.setGroup('bundle:main', toggle(2));
     await engine.cart.setGroups({ items: toggle(3) });
     await engine.cart.clear();
-    const changes = seen.filter(([name]) => name === 'cart.added' || name === 'cart.removed');
-    expect(changes).toEqual([
+    const off = engine.on('cart.updated', () => {
+      off();
+      void engine.cart.setGroup('toggle:9', toggle(9));
+    });
+    await engine.cart.addItem(1);
+    expect(seen).toEqual([
       ['cart.added', { action: 'addItem', group: 'items' }],
       ['cart.added', { action: 'setQuantity' }],
       ['cart.removed', { action: 'removeItem' }],
@@ -111,10 +117,9 @@ describe('cart', () => {
       ['cart.removed', { action: 'setGroups' }],
       ['cart.added', { action: 'setGroups' }],
       ['cart.removed', { action: 'clear' }],
+      ['cart.added', { action: 'setGroup', group: 'toggle:9' }],
+      ['cart.added', { action: 'addItem', group: 'items' }],
     ]);
-    await engine.cart.addItem(1);
-    expect([...session.data.values()].join()).not.toContain('lastOperation');
-    expect(makeEngine({ session }).engine.getState().cart.lastOperation).toBeUndefined();
   });
 
   it('keeps a held code in this tab, and checks and announces it at the first price on the next page', async () => {
