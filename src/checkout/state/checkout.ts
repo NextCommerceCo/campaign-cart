@@ -112,7 +112,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       contact = contactKey(now);
       const { language, ip, user_agent } = state().user ?? recorded();
       set({ user: { ...now, language, ...(ip && { ip }), user_agent } });
-      ctx.emit('contact.updated', cart.currentCheckout());
+      ctx.emit('user.updated', state().user!);
       return;
     }
     prospecting = true;
@@ -125,9 +125,9 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       });
       set({ prospectSaved: true, openCart: saved, user: { ...now, ...recorded(saved.user) } });
       contact = contactKey(now);
-      ctx.emit('contact.entered', cart.currentCheckout());
+      ctx.emit('user.entered', state().user!);
     } catch (err) {
-      ctx.fail('contact.save', err);
+      ctx.fail('user.save', err);
     } finally {
       prospecting = false;
     }
@@ -143,15 +143,9 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const before = addresses[type];
       if (now === before) continue;
       addresses[type] = now;
-      set(
-        type === 'billing'
-          ? { billingAddress: publicAddress(checkout, prefix) }
-          : { shippingAddress: publicAddress(checkout, prefix) },
-      );
-      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', {
-        ...cart.currentCheckout(),
-        address_type: type,
-      });
+      const address = publicAddress(checkout, prefix);
+      set(type === 'billing' ? { billingAddress: address } : { shippingAddress: address });
+      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', { ...address, type });
     }
   };
 
@@ -272,7 +266,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const method = paymentCode(word);
       const changed = method !== state().paymentMethod;
       set({ paymentMethod: method, errors });
-      if (changed) ctx.emit('payment.selected', cart.currentCheckout());
+      if (changed) ctx.emit('payment.selected', { method });
     },
 
     setStep(step: number): void {

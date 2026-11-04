@@ -20,7 +20,7 @@ const LABELS: Partial<Record<EventName, string>> = {
   'cart.added': 'Added to the cart',
   'cart.removed': 'Removed from the cart',
   'checkout.started': 'Checkout opened',
-  'contact.entered': 'Contact entered',
+  'user.entered': 'Shopper entered',
   'address.entered': 'Address entered',
   'shipping.selected': 'Shipping picked',
   'checkout.submitted': 'Order submitted',

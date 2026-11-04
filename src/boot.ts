@@ -54,8 +54,8 @@ const EVENT_NAMES: EventName[] = [
   'coupon.removed',
   'coupon.denied',
   'checkout.started',
-  'contact.entered',
-  'contact.updated',
+  'user.entered',
+  'user.updated',
   'address.entered',
   'address.updated',
   'shipping.selected',
@@ -86,16 +86,10 @@ export interface SdkEvent<K extends EventName = EventName> {
   sdk_version: string;
 }
 
-const CHECKOUT_STEPS = ['contact', 'address', 'shipping', 'payment'];
-const objectOf = (name: EventName) => {
-  const namespace = name.split('.')[0]!;
-  return CHECKOUT_STEPS.includes(namespace) ? 'checkout' : namespace;
-};
-
 const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => ({
   event_id: e.id,
   event_type: e.name,
-  object: objectOf(e.name),
+  object: e.name.split('.')[0]!,
   data: e.data,
   created_at: new Date(e.at).toISOString(),
   session_id: engine.sessionId(),

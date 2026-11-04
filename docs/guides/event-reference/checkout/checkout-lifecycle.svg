@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 802" width="720" height="802" role="img" aria-labelledby="checkout-lifecycle-title checkout-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="checkout-lifecycle-title">Checkout lifecycle</title>
-  <desc id="checkout-lifecycle-desc">The checkout form opens with a cart (checkout.started). While the shopper fills it, contact.entered, contact.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.</desc>
+  <desc id="checkout-lifecycle-desc">The checkout form opens with a cart (checkout.started). While the shopper fills it, user.entered, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.</desc>
   <defs>
     <marker id="checkout-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -30,8 +30,8 @@
     <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.started</text>
     <rect x="220" y="196" width="220" height="133" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">filling</text>
-    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">contact.entered</text>
-    <text x="330" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">contact.updated</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">user.entered</text>
+    <text x="330" y="256" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">user.updated</text>
     <text x="330" y="271" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.entered</text>
     <text x="330" y="286" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.updated</text>
     <text x="330" y="301" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">shipping.selected</text>
@@ -47,7 +47,7 @@
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">valid: false</text>
   </g>
   <text x="360" y="708" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A created order empties the cart without cart events, unless the shopper pays at a payment gateway</tspan></text>
-  <text x="360" y="728" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · contact.save</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → no Open Cart yet; tried again on the next field</tspan></text>
+  <text x="360" y="728" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · user.save</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → no Open Cart yet; tried again on the next field</tspan></text>
   <text x="360" y="748" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · address.rules</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → the campaign countries and simpler checks</tspan></text>
   <text x="360" y="768" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · address.autocomplete</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → no address suggestions</tspan></text>
   <text x="360" y="788" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · order.create</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → refused: back to filling, with order.failed</tspan></text>

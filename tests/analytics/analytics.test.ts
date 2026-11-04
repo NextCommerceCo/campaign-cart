@@ -204,7 +204,13 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     await flush();
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
+    engine.events.emit('address.entered', {
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      country: 'US',
+      type: 'shipping',
+    });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
@@ -437,7 +443,13 @@ describe('analytics events (GA4 names)', () => {
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
+    engine.events.emit('address.entered', {
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      country: 'US',
+      type: 'shipping',
+    });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
@@ -482,11 +494,30 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, options);
     await flush();
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('contact.entered', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'billing' });
+    engine.events.emit('user.entered', {
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      accepts_marketing: true,
+      language: 'en',
+      user_agent: 'test',
+    });
+    engine.events.emit('address.entered', {
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      country: 'US',
+      type: 'billing',
+    });
     engine.events.emit('promotion.viewed', { source: 'exit_intent', template: 'exit' });
     engine.events.emit('promotion.clicked', { source: 'exit_intent', template: 'exit', action: 'apply-coupon' });
-    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
+    engine.events.emit('address.entered', {
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      country: 'US',
+      type: 'shipping',
+    });
     expect(seen.slice(-4)).toMatchObject([
       { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
       { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },

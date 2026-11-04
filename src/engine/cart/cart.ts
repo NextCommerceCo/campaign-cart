@@ -455,7 +455,8 @@ export function createCart(ctx: Context) {
     setShipping(shippingId: number | undefined) {
       if (shippingId === state().shippingId) return Promise.resolve();
       const done = commit({ shippingId });
-      ctx.emit('shipping.selected', currentCheckout());
+      const method = currentCheckout().cart.shipping_method;
+      if (method) ctx.emit('shipping.selected', method);
       return done;
     },
   };

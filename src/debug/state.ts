@@ -150,14 +150,12 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );
-  on('shipping.selected', (e) =>
-    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.cart.shipping_method?.id)}` }),
-  );
+  on('shipping.selected', (e) => change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.id)}` }));
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
   on('address.entered', (e) =>
-    change({}, { at: e.at, text: `${e.data.address_type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
+    change({}, { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
   );
-  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.payment_method} chosen` }));
+  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
   on('checkout.submitted', (e) =>
     change(
       {},
@@ -169,7 +167,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       },
     ),
   );
-  on('contact.entered', (e) => change({}, { at: e.at, text: 'Contact entered: open cart saved on the store' }));
+  on('user.entered', (e) => change({}, { at: e.at, text: 'Shopper entered: open cart saved on the store' }));
   on('order.failed', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.message ?? e.data.code}` }),
   );

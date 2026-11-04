@@ -221,7 +221,7 @@ const LIFECYCLES = {
   checkout: {
     title: 'Checkout lifecycle',
     rowYs: [16, 196, 436, 616],
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, contact.entered, contact.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.entered, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.',
     rows: 4,
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
@@ -229,8 +229,8 @@ const LIFECYCLES = {
         row: 1,
         title: 'filling',
         sub: [
-          'contact.entered',
-          'contact.updated',
+          'user.entered',
+          'user.updated',
           'address.entered',
           'address.updated',
           'shipping.selected',
@@ -252,7 +252,7 @@ const LIFECYCLES = {
     ],
     note: 'A created order empties the cart without cart events, unless the shopper pays at a payment gateway',
     errors: [
-      ['contact.save', 'no Open Cart yet; tried again on the next field'],
+      ['user.save', 'no Open Cart yet; tried again on the next field'],
       ['address.rules', 'the campaign countries and simpler checks'],
       ['address.autocomplete', 'no address suggestions'],
       ['order.create', 'refused: back to filling, with order.failed'],

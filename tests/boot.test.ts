@@ -181,7 +181,7 @@ describe('boot', () => {
     const shipped = vi.fn();
     next.on('shipping.selected', shipped);
     await next.actions.setShipping(1);
-    expect(shipped.mock.calls[0]![1]).toMatchObject({ event_type: 'shipping.selected', object: 'checkout' });
+    expect(shipped.mock.calls[0]![1]).toMatchObject({ event_type: 'shipping.selected', object: 'shipping' });
     document.cookie = 'ncsid=; path=/; max-age=0';
   });
 

@@ -56,7 +56,7 @@ export type ErrorAction =
   | 'cart.calculate'
   | 'selector.calculate'
   | 'coupon.check'
-  | 'contact.save'
+  | 'user.save'
   | 'address.rules'
   | 'address.autocomplete'
   | 'order.create'
@@ -79,6 +79,12 @@ export interface Discount {
   code?: string;
   /** The offer that gave it. */
   offer_id: number;
+}
+
+/** The chosen way to pay. */
+export interface Payment {
+  /** The API's code: `card_token`, `paypal`, `apple_pay`, `google_pay`, `klarna`, … */
+  method: string;
 }
 
 /** A package billed again every interval. */
@@ -162,7 +168,7 @@ export interface Cart {
 export interface Checkout {
   /** The same cart `cart.*` events carry. */
   cart: Cart;
-  /** The shopper, from `contact.entered` on. */
+  /** The shopper, from `user.entered` on. */
   user?: User;
   /** From `address.entered` for the shipping address on. */
   shipping_address?: Address;
@@ -406,37 +412,37 @@ export interface EventMap {
    * and later `cart.abandoned`.
    * @group Checkout
    */
-  'contact.entered': Checkout;
+  'user.entered': User;
   /**
-   * The contact changed after `contact.entered` and is still valid. The Open Cart keeps the first
-   * contact.
+   * The shopper's details changed after `user.entered` and are still valid. The Open Cart keeps
+   * the first ones.
    * @group Checkout
    */
-  'contact.updated': Checkout;
+  'user.updated': User;
   /**
    * Once per `type`, when that address is valid: every field its country requires is filled and
    * valid, and so is each optional one filled. Checked when the shopper leaves a field.
    * @group Checkout
    */
-  'address.entered': Checkout & {
+  'address.entered': Address & {
     /** Which address: `billing` only when it is separate from the shipping one. */
-    address_type: AddressType;
+    type: AddressType;
   };
   /**
    * The address changed after `address.entered` and is still valid.
    * @group Checkout
    */
-  'address.updated': Checkout & { address_type: AddressType };
+  'address.updated': Address & { type: AddressType };
   /**
    * A shipping method was picked. A bundle card can set it on the landing page too.
    * @group Checkout
    */
-  'shipping.selected': Checkout;
+  'shipping.selected': ShippingMethod;
   /**
    * The payment method changed.
    * @group Checkout
    */
-  'payment.selected': Checkout;
+  'payment.selected': Payment;
   /**
    * Each submit, once its checks ran: the fields, then the card tokenized. A valid submit is
    * followed by `order.created` or `order.failed`.

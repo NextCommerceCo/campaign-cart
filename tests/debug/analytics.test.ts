@@ -127,8 +127,21 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('contact.entered', engine.cart.currentCheckout());
-    engine.events.emit('address.entered', { ...engine.cart.currentCheckout(), address_type: 'shipping' });
+    engine.events.emit('user.entered', {
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      accepts_marketing: true,
+      language: 'en',
+      user_agent: 'test',
+    });
+    engine.events.emit('address.entered', {
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      country: 'US',
+      type: 'shipping',
+    });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',

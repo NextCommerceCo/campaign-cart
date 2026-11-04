@@ -194,8 +194,8 @@ describe('checkout', () => {
     const { checkout, fill, posts, engine } = await setup({ session });
     const saved = vi.fn();
     const updated = vi.fn();
-    engine.on('contact.entered', (e) => saved(e.data));
-    engine.on('contact.updated', (e) => updated(e.data));
+    engine.on('user.entered', (e) => saved(e.data));
+    engine.on('user.updated', (e) => updated(e.data));
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(0);
@@ -214,9 +214,7 @@ describe('checkout', () => {
       ip: '203.0.113.7',
       user_agent: 'Mozilla/5.0 (test)',
     };
-    expect(saved).toHaveBeenCalledWith(
-      expect.objectContaining({ user, billing_same_as_shipping: true, payment_method: 'card_token' }),
-    );
+    expect(saved).toHaveBeenCalledWith(user);
     expect(engine.getState().checkout?.openCart).toEqual(OPEN_CART);
     await checkout.leave('last_name');
     checkout.setField('email', 'jane@');
@@ -228,13 +226,11 @@ describe('checkout', () => {
     next.engine.on('cart.updated', (e) => updates(e.data));
     await next.engine.cart.addItem(2);
     expect(updates.mock.calls[0]![0]).not.toHaveProperty('user');
-    next.engine.on('contact.updated', (e) => updated(e.data));
+    next.engine.on('user.updated', (e) => updated(e.data));
     next.checkout.setField('email', 'jane@example.org');
     await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
-    expect(updated).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ user: { ...user, email: 'jane@example.org' } }),
-    );
+    expect(updated).toHaveBeenCalledExactlyOnceWith({ ...user, email: 'jane@example.org' });
   });
 
   it('reports begin once, the address when it is valid then each change, and each change of payment method', async () => {
@@ -263,9 +259,7 @@ describe('checkout', () => {
   it('reports the billing address once it is valid, only when it differs from the shipping address', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: unknown[] = [];
-    engine.on('address.entered', (e) =>
-      seen.push([e.data.address_type, e.data.shipping_address, e.data.billing_address]),
-    );
+    engine.on('address.entered', (e) => seen.push(e.data));
     await engine.cart.addItem(1);
     checkout.begin();
     await checkout.loadCountries();
@@ -279,10 +273,14 @@ describe('checkout', () => {
     fill({ billing_postcode: '89501' });
     await checkout.leave('billing_postcode');
     const { email: _, ...address } = SHIPPING;
-    const shipping = ['shipping', address, undefined];
-    expect(seen).toEqual([shipping]);
+    expect(seen).toEqual([{ ...address, type: 'shipping' }]);
     checkout.setSameAsShipping(false);
-    expect(seen).toEqual([shipping, ['billing', address, { ...billing, postcode: '89501', country: 'US' }]]);
+    const billed = { ...billing, postcode: '89501', country: 'US' };
+    expect(seen).toEqual([
+      { ...address, type: 'shipping' },
+      { ...billed, type: 'billing' },
+    ]);
+    expect(engine.cart.currentCheckout()).toMatchObject({ shipping_address: address, billing_address: billed });
     checkout.setSameAsShipping(true);
     expect(engine.cart.currentCheckout().billing_address).toBeUndefined();
   });

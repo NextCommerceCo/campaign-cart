@@ -8,7 +8,7 @@ category: 'Reference'
 
 `next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,
 with one dot: the namespace is the thing that changed, the action what happened to it, as in Next
-Commerce webhooks. `contact.entered` creates the Cart the `cart.abandoned` webhook sends later, and
+Commerce webhooks. `user.entered` creates the Cart the `cart.abandoned` webhook sends later, and
 `order.created` is the Order of the `order.created` webhook.
 
 `event` is the envelope, shaped like a webhook's:
@@ -28,16 +28,17 @@ next.on('order.created', (data, event) => {
 Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
 added after it fired; for anything else read `next.getState()`.
 
-The checkout steps (`checkout.*`, `contact.*`, `address.*`, `shipping.selected`,
-`payment.selected`) carry the Checkout, and their `object` is `checkout`: the same Cart as `cart`,
-next to `user`, `shipping_address`, `billing_same_as_shipping`, `billing_address` and
-`payment_method` once the shopper has entered them. `cart.*` events carry the Cart alone.
+An event's data is the object its namespace names, and `object` is that namespace: `checkout.*`
+carry the Checkout (the same Cart as `cart`, with `user`, `shipping_address`,
+`billing_same_as_shipping`, `billing_address` and `payment_method` once the shopper has entered
+them), `user.*` the User, `address.*` the Address with its `type`, `shipping.selected` the
+ShippingMethod and `payment.selected` the Payment.
 
 ## Event Reference
 
 A group whose events follow a lifecycle starts with a page that draws it, such as the cart's.
 Each event has its own page with its fields and an example, generated from `EventMap` in
-`src/engine/events.ts`. The `contact`, `address`, `shipping` and `payment` events are checked when
+`src/engine/events.ts`. The `user`, `address`, `shipping` and `payment` events are checked when
 the shopper leaves a field (its `change`), not on each key.
 
 <!-- event-index -->
@@ -83,7 +84,7 @@ when paid. `context` has `page_location` and `page_referrer` (without their quer
 (`user_agent`, `language`, `device_type`). `next.context()` returns the same object, for a script
 that sends `next.on` events on. No personal data is sent.
 
-`generate_lead` is sent once, on `contact.entered`. `add_shipping_info` is sent once, after
+`generate_lead` is sent once, on `user.entered`. `add_shipping_info` is sent once, after
 `checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that
 passes its checks (for a card, once it is tokenized).
 

@@ -217,7 +217,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             trigger: e.name,
             reason: 'Once, when the checkout form is ready',
           });
-        case 'contact.entered': {
+        case 'user.entered': {
           const { currency, value } = cartEcommerce(engine);
           return emit(
             'generate_lead',
@@ -226,7 +226,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           );
         }
         case 'address.entered':
-          if ((e.data as EventMap['address.entered']).address_type !== 'shipping') return;
+          if ((e.data as EventMap['address.entered']).type !== 'shipping') return;
         // falls through
         case 'shipping.selected':
           if (!started || shippingSent) return;
