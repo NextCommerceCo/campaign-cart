@@ -221,7 +221,7 @@ const LIFECYCLES = {
   checkout: {
     title: 'Checkout lifecycle',
     rowYs: [16, 196, 436, 616],
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and the shopper keeps filling. A submit that passes, or an express button, sends checkout.submitted with valid true and places the order, with the cart frozen. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or waits at a payment gateway; from the gateway a paid order loads on the next page, and a failed payment comes back to the checkout with the cart kept.',
     rows: 4,
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
@@ -239,18 +239,44 @@ const LIFECYCLES = {
         tone: 'active',
       },
       { row: 2, title: 'placing', sub: ['the cart is frozen'], tone: 'waiting' },
-      { row: 3, title: 'placed', sub: ['next page, or a payment gateway'], tone: 'success' },
-      { col: 'side', row: 1, title: 'stopped', sub: [code('valid: false')], tone: 'failure' },
+      { row: 3, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
+      { col: 'side', row: 2, title: 'at a gateway', sub: ['PayPal, 3-D Secure, …'], tone: 'waiting' },
     ],
-    parts: () => [
-      down(0, 1, 'the shopper fills the form'),
-      down(1, 2, 'a submit passes its checks', ['checkout.submitted'], { boxH: H + 75 }),
-      down(2, 3, 'the order is created', ['order.created']),
-      toSide(1, 'a check fails'),
-      fromSide(1, 'fix and submit'),
-      loopUp(2, 1, 'refused', ['order.create', 'order.failed']),
-    ],
-    note: 'A created order empties the cart without cart events, unless the shopper pays at a payment gateway',
+    parts: () => {
+      const right = MAIN.x + MAIN.w;
+      const filling = rowY(1);
+      const gateway = rowY(2);
+      return [
+        down(0, 1, 'the shopper fills the form'),
+        [
+          arrow(`M${right} ${filling + 30} H470 V${filling + 72} H${right + 6}`),
+          label(482, filling + 40, 'a check fails', { size: 12 }),
+          label(482, filling + 57, 'checkout.submitted', { code: true }),
+          label(482, filling + 73, 'valid: false', { code: true }),
+        ],
+        down(1, 2, 'a submit passes, or an express button', ['checkout.submitted', 'valid: true'], {
+          boxH: H + 75,
+        }),
+        loopUp(2, 1, 'refused', ['order.failed']),
+        down(2, 3, 'the order is paid', ['order.created']),
+        [
+          arrow(`M${right} ${gateway + 18} H${SIDE.x - 6}`),
+          label((right + SIDE.x) / 2, gateway + 10, 'redirected', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.x) / 2, gateway + 34, 'order.created', { anchor: 'middle', code: true }),
+        ],
+        [
+          arrow(`M${SIDE.cx} ${gateway + H} V${rowY(3) + 29} H${right + 6}`),
+          label(SIDE.cx + 12, gateway + H + 50, 'paid', { size: 12 }),
+          label(SIDE.cx + 12, gateway + H + 67, 'order.loaded', { code: true }),
+        ],
+        [
+          arrow(`M${SIDE.cx} ${gateway} V${filling + 105} H${right + 6}`, { dashed: true }),
+          label(500, filling + 99, 'payment fails', { size: 12 }),
+          label(500, filling + 121, 'cart kept', { size: 12 }),
+        ],
+      ];
+    },
+    note: 'A paid order empties the cart without cart events; at a gateway the cart is kept until the paid order loads',
     errors: [
       ['user.save', 'no Open Cart yet; tried again on the next field'],
       ['address.rules', 'the campaign countries and simpler checks'],
