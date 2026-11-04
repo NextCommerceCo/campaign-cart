@@ -307,6 +307,23 @@ describe('selectors', () => {
     },
   );
 
+  it('keeps a swap selector as it is while the cart is frozen', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.selectors.register('main', CARDS, 'swap', 'one');
+    await flush();
+    const picked = vi.fn();
+    engine.on('selector.selected', picked);
+    engine.cart.freeze(true);
+    await engine.selectors.pick('main', 'two');
+    await engine.selectors.setQuantity('main', 2);
+    expect(picked).not.toHaveBeenCalled();
+    expect(engine.getState().selectors.main!.picked).toBe('one');
+    engine.cart.freeze(false);
+    await engine.selectors.pick('main', 'two');
+    expect(picked).toHaveBeenCalledTimes(1);
+  });
+
   it('names the picked option and its products, priced once the option has a price', async () => {
     const { engine } = makeEngine({ fetch: fakeApi().fetch });
     await engine.start();

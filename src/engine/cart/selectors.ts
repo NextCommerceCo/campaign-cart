@@ -93,10 +93,12 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     await write;
   };
 
+  const locked = (selector: SelectorState) => selector.mode === 'swap' && ctx.getState().cart.frozen;
+
   const pick = (id: string, cardId: string): Promise<void> => {
     const selector = get(id);
     const card = selector?.cards.find((c) => c.id === cardId);
-    if (!selector || !card) return Promise.resolve();
+    if (!selector || !card || locked(selector)) return Promise.resolve();
     if (selector.picked !== cardId) {
       set(id, { picked: cardId });
       ctx.emit('selector.selected', publicSelector(id));
@@ -194,7 +196,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     setSlot(id: string, cardId: string, index: number, slot: Partial<Slot>): Promise<void> {
       const selector = get(id);
       const card = selector?.cards.find((c) => c.id === cardId);
-      if (!selector || !card) return Promise.resolve();
+      if (!selector || !card || locked(selector)) return Promise.resolve();
       const slots = cardSlots(selector, card).map((s, i) => (i === index ? { ...s, ...slot } : s));
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
       if (selector.picked !== cardId) return Promise.resolve();
@@ -206,7 +208,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     setQuantity(id: string, quantity: number): Promise<void> {
       const selector = get(id);
       const card = pickedCard(selector);
-      if (!selector || !card) return Promise.resolve();
+      if (!selector || !card || locked(selector)) return Promise.resolve();
       const next = clamp(card, quantity);
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
