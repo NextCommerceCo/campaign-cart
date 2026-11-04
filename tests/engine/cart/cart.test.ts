@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';
+import type { EventMap } from '../../../src/engine/events';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });
 
@@ -147,19 +148,18 @@ describe('cart', () => {
     void engine.cart.addItem(1);
     await engine.cart.setQuantity(1, 1);
     await engine.cart.settled();
-    const summary = engine.getState().cart.summary!;
-    const price = summary.lines[0]!.unit_price;
+    const change = { package_id: 1, product_id: 400, quantity: 1, price: 49 };
     expect(seen).toEqual([
       'cart.calculating',
       [
         'cart.added',
-        {
-          lines: [{ package_id: 1, quantity: 1 }],
-          coupons: [],
-          shipping_method_id: undefined,
-          summary,
-          changes: [{ package_id: 1, quantity: 1, unit_price: price }],
-        },
+        expect.objectContaining({
+          lines: [expect.objectContaining({ package_id: 1, product_id: 400, quantity: 1, price: 49, total: 49 })],
+          currency: 'USD',
+          subtotal: 49,
+          total: 49,
+          changes: [change],
+        }),
       ],
       'cart.calculated',
     ]);
@@ -170,17 +170,7 @@ describe('cart', () => {
     expect(seen.filter((e) => typeof e !== 'string')).toEqual([]);
     seen.length = 0;
     await engine.cart.clear();
-    expect(seen).toEqual([
-      [
-        'cart.removed',
-        {
-          lines: [],
-          coupons: [],
-          shipping_method_id: undefined,
-          changes: [{ package_id: 1, quantity: 1, unit_price: price }],
-        },
-      ],
-    ]);
+    expect(seen).toEqual([['cart.removed', { lines: [], coupons: [], currency: 'USD', changes: [change] }]]);
   });
 
   it('announces an addition at the package price when pricing fails', async () => {
@@ -198,12 +188,37 @@ describe('cart', () => {
     await engine.cart.settled();
     expect(added).toEqual([
       {
-        lines: [{ package_id: 1, quantity: 1 }],
+        lines: [{ package_id: 1, quantity: 1, product_id: 400, image: 'https://cdn.test/1.png' }],
         coupons: [],
-        shipping_method_id: undefined,
-        changes: [{ package_id: 1, quantity: 1, unit_price: '49.00' }],
+        currency: 'USD',
+        changes: [{ package_id: 1, product_id: 400, quantity: 1, price: 49 }],
       },
     ]);
+  });
+
+  it('prices each line in numbers, and tells a coupon the shopper entered from a bundle card’s own code', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const carts: Array<EventMap['cart.calculated']> = [];
+    engine.on('cart.calculated', (e) => carts.push(e.data));
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: ['SAVE10'] });
+    await engine.cart.settled();
+    expect(carts.at(-1)!.discounts).toEqual([{ name: 'SAVE10', amount: 1, source: 'offer', offer_id: 10 }]);
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
+    await engine.cart.applyCoupon('save10');
+    await engine.cart.settled();
+    const cart = carts.at(-1)!;
+    expect(cart.discounts).toEqual([{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }]);
+    expect(cart.lines[0]).toMatchObject({ price: 49, original_price: 99, total: 49, total_discount: 0 });
+    expect(cart.shipping_method).toEqual({
+      id: 1,
+      code: 'standard',
+      name: 'Standard',
+      price: 0,
+      original_price: 0,
+      discounts: [],
+    });
+    expect(cart).toMatchObject({ coupons: ['SAVE10'], currency: 'USD', subtotal: 49, total: 39 });
   });
 
   it('announces a coupon applied, removed or denied', async () => {

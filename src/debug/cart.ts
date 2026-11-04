@@ -1,5 +1,5 @@
 import { bundleGroup, cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
-import type { CartSummary, Discount, SummaryLine } from '../engine/cart/types';
+import type { CartSummary, SummaryDiscount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import type { Package } from '../engine/types';
@@ -214,7 +214,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
 
   const totals = (s: CartSummary) => {
     const ship = s.shipping_method;
-    const offerOf = (d: Discount) => `${d.offer_id}:${d.name ?? ''}`;
+    const offerOf = (d: SummaryDiscount) => `${d.offer_id}:${d.name ?? ''}`;
     const onShipping = new Set((ship?.discounts ?? []).map(offerOf));
     const discounts = [...s.offer_discounts, ...s.voucher_discounts].filter((d) => !onShipping.has(offerOf(d)));
     const codes = new Set(s.voucher_discounts.map((d) => d.name ?? ''));
@@ -249,7 +249,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
 
   const total = (s: CartSummary) => {
     const ship = s.shipping_method;
-    const offerOf = (d: Discount) => `${d.offer_id}:${d.name ?? ''}`;
+    const offerOf = (d: SummaryDiscount) => `${d.offer_id}:${d.name ?? ''}`;
     const onShipping = new Set((ship?.discounts ?? []).map(offerOf));
     const itemDiscount = [...s.offer_discounts, ...s.voucher_discounts]
       .filter((d) => !onShipping.has(offerOf(d)))

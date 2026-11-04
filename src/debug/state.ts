@@ -146,7 +146,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === id)?.code ?? `method ${id}`;
   const on = <K extends EventName>(event: K, fn: (e: EngineEvent<K>) => void) => ctx.on(event, fn, { replay: true });
   on('cart.updated', (e) => cartChanged(e.data, e.at));
-  on('cart.calculated', (e) => change({ total: e.data.summary.total, currency: e.data.summary.currency }));
+  on('cart.calculated', (e) => change({ total: e.data.total?.toFixed(2), currency: e.data.currency }));
   on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );

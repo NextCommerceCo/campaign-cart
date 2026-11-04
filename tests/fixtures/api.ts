@@ -89,7 +89,9 @@ export function fakeApi(options: FakeApiOptions = {}) {
           subtotal: gross.toFixed(2),
           total_discount: (gross * (1 - rate(l.package_id))).toFixed(2),
           total: (gross * rate(l.package_id)).toFixed(2),
-          discounts: discount ? [{ offer_id: 10, name: 'SAVE10', amount: '1.00', percentage: '10.00' }] : [],
+          discounts: discount
+            ? [{ offer_id: 10, name: 'SAVE10', description: 'SAVE10', amount: '1.00', percentage: '10.00' }]
+            : [],
         };
       }),
       offer_discounts: [],

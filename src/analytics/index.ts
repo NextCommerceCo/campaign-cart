@@ -199,7 +199,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       }
       if (!ready) {
         if (e.name === 'cart.updated') priced = undefined;
-        if (e.name === 'cart.calculated') priced = (e.data as EventMap['cart.calculated']).summary.lines;
+        if (e.name === 'cart.calculated') priced = engine.getState().cart.summary?.lines;
         return;
       }
       legacyExitIntent(e);
@@ -207,7 +207,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         case 'cart.updated':
           return (e.data as EventMap['cart.updated']).lines.length ? undefined : reportCart([], 'cart.updated');
         case 'cart.calculated':
-          reportCart((e.data as EventMap['cart.calculated']).summary.lines, 'cart.calculated');
+          reportCart(engine.getState().cart.summary?.lines ?? [], 'cart.calculated');
           return emit('update_cart', cartEcommerce(engine), {
             trigger: e.name,
             reason: 'After every price update',

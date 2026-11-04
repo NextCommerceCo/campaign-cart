@@ -1,5 +1,5 @@
 /** A discount an offer or a coupon gives, as the Campaigns API reports it. */
-export interface Discount {
+export interface SummaryDiscount {
   /** The offer that gave it. */
   offer_id?: number;
   name?: string;
@@ -31,7 +31,7 @@ export interface SummaryLine {
   /** Line total after discounts. */
   total: string;
   /** Discounts on the line. */
-  discounts: Discount[];
+  discounts: SummaryDiscount[];
   /** `true` for a subscription package. */
   is_recurring?: boolean;
   /** How often a subscription renews. */
@@ -55,12 +55,12 @@ export interface CartSummary {
     price: string;
     /** Shipping price before discounts. */
     original_price: string;
-    discounts?: Discount[];
+    discounts?: SummaryDiscount[];
   };
   /** Offer discounts on the cart. */
-  offer_discounts: Discount[];
+  offer_discounts: SummaryDiscount[];
   /** Coupon discounts on the cart. */
-  voucher_discounts: Discount[];
+  voucher_discounts: SummaryDiscount[];
   /** Cart subtotal before discounts. */
   subtotal: string;
   /** Total discount on the cart. */

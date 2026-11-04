@@ -25,29 +25,109 @@ export interface Contact {
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
 
-/** The cart every `cart.*` event carries. */
-export interface Cart {
-  /** Every line in the cart, the same package's lines merged. */
-  lines: Line[];
-  /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
-  coupons: string[];
-  /** The picked shipping method's `ref_id`. */
-  shipping_method_id?: number;
-  /**
-   * Lines, discounts, shipping and totals, as the server priced these lines. None before they are
-   * priced (`cart.updated`, `cart.calculating`), for an empty cart, or when pricing failed.
-   */
-  summary?: CartSummary;
+/** A discount on the cart's products or on its shipping. Amounts are in the cart's currency. */
+export interface Discount {
+  /** The offer's name. */
+  name: string;
+  /** The amount taken off. */
+  amount: number;
+  /** `coupon` for a code the shopper entered (it is in `coupons`); `offer` for an automatic offer or a bundle card's own code. */
+  source: 'offer' | 'coupon';
+  /** The code, for a coupon. */
+  code?: string;
+  /** The offer that gave it. */
+  offer_id: number;
 }
 
-/** A package added to or removed from the cart, and the price it was charged. */
-export interface CartChangeLine {
+/** A package billed again every interval. */
+export interface Subscription {
+  /** The unit of the renewal interval. */
+  interval: 'day' | 'month';
+  /** How many `interval`s between renewals. */
+  interval_count: number;
+  /** What each renewal charges, after discounts. Once priced. */
+  price?: number;
+  /** What each renewal charges before discounts. Once priced. */
+  original_price?: number;
+}
+
+/** A line of the cart. Its prices are there once the server priced the cart. */
+export interface CartItem extends Line {
+  /** The product in the store. From the campaign. */
+  product_id?: number;
+  /** The product's name as customers see it, as on an order line. From the campaign. */
+  product_title?: string;
+  /** The product variant. From the campaign. */
+  variant_id?: number;
+  /** The variant's name, such as `Black / M`. From the campaign. */
+  variant_title?: string;
+  /** The package's image URL. From the campaign. */
+  image?: string;
+  /** What one package costs after discounts. Once priced. */
+  price?: number;
+  /** What one package costs before discounts; equal to `price` when nothing is taken off. Once priced. */
+  original_price?: number;
+  /** The discount on the line. Once priced. */
+  total_discount?: number;
+  /** `price × quantity`. Once priced. */
+  total?: number;
+  /** The discounts on the line. Once priced. */
+  discounts?: Discount[];
+  /** For a package billed again every interval. */
+  subscription?: Subscription;
+}
+
+/** The selected shipping method, and what shipping costs. */
+export interface ShippingMethod {
+  /** The method's `ref_id`. */
+  id: number;
+  /** Such as `standard`. */
+  code?: string;
+  /** The method's name. Once priced. */
+  name?: string;
+  /** What shipping costs after discounts; `0` is free shipping. Once priced. */
+  price?: number;
+  /** What shipping costs before discounts. Once priced. */
+  original_price?: number;
+  /** The discounts on shipping, such as a free-shipping offer. Once priced. */
+  discounts?: Discount[];
+}
+
+/**
+ * The cart every `cart.*` event carries. Prices are numbers in `currency`, there once the server
+ * priced these lines: `total = subtotal − total_discount + shipping_method.price`.
+ */
+export interface Cart {
+  /** Every line in the cart, the same package's lines merged. */
+  lines: CartItem[];
+  /** The codes the shopper applied, uppercase. A bundle card's own codes are not listed. */
+  coupons: string[];
+  /** ISO 4217, such as `USD`. From the campaign. */
+  currency?: string;
+  /** The selected shipping method, and what shipping costs. */
+  shipping_method?: ShippingMethod;
+  /** The products before discounts, without shipping. Once priced. */
+  subtotal?: number;
+  /** The discounts on the products, without shipping's: the sum of `discounts`. Once priced. */
+  total_discount?: number;
+  /** What the shopper pays. Once priced. */
+  total?: number;
+  /** The discounts on the products, one per offer. Once priced. */
+  discounts?: Discount[];
+}
+
+/** A package added to or removed from the cart. */
+export interface CartChange {
   /** The package's `ref_id` in the campaign. */
   package_id: number;
+  /** The product in the store. From the campaign. */
+  product_id?: number;
+  /** The product variant. From the campaign. */
+  variant_id?: number;
   /** How many packages were added or removed. */
   quantity: number;
-  /** Unit price after discounts, as the server priced it; the package's price when it could not. */
-  unit_price: string;
+  /** What one package cost, as the server priced it; the campaign's package price when it could not. */
+  price: number;
 }
 
 export type AnalyticsName =
@@ -165,7 +245,7 @@ export interface EventMap {
    * Server totals arrived.
    * @group Carts
    */
-  'cart.calculated': Cart & { summary: CartSummary };
+  'cart.calculated': Cart;
   /**
    * Packages the page added since the last price, net, just before `cart.calculated`. A `+ + −`
    * within one price run sends one event for the net change; `+` then `−` sends none.
@@ -173,7 +253,7 @@ export interface EventMap {
    */
   'cart.added': Cart & {
     /** What was added, at the price the server charged. */
-    changes: CartChangeLine[];
+    changes: CartChange[];
   };
   /**
    * Packages the page removed since the last price, at the price they had.
@@ -181,7 +261,7 @@ export interface EventMap {
    */
   'cart.removed': Cart & {
     /** What was removed, at the price it had. */
-    changes: CartChangeLine[];
+    changes: CartChange[];
   };
   /**
    * A code was added to the cart.

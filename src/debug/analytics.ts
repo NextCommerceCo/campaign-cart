@@ -79,15 +79,15 @@ const money = (value: number, currency: unknown) =>
 const amount = (params: Record<string, unknown>) =>
   typeof params.value === 'number' ? money(params.value, params.currency) : '';
 const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.005);
-const total = (amounts: Array<string | undefined>) => amounts.reduce((n, v) => n + Number(v ?? 0), 0);
+const total = (amounts: Array<string | number | undefined>) => amounts.reduce((n: number, v) => n + Number(v ?? 0), 0);
 
 const addsUp = (event: AnalyticsEvent, data: Partial<EventMap['cart.calculated'] & EventMap['order.loaded']>) => {
   const { value, currency } = event.params;
   if (typeof value !== 'number') return undefined;
   const m = (n: number) => money(n, currency);
-  if (event.name === 'update_cart' && data.summary?.lines) {
-    const lines = total(data.summary.lines.map((l) => l.total));
-    const voucher = total((data.summary.voucher_discounts ?? []).map((d) => d.amount));
+  if (event.name === 'update_cart' && data.total !== undefined && data.lines) {
+    const lines = total(data.lines.map((l) => l.total));
+    const voucher = total((data.discounts ?? []).filter((d) => d.source === 'coupon').map((d) => d.amount));
     if (near(value, lines)) return { ok: true, text: `value ${m(value)} = the cart lines ${m(lines)}` };
     if (voucher && near(value, lines + voucher))
       return {

@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
-import type { Discount, Selector, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
+import type { SummaryDiscount, Selector, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
 import { cents, discountPercent, format } from '../engine/format';
 import { cardQuote } from '../engine/values';
@@ -51,7 +51,7 @@ function itemValues(
   };
 }
 
-function discounts(engine: Engine, packageId: number, kind: string): Discount[] {
+function discounts(engine: Engine, packageId: number, kind: string): SummaryDiscount[] {
   const summary = engine.getState().cart.summary;
   const pool = new Set(
     (kind === 'voucher' ? summary?.voucher_discounts : summary?.offer_discounts)?.map((d) => d.offer_id),

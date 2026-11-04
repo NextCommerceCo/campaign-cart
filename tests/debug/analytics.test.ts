@@ -217,7 +217,7 @@ describe('analytics workflow', () => {
     const { engine, flow, paint, send, verdict, steps, root } = setup(ON, [landing, page('checkout')]);
     engine.events.emit('sdk.ready', { lines: [] });
     send('sdk.ready', 'page_view', { page_title: 'Checkout' }, 'pv');
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     engine.events.emit('checkout.started', { lines: [] });
     send('checkout.started', 'begin_checkout', { currency: 'USD', value: 49, items: [EARBUDS] }, 'bc');
@@ -267,7 +267,7 @@ describe('analytics workflow', () => {
     send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
     decide('sdk.ready', 'view_item_list', false, 'No package on the page');
     vi.setSystemTime(20_000);
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     paint();
@@ -292,7 +292,7 @@ describe('analytics workflow', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
     const { engine, flow, paint, send, rows, chips, notes, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     const items = [{ ...EARBUDS, item_variant: 'Black' }];
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items }, 'atc');
     paint();
@@ -331,7 +331,7 @@ describe('analytics workflow', () => {
     const { engine, flow, paint, send, open } = setup();
     engine.events.emit('sdk.ready', { lines: [] });
     send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     paint();
     open('add_to_cart');
@@ -350,7 +350,7 @@ describe('analytics workflow', () => {
 
   it('says why an event was not sent', () => {
     const { engine, flow, paint, decide, toggle, open, tabs } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
     paint();
     toggle().click();
@@ -390,9 +390,12 @@ describe('analytics workflow', () => {
     const priced = (value: number, voucher?: string) => {
       vi.setSystemTime(Date.now() + 1000);
       engine.events.emit('cart.calculated', {
-        lines: [],
-        coupons: [],
-        summary: { lines: [{ total: '49.00' }], voucher_discounts: voucher ? [{ amount: voucher }] : [] } as never,
+        lines: [{ package_id: 1, quantity: 1, total: 49 }],
+        coupons: voucher ? ['SAVE'] : [],
+        total: 49,
+        discounts: voucher
+          ? [{ name: 'Save', amount: Number(voucher), source: 'coupon', code: 'SAVE', offer_id: 1 }]
+          : [],
       });
       send('cart.calculated', 'update_cart', { currency: 'USD', value, items: [EARBUDS] }, `u${value}${voucher ?? ''}`);
       paint();
@@ -436,7 +439,7 @@ describe('analytics workflow', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
     const { engine, flow, paint, send, chips, steps, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [], summary: {} as never });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     (win.dataLayer![0] as Record<string, unknown>)['gtm.uniqueEventId'] = 7;
     const collect = (en: string) => ({

@@ -4,8 +4,10 @@ import { createCheckout } from '../src/checkout/state/checkout';
 import { exitIntent } from '../src/compat/exit-intent';
 import type { Engine } from '../src/engine/engine';
 import type { EventName } from '../src/engine/events';
+import type { Campaign } from '../src/engine/types';
 import { createOrder } from '../src/order/state';
 import { fakeApi, json, type FakeApiOptions } from './fixtures/api';
+import { campaign } from './fixtures/campaign';
 import { flush, makeEngine } from './fixtures/engine';
 import { ORDER } from './fixtures/order';
 import { fakeRules } from './fixtures/rules';
@@ -48,6 +50,16 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'promotion.closed': true,
 };
 
+const CATALOG: Campaign = {
+  ...campaign,
+  packages: campaign.packages.map((p) => ({
+    ...p,
+    product_name: 'Olympus Earbuds',
+    product_variant_id: 4000 + p.ref_id,
+    product_variant_name: 'Black',
+  })),
+};
+
 const examples: Record<string, unknown> = {};
 const record = (engine: Engine) =>
   engine.on('*', (e) => {
@@ -57,7 +69,7 @@ const record = (engine: Engine) =>
 async function page(
   opts: { api?: FakeApiOptions; session?: Storage; local?: Storage; params?: Record<string, string> } = {},
 ) {
-  const { engine } = makeEngine({ ...opts, fetch: fakeApi(opts.api).fetch });
+  const { engine } = makeEngine({ ...opts, campaign: Promise.resolve(CATALOG), fetch: fakeApi(opts.api).fetch });
   record(engine);
   await engine.start();
   return engine;

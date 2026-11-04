@@ -1,6 +1,6 @@
 import type { Engine } from './engine';
 import { cents, discountPercent, format, money, pct } from './format';
-import type { Discount, SummaryLine } from './cart/types';
+import type { SummaryDiscount, SummaryLine } from './cart/types';
 
 export type Tokens = Record<string, string>;
 
@@ -82,7 +82,7 @@ export function lineTokens(engine: Engine, line: SummaryLine, currency: string |
   );
 }
 
-export function discountTokens(discount: Discount, currency: string | undefined, locale?: string): Tokens {
+export function discountTokens(discount: SummaryDiscount, currency: string | undefined, locale?: string): Tokens {
   return {
     'discount.name': discount.name ?? '',
     'discount.description': discount.description ?? '',

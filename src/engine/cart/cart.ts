@@ -1,7 +1,16 @@
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChangeLine } from '../events';
-import type { Line, CartGroup, CartLine, CartState, CartSummary, ReportedLine, SummaryLine } from './types';
+import type { Cart, CartChange, CartItem, Discount } from '../events';
+import type {
+  Line,
+  CartGroup,
+  CartLine,
+  CartState,
+  CartSummary,
+  ReportedLine,
+  SummaryDiscount,
+  SummaryLine,
+} from './types';
 
 export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
 
@@ -32,6 +41,87 @@ export function mergeLines(groups: Record<string, CartGroup>): Line[] {
 const normalizeCode = (code: string) => code.trim().toUpperCase();
 
 const cents = (amount: string | undefined) => Math.round(Number(amount ?? 0) * 100);
+const money = (amount: string | undefined) => cents(amount) / 100;
+const sum = (amounts: number[]) => Math.round(amounts.reduce((n, a) => n + a * 100, 0)) / 100;
+
+const discountOf = (d: SummaryDiscount, coupons: string[]): Discount => {
+  const code = d.description?.toUpperCase();
+  const coupon = !!code && coupons.includes(code);
+  return {
+    name: d.name ?? '',
+    amount: money(d.amount),
+    source: coupon ? 'coupon' : 'offer',
+    ...(coupon && { code }),
+    offer_id: d.offer_id ?? 0,
+  };
+};
+
+export function publicCart(state: State, summary?: CartSummary): Cart {
+  const { coupons, shippingId } = state.cart;
+  const campaign = state.campaign;
+  const pkg = (id: number) => campaign?.packages.find((p) => p.ref_id === id);
+  const lines = mergeLines(state.cart.groups).map((line, i): CartItem => {
+    const p = pkg(line.package_id);
+    const priced = summary?.lines[i]?.package_id === line.package_id ? summary.lines[i] : undefined;
+    const interval = p?.is_recurring && p.interval ? p.interval : undefined;
+    return {
+      ...line,
+      ...(p?.product_id !== undefined && { product_id: p.product_id }),
+      ...(p?.product_name && { product_title: p.product_name }),
+      ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
+      ...(p?.product_variant_name && { variant_title: p.product_variant_name }),
+      ...(p?.image && { image: p.image }),
+      ...(priced && {
+        price: money(priced.package_price),
+        original_price: money(priced.original_package_price),
+        total_discount: money(priced.total_discount),
+        total: money(priced.total),
+        discounts: priced.discounts.map((d) => discountOf(d, coupons)),
+      }),
+      ...(interval && {
+        subscription: {
+          interval,
+          interval_count: p!.interval_count ?? 1,
+          ...(priced?.price_recurring && {
+            price: money(priced.price_recurring),
+            original_price: money(priced.original_recurring_price ?? priced.price_recurring),
+          }),
+        },
+      }),
+    };
+  });
+  const listed = campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
+  const priced = summary?.shipping_method;
+  const shipping_method = priced
+    ? {
+        id: priced.id,
+        code: priced.code,
+        name: priced.name,
+        price: money(priced.price),
+        original_price: money(priced.original_price),
+        discounts: (priced.discounts ?? []).map((d) => discountOf(d, coupons)),
+      }
+    : shippingId !== undefined
+      ? { id: shippingId, ...(listed && { code: listed.code }) }
+      : undefined;
+  const byOffer = new Map<number, Discount>();
+  for (const d of lines.flatMap((l) => l.discounts ?? [])) {
+    const seen = byOffer.get(d.offer_id);
+    byOffer.set(d.offer_id, seen ? { ...seen, amount: sum([seen.amount, d.amount]) } : d);
+  }
+  return {
+    lines,
+    coupons,
+    ...(campaign && { currency: campaign.currency }),
+    ...(shipping_method && { shipping_method }),
+    ...(summary && {
+      subtotal: money(summary.subtotal),
+      total_discount: sum(lines.map((l) => l.total_discount ?? 0)),
+      total: money(summary.total),
+      discounts: [...byOffer.values()],
+    }),
+  };
+}
 
 function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
   const ids = (s: CartSummary) =>
@@ -81,7 +171,7 @@ export function createCart(ctx: Context) {
     for (const l of lines()) by.set(l.package_id, (by.get(l.package_id) ?? 0) + l.quantity);
     return by;
   };
-  const listed = (id: number) => ctx.getPackage(id)?.price ?? '0';
+  const listed = (id: number) => money(ctx.getPackage(id)?.price_total);
 
   const track = (before: Map<number, number>, prices: SummaryLine[] | undefined) => {
     const after = quantities();
@@ -90,26 +180,32 @@ export function createCart(ctx: Context) {
       if (!delta) continue;
       const change = changes.get(id) ?? { quantity: 0 };
       change.quantity += delta;
-      change.price ??= prices?.find((l) => l.package_id === id)?.unit_price;
+      change.price ??= prices?.find((l) => l.package_id === id)?.package_price;
       changes.set(id, change);
     }
   };
 
-  const cartOf = (summary?: CartSummary): Cart => ({
-    lines: lines(),
-    coupons: state().coupons,
-    shipping_method_id: state().shippingId,
-    ...(summary && { summary }),
-  });
+  const cartOf = (summary?: CartSummary): Cart => publicCart(ctx.getState(), summary);
 
   const announce = (summary?: CartSummary) => {
-    const added: CartChangeLine[] = [];
-    const removed: CartChangeLine[] = [];
+    const added: CartChange[] = [];
+    const removed: CartChange[] = [];
     for (const [id, change] of changes) {
-      const now = summary?.lines.find((l) => l.package_id === id)?.unit_price;
-      if (change.quantity > 0) added.push({ package_id: id, quantity: change.quantity, unit_price: now ?? listed(id) });
+      const p = ctx.getPackage(id);
+      const product = {
+        ...(p?.product_id !== undefined && { product_id: p.product_id }),
+        ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
+      };
+      const now = summary?.lines.find((l) => l.package_id === id)?.package_price;
+      if (change.quantity > 0)
+        added.push({ package_id: id, ...product, quantity: change.quantity, price: now ? money(now) : listed(id) });
       if (change.quantity < 0)
-        removed.push({ package_id: id, quantity: -change.quantity, unit_price: change.price ?? listed(id) });
+        removed.push({
+          package_id: id,
+          ...product,
+          quantity: -change.quantity,
+          price: change.price ? money(change.price) : listed(id),
+        });
     }
     changes.clear();
     if (removed.length) ctx.emit('cart.removed', { ...cartOf(summary), changes: removed });
@@ -162,7 +258,7 @@ export function createCart(ctx: Context) {
       busy = false;
       set({ summary, calculating: false });
       announce(summary);
-      ctx.emit('cart.calculated', { ...cartOf(), summary });
+      ctx.emit('cart.calculated', cartOf(summary));
       if (unchecked.size) void recheck(summary);
     } catch (err) {
       if (current !== seq) return;
