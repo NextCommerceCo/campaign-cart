@@ -25,9 +25,14 @@ const exitIntent = ({ image_url, template, action, coupon_code }: Data) => ({
 });
 const cart: LegacyEvent = { event: 'cart.updated', data: (d) => d.cart };
 const shipping: LegacyEvent = {
-  event: 'checkout.shipping_selected',
+  event: 'shipping.selected',
   data: (d) => ({ methodId: d.method_id, method: d.method }),
 };
+const exit = (event: EventName, when: (d: Data) => boolean = () => true): LegacyEvent => ({
+  event,
+  when: (d) => d.source === 'exit_intent' && when(d),
+  data: exitIntent,
+});
 const submitted: LegacyEvent = { event: 'checkout.submitted', when: (d) => d.valid === true };
 const selection = (toggle: boolean): LegacyEvent => ({
   event: 'selector.selected',
@@ -67,11 +72,11 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
   'upsell:added': { event: 'upsell.accepted' },
   'upsell:skipped': { event: 'upsell.skipped' },
   'upsell:error': { event: 'upsell.failed' },
-  'exit-intent:shown': { event: 'exit_intent.shown', data: exitIntent },
-  'exit-intent:clicked': { event: 'exit_intent.clicked', when: (d) => !d.action, data: exitIntent },
-  'exit-intent:action': { event: 'exit_intent.clicked', when: (d) => !!d.action, data: exitIntent },
-  'exit-intent:dismissed': { event: 'exit_intent.closed', when: (d) => d.reason === 'dismissed', data: exitIntent },
-  'exit-intent:closed': { event: 'exit_intent.closed', when: (d) => d.reason === 'closed', data: exitIntent },
+  'exit-intent:shown': exit('promotion.viewed'),
+  'exit-intent:clicked': exit('promotion.clicked', (d) => !d.action),
+  'exit-intent:action': exit('promotion.clicked', (d) => !!d.action),
+  'exit-intent:dismissed': exit('promotion.closed', (d) => d.reason === 'dismissed'),
+  'exit-intent:closed': exit('promotion.closed', (d) => d.reason === 'closed'),
 };
 
 /** @deprecated 0.4.x features the SDK no longer has. Starter templates still register empty listeners for them. */

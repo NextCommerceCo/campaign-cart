@@ -27,7 +27,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     disableOnMobile: true,
     ...options,
   };
-  const detail = { image_url: o.image, template: o.template };
+  const detail = { source: 'exit_intent' as const, image_url: o.image, template: o.template };
   if (!o.image && !o.template) {
     engine.log.warn('exitIntent needs an image or a template');
     return () => {};
@@ -40,7 +40,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     open.forEach((el) => el.remove());
     open = [];
     document.removeEventListener('keydown', onKey);
-    if (event) engine.events.emit('exit_intent.closed', { ...detail, reason: event });
+    if (event) engine.events.emit('promotion.closed', { ...detail, reason: event });
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close('dismissed');
 
@@ -66,7 +66,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
           const couponCode = button.dataset.couponCode;
           if (action === 'apply-coupon' && couponCode) await engine.cart.applyCoupon(couponCode);
           if (action === 'custom') await o.action?.();
-          engine.events.emit('exit_intent.clicked', { ...detail, action, coupon_code: couponCode });
+          engine.events.emit('promotion.clicked', { ...detail, action, coupon_code: couponCode });
           close();
         }),
       );
@@ -75,7 +75,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
       img.style.cssText = `display:block;max-width:100%;${o.imageClickable ? 'cursor:pointer' : ''}`;
       if (o.imageClickable) {
         img.addEventListener('click', async () => {
-          engine.events.emit('exit_intent.clicked', detail);
+          engine.events.emit('promotion.clicked', detail);
           await o.action?.();
           close();
         });
@@ -101,7 +101,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     engine.noteExitIntentShown();
     document.body.append(overlay, popup);
     open = [overlay, popup];
-    engine.events.emit('exit_intent.shown', detail);
+    engine.events.emit('promotion.viewed', detail);
   };
 
   const onLeave = (e: MouseEvent) => e.clientY <= 0 && !e.relatedTarget && show();

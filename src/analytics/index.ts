@@ -221,14 +221,24 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             trigger: e.name,
             reason: 'Once, when the checkout form is ready',
           });
-        case 'checkout.address_entered':
-        case 'checkout.shipping_selected':
+        case 'contact.entered': {
+          const { currency, value } = cartEcommerce(engine);
+          return emit(
+            'generate_lead',
+            { currency, value, lead_source: 'checkout' },
+            { trigger: e.name, reason: 'Once, when the contact details saved an open cart' },
+          );
+        }
+        case 'address.entered':
+          if ((e.data as EventMap['address.entered']).type !== 'shipping') return;
+        // falls through
+        case 'shipping.selected':
           if (!started || shippingSent) return;
           shippingSent = true;
           return emit(
             'add_shipping_info',
             { ...cartEcommerce(engine), shipping_tier: tier() },
-            { trigger: e.name, reason: 'Once, when the address is complete or a shipping method is picked' },
+            { trigger: e.name, reason: 'Once, when the shipping address is valid or a shipping method is picked' },
           );
         case 'checkout.submitted': {
           const { valid, payment_method } = e.data as EventMap['checkout.submitted'];
@@ -241,6 +251,18 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
               payment_type: payment_method === 'card_token' ? 'Credit Card' : payment_method,
             },
             { trigger: e.name, reason: 'Once, when a submit passes its checks' },
+          );
+        }
+        case 'promotion.viewed':
+        case 'promotion.clicked': {
+          const { source, template, image_url } = e.data as EventMap['promotion.viewed'];
+          return emit(
+            e.name === 'promotion.viewed' ? 'view_promotion' : 'select_promotion',
+            { promotion_id: source, creative_name: template ?? image_url },
+            {
+              trigger: e.name,
+              reason: `Every time a promotion is ${e.name === 'promotion.viewed' ? 'shown' : 'clicked'}`,
+            },
           );
         }
         case 'order.loaded':

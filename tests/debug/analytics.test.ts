@@ -127,7 +127,13 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
     engine.events.emit('checkout.started', { lines: [] });
-    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('contact.entered', {
+      cart: {},
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+    });
+    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
     engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     engine.events.emit('order.loaded', {
       order: ORDER,
@@ -136,11 +142,12 @@ describe('the workflows match the analytics code', () => {
     });
     engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/upsell' });
     engine.events.emit('upsell.skipped', { ref_id: 'R1' });
-    engine.events.emit('exit_intent.shown', {});
-    engine.events.emit('exit_intent.clicked', {});
-    engine.events.emit('exit_intent.clicked', { action: 'apply-coupon', coupon_code: 'X' });
-    engine.events.emit('exit_intent.closed', { reason: 'dismissed' });
-    engine.events.emit('exit_intent.closed', { reason: 'closed' });
+    const source = 'exit_intent';
+    engine.events.emit('promotion.viewed', { source });
+    engine.events.emit('promotion.clicked', { source });
+    engine.events.emit('promotion.clicked', { source, action: 'apply-coupon', coupon_code: 'X' });
+    engine.events.emit('promotion.closed', { source, reason: 'dismissed' });
+    engine.events.emit('promotion.closed', { source, reason: 'closed' });
     await flush();
     const traced = engine.log
       .entries()
@@ -220,7 +227,7 @@ describe('analytics workflow', () => {
       ['done', 'view_item_list', 'Landing'],
       ['done', 'add_to_cart', 'Landing · this page'],
       ['done', 'begin_checkout', 'This page'],
-      ['todo', 'add_shipping_info', 'Not yet: once, when the address is complete or a shipping method is picked'],
+      ['todo', 'add_shipping_info', 'Not yet: once, when the shipping address is valid or a shipping method is picked'],
       ['todo', 'add_payment_info', 'Not yet: once, when a submit passes its checks'],
       ['todo', 'purchase', 'Not yet: when a paid order loads, on the upsell or receipt page'],
     ]);
@@ -491,13 +498,13 @@ describe('analytics workflow', () => {
     const { engine, paint, decide, rows, verdict, open, tabs } = setup();
     win.NextDataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
     win.dataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
-    engine.events.emit('exit_intent.shown', {});
-    decide('exit_intent.shown', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
+    engine.events.emit('promotion.viewed', { source: 'exit_intent' });
+    decide('promotion.viewed', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
     expect(verdict()).toBe('GTM dataLayer is on, but this page has no GTM container.');
-    expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Exit popup shown · data layer only']);
+    expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Promotion shown · data layer only']);
     expect(open('dl_exit_intent_shown')).toEqual([
-      ['Why', 'Data layer only: there is no analytics eventExit popup shown: exit_intent.shown'],
+      ['Why', 'Data layer only: there is no analytics eventPromotion shown: promotion.viewed'],
       ['Reached', 'dl_exit_intent_shownNextDataLayerGTM dataLayer'],
     ]);
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);

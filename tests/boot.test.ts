@@ -170,8 +170,8 @@ describe('boot', () => {
       const alias = LEGACY_EVENTS[name]!;
       return alias.when && !alias.when(data) ? 'skipped' : (alias.data?.(data) ?? data);
     };
-    const click = { image_url: 'x.png' };
-    const used = { template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' };
+    const click = { source: 'exit_intent', image_url: 'x.png' };
+    const used = { source: 'exit_intent', template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' };
     expect([popup('exit-intent:clicked', click), popup('exit-intent:clicked', used)]).toEqual([
       { imageUrl: 'x.png', template: undefined },
       'skipped',
@@ -183,7 +183,9 @@ describe('boot', () => {
       couponCode: 'EXIT10',
     });
     expect(
-      ['dismissed', 'closed'].map((reason) => popup('exit-intent:dismissed', { template: 'exit', reason })),
+      ['dismissed', 'closed'].map((reason) =>
+        popup('exit-intent:dismissed', { source: 'exit_intent', template: 'exit', reason }),
+      ),
     ).toEqual([{ imageUrl: undefined, template: 'exit' }, 'skipped']);
   });
 

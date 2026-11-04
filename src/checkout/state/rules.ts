@@ -139,6 +139,15 @@ export function requiredFields(checkout: CheckoutState, scope: Scope, phoneRequi
   return names;
 }
 
+export const ADDRESS = ['first_name', 'last_name', 'line1', 'line2', ...BY_COUNTRY, 'country'];
+
+export function addressValid(checkout: CheckoutState, prefix: '' | 'billing_'): boolean {
+  const country = checkout.fields[`${prefix}country`];
+  if (!country || (!checkout.rules[country] && !checkout.rulesDown)) return false;
+  const errors = formErrors(checkout, 'all');
+  return ADDRESS.every((name) => !errors[prefix + name]);
+}
+
 export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired = false): Record<string, FieldError> {
   const required = requiredFields(checkout, scope, phoneRequired);
   const { fields, rules, sameAsShipping } = checkout;

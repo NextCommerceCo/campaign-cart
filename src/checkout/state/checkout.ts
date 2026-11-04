@@ -5,7 +5,8 @@ import { nextUrl } from '../../engine/params';
 import { EXPRESS_METHODS, orderBody, type OrderUrls, paymentCode, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
 import {
-  addressRequired,
+  ADDRESS,
+  addressValid,
   fieldError,
   formErrors,
   type RemoteCheck,
@@ -13,7 +14,7 @@ import {
   type Scope,
   validEmail,
 } from './rules';
-import type { EventMap } from '../../engine/events';
+import type { AddressType, Contact } from '../../engine/events';
 import type { CheckoutError, Order } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 
@@ -62,19 +63,21 @@ export interface PlaceOrder extends OrderUrls {
 export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesApi) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
-  const once = new Set<string>();
+  let started = false;
   let prospecting = false;
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
 
-  const emitOnce = <K extends 'checkout.started' | 'checkout.address_entered' | 'checkout.billing_entered'>(
-    name: K,
-    data: EventMap[K],
-  ) => {
-    if (once.has(name)) return;
-    once.add(name);
-    ctx.emit(name, data);
+  const contactOf = (): Contact | undefined => {
+    const { fields } = state();
+    const [email, first_name, last_name] = ['email', 'first_name', 'last_name'].map((n) => fields[n]?.trim() ?? '');
+    if (!validEmail(email!) || first_name!.length < 2 || last_name!.length < 2) return;
+    const phone = phoneOf(state(), 'phone_number');
+    return { email: email!, first_name: first_name!, last_name: last_name!, ...(phone && { phone }) };
   };
+  const contactKey = (contact?: Contact) => JSON.stringify(contact ?? null);
+  let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
+  const addresses: Partial<Record<AddressType, string>> = {};
 
   const loadCountry = async (code: string): Promise<void> => {
     if (!code || state().rules[code]) return;
@@ -87,24 +90,27 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     }
   };
 
-  const saveProspect = async (): Promise<void> => {
-    const { fields, prospectSaved } = state();
-    const email = fields.email?.trim() ?? '';
-    const named = (name?: string) => (name?.trim().length ?? 0) >= 2;
+  const saveContact = async (): Promise<void> => {
+    const now = contactOf();
     const campaign = ctx.getState().campaign;
-    if (prospectSaved || prospecting || !campaign || !validEmail(email)) return;
-    if (!named(fields.first_name) || !named(fields.last_name)) return;
+    if (!now || prospecting || !campaign) return;
+    if (state().prospectSaved) {
+      if (contactKey(now) === contact) return;
+      contact = contactKey(now);
+      ctx.emit('contact.updated', now);
+      return;
+    }
     prospecting = true;
-    const phone = phoneOf(state(), 'phone_number');
     try {
       const saved = await ctx.api.createCart({
         lines: cart.lines(),
-        user: userOf(fields, phone),
+        user: userOf(state().fields, now.phone),
         currency: campaign.currency,
         attribution: ctx.attribution(),
       });
       set({ prospectSaved: true });
-      ctx.emit('cart.created', { cart: saved, email, phone });
+      contact = contactKey(now);
+      ctx.emit('contact.entered', { ...now, cart: saved });
     } catch (err) {
       ctx.fail('prospect', err);
     } finally {
@@ -112,18 +118,21 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     }
   };
 
-  const complete = (prefix: '' | 'billing_') => {
-    const { fields, rules } = state();
-    const country = fields[`${prefix}country`] ?? '';
-    return addressRequired(rules[country]).every((name) => !!fields[`${prefix}${name}`]?.trim());
-  };
-
-  const entered = () => {
-    if (!once.has('checkout.started')) return;
-    const { fields, sameAsShipping } = state();
-    if (complete('')) emitOnce('checkout.address_entered', { country: fields.country ?? '' });
-    if (!sameAsShipping && complete('billing_'))
-      emitOnce('checkout.billing_entered', { country: fields.billing_country ?? '' });
+  const announceAddresses = () => {
+    if (!started) return;
+    const checkout = state();
+    for (const type of ['shipping', 'billing'] as const) {
+      const prefix = type === 'billing' ? 'billing_' : '';
+      if ((type === 'billing' && checkout.sameAsShipping) || !addressValid(checkout, prefix)) continue;
+      const now = ADDRESS.map((name) => checkout.fields[prefix + name]?.trim() ?? '').join('|');
+      const before = addresses[type];
+      if (now === before) continue;
+      addresses[type] = now;
+      ctx.emit(before === undefined ? 'address.entered' : 'address.updated', {
+        type,
+        country: checkout.fields[`${prefix}country`]!,
+      });
+    }
   };
 
   const verifyPostcode = async (): Promise<void> => {
@@ -180,7 +189,9 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   return {
     begin(): void {
-      if (cart.lines().length) emitOnce('checkout.started', { lines: cart.lines() });
+      if (started || !cart.lines().length) return;
+      started = true;
+      ctx.emit('checkout.started', { lines: cart.lines() });
     },
 
     setField(name: string, value: string): void {
@@ -202,8 +213,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         errors,
         phones: kept,
       });
-      if (isCountry) void loadCountry(value).then(() => checkPhone(phone, true));
-      entered();
+      if (isCountry) void loadCountry(value).then(() => (announceAddresses(), checkPhone(phone, true)));
     },
 
     async leave(name: string): Promise<void> {
@@ -213,7 +223,8 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       if (code) set({ errors: { ...state().errors, [name]: { code } } });
       if (PHONES.includes(name)) await checkPhone(name, true);
       if (name === 'postcode' || name === 'state') await verifyPostcode();
-      await saveProspect();
+      announceAddresses();
+      await saveContact();
     },
 
     readPhone(name: string): Promise<void> {
@@ -233,7 +244,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       if (!same && !state().fields.billing_country && state().fields.country) {
         set({ fields: { ...state().fields, billing_country: state().fields.country! } });
       }
-      entered();
+      announceAddresses();
     },
 
     setPaymentMethod(word: string): void {
@@ -241,7 +252,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const method = paymentCode(word);
       const changed = method !== state().paymentMethod;
       set({ paymentMethod: method, errors });
-      if (changed) ctx.emit('checkout.payment_selected', { method });
+      if (changed) ctx.emit('payment.selected', { method });
     },
 
     setStep(step: number): void {

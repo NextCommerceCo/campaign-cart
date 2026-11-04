@@ -169,11 +169,13 @@ describe('checkout', () => {
     expect(engine.getState().checkout!.fields).toMatchObject({ country: 'GB', state: '' });
   });
 
-  it('saves the prospect once, when the email and both names are in', async () => {
+  it('saves the prospect once, when the email and both names are in, then reports contact changes', async () => {
     const session = new MemoryStorage();
     const { checkout, fill, posts, engine } = await setup({ session });
     const saved = vi.fn();
-    engine.on('cart.created', (e) => saved(e.data));
+    const updated = vi.fn();
+    engine.on('contact.entered', (e) => saved(e.data));
+    engine.on('contact.updated', (e) => updated(e.data));
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(0);
@@ -186,40 +188,70 @@ describe('checkout', () => {
     expect(saved).toHaveBeenCalledWith({
       cart: { id: 7, checkout_url: 'https://shop.test/c/7' },
       email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Does',
     });
+    await checkout.leave('last_name');
+    checkout.setField('email', 'jane@');
+    await checkout.leave('email');
+    expect(updated).not.toHaveBeenCalled();
     const next = await setup({ session });
-    next.checkout.setField('last_name', 'Doe');
-    await next.checkout.leave('last_name');
+    next.engine.on('contact.updated', (e) => updated(e.data));
+    next.checkout.setField('email', 'jane@example.org');
+    await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
+    expect(updated).toHaveBeenCalledExactlyOnceWith({
+      email: 'jane@example.org',
+      first_name: 'Jane',
+      last_name: 'Does',
+    });
   });
 
-  it('reports begin and the address once each, and each change of payment method', async () => {
+  it('reports begin once, the address when it is valid then each change, and each change of payment method', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: string[] = [];
-    engine.on('*', (e) => e.name.startsWith('checkout.') && seen.push(e.name));
+    engine.on('*', (e) => /^(checkout|address|payment)\./.test(e.name) && seen.push(e.name));
     checkout.begin();
     await engine.cart.addItem(1);
     checkout.begin();
-    fill(SHIPPING);
+    await checkout.loadCountries();
+    fill({ ...SHIPPING, postcode: '9021' });
+    await checkout.leave('postcode');
+    expect(seen).toEqual(['checkout.started']);
+    fill({ postcode: '90210' });
+    await checkout.leave('postcode');
+    await checkout.leave('city');
     fill({ city: 'Dallas' });
+    await checkout.leave('city');
     checkout.setPaymentMethod('paypal');
     checkout.setPaymentMethod('paypal');
     checkout.paymentReady();
-    expect(seen).toEqual(['checkout.started', 'checkout.address_entered', 'checkout.payment_selected']);
+    expect(seen).toEqual(['checkout.started', 'address.entered', 'address.updated', 'payment.selected']);
     expect(engine.getState().checkout!.cardReady).toBe(true);
   });
 
-  it('reports the billing address once it is complete, only when it differs from the shipping address', async () => {
+  it('reports the billing address once it is valid, only when it differs from the shipping address', async () => {
     const { engine, checkout, fill } = await setup();
-    const seen: string[] = [];
-    engine.on('checkout.billing_entered', (e) => seen.push(e.data.country));
+    const seen: unknown[] = [];
+    engine.on('address.entered', (e) => seen.push(e.data));
     await engine.cart.addItem(1);
     checkout.begin();
+    await checkout.loadCountries();
     fill(SHIPPING);
-    fill({ billing_country: 'US', billing_line1: '2 Side St', billing_city: 'Reno', billing_postcode: '89501' });
-    expect(seen).toEqual([]);
+    await checkout.leave('city');
+    const billing = { first_name: 'Ann', last_name: 'Lee', line1: '2 Side St', city: 'Reno', state: 'NY' };
+    fill({
+      billing_country: 'US',
+      ...Object.fromEntries(Object.entries(billing).map(([k, v]) => [`billing_${k}`, v])),
+    });
+    fill({ billing_postcode: '89501' });
+    await checkout.leave('billing_postcode');
+    expect(seen).toEqual([{ type: 'shipping', country: 'US' }]);
     checkout.setSameAsShipping(false);
-    expect(seen).toEqual(['US']);
+    expect(seen).toEqual([
+      { type: 'shipping', country: 'US' },
+      { type: 'billing', country: 'US' },
+    ]);
   });
 
   it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
@@ -242,18 +274,20 @@ describe('checkout', () => {
     expect(failed).toEqual([{ stage: 'order', code: 'declined', decline: '51', message: 'Insufficient funds' }]);
   });
 
-  it('reports shipping once the fields the country requires are filled, for a country with no city', async () => {
+  it('reports shipping once the fields the country requires are valid, for a country with no city', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: string[] = [];
-    engine.on('checkout.address_entered', (e) => seen.push(e.name));
+    engine.on('address.entered', (e) => seen.push(e.name));
     await engine.cart.addItem(1);
     checkout.begin();
     checkout.setField('country', 'SG');
     await flush();
-    fill({ line1: '1 Raffles Pl' });
+    fill({ first_name: 'Jane', last_name: 'Doe', line1: '1 Raffles Pl' });
+    await checkout.leave('line1');
     expect(seen).toEqual([]);
     fill({ postcode: '048616' });
-    expect(seen).toEqual(['checkout.address_entered']);
+    await checkout.leave('postcode');
+    expect(seen).toEqual(['address.entered']);
   });
 
   it('shows the card message and warns the author when a card order has no card form', async () => {

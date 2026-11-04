@@ -165,19 +165,19 @@ chunk never uses them up. Nothing is queued across a redirect.
 The full list, with payloads, is the Campaign SDK event reference in `docs/guides/events.md`. Names
 are `namespace.action` with one dot; 0.4.x names map onto them in `src/compat/legacy.ts`.
 
-| Event                                                                                                 | Emitted by                                      | Used by                                                           |
-| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| `sdk.ready`, `sdk.error`                                                                              | `start()`, `fail()`, storage                    | boot (`html[data-next-ready]`, legacy announce), analytics, debug |
-| `campaign.loaded`                                                                                     | `start()`, `load()`; internal, not public       | the 0.4.x `campaign:loaded` alias                                 |
-| `selector.selected / deselected / calculating / calculated`                                           | selectors, toggles, `cart.setGroup('toggle:…')` | page scripts                                                      |
-| `cart.updated`, `cart.calculating`, `cart.added`, `cart.removed`, `cart.calculated`                   | cart `commit()` and `calculate()`               | analytics (`cart.calculated`, `cart.updated`), page scripts       |
-| `coupon.applied / removed / denied`                                                                   | cart                                            | debug, page scripts                                               |
-| `checkout.started / address_entered / billing_entered / payment_selected / submitted`, `cart.created` | checkout                                        | analytics, debug, checkout binding (`next:prospect-cart-created`) |
-| `checkout.shipping_selected`                                                                          | `cart.setShipping`                              | analytics, debug                                                  |
-| `order.created`, `order.failed`, `order.loaded`                                                       | checkout `placeOrder`, order `settle`           | analytics (`order.loaded`, then `order.markReported`), debug      |
-| `upsell.viewed / accepted / skipped / failed`                                                         | order                                           | analytics, debug                                                  |
-| `exit_intent.shown / clicked / closed`                                                                | `src/compat/exit-intent.ts`                     | the 0.4.x `dl_exit_intent_*` events                               |
-| `analytics`                                                                                           | the analytics chunk                             | `next.analytics.on`, `next.on('analytics')`, debug                |
+| Event                                                                                                        | Emitted by                                      | Used by                                                           |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------- |
+| `sdk.ready`, `sdk.error`                                                                                     | `start()`, `fail()`, storage                    | boot (`html[data-next-ready]`, legacy announce), analytics, debug |
+| `campaign.loaded`                                                                                            | `start()`, `load()`; internal, not public       | the 0.4.x `campaign:loaded` alias                                 |
+| `selector.selected / deselected / calculating / calculated`                                                  | selectors, toggles, `cart.setGroup('toggle:…')` | page scripts                                                      |
+| `cart.updated`, `cart.calculating`, `cart.added`, `cart.removed`, `cart.calculated`                          | cart `commit()` and `calculate()`               | analytics (`cart.calculated`, `cart.updated`), page scripts       |
+| `coupon.applied / removed / denied`                                                                          | cart                                            | debug, page scripts                                               |
+| `checkout.started / submitted`, `contact.entered / updated`, `address.entered / updated`, `payment.selected` | checkout                                        | analytics, debug, checkout binding (`next:prospect-cart-created`) |
+| `shipping.selected`                                                                                          | `cart.setShipping`                              | analytics, debug                                                  |
+| `order.created`, `order.failed`, `order.loaded`                                                              | checkout `placeOrder`, order `settle`           | analytics (`order.loaded`, then `order.markReported`), debug      |
+| `upsell.viewed / accepted / skipped / failed`                                                                | order                                           | analytics, debug                                                  |
+| `promotion.viewed / clicked / closed`                                                                        | `src/compat/exit-intent.ts`                     | analytics, the 0.4.x `dl_exit_intent_*` events                    |
+| `analytics`                                                                                                  | the analytics chunk                             | `next.analytics.on`, `next.on('analytics')`, debug                |
 
 ### 3.6 Engine core
 

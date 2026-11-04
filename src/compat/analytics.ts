@@ -9,7 +9,7 @@ import type {
   AnalyticsTrace,
   EventMap,
   EventName,
-  ExitIntentDetail,
+  PromotionDetail,
 } from '../engine/events';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
@@ -19,7 +19,7 @@ type Win = Window & {
   NextDataLayerTransformFn?: (event: DataLayerEvent) => DataLayerEvent | null | undefined | false;
 };
 
-export const NAMES: Record<AnalyticsName, string> = {
+export const NAMES: Partial<Record<AnalyticsName, string>> = {
   page_view: 'dl_user_data',
   view_item: 'dl_view_item',
   view_item_list: 'dl_view_item_list',
@@ -36,18 +36,18 @@ export const NAMES: Record<AnalyticsName, string> = {
 };
 
 export const EXIT_INTENT: Array<[EventName, string]> = [
-  ['exit_intent.shown', 'shown'],
-  ['exit_intent.clicked', 'accepted'],
-  ['exit_intent.clicked', 'action'],
-  ['exit_intent.closed', 'dismissed'],
-  ['exit_intent.closed', 'closed'],
+  ['promotion.viewed', 'shown'],
+  ['promotion.clicked', 'accepted'],
+  ['promotion.clicked', 'action'],
+  ['promotion.closed', 'dismissed'],
+  ['promotion.closed', 'closed'],
 ];
 
 const exitIntentName = (e: EngineEvent): string | undefined => {
-  if (e.name === 'exit_intent.shown') return 'shown';
-  if (e.name === 'exit_intent.clicked')
-    return (e.data as EventMap['exit_intent.clicked']).action ? 'action' : 'accepted';
-  if (e.name === 'exit_intent.closed') return (e.data as EventMap['exit_intent.closed']).reason;
+  if ((e.data as { source?: string } | undefined)?.source !== 'exit_intent') return undefined;
+  if (e.name === 'promotion.viewed') return 'shown';
+  if (e.name === 'promotion.clicked') return (e.data as EventMap['promotion.clicked']).action ? 'action' : 'accepted';
+  if (e.name === 'promotion.closed') return (e.data as EventMap['promotion.closed']).reason;
   return undefined;
 };
 
@@ -174,9 +174,10 @@ export function startLegacyDataLayer(
     }
   };
 
-  engine.on('analytics', ({ data }: { data: AnalyticsEvent }) =>
-    send(NAMES[data.name], data.id, data.time, data.context, payload(data)),
-  );
+  engine.on('analytics', ({ data }: { data: AnalyticsEvent }) => {
+    const name = NAMES[data.name];
+    if (name) send(name, data.id, data.time, data.context, payload(data));
+  });
 
   const exitIntent = (trigger: EventName, name: string, data: object) => {
     const event = `dl_exit_intent_${name}`;
@@ -191,14 +192,14 @@ export function startLegacyDataLayer(
     const name = exitIntentName(e);
     if (!name) return;
     if (name === 'action') {
-      const { action, coupon_code } = e.data as EventMap['exit_intent.clicked'];
+      const { action, coupon_code } = e.data as EventMap['promotion.clicked'];
       return exitIntent(e.name, name, {
         event_action: `exit_intent_${action}`,
         event_label: coupon_code || action,
         exit_intent: { action, coupon_code: coupon_code || '' },
       });
     }
-    const { image_url, template } = e.data as ExitIntentDetail;
+    const { image_url, template } = e.data as PromotionDetail;
     exitIntent(e.name, name, {
       event_action: `exit_intent_${name}`,
       event_label: image_url || template || 'exit-intent',

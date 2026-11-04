@@ -121,7 +121,7 @@ describe('cart', () => {
   it('announces shipping and selection changes with their data', async () => {
     const { engine } = makeEngine();
     const seen: unknown[] = [];
-    engine.on('checkout.shipping_selected', (e) => seen.push(e.data));
+    engine.on('shipping.selected', (e) => seen.push(e.data));
     engine.on('selector.selected', (e) => seen.push(e.data));
     await engine.cart.setShipping(2);
     await engine.cart.setShipping(2);

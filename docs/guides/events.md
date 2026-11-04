@@ -2,8 +2,8 @@
 
 `next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,
 with one dot: the namespace is the thing that changed, the action what happened to it, as in Next
-Commerce webhooks. `cart.created` and `order.created` are the same Cart and Order the webhooks
-(`cart.abandoned`, `order.created`) send later.
+Commerce webhooks. `contact.entered` creates the Cart the `cart.abandoned` webhook sends later, and
+`order.created` is the Order of the `order.created` webhook.
 
 `event` is the envelope, shaped like a webhook's:
 
@@ -42,14 +42,13 @@ or `toggle`.
 
 ### Carts
 
-| Event              | Data                                                       | When                                                                                                                                                                |
-| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cart.updated`     | `cart`                                                     | Lines, coupons or shipping changed, at once                                                                                                                         |
-| `cart.calculating` | `lines`                                                    | Pricing starts; once for a burst of changes                                                                                                                         |
-| `cart.added`       | `lines` (`package_id`, `quantity`, `unit_price`), `priced` | Packages the page added since the last price, net, just before `cart.calculated`. `priced: false` when pricing failed: `unit_price` is then the package price       |
-| `cart.removed`     | `lines`, `priced`                                          | Packages the page removed since the last price, at the price they had                                                                                               |
-| `cart.calculated`  | `summary`                                                  | Server totals arrived                                                                                                                                               |
-| `cart.created`     | `cart`, `email`, `phone?`                                  | Once per tab, when the store creates the Cart: a valid email and a first and last name are in. It is the Cart in the dashboard's Open Carts, later `cart.abandoned` |
+| Event              | Data                                                       | When                                                                                                                                                          |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cart.updated`     | `cart`                                                     | Lines, coupons or shipping changed, at once                                                                                                                   |
+| `cart.calculating` | `lines`                                                    | Pricing starts; once for a burst of changes                                                                                                                   |
+| `cart.added`       | `lines` (`package_id`, `quantity`, `unit_price`), `priced` | Packages the page added since the last price, net, just before `cart.calculated`. `priced: false` when pricing failed: `unit_price` is then the package price |
+| `cart.removed`     | `lines`, `priced`                                          | Packages the page removed since the last price, at the price they had                                                                                         |
+| `cart.calculated`  | `summary`                                                  | Server totals arrived                                                                                                                                         |
 
 A `+ + −` within one price run sends one `cart.added` for the net change; `+` then `−` sends none.
 
@@ -63,14 +62,20 @@ A `+ + −` within one price run sends one `cart.added` for the net change; `+` 
 
 ### Checkout
 
-| Event                        | Data                                | When                                                                                                                                                                         |
-| ---------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkout.started`           | `lines`                             | Once, when the checkout form is bound with a cart                                                                                                                            |
-| `checkout.address_entered`   | `country`                           | Once, when the shipping address has every field its country requires                                                                                                         |
-| `checkout.billing_entered`   | `country`                           | Once, when a separate billing address is complete                                                                                                                            |
-| `checkout.shipping_selected` | `method_id`, `method?`              | A shipping method was picked. A bundle card can set it on the landing page too                                                                                               |
-| `checkout.payment_selected`  | `method`                            | The payment method changed                                                                                                                                                   |
-| `checkout.submitted`         | `payment_method`, `valid`, `errors` | Each submit, once its checks ran: the fields, then the card tokenized. `valid: false` names what stopped it. A valid submit is followed by `order.created` or `order.failed` |
+The checkout form's steps, in the order a shopper usually takes them. `contact`, `address`,
+`shipping` and `payment` events are checked when the shopper leaves a field (the field's `change`),
+not on each key.
+
+| Event                | Data                                                 | When                                                                                                                                                                                                          |
+| -------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.started`   | `lines`                                              | Once, when the checkout form is bound with a cart                                                                                                                                                             |
+| `contact.entered`    | `email`, `first_name`, `last_name`, `phone?`, `cart` | Once per tab, when the store creates the Cart: a valid email and a first and last name are in. It is the Cart in the dashboard's Open Carts, later `cart.abandoned`                                           |
+| `contact.updated`    | `email`, `first_name`, `last_name`, `phone?`         | The contact changed after `contact.entered` and is still valid. The Cart on the store keeps the first contact                                                                                                 |
+| `address.entered`    | `type`, `country`                                    | Once per `type` (`shipping` or `billing`), when that address is valid: every field its country requires is filled and valid, and so is each optional one filled. `billing` only when it is a separate address |
+| `address.updated`    | `type`, `country`                                    | The address changed after `address.entered` and is still valid                                                                                                                                                |
+| `shipping.selected`  | `method_id`, `method?`                               | A shipping method was picked. A bundle card can set it on the landing page too                                                                                                                                |
+| `payment.selected`   | `method`                                             | The payment method changed                                                                                                                                                                                    |
+| `checkout.submitted` | `payment_method`, `valid`, `errors`                  | Each submit, once its checks ran: the fields, then the card tokenized. `valid: false` names what stopped it. A valid submit is followed by `order.created` or `order.failed`                                  |
 
 ### Orders
 
@@ -89,13 +94,16 @@ A `+ + −` within one price run sends one `cart.added` for the net change; `+` 
 | `upsell.skipped`  | `ref_id`, `package_id?`      | The shopper went on without it             |
 | `upsell.failed`   | `ref_id`, `code`, `message?` | Adding the offer failed, such as a decline |
 
-### Exit intent
+### Promotions
 
-| Event                 | Data                                                 | When                                            |
-| --------------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| `exit_intent.shown`   | `image_url?`, `template?`                            | The popup opened                                |
-| `exit_intent.clicked` | `image_url?`, `template?`, `action?`, `coupon_code?` | The image was clicked, or a template action ran |
-| `exit_intent.closed`  | `image_url?`, `template?`, `reason`                  | `reason: 'dismissed'` (Esc) or `'closed'`       |
+`source` names the promotion. The exit-intent popup (`next.exitIntent`) is `exit_intent`, the only
+one so far.
+
+| Event               | Data                                                           | When                                            |
+| ------------------- | -------------------------------------------------------------- | ----------------------------------------------- |
+| `promotion.viewed`  | `source`, `image_url?`, `template?`                            | The popup opened                                |
+| `promotion.clicked` | `source`, `image_url?`, `template?`, `action?`, `coupon_code?` | The image was clicked, or a template action ran |
+| `promotion.closed`  | `source`, `image_url?`, `template?`, `reason`                  | `reason: 'dismissed'` (Esc) or `'closed'`       |
 
 ### 0.4.x names
 
@@ -117,6 +125,8 @@ was added. Forward them to any vendor from here.
 | `name`                                   | `params`                                                                                                 |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `page_view`                              | `page_location`, `page_title`, `page_referrer`                                                           |
+| `generate_lead`                          | `currency`, `value` (the cart), `lead_source: 'checkout'`                                                |
+| `view_promotion`, `select_promotion`     | `promotion_id` (the `source`), `creative_name` (the template, or the image)                              |
 | `view_item`, `remove_from_cart`          | `currency`, `value`, `items`                                                                             |
 | `add_to_cart`                            | `currency`, `value`, `items`, `first_in_session`                                                         |
 | `view_item_list`                         | `currency`, `items`, `item_list_id`, `item_list_name`                                                    |
@@ -133,8 +143,8 @@ event, and is the transaction id for `purchase` and `upsell_purchase`; `purchase
 when paid. `context` has `page_location`, `page_title`, `page_referrer`, `campaign_name`,
 `campaign_currency`, `campaign_language` and `attribution`. No personal data is sent.
 
-`add_shipping_info` is sent once, after `checkout.started`, when the address is complete or a
-shipping method is picked. `add_payment_info` is sent once, on the first `checkout.submitted` that
+`generate_lead` is sent once, on `contact.entered`. `add_shipping_info` is sent once, after
+`checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that
 passes its checks (for a card, once it is tokenized).
 
 `add_to_cart` and `remove_from_cart` compare the priced cart with what earlier events in the tab
@@ -154,7 +164,8 @@ falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` afte
 `dl_remove_from_cart`, `dl_cart_updated`, `dl_begin_checkout`,
 `dl_add_shipping_info`, `dl_add_payment_info`, `dl_purchase` (once, only when paid),
 `dl_upsell_purchase`, `dl_viewed_upsell`, `dl_skipped_upsell`, `dl_exit_intent_shown` /
-`_accepted` / `_dismissed` / `_closed` / `_action`. No personal data is sent. `dl_add_to_cart` carries
+`_accepted` / `_dismissed` / `_closed` / `_action`. `generate_lead`, `view_promotion` and
+`select_promotion` have no `dl_*` event. No personal data is sent. `dl_add_to_cart` carries
 `first_in_session` at the top level. The purchase
 events use the transaction id as `event_id`, as 0.4.x did. `nextConfig.analytics.providers.gtm.enabled: false`
 keeps events out of `dataLayer` (only `NextDataLayer`).

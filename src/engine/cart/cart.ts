@@ -320,7 +320,7 @@ export function createCart(ctx: Context) {
       if (shippingId === state().shippingId) return Promise.resolve();
       const done = commit({ shippingId });
       const method = ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === shippingId);
-      ctx.emit('checkout.shipping_selected', {
+      ctx.emit('shipping.selected', {
         method_id: shippingId,
         ...(method && { method: { ref_id: method.ref_id, code: method.code, price: method.price } }),
       });

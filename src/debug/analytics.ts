@@ -2,7 +2,7 @@ import type { EngineEvent } from '../engine/events';
 import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsTrace, EventMap, EventName } from '../engine/events';
 import { format } from '../engine/format';
-import { checks, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win, WIRING } from './providers';
+import { checks, dlOf, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win } from './providers';
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
 import type { PageVisit } from './state';
@@ -20,15 +20,16 @@ const LABELS: Partial<Record<EventName, string>> = {
   'cart.added': 'Added to the cart',
   'cart.removed': 'Removed from the cart',
   'checkout.started': 'Checkout opened',
-  'checkout.address_entered': 'Address entered',
-  'checkout.shipping_selected': 'Shipping picked',
+  'contact.entered': 'Contact entered',
+  'address.entered': 'Address entered',
+  'shipping.selected': 'Shipping picked',
   'checkout.submitted': 'Order submitted',
   'order.loaded': 'Order loaded',
   'upsell.viewed': 'Upsell shown',
   'upsell.skipped': 'Upsell skipped',
-  'exit_intent.shown': 'Exit popup shown',
-  'exit_intent.clicked': 'Exit popup clicked',
-  'exit_intent.closed': 'Exit popup closed',
+  'promotion.viewed': 'Promotion shown',
+  'promotion.clicked': 'Promotion clicked',
+  'promotion.closed': 'Promotion closed',
 };
 
 const NOT_PUSHED: Record<Layer, string> = {
@@ -45,7 +46,7 @@ const FUNNEL: Array<[string, string]> = [
   ['view_item_list', 'a page showing packages'],
   ['add_to_cart', 'something is added to the cart'],
   ['begin_checkout', 'once, when the checkout form is ready'],
-  ['add_shipping_info', 'once, when the address is complete or a shipping method is picked'],
+  ['add_shipping_info', 'once, when the shipping address is valid or a shipping method is picked'],
   ['add_payment_info', 'once, when a submit passes its checks'],
   ['purchase', 'when a paid order loads, on the upsell or receipt page'],
   ['view_upsell', 'each upsell shown'],
@@ -209,7 +210,7 @@ export function analyticsFlow(ui: {
         ...(event ? checks(event.data.name, event.data.params) : []),
         ...(adds && !adds.ok ? [adds.text] : []),
         ...(['NextDataLayer', 'dataLayer'] as Layer[])
-          .filter((l) => enabled(l) && !pushedTo(l, run.id))
+          .filter((l) => dlOf(run.name) && enabled(l) && !pushedTo(l, run.id))
           .map((l) => `not in ${l}`),
       ];
     };
@@ -259,18 +260,20 @@ export function analyticsFlow(ui: {
   };
 
   const overview = (snap: Snapshot, run: Run): Child[] => {
-    const dl = WIRING.find((w) => (w.ga ?? w.dl) === run.name)?.dl ?? run.name;
+    const dl = dlOf(run.name);
     const event = snap.event(run.id)?.data;
     const problems = event ? checks(event.name, event.params) : [];
     const items = event ? itemsOf(event.params) : [];
-    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
-      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-      const push = pushedTo(layer, run.id);
-      if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
-      return push['gtm.uniqueEventId'] !== undefined
-        ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
-        : chip('ok', name, '', LOGOS[layer]);
-    });
+    const layers = (['NextDataLayer', 'dataLayer'] as Layer[])
+      .filter((l) => dl && snap.enabled(l))
+      .map((layer) => {
+        const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
+        const push = pushedTo(layer, run.id);
+        if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
+        return push['gtm.uniqueEventId'] !== undefined
+          ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
+          : chip('ok', name, '', LOGOS[layer]);
+      });
     const hit = snap.seen(run);
     const reached = [
       ...layers,
@@ -282,7 +285,14 @@ export function analyticsFlow(ui: {
       ...(problems.length
         ? [['Problems', ...problems.map((p) => h('span', 'amber', `⚠ ${p}`))] as [string, ...Child[]]]
         : []),
-      ...(run.sent ? [['Reached', h('div', 'chips', h('code', {}, dl), ...reached)] as [string, ...Child[]]] : []),
+      ...(run.sent
+        ? [
+            [
+              'Reached',
+              h('div', 'chips', h('code', {}, dl ?? 'next.analytics.on only: no dl_* event'), ...reached),
+            ] as [string, ...Child[]],
+          ]
+        : []),
       ...(event ? [['Params', params(event)] as [string, ...Child[]]] : []),
       ...(adds
         ? [
@@ -300,7 +310,7 @@ export function analyticsFlow(ui: {
   };
 
   const tabsOf = (snap: Snapshot, run: Run): Tab[] => {
-    const dl = WIRING.find((w) => (w.ga ?? w.dl) === run.name)?.dl ?? run.name;
+    const dl = dlOf(run.name) ?? run.name;
     const event = snap.event(run.id)?.data;
     const trigger = snap.trigger(run);
     const next = pushedTo('NextDataLayer', run.id);

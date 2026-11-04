@@ -151,13 +151,12 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );
-  on('checkout.shipping_selected', (e) =>
-    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.method_id)}` }),
-  );
+  on('shipping.selected', (e) => change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.method_id)}` }));
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
-  on('checkout.address_entered', (e) => change({}, { at: e.at, text: 'Shipping address entered' }));
-  on('checkout.billing_entered', (e) => change({}, { at: e.at, text: 'Billing address entered' }));
-  on('checkout.payment_selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
+  on('address.entered', (e) =>
+    change({}, { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
+  );
+  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
   on('checkout.submitted', (e) =>
     change(
       {},
@@ -169,7 +168,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       },
     ),
   );
-  on('cart.created', (e) => change({}, { at: e.at, text: 'Open cart saved on the store' }));
+  on('contact.entered', (e) => change({}, { at: e.at, text: 'Contact entered: open cart saved on the store' }));
   on('order.failed', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.message ?? e.data.code}` }),
   );
@@ -197,7 +196,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   on('upsell.failed', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Upsell refused: ${e.data.message ?? e.data.code}` }),
   );
-  on('exit_intent.shown', (e) => change({}, { at: e.at, text: 'Exit popup shown' }));
+  on('promotion.viewed', (e) => change({}, { at: e.at, text: 'Exit popup shown' }));
   on('sdk.error', (e) =>
     e.data.action === 'storage'
       ? change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.message}` })

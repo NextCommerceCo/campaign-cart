@@ -3,9 +3,19 @@ import type { Attribution } from './attribution';
 import type { ApiLine, CartLine, CartState, CartSummary } from './cart/types';
 import type { Campaign, CheckoutError, Order, OrderLine } from './types';
 
-export interface ExitIntentDetail {
+export interface PromotionDetail {
+  source: 'exit_intent';
   image_url?: string;
   template?: string;
+}
+
+export type AddressType = 'shipping' | 'billing';
+
+export interface Contact {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
 }
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
@@ -29,7 +39,10 @@ export type AnalyticsName =
   | 'purchase'
   | 'upsell_purchase'
   | 'view_upsell'
-  | 'skip_upsell';
+  | 'skip_upsell'
+  | 'generate_lead'
+  | 'view_promotion'
+  | 'select_promotion';
 
 export interface AnalyticsContext {
   page_location: string;
@@ -76,18 +89,19 @@ export interface EventMap {
   'cart.calculated': { summary: CartSummary };
   'cart.added': { lines: CartChangeLine[]; priced: boolean };
   'cart.removed': { lines: CartChangeLine[]; priced: boolean };
-  'cart.created': { cart: unknown; email: string; phone?: string };
   'coupon.applied': { code: string };
   'coupon.removed': { code: string };
   'coupon.denied': { code: string };
   'checkout.started': { lines: ApiLine[] };
-  'checkout.address_entered': { country: string };
-  'checkout.billing_entered': { country: string };
-  'checkout.shipping_selected': {
+  'contact.entered': Contact & { cart: unknown };
+  'contact.updated': Contact;
+  'address.entered': { type: AddressType; country: string };
+  'address.updated': { type: AddressType; country: string };
+  'shipping.selected': {
     method_id: number | undefined;
     method?: { ref_id: number; code: string; price: string };
   };
-  'checkout.payment_selected': { method: string };
+  'payment.selected': { method: string };
   'checkout.submitted': { payment_method: string; valid: boolean; errors: Record<string, CheckoutError> };
   'order.created': { order: Order };
   'order.failed': { stage: 'order' | 'payment'; code: string; message?: string; decline?: string; ref_id?: string };
@@ -101,9 +115,9 @@ export interface EventMap {
   'upsell.accepted': { ref_id: string; lines: ApiLine[]; order: Order };
   'upsell.skipped': { ref_id: string; package_id?: number };
   'upsell.failed': { ref_id: string; code: string; message?: string };
-  'exit_intent.shown': ExitIntentDetail;
-  'exit_intent.clicked': ExitIntentDetail & { action?: string; coupon_code?: string };
-  'exit_intent.closed': ExitIntentDetail & { reason: 'dismissed' | 'closed' };
+  'promotion.viewed': PromotionDetail;
+  'promotion.clicked': PromotionDetail & { action?: string; coupon_code?: string };
+  'promotion.closed': PromotionDetail & { reason: 'dismissed' | 'closed' };
   analytics: AnalyticsEvent;
 }
 

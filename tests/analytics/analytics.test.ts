@@ -199,7 +199,7 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     await flush();
     engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
     engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
     expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
@@ -350,12 +350,18 @@ describe('analytics', () => {
   it('reports the exit-intent popup the 0.4.x way', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
-    const image = { image_url: 'https://cdn.test/exit.png' };
-    engine.events.emit('exit_intent.shown', image);
-    engine.events.emit('exit_intent.clicked', image);
-    engine.events.emit('exit_intent.clicked', { template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' });
-    engine.events.emit('exit_intent.closed', { template: 'exit', reason: 'dismissed' });
-    engine.events.emit('exit_intent.closed', { ...image, reason: 'closed' });
+    const source = 'exit_intent';
+    const image = { source, image_url: 'https://cdn.test/exit.png' } as const;
+    engine.events.emit('promotion.viewed', image);
+    engine.events.emit('promotion.clicked', image);
+    engine.events.emit('promotion.clicked', {
+      source,
+      template: 'exit',
+      action: 'apply-coupon',
+      coupon_code: 'EXIT10',
+    });
+    engine.events.emit('promotion.closed', { source, template: 'exit', reason: 'dismissed' });
+    engine.events.emit('promotion.closed', { ...image, reason: 'closed' });
     expect(win.NextDataLayer!.slice(1)).toMatchObject([
       {
         event: 'dl_exit_intent_shown',
@@ -377,11 +383,11 @@ describe('analytics', () => {
 
   it('keeps dl_user_data first when the exit-intent popup showed before analytics loaded', async () => {
     const engine = await ready();
-    engine.events.emit('exit_intent.shown', { image_url: 'https://cdn.test/exit.png' });
+    engine.events.emit('promotion.viewed', { source: 'exit_intent', image_url: 'https://cdn.test/exit.png' });
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
     expect(names()).toEqual(['dl_user_data', 'dl_exit_intent_shown', 'dl_add_to_cart', 'dl_cart_updated']);
-    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '3', '4']);
+    expect(win.NextDataLayer!.map((e) => e.event_id.split('_')[1])).toEqual(['1', '2', '4', '5']);
   });
 
   it('loads the NextCampaign script once and sends one page_view', async () => {
@@ -415,7 +421,7 @@ describe('analytics events (GA4 names)', () => {
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
     engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
     engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     expect(seen.map((e) => e.name)).toEqual([
       'page_view',
@@ -444,6 +450,36 @@ describe('analytics events (GA4 names)', () => {
     expect(add.context).toMatchObject({ campaign_name: 'Olympus', page_location: location.origin + location.pathname });
     expect(seen.at(-2)!.params).toMatchObject({ shipping_tier: 'Standard' });
     expect(seen.at(-1)!.params).toMatchObject({ payment_type: 'Credit Card' });
+  });
+
+  it('reports a lead and promotions under GA4 names only, and add_shipping_info for the shipping address only', async () => {
+    const engine = await ready('', {}, (e) => void e.cart.addItem(2));
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    await flush();
+    engine.events.emit('checkout.started', { lines: engine.cart.lines() });
+    engine.events.emit('contact.entered', {
+      cart: {},
+      email: 'jane@example.com',
+      first_name: 'Jane',
+      last_name: 'Doe',
+    });
+    engine.events.emit('address.entered', { type: 'billing', country: 'US' });
+    engine.events.emit('promotion.viewed', { source: 'exit_intent', template: 'exit' });
+    engine.events.emit('promotion.clicked', { source: 'exit_intent', template: 'exit', action: 'apply-coupon' });
+    engine.events.emit('address.entered', { type: 'shipping', country: 'US' });
+    expect(seen.slice(-4)).toMatchObject([
+      { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
+      { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },
+      { name: 'select_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },
+      { name: 'add_shipping_info' },
+    ]);
+    expect(names().slice(-4)).toEqual([
+      'dl_begin_checkout',
+      'dl_exit_intent_shown',
+      'dl_exit_intent_action',
+      'dl_add_shipping_info',
+    ]);
   });
 
   it('keys a purchase and an upsell by their transaction ids, with the upsell details nested', async () => {
