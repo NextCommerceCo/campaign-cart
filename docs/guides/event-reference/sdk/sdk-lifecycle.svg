@@ -25,7 +25,7 @@
   </g>
   <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A copy saved in this browser in the last 10 minutes makes it ready at once; an API failure then sends sdk.error</tspan></text>
   <text x="360" y="308" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Once ready, a failed step sends sdk.error and the SDK stays ready</tspan></text>
-  <text x="360" y="328" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">sdk.error is not replayed to late listeners: read html[data-next-error]</tspan></text>
+  <text x="360" y="328" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A listener added later still gets the page's earlier sdk.error events</tspan></text>
   <text x="360" y="348" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · campaign.load</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → failed without a saved copy, else stays ready · data-next-error="campaign"</tspan></text>
   <text x="360" y="368" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · storage.write</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → works on without saving across pages</tspan></text>
 </svg>

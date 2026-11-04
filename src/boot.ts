@@ -74,7 +74,7 @@ const EVENT_NAMES: EventName[] = [
   'promotion.closed',
   'analytics',
 ];
-const REPLAYED: EventName[] = ['sdk.ready', 'campaign.loaded', 'analytics'];
+const REPLAYED: EventName[] = ['sdk.ready', 'sdk.error', 'campaign.loaded', 'analytics'];
 
 export interface SdkEvent<K extends EventName = EventName> {
   event_id: string;

@@ -159,6 +159,14 @@ describe('boot', () => {
     expect(document.documentElement.getAttribute('data-next-error')).toBe('campaign');
   });
 
+  it('gives a listener added after a failed campaign load that sdk.error', async () => {
+    const next = boot(config, Promise.reject(new Error('down')));
+    await flush();
+    const error = vi.fn();
+    next.on('sdk.error', error);
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ action: 'campaign.load' }), expect.anything());
+  });
+
   it('leaves campaign off the envelope while the campaign has not loaded', async () => {
     const next = boot(config, Promise.reject(new Error('down')));
     const error = vi.fn();

@@ -187,7 +187,7 @@ const LIFECYCLES = {
     note: [
       'A copy saved in this browser in the last 10 minutes makes it ready at once; an API failure then sends sdk.error',
       'Once ready, a failed step sends sdk.error and the SDK stays ready',
-      'sdk.error is not replayed to late listeners: read html[data-next-error]',
+      "A listener added later still gets the page's earlier sdk.error events",
     ],
     errors: [
       ['campaign.load', 'failed without a saved copy, else stays ready · data-next-error="campaign"'],

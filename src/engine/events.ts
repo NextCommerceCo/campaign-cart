@@ -318,7 +318,7 @@ export interface EventMap {
   };
   /**
    * A step failed. The SDK lifecycle lists each `action`, what the SDK does next, and the event
-   * sent with it.
+   * sent with it. A listener added later still gets the page's earlier errors.
    * @group SDK
    */
   'sdk.error': {
