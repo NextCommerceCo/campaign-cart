@@ -1,3 +1,9 @@
+---
+title: 'Start Here/Migrating from 0.4.x'
+group: 'Start Here'
+category: 'Start Here'
+---
+
 # Migrating from 0.4.x
 
 Pages built for 0.4.x keep working: old attribute names, `nextConfig` keys and `window.next`

@@ -1,3 +1,9 @@
+---
+title: 'Reference/Events'
+group: 'Reference'
+category: 'Reference'
+---
+
 # Events
 
 `next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,

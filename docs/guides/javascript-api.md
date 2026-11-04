@@ -1,3 +1,9 @@
+---
+title: 'Reference/JavaScript API'
+group: 'Reference'
+category: 'Reference'
+---
+
 # `window.next`
 
 Available after the `sdk.ready` event (`next.on('sdk.ready', fn)`, or its alias `ready`, also fires for late listeners).

@@ -13,14 +13,16 @@ analytics and debug tools subscribe to its events. Design:
 attribution. Upsell and receipt are not built yet, so this is not a drop-in replacement for
 the 0.4.x SDK on those pages.
 
-| Command             |                                                                                   |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `npm test`          | unit tests (the Engine suite runs in plain Node)                                  |
-| `npm run typecheck` | TypeScript                                                                        |
-| `npm run build`     | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
-| `bun dev`           | the real campaign pages with this SDK from source; see below                      |
-| `bun run e2e`       | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
-| `bun run qa`        | a passcode link for QA on another network (Cloudflare quick tunnel)               |
+| Command              |                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `npm test`           | unit tests (the Engine suite runs in plain Node)                                  |
+| `npm run typecheck`  | TypeScript                                                                        |
+| `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
+| `bun dev`            | the real campaign pages with this SDK from source; see below                      |
+| `bun run e2e`        | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
+| `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |
+| `npm run docs`       | build the docs site from `docs/guides` and the public types into `docs/site/`     |
+| `npm run docs:serve` | serve `docs/site` on http://localhost:3500 and rebuild it on changes              |
 
 ## Local development
 

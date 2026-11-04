@@ -1,3 +1,9 @@
+---
+title: 'Reference/Attributes'
+group: 'Reference'
+category: 'Reference'
+---
+
 # Attributes
 
 Everything the SDK reads from a page. The SDK sets classes and attributes; pages own their

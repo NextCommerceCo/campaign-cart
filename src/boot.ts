@@ -113,6 +113,7 @@ export interface NextApi extends LegacyApi {
   };
 }
 
+/** @internal */
 export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const html = document.documentElement;
   const params = new URLSearchParams(location.search);

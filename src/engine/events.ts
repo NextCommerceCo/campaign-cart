@@ -138,6 +138,7 @@ type Listener = (event: EngineEvent) => void;
 
 const BUFFER_SIZE = 100;
 
+/** @internal */
 export class Events {
   private listeners = new Map<string, Set<Listener>>();
   private buffer: EngineEvent[] = [];

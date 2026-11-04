@@ -1,6 +1,6 @@
 {
   "name": "@nextcommerce/campaign-sdk",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "private": true,
   "description": "NEXT Campaign SDK: one headless Engine, everything else subscribes",
   "type": "module",
@@ -15,16 +15,32 @@
     "size": "node scripts/size.mjs",
     "tsugi": "node scripts/tsugi.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docs": "node scripts/docs-stage.mjs && typedoc && node scripts/docs-versions.mjs --local",
+    "docs:serve": "node scripts/docs-serve.mjs --watch",
+    "docs:check": "patch-package --error-on-fail && node scripts/docs-stage.mjs && typedoc --treatWarningsAsErrors && node scripts/docs-versions.mjs --local",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
+    "@clean-jsdoc-theme/typedoc": "^5.1.1",
+    "@clean-jsdoc-theme/utils": "^5.1.1",
     "@tailwindcss/cli": "4.3.1",
     "happy-dom": "^20.14.6",
+    "patch-package": "^8.0.1",
     "playwright-core": "^1.56.1",
     "prettier": "^3.9.10",
     "tailwindcss": "4.3.1",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-mdn-links": "^5.1.1",
     "typescript": "5.9",
     "vite": "^7.3.7",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "@clean-jsdoc-theme/bhasha": "5.1.1",
+    "@clean-jsdoc-theme/dwar": "5.1.1",
+    "@clean-jsdoc-theme/rang": "5.1.1",
+    "@clean-jsdoc-theme/setu": "5.1.1",
+    "@clean-jsdoc-theme/utils": "5.1.1"
   }
 }
