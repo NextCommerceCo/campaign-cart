@@ -221,7 +221,7 @@ const LIFECYCLES = {
   checkout: {
     title: 'Checkout lifecycle',
     rowYs: [16, 196, 436, 616],
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.entered, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.',
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and goes back to filling. A submit that passes sends checkout.submitted with valid true and places the order, with the cart frozen. order.created moves to placed and empties the cart without cart events, unless the shopper pays at a payment gateway; order.failed goes back to filling.',
     rows: 4,
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
@@ -229,7 +229,7 @@ const LIFECYCLES = {
         row: 1,
         title: 'filling',
         sub: [
-          'user.entered',
+          'user.created',
           'user.updated',
           'address.entered',
           'address.updated',

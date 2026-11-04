@@ -125,7 +125,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       });
       set({ prospectSaved: true, openCart: saved, user: { ...now, ...recorded(saved.user) } });
       contact = contactKey(now);
-      ctx.emit('user.entered', state().user!);
+      ctx.emit('user.created', state().user!);
     } catch (err) {
       ctx.fail('user.save', err);
     } finally {

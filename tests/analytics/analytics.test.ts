@@ -494,7 +494,7 @@ describe('analytics events (GA4 names)', () => {
     startAnalytics(engine, options);
     await flush();
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('user.entered', {
+    engine.events.emit('user.created', {
       email: 'jane@example.com',
       first_name: 'Jane',
       last_name: 'Doe',

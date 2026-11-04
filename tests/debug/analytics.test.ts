@@ -127,7 +127,7 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
     engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    engine.events.emit('user.entered', {
+    engine.events.emit('user.created', {
       email: 'jane@example.com',
       first_name: 'Jane',
       last_name: 'Doe',

@@ -18,7 +18,7 @@ group: 'Event Reference/Checkout'
 | From      | What happens                                                   | To        | Events                                                                                                                      |
 | --------- | -------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
 | none      | The form is bound and the cart has lines                       | `open`    | `checkout.started`, once                                                                                                    |
-| `open`    | The shopper fills in the form                                  | `filling` | in any order: `user.entered`, `user.updated`, `address.entered`, `address.updated`, `shipping.selected`, `payment.selected` |
+| `open`    | The shopper fills in the form                                  | `filling` | in any order: `user.created`, `user.updated`, `address.entered`, `address.updated`, `shipping.selected`, `payment.selected` |
 | `filling` | A submit fails its checks: a field, an empty cart, or the card | `stopped` | `checkout.submitted` (`valid: false`, with the `errors`)                                                                    |
 | `stopped` | The shopper fixes it and submits again                         | `filling` | none                                                                                                                        |
 | `filling` | A submit passes its checks, and the card is tokenized          | `placing` | `checkout.submitted` (`valid: true`)                                                                                        |

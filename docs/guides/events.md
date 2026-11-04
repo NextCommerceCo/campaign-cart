@@ -8,7 +8,8 @@ category: 'Reference'
 
 `next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,
 with one dot: the namespace is the thing that changed, the action what happened to it, as in Next
-Commerce webhooks. `user.entered` creates the Cart the `cart.abandoned` webhook sends later, and
+Commerce webhooks. `user.created` is the user the store keeps for marketing, saved with the Cart the
+`cart.abandoned` webhook sends later, and
 `order.created` is the Order of the `order.created` webhook.
 
 `event` is the envelope, shaped like a webhook's:
@@ -84,7 +85,7 @@ when paid. `context` has `page_location` and `page_referrer` (without their quer
 (`user_agent`, `language`, `device_type`). `next.context()` returns the same object, for a script
 that sends `next.on` events on. No personal data is sent.
 
-`generate_lead` is sent once, on `user.entered`. `add_shipping_info` is sent once, after
+`generate_lead` is sent once, on `user.created`. `add_shipping_info` is sent once, after
 `checkout.started`, on `address.entered` for the shipping address or on `shipping.selected`. `add_payment_info` is sent once, on the first `checkout.submitted` that
 passes its checks (for a card, once it is tokenized).
 

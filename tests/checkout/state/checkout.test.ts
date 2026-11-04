@@ -194,7 +194,7 @@ describe('checkout', () => {
     const { checkout, fill, posts, engine } = await setup({ session });
     const saved = vi.fn();
     const updated = vi.fn();
-    engine.on('user.entered', (e) => saved(e.data));
+    engine.on('user.created', (e) => saved(e.data));
     engine.on('user.updated', (e) => updated(e.data));
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
     await checkout.leave('last_name');

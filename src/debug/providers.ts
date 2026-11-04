@@ -39,7 +39,7 @@ export const WIRING: Wire[] = [
   { from: ['sdk.ready', 'cart.calculated', 'cart.updated'], ga: 'remove_from_cart', dl: 'dl_remove_from_cart' },
   { from: ['cart.calculated'], ga: 'update_cart', dl: 'dl_cart_updated' },
   { from: ['checkout.started'], ga: 'begin_checkout', dl: 'dl_begin_checkout' },
-  { from: ['user.entered'], ga: 'generate_lead', dl: 'dl_generate_lead' },
+  { from: ['user.created'], ga: 'generate_lead', dl: 'dl_generate_lead' },
   { from: ['address.entered', 'shipping.selected'], ga: 'add_shipping_info', dl: 'dl_add_shipping_info' },
   { from: ['checkout.submitted'], ga: 'add_payment_info', dl: 'dl_add_payment_info' },
   { from: ['order.loaded'], ga: 'purchase', dl: 'dl_purchase' },

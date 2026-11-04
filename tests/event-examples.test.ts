@@ -31,7 +31,7 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'coupon.removed': true,
   'coupon.denied': true,
   'checkout.started': true,
-  'user.entered': true,
+  'user.created': true,
   'user.updated': true,
   'address.entered': true,
   'address.updated': true,

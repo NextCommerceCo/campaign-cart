@@ -54,7 +54,7 @@ const EVENT_NAMES: EventName[] = [
   'coupon.removed',
   'coupon.denied',
   'checkout.started',
-  'user.entered',
+  'user.created',
   'user.updated',
   'address.entered',
   'address.updated',

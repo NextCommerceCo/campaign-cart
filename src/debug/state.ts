@@ -167,7 +167,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       },
     ),
   );
-  on('user.entered', (e) => change({}, { at: e.at, text: 'Shopper entered: open cart saved on the store' }));
+  on('user.created', (e) => change({}, { at: e.at, text: 'User created: open cart saved on the store' }));
   on('order.failed', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.message ?? e.data.code}` }),
   );

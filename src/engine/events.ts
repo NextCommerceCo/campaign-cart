@@ -168,7 +168,7 @@ export interface Cart {
 export interface Checkout {
   /** The same cart `cart.*` events carry. */
   cart: Cart;
-  /** The shopper, from `user.entered` on. */
+  /** The shopper, from `user.created` on. */
   user?: User;
   /** From `address.entered` for the shipping address on. */
   shipping_address?: Address;
@@ -407,14 +407,14 @@ export interface EventMap {
    */
   'checkout.started': Checkout;
   /**
-   * Once per tab, when the store creates the Cart: a valid email and a first and last name are
-   * in, checked when the shopper leaves a field. It is the Cart in the dashboard's Open Carts,
-   * and later `cart.abandoned`.
+   * Once per tab, when the store saves the shopper with a new Open Cart: a valid email and a
+   * first and last name are in, checked when the shopper leaves a field. The store keeps the user
+   * for marketing, as `accepts_marketing` allows, and the cart for `cart.abandoned`.
    * @group Checkout
    */
-  'user.entered': User;
+  'user.created': User;
   /**
-   * The shopper's details changed after `user.entered` and are still valid. The Open Cart keeps
+   * The shopper's details changed after `user.created` and are still valid. The Open Cart keeps
    * the first ones.
    * @group Checkout
    */

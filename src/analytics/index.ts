@@ -217,7 +217,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             trigger: e.name,
             reason: 'Once, when the checkout form is ready',
           });
-        case 'user.entered': {
+        case 'user.created': {
           const { currency, value } = cartEcommerce(engine);
           return emit(
             'generate_lead',
