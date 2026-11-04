@@ -5,27 +5,29 @@ group: 'Event Reference/Checkout'
 
 # Checkout lifecycle
 
-![Checkout lifecycle: open, filling, placing, awaiting payment and paid, with the events each step sends](checkout-lifecycle.svg)
+![Checkout lifecycle: open, filling, submitting, placing, awaiting payment and paid, with the events each step sends](checkout-lifecycle.svg)
 
 | State              | Means                                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------------------------ |
 | `open`             | The checkout form is bound with a cart                                                                       |
 | `filling`          | The shopper fills in the form, and fixes what a submit pointed out                                           |
-| `placing`          | The order is being sent; the cart is frozen and ignores changes                                              |
+| `submitting`       | The SDK checks the form, that the cart has lines, and the card; the cart is frozen and ignores changes       |
+| `placing`          | The order is being sent; the cart stays frozen                                                               |
 | `awaiting payment` | The order exists but is not paid yet; the shopper pays at its `payment_complete_url` (PayPal, 3-D Secure, …) |
 | `paid`             | The order is paid; the cart is emptied                                                                       |
 
-| From               | What happens                                                                                                  | To                 | Events                                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| none               | The form is bound and the cart has lines                                                                      | `open`             | `checkout.started`, once                                                                                                    |
-| `open`             | The shopper fills in the form                                                                                 | `filling`          | in any order: `user.created`, `user.updated`, `address.entered`, `address.updated`, `shipping.selected`, `payment.selected` |
-| `filling`          | A submit fails its checks: a field, an empty cart, or the card                                                | `filling`          | `checkout.submitted` (`valid: false`, with the `errors`)                                                                    |
-| `filling`          | A submit passes its checks and the card is tokenized, or an express button is used (it skips the form checks) | `placing`          | `checkout.submitted` (`valid: true`)                                                                                        |
-| `placing`          | The server refuses the order                                                                                  | `filling`          | `sdk.error` (`order.create`), `order.failed` (`stage: 'order'`)                                                             |
-| `placing`          | The order is created and paid; the shopper goes to the next page                                              | `paid`             | `order.created`, then `order.loaded` on the next page                                                                       |
-| `placing`          | The order is created but its payment is not complete: the shopper is sent to its `payment_complete_url`       | `awaiting payment` | `order.created`                                                                                                             |
-| `awaiting payment` | The payment is completed; the next page loads the order                                                       | `paid`             | `order.loaded`                                                                                                              |
-| `awaiting payment` | The payment fails; the shopper is sent back to the checkout, cart kept                                        | `filling`          | `order.failed` (`stage: 'payment'`) when the page opens with the order's `ref_id`; `param.payment_failed` is `'true'`       |
+| From               | What happens                                                                                            | To                 | Events                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| none               | The form is bound and the cart has lines                                                                | `open`             | `checkout.started`, once                                                                                                    |
+| `open`             | The shopper fills in the form                                                                           | `filling`          | in any order: `user.created`, `user.updated`, `address.entered`, `address.updated`, `shipping.selected`, `payment.selected` |
+| `filling`          | The shopper submits, or uses an express button                                                          | `submitting`       | none                                                                                                                        |
+| `submitting`       | A check fails: a field, an empty cart, or the card                                                      | `filling`          | `checkout.submitted` (`valid: false`, with the `errors`)                                                                    |
+| `submitting`       | The checks pass and the card is tokenized; an express button skips the form checks                      | `placing`          | `checkout.submitted` (`valid: true`)                                                                                        |
+| `placing`          | The server refuses the order                                                                            | `filling`          | `sdk.error` (`order.create`), `order.failed` (`stage: 'order'`)                                                             |
+| `placing`          | The order is created and paid; the shopper goes to the next page                                        | `paid`             | `order.created`, then `order.loaded` on the next page                                                                       |
+| `placing`          | The order is created but its payment is not complete: the shopper is sent to its `payment_complete_url` | `awaiting payment` | `order.created`                                                                                                             |
+| `awaiting payment` | The payment is completed; the next page loads the order                                                 | `paid`             | `order.loaded`                                                                                                              |
+| `awaiting payment` | The payment fails; the shopper is sent back to the checkout, cart kept                                  | `filling`          | `order.failed` (`stage: 'payment'`) when the page opens with the order's `ref_id`; `param.payment_failed` is `'true'`       |
 
 A paid order empties the cart without cart events. While payment is awaited the cart is kept
 until the paid order loads, so a shopper whose payment fails comes back to the same cart. See the order

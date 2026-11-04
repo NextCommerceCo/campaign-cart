@@ -79,9 +79,9 @@ const fromSide = (row, title) => {
     label((MAIN.x + MAIN.w + SIDE.x) / 2, y + 19, title, { anchor: 'middle', size: 12 }),
   ];
 };
-const loopUp = (from, to, title, events = [], { x = 170, fromH = H } = {}) => {
+const loopUp = (from, to, title, events = [], { x = 170, fromH = H, at = 29 } = {}) => {
   const y1 = rowY(from) + fromH / 2;
-  const y2 = rowY(to) + 29;
+  const y2 = rowY(to) + at;
   const mid = (y1 + y2) / 2 - (events.length * 17) / 2;
   return [
     arrow(`M${MAIN.x} ${y1} H${x} V${y2} H${MAIN.x - 6}`, { dashed: true }),
@@ -220,44 +220,46 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit that fails its checks sends checkout.submitted with valid false and the shopper keeps filling. A submit that passes, or an express button, sends checkout.submitted with valid true and places the order, with the cart frozen. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
-    rows: 4,
+    desc: 'The checkout form opens with a cart (checkout.started). While the shopper fills it, user.created, user.updated, address.entered, address.updated, shipping.selected and payment.selected arrive in any order. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.submitted with valid false and goes back to filling. Checks that pass send checkout.submitted with valid true and place the order. A refused order sends order.failed and goes back to filling. A created order (order.created) is either paid, which empties the cart, or awaits payment at its payment_complete_url (PayPal, 3-D Secure, …); once completed the paid order loads on the next page, and a payment that fails comes back to the checkout with the cart kept.',
+    rows: 5,
+    rowYs: [16, 196, 336, 516, 696],
     boxes: [
       { row: 0, title: 'open', sub: [code('checkout.started')] },
       { row: 1, title: 'filling', sub: ['user, address, shipping, payment'], tone: 'active' },
-      { row: 2, title: 'placing', sub: ['the cart is frozen'], tone: 'waiting' },
-      { row: 3, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
-      { col: 'side', row: 2, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
+      { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
+      { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
+      { row: 4, title: 'paid', sub: ['the cart is emptied'], tone: 'success' },
+      { col: 'side', row: 3, title: 'awaiting payment', sub: [code('payment_complete_url')], tone: 'waiting' },
     ],
     parts: () => {
       const right = MAIN.x + MAIN.w;
       const filling = rowY(1);
-      const gateway = rowY(2);
+      const gateway = rowY(3);
       return [
         down(0, 1, 'the shopper fills the form'),
+        down(1, 2, 'submit, or an express button'),
+        loopUp(2, 1, 'a check fails', ['checkout.submitted', 'valid: false'], { x: 180, at: 40 }),
+        down(2, 3, 'the checks pass', ['checkout.submitted', 'valid: true']),
         [
-          arrow(`M400 ${filling} V${filling - 22} H470 V${filling + 16} H${right + 6}`),
-          label(482, filling - 14, 'a check fails', { size: 12 }),
-          label(482, filling + 3, 'checkout.submitted', { code: true }),
-          label(482, filling + 19, 'valid: false', { code: true }),
+          arrow(`M${MAIN.x} ${gateway + 29} H24 V${filling + 16} H${MAIN.x - 6}`, { dashed: true }),
+          label(36, gateway - 56, 'refused'),
+          label(36, gateway - 36, 'order.failed', { code: true }),
         ],
-        down(1, 2, 'a submit passes, or an express button', ['checkout.submitted', 'valid: true']),
-        loopUp(2, 1, 'refused', ['order.failed']),
-        down(2, 3, 'the order is paid', ['order.created']),
+        down(3, 4, 'the order is paid', ['order.created']),
         [
           arrow(`M${right} ${gateway + 18} H${SIDE.x - 6}`),
           label((right + SIDE.x) / 2, gateway + 10, 'redirected', { anchor: 'middle', size: 12 }),
           label((right + SIDE.x) / 2, gateway + 34, 'order.created', { anchor: 'middle', code: true }),
         ],
         [
-          arrow(`M${SIDE.cx} ${gateway + H} V${rowY(3) + 29} H${right + 6}`),
+          arrow(`M${SIDE.cx} ${gateway + H} V${rowY(4) + 29} H${right + 6}`),
           label(SIDE.cx - 12, gateway + H + 50, 'payment completed', { anchor: 'end', size: 12 }),
           label(SIDE.cx - 12, gateway + H + 67, 'order.loaded', { anchor: 'end', code: true }),
         ],
         [
-          arrow(`M${SIDE.cx} ${gateway} V${filling + 44} H${right + 6}`, { dashed: true }),
-          label(500, filling + 38, 'payment fails', { size: 12 }),
-          label(500, filling + 60, 'order.failed', { code: true }),
+          arrow(`M${SIDE.cx} ${gateway} V${filling + 29} H${right + 6}`, { dashed: true }),
+          label((right + SIDE.cx) / 2, filling + 23, 'payment fails', { anchor: 'middle', size: 12 }),
+          label((right + SIDE.cx) / 2, filling + 45, 'order.failed', { anchor: 'middle', code: true }),
         ],
       ];
     },
