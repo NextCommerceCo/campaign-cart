@@ -67,7 +67,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
 
-  const emitOnce = <K extends 'checkout.started' | 'checkout.shipping-added' | 'checkout.payment-added'>(
+  const emitOnce = <K extends 'checkout.started' | 'checkout.address_entered' | 'checkout.billing_entered'>(
     name: K,
     data: EventMap[K],
   ) => {
@@ -75,12 +75,6 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     once.add(name);
     ctx.emit(name, data);
   };
-
-  const tier = () => ctx.getState().cart.summary?.shipping_method?.name ?? 'Standard';
-  ctx.on(
-    'shipping.changed',
-    () => once.has('checkout.started') && emitOnce('checkout.shipping-added', { tier: tier() }),
-  );
 
   const loadCountry = async (code: string): Promise<void> => {
     if (!code || state().rules[code]) return;
@@ -110,7 +104,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         attribution: ctx.attribution(),
       });
       set({ prospectSaved: true });
-      ctx.emit('prospect.saved', { cart: saved, email, phone });
+      ctx.emit('cart.created', { cart: saved, email, phone });
     } catch (err) {
       ctx.fail('prospect', err);
     } finally {
@@ -118,9 +112,18 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
     }
   };
 
-  const shippingComplete = () => {
+  const complete = (prefix: '' | 'billing_') => {
     const { fields, rules } = state();
-    return addressRequired(rules[fields.country ?? '']).every((name) => !!fields[name]?.trim());
+    const country = fields[`${prefix}country`] ?? '';
+    return addressRequired(rules[country]).every((name) => !!fields[`${prefix}${name}`]?.trim());
+  };
+
+  const entered = () => {
+    if (!once.has('checkout.started')) return;
+    const { fields, sameAsShipping } = state();
+    if (complete('')) emitOnce('checkout.address_entered', { country: fields.country ?? '' });
+    if (!sameAsShipping && complete('billing_'))
+      emitOnce('checkout.billing_entered', { country: fields.billing_country ?? '' });
   };
 
   const verifyPostcode = async (): Promise<void> => {
@@ -200,7 +203,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         phones: kept,
       });
       if (isCountry) void loadCountry(value).then(() => checkPhone(phone, true));
-      if (once.has('checkout.started') && shippingComplete()) emitOnce('checkout.shipping-added', { tier: tier() });
+      entered();
     },
 
     async leave(name: string): Promise<void> {
@@ -230,11 +233,15 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       if (!same && !state().fields.billing_country && state().fields.country) {
         set({ fields: { ...state().fields, billing_country: state().fields.country! } });
       }
+      entered();
     },
 
     setPaymentMethod(word: string): void {
       const { form: _, ...errors } = state().errors;
-      set({ paymentMethod: paymentCode(word), errors });
+      const method = paymentCode(word);
+      const changed = method !== state().paymentMethod;
+      set({ paymentMethod: method, errors });
+      if (changed) ctx.emit('checkout.payment_selected', { method });
     },
 
     setStep(step: number): void {
@@ -251,8 +258,8 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       return !Object.keys(errors).length;
     },
 
-    paymentReady(method: string): void {
-      emitOnce('checkout.payment-added', { method: paymentCode(method) });
+    paymentReady(): void {
+      if (!state().cardReady) set({ cardReady: true });
     },
 
     async suggestAddresses(query: string, country: string, signal?: AbortSignal): Promise<AddressSuggestion[]> {
@@ -298,10 +305,14 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       const express = EXPRESS_METHODS.includes(method);
       set({ status: 'placing' });
       cart.freeze(true);
-      const stop = (errors: Record<string, CheckoutError>) => {
+      const fail = (errors: Record<string, CheckoutError>) => {
         set({ status: 'idle', errors });
         cart.freeze(false);
         return undefined;
+      };
+      const stop = (errors: Record<string, CheckoutError>) => {
+        ctx.emit('checkout.submitted', { payment_method: method, valid: false, errors });
+        return fail(errors);
       };
 
       if (!express) {
@@ -312,7 +323,6 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
       if (Object.keys(invalid).length) return stop(showErrors(invalid));
       if (!cart.lines().length) return stop({ form: { code: 'empty_cart' } });
       await cart.settled();
-      if (method !== 'card_token') emitOnce('checkout.payment-added', { method });
 
       let token: string | undefined;
       if (method === 'card_token') {
@@ -327,6 +337,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         }
       }
 
+      ctx.emit('checkout.submitted', { payment_method: method, valid: true, errors: {} });
       try {
         const vouchers = cart.vouchers();
         const order = await ctx.api.createOrder(
@@ -340,7 +351,7 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
           }),
         );
         if (vouchers[0]) ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0] } }, { silent: true });
-        ctx.emit('order.placed', { order });
+        ctx.emit('order.created', { order });
         if (order.payment_complete_url) {
           set({
             status: 'placed',
@@ -353,8 +364,15 @@ export function createCheckout(ctx: Context, cart: CartActions, rulesApi: RulesA
         }
         return order;
       } catch (err) {
+        const error = orderError(err);
         ctx.fail('order', err);
-        return stop({ form: orderError(err) });
+        ctx.emit('order.failed', {
+          stage: 'order',
+          code: error.code,
+          ...(error.message && { message: error.message }),
+          ...(error.decline && { decline: error.decline }),
+        });
+        return fail({ form: error });
       }
     },
   };

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';
@@ -29,7 +29,7 @@ describe('cart', () => {
     const { engine, api } = makeEngine();
     await engine.start();
     const refused: string[] = [];
-    engine.on('coupon.refused', (e) => refused.push(e.data.code));
+    engine.on('coupon.denied', (e) => refused.push(e.data.code));
     await engine.cart.addItem(1);
     expect(await engine.cart.applyCoupon('nope')).toBe(false);
     expect(engine.getState().cart.coupons).toEqual([]);
@@ -43,7 +43,7 @@ describe('cart', () => {
     const { engine } = makeEngine();
     await engine.start();
     const refused: string[] = [];
-    engine.on('coupon.refused', (e) => refused.push(e.data.code));
+    engine.on('coupon.denied', (e) => refused.push(e.data.code));
     expect(await engine.cart.applyCoupon('nope')).toBe(true);
     expect(await engine.cart.applyCoupon('save10')).toBe(true);
     await engine.cart.addItem(1);
@@ -105,7 +105,7 @@ describe('cart', () => {
   it('removes package ids the campaign does not have', async () => {
     const { engine } = makeEngine();
     const errors: unknown[] = [];
-    engine.on('error', (e) => errors.push(e.data));
+    engine.on('sdk.error', (e) => errors.push(e.data));
     void engine.cart.setGroup('items', {
       lines: [
         { packageId: 1, quantity: 1 },
@@ -121,8 +121,8 @@ describe('cart', () => {
   it('announces shipping and selection changes with their data', async () => {
     const { engine } = makeEngine();
     const seen: unknown[] = [];
-    engine.on('shipping.changed', (e) => seen.push(e.data));
-    engine.on('selection.changed', (e) => seen.push(e.data));
+    engine.on('checkout.shipping_selected', (e) => seen.push(e.data));
+    engine.on('selector.selected', (e) => seen.push(e.data));
     await engine.cart.setShipping(2);
     await engine.cart.setShipping(2);
     void engine.selectors.register(
@@ -131,10 +131,83 @@ describe('cart', () => {
       'select',
     );
     expect(seen).toEqual([
-      { methodId: 2 },
-      { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },
+      { method_id: 2 },
+      { selector_id: 'main', type: 'bundle', card_id: 'two', items: [{ packageId: 2, quantity: 1 }] },
     ]);
   });
+  it('announces one price run per burst of changes, and the net change once the cart is priced', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const seen: unknown[] = [];
+    engine.on('*', (e) => {
+      if (e.name === 'cart.calculating' || e.name === 'cart.calculated') seen.push(e.name);
+      if (e.name === 'cart.added' || e.name === 'cart.removed') seen.push([e.name, e.data]);
+    });
+    void engine.cart.addItem(1);
+    void engine.cart.addItem(1);
+    await engine.cart.setQuantity(1, 1);
+    await engine.cart.settled();
+    const price = engine.getState().cart.summary!.lines[0]!.unit_price;
+    expect(seen).toEqual([
+      'cart.calculating',
+      ['cart.added', { lines: [{ package_id: 1, quantity: 1, unit_price: price }], priced: true }],
+      'cart.calculated',
+    ]);
+    seen.length = 0;
+    void engine.cart.addItem(2);
+    await engine.cart.removeItem(2);
+    await engine.cart.settled();
+    expect(seen.filter((e) => typeof e !== 'string')).toEqual([]);
+    seen.length = 0;
+    await engine.cart.clear();
+    expect(seen).toEqual([
+      ['cart.removed', { lines: [{ package_id: 1, quantity: 1, unit_price: price }], priced: true }],
+    ]);
+  });
+
+  it('announces an addition at the package price when pricing fails', async () => {
+    const api = fakeApi();
+    const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('/carts/calculate')
+        ? Promise.resolve(new Response('{}', { status: 502 }))
+        : api.fetch(input, init)) as typeof globalThis.fetch;
+    const { engine } = makeEngine({ fetch });
+    vi.spyOn(engine.log, 'info').mockImplementation(() => {});
+    await engine.start();
+    const added: unknown[] = [];
+    engine.on('cart.added', (e) => added.push(e.data));
+    await engine.cart.addItem(1);
+    await engine.cart.settled();
+    expect(added).toEqual([{ lines: [{ package_id: 1, quantity: 1, unit_price: '49.00' }], priced: false }]);
+  });
+
+  it('announces a coupon applied, removed or denied', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('coupon.') && seen.push(`${e.name} ${(e.data as { code: string }).code}`));
+    await engine.cart.applyCoupon('nope');
+    await engine.cart.applyCoupon('save10');
+    await engine.cart.removeCoupon('save10');
+    await engine.cart.removeCoupon('save10');
+    expect(seen).toEqual(['coupon.denied NOPE', 'coupon.applied SAVE10', 'coupon.removed SAVE10']);
+  });
+
+  it('announces a toggle switched on and off, but not a change of its quantity', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    const seen: string[] = [];
+    engine.on('*', (e) => e.name.startsWith('selector.') && seen.push(`${e.name} ${JSON.stringify(e.data)}`));
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
+    await engine.cart.setGroup('toggle:9', null);
+    expect(seen).toEqual([
+      'selector.selected {"selector_id":"toggle:9","type":"toggle","items":[{"packageId":9,"quantity":1}]}',
+      'selector.deselected {"selector_id":"toggle:9","type":"toggle"}',
+    ]);
+  });
+
   it('keeps working in memory when every storage is blocked', async () => {
     const { engine } = makeEngine({ local: new MemoryStorage('always'), session: new MemoryStorage('always') });
     await engine.start();
@@ -145,7 +218,7 @@ describe('cart', () => {
     const failing = (async () => new Response('<html>Bad Gateway</html>', { status: 502 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing });
     const errors: Array<{ message: string }> = [];
-    engine.on('error', (e) => errors.push(e.data as { message: string }));
+    engine.on('sdk.error', (e) => errors.push(e.data as { message: string }));
     await engine.start();
     await engine.cart.addItem(1);
     expect(errors[0]!.message).toContain('502');

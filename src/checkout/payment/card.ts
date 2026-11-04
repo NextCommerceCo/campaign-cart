@@ -138,7 +138,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   };
 
   const ready = () => {
-    if (valid.number && valid.cvv && month?.value && year?.value) checkout.paymentReady('card_token');
+    if (valid.number && valid.cvv && month?.value && year?.value) checkout.paymentReady();
   };
 
   const settle = (token?: string, error?: string) => {

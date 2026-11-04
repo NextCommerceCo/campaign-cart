@@ -10,18 +10,72 @@ export function legacySelectorId(el: Element): string | null {
   return el.getAttribute('data-next-id');
 }
 
-/** @deprecated Old `next.on` names. Use `selection.changed`, `cart.updated`, `coupon.refused`, `shipping.changed`. */
-export const LEGACY_EVENTS: Record<string, EventName> = {
-  'bundle:selection-changed': 'selection.changed',
-  'cart:updated': 'cart.updated',
-  'coupon:validation-failed': 'coupon.refused',
-  'shipping:method-changed': 'shipping.changed',
-  'exit-intent:shown': 'exit-intent.shown',
-  'exit-intent:clicked': 'exit-intent.clicked',
-  'exit-intent:dismissed': 'exit-intent.dismissed',
-  'exit-intent:closed': 'exit-intent.closed',
-  'exit-intent:action': 'exit-intent.action',
+type Data = Record<string, unknown>;
+
+export interface LegacyEvent {
+  event: EventName;
+  when?: (data: Data) => boolean;
+  data?: (data: Data) => unknown;
+}
+
+const exitIntent = ({ image_url, template, action, coupon_code }: Data) => ({
+  imageUrl: image_url,
+  template,
+  ...(action !== undefined && { action, couponCode: coupon_code }),
+});
+const cart: LegacyEvent = { event: 'cart.updated', data: (d) => d.cart };
+const shipping: LegacyEvent = {
+  event: 'checkout.shipping_selected',
+  data: (d) => ({ methodId: d.method_id, method: d.method }),
 };
+const submitted: LegacyEvent = { event: 'checkout.submitted', when: (d) => d.valid === true };
+const selection = (toggle: boolean): LegacyEvent => ({
+  event: 'selector.selected',
+  when: (d) => (d.type === 'toggle') === toggle,
+  data: (d) => ({ selectorId: d.selector_id, cardId: d.card_id, items: d.items }),
+});
+
+/** @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. */
+export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
+  'campaign:loaded': { event: 'campaign.loaded' },
+  'sdk:url-parameters-processed': { event: 'sdk.ready' },
+  'error:occurred': { event: 'sdk.error' },
+  'action:failed': { event: 'sdk.error' },
+  'cart:updated': cart,
+  'cart:quantity-changed': cart,
+  'cart:item-added': { event: 'cart.added' },
+  'cart:item-removed': { event: 'cart.removed' },
+  'coupon:applied': { event: 'coupon.applied' },
+  'coupon:removed': { event: 'coupon.removed' },
+  'coupon:validation-failed': { event: 'coupon.denied' },
+  'bundle:selection-changed': selection(false),
+  'selector:selection-changed': selection(false),
+  'toggle:selection-changed': selection(true),
+  'shipping:method-changed': shipping,
+  'shipping:method-selected': shipping,
+  'checkout:started': { event: 'checkout.started' },
+  'checkout:payment-ready': submitted,
+  'payment:tokenized': submitted,
+  'order:completed': { event: 'order.created' },
+  'checkout:express-completed': { event: 'order.created' },
+  'express-checkout:completed': { event: 'order.created' },
+  'payment:error': { event: 'order.failed' },
+  'checkout:express-failed': { event: 'order.failed' },
+  'express-checkout:failed': { event: 'order.failed' },
+  'upsell:viewed': { event: 'upsell.viewed' },
+  'upsell:accepted': { event: 'upsell.accepted' },
+  'upsell:added': { event: 'upsell.accepted' },
+  'upsell:skipped': { event: 'upsell.skipped' },
+  'upsell:error': { event: 'upsell.failed' },
+  'exit-intent:shown': { event: 'exit_intent.shown', data: exitIntent },
+  'exit-intent:clicked': { event: 'exit_intent.clicked', when: (d) => !d.action, data: exitIntent },
+  'exit-intent:action': { event: 'exit_intent.clicked', when: (d) => !!d.action, data: exitIntent },
+  'exit-intent:dismissed': { event: 'exit_intent.closed', when: (d) => d.reason === 'dismissed', data: exitIntent },
+  'exit-intent:closed': { event: 'exit_intent.closed', when: (d) => d.reason === 'closed', data: exitIntent },
+};
+
+/** @deprecated 0.4.x features the SDK no longer has. Starter templates still register empty listeners for them. */
+export const RETIRED_EVENTS = ['fomo:', 'profile:'];
 
 export interface LegacyCartLine {
   packageId: number;

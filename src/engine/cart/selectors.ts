@@ -11,6 +11,8 @@ const QUOTE_MAX_AGE = 10 * 60 * 1000;
 const QUOTE_LIMIT = 24;
 type SavedQuotes = Record<string, { at: number; summary: CartSummary }>;
 
+const typeOf = (selector: Selector): 'bundle' | 'offer' => (selector.mode === 'offer' ? 'offer' : 'bundle');
+
 const clamp = (card: SelectorCard, quantity: number) =>
   Math.min(Math.max(Math.round(quantity), card.min ?? 1), card.max ?? 999);
 
@@ -84,7 +86,12 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     if (!selector || !card) return Promise.resolve();
     if (selector.picked !== cardId) {
       set(id, { picked: cardId });
-      ctx.emit('selection.changed', { selectorId: id, cardId, items: cardLines(selector, card) });
+      ctx.emit('selector.selected', {
+        selector_id: id,
+        type: typeOf(selector),
+        card_id: cardId,
+        items: cardLines(selector, card),
+      });
     }
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
@@ -112,20 +119,24 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     const saved = Object.fromEntries(
       Object.entries(ctx.local.get<SavedQuotes>(QUOTES) ?? {}).filter(([, q]) => now - q.at < QUOTE_MAX_AGE),
     );
-    const settle = () =>
-      set(id, {
-        quotes: Object.fromEntries(requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary])),
-        quoting: false,
-      });
+    const type = typeOf(selector);
+    const settle = (fromCache: boolean) => {
+      const quotes = Object.fromEntries(
+        requests.filter((r) => saved[r.key]).map((r) => [r.card.id, saved[r.key]!.summary]),
+      );
+      set(id, { quotes, quoting: false });
+      ctx.emit('selector.calculated', { selector_id: id, type, quotes, from_cache: fromCache });
+    };
     const missing = requests.filter((r) => !saved[r.key]);
     inFlight.get(id)?.abort();
     if (!missing.length) {
       inFlight.delete(id);
-      return settle();
+      return settle(true);
     }
     const controller = new AbortController();
     inFlight.set(id, controller);
     set(id, { quoting: true });
+    ctx.emit('selector.calculating', { selector_id: id, type });
     try {
       const summaries = await Promise.all(
         missing.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
@@ -135,7 +146,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       missing.forEach((r, i) => (saved[r.key] = { at, summary: summaries[i]! }));
       const newest = Object.entries(saved).sort(([, a], [, b]) => b.at - a.at);
       ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
-      settle();
+      settle(false);
     } catch (err) {
       if (inFlight.get(id) !== controller) return;
       set(id, { quoting: false });
@@ -180,7 +191,12 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const slots = cardSlots(selector, card).map((s, i) => (i === index ? { ...s, ...slot } : s));
       set(id, { slots: { ...selector.slots, [cardId]: slots } });
       if (selector.picked !== cardId) return Promise.resolve();
-      ctx.emit('selection.changed', { selectorId: id, cardId, items: cardLines(get(id)!, card) });
+      ctx.emit('selector.selected', {
+        selector_id: id,
+        type: typeOf(selector),
+        card_id: cardId,
+        items: cardLines(get(id)!, card),
+      });
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
@@ -192,7 +208,12 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       const next = clamp(card, quantity);
       if (next === cardQuantity(selector, card)) return Promise.resolve();
       set(id, { quantities: { ...selector.quantities, [card.id]: next } });
-      ctx.emit('selection.changed', { selectorId: id, cardId: card.id, items: cardLines(get(id)!, card) });
+      ctx.emit('selector.selected', {
+        selector_id: id,
+        type: typeOf(selector),
+        card_id: card.id,
+        items: cardLines(get(id)!, card),
+      });
       const quoting = quote(id);
       if (selector.mode === 'offer') return quoting;
       return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();

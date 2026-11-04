@@ -199,8 +199,8 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     await flush();
     engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('checkout.shipping-added', { tier: 'Standard' });
-    engine.events.emit('checkout.payment-added', { method: 'card_token' });
+    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
     expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
     expect(shipping).toMatchObject({
@@ -337,9 +337,9 @@ describe('analytics', () => {
   it('reports upsell views and skips', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
-    engine.events.emit('upsell.viewed', { refId: 'R1', page: '/up/' });
-    engine.events.emit('upsell.skipped', { refId: 'R1' });
-    engine.events.emit('upsell.skipped', { refId: 'R1', packageId: 3 });
+    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/up/' });
+    engine.events.emit('upsell.skipped', { ref_id: 'R1' });
+    engine.events.emit('upsell.skipped', { ref_id: 'R1', package_id: 3 });
     expect(win.NextDataLayer!.slice(-3)).toMatchObject([
       { event: 'dl_viewed_upsell', order_id: 'R1', page_path: '/up/' },
       { event: 'dl_skipped_upsell', order_id: 'R1', upsell: { package_id: 'unknown' } },
@@ -350,18 +350,18 @@ describe('analytics', () => {
   it('reports the exit-intent popup the 0.4.x way', async () => {
     const engine = await ready();
     startAnalytics(engine, options);
-    const image = { imageUrl: 'https://cdn.test/exit.png' };
-    engine.events.emit('exit-intent.shown', image);
-    engine.events.emit('exit-intent.clicked', image);
-    engine.events.emit('exit-intent.action', { template: 'exit', action: 'apply-coupon', couponCode: 'EXIT10' });
-    engine.events.emit('exit-intent.dismissed', { template: 'exit' });
-    engine.events.emit('exit-intent.closed', image);
+    const image = { image_url: 'https://cdn.test/exit.png' };
+    engine.events.emit('exit_intent.shown', image);
+    engine.events.emit('exit_intent.clicked', image);
+    engine.events.emit('exit_intent.clicked', { template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' });
+    engine.events.emit('exit_intent.closed', { template: 'exit', reason: 'dismissed' });
+    engine.events.emit('exit_intent.closed', { ...image, reason: 'closed' });
     expect(win.NextDataLayer!.slice(1)).toMatchObject([
       {
         event: 'dl_exit_intent_shown',
         event_category: 'engagement',
-        event_label: image.imageUrl,
-        exit_intent: { image_url: image.imageUrl, template: '' },
+        event_label: image.image_url,
+        exit_intent: { image_url: image.image_url, template: '' },
       },
       { event: 'dl_exit_intent_accepted', event_action: 'exit_intent_accepted' },
       {
@@ -377,7 +377,7 @@ describe('analytics', () => {
 
   it('keeps dl_user_data first when the exit-intent popup showed before analytics loaded', async () => {
     const engine = await ready();
-    engine.events.emit('exit-intent.shown', { imageUrl: 'https://cdn.test/exit.png' });
+    engine.events.emit('exit_intent.shown', { image_url: 'https://cdn.test/exit.png' });
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     startAnalytics(engine, options);
     expect(names()).toEqual(['dl_user_data', 'dl_exit_intent_shown', 'dl_add_to_cart', 'dl_cart_updated']);
@@ -415,8 +415,8 @@ describe('analytics events (GA4 names)', () => {
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
     engine.events.emit('checkout.started', { lines: engine.cart.lines() });
-    engine.events.emit('checkout.shipping-added', { tier: 'Standard' });
-    engine.events.emit('checkout.payment-added', { method: 'card_token' });
+    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     expect(seen.map((e) => e.name)).toEqual([
       'page_view',
       'add_to_cart',
@@ -486,11 +486,11 @@ describe('analytics decisions', () => {
     await engine.cart.addItem(1);
     await flush();
     expect(traces(engine)).toEqual([
-      ['ready', 'page_view', true, 'Every page load'],
-      ['ready', 'view_item_list', true, '2 packages on the page'],
-      ['ready', 'view_item', false, '2 packages on the page, so view_item_list instead'],
-      ['ready', 'add_to_cart', false, 'Nothing was added since the last report'],
-      ['ready', 'remove_from_cart', false, 'Nothing was removed since the last report'],
+      ['sdk.ready', 'page_view', true, 'Every page load'],
+      ['sdk.ready', 'view_item_list', true, '2 packages on the page'],
+      ['sdk.ready', 'view_item', false, '2 packages on the page, so view_item_list instead'],
+      ['sdk.ready', 'add_to_cart', false, 'Nothing was added since the last report'],
+      ['sdk.ready', 'remove_from_cart', false, 'Nothing was removed since the last report'],
       ['cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report'],
       ['cart.calculated', 'add_to_cart', true, 'Added since the last report: Earbuds ×1 ×1'],
       ['cart.calculated', 'update_cart', true, 'After every price update'],

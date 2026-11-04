@@ -78,9 +78,9 @@ export function clearStepGuard(): void {
   } catch {}
 }
 
-/** @deprecated `next:prospect-cart-created` on the form. Use `next.on('prospect.saved')`. */
+/** @deprecated `next:prospect-cart-created` on the form. Use `next.on('cart.created')`. */
 export function announceProspect(engine: Engine, form: HTMLFormElement): void {
-  engine.on('prospect.saved', ({ data }) => {
+  engine.on('cart.created', ({ data }) => {
     const cart = (data.cart ?? {}) as Record<string, unknown>;
     const prospectCart = {
       id: cart.id,

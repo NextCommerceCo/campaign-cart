@@ -1,11 +1,19 @@
 import type { Logger } from './log';
 import type { Attribution } from './attribution';
 import type { ApiLine, CartLine, CartState, CartSummary } from './cart/types';
-import type { Campaign, Order, OrderLine } from './types';
+import type { Campaign, CheckoutError, Order, OrderLine } from './types';
 
 export interface ExitIntentDetail {
-  imageUrl?: string;
+  image_url?: string;
   template?: string;
+}
+
+export type SelectorType = 'bundle' | 'offer' | 'toggle';
+
+export interface CartChangeLine {
+  package_id: number;
+  quantity: number;
+  unit_price: string;
 }
 
 export type AnalyticsName =
@@ -51,44 +59,66 @@ export interface AnalyticsTrace {
 }
 
 export interface EventMap {
+  'sdk.ready': { lines: ApiLine[] };
+  'sdk.error': { action: string; message: string };
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
+  'selector.selected': { selector_id: string; type: SelectorType; card_id?: string; items: CartLine[] };
+  'selector.deselected': { selector_id: string; type: SelectorType };
+  'selector.calculating': { selector_id: string; type: SelectorType };
+  'selector.calculated': {
+    selector_id: string;
+    type: SelectorType;
+    quotes: Record<string, CartSummary>;
+    from_cache: boolean;
+  };
   'cart.updated': { cart: CartState };
+  'cart.calculating': { lines: ApiLine[] };
   'cart.calculated': { summary: CartSummary };
-  'coupon.refused': { code: string };
-  'selection.changed': { selectorId: string; cardId: string; items: CartLine[] };
-  'shipping.changed': { methodId: number | undefined };
-  'storage.degraded': { reason: string };
-  ready: { lines: ApiLine[] };
+  'cart.added': { lines: CartChangeLine[]; priced: boolean };
+  'cart.removed': { lines: CartChangeLine[]; priced: boolean };
+  'cart.created': { cart: unknown; email: string; phone?: string };
+  'coupon.applied': { code: string };
+  'coupon.removed': { code: string };
+  'coupon.denied': { code: string };
   'checkout.started': { lines: ApiLine[] };
-  'checkout.shipping-added': { tier: string };
-  'checkout.payment-added': { method: string };
-  'prospect.saved': { cart: unknown; email: string; phone?: string };
-  'order.placed': { order: Order };
+  'checkout.address_entered': { country: string };
+  'checkout.billing_entered': { country: string };
+  'checkout.shipping_selected': {
+    method_id: number | undefined;
+    method?: { ref_id: number; code: string; price: string };
+  };
+  'checkout.payment_selected': { method: string };
+  'checkout.submitted': { payment_method: string; valid: boolean; errors: Record<string, CheckoutError> };
+  'order.created': { order: Order };
+  'order.failed': { stage: 'order' | 'payment'; code: string; message?: string; decline?: string; ref_id?: string };
   'order.loaded': {
     order: Order;
     purchase?: string;
     coupon?: string;
     upsells?: Array<{ id: string; number: number; line: OrderLine }>;
   };
-  'upsell.viewed': { refId: string; page: string };
-  'upsell.accepted': { refId: string; lines: ApiLine[] };
-  'upsell.skipped': { refId: string; packageId?: number };
-  'exit-intent.shown': ExitIntentDetail;
-  'exit-intent.clicked': ExitIntentDetail;
-  'exit-intent.dismissed': ExitIntentDetail;
-  'exit-intent.closed': ExitIntentDetail;
-  'exit-intent.action': ExitIntentDetail & { action?: string; couponCode?: string };
-  error: { action: string; message: string };
+  'upsell.viewed': { ref_id: string; page: string };
+  'upsell.accepted': { ref_id: string; lines: ApiLine[]; order: Order };
+  'upsell.skipped': { ref_id: string; package_id?: number };
+  'upsell.failed': { ref_id: string; code: string; message?: string };
+  'exit_intent.shown': ExitIntentDetail;
+  'exit_intent.clicked': ExitIntentDetail & { action?: string; coupon_code?: string };
+  'exit_intent.closed': ExitIntentDetail & { reason: 'dismissed' | 'closed' };
   analytics: AnalyticsEvent;
 }
 
 export type EventName = keyof EventMap;
 
 export interface EngineEvent<K extends EventName = EventName> {
+  id: string;
   name: K;
   data: EventMap[K];
   at: number;
 }
+
+let sequence = 0;
+const eventId = () =>
+  `evt_${Date.now().toString(36)}${(sequence++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 type Listener = (event: EngineEvent) => void;
 
@@ -103,11 +133,11 @@ export class Events {
   constructor(private log: Logger) {}
 
   emit<K extends EventName>(name: K, data: EventMap[K]): void {
-    const event: EngineEvent = { name, data, at: Date.now() };
+    const event: EngineEvent = { id: eventId(), name, data, at: Date.now() };
     this.buffer.push(event);
     if (this.buffer.length > BUFFER_SIZE)
       this.buffer.splice(
-        this.buffer.findIndex((e) => e.name !== 'ready'),
+        this.buffer.findIndex((e) => e.name !== 'sdk.ready'),
         1,
       );
     this.queue.push(event);

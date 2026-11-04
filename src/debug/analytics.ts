@@ -15,20 +15,20 @@ type Tab = { id: string; label: string; logo?: IconName; body: () => Child[] };
 type Sum = { ok: boolean; text: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
-  ready: 'Page loaded',
+  'sdk.ready': 'Page loaded',
   'cart.calculated': 'Cart priced',
-  'cart.updated': 'Cart emptied',
+  'cart.added': 'Added to the cart',
+  'cart.removed': 'Removed from the cart',
   'checkout.started': 'Checkout opened',
-  'checkout.shipping-added': 'Shipping filled in',
-  'checkout.payment-added': 'Payment chosen',
+  'checkout.address_entered': 'Address entered',
+  'checkout.shipping_selected': 'Shipping picked',
+  'checkout.submitted': 'Order submitted',
   'order.loaded': 'Order loaded',
   'upsell.viewed': 'Upsell shown',
   'upsell.skipped': 'Upsell skipped',
-  'exit-intent.shown': 'Exit popup shown',
-  'exit-intent.clicked': 'Exit popup clicked',
-  'exit-intent.dismissed': 'Exit popup dismissed',
-  'exit-intent.closed': 'Exit popup closed',
-  'exit-intent.action': 'Exit popup offer used',
+  'exit_intent.shown': 'Exit popup shown',
+  'exit_intent.clicked': 'Exit popup clicked',
+  'exit_intent.closed': 'Exit popup closed',
 };
 
 const NOT_PUSHED: Record<Layer, string> = {
@@ -45,8 +45,8 @@ const FUNNEL: Array<[string, string]> = [
   ['view_item_list', 'a page showing packages'],
   ['add_to_cart', 'something is added to the cart'],
   ['begin_checkout', 'once, when the checkout form is ready'],
-  ['add_shipping_info', 'once, when the address is complete'],
-  ['add_payment_info', 'once, when payment details are complete'],
+  ['add_shipping_info', 'once, when the address is complete or a shipping method is picked'],
+  ['add_payment_info', 'once, when a submit passes its checks'],
   ['purchase', 'when a paid order loads, on the upsell or receipt page'],
   ['view_upsell', 'each upsell shown'],
   ['upsell_purchase', 'each accepted upsell, when the order loads'],

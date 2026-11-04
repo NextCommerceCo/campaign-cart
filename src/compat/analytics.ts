@@ -35,12 +35,21 @@ export const NAMES: Record<AnalyticsName, string> = {
   skip_upsell: 'dl_skipped_upsell',
 };
 
-export const EXIT_INTENT = {
-  'exit-intent.shown': 'shown',
-  'exit-intent.clicked': 'accepted',
-  'exit-intent.dismissed': 'dismissed',
-  'exit-intent.closed': 'closed',
-} as const;
+export const EXIT_INTENT: Array<[EventName, string]> = [
+  ['exit_intent.shown', 'shown'],
+  ['exit_intent.clicked', 'accepted'],
+  ['exit_intent.clicked', 'action'],
+  ['exit_intent.closed', 'dismissed'],
+  ['exit_intent.closed', 'closed'],
+];
+
+const exitIntentName = (e: EngineEvent): string | undefined => {
+  if (e.name === 'exit_intent.shown') return 'shown';
+  if (e.name === 'exit_intent.clicked')
+    return (e.data as EventMap['exit_intent.clicked']).action ? 'action' : 'accepted';
+  if (e.name === 'exit_intent.closed') return (e.data as EventMap['exit_intent.closed']).reason;
+  return undefined;
+};
 
 const legacyCart = (engine: Engine) => {
   const summary = engine.getState().cart.summary;
@@ -179,22 +188,21 @@ export function startLegacyDataLayer(
   };
 
   return (e) => {
-    if (e.name in EXIT_INTENT) {
-      const name = EXIT_INTENT[e.name as keyof typeof EXIT_INTENT];
-      const { imageUrl, template } = e.data as ExitIntentDetail;
-      exitIntent(e.name, name, {
-        event_action: `exit_intent_${name}`,
-        event_label: imageUrl || template || 'exit-intent',
-        exit_intent: { image_url: imageUrl || '', template: template || '' },
-      });
-    }
-    if (e.name === 'exit-intent.action') {
-      const { action, couponCode } = e.data as EventMap['exit-intent.action'];
-      exitIntent(e.name, 'action', {
+    const name = exitIntentName(e);
+    if (!name) return;
+    if (name === 'action') {
+      const { action, coupon_code } = e.data as EventMap['exit_intent.clicked'];
+      return exitIntent(e.name, name, {
         event_action: `exit_intent_${action}`,
-        event_label: couponCode || action,
-        exit_intent: { action, coupon_code: couponCode || '' },
+        event_label: coupon_code || action,
+        exit_intent: { action, coupon_code: coupon_code || '' },
       });
     }
+    const { image_url, template } = e.data as ExitIntentDetail;
+    exitIntent(e.name, name, {
+      event_action: `exit_intent_${name}`,
+      event_label: image_url || template || 'exit-intent',
+      exit_intent: { image_url: image_url || '', template: template || '' },
+    });
   };
 }

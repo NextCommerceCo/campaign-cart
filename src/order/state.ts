@@ -173,7 +173,10 @@ export function createOrder(ctx: Context, cart: CartActions) {
     const paid = !order.payment_complete_url;
     const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
     const failed = ctx.getState().visit.params.payment_failed === 'true' || (!!page && page === checkout?.failurePath);
-    if (failed) return ctx.emit('order.loaded', { order });
+    if (failed) {
+      ctx.emit('order.failed', { stage: 'payment', code: 'payment_failed', ref_id: order.ref_id });
+      return ctx.emit('order.loaded', { order });
+    }
     if (paid && checkout?.pendingRef === order.ref_id) {
       cart.clearAfterOrder();
       ctx.forget('checkout');
@@ -225,12 +228,12 @@ export function createOrder(ctx: Context, cart: CartActions) {
       const { refId, order } = state();
       if (!refId || !order || viewed.has(page)) return;
       viewed.add(page);
-      ctx.emit('upsell.viewed', { refId, page });
+      ctx.emit('upsell.viewed', { ref_id: refId, page });
     },
 
     skip(offer: Offer = {}): void {
       const { refId } = state();
-      if (refId) ctx.emit('upsell.skipped', { refId, packageId: offerLines(offer).lines[0]?.packageId });
+      if (refId) ctx.emit('upsell.skipped', { ref_id: refId, package_id: offerLines(offer).lines[0]?.packageId });
     },
 
     async accept(offer: Offer, page: string): Promise<Accepted> {
@@ -252,11 +255,17 @@ export function createOrder(ctx: Context, cart: CartActions) {
           ...(card?.vouchers.length && { vouchers: card.vouchers }),
         });
         set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
-        ctx.emit('upsell.accepted', { refId, lines: body });
+        ctx.emit('upsell.accepted', { ref_id: refId, lines: body, order: updated });
         return 'accepted';
       } catch (err) {
-        set({ status: 'ready', error: orderError(err) });
+        const error = orderError(err);
+        set({ status: 'ready', error });
         ctx.fail('upsell', err);
+        ctx.emit('upsell.failed', {
+          ref_id: refId,
+          code: error.code,
+          ...(error.message && { message: error.message }),
+        });
         return 'failed';
       }
     },

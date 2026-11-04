@@ -77,6 +77,7 @@ export interface CheckoutState {
   rules: Record<string, CountryRules>;
   rulesDown?: boolean;
   prospectSaved: boolean;
+  cardReady?: boolean;
   pendingRef?: string;
   failurePath?: string;
 }

@@ -51,11 +51,19 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
 
   let ready = false;
   let priced: SummaryLine[] | undefined;
+  let started = false;
+  let shippingSent = false;
+  let paymentSent = false;
+  const tier = () => engine.getState().cart.summary?.shipping_method?.name ?? 'Standard';
 
   const onReady = () => {
     ready = true;
     const { page_location, page_title, page_referrer } = pageContext(engine);
-    emit('page_view', { page_location, page_title, page_referrer }, { trigger: 'ready', reason: 'Every page load' });
+    emit(
+      'page_view',
+      { page_location, page_title, page_referrer },
+      { trigger: 'sdk.ready', reason: 'Every page load' },
+    );
     const ids = [
       ...new Set(
         [...document.querySelectorAll('[data-next-package-id]')].map((el) =>
@@ -66,19 +74,19 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     const viewed = ids.filter((id) => engine.getPackage(id)).map((id) => ({ package_id: id, quantity: 1 }));
     const packages = `${viewed.length} packages on the page`;
     if (viewed.length === 1) {
-      emit('view_item', ecommerce(engine, viewed), { trigger: 'ready', reason: 'One package on the page' });
-      skip('ready', 'view_item_list', 'Only one package on the page, so view_item instead');
+      emit('view_item', ecommerce(engine, viewed), { trigger: 'sdk.ready', reason: 'One package on the page' });
+      skip('sdk.ready', 'view_item_list', 'Only one package on the page, so view_item instead');
     } else if (viewed.length > 1) {
       const { value: _, ...list } = ecommerce(engine, viewed);
       emit(
         'view_item_list',
         { ...list, item_list_id: 'product_list', item_list_name: 'Product List' },
-        { trigger: 'ready', reason: packages },
+        { trigger: 'sdk.ready', reason: packages },
       );
-      skip('ready', 'view_item', `${packages}, so view_item_list instead`);
+      skip('sdk.ready', 'view_item', `${packages}, so view_item_list instead`);
     } else {
-      skip('ready', 'view_item', 'No package on the page');
-      skip('ready', 'view_item_list', 'No package on the page');
+      skip('sdk.ready', 'view_item', 'No package on the page');
+      skip('sdk.ready', 'view_item_list', 'No package on the page');
     }
   };
 
@@ -122,7 +130,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         {
           trigger,
           reason:
-            trigger === 'ready'
+            trigger === 'sdk.ready'
               ? `The cart was filled before this page: ${names(added)}`
               : `Added since the last report: ${names(added)}`,
         },
@@ -185,10 +193,10 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   engine.on(
     '*',
     (e) => {
-      if (e.name === 'ready') {
+      if (e.name === 'sdk.ready') {
         onReady();
-        if (!(e.data as EventMap['ready']).lines.length) return reportCart([], 'ready');
-        return priced && reportCart(priced, 'ready');
+        if (!(e.data as EventMap['sdk.ready']).lines.length) return reportCart([], 'sdk.ready');
+        return priced && reportCart(priced, 'sdk.ready');
       }
       if (!ready) {
         if (e.name === 'cart.updated') priced = undefined;
@@ -208,42 +216,49 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
             reason: 'After every price update',
           });
         case 'checkout.started':
+          started = true;
           return emit('begin_checkout', cartEcommerce(engine), {
             trigger: e.name,
             reason: 'Once, when the checkout form is ready',
           });
-        case 'checkout.shipping-added': {
-          const { tier } = e.data as EventMap['checkout.shipping-added'];
+        case 'checkout.address_entered':
+        case 'checkout.shipping_selected':
+          if (!started || shippingSent) return;
+          shippingSent = true;
           return emit(
             'add_shipping_info',
-            { ...cartEcommerce(engine), shipping_tier: tier },
-            { trigger: e.name, reason: 'Once, when the address is complete' },
+            { ...cartEcommerce(engine), shipping_tier: tier() },
+            { trigger: e.name, reason: 'Once, when the address is complete or a shipping method is picked' },
           );
-        }
-        case 'checkout.payment-added': {
-          const { method } = e.data as EventMap['checkout.payment-added'];
+        case 'checkout.submitted': {
+          const { valid, payment_method } = e.data as EventMap['checkout.submitted'];
+          if (!valid || paymentSent) return;
+          paymentSent = true;
           return emit(
             'add_payment_info',
-            { ...cartEcommerce(engine), payment_type: method === 'card_token' ? 'Credit Card' : method },
-            { trigger: e.name, reason: 'Once, when payment details are complete' },
+            {
+              ...cartEcommerce(engine),
+              payment_type: payment_method === 'card_token' ? 'Credit Card' : payment_method,
+            },
+            { trigger: e.name, reason: 'Once, when a submit passes its checks' },
           );
         }
         case 'order.loaded':
           return onOrder(e.data as EventMap['order.loaded']);
         case 'upsell.viewed': {
-          const { refId, page } = e.data as EventMap['upsell.viewed'];
+          const { ref_id, page } = e.data as EventMap['upsell.viewed'];
           return emit(
             'view_upsell',
-            { order_id: refId, page_path: page, currency: currency(engine) },
+            { order_id: ref_id, page_path: page, currency: currency(engine) },
             { trigger: e.name, reason: 'Every time an upsell is shown' },
           );
         }
         case 'upsell.skipped': {
-          const { refId, packageId } = e.data as EventMap['upsell.skipped'];
-          const name = packageId ? engine.getPackage(packageId)?.name : undefined;
+          const { ref_id, package_id } = e.data as EventMap['upsell.skipped'];
+          const name = package_id ? engine.getPackage(package_id)?.name : undefined;
           return emit(
             'skip_upsell',
-            { order_id: refId, ...(packageId && { package_id: packageId }), ...(name && { package_name: name }) },
+            { order_id: ref_id, ...(package_id && { package_id }), ...(name && { package_name: name }) },
             { trigger: e.name, reason: 'Every time an upsell is skipped' },
           );
         }

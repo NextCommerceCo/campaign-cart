@@ -1,38 +1,118 @@
 # Events
 
-`next.on(name, (data, event) => …)`. `'*'` receives every event. A listener added after
-`ready` still receives `ready`.
+`next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,
+with one dot: the namespace is the thing that changed, the action what happened to it, as in Next
+Commerce webhooks. `cart.created` and `order.created` are the same Cart and Order the webhooks
+(`cart.abandoned`, `order.created`) send later.
 
-| Event                                                  | Data                                      | When                                                                                                                                                                         |
-| ------------------------------------------------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ready`                                                | `lines`                                   | Once, when the campaign and the page's values are in                                                                                                                         |
-| `campaign.loaded`                                      | `campaign`, `fromCache`                   | Snapshot, then the fresh campaign                                                                                                                                            |
-| `cart.updated`                                         | `cart`                                    | The shopper changed lines, coupons or shipping                                                                                                                               |
-| `cart.calculated`                                      | `summary`                                 | Server totals arrived                                                                                                                                                        |
-| `coupon.refused`                                       | `code`                                    | The server gives no discount for a code; it is not kept                                                                                                                      |
-| `selection.changed`                                    | `selectorId`, `cardId`, `items`           | A bundle pick, quantity or slot changed                                                                                                                                      |
-| `shipping.changed`                                     | `methodId`                                |                                                                                                                                                                              |
-| `checkout.started`                                     | `lines`                                   | Once, when the checkout form is bound                                                                                                                                        |
-| `checkout.shipping-added`                              | `tier`                                    | Once, when the address is complete                                                                                                                                           |
-| `checkout.payment-added`                               | `method`                                  | Once, when payment details are complete                                                                                                                                      |
-| `prospect.saved`                                       | `cart`, `email`, `phone?`                 | Once per tab, when the checkout saves the open cart: a valid email and a first and last name are in. It is the cart in the dashboard's Open Carts, for abandoned-cart emails |
-| `order.placed`                                         | `order`                                   | The order was created                                                                                                                                                        |
-| `order.loaded`                                         | `order`, `purchase?`, `upsells?`          | On post-purchase pages                                                                                                                                                       |
-| `upsell.viewed` / `upsell.accepted` / `upsell.skipped` | `refId`, `page` / `lines`                 |                                                                                                                                                                              |
-| `storage.degraded`                                     | `reason`                                  | Browser storage is blocked or full                                                                                                                                           |
-| `exit-intent.*`                                        | popup details                             |                                                                                                                                                                              |
-| `error`                                                | `action`, `message`                       | For analytics and debugging; pages read errors from state                                                                                                                    |
-| `analytics`                                            | `name`, `id`, `time`, `params`, `context` | Each analytics event, under its GA4 name; see below; late listeners get the earlier ones                                                                                     |
+`event` is the envelope, shaped like a webhook's:
 
-0.4.x names still work: `bundle:selection-changed`, `cart:updated`, `coupon:validation-failed`,
-`shipping:method-changed`, `exit-intent:*`. Other 0.4.x names log a warning and never fire. DOM events kept for page scripts:
-`next:initialized`, `next:ready` (window) and `next:prospect-cart-created` (checkout form).
+```js
+next.on('order.created', (data, event) => {
+  event.event_id; // 'evt_…', unique
+  event.event_type; // 'order.created'
+  event.object; // 'order'
+  event.data; // same as data
+  event.created_at; // ISO time
+  event.sdk_version;
+});
+```
+
+Events come in order, once each on the page. Only `sdk.ready` (alias `ready`) reaches listeners
+added after it fired; for anything else read `next.getState()`.
+
+### SDK
+
+| Event       | Data                | When                                                                                                     |
+| ----------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
+| `sdk.ready` | `lines`             | Once, when the campaign and the page's values are in. `ready` is the same event                          |
+| `sdk.error` | `action`, `message` | An action failed: `load`, `calculate`, `quote`, `coupon`, `order`, `upsell`, `storage` (blocked or full) |
+
+### Selectors
+
+Bundle cards, upsell offer cards and toggles (bumps such as a warranty). `type` is `bundle`, `offer`
+or `toggle`.
+
+| Event                  | Data                                          | When                                                                                     |
+| ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `selector.selected`    | `selector_id`, `type`, `card_id?`, `items`    | A card is picked, its quantity or a slot changed, or a toggle is switched on             |
+| `selector.deselected`  | `selector_id`, `type`                         | A toggle is switched off                                                                 |
+| `selector.calculating` | `selector_id`, `type`                         | Pricing the cards that have no quote yet starts                                          |
+| `selector.calculated`  | `selector_id`, `type`, `quotes`, `from_cache` | Every card has a price. Quotes are kept 10 minutes, so a later page may get this at once |
+
+### Carts
+
+| Event              | Data                                                       | When                                                                                                                                                                |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cart.updated`     | `cart`                                                     | Lines, coupons or shipping changed, at once                                                                                                                         |
+| `cart.calculating` | `lines`                                                    | Pricing starts; once for a burst of changes                                                                                                                         |
+| `cart.added`       | `lines` (`package_id`, `quantity`, `unit_price`), `priced` | Packages the page added since the last price, net, just before `cart.calculated`. `priced: false` when pricing failed: `unit_price` is then the package price       |
+| `cart.removed`     | `lines`, `priced`                                          | Packages the page removed since the last price, at the price they had                                                                                               |
+| `cart.calculated`  | `summary`                                                  | Server totals arrived                                                                                                                                               |
+| `cart.created`     | `cart`, `email`, `phone?`                                  | Once per tab, when the store creates the Cart: a valid email and a first and last name are in. It is the Cart in the dashboard's Open Carts, later `cart.abandoned` |
+
+A `+ + −` within one price run sends one `cart.added` for the net change; `+` then `−` sends none.
+
+### Coupons
+
+| Event            | Data   | When                                                    |
+| ---------------- | ------ | ------------------------------------------------------- |
+| `coupon.applied` | `code` | A code was added to the cart                            |
+| `coupon.removed` | `code` | A code was removed                                      |
+| `coupon.denied`  | `code` | The server gives no discount for a code; it is not kept |
+
+### Checkout
+
+| Event                        | Data                                | When                                                                                                                                                                         |
+| ---------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.started`           | `lines`                             | Once, when the checkout form is bound with a cart                                                                                                                            |
+| `checkout.address_entered`   | `country`                           | Once, when the shipping address has every field its country requires                                                                                                         |
+| `checkout.billing_entered`   | `country`                           | Once, when a separate billing address is complete                                                                                                                            |
+| `checkout.shipping_selected` | `method_id`, `method?`              | A shipping method was picked. A bundle card can set it on the landing page too                                                                                               |
+| `checkout.payment_selected`  | `method`                            | The payment method changed                                                                                                                                                   |
+| `checkout.submitted`         | `payment_method`, `valid`, `errors` | Each submit, once its checks ran: the fields, then the card tokenized. `valid: false` names what stopped it. A valid submit is followed by `order.created` or `order.failed` |
+
+### Orders
+
+| Event           | Data                                               | When                                                                                                                  |
+| --------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `order.created` | `order`                                            | The order was created                                                                                                 |
+| `order.failed`  | `stage`, `code`, `message?`, `decline?`, `ref_id?` | `stage: 'order'`: the server refused it. `stage: 'payment'`: the shopper came back from a payment gateway that failed |
+| `order.loaded`  | `order`, `purchase?`, `upsells?`                   | On post-purchase pages                                                                                                |
+
+### Upsells
+
+| Event             | Data                         | When                                       |
+| ----------------- | ---------------------------- | ------------------------------------------ |
+| `upsell.viewed`   | `ref_id`, `page`             | An offer was shown                         |
+| `upsell.accepted` | `ref_id`, `lines`, `order`   | The offer was added; `order` is updated    |
+| `upsell.skipped`  | `ref_id`, `package_id?`      | The shopper went on without it             |
+| `upsell.failed`   | `ref_id`, `code`, `message?` | Adding the offer failed, such as a decline |
+
+### Exit intent
+
+| Event                 | Data                                                 | When                                            |
+| --------------------- | ---------------------------------------------------- | ----------------------------------------------- |
+| `exit_intent.shown`   | `image_url?`, `template?`                            | The popup opened                                |
+| `exit_intent.clicked` | `image_url?`, `template?`, `action?`, `coupon_code?` | The image was clicked, or a template action ran |
+| `exit_intent.closed`  | `image_url?`, `template?`, `reason`                  | `reason: 'dismissed'` (Esc) or `'closed'`       |
+
+### 0.4.x names
+
+0.4.x names still work and get the payload they had: `cart:updated`, `bundle:selection-changed`,
+`shipping:method-changed`, `coupon:validation-failed`, `exit-intent:*` (each only for the moment it
+meant), `campaign:loaded`, `checkout:started`, `order:completed`, `upsell:*`, `payment:error` and
+the rest of `LEGACY_EVENTS` in `src/compat/legacy.ts`. `fomo:*` and `profile:*`, features the SDK no
+longer has, are accepted and never fire. Other names log a warning and never fire. DOM events kept
+for page scripts: `next:initialized`, `next:ready` (window) and `next:prospect-cart-created`
+(checkout form).
 
 ## Analytics
 
-`next.on('analytics', (event) => …)` receives each analytics event once the analytics chunk has
-loaded (on idle after `ready`), including those sent before the listener was added. Forward them
-to any vendor from here.
+`next.analytics.on('add_to_cart', (event) => …)` receives one tracking event by its GA4 name;
+`next.analytics.on('*', …)` and `next.on('analytics', …)` receive every one. They arrive once the
+analytics chunk has loaded (on idle after `sdk.ready`), including those sent before the listener
+was added. Forward them to any vendor from here.
 
 | `name`                                   | `params`                                                                                                 |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -53,8 +133,13 @@ event, and is the transaction id for `purchase` and `upsell_purchase`; `purchase
 when paid. `context` has `page_location`, `page_title`, `page_referrer`, `campaign_name`,
 `campaign_currency`, `campaign_language` and `attribution`. No personal data is sent.
 
+`add_shipping_info` is sent once, after `checkout.started`, when the address is complete or a
+shipping method is picked. `add_payment_info` is sent once, on the first `checkout.submitted` that
+passes its checks (for a card, once it is tokenized).
+
 `add_to_cart` and `remove_from_cart` compare the priced cart with what earlier events in the tab
-already reported, on `ready` and after each server calculation. A cart filled before the page
+already reported, on `sdk.ready` and after each server calculation, so an add on a page that was
+left before analytics loaded is still sent on the next page. A cart filled before the page
 loaded (a default bundle, `forcePackageId`, `forceBundleId`, a redirect from an add-to-cart button)
 sends `add_to_cart` at the cart price; a bundle change sends `remove_from_cart` for the old lines,
 at the price they were added, and `add_to_cart` for the new ones. `first_in_session` is `true` on
@@ -62,7 +147,7 @@ the first `add_to_cart` of the tab, for tags that send only one AddToCart.
 
 ## dataLayer (deprecated)
 
-Use `next.on('analytics')`. Each analytics event is still pushed in the 0.4.x Elevar format, with
+Use `next.analytics.on`. Each analytics event is still pushed in the 0.4.x Elevar format, with
 the same `id` as `event_id`, for GTM containers and forwarders that read it. Analytics pushes 0.4.x `dl_*` events through `window.NextDataLayerTransformFn` (return a
 falsy value to drop one) into `window.NextDataLayer`, then into `dataLayer` after
 `{ ecommerce: null }`: `dl_user_data`, `dl_view_item(_list)`, `dl_add_to_cart`,

@@ -178,7 +178,7 @@ describe('debug tools', () => {
   it('counts issues on the button and lists each once, with the element behind it', async () => {
     const next = await start('<span data-next-display="cart.nope"></span><button data-next-package-id="999"></button>');
     await next.actions.addItem(1);
-    next.on('fomo:shown' as never, () => {});
+    next.on('nope:event' as never, () => {});
     await vi.waitFor(() => expect($('.issues').textContent).toBe('3 Issues'));
     expect($('.issues').classList.contains('amber')).toBe(true);
     $('.fab').click();
@@ -187,7 +187,7 @@ describe('debug tools', () => {
     expect(body()).toContain('data-next-display="cart.nope" → unknown path');
     expect(body()).toContain('data-next-package-id="999" → not in this campaign');
     expect(body()).toContain('Warnings and errors · 1');
-    expect(body()).toContain('next.on: unknown event "fomo:shown"');
+    expect(body()).toContain('next.on: unknown event "nope:event"');
     expect(body()).not.toContain('unknown display path');
   });
 

@@ -24,29 +24,29 @@ describe('events', () => {
   it('delivers events emitted inside a listener after the current one', () => {
     const { engine } = makeEngine();
     const order: string[] = [];
-    engine.on('selection.changed', () => engine.events.emit('ready', { lines: [] }));
+    engine.on('selector.selected', () => engine.events.emit('sdk.ready', { lines: [] }));
     engine.on('*', (e) => order.push(e.name));
     engine.selectors.register('main', [{ id: 'one', lines: [], vouchers: [] }], 'select');
-    expect(order).toEqual(['selection.changed', 'ready']);
+    expect(order).toEqual(['selector.selected', 'sdk.ready']);
   });
 
   it('stops delivering after unsubscribe', () => {
     const { engine } = makeEngine();
     const seen: string[] = [];
-    const off = engine.on('ready', (e) => seen.push(e.name));
+    const off = engine.on('sdk.ready', (e) => seen.push(e.name));
     off();
-    engine.events.emit('ready', { lines: [] });
+    engine.events.emit('sdk.ready', { lines: [] });
     expect(seen).toEqual([]);
   });
   it('runs a ready listener added during ready once, and keeps ready for late listeners', () => {
     const { engine } = makeEngine();
     const late = vi.fn();
-    engine.on('ready', () => engine.on('ready', late, { replay: true }));
-    engine.events.emit('ready', { lines: [] });
+    engine.on('sdk.ready', () => engine.on('sdk.ready', late, { replay: true }));
+    engine.events.emit('sdk.ready', { lines: [] });
     expect(late).toHaveBeenCalledTimes(1);
     for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { summary: {} as never });
     const later = vi.fn();
-    engine.on('ready', later, { replay: true });
+    engine.on('sdk.ready', later, { replay: true });
     expect(later).toHaveBeenCalledTimes(1);
   });
 });

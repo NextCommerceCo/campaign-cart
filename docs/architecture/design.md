@@ -116,7 +116,7 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 - **Never stored:** totals (they come from the server on each page), personal data in
   cookies, anything about the card. The old SDK's `next_user_data` cookie is deleted.
 - **Storage blocked** (private mode, in-app webviews): everything keeps working in memory
-  and `storage.degraded` is emitted.
+  and `sdk.error` is emitted with `action: 'storage'`.
 - **Back button:** a page restored from the back-forward cache reloads, so it never acts
   on a stale cart.
 - **Reset:** `?reset=1` clears this funnel's keys once and is removed from the URL.

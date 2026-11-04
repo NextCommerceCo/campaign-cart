@@ -32,7 +32,7 @@ export function legacyGlobals(win: Window): void {
   globals.dataLayer ??= [];
 }
 
-/** @deprecated `window` event `next:ready`, fired when the SDK code has loaded. Use `next.on('ready')`. */
+/** @deprecated `window` event `next:ready`, fired when the SDK code has loaded. Use `next.on('sdk.ready')`. */
 export function announceLegacyLoaded(win: Window): void {
   win.dispatchEvent(new CustomEvent('next:ready', { detail: { version: __VERSION__, mode: 'production' } }));
 }

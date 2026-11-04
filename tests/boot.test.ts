@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
 import { boot } from '../src/boot';
+import { LEGACY_EVENTS } from '../src/compat/legacy';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi } from './fixtures/api';
 import { campaign } from './fixtures/campaign';
@@ -120,12 +121,80 @@ describe('boot', () => {
     const changed = vi.fn();
     next.on('bundle:selection-changed' as never, changed);
     next.on('fomo:shown' as never, vi.fn());
+    next.on('nope:event' as never, vi.fn());
     document.querySelector<HTMLElement>('#two')!.click();
     expect(changed).toHaveBeenCalledWith(
       { selectorId: 'main', cardId: 'two', items: [{ packageId: 2, quantity: 1 }] },
       expect.anything(),
     );
-    expect(warn).toHaveBeenCalledWith('[next] next.on: unknown event "fomo:shown"');
+    expect(warn.mock.calls).toEqual([['[next] next.on: unknown event "nope:event"']]);
+  });
+
+  it('hands each event with an envelope like a webhook, and keeps ready for scripts that listen late', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    const ready = vi.fn();
+    next.on('ready', ready);
+    expect(ready).toHaveBeenCalledWith(
+      { lines: expect.any(Array) },
+      {
+        event_id: expect.stringMatching(/^evt_/),
+        event_type: 'sdk.ready',
+        object: 'sdk',
+        data: { lines: expect.any(Array) },
+        created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+        sdk_version: expect.any(String),
+      },
+    );
+    const added = vi.fn();
+    next.on('cart.added', added);
+    await next.actions.addItem(1);
+    await vi.waitFor(() => expect(added).toHaveBeenCalledTimes(1));
+    expect(added.mock.calls[0]![1]).toMatchObject({ event_type: 'cart.added', object: 'cart' });
+  });
+
+  it('gives 0.4.x names the payload they had, only for the moment they meant', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    const cart = vi.fn();
+    const shipping = vi.fn();
+    next.on('cart:updated' as never, cart);
+    next.on('shipping:method-changed' as never, shipping);
+    await next.actions.addItem(1);
+    await next.actions.setShipping(1);
+    expect(cart.mock.calls.at(-1)![0]).toMatchObject({ groups: expect.any(Object), coupons: [] });
+    expect(shipping).toHaveBeenCalledWith(
+      { methodId: 1, method: { ref_id: 1, code: 'standard', price: '0.00' } },
+      expect.anything(),
+    );
+    const popup = (name: string, data: Record<string, unknown>) => {
+      const alias = LEGACY_EVENTS[name]!;
+      return alias.when && !alias.when(data) ? 'skipped' : (alias.data?.(data) ?? data);
+    };
+    const click = { image_url: 'x.png' };
+    const used = { template: 'exit', action: 'apply-coupon', coupon_code: 'EXIT10' };
+    expect([popup('exit-intent:clicked', click), popup('exit-intent:clicked', used)]).toEqual([
+      { imageUrl: 'x.png', template: undefined },
+      'skipped',
+    ]);
+    expect(popup('exit-intent:action', used)).toEqual({
+      imageUrl: undefined,
+      template: 'exit',
+      action: 'apply-coupon',
+      couponCode: 'EXIT10',
+    });
+    expect(
+      ['dismissed', 'closed'].map((reason) => popup('exit-intent:dismissed', { template: 'exit', reason })),
+    ).toEqual([{ imageUrl: undefined, template: 'exit' }, 'skipped']);
+  });
+
+  it('lets page scripts listen to one tracking event by its GA4 name', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    const views: string[] = [];
+    next.analytics.on('page_view', (e) => views.push(e.name));
+    await vi.waitFor(() => expect(views).toEqual(['page_view']));
+    const all: string[] = [];
+    next.analytics.on('*', (e) => all.push(e.name));
+    expect(all).toContain('page_view');
   });
 
   it('lets page scripts listen to analytics events under GA4 names, including ones sent before they listened', async () => {
@@ -146,10 +215,10 @@ describe('boot', () => {
     const streamed: string[] = [];
     next.log.stream((e) => streamed.push(e.message));
     next.log.level = 'silent';
-    next.on('fomo:shown' as never, vi.fn());
+    next.on('nope:event' as never, vi.fn());
     expect(warn).not.toHaveBeenCalled();
-    expect(streamed).toEqual(['next.on: unknown event "fomo:shown"']);
-    expect(next.log.entries().at(-1)).toMatchObject({ level: 'warn', message: 'next.on: unknown event "fomo:shown"' });
+    expect(streamed).toEqual(['next.on: unknown event "nope:event"']);
+    expect(next.log.entries().at(-1)).toMatchObject({ level: 'warn', message: 'next.on: unknown event "nope:event"' });
   });
 
   it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {

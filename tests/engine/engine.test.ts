@@ -16,7 +16,7 @@ describe('Engine', () => {
     engine.on('*', (e) => names.push(e.name));
     await engine.start();
     expect(engine.getState().campaign?.name).toBe('Olympus');
-    expect(names).toEqual(['campaign.loaded', 'ready']);
+    expect(names).toEqual(['campaign.loaded', 'sdk.ready']);
   });
   it('is ready once: from the snapshot before the campaign request returns, else after it', async () => {
     const local = new MemoryStorage();
@@ -24,7 +24,7 @@ describe('Engine', () => {
     let answer!: (c: typeof campaign) => void;
     const cached = makeEngine({ local, campaign: new Promise((r) => (answer = r)) }).engine;
     const ready = vi.fn();
-    cached.on('ready', ready);
+    cached.on('sdk.ready', ready);
     const started = cached.start();
     expect(ready).toHaveBeenCalledTimes(1);
     answer(campaign);
@@ -32,7 +32,7 @@ describe('Engine', () => {
     expect(ready).toHaveBeenCalledTimes(1);
 
     const failed = makeEngine({ campaign: Promise.reject(new Error('down')) }).engine;
-    failed.on('ready', ready);
+    failed.on('sdk.ready', ready);
     await failed.start();
     expect(ready).toHaveBeenCalledTimes(1);
   });
@@ -52,7 +52,7 @@ describe('Engine', () => {
   it('reports a failed campaign request as an error event', async () => {
     const { engine } = makeEngine({ campaign: Promise.reject(new Error('down')) });
     const errors: unknown[] = [];
-    engine.on('error', (e) => errors.push(e.data));
+    engine.on('sdk.error', (e) => errors.push(e.data));
     await engine.start();
     expect(errors).toEqual([{ action: 'load', message: 'down' }]);
   });
@@ -87,16 +87,19 @@ describe('Engine', () => {
     const session = new MemoryStorage();
     const first = makeEngine({ local, session });
     const degraded: unknown[] = [];
-    first.engine.on('storage.degraded', (e) => degraded.push(e.data));
+    first.engine.on('sdk.error', (e) => degraded.push(e.data));
     await first.engine.start();
-    expect(degraded).toEqual([{ reason: 'local: QuotaExceededError' }]);
+    expect(degraded).toEqual([{ action: 'storage', message: 'local: QuotaExceededError' }]);
     expect(makeEngine({ local, session }).engine.getState().campaign).toBeDefined();
   });
   it('reports blocked storage at boot to late subscribers', () => {
     const { engine } = makeEngine({ session: new MemoryStorage('always') });
     const degraded: unknown[] = [];
-    engine.on('storage.degraded', (e) => degraded.push(e.data), { replay: true });
-    expect(degraded).toEqual([{ reason: 'session: unavailable' }, { reason: 'local: unavailable' }]);
+    engine.on('sdk.error', (e) => degraded.push(e.data), { replay: true });
+    expect(degraded).toEqual([
+      { action: 'storage', message: 'session: unavailable' },
+      { action: 'storage', message: 'local: unavailable' },
+    ]);
   });
   it('keeps URL params for the session but not one-shot ones', () => {
     const session = new MemoryStorage();

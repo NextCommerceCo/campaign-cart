@@ -4,6 +4,7 @@ import { format } from '../../../src/engine/format';
 import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
+import type { EventMap } from '../../../src/engine/events';
 import { MemoryStorage } from '../../fixtures/storage';
 
 const CARDS: SelectorCard[] = [
@@ -81,7 +82,7 @@ describe('selectors', () => {
     const { engine, api } = makeEngine();
     await engine.start();
     const seen: string[] = [];
-    engine.on('selection.changed', (e) => seen.push(e.data.cardId));
+    engine.on('selector.selected', (e) => seen.push(e.data.card_id!));
     await engine.selectors.register('main', CARDS, 'swap');
     const calls = api.calls.length;
     await engine.selectors.pick('main', 'one');
@@ -253,11 +254,32 @@ describe('selectors', () => {
     }
   });
 
+  it('announces a price run for the cards, and quotes a later page serves from the cache', async () => {
+    const local = new MemoryStorage();
+    const page = async () => {
+      const { engine } = makeEngine({ fetch: fakeApi().fetch, local });
+      const seen: unknown[] = [];
+      engine.on('*', (e) => {
+        if (e.name === 'selector.calculating') seen.push(e.name);
+        if (e.name === 'selector.calculated') {
+          const { quotes, from_cache } = e.data as EventMap['selector.calculated'];
+          seen.push([e.name, Object.keys(quotes), from_cache]);
+        }
+      });
+      await engine.start();
+      await engine.selectors.register('main', CARDS, 'swap', 'one');
+      await flush();
+      return seen;
+    };
+    expect(await page()).toEqual(['selector.calculating', ['selector.calculated', ['one', 'two'], false]]);
+    expect(await page()).toEqual([['selector.calculated', ['one', 'two'], true]]);
+  });
+
   it('falls back to package prices when the quote fails', async () => {
     const failing = (async () => new Response('{}', { status: 500 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing });
     const errors: string[] = [];
-    engine.on('error', (e) => errors.push(e.data.action));
+    engine.on('sdk.error', (e) => errors.push(e.data.action));
     await engine.start();
     await engine.selectors.register('offer', CARDS, 'offer');
     await flush();

@@ -63,7 +63,7 @@ describe('debug journey', () => {
   it('follows the order from checkout to the upsell, and flags an upsell page without one', async () => {
     const session = new MemoryStorage();
     const checkout = page(session, '/checkout/', { kind: 'checkout' });
-    checkout.engine.events.emit('order.placed', {
+    checkout.engine.events.emit('order.created', {
       order: { ref_id: 'R1', number: 1001, total_incl_tax: '49.00', currency: 'USD' },
     });
     expect(checkout.debug.state().pages[0]).toMatchObject({ order: 'R1', total: '49.00', units: 0 });
@@ -75,7 +75,11 @@ describe('debug journey', () => {
     expect(linked.state().pages[2]!.marks).toEqual([]);
     checkout.engine.attach((ctx) => ctx.update('order', { refId: 'R1', status: 'ready', accepted: [] }));
     const upsell = page(session, '/upsell/', { kind: 'upsell' });
-    upsell.engine.events.emit('upsell.accepted', { refId: 'R1', lines: [{ package_id: 2, quantity: 1 }] });
+    upsell.engine.events.emit('upsell.accepted', {
+      ref_id: 'R1',
+      lines: [{ package_id: 2, quantity: 1 }],
+      order: { ref_id: 'R1' },
+    });
     expect(upsell.debug.state().pages[3]).toMatchObject({
       order: 'R1',
       upsell: 'accepted',

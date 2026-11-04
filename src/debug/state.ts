@@ -148,15 +148,32 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   const on = <K extends EventName>(event: K, fn: (e: EngineEvent<K>) => void) => ctx.on(event, fn, { replay: true });
   on('cart.updated', (e) => cartChanged(e.data.cart, e.at));
   on('cart.calculated', (e) => change({ total: e.data.summary.total, currency: e.data.summary.currency }));
-  on('coupon.refused', (e) =>
+  on('coupon.denied', (e) =>
     change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} refused by the server` }),
   );
-  on('shipping.changed', (e) => change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.methodId)}` }));
+  on('checkout.shipping_selected', (e) =>
+    change({}, { at: e.at, text: `Shipping set to ${shippingCode(e.data.method_id)}` }),
+  );
   on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
-  on('checkout.shipping-added', (e) => change({}, { at: e.at, text: 'Shipping details added' }));
-  on('checkout.payment-added', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
-  on('prospect.saved', (e) => change({}, { at: e.at, text: 'Prospect saved' }));
-  on('order.placed', (e) => {
+  on('checkout.address_entered', (e) => change({}, { at: e.at, text: 'Shipping address entered' }));
+  on('checkout.billing_entered', (e) => change({}, { at: e.at, text: 'Billing address entered' }));
+  on('checkout.payment_selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
+  on('checkout.submitted', (e) =>
+    change(
+      {},
+      {
+        at: e.at,
+        text: e.data.valid
+          ? 'Order submitted'
+          : `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}`,
+      },
+    ),
+  );
+  on('cart.created', (e) => change({}, { at: e.at, text: 'Open cart saved on the store' }));
+  on('order.failed', (e) =>
+    change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.message ?? e.data.code}` }),
+  );
+  on('order.created', (e) => {
     const { order: placed } = e.data;
     change(
       { order: placed.ref_id, total: placed.total_incl_tax, currency: placed.currency, units: 0 },
@@ -177,9 +194,15 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     ),
   );
   on('upsell.skipped', (e) => change({ upsell: 'declined' }, { at: e.at, text: 'Upsell declined' }));
-  on('exit-intent.shown', (e) => change({}, { at: e.at, text: 'Exit intent shown' }));
-  on('storage.degraded', (e) => change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.reason}` }));
-  on('error', (e) => change({}, { at: e.at, tone: 'error', text: `${e.data.action} failed: ${e.data.message}` }));
+  on('upsell.failed', (e) =>
+    change({}, { at: e.at, tone: 'warn', text: `Upsell refused: ${e.data.message ?? e.data.code}` }),
+  );
+  on('exit_intent.shown', (e) => change({}, { at: e.at, text: 'Exit popup shown' }));
+  on('sdk.error', (e) =>
+    e.data.action === 'storage'
+      ? change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.message}` })
+      : change({}, { at: e.at, tone: 'error', text: `${e.data.action} failed: ${e.data.message}` }),
+  );
   ctx.log.stream(
     (entry) => {
       const trace = entry.data as Partial<AnalyticsTrace> | undefined;

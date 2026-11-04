@@ -116,10 +116,7 @@ describe('the workflows match the analytics code', () => {
     const ga = WIRING.filter((w) => w.ga).map((w) => [w.ga, w.dl]);
     expect(Object.fromEntries(ga)).toEqual(NAMES);
     const exits = WIRING.filter((w) => !w.ga).map((w) => [w.from[0], w.dl]);
-    expect(Object.fromEntries(exits)).toEqual({
-      ...Object.fromEntries(Object.entries(EXIT_INTENT).map(([from, name]) => [from, `dl_exit_intent_${name}`])),
-      'exit-intent.action': 'dl_exit_intent_action',
-    });
+    expect(exits).toEqual(EXIT_INTENT.map(([from, name]) => [from, `dl_exit_intent_${name}`]));
   });
 
   it('lists every trigger that sends each event, and nothing the code does not send', async () => {
@@ -130,17 +127,20 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.addItem(1);
     await engine.cart.removeItem(1);
     engine.events.emit('checkout.started', { lines: [] });
-    engine.events.emit('checkout.shipping-added', { tier: 'standard' });
-    engine.events.emit('checkout.payment-added', { method: 'card_token' });
+    engine.events.emit('checkout.address_entered', { country: 'US' });
+    engine.events.emit('checkout.submitted', { payment_method: 'card_token', valid: true, errors: {} });
     engine.events.emit('order.loaded', {
       order: ORDER,
       purchase: ORDER.ref_id,
       upsells: [{ id: 'u1', number: 1, line: ORDER.lines![0]! }],
     });
-    engine.events.emit('upsell.viewed', { refId: 'R1', page: '/upsell' });
-    engine.events.emit('upsell.skipped', { refId: 'R1' });
-    for (const w of WIRING.filter((w) => !w.ga))
-      engine.events.emit(w.from[0]!, { imageUrl: '', template: '' } as never);
+    engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/upsell' });
+    engine.events.emit('upsell.skipped', { ref_id: 'R1' });
+    engine.events.emit('exit_intent.shown', {});
+    engine.events.emit('exit_intent.clicked', {});
+    engine.events.emit('exit_intent.clicked', { action: 'apply-coupon', coupon_code: 'X' });
+    engine.events.emit('exit_intent.closed', { reason: 'dismissed' });
+    engine.events.emit('exit_intent.closed', { reason: 'closed' });
     await flush();
     const traced = engine.log
       .entries()
@@ -207,8 +207,8 @@ describe('analytics workflow', () => {
     win.nextCampaign = { event() {} };
     const landing = page('product', ['page_view', 'view_item_list', 'add_to_cart', 'update_cart']);
     const { engine, flow, paint, send, verdict, steps, root } = setup(ON, [landing, page('checkout')]);
-    engine.events.emit('ready', { lines: [] });
-    send('ready', 'page_view', { page_title: 'Checkout' }, 'pv');
+    engine.events.emit('sdk.ready', { lines: [] });
+    send('sdk.ready', 'page_view', { page_title: 'Checkout' }, 'pv');
     engine.events.emit('cart.calculated', { summary: {} as never });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     engine.events.emit('checkout.started', { lines: [] });
@@ -220,8 +220,8 @@ describe('analytics workflow', () => {
       ['done', 'view_item_list', 'Landing'],
       ['done', 'add_to_cart', 'Landing · this page'],
       ['done', 'begin_checkout', 'This page'],
-      ['todo', 'add_shipping_info', 'Not yet: once, when the address is complete'],
-      ['todo', 'add_payment_info', 'Not yet: once, when payment details are complete'],
+      ['todo', 'add_shipping_info', 'Not yet: once, when the address is complete or a shipping method is picked'],
+      ['todo', 'add_payment_info', 'Not yet: once, when a submit passes its checks'],
       ['todo', 'purchase', 'Not yet: when a paid order loads, on the upsell or receipt page'],
     ]);
     const clickable = [...root.querySelectorAll<HTMLElement>('.afunnel > button')];
@@ -255,9 +255,9 @@ describe('analytics workflow', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const { engine, root, paint, decide, send, rows, toggle, steps } = setup();
     vi.setSystemTime(10_000);
-    engine.events.emit('ready', { lines: [] });
-    send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
-    decide('ready', 'view_item_list', false, 'No package on the page');
+    engine.events.emit('sdk.ready', { lines: [] });
+    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    decide('sdk.ready', 'view_item_list', false, 'No package on the page');
     vi.setSystemTime(20_000);
     engine.events.emit('cart.calculated', { summary: {} as never });
     decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
@@ -321,8 +321,8 @@ describe('analytics workflow', () => {
 
   it('steps through the listed events with Newer and Older, or the arrow keys', () => {
     const { engine, flow, paint, send, open } = setup();
-    engine.events.emit('ready', { lines: [] });
-    send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    engine.events.emit('sdk.ready', { lines: [] });
+    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
     engine.events.emit('cart.calculated', { summary: {} as never });
     send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
     paint();
@@ -478,8 +478,8 @@ describe('analytics workflow', () => {
   it('says what GTM being off means in the verdict, and its nextConfig key once, not on each event', () => {
     win.nextCampaign = { event() {} };
     const { engine, paint, send, chips, notes, verdict, open } = setup({ ...ON, dataLayer: false });
-    engine.events.emit('ready', { lines: [] });
-    send('ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    engine.events.emit('sdk.ready', { lines: [] });
+    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
     paint();
     expect(chips()).toEqual(['NextDataLayer · 1 event', 'GTM dataLayer · off', 'NEXT analytics · own page_view']);
     expect(verdict()).toBe('GTM tags get none of these events: GTM dataLayer is off');
@@ -491,13 +491,13 @@ describe('analytics workflow', () => {
     const { engine, paint, decide, rows, verdict, open, tabs } = setup();
     win.NextDataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
     win.dataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
-    engine.events.emit('exit-intent.shown', {} as never);
-    decide('exit-intent.shown', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
+    engine.events.emit('exit_intent.shown', {});
+    decide('exit_intent.shown', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
     expect(verdict()).toBe('GTM dataLayer is on, but this page has no GTM container.');
     expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Exit popup shown · data layer only']);
     expect(open('dl_exit_intent_shown')).toEqual([
-      ['Why', 'Data layer only: there is no analytics eventExit popup shown: exit-intent.shown'],
+      ['Why', 'Data layer only: there is no analytics eventExit popup shown: exit_intent.shown'],
       ['Reached', 'dl_exit_intent_shownNextDataLayerGTM dataLayer'],
     ]);
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);
@@ -508,9 +508,9 @@ describe('analytics workflow', () => {
     paint();
     expect(verdict()).toBe('Nothing sent yet: analytics starts once the page is idle.');
     expect(root.querySelector('.anone')!.textContent).toBe('Nothing sent yet.');
-    engine.events.emit('ready', { lines: [] });
-    send('ready', 'page_view', {}, 'pv');
-    decide('ready', 'view_item', false, 'No package on the page');
+    engine.events.emit('sdk.ready', { lines: [] });
+    send('sdk.ready', 'page_view', {}, 'pv');
+    decide('sdk.ready', 'view_item', false, 'No package on the page');
     paint('package');
     expect(root.querySelector('.anone')!.textContent).toBe('Nothing matches the filter.');
     toggle().click();

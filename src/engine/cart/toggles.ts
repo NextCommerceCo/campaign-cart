@@ -1,7 +1,7 @@
-import { mergeLines } from './cart';
+import { mergeLines, toggleGroup } from './cart';
 import type { Context } from '../engine';
 
-export const toggleGroup = (packageId: number) => `toggle:${packageId}`;
+export { toggleGroup };
 
 export function createToggles(ctx: Context) {
   const inFlight = new Map<number, AbortController>();
@@ -19,11 +19,19 @@ export function createToggles(ctx: Context) {
       const controller = new AbortController();
       inFlight.set(packageId, controller);
       ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
+      ctx.emit('selector.calculating', { selector_id: group, type: 'toggle' });
       ctx.api
         .calculate({ lines, vouchers: cart.coupons, currency: campaign.currency }, { signal: controller.signal })
         .then((summary) => {
           const line = summary.lines.find((l) => l.package_id === packageId);
-          if (inFlight.get(packageId) === controller) ctx.update('toggles', { [packageId]: { key, quantity, line } });
+          if (inFlight.get(packageId) !== controller) return;
+          ctx.update('toggles', { [packageId]: { key, quantity, line } });
+          ctx.emit('selector.calculated', {
+            selector_id: group,
+            type: 'toggle',
+            quotes: { [String(packageId)]: summary },
+            from_cache: false,
+          });
         })
         .catch((err: unknown) => {
           if (inFlight.get(packageId) === controller) ctx.fail('quote', err);

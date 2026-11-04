@@ -32,24 +32,28 @@ export interface Wire {
 }
 
 export const WIRING: Wire[] = [
-  { from: ['ready'], ga: 'page_view', dl: 'dl_user_data' },
-  { from: ['ready'], ga: 'view_item', dl: 'dl_view_item' },
-  { from: ['ready'], ga: 'view_item_list', dl: 'dl_view_item_list' },
-  { from: ['ready', 'cart.calculated'], ga: 'add_to_cart', dl: 'dl_add_to_cart' },
-  { from: ['ready', 'cart.calculated', 'cart.updated'], ga: 'remove_from_cart', dl: 'dl_remove_from_cart' },
+  { from: ['sdk.ready'], ga: 'page_view', dl: 'dl_user_data' },
+  { from: ['sdk.ready'], ga: 'view_item', dl: 'dl_view_item' },
+  { from: ['sdk.ready'], ga: 'view_item_list', dl: 'dl_view_item_list' },
+  { from: ['sdk.ready', 'cart.calculated'], ga: 'add_to_cart', dl: 'dl_add_to_cart' },
+  { from: ['sdk.ready', 'cart.calculated', 'cart.updated'], ga: 'remove_from_cart', dl: 'dl_remove_from_cart' },
   { from: ['cart.calculated'], ga: 'update_cart', dl: 'dl_cart_updated' },
   { from: ['checkout.started'], ga: 'begin_checkout', dl: 'dl_begin_checkout' },
-  { from: ['checkout.shipping-added'], ga: 'add_shipping_info', dl: 'dl_add_shipping_info' },
-  { from: ['checkout.payment-added'], ga: 'add_payment_info', dl: 'dl_add_payment_info' },
+  {
+    from: ['checkout.address_entered', 'checkout.shipping_selected'],
+    ga: 'add_shipping_info',
+    dl: 'dl_add_shipping_info',
+  },
+  { from: ['checkout.submitted'], ga: 'add_payment_info', dl: 'dl_add_payment_info' },
   { from: ['order.loaded'], ga: 'purchase', dl: 'dl_purchase' },
   { from: ['order.loaded'], ga: 'upsell_purchase', dl: 'dl_upsell_purchase' },
   { from: ['upsell.viewed'], ga: 'view_upsell', dl: 'dl_viewed_upsell' },
   { from: ['upsell.skipped'], ga: 'skip_upsell', dl: 'dl_skipped_upsell' },
-  { from: ['exit-intent.shown'], dl: 'dl_exit_intent_shown' },
-  { from: ['exit-intent.clicked'], dl: 'dl_exit_intent_accepted' },
-  { from: ['exit-intent.dismissed'], dl: 'dl_exit_intent_dismissed' },
-  { from: ['exit-intent.closed'], dl: 'dl_exit_intent_closed' },
-  { from: ['exit-intent.action'], dl: 'dl_exit_intent_action' },
+  { from: ['exit_intent.shown'], dl: 'dl_exit_intent_shown' },
+  { from: ['exit_intent.clicked'], dl: 'dl_exit_intent_accepted' },
+  { from: ['exit_intent.clicked'], dl: 'dl_exit_intent_action' },
+  { from: ['exit_intent.closed'], dl: 'dl_exit_intent_dismissed' },
+  { from: ['exit_intent.closed'], dl: 'dl_exit_intent_closed' },
 ];
 
 const NEEDS_ITEMS = new Set([

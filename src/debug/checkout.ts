@@ -65,9 +65,6 @@ export function checkoutView(
   cart: ReturnType<typeof cartView>,
   ui: { render: () => void; paymentIcons: () => void },
 ) {
-  let cardEntered = false;
-  engine.on('checkout.payment-added', (e) => (cardEntered ||= e.data.method === 'card_token'), { replay: true });
-
   const cardSetup = () =>
     !document.getElementById('spreedly-number')
       ? 'no cc-number and cvv fields on the page'
@@ -120,11 +117,11 @@ export function checkoutView(
     const icons = h('span', 'kicons', ...iconOf(method).map(paymentIcon));
     if (method !== 'card_token') return { title: 'Payment', detail: h('span', {}, icons, name), tone: 'done' };
     const broken = cardSetup();
-    const detail = broken ?? (cardEntered ? 'card details entered' : 'card details not entered yet');
+    const detail = broken ?? (state.cardReady ? 'card details entered' : 'card details not entered yet');
     return {
       title: 'Payment',
       detail: h('span', {}, icons, `${name} · ${detail}`),
-      tone: broken ? 'bad' : cardEntered ? 'done' : 'todo',
+      tone: broken ? 'bad' : state.cardReady ? 'done' : 'todo',
     };
   };
 

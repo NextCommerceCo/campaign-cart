@@ -75,7 +75,7 @@ export class Engine {
         version: 1,
         backends,
         now: options.now,
-        onDegrade: (reason) => this.events.emit('storage.degraded', { reason: `${name}: ${reason}` }),
+        onDegrade: (reason) => this.events.emit('sdk.error', { action: 'storage', message: `${name}: ${reason}` }),
       });
     this.session = adapter('session', [options.storage.session]);
     this.local = adapter('local', [options.storage.local, options.storage.session]);
@@ -202,7 +202,7 @@ export class Engine {
   private markReady(): void {
     if (this.ready || !this.state.campaign) return;
     this.ready = true;
-    this.events.emit('ready', { lines: this.cart.lines() });
+    this.events.emit('sdk.ready', { lines: this.cart.lines() });
   }
 
   private update<K extends keyof State>(
@@ -255,6 +255,6 @@ export class Engine {
   private fail(action: string, err: unknown): void {
     const message = err instanceof Error ? err.message : String(err);
     this.log.info(`${action} failed: ${message}`);
-    this.events.emit('error', { action, message });
+    this.events.emit('sdk.error', { action, message });
   }
 }

@@ -5,12 +5,13 @@ import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { EventMap, EventName } from './engine/events';
+import type { AnalyticsEvent, AnalyticsName, EventMap, EventName } from './engine/events';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
   legacyAnalytics,
   LEGACY_EVENTS,
+  RETIRED_EVENTS,
   readLegacyAnalytics,
   legacyApi,
   type LegacyApi,
@@ -37,35 +38,65 @@ const pixelId = () =>
   [...document.scripts].map((s) => s.text.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/)?.[1]).find(Boolean);
 
 const EVENT_NAMES: EventName[] = [
-  'campaign.loaded',
+  'sdk.ready',
+  'sdk.error',
+  'selector.selected',
+  'selector.deselected',
+  'selector.calculating',
+  'selector.calculated',
   'cart.updated',
+  'cart.calculating',
   'cart.calculated',
-  'coupon.refused',
-  'selection.changed',
-  'shipping.changed',
-  'storage.degraded',
-  'ready',
+  'cart.added',
+  'cart.removed',
+  'cart.created',
+  'coupon.applied',
+  'coupon.removed',
+  'coupon.denied',
   'checkout.started',
-  'checkout.shipping-added',
-  'checkout.payment-added',
-  'prospect.saved',
-  'order.placed',
+  'checkout.address_entered',
+  'checkout.billing_entered',
+  'checkout.shipping_selected',
+  'checkout.payment_selected',
+  'checkout.submitted',
+  'order.created',
+  'order.failed',
   'order.loaded',
   'upsell.viewed',
   'upsell.accepted',
   'upsell.skipped',
-  'error',
-  'exit-intent.shown',
-  'exit-intent.clicked',
-  'exit-intent.dismissed',
-  'exit-intent.closed',
-  'exit-intent.action',
+  'upsell.failed',
+  'exit_intent.shown',
+  'exit_intent.clicked',
+  'exit_intent.closed',
   'analytics',
 ];
+const REPLAYED: EventName[] = ['sdk.ready', 'campaign.loaded', 'analytics'];
+
+export interface SdkEvent<K extends EventName = EventName> {
+  event_id: string;
+  event_type: K;
+  object: string;
+  data: EventMap[K];
+  created_at: string;
+  sdk_version: string;
+}
+
+const envelope = <K extends EventName>(e: EngineEvent<K>): SdkEvent<K> => ({
+  event_id: e.id,
+  event_type: e.name,
+  object: e.name.split('.')[0]!,
+  data: e.data,
+  created_at: new Date(e.at).toISOString(),
+  sdk_version: __VERSION__,
+});
 
 export interface NextApi extends LegacyApi {
   version: string;
-  on<K extends EventName>(name: K | '*', fn: (data: EventMap[K], event: EngineEvent) => void): () => void;
+  on<K extends EventName>(name: K | 'ready' | '*', fn: (data: EventMap[K], event: SdkEvent<K>) => void): () => void;
+  analytics: {
+    on(name: AnalyticsName | '*', fn: (event: AnalyticsEvent) => void): () => void;
+  };
   getState: Engine['getState'];
   log: Pick<Logger, 'level' | 'entries' | 'stream'>;
   bind(root: ParentNode): void;
@@ -145,12 +176,32 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
-      const event = (LEGACY_EVENTS[name] ?? name) as EventName | '*';
-      if (event !== '*' && !EVENT_NAMES.includes(event)) {
+      if (RETIRED_EVENTS.some((prefix) => name.startsWith(prefix))) return () => {};
+      const legacy = LEGACY_EVENTS[name];
+      const event = (name === 'ready' ? 'sdk.ready' : (legacy?.event ?? name)) as EventName | '*';
+      if (event !== '*' && !legacy && !EVENT_NAMES.includes(event)) {
         engine.log.warn(`next.on: unknown event "${name}"`);
         return () => {};
       }
-      return engine.on(event, (e) => fn(e.data as never, e), { replay: event === 'ready' || event === 'analytics' });
+      return engine.on(
+        event,
+        (e) => {
+          const data = e.data as Record<string, unknown>;
+          if (legacy?.when && !legacy.when(data)) return;
+          fn((legacy?.data ? legacy.data(data) : data) as never, envelope(e) as never);
+        },
+        { replay: event !== '*' && REPLAYED.includes(event) },
+      );
+    },
+    analytics: {
+      on: (name, fn) =>
+        engine.on(
+          'analytics',
+          (e) => {
+            if (name === '*' || e.data.name === name) fn(e.data);
+          },
+          { replay: true },
+        ),
     },
     getState: () => engine.getState(),
     log: engine.log,
@@ -204,7 +255,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       (window.requestIdleCallback ?? setTimeout)(() => void start());
     }
   };
-  engine.on('ready', () => {
+  engine.on('sdk.ready', () => {
     const binding = [
       checkoutForm && checkoutChunk!.then((m) => m.bindCheckout(engine, checkoutForm)),
       orderChunk?.then((m) => m.bindOrder(engine)),
@@ -213,7 +264,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     if (binding.length) void Promise.allSettled(binding).then(reveal);
     else reveal();
   });
-  engine.on('error', (e) => {
+  engine.on('sdk.error', (e) => {
     if (e.data.action === 'load') html.setAttribute('data-next-error', 'campaign');
   });
   void engine.start();

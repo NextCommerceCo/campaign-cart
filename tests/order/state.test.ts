@@ -50,8 +50,11 @@ describe('order', () => {
     await unpaid.order.load('R2');
     expect(unpaid.loaded.mock.calls[0]![0].purchase).toBeUndefined();
     const failed = await setup({ params: { payment_failed: 'true' } });
+    const refused = vi.fn();
+    failed.engine.on('order.failed', (e) => refused(e.data));
     await failed.order.load('R3');
     expect(failed.loaded.mock.calls[0]![0].purchase).toBeUndefined();
+    expect(refused).toHaveBeenCalledWith({ stage: 'payment', code: 'payment_failed', ref_id: 'R3' });
   });
 
   it('clears only the cart kept for that order’s gateway, and never on the failure landing', async () => {
@@ -167,9 +170,12 @@ describe('order', () => {
 
   it('keeps the shopper on track when an offer fails', async () => {
     const { engine, order } = await setup({ api: { upsell: () => json({ message: 'Card declined' }, 400) } });
+    const failed = vi.fn();
+    engine.on('upsell.failed', (e) => failed(e.data));
     await order.load('R1');
     expect(await order.accept({ lines: [{ packageId: 2, quantity: 1 }] }, '/up/')).toBe('failed');
     expect(engine.getState().order).toMatchObject({ status: 'ready', error: { message: 'Card declined' } });
+    expect(failed).toHaveBeenCalledWith({ ref_id: 'R1', code: 'rejected', message: 'Card declined' });
   });
 
   it('answers the receipt’s order.* paths', async () => {

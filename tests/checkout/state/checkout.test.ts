@@ -173,7 +173,7 @@ describe('checkout', () => {
     const session = new MemoryStorage();
     const { checkout, fill, posts, engine } = await setup({ session });
     const saved = vi.fn();
-    engine.on('prospect.saved', (e) => saved(e.data));
+    engine.on('cart.created', (e) => saved(e.data));
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(0);
@@ -193,7 +193,7 @@ describe('checkout', () => {
     expect(next.posts('/carts/')).toHaveLength(0);
   });
 
-  it('reports begin, shipping and payment once each', async () => {
+  it('reports begin and the address once each, and each change of payment method', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: string[] = [];
     engine.on('*', (e) => e.name.startsWith('checkout.') && seen.push(e.name));
@@ -202,15 +202,50 @@ describe('checkout', () => {
     checkout.begin();
     fill(SHIPPING);
     fill({ city: 'Dallas' });
-    checkout.paymentReady('credit');
-    checkout.paymentReady('credit');
-    expect(seen).toEqual(['checkout.started', 'checkout.shipping-added', 'checkout.payment-added']);
+    checkout.setPaymentMethod('paypal');
+    checkout.setPaymentMethod('paypal');
+    checkout.paymentReady();
+    expect(seen).toEqual(['checkout.started', 'checkout.address_entered', 'checkout.payment_selected']);
+    expect(engine.getState().checkout!.cardReady).toBe(true);
+  });
+
+  it('reports the billing address once it is complete, only when it differs from the shipping address', async () => {
+    const { engine, checkout, fill } = await setup();
+    const seen: string[] = [];
+    engine.on('checkout.billing_entered', (e) => seen.push(e.data.country));
+    await engine.cart.addItem(1);
+    checkout.begin();
+    fill(SHIPPING);
+    fill({ billing_country: 'US', billing_line1: '2 Side St', billing_city: 'Reno', billing_postcode: '89501' });
+    expect(seen).toEqual([]);
+    checkout.setSameAsShipping(false);
+    expect(seen).toEqual(['US']);
+  });
+
+  it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
+    const answers = [json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400)];
+    const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });
+    const submitted: unknown[] = [];
+    const failed: unknown[] = [];
+    engine.on('checkout.submitted', (e) => submitted.push([e.data.valid, Object.keys(e.data.errors)]));
+    engine.on('order.failed', (e) => failed.push(e.data));
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    checkout.setField('email', 'jane@');
+    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    fill(SHIPPING);
+    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect(submitted).toEqual([
+      [false, expect.arrayContaining(['email'])],
+      [true, []],
+    ]);
+    expect(failed).toEqual([{ stage: 'order', code: 'declined', decline: '51', message: 'Insufficient funds' }]);
   });
 
   it('reports shipping once the fields the country requires are filled, for a country with no city', async () => {
     const { engine, checkout, fill } = await setup();
     const seen: string[] = [];
-    engine.on('checkout.shipping-added', (e) => seen.push(e.name));
+    engine.on('checkout.address_entered', (e) => seen.push(e.name));
     await engine.cart.addItem(1);
     checkout.begin();
     checkout.setField('country', 'SG');
@@ -218,7 +253,7 @@ describe('checkout', () => {
     fill({ line1: '1 Raffles Pl' });
     expect(seen).toEqual([]);
     fill({ postcode: '048616' });
-    expect(seen).toEqual(['checkout.shipping-added']);
+    expect(seen).toEqual(['checkout.address_entered']);
   });
 
   it('shows the card message and warns the author when a card order has no card form', async () => {
@@ -279,7 +314,7 @@ describe('checkout', () => {
     let rendersWhenPlaced = -1;
     engine.subscribe(rendered);
     engine.on('cart.updated', updated);
-    engine.on('order.placed', () => (rendersWhenPlaced = rendered.mock.calls.length));
+    engine.on('order.created', () => (rendersWhenPlaced = rendered.mock.calls.length));
     await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
     await flush();
     expect(rendersWhenPlaced).toBeGreaterThan(0);

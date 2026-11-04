@@ -128,7 +128,7 @@ describe('checkout tab', () => {
     paint();
     expect(steps()[3]).toEqual(['Payment', 'Card · card details not entered yet', 'todo']);
     expect(verdict()).toBe('Not ready yet: payment');
-    engine.checkout!.paymentReady('card_token');
+    engine.checkout!.paymentReady();
     paint();
     expect(steps()[3]).toEqual(['Payment', 'Card · card details entered', 'done']);
     expect(verdict()).toBe('Ready: nothing stops the order');

@@ -99,7 +99,7 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     $('[data-next-upsell-action="skip"]').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
     expect(events).toContain('upsell.skipped');
-    expect(skipped).toHaveBeenCalledWith({ refId: 'R1', packageId: 3 });
+    expect(skipped).toHaveBeenCalledWith({ ref_id: 'R1', package_id: 3 });
     expect(upsells()).toHaveLength(0);
   });
 

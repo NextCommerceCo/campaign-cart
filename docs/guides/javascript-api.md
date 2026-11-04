@@ -1,6 +1,6 @@
 # `window.next`
 
-Available after the `ready` event (`next.on('ready', fn)` also fires for late listeners).
+Available after the `sdk.ready` event (`next.on('sdk.ready', fn)`, or its alias `ready`, also fires for late listeners).
 
 | Member                                                    | Does                                                                                                         |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
