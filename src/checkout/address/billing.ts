@@ -1,7 +1,7 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
 import { component, LEGACY_FIELD_ATTRS } from '../../compat/checkout';
-import { fieldControl } from '../form/fields';
+import { FIELDS, fieldControl } from '../form/fields';
 
 function renameField(el: Element): void {
   for (const attr of LEGACY_FIELD_ATTRS) {
@@ -24,13 +24,14 @@ export function cloneBillingRows(form: HTMLFormElement): void {
     '[data-next-component="shipping-field-row"], [data-next-component="location"]',
   )) {
     if (row.parentElement?.closest('[data-next-component="location"]')) continue;
-    if (row.querySelector('[data-next-checkout-field="email"]')) continue;
+    if (fieldControl(row, 'email')) continue;
     const copy = row.cloneNode(true) as Element;
     if (copy.getAttribute('data-next-component') === 'location') {
       copy.setAttribute('data-next-component', 'billing-location');
     } else copy.setAttribute('data-next-component', 'billing-field-row');
     copy.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => h.remove());
-    copy.querySelectorAll(LEGACY_FIELD_ATTRS.map((a) => `[${a}]`).join(', ')).forEach(renameField);
+    copy.querySelectorAll(FIELDS).forEach(renameField);
+    if (copy.querySelector('[data-next-field]')) copy.setAttribute('data-next-address', 'billing');
     copy.querySelectorAll('label[for]').forEach((l) => l.setAttribute('for', `billing_${l.getAttribute('for')}`));
     target.append(copy);
   }

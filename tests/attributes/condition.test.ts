@@ -6,6 +6,7 @@ const values: Record<string, unknown> = {
   'cart.lines': [{}],
   'cart.coupons': [],
   'param.banner': 'off',
+  'selector.main.options.bundle-1x.total_discount': 5,
   total_discount: 0,
   price: 10,
   original_price: 12,
@@ -29,6 +30,11 @@ describe('conditions', () => {
     expect(holds('param.banner != off')).toBe(false);
     expect(holds('original_price > price')).toBe(true);
     expect(holds('missing > 0')).toBe(false);
+  });
+
+  it('reads ids with a hyphen in a path and a bare word', () => {
+    expect(holds('selector.main.options.bundle-1x.total_discount > 0')).toBe(true);
+    expect(holds('param.banner != on-sale')).toBe(true);
   });
 
   it('combines with && and ||, ! and parentheses, && before ||', () => {

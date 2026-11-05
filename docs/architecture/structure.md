@@ -82,6 +82,8 @@ docs/
   destination-examples.json  what GTM, GA4, Meta and RudderStack send for each tracking event, recorded by tests/destinations/examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
+scripts/migrate.mjs        node scripts/migrate.mjs <page.html|styles.css> [--write]: rewrites a page's earlier attributes to
+                           attributes v2; tests/migrate.test.ts renders real pages both ways when MIGRATE_PAGES is set
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
 scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event Reference page per EventMap event, an
                            Analytics Reference page per tracking event and per destination

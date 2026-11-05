@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindCheckout } from '../../src/checkout';
 import type { Checkout } from '../../src/engine/events/checkout';
 import { Query } from '../../src/engine/query';
+import { migrate } from '../../scripts/migrate.mjs';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
@@ -311,6 +312,19 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
       billing_same_as_shipping_address: false,
       billing_address: { first_name: 'Ann', line1: '2 Side St', line4: 'Reno', state: 'NY', country: 'US' },
     });
+  });
+
+  it('clones v2 fields into billing rows as billing fields', async () => {
+    const html = migrate(readFileSync('tests/fixtures/pages/olympus-multi-variant/checkout.html', 'utf8')).html;
+    const { $, engine } = await mount('', { html });
+    const billing = (key: string) => $(`[data-next-address="billing"] [data-next-field="${key}"]`);
+    expect(billing('first_name').getAttribute('name')).toBe('billing_fname');
+    expect(document.querySelectorAll('[data-next-field="email"]')).toHaveLength(1);
+    expect($<HTMLSelectElement>('#billing_shipping_province').options[0]!.text).not.toBe('Select State');
+    billing('first_name').value = 'Ann';
+    billing('first_name').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(engine.getState().checkout!.fields).toMatchObject({ billing_first_name: 'Ann' });
+    expect(engine.getState().checkout!.fields.first_name).toBeUndefined();
   });
 
   it('pays with PayPal express from the injected button, before the form is filled, like 0.4.x', async () => {

@@ -14,6 +14,14 @@ The SDK keeps setting the classes it set before (`next-selected`, `next-active`,
 `next-loading`, `next-hidden`, …), so page CSS keeps working; new pages style the attributes
 instead (`[data-next-selected]`, `[data-next-loading]`, `[hidden]`).
 
+## Converting a page
+
+From a checkout of this repository, `node scripts/migrate.mjs page.html styles.css` says what it
+would change in each file, and `--write` changes it. It rewrites only the attributes in the table
+below, leaves every other character as it was, and lists what it left on the old attributes:
+coupons, cart summaries, order item lists, payment method lists, a selector with variant slots,
+and any path with no new field. A page can mix both sets, so the result works as it stands.
+
 ## Attributes
 
 | Old                                                                                                        | Now                                                                                                                            |

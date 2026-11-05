@@ -35,7 +35,8 @@ describe('attributes v2: reading values', () => {
       <img id="img" data-next-query="package.2.image" alt="">
       <a id="link" data-next-query="param.next">go</a>
       <input id="input" data-next-query="package.2.price">
-      <span id="pct" data-next-query="cart.discount_percentage"></span>`,
+      <span id="pct" data-next-query="cart.discount_percentage"></span>
+      <span id="currency" data-next-query="cart.currency">USD<br></span>`,
       { next: 'https://shop.test/n' },
     );
     expect($('#total').textContent).toBe('…');
@@ -47,6 +48,7 @@ describe('attributes v2: reading values', () => {
     expect($('#link').getAttribute('href')).toBe('https://shop.test/n');
     expect(($('#input') as HTMLInputElement).value).toBe('$89.00');
     expect($('#pct').textContent).toBe('0%');
+    expect($('#currency').innerHTML).toBe('USD');
   });
 
   it('writes in the format the page asks for, or the one a defined field gave', async () => {

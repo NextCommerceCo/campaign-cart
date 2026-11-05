@@ -8,7 +8,7 @@ export type Expression =
   | { kind: 'compare'; op: '==' | '!=' | '>' | '<' | '>=' | '<='; left: Expression; right: Expression }
   | { kind: 'and' | 'or'; left: Expression; right: Expression };
 
-const TOKEN = /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[\w.]+)/y;
+const TOKEN = /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[A-Za-z_][\w.-]*|[\w.]+)/y;
 
 function tokenize(source: string): string[] | null {
   const tokens: string[] = [];
@@ -48,7 +48,7 @@ export function parseExpression(source: string): Expression | null {
     if (/^['"]/.test(t)) return { kind: 'literal', value: t.slice(1, -1) };
     if (/^-?\d/.test(t)) return { kind: 'literal', value: Number(t) };
     if (t === 'true' || t === 'false') return { kind: 'literal', value: t === 'true' };
-    if (/^[\w.]+$/.test(t)) return { kind: 'path', path: t };
+    if (/^[\w.-]+$/.test(t)) return { kind: 'path', path: t };
     return null;
   };
   const compare = (): Expression | null => {
@@ -57,7 +57,7 @@ export function parseExpression(source: string): Expression | null {
     if (!left || !op || !COMPARE.has(op)) return left;
     at++;
     const next = tokens[at];
-    const bare = (op === '==' || op === '!=') && next !== undefined && /^[A-Za-z_]\w*$/.test(next);
+    const bare = (op === '==' || op === '!=') && next !== undefined && /^[A-Za-z_][\w-]*$/.test(next);
     const right =
       bare && !['true', 'false'].includes(next!) ? (at++, { kind: 'literal' as const, value: next! }) : operand();
     return right && { kind: 'compare', op: op as '==', left, right };

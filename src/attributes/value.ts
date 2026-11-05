@@ -104,5 +104,5 @@ export function write(el: HTMLElement, field: string, value: unknown, engine: En
     return;
   }
   const shown = text === '' ? empty : text;
-  if (el.textContent !== shown) el.textContent = shown;
+  if (el.textContent !== shown || el.children.length) el.textContent = shown;
 }
