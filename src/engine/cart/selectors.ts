@@ -1,4 +1,6 @@
-import { apiLines, type CartActions, cartItems, lineKey, mergeLines } from './cart';
+import type { CartActions } from './cart';
+import { apiLines, lineKey, mergeLines } from './lines';
+import { cartItems } from './public';
 import type { Context } from '../engine';
 import type { Selector, SelectorOption } from '../events/selectors';
 import { cents } from '../format';

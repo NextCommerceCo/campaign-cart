@@ -1,5 +1,5 @@
 import type { Attribution } from '../../engine/attribution';
-import { shippingMethodOf } from '../../engine/cart/cart';
+import { shippingMethodOf } from '../../engine/cart/public';
 import type { Line } from '../../engine/cart/types';
 import type { State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';

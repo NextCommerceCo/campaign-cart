@@ -249,7 +249,7 @@ skip → `order.skip(offer, page)` and navigate.
 `src/engine/` (boot): `engine.ts`, `types.ts`, `api.ts` (with the order error mapping),
 `storage.ts`, `events/` (one file per event group), `log.ts`, `order.ts` (the public Order), `id.ts`, `session.ts`,
 `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`, `format.ts`, `tokens.ts`,
-and `cart/` (`cart.ts`, `selectors.ts`, `toggles.ts`, `types.ts`). Loaded by their chunks:
+and `cart/` (`cart.ts`, `coupons.ts`, `lines.ts`, `public.ts`, `selectors.ts`, `toggles.ts`, `types.ts`). Loaded by their chunks:
 `checkout/state/` (`checkout.ts`, `order-body.ts`, `rules.ts`, `phone.ts`, `types.ts`) and
 `order/state.ts`. See [structure.md](structure.md).
 

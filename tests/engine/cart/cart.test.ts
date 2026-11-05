@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
-import { operations, publicCart } from '../../../src/engine/cart/cart';
+import { operations } from '../../../src/engine/cart/cart';
+import { publicCart } from '../../../src/engine/cart/public';
 import { MemoryStorage } from '../../fixtures/storage';
 import type { EventMap } from '../../../src/engine/events/bus';
 import type { Selector } from '../../../src/engine/events/selectors';

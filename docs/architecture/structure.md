@@ -111,8 +111,10 @@ src/
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
-    cart/                                       cart.ts selectors.ts toggles.ts types.ts: cart actions, bundle selectors (and a package's
-                                                variant choices, for slots and debug), toggles, their types
+    cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
+                                                lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
+                                                that events carry), selectors.ts (bundle selectors, and a package's variant
+                                                choices for slots and debug), toggles.ts, types.ts
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe
     context.ts                     BindContext (engine, claim, warn)

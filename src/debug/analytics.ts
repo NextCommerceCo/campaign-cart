@@ -1,7 +1,7 @@
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsTrace } from '../engine/events/analytics';
-import type { EventMap, EventName } from '../engine/events/bus';
+import type { EventName } from '../engine/events/bus';
 import { checks, dlOf, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win } from './providers';
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';

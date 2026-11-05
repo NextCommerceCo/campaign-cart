@@ -1,5 +1,7 @@
 import { failureOf, orderError, orderFailure } from '../engine/api';
-import { apiLines, type CartActions, cartItems, publicCheckout } from '../engine/cart/cart';
+import type { CartActions } from '../engine/cart/cart';
+import { apiLines } from '../engine/cart/lines';
+import { cartItems, publicCheckout } from '../engine/cart/public';
 import type { Context } from '../engine/engine';
 import type { Checkout } from '../engine/events/checkout';
 import type { ErrorCode, Failure } from '../engine/events/sdk';

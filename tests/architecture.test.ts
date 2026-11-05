@@ -19,7 +19,6 @@ const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
   'compat/legacy.ts': 653,
   'debug/analytics.ts': 583,
-  'engine/cart/cart.ts': 538,
   'checkout/state/checkout.ts': 480,
   'debug/index.ts': 437,
   'debug/cart.ts': 394,

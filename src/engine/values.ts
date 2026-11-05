@@ -1,5 +1,5 @@
 import type { Engine } from './engine';
-import { mergeLines } from './cart/cart';
+import { mergeLines } from './cart/lines';
 import { cardLines } from './cart/selectors';
 import { toggleGroup } from './cart/toggles';
 import { bool, cents, money, pct, type Value } from './format';

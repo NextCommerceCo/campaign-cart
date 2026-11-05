@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Logger } from '../engine/log';
-import { mergeLines, normalizeCode, operations } from '../engine/cart/cart';
+import { operations } from '../engine/cart/cart';
+import { mergeLines, normalizeCode } from '../engine/cart/lines';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { CartLine, CartSummary, Line, SummaryLine } from '../engine/cart/types';
 import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
