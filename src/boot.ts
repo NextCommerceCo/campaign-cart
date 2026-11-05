@@ -266,7 +266,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
     )
   )
-    void import('./bindings/widgets').then((m) =>
+    void import('./compat/widgets').then((m) =>
       m.bindWidgets(document, {
         timerStart: (id, ms) => engine.timerStart(id, ms),
         log: engine.log,

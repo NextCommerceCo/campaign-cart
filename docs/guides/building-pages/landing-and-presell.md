@@ -96,20 +96,13 @@ another site carry only the attribution ones. One-shot parameters such as `force
 
 ## Presell pages
 
-A presell page usually has no cart at all: copy, a timer, and a link to the landing page or the
-checkout. The SDK still loads, so the visit's parameters reach the next page and the page is
-tracked.
+A presell page usually has no cart at all: copy and a link to the landing page or the checkout. The
+SDK still loads, so the visit's parameters reach the next page and the page is tracked.
 
 ```html
-<div data-next-timer data-duration="600" data-persistence-id="presell" data-format="mm:ss">
-  Offer ends in <span data-next-timer-display>10:00</span>
-</div>
-<div data-next-timer-expired data-persistence-id="presell" style="display: none">The offer has ended</div>
-
 <a href="landing.html" data-next-promotion="presell-cta" data-next-promotion-name="Presell CTA">See the offer</a>
 ```
 
-The timer carries on from where the shopper left it when they come back in the same tab.
 `data-next-promotion` sends `promotion.viewed` and `promotion.clicked` (see
 [data-next-promotion](../attribute-reference/promotions/data-next-promotion.md)). An exit-intent popup is set up with
 `next.exitIntent({ … })` (see the [JavaScript API](../javascript-api.md)).

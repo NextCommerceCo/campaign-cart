@@ -5,7 +5,7 @@ import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { CartLine, CartSummary, Line, SummaryLine } from '../engine/cart/types';
 import type { CartChange, Checkout, EngineEvent, EventMap, EventName, Selector } from '../engine/events';
 import type { Campaign, Package, ShippingOption, State } from '../engine/types';
-import type { WidgetEvents } from '../bindings/widgets';
+import type { WidgetEvents } from './widgets';
 import type { ExitIntentOptions } from './exit-intent';
 
 /** @deprecated Use `data-next-selector-id`. */

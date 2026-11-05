@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bindWidgets } from '../../src/bindings/widgets';
+import { bindWidgets } from '../../src/compat/widgets';
 
 afterEach(() => {
   vi.useRealTimers();

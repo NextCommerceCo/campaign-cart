@@ -115,10 +115,10 @@ those tags another source.
 
 | Attribute                                | Live pages | Status                | Note                                                                                        |
 | ---------------------------------------- | ---------: | --------------------- | ------------------------------------------------------------------------------------------- |
-| `data-next-accordion`                    |         14 | Supported             |                                                                                             |
-| `data-next-accordion-panel`              |         14 | Supported             |                                                                                             |
-| `data-next-accordion-text`               |         14 | Supported             |                                                                                             |
-| `data-next-accordion-trigger`            |         14 | Supported             |                                                                                             |
+| `data-next-accordion`                    |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-panel`              |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-text`               |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-trigger`            |         14 | Deprecated            |                                                                                             |
 | `data-next-action`                       |          1 | Supported             |                                                                                             |
 | `data-next-active`                       |          0 | Supported             |                                                                                             |
 | `data-next-address`                      |          1 | Supported             | fields built per country (`checkout/address-form.ts`); 9 starter checkouts                  |
@@ -223,9 +223,9 @@ those tags another source.
 | `data-next-show`                         |         20 | Supported             |                                                                                             |
 | `data-next-slot-index`                   |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
 | `data-next-step-number`                  |          2 | Supported             |                                                                                             |
-| `data-next-timer`                        |          0 | Supported             | countdown, widgets chunk; 16 starter upsells                                                |
-| `data-next-timer-display`                |          0 | Supported             | countdown, widgets chunk                                                                    |
-| `data-next-timer-expired`                |          0 | Supported             | countdown, widgets chunk                                                                    |
+| `data-next-timer`                        |          0 | Deprecated            | countdown, widgets chunk; 16 starter upsells                                                |
+| `data-next-timer-display`                |          0 | Deprecated            | countdown, widgets chunk                                                                    |
+| `data-next-timer-expired`                |          0 | Deprecated            | countdown, widgets chunk                                                                    |
 | `data-next-toggle`                       |          2 | n/a                   | only the 0.4.x debug overlay read it                                                        |
 | `data-next-toggle-card`                  |          9 | Supported             |                                                                                             |
 | `data-next-toggle-container`             |          0 | Supported             |                                                                                             |
@@ -234,11 +234,11 @@ those tags another source.
 | `data-next-toggle-price`                 |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
 | `data-next-toggle-template`              |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
 | `data-next-toggle-template-id`           |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
-| `data-next-tooltip`                      |          9 | Supported             | `-placement` ignored                                                                        |
-| `data-next-tooltip-class`                |          0 | Supported             |                                                                                             |
-| `data-next-tooltip-delay`                |          0 | Supported             |                                                                                             |
-| `data-next-tooltip-max-width`            |          0 | Supported             |                                                                                             |
-| `data-next-tooltip-offset`               |          0 | Supported             |                                                                                             |
+| `data-next-tooltip`                      |          9 | Deprecated            | `-placement` ignored                                                                        |
+| `data-next-tooltip-class`                |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-delay`                |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-max-width`            |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-offset`               |          0 | Deprecated            |                                                                                             |
 | `data-next-tooltip-placement`            |          0 | Ignored (documented)  | tooltip goes above, or below when there is no room                                          |
 | `data-next-tracking-tag`                 |          0 | Removed (no live use) | `<meta name="data-next-tracking-tag">` attribution tags                                     |
 | `data-next-upsell`                       |         30 | Supported             |                                                                                             |

@@ -199,6 +199,10 @@ function bindTimer(timer: HTMLElement, timerStart: TimerStart, log: Logger, even
 
 const startNow: TimerStart = () => Date.now();
 
+/**
+ * @deprecated 0.4.x page widgets: `data-next-timer`, `data-next-accordion`, `data-next-tooltip` and
+ * `data-next-component="scroll-hint"`. Use the page's own script or CSS (`<details>` for an accordion).
+ */
 export function bindWidgets(
   root: ParentNode = document,
   {

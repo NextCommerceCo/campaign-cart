@@ -88,11 +88,5 @@ on each page (see [Migrating from 0.4.x](migrating-from-0.4.md)).
 | ---------------------------------------------------------------------------- | ----------------------------------------- |
 | [data-next-promotion](attribute-reference/promotions/data-next-promotion.md) | Banners, cards and links that are tracked |
 
-### Widgets
-
-| Page                                                                      | For                                |
-| ------------------------------------------------------------------------- | ---------------------------------- |
-| [data-next-timer](attribute-reference/widgets/data-next-timer.md)         | A countdown that survives a reload |
-| [data-next-accordion](attribute-reference/widgets/data-next-accordion.md) | Open and close panels              |
-| [data-next-tooltip](attribute-reference/widgets/data-next-tooltip.md)     | A tooltip                          |
-| [Scroll hint](attribute-reference/widgets/scroll-hint.md)                 | A hint while a list can scroll     |
+The 0.4.x page widgets (`data-next-timer`, `data-next-accordion`, `data-next-tooltip`, scroll hint)
+are deprecated; see [Page widgets](migrating-from-0.4.md#page-widgets).

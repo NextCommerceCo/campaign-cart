@@ -92,7 +92,6 @@ src/
     cart-summary.ts cart-controls.ts links.ts
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
-    widgets.ts                     widgets chunk: accordion, tooltip, scroll hint and countdown 0.4.x pages rely on
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), order-body.ts (order body, payment codes),
@@ -134,6 +133,7 @@ src/
     legacy.ts          boot        window.next 0.4.x API, selector ids, 0.4.x event names and payloads (lazy chunks
                                    add their own with addLegacyEvents)
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
+    widgets.ts         widgets     deprecated page widgets 0.4.x pages rely on: accordion, tooltip, scroll hint, countdown
     checkout.ts        checkout    page field names, os-* names, old config (express checks), step guard,
                                    the 0.4.x Open Cart DOM event, the checkout's 0.4.x event names
     order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
@@ -169,7 +169,7 @@ src/
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`,
-`bindings/widgets.ts`, `compat/exit-intent.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
+`compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics.ts`, which only their own chunk may import statically.
 
 A type used by one domain sits in that domain's `types.ts` (`engine/cart/`, `checkout/state/`) or
