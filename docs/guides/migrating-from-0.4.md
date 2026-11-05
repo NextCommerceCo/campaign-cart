@@ -2,6 +2,7 @@
 title: 'Start Here/Migrating from 0.4.x'
 group: 'Start Here'
 category: 'Start Here'
+order: 2
 ---
 
 # Migrating from 0.4.x

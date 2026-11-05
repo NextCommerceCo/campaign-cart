@@ -22,6 +22,8 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 ## Where to go next
 
+**[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 7× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
+
 **[Migrating from 0.4.x](./guides/migrating-from-0.4.md)**: pages built for 0.4.x keep working. This lists what changes for a page builder.
 
 **Building Pages**: one page per step of a funnel: [Landing and Presell](./guides/building-pages/landing-and-presell.md), [Checkout](./guides/building-pages/checkout-page.md), [Upsell](./guides/building-pages/upsell-page.md) and [Receipt](./guides/building-pages/receipt-page.md).
