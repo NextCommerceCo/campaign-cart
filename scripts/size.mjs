@@ -3,7 +3,7 @@ import { gzipSync } from 'node:zlib';
 
 const BUDGETS = [
   { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
-  { match: /^boot-.*\.js$/, name: 'boot', kb: 25 },
+  { match: /^boot-.*\.js$/, name: 'boot', kb: 26 },
   { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
   { match: /^ga4-.*\.js$/, name: 'ga4', kb: 2 },
   { match: /^meta-.*\.js$/, name: 'meta', kb: 2 },
@@ -12,6 +12,8 @@ const BUDGETS = [
   { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
   { match: /^order-.*\.js$/, name: 'order', kb: 10 },
   { match: /^slots-.*\.js$/, name: 'slots', kb: 6 },
+  { match: /^attributes-.*\.js$/, name: 'attributes', kb: 12 },
+  { match: /^variants-.*\.js$/, name: 'variants', kb: 1 },
   { match: /^cart-summary-.*\.js$/, name: 'cart summary', kb: 3 },
   { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
   { match: /^debug-.*\.js$/, name: 'debug', kb: 40 },

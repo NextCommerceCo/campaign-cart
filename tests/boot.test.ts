@@ -446,6 +446,32 @@ describe('boot', () => {
     expect(snapshot.campaign).toEqual(next.context().campaign);
   });
 
+  it('reads the object model through next.query and next.watch, as data-next-query does', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    const seen = vi.fn();
+    next.watch('cart.quantity', seen);
+    next.define('Cart', 'doubled', (c: { quantity: number }) => c.quantity * 2);
+    await next.actions.addItem(1, 2);
+    await flush();
+    expect(next.query('cart.quantity')).toBe(2);
+    expect(next.query('cart.doubled')).toBe(4);
+    expect(next.query('package.2.price')).toBe(89);
+    expect(seen.mock.calls.map(([v]) => v)).toEqual([0, 2]);
+  });
+
+  it('takes one object of field names on every action, and the 0.5 positional calls still', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    expect(await next.actions.addItem({ items: '1x2' })).toEqual({ ok: true });
+    expect(await next.actions.setQuantity({ package_id: 1, quantity: '+1' })).toEqual({ ok: true });
+    expect(next.query('cart.quantity')).toBe(3);
+    expect(await next.actions.applyCoupon('nope')).toBe(false);
+    await next.actions.removeItem(1);
+    expect(next.query('cart.quantity')).toBe(0);
+    expect(await next.actions.addItem({})).toMatchObject({ ok: false });
+  });
+
   it('lets page scripts quiet the console and read the log stream', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));

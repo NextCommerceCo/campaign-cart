@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const LAZY: Record<string, string[]> = {
   analytics: ['compat/analytics'],
+  attributes: [],
   checkout: [],
   order: [],
   debug: [],
@@ -41,6 +42,7 @@ const ALLOWED: Record<string, string[]> = {
   checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
+  attributes: ['engine', 'attributes', 'bindings/context', 'bindings/dom'],
   destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
   compat: ['engine'],

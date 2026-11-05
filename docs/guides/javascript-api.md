@@ -32,13 +32,11 @@ A callback that throws is logged (`nextReady callback failed`); the others still
 | `next.log.level`                                          | What reaches the console: `debug`, `info`, `warn` (default), `error`, `silent`; `?debug=1` starts at `debug`                                                                              |
 | `next.log.entries()`                                      | The last 200 SDK log entries `{ level, message, data?, at }`, whatever the level                                                                                                          |
 | `next.log.stream(fn, { replay? })`                        | Call `fn` with every new entry (and the earlier ones with `replay`); returns an unsubscribe function                                                                                      |
-| `next.actions.addItem(packageId, qty?)`                   | Add a package                                                                                                                                                                             |
-| `next.actions.removeItem(packageId)`                      | Remove a package                                                                                                                                                                          |
-| `next.actions.setQuantity(packageId, qty)`                | Change a package's quantity                                                                                                                                                               |
+| `next.query(path)`                                        | A value of the object model, as `data-next-query` reads it: `next.query('cart.total')`, `next.query('selector.main')`                                                                     |
+| `next.watch(path, fn)`                                    | Calls `fn` with the value now and each time it changes; returns an unsubscribe function                                                                                                   |
+| `next.define(type, name, fn, { format? })`                | A field the page computes on every object of a type (`Cart`, `CartItem`, `Selector`, `Option`, `Order`, `OrderItem`), read like the SDK's own; never sent with events                     |
+| `next.actions.<name>({ … })`                              | Every action `data-next-action` names, with one object of the model's field names; resolves to `{ ok, errors? }` and never throws. See [Actions](#actions)                                |
 | `next.actions.setGroup(id, { lines, vouchers? } \| null)` | Replace (or remove) a named group of lines                                                                                                                                                |
-| `next.actions.clear()`                                    | Empty the cart                                                                                                                                                                            |
-| `next.actions.applyCoupon(code)` / `removeCoupon(code)`   | Coupons; `applyCoupon` resolves `true` once the code takes money off, and on an empty cart waits for the cart's first price                                                               |
-| `next.actions.setShipping(id)`                            | Shipping method                                                                                                                                                                           |
 
 Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 `addItem({ packageId, quantity })`, `clearCart()`, `swapCart(items)`, `applyCoupon(code)`,
@@ -49,6 +47,28 @@ Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 
 The other 0.4.x members are gone; no live page calls them. [parity-0.4.md](../architecture/parity-0.4.md)
 lists each one with what to use instead.
+
+## Actions
+
+| Action                         | Takes                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `addItem`                      | `items` (`"1x2, 5"`), or `package_id` and `quantity`, or `selector_id` for its picked option; `replace` empties the cart first |
+| `removeItem`                   | `package_id`                                                                                                                   |
+| `setQuantity`                  | `quantity` (`"+1"`, `"-1"` or a number) and `package_id` or `selector_id`; `min_quantity`, `max_quantity`                      |
+| `select`                       | `selector_id`, `option_id`                                                                                                     |
+| `clear`                        | —                                                                                                                              |
+| `applyCoupon` / `removeCoupon` | `code`                                                                                                                         |
+| `setShipping`                  | `shipping_id`                                                                                                                  |
+| `acceptUpsell` / `skipUpsell`  | `selector_id` or `items`: what the offer adds to the order, on a page opened with `?ref_id`                                    |
+| `go`                           | `url`: opens it with the visit's parameters                                                                                    |
+
+```js
+await next.actions.addItem({ package_id: 42, quantity: 2 }); // { ok: true }
+await next.actions.applyCoupon({ code: 'nope' }); // { ok: false, errors: { code: 'code "NOPE" was not applied' } }
+```
+
+The 0.5 calls `addItem(packageId, qty)`, `removeItem(packageId)`, `setQuantity(packageId, qty)`,
+`applyCoupon(code)`, `removeCoupon(code)` and `setShipping(id)` still work, with their old results.
 
 ## Debugging with `?debug=1`
 

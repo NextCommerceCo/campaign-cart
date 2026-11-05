@@ -6,12 +6,13 @@ import { Engine } from './engine/engine';
 import { envelope, PUBLIC, type SdkEvent } from './engine/events/bus';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
-import type { CartLine } from './engine/cart/types';
 import type { TrackingEvent, TrackingName } from './engine/events/analytics';
 import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
 import type { Campaign } from './engine/types';
+import type { ActionArgs, ActionName, ActionResult, Actions, NextActions } from './engine/actions';
+import { Query, type ModelType } from './engine/query';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
 import { legacyEvents } from './compat/legacy/registry';
 import { legacyAnalytics, readLegacyAnalytics, removeLegacyPersonalData } from './compat/legacy/globals';
@@ -61,16 +62,14 @@ export interface NextApi extends LegacyApi {
   context(): EventContext;
   log: Pick<Logger, 'level' | 'entries' | 'stream'>;
   bind(root: ParentNode): void;
-  actions: {
-    addItem(packageId: number, quantity?: number): Promise<void>;
-    removeItem(packageId: number): Promise<void>;
-    setQuantity(packageId: number, quantity: number): Promise<void>;
-    clear(): Promise<void>;
-    applyCoupon(code: string): Promise<boolean>;
-    removeCoupon(code: string): Promise<void>;
-    setShipping(shippingId: number | undefined): Promise<void>;
-    setGroup(id: string, group: { lines: CartLine[]; vouchers?: string[] } | null): Promise<void>;
-  };
+  /** Reads a path of the object model, as `data-next-query` does: `next.query('cart.total')`. */
+  query(path: string): unknown;
+  /** Calls `fn` with the path's value now and each time it changes; returns an unsubscribe function. */
+  watch(path: string, fn: (value: unknown) => void): () => void;
+  /** Adds a field the page computes to every object of a type, read like the SDK's own: `next.define('Option', 'per_day', (o) => o.total / 30, { format: 'currency' })`. */
+  define(type: ModelType, name: string, derive: (object: any) => unknown, options?: { format?: string }): void;
+  /** Every action `data-next-action` names, taking one object of the model's field names and resolving to `{ ok, errors }`. */
+  actions: NextActions;
 }
 
 /** @internal */
@@ -144,6 +143,33 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     }
   }
 
+  const query = new Query(engine);
+  let attributes: Promise<typeof import('./attributes')> | undefined;
+  let made: Actions | undefined;
+  const action =
+    (name: ActionName) =>
+    (args?: ActionArgs): Promise<ActionResult> =>
+      (attributes ??= import('./attributes')).then((m) => (made ??= m.pageActions(engine))[name](args));
+  const actions = Object.fromEntries(
+    (
+      [
+        'addItem',
+        'removeItem',
+        'setQuantity',
+        'select',
+        'clear',
+        'applyCoupon',
+        'removeCoupon',
+        'setShipping',
+        'acceptUpsell',
+        'skipUpsell',
+        'go',
+      ] as const
+    ).map((n) => [n, action(n)]),
+  ) as Actions;
+  const positional = <A extends unknown[], R>(legacy: (...a: A) => R, current: (args: ActionArgs) => unknown) =>
+    ((...a: A) => (typeof a[0] === 'object' && a[0] !== null ? current(a[0] as ActionArgs) : legacy(...a))) as never;
+
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
@@ -180,14 +206,26 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     context: () => engine.eventContext(),
     log: engine.log,
     bind: (root) => bindings.bind(root),
+    query: (path) => query.get(path),
+    watch: (path, fn) => query.watch(path, fn),
+    define: (type, name, derive, options) => query.define(type, name, derive, options),
     actions: {
-      addItem: (packageId, quantity) => engine.cart.addItem(packageId, quantity),
-      removeItem: (packageId) => engine.cart.removeItem(packageId),
-      setQuantity: (packageId, quantity) => engine.cart.setQuantity(packageId, quantity),
-      clear: () => engine.cart.clear(),
-      applyCoupon: (code) => engine.cart.applyCoupon(code),
-      removeCoupon: (code) => engine.cart.removeCoupon(code),
-      setShipping: (shippingId) => engine.cart.setShipping(shippingId),
+      ...actions,
+      addItem: positional(
+        (packageId: number, quantity?: number) => engine.cart.addItem(packageId, quantity),
+        actions.addItem,
+      ),
+      removeItem: positional((packageId: number) => engine.cart.removeItem(packageId), actions.removeItem),
+      setQuantity: positional(
+        (packageId: number, quantity: number) => engine.cart.setQuantity(packageId, quantity),
+        actions.setQuantity,
+      ),
+      applyCoupon: positional((code: string) => engine.cart.applyCoupon(code), actions.applyCoupon),
+      removeCoupon: positional((code: string) => engine.cart.removeCoupon(code), actions.removeCoupon),
+      setShipping: positional(
+        (shippingId: number | undefined) => engine.cart.setShipping(shippingId),
+        actions.setShipping,
+      ),
       setGroup: (id, group) =>
         engine.cart.setGroup(id, group && { lines: group.lines, vouchers: group.vouchers ?? [] }),
     },

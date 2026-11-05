@@ -113,6 +113,8 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
+    query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines
+    actions.ts                                  next.actions / data-next-action: every action, one object of field names in, { ok, errors } out
     visit.ts                                    the visit's timers and exit-intent count (engine.visit)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
@@ -132,6 +134,8 @@ src/
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
+  attributes/          attributes  attributes v2 (data-next-query, -action, -option, …), loaded when a page has one or a script calls a
+                                   new action; legacy pages never load it
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
@@ -198,7 +202,7 @@ src/
 | Chunk        | Loaded when                                                           | Budget (gzip) |
 | ------------ | --------------------------------------------------------------------- | ------------- |
 | loader       | always, inline                                                        | 2.5 KB        |
-| boot         | always                                                                | 25 KB         |
+| boot         | always                                                                | 26 KB         |
 | checkout     | `form[data-next-checkout]`                                            | 30 KB         |
 | order        | `[data-next-upsell]` or `order.*`                                     | 10 KB         |
 | analytics    | idle after ready                                                      | 8 KB          |
@@ -207,6 +211,8 @@ src/
 | rudderstack  | after analytics, when `destinations.rudderstack` is on                | 3 KB          |
 | exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
 | slots        | a bundle selector with a slot template                                | 6 KB          |
+| attributes   | a v2 attribute on the page, or a script's first new-style action      | 12 KB         |
+| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)     | 1 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`   | 3 KB          |
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`               | 40 KB         |
@@ -221,6 +227,7 @@ src/
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`              |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                    |
 | `analytics/*`             | `engine/*`, `compat/analytics/*`; `destinations/*` only via `import()`                                |
+| `attributes/*`            | `engine/*`, `attributes/*`, `bindings/context.ts`, `bindings/dom.ts`                                  |
 | `destinations/*`          | `engine/*`                                                                                            |
 | `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
 | `compat/*`                | `engine/*`, `compat/*`                                                                                |
@@ -228,7 +235,7 @@ src/
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `destinations/ga4.ts`, `destinations/meta.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
 `compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics/`, which only their own chunk may import statically.
