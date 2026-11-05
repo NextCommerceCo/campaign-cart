@@ -109,6 +109,7 @@ src/
                                                 context.ts the envelope every event carries; bus.ts the EventMap and the bus
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
+    flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares

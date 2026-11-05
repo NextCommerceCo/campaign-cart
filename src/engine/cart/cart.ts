@@ -1,3 +1,4 @@
+import { latestWins } from '../flow';
 import { dollars } from '../format';
 import { mergeLines, normalizeCode, quantities, toggleOn } from './lines';
 import { publicCart, publicCheckout, publicToggle, shippingMethodOf } from './public';
@@ -14,8 +15,7 @@ export function emptyCart(): CartState {
 }
 
 export function createCart(ctx: Context) {
-  let seq = 0;
-  let abort: AbortController | undefined;
+  const pricing = latestWins();
   let pending: Promise<void> | undefined;
   let running: Promise<void> | undefined;
   let busy = false;
@@ -78,12 +78,11 @@ export function createCart(ctx: Context) {
   };
 
   const calculate = async (): Promise<void> => {
-    const current = ++seq;
-    abort?.abort();
+    const { run, signal, stale } = pricing.start();
     if (!lines().length || !ctx.getState().campaign) {
       if (state().calculating) set({ calculating: false });
       busy = false;
-      settleShipping(current);
+      settleShipping(run);
       return;
     }
     if (!state().calculating) set({ calculating: true });
@@ -91,23 +90,22 @@ export function createCart(ctx: Context) {
       busy = true;
       ctx.emit('cart.calculating', cartOf());
     }
-    const controller = (abort = new AbortController());
     try {
-      const summary = await price(vouchers(), controller.signal);
-      if (current !== seq) return;
+      const summary = await price(vouchers(), signal);
+      if (stale()) return;
       busy = false;
       unpriced = false;
       set({ summary, calculating: false });
       ctx.emit('cart.calculated', cartOf(summary));
-      settleShipping(current, summary);
+      settleShipping(run, summary);
       if (state().held.length && !state().frozen) void coupons.checkHeld();
     } catch (err) {
-      if (current !== seq) return;
+      if (stale()) return;
       busy = false;
       unpriced = true;
       set({ calculating: false });
       ctx.fail('cart.calculate', err);
-      settleShipping(current);
+      settleShipping(run);
     }
   };
 
@@ -233,8 +231,7 @@ export function createCart(ctx: Context) {
       ctx.update('cart', { reported, added: state().added || added }, { silent: true });
     },
     clearAfterOrder() {
-      seq++;
-      abort?.abort();
+      pricing.cancel();
       shippingAt = undefined;
       coupons.dropAll();
       ctx.update(
@@ -273,7 +270,7 @@ export function createCart(ctx: Context) {
     removeCoupon: (code: string) => coupons.remove(code),
     setShipping(shippingId: number | undefined) {
       if (state().frozen || shippingId === state().shippingId) return Promise.resolve();
-      shippingAt = seq;
+      shippingAt = pricing.current();
       return commit({ shippingId });
     },
   };

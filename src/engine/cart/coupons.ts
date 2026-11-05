@@ -1,5 +1,6 @@
 import { failureOf } from '../api';
 import type { Context } from '../engine';
+import { serialize } from '../flow';
 import { addDollars, cents } from '../format';
 import type { EventMap } from '../events/bus';
 import type { Cart } from '../events/carts';
@@ -27,7 +28,7 @@ function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
 
 export function createCoupons(ctx: Context, cart: CouponCart) {
   let checkingHeld = false;
-  let checks: Promise<unknown> = Promise.resolve();
+  const inTurn = serialize();
   const waiting = new Map<string, (applied: boolean) => void>();
   const checking = new Map<string, object>();
   const state = () => ctx.getState().cart;
@@ -52,6 +53,7 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
   const unheld = (code: string) => state().held.filter((c) => c !== code);
 
   const check = (code: string) => {
+    // identity token: a newer check of this code, a removal or a clear drops this one
     const run = {};
     checking.set(code, run);
     const go = async (): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
@@ -83,7 +85,7 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
       );
       return 'applied';
     };
-    return (checks = checks.then(go, go));
+    return inTurn(go);
   };
 
   const checkHeld = async () => {
