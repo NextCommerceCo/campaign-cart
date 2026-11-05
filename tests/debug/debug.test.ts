@@ -301,9 +301,7 @@ describe('debug tools', () => {
     );
     expect(name(rows.at(-1)!)).toBe('page_viewed');
     const added = rows.find((d) => name(d) === 'product_added_to_cart')!;
-    expect(added.querySelector('summary')!.textContent).toMatch(
-      /^\d\d:\d\d:\d\d\.\d{3}cart_line product_added_to_cart/,
-    );
+    expect(added.querySelector('summary')!.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart \{/);
     added.open = true;
     expect(added.textContent).toContain(got[0]!.event_id);
     expect(added.textContent).toContain('event_type "product_added_to_cart"');

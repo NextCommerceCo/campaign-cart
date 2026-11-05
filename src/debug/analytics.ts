@@ -2,7 +2,7 @@ import type { AnalyticsTrace, TrackingEvent, TrackingName } from '../engine/even
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
 import { checks, type Layer, type ProviderConfig, setupNotes, type Win } from './providers';
-import { badge, type Child, empty, h, plural, stamp, tree } from './view';
+import { type Child, empty, h, plural, stamp, tree } from './view';
 
 type Run = AnalyticsTrace & { at: number };
 
@@ -59,7 +59,6 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
       'span',
       {},
       stamp(run.at),
-      badge(event?.object ?? 'data layer', 'outline'),
       ' ',
       run.name,
       problems.length > 0 && h('span', 'red', ` ⚠ ${problems.join(' · ')}`),

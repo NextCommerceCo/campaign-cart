@@ -90,7 +90,7 @@ function setup(config: ProviderConfig = ON) {
   };
   const rows = () =>
     [...root.querySelectorAll(':scope > details > summary, :scope > .row')].map((r) =>
-      r.textContent!.replace(/^\d\d:\d\d:\d\d\.\d{3}/, '').replace(/ \{.*\}$/, ''),
+      r.textContent!.replace(/^\d\d:\d\d:\d\d\.\d{3} /, '').replace(/ \{.*\}$/, ''),
     );
   const notes = () => [...root.querySelectorAll(':scope > .summary')].map((n) => n.textContent);
   const open = (nth: number) => {
@@ -230,7 +230,7 @@ describe('analytics tab', () => {
     send('cart.calculated', 'cart_updated', CART, 'cu');
     paint();
     expect(notes()).toEqual(['2 events sent on this page, newest first']);
-    expect(rows()).toEqual(['cart cart_updated', 'page page_viewed']);
+    expect(rows()).toEqual(['cart_updated', 'page_viewed']);
     const event = open(0);
     expect(event).toContain('event_id "cu"');
     expect(event).toContain('session_id "s1"');
@@ -246,7 +246,7 @@ describe('analytics tab', () => {
     win.dataLayer = [];
     paint();
     const problems = 'lines is empty · no currency · checkout_completed has no order number · not in dataLayer';
-    expect(rows()).toEqual([`order checkout_completed ⚠ ${problems}`]);
+    expect(rows()).toEqual([`checkout_completed ⚠ ${problems}`]);
     expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
     expect(flow.summary()).toBe('1 sent · ⚠ 1');
   });
@@ -265,9 +265,9 @@ describe('analytics tab', () => {
     win.dataLayer = [{ event: 'dl_add_to_cart', event_id: 'a1' }];
     paint();
     expect(rows()).toEqual([
-      'cart_line product_added_to_cart ⚠ not in NextDataLayer · not in dataLayer',
-      'cart_line product_added_to_cart',
-      'cart_line product_added_to_cart',
+      'product_added_to_cart ⚠ not in NextDataLayer · not in dataLayer',
+      'product_added_to_cart',
+      'product_added_to_cart',
     ]);
   });
 
@@ -278,7 +278,7 @@ describe('analytics tab', () => {
     engine.events.emit('promotion.viewed', { id: 'exit_intent', type: 'exit_intent' });
     decide('promotion.viewed', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
-    expect(rows()).toEqual(['data layer dl_exit_intent_shown']);
+    expect(rows()).toEqual(['dl_exit_intent_shown']);
     expect(open(0)).toContain('event "dl_exit_intent_shown"');
   });
 
@@ -307,7 +307,7 @@ describe('analytics tab', () => {
     send('sdk.ready', 'page_viewed', {}, 'pv');
     send('cart.calculated', 'cart_updated', CART, 'cu');
     paint('page');
-    expect(rows()).toEqual(['page page_viewed']);
+    expect(rows()).toEqual(['page_viewed']);
     paint('nope');
     expect(root.querySelector('.empty')!.textContent).toContain('Nothing matches');
     const off = setup({ ...ON, enabled: false });

@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
-import { badge, type Child, empty, h, plural, stamp, tree } from './view';
+import { type Child, empty, h, plural, stamp, tree } from './view';
 
 const KEEP = 200;
 
@@ -14,12 +14,7 @@ export function eventsView(engine: Engine, open: Set<string>) {
   };
 
   const row = (e: SdkEvent) =>
-    tree(
-      h('span', {}, stamp(Date.parse(e.created_at)), badge(e.object, 'outline'), ' ', e.event_type),
-      e,
-      `e${e.event_id}`,
-      open,
-    );
+    tree(h('span', {}, stamp(Date.parse(e.created_at)), ' ', e.event_type), e, `e${e.event_id}`, open);
 
   const view = (query: string): Child[] => {
     if (!seen.length) return [empty('No events yet', 'Each SDK event shows here as next.on gets it.')];
