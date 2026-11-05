@@ -12,3 +12,4 @@ docs/.staged-home.md
 dist/
 dev/campaigns/
 .campaigns/
+.golden/

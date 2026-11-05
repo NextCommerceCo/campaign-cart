@@ -252,6 +252,8 @@ tests/
   engine/ checkout/state/ order/state.test.ts   headless code, runs in Node — proves it never needs a DOM
   bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
+  golden.test.ts                   binds and renders every fixture page, compared with tests/golden/; GOLDEN_PAGES=dir,dir
+                                   adds my-campaigns and the starter templates (snapshots in .golden/, not committed)
   event-examples.test.ts           records docs/event-examples.json; fails on a public event without an example
   analytics-examples.test.ts       records docs/analytics-examples.json; fails on an analytics event without an example
   destinations/examples.test.ts    records docs/destination-examples.json; fails on a vendor event without an example
