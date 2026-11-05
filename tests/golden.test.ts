@@ -41,8 +41,16 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const settle = async () => {
-  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+/** Waits until the page and its events stop changing for a few ticks, so a slow run snapshots the same page. */
+const settle = async (events: string[]) => {
+  let last = '';
+  let still = 0;
+  for (let i = 0; i < 200 && still < 5; i++) {
+    await new Promise((r) => setTimeout(r, 1));
+    const now = `${events.length}|${document.body.innerHTML}`;
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
 };
 
 const VOLATILE = [/\b(id|for)="spreedly-[^"]*"/g, /\bdata-next-phone-e164="[^"]*"/g];
@@ -63,7 +71,7 @@ async function render(path: string) {
   const next = boot(config, Promise.resolve(campaign));
   next.on('*', (_, e) => void events.push(e.event_type));
   await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
-  await settle();
+  await settle(events);
   const counts = Object.entries(
     events.reduce<Record<string, number>>((n, name) => ({ ...n, [name]: (n[name] ?? 0) + 1 }), {}),
   )
