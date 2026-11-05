@@ -15,6 +15,24 @@ const LAZY: Record<string, string[]> = {
   'compat/analytics': ['analytics'],
 };
 const LAZY_STATE = ['checkout/state', 'order/state'];
+const LINE_LIMIT = 300;
+const SHRINKING: Record<string, number> = {
+  'engine/events.ts': 855,
+  'compat/legacy.ts': 662,
+  'debug/analytics.ts': 634,
+  'engine/cart/cart.ts': 557,
+  'checkout/state/checkout.ts': 492,
+  'debug/index.ts': 452,
+  'debug/cart.ts': 402,
+  'analytics/index.ts': 361,
+  'order/state.ts': 356,
+  'compat/checkout.ts': 345,
+  'engine/engine.ts': 343,
+  'boot.ts': 334,
+  'engine/cart/selectors.ts': 330,
+  'checkout/payment/card.ts': 312,
+  'debug/checkout.ts': 306,
+};
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
 const BROWSER_GLOBALS =
@@ -32,6 +50,8 @@ const ALLOWED: Record<string, string[]> = {
   loader: ['config', 'compat/config'],
   config: ['compat/config'],
 };
+
+const lines = (code: string) => code.split('\n').length - (code.endsWith('\n') ? 1 : 0);
 
 const files = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
@@ -122,6 +142,23 @@ describe('architecture', () => {
       .filter((s) => !['engine/log', 'loader'].includes(s.path) && /\bconsole\./.test(s.code))
       .map((s) => s.path);
     expect(direct).toEqual([]);
+  });
+
+  it('no source file grows past its line budget', () => {
+    const over = sources
+      .filter((s) => lines(s.code) > (SHRINKING[`${s.path}.ts`] ?? LINE_LIMIT))
+      .map((s) => `${s.path}: ${lines(s.code)}`);
+    expect(over).toEqual([]);
+  });
+
+  it('a line budget shrinks with its file and goes once the file is under the limit', () => {
+    const stale = Object.entries(SHRINKING)
+      .filter(([file, budget]) => {
+        const source = sources.find((s) => `${s.path}.ts` === file);
+        return !source || lines(source.code) <= LINE_LIMIT || lines(source.code) < budget;
+      })
+      .map(([file]) => file);
+    expect(stale).toEqual([]);
   });
 
   it('no default exports and no re-export barrels', () => {
