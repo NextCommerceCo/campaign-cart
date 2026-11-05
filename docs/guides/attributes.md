@@ -6,87 +6,78 @@ order: 0
 
 # Attributes
 
-Everything the SDK reads from a page, one page per attribute in the **Attribute Reference**. The
-SDK sets classes and attributes; pages own their CSS. Names from 0.4.x still work and are listed
-on each page (see [Migrating from 0.4.x](migrating-from-0.4.md)).
+Every attribute a page writes has one role, and each role has its twin in JavaScript. Values come
+from one object model: the objects `next.query()` returns and events carry, with the same
+snake_case field names.
 
-## Attribute Reference
+| Role                                      | Attributes                                                                               | In JavaScript                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------ |
+| [Objects](#objects): things with state    | `data-next-selector`, `data-next-option`, `data-next-checkout`, `data-next-promotion`    | `next.query('selector.main')`  |
+| [Display](#display): values into the page | `data-next-query`, `data-next-show`, `data-next-hide`, `data-next-each`, `data-next-for` | `next.query()`, `next.watch()` |
+| [Actions](#actions): buttons and forms    | `data-next-action`                                                                       | `next.actions.<name>()`        |
+| [Inputs](#inputs)                         | `data-next-field`                                                                        | `checkout.*` paths             |
+| [Widgets](#widgets): UI the SDK draws     | `data-next-address`, `data-next-payment`, `data-next-express`                            | —                              |
 
-### Setup
+Every other attribute is a parameter of one of these, named after a field of the model:
+`data-next-shipping-id="3"` is `shipping_id: 3`, on an option and on an `addItem` button alike.
 
-| Page                                                            | For                                                                  |
-| --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [Loader script](attribute-reference/setup/loader-script.md)     | `data-campaign`, `data-funnel`: loading the SDK                      |
-| [data-next-ready](attribute-reference/setup/data-next-ready.md) | Set on `<html>` once values are on the page                          |
-| [URL parameters](attribute-reference/setup/url-parameters.md)   | `forcePackageId`, `forceBundleId`, `reset`, `debug`, kept parameters |
+```html
+<span data-next-query="cart.total"></span>
+```
 
-### Values
+```js
+next.query('cart.total'); // 39
+next.on('cart.calculated', (cart) => cart.total); // the same Cart
+```
 
-| Page                                                                            | For                                        |
-| ------------------------------------------------------------------------------- | ------------------------------------------ |
-| [data-next-display](attribute-reference/values/data-next-display.md)            | Writes a value, and every path it can name |
-| [data-next-show / data-next-hide](attribute-reference/values/data-next-show.md) | Shows or hides an element on a condition   |
-| [data-next-format](attribute-reference/values/data-next-format.md)              | Overrides how a value is formatted         |
+Pages built with the earlier attributes keep working: see [Legacy attributes](attribute-reference/legacy/legacy-attributes.md).
 
-### Bundles
+## Setup
 
-| Page                                                                                  | For                                      |
-| ------------------------------------------------------------------------------------- | ---------------------------------------- |
-| [data-next-bundle-selector](attribute-reference/bundles/data-next-bundle-selector.md) | A group of cards, one picked             |
-| [data-next-bundle-card](attribute-reference/bundles/data-next-bundle-card.md)         | A card: its lines, vouchers and shipping |
-| [data-next-bundle-display](attribute-reference/bundles/data-next-bundle-display.md)   | A card's own prices and discount         |
-| [Quantity stepper](attribute-reference/bundles/data-next-bundle-qty-for.md)           | `data-next-bundle-qty-for`               |
-| [Variant slots](attribute-reference/bundles/data-next-bundle-slot-template-id.md)     | One slot per unit, with variant selects  |
-| [Personalisation properties](attribute-reference/bundles/data-next-property.md)       | Properties sent with a line              |
-| [data-next-upsell-context](attribute-reference/bundles/data-next-upsell-context.md)   | Cards priced as a post-purchase offer    |
-| [data-next-discounts](attribute-reference/bundles/data-next-discounts.md)             | A card's discounts, from a template      |
+| Page                                                          | For                                                                   |
+| ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [Loader script](attribute-reference/setup/loader-script.md)   | `data-campaign`, `data-funnel`: loading the SDK                       |
+| [URL parameters](attribute-reference/setup/url-parameters.md) | `forcePackageId`, `forceBundleId`, `reset`, `debug`, kept parameters  |
+| [Page state](attribute-reference/setup/page-state.md)         | What the SDK sets for CSS: `data-next-ready`, `data-next-selected`, … |
 
-### Cart
+## Objects
 
-| Page                                                                           | For                                    |
-| ------------------------------------------------------------------------------ | -------------------------------------- |
-| [data-next-action="add-to-cart"](attribute-reference/cart/data-next-action.md) | A button that adds a package or a pick |
-| [data-next-toggle-card](attribute-reference/cart/data-next-toggle-card.md)     | An order bump                          |
-| [data-next-cart-summary](attribute-reference/cart/data-next-cart-summary.md)   | Cart lines and totals                  |
-| [data-next-coupon](attribute-reference/cart/data-next-coupon.md)               | A coupon field                         |
-| [Remove and quantity controls](attribute-reference/cart/cart-controls.md)      | Editing cart lines                     |
+| Page                                                           | For                                                                  |
+| -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Cart](attribute-reference/objects/cart.md)                    | The cart and its lines                                               |
+| [Selector and option](attribute-reference/objects/selector.md) | `data-next-selector`, `data-next-option`: picks, order bumps, offers |
+| [Package](attribute-reference/objects/package.md)              | `package.<id>`: a package at the campaign's price                    |
+| [Checkout](attribute-reference/objects/checkout.md)            | `data-next-checkout` and what the shopper entered                    |
+| [Order and upsell](attribute-reference/objects/order.md)       | The order on pages opened with `?ref_id`                             |
+| [Promotion](attribute-reference/objects/promotion.md)          | `data-next-promotion`: tracked banners                               |
+| [Campaign and params](attribute-reference/objects/campaign.md) | `campaign.*`, `param.<name>`                                         |
 
-### Checkout
+## Display
 
-| Page                                                                                     | For                                        |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------ |
-| [data-next-checkout](attribute-reference/checkout/data-next-checkout.md)                 | The form, and where a paid order goes      |
-| [data-next-checkout-field](attribute-reference/checkout/data-next-checkout-field.md)     | Every field name                           |
-| [data-next-address](attribute-reference/checkout/data-next-address.md)                   | The country's address fields               |
-| [Phone field](attribute-reference/checkout/phone-field.md)                               | Flag, mask and E.164                       |
-| [Billing address](attribute-reference/checkout/billing-address.md)                       | Same-as-shipping toggle and billing fields |
-| [data-next-lead](attribute-reference/checkout/data-next-lead.md)                         | When the shopper is saved as a lead        |
-| [Payment methods](attribute-reference/checkout/payment-methods.md)                       | Method radios, panels and card fields      |
-| [data-next-express-checkout](attribute-reference/checkout/data-next-express-checkout.md) | Apple Pay, Google Pay and PayPal buttons   |
-| [Error messages](attribute-reference/checkout/error-messages.md)                         | Where order and payment errors show        |
-| [data-next-checkout-step](attribute-reference/checkout/data-next-checkout-step.md)       | Multi-step checkout                        |
-| [data-next-checkout-review](attribute-reference/checkout/data-next-checkout-review.md)   | What was entered on an earlier step        |
-| [Floating labels](attribute-reference/checkout/floating-labels.md)                       | `has-value` and `is-focused` on labels     |
+| Page                                                                             | For                                                   |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| [data-next-query](attribute-reference/display/data-next-query.md)                | Writes a value; `data-next-format`, `data-next-empty` |
+| [data-next-show / data-next-hide](attribute-reference/display/data-next-show.md) | Shows or hides on a condition                         |
+| [data-next-each](attribute-reference/display/data-next-each.md)                  | One copy of a template per item of a list             |
+| [data-next-for](attribute-reference/display/data-next-for.md)                    | The object children read short paths from             |
 
-### Upsells
+## Actions
 
-| Page                                                                              | For                        |
-| --------------------------------------------------------------------------------- | -------------------------- |
-| [data-next-upsell](attribute-reference/upsells/data-next-upsell.md)               | A post-purchase offer      |
-| [data-next-upsell-action](attribute-reference/upsells/data-next-upsell-action.md) | Accept and decline buttons |
+| Page                                                                | For                                               |
+| ------------------------------------------------------------------- | ------------------------------------------------- |
+| [data-next-action](attribute-reference/actions/data-next-action.md) | Runs an action on click or submit; `data-next-go` |
+| [Action list](attribute-reference/actions/action-list.md)           | Every action, its arguments and its events        |
 
-### Orders
+## Inputs
 
-| Page                                                                         | For                         |
-| ---------------------------------------------------------------------------- | --------------------------- |
-| [data-next-order-items](attribute-reference/orders/data-next-order-items.md) | Order lines from a template |
-| [order.\* values](attribute-reference/orders/order-values.md)                | Every `order.*` path        |
+| Page                                                             | For                                                        |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- |
+| [data-next-field](attribute-reference/inputs/data-next-field.md) | Checkout fields, payment, variant pickers, line properties |
 
-### Promotions
+## Widgets
 
-| Page                                                                         | For                                       |
-| ---------------------------------------------------------------------------- | ----------------------------------------- |
-| [data-next-promotion](attribute-reference/promotions/data-next-promotion.md) | Banners, cards and links that are tracked |
-
-The 0.4.x page widgets (`data-next-timer`, `data-next-accordion`, `data-next-tooltip`, scroll hint)
-are deprecated; see [Page widgets](migrating-from-0.4.md#page-widgets).
+| Page                                                                  | For                                     |
+| --------------------------------------------------------------------- | --------------------------------------- |
+| [data-next-address](attribute-reference/widgets/data-next-address.md) | An address for the selected country     |
+| [data-next-payment](attribute-reference/widgets/data-next-payment.md) | The payment methods the campaign offers |
+| [data-next-express](attribute-reference/widgets/data-next-express.md) | Express buttons                         |

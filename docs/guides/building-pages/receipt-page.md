@@ -7,75 +7,53 @@ category: 'Building Pages'
 # Receipt Page
 
 The receipt shows the order the shopper just paid for, upsells included. It is opened with
-`?ref_id=<order>`, by the checkout's `next-success-url` or the last upsell. Any `order.*`
-attribute on the page loads the order.
+`?ref_id=<order>`, by the checkout's `data-next-go` or the last upsell, and the SDK loads the order
+from it.
 
 ```html
-<h1>Thank you, <span data-next-display="order.customer.firstName"></span></h1>
-<p>
-  Order <span data-next-display="order.number"></span>, sent to <span data-next-display="order.customer.email"></span>
-</p>
+<h1>Thank you, <span data-next-query="order.user.first_name"></span></h1>
+<p>Order <span data-next-query="order.number"></span>, sent to <span data-next-query="order.user.email"></span></p>
 ```
 
 ## Order lines
 
-`[data-next-order-items]` draws one copy of its template per line. Its content is the template,
-or `data-item-template-id` names a `<template>` elsewhere on the page.
-
 ```html
-<div data-next-order-items data-item-template-id="order-line"></div>
-
-<template id="order-line">
-  <div class="line">
-    <img src="{item.image}" alt="" />
-    <span>{item.name}</span> <small class="{item.showVariant}">{item.variant}</small>
-    × {item.quantity}
-    <span>{item.lineTotal}</span>
-  </div>
-</template>
+<div data-next-each="order.lines">
+  <template>
+    <div class="line">
+      <img data-next-query="image" alt="" />
+      <span data-next-query="product_title"></span>
+      <small data-next-show="variant_title" data-next-query="variant_title"></small>
+      × <span data-next-query="quantity"></span>
+      <span data-next-query="total"></span>
+      <em data-next-show="upsell">Added after checkout</em>
+    </div>
+  </template>
+</div>
 ```
 
-| Token                                                         | Is                                          |
-| ------------------------------------------------------------- | ------------------------------------------- |
-| `{item.name}`, `{item.sku}`, `{item.description}`             | The product                                 |
-| `{item.variant}`, `{item.image}`, `{item.quantity}`           | The line's variant, image and quantity      |
-| `{item.price}`, `{item.priceExclTax}`                         | One unit                                    |
-| `{item.lineTotal}`, `{item.lineTotalExclTax}`                 | The whole line                              |
-| `{item.isUpsell}`, `{item.hasImage}`, `{item.hasVariant}`     | `true` or `false`                           |
-| `{item.showUpsell}`, `{item.showImage}`, `{item.showVariant}` | `show` or `hide`, for a class               |
-| `{item.upsellBadge}`                                          | `UPSELL` on an upsell line, otherwise empty |
-
-The list gets `order-loading`, `order-has-items`, `order-empty` or `order-error`.
-`data-empty-template` replaces the text shown for an order with no lines.
+Each line has `product_title`, `variant_title`, `sku`, `image`, `quantity`, `price` and
+`original_price` (one unit), `total` (the line) and `upsell`.
 
 ## Totals and details
 
 ```html
 <dl>
-  <dt>Subtotal</dt>
-  <dd data-next-display="order.subtotal"></dd>
   <dt>Shipping</dt>
-  <dd data-next-display="order.shipping"></dd>
-  <dt data-next-show="order.hasDiscounts">Discount</dt>
-  <dd data-next-show="order.hasDiscounts" data-next-display="order.discounts"></dd>
-  <dt data-next-show="order.hasTax">Tax</dt>
-  <dd data-next-show="order.hasTax" data-next-display="order.tax"></dd>
+  <dd data-next-query="order.shipping_method.price"></dd>
+  <dt data-next-show="order.total_discount > 0">Discount</dt>
+  <dd data-next-show="order.total_discount > 0" data-next-query="order.total_discount"></dd>
+  <dt data-next-show="order.tax > 0">Tax</dt>
+  <dd data-next-show="order.tax > 0" data-next-query="order.tax"></dd>
   <dt>Total</dt>
-  <dd data-next-display="order.total"></dd>
+  <dd data-next-query="order.total"></dd>
 </dl>
+<p>Ships to <span data-next-query="order.shipping_address"></span></p>
 ```
 
-| Path                                                                                            | Is                                                                                                         |
-| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `order.number`, `order.refId`, `order.currency`                                                 | The order                                                                                                  |
-| `order.total`, `order.subtotal`, `order.shipping`, `order.tax`, `order.discounts`               | Money, in the campaign's currency; `totalExclTax`, `shippingExclTax` too                                   |
-| `order.hasTax`, `order.hasShipping`, `order.hasDiscounts`, `order.hasUpsells`, `order.hasItems` | For `data-next-show` / `data-next-hide`                                                                    |
-| `order.itemCount`                                                                               | Number of lines                                                                                            |
-| `order.shippingMethod`, `order.paymentMethod`                                                   | Their names                                                                                                |
-| `order.customer.name`, `.firstName`, `.lastName`, `.email`, `.phone`                            | The shopper                                                                                                |
-| `order.shippingAddress`, `order.billingAddress`                                                 | The address on one line; `.line1`, `.line2`, `.city`, `.state`, `.postcode`, `.country`, `.name` each part |
+Every field of the order is on [Order and upsell](../attribute-reference/objects/order.md); an
+address written whole is one line.
 
 `order.paid` is sent once per order: on the checkout for an order paid at once, else on the first
 page that loads it paid after the gateway, so a reload of the receipt never tracks the purchase
-twice; see the
-[Order lifecycle](../event-reference/orders/lifecycle.md).
+twice; see the [Order lifecycle](../event-reference/orders/lifecycle.md).

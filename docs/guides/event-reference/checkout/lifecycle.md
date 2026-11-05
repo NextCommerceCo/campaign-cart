@@ -102,7 +102,7 @@ The lifecycle is the lead's: one shopper on one checkout, saved with an Open Car
 | `created`     | The details change and are not                                                                                       | `created`   | none; the Checkout keeps the last valid `user` |
 
 - What `data-next-lead` asks for: by default a first and last name of at least two characters each
-  and a valid email; see [data-next-lead](../../attribute-reference/checkout/data-next-lead.md).
+  and a valid email; see [data-next-lead](../../attribute-reference/objects/checkout.md).
   With `off`, nothing is saved and no `user.*` comes.
 - Checked each time the shopper leaves a field they changed, or picks an option. Once per checkout:
   a step, a reload or a return from the gateway keeps the saved user; a paid order starts over.

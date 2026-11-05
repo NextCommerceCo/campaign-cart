@@ -15,6 +15,7 @@
  * them. Each destination gets a page under `docs/.staged/analytics-reference/destinations/`: its
  * config, the tracking event → vendor event table from the same examples, and a section per vendor
  * event from `DataLayerEventMap`, `Ga4EventMap` or `MetaEventMap` (TSDoc, `@see`, schema, example).
+ * An Attribute Reference page that writes `<!-- fields: Cart -->` gets that object's tables there.
  * Nothing here is committed.
  */
 import { readdirSync } from 'node:fs';
@@ -78,7 +79,7 @@ async function reference(root) {
   const vendors = Object.fromEntries(DESTINATION_PAGES.map((d) => [d.key, named(d.map)]));
   const missing = DESTINATION_PAGES.filter((d) => !vendors[d.key]).map((d) => d.map);
   if (missing.length) throw new Error(`docs-events: ${missing.join(', ')} not found`);
-  return { map, tracking, vendors };
+  return { map, tracking, vendors, named };
 }
 
 /**
@@ -586,7 +587,7 @@ export async function stageEventReference(root, out) {
   const examples = JSON.parse(await readFile(join(root, 'docs/event-examples.json'), 'utf8'));
   const trackingExamples = JSON.parse(await readFile(join(root, 'docs/analytics-examples.json'), 'utf8'));
   const sent = JSON.parse(await readFile(join(root, 'docs/destination-examples.json'), 'utf8'));
-  const { map, tracking, vendors } = await reference(root);
+  const { map, tracking, vendors, named } = await reference(root);
   const groups = (map.extendedTypes ?? []).map((t) => t.toString());
   const groupOf = (member) => groups.indexOf(member.inheritedFrom?.name.split('.')[0] ?? '');
   const events = [...(map.children ?? [])]
@@ -646,5 +647,25 @@ export async function stageEventReference(root, out) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, destinationPage(d, vendors[d.key], sent[d.key], tracked));
   }
+  await stageFieldTables(join(out, 'attribute-reference'), named);
   return { events: events.length, analytics: tracked.length };
+}
+
+const FIELDS = /<!-- fields: (\w+) -->/g;
+
+/** Replaces `<!-- fields: Cart -->` in an Attribute Reference page with that object's tables, from the same TSDoc as the Event Reference. */
+async function stageFieldTables(dir, named) {
+  const files = readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((d) => d.isFile() && d.name.endsWith('.md'))
+    .map((d) => join(d.parentPath, d.name));
+  for (const file of files) {
+    const page = await readFile(file, 'utf8');
+    if (!FIELDS.test(page)) continue;
+    const staged = page.replace(FIELDS, (_, name) => {
+      const reflection = named(name);
+      if (!reflection) throw new Error(`docs-events: <!-- fields: ${name} --> names no interface`);
+      return tables()({ type: 'reference', reflection });
+    });
+    await writeFile(file, staged);
+  }
 }

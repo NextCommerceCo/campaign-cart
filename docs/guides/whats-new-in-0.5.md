@@ -11,6 +11,14 @@ order: 1
 order; the page's attributes and every listener read from it. Pages built for 0.4.x keep working
 (see [Migrating from 0.4.x](migrating-from-0.4.md)). What a shopper and a page builder get from it:
 
+## One set of names
+
+Attributes, `next.query()`, `next.actions` and events read the same objects with the same
+snake_case fields: `data-next-query="cart.total"` is `next.query('cart.total')` is a
+`cart.calculated` event's `total`. Five roles cover every attribute a page writes (see
+[Attributes](attributes.md)), and a page that uses only them never downloads the code for the
+earlier names.
+
 ## Less JavaScript
 
 ![JavaScript a page downloads, gzip on one scale: a 0.4.x landing page 215 KB, a 0.5 landing page 31 KB, a 0.5 checkout page 56 KB](javascript-size.svg)

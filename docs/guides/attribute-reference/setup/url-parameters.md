@@ -27,7 +27,7 @@ landing.html?utm_source=fb&forceBundleId=three&currency=EUR
 | `ref_id=…` (or `order_ref_id`)                                                                        | The order an upsell or receipt page shows; added by the checkout and the upsell buttons                                                       |
 | `payment_failed=true`                                                                                 | Added by the SDK to the return URL a payment gateway uses after a declined payment: sends `payment.failed` for the order the checkout started |
 | `utm_*`, `gclid`, `fbclid`, `affid`, `aff`, `sub1`–`sub5`, `subaffiliate1`–`5`, `evclid`, `funnel`, … | Attribution: sent with the order and on tracking events                                                                                       |
-| any                                                                                                   | Readable on the page as `param.<name>` ([data-next-display](../values/data-next-display.md), [data-next-show](../values/data-next-show.md))   |
+| any                                                                                                   | Readable on the page as `param.<name>` ([data-next-query](../display/data-next-query.md), [data-next-show](../display/data-next-show.md))     |
 
 ## Carried to the next page
 
