@@ -54,7 +54,7 @@ const OBJECTS = {
   promotion_selected: 'promotion',
 };
 
-/** The GA4 event each tracking event is remapped to, as `GA4` in `src/engine/events/analytics.ts`. */
+/** The GA4 event each tracking event is remapped to, as the `ga4` column of `WIRING` in `src/debug/providers.ts`. */
 const GA4 = {
   page_viewed: 'page_view',
   product_viewed: 'view_item',

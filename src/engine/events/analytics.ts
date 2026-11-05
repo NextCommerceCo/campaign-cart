@@ -131,27 +131,6 @@ export const OBJECTS = {
   promotion_selected: 'promotion',
 } as const satisfies Record<TrackingName, string>;
 
-/** The GA4 event each tracking event is sent as, for the events GA4 has a name for. */
-export const GA4: Partial<Record<TrackingName, string>> = {
-  page_viewed: 'page_view',
-  product_viewed: 'view_item',
-  product_list_viewed: 'view_item_list',
-  product_added_to_cart: 'add_to_cart',
-  product_removed_from_cart: 'remove_from_cart',
-  cart_updated: 'update_cart',
-  checkout_started: 'begin_checkout',
-  checkout_contact_info_submitted: 'generate_lead',
-  checkout_shipping_address_submitted: 'add_shipping_info',
-  checkout_shipping_method_submitted: 'add_shipping_info',
-  checkout_payment_info_submitted: 'add_payment_info',
-  checkout_completed: 'purchase',
-  upsell_completed: 'upsell_purchase',
-  upsell_viewed: 'view_upsell',
-  upsell_skipped: 'skip_upsell',
-  promotion_viewed: 'view_promotion',
-  promotion_selected: 'select_promotion',
-};
-
 /**
  * One tracking event, as `next.analytics.on` gets it: the SDK event envelope, `data` by
  * `event_type`, and the `context` it happened in. `event_id` is the transaction id on

@@ -1,6 +1,6 @@
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
-import { type AnalyticsTrace, GA4, type TrackingEvent, type TrackingName } from '../engine/events/analytics';
+import type { AnalyticsTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
 import {
   amount,
@@ -12,6 +12,7 @@ import {
   type ProviderConfig,
   providers,
   type Win,
+  ga4Of,
 } from './providers';
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
@@ -178,7 +179,7 @@ export function analyticsFlow(ui: {
     for (const hit of [...hits].sort((a, b) => a.at - b.at)) {
       const run = [...runs]
         .reverse()
-        .find((r) => r.sent && GA4[r.name as TrackingName] === hit.name && r.at <= hit.at + 50 && !seen.has(r));
+        .find((r) => r.sent && ga4Of(r.name) === hit.name && r.at <= hit.at + 50 && !seen.has(r));
       if (run) seen.set(run, hit);
     }
     const issues = (run: Run) => {

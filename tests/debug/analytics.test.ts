@@ -7,7 +7,6 @@ import { checks, dlOf, linesOf, type ProviderConfig, providers, WIRING } from '.
 import { nodes } from '../../src/debug/view';
 import {
   type AnalyticsTrace,
-  GA4,
   OBJECTS,
   type TrackingEvent,
   type TrackingMap,
@@ -166,6 +165,7 @@ describe('the workflows match the analytics code', () => {
     const tracked = WIRING.filter((w) => w.tracking).map((w) => [w.tracking, w.dl]);
     expect(Object.fromEntries(tracked)).toEqual(DL);
     expect(tracked).toHaveLength(Object.keys(OBJECTS).length);
+    expect(Object.fromEntries(WIRING.filter((w) => w.tracking).map((w) => [w.tracking, w.object]))).toEqual(OBJECTS);
     expect(WIRING.filter((w) => !w.tracking).map((w) => [w.from[0], w.dl])).toEqual([
       ['promotion.viewed', 'dl_exit_intent_shown'],
       ['promotion.clicked', 'dl_exit_intent_accepted'],
@@ -532,7 +532,7 @@ describe('analytics workflow', () => {
       startTime: Date.now() - performance.timeOrigin + 20,
     });
     vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      collect(GA4.product_added_to_cart!),
+      collect('add_to_cart'),
       collect('cart_updated'),
       collect('page_view'),
       { name: 'https://cdn.test/app.js', startTime: 0 },

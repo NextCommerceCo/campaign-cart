@@ -1,4 +1,4 @@
-import { OBJECTS, type TrackingEvent, type TrackingName } from '../engine/events/analytics';
+import type { TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
 import { format } from '../engine/format';
 
@@ -30,31 +30,109 @@ export type Win = Window &
 export interface Wire {
   from: EngineName[];
   tracking?: TrackingName;
+  /** The envelope's `object`, as `OBJECTS` in `src/engine/events/analytics.ts`. */
+  object?: string;
+  /** The GA4 event the tracking event is sent as. */
+  ga4?: string;
   dl: string;
 }
 
 export const WIRING: Wire[] = [
-  { from: ['sdk.ready'], tracking: 'page_viewed', dl: 'dl_user_data' },
-  { from: ['sdk.ready'], tracking: 'product_viewed', dl: 'dl_view_item' },
-  { from: ['sdk.ready'], tracking: 'product_list_viewed', dl: 'dl_view_item_list' },
-  { from: ['sdk.ready', 'cart.calculated'], tracking: 'product_added_to_cart', dl: 'dl_add_to_cart' },
+  { from: ['sdk.ready'], tracking: 'page_viewed', object: 'page', ga4: 'page_view', dl: 'dl_user_data' },
+  { from: ['sdk.ready'], tracking: 'product_viewed', object: 'product', ga4: 'view_item', dl: 'dl_view_item' },
+  {
+    from: ['sdk.ready'],
+    tracking: 'product_list_viewed',
+    object: 'products',
+    ga4: 'view_item_list',
+    dl: 'dl_view_item_list',
+  },
+  {
+    from: ['sdk.ready', 'cart.calculated'],
+    tracking: 'product_added_to_cart',
+    object: 'cart_line',
+    ga4: 'add_to_cart',
+    dl: 'dl_add_to_cart',
+  },
   {
     from: ['sdk.ready', 'cart.calculated', 'cart.updated'],
     tracking: 'product_removed_from_cart',
+    object: 'cart_line',
+    ga4: 'remove_from_cart',
     dl: 'dl_remove_from_cart',
   },
-  { from: ['cart.calculated'], tracking: 'cart_updated', dl: 'dl_cart_updated' },
-  { from: ['checkout.started'], tracking: 'checkout_started', dl: 'dl_begin_checkout' },
-  { from: ['user.created'], tracking: 'checkout_contact_info_submitted', dl: 'dl_generate_lead' },
-  { from: ['address.entered'], tracking: 'checkout_shipping_address_submitted', dl: 'dl_add_shipping_info' },
-  { from: ['shipping.settled'], tracking: 'checkout_shipping_method_submitted', dl: 'dl_add_shipping_info' },
-  { from: ['checkout.submitted'], tracking: 'checkout_payment_info_submitted', dl: 'dl_add_payment_info' },
-  { from: ['order.paid', 'order.loaded'], tracking: 'checkout_completed', dl: 'dl_purchase' },
-  { from: ['order.loaded'], tracking: 'upsell_completed', dl: 'dl_upsell_purchase' },
-  { from: ['upsell.viewed'], tracking: 'upsell_viewed', dl: 'dl_viewed_upsell' },
-  { from: ['upsell.skipped'], tracking: 'upsell_skipped', dl: 'dl_skipped_upsell' },
-  { from: ['promotion.viewed'], tracking: 'promotion_viewed', dl: 'dl_view_promotion' },
-  { from: ['promotion.clicked'], tracking: 'promotion_selected', dl: 'dl_select_promotion' },
+  { from: ['cart.calculated'], tracking: 'cart_updated', object: 'cart', ga4: 'update_cart', dl: 'dl_cart_updated' },
+  {
+    from: ['checkout.started'],
+    tracking: 'checkout_started',
+    object: 'checkout',
+    ga4: 'begin_checkout',
+    dl: 'dl_begin_checkout',
+  },
+  {
+    from: ['user.created'],
+    tracking: 'checkout_contact_info_submitted',
+    object: 'checkout',
+    ga4: 'generate_lead',
+    dl: 'dl_generate_lead',
+  },
+  {
+    from: ['address.entered'],
+    tracking: 'checkout_shipping_address_submitted',
+    object: 'checkout',
+    ga4: 'add_shipping_info',
+    dl: 'dl_add_shipping_info',
+  },
+  {
+    from: ['shipping.settled'],
+    tracking: 'checkout_shipping_method_submitted',
+    object: 'checkout',
+    ga4: 'add_shipping_info',
+    dl: 'dl_add_shipping_info',
+  },
+  {
+    from: ['checkout.submitted'],
+    tracking: 'checkout_payment_info_submitted',
+    object: 'checkout',
+    ga4: 'add_payment_info',
+    dl: 'dl_add_payment_info',
+  },
+  {
+    from: ['order.paid', 'order.loaded'],
+    tracking: 'checkout_completed',
+    object: 'order',
+    ga4: 'purchase',
+    dl: 'dl_purchase',
+  },
+  {
+    from: ['order.loaded'],
+    tracking: 'upsell_completed',
+    object: 'order',
+    ga4: 'upsell_purchase',
+    dl: 'dl_upsell_purchase',
+  },
+  { from: ['upsell.viewed'], tracking: 'upsell_viewed', object: 'upsell', ga4: 'view_upsell', dl: 'dl_viewed_upsell' },
+  {
+    from: ['upsell.skipped'],
+    tracking: 'upsell_skipped',
+    object: 'upsell',
+    ga4: 'skip_upsell',
+    dl: 'dl_skipped_upsell',
+  },
+  {
+    from: ['promotion.viewed'],
+    tracking: 'promotion_viewed',
+    object: 'promotion',
+    ga4: 'view_promotion',
+    dl: 'dl_view_promotion',
+  },
+  {
+    from: ['promotion.clicked'],
+    tracking: 'promotion_selected',
+    object: 'promotion',
+    ga4: 'select_promotion',
+    dl: 'dl_select_promotion',
+  },
   { from: ['promotion.viewed'], dl: 'dl_exit_intent_shown' },
   { from: ['promotion.clicked'], dl: 'dl_exit_intent_accepted' },
   { from: ['promotion.clicked'], dl: 'dl_exit_intent_action' },
@@ -85,7 +163,9 @@ const UNSUPPORTED: Record<string, string> = {
 };
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 
-const objectOf = (name: string) => OBJECTS[name as TrackingName];
+const wireOf = (name: string) => WIRING.find((w) => w.tracking === name);
+const objectOf = (name: string) => wireOf(name)?.object;
+export const ga4Of = (name: string) => wireOf(name)?.ga4;
 
 /** The cart, checkout, order or upsell of a tracking event's `data`: what carries its lines and currency. */
 export const pricedOf = (name: string, data: unknown): Line => {
@@ -113,7 +193,7 @@ export function checks(name: string, data: unknown): string[] {
   return [
     NEEDS_LINES.has(name) && !lines.length && 'lines is empty',
     lines.some((l) => !l.product_title) && 'a line has no product_title',
-    PRICED.has(objectOf(name)) && !priced.currency && 'no currency',
+    PRICED.has(objectOf(name) ?? '') && !priced.currency && 'no currency',
     ORDERS.has(name) && !priced.number && `${name} has no order number`,
   ].filter((p): p is string => !!p);
 }
