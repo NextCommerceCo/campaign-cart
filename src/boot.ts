@@ -21,6 +21,9 @@ declare const __VERSION__: string;
 
 const ORDER_MARKUP =
   '[data-next-upsell], [data-next-order-items], [data-next-display^="order."], [data-next-show^="order."], [data-next-hide^="order."]';
+/** 0.4.x and 0.5 markup the checkout and order chunks bind, beside what `bindAll` binds. */
+const LEGACY_FORMS =
+  '[data-next-checkout-field], [os-checkout-field], [data-next-upsell], [data-next-upsell-action], [data-next-order-items]';
 
 const browserStorage = (get: () => Storage): Storage | null => {
   try {
@@ -133,7 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
 
-  const legacy = legacyEvents(engine);
+  const legacy = legacyEvents(engine, () => import('./compat/legacy'));
   const bindings = bindAll(document, engine);
   const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
   const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
@@ -161,6 +164,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     (v2 ??= Promise.all([(attributes ??= import('./attributes')), queried()]).then(([m, q]) =>
       m.bindAttributes(document, engine, q, { deferred: bindings.deferred }),
     ));
+  const legacyPage = bindings.legacy || !v2In(document) || !!document.querySelector(LEGACY_FORMS);
+  if (legacyPage) void legacy.preload();
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {

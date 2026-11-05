@@ -17,6 +17,7 @@ const BUDGETS = [
   { match: /^query-.*\.js$/, name: 'query', kb: 2 },
   { match: /^cart-summary-.*\.js$/, name: 'cart summary', kb: 3 },
   { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
+  { match: /^legacy-.*\.js$/, name: 'legacy', kb: 3.5 },
   { match: /^debug-.*\.js$/, name: 'debug', kb: 40 },
   { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },

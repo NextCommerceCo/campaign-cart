@@ -227,6 +227,7 @@ src/
 | query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
+| legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
 
@@ -249,8 +250,14 @@ src/
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
-`compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
-`compat/analytics/`, which only their own chunk may import statically.
+`compat/exit-intent.ts`, `compat/widgets.ts`, `compat/legacy/index.ts` (with the `events.ts` and
+`payloads.ts` beside it), plus `compat/checkout.ts`, `compat/order.ts` and `compat/analytics/`,
+which only their own chunk may import statically.
+
+The legacy chunk makes 0.4.x `next.on` names from the events. Boot keeps the rest of
+`compat/legacy/`: `window.next`'s 0.4.x methods, the page moments (`checkout:started`, …) and the
+picks and clicks the payloads read. A listener added before the chunk has loaded is held, and
+hears the events since it was added once it has; from then on each as it happens.
 
 A type used by one domain sits in that domain's `types.ts` (`engine/cart/`, `checkout/state/`) or
 beside its actions (`OrderState` in `order/state.ts`); one that several domains share stays in

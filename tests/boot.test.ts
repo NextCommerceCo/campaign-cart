@@ -234,7 +234,7 @@ describe('boot', () => {
     expect(error.mock.calls[0]![1]).not.toHaveProperty('campaign');
   });
 
-  it('maps old next.on names to the new events and passes the payload', async () => {
+  it('maps old next.on names to the new events and passes the payload, one heard before its names loaded too', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
       <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div>
@@ -245,11 +245,26 @@ describe('boot', () => {
     next.on('fomo:shown' as never, vi.fn());
     next.on('nope:event' as never, vi.fn());
     document.querySelector<HTMLElement>('#two')!.click();
-    expect(changed).toHaveBeenCalledWith(
-      { selectorId: 'main', items: [{ packageId: 2, quantity: 1 }] },
-      expect.anything(),
+    await vi.waitFor(() =>
+      expect(changed).toHaveBeenCalledWith(
+        { selectorId: 'main', items: [{ packageId: 2, quantity: 1 }] },
+        expect.anything(),
+      ),
     );
     expect(warn.mock.calls).toEqual([['[next] next.on: unknown event "nope:event"']]);
+  });
+
+  it('hears an old next.on name on a page built only with attributes v2', async () => {
+    vi.stubGlobal('fetch', fakeApi().fetch);
+    document.body.innerHTML = '<span data-next-query="cart.total"></span>';
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    const added = vi.fn();
+    next.on('cart:item-added' as never, added);
+    await next.addItem({ packageId: 1 });
+    await vi.waitFor(() =>
+      expect(added).toHaveBeenCalledWith({ packageId: 1, quantity: 1, source: 'direct' }, expect.anything()),
+    );
   });
 
   it('hands each event with an envelope like a webhook, and keeps ready for scripts that listen late', async () => {
@@ -523,9 +538,9 @@ describe('boot', () => {
     next.log.stream((e) => streamed.push(e.message));
     next.log.level = 'silent';
     next.on('nope:event' as never, vi.fn());
+    await vi.waitFor(() => expect(streamed).toContain('next.on: unknown event "nope:event"'));
     expect(warn).not.toHaveBeenCalled();
-    expect(streamed).toEqual(['next.on: unknown event "nope:event"']);
-    expect(next.log.entries().at(-1)).toMatchObject({ level: 'warn', message: 'next.on: unknown event "nope:event"' });
+    expect(next.log.entries().find((e) => e.message.startsWith('next.on'))).toMatchObject({ level: 'warn' });
   });
 
   it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {

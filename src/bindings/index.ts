@@ -15,6 +15,8 @@ export interface Bindings {
   ready?: Promise<void>;
   /** The conditions these bindings left to attributes v2. */
   deferred: Set<Element>;
+  /** Whether the page had markup for these bindings when they started. */
+  legacy: boolean;
 }
 
 const SUMMARY = '[data-next-cart-summary], [data-next-discounts]';
@@ -69,6 +71,7 @@ export function bindAll(
     render,
     bind: (node) => bind(node).forEach((r) => r()),
     deferred: context.deferred,
+    legacy: renders.length > 0 || !!ready,
     get ready() {
       return ready;
     },

@@ -5,6 +5,7 @@ import { createCheckout } from '../../src/checkout/state/checkout';
 import { legacyCheckoutEvents } from '../../src/compat/checkout';
 import { legacyAnalytics, readLegacyAnalytics } from '../../src/compat/legacy/globals';
 import type { LegacyDecimal } from '../../src/compat/legacy/payloads';
+import * as translator from '../../src/compat/legacy';
 import { legacyEvents } from '../../src/compat/legacy/registry';
 import type { EngineEvent } from '../../src/engine/events/bus';
 import type { Checkout } from '../../src/engine/events/checkout';
@@ -310,7 +311,7 @@ describe('0.4.x event names', () => {
   it('selection events fire for a selector shown, picked or stepped, and toggles list what is on', async () => {
     const { engine } = makeEngine();
     await engine.start();
-    const legacy = legacyEvents(engine);
+    const legacy = legacyEvents(engine, () => translator);
     const bundle = heard(legacy, 'bundle:selection-changed');
     const single = heard(legacy, 'selector:selection-changed');
     const picked = heard(legacy, 'bundle:selected');
@@ -397,7 +398,10 @@ describe('0.4.x event names', () => {
       <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div></div>`;
     const { engine } = makeEngine();
     await engine.start();
-    const single = heard(legacyEvents(engine), 'selector:selection-changed');
+    const single = heard(
+      legacyEvents(engine, () => translator),
+      'selector:selection-changed',
+    );
     const viewed = vi.fn();
     engine.on('selector.viewed', viewed);
     bindAll(document, engine, vi.fn());
@@ -416,7 +420,7 @@ describe('0.4.x event names', () => {
       named.push(() => on('*', (e) => e.name === name && fn(e)));
       return () => {};
     }) as never);
-    const legacy = legacyEvents(engine);
+    const legacy = legacyEvents(engine, () => translator);
     const item = heard(legacy, 'selector:item-selected');
     named.forEach((add) => add());
     const cards = [1, 2].map((id) => ({ id: `c${id}`, lines: [{ packageId: id, quantity: 1 }], vouchers: [] }));
@@ -431,7 +435,7 @@ describe('0.4.x event names', () => {
       [0, 1].map(async () => {
         const { engine } = makeEngine();
         await engine.start();
-        return { engine, legacy: legacyEvents(engine) };
+        return { engine, legacy: legacyEvents(engine, () => translator) };
       }),
     );
     legacyCheckoutEvents(engines[0]!.engine, document.createElement('form'));
@@ -462,7 +466,7 @@ describe('0.4.x event names', () => {
     const { engine } = makeEngine();
     await engine.start();
     await engine.cart.addItem(2);
-    const legacy = legacyEvents(engine);
+    const legacy = legacyEvents(engine, () => translator);
     legacyCheckoutEvents(engine, document.createElement('form'));
     const started = heard(legacy, 'checkout:started');
     const checkout = engine.attach((ctx) =>
@@ -486,7 +490,7 @@ describe('0.4.x event names', () => {
   it('payment events: a card token, a refused or failed order, and wallet orders', async () => {
     const { engine } = makeEngine();
     await engine.start();
-    const legacy = legacyEvents(engine);
+    const legacy = legacyEvents(engine, () => translator);
     legacyCheckoutEvents(engine, document.createElement('form'));
     const tokenized = heard(legacy, 'payment:tokenized');
     const started = heard(legacy, 'express-checkout:started');
@@ -543,7 +547,7 @@ describe('0.4.x event names', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { engine } = makeEngine();
     await engine.start();
-    const legacy = legacyEvents(engine);
+    const legacy = legacyEvents(engine, () => translator);
     legacyCheckoutEvents(engine, document.createElement('form'));
     const one = heard(legacy, 'payment:tokenized');
     const two = heard(legacy, 'payment:tokenized');
@@ -574,7 +578,7 @@ describe('0.4.x event names', () => {
       const { engine } = makeEngine({ fetch: fakeApi({ order }).fetch });
       await engine.start();
       await engine.cart.addItem(1);
-      const legacy = legacyEvents(engine);
+      const legacy = legacyEvents(engine, () => translator);
       legacyCheckoutEvents(engine, document.createElement('form'));
       const started = heard(legacy, 'express-checkout:started');
       const completed = heard(legacy, 'checkout:express-completed');
@@ -615,7 +619,7 @@ describe('0.4.x event names', () => {
         <div id="second" data-next-upsell data-next-package-id="9"><button data-next-upsell-action="skip">No</button></div>`;
       const { engine } = makeEngine({ fetch: api.fetch, params: { ref_id: 'R1' }, session: sessionStorage });
       await engine.start();
-      const legacy = legacyEvents(engine);
+      const legacy = legacyEvents(engine, () => translator);
       const names = ['initialized', 'viewed', 'adding', 'accepted', 'added', 'skipped', 'error'] as const;
       const seen = Object.fromEntries(names.map((n) => [n, heard(legacy, `upsell:${n}`)]));
       const failed = heard(legacy, 'action:failed');

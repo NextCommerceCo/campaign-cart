@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { legacyCheckoutEvents } from '../../src/compat/checkout';
+import * as translator from '../../src/compat/legacy';
 import { legacyEvents } from '../../src/compat/legacy/registry';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -35,7 +36,7 @@ async function page(api: FakeApiOptions = {}, lines = true) {
   const { engine } = makeEngine({ fetch: fakeApi(api).fetch });
   await engine.start();
   if (lines) await engine.cart.addItem(1);
-  const legacy = legacyEvents(engine);
+  const legacy = legacyEvents(engine, () => translator);
   legacyCheckoutEvents(engine, document.createElement('form'));
   const heard: Array<[string, unknown]> = [];
   for (const name of NAMES) legacy.on(name, (data) => heard.push([name, data]));

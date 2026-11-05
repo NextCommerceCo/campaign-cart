@@ -1,36 +1,12 @@
 import { operations } from '../../engine/cart/cart';
 import { cardQuantity, pickedCard } from '../../engine/cart/selectors';
-import type { EngineEvent, EventMap, EventName } from '../../engine/events/bus';
+import type { EngineEvent, EventMap } from '../../engine/events/bus';
 import type { CartChange } from '../../engine/events/carts';
 import type { Selector } from '../../engine/events/selectors';
 import type { State } from '../../engine/types';
 import { legacyCart, shippingOption } from './payloads';
+import { firstPackage, type From, lastClick, legacyEvent, type LegacyEvent, type LegacyState } from './registry';
 
-/** @deprecated Use `data-next-selector-id`. */
-export function legacySelectorId(el: Element): string | null {
-  return el.getAttribute('data-next-id');
-}
-
-export type From<K extends EventName> = { [N in K]: EngineEvent<N> }[K];
-
-/** The state a 0.4.x payload is made from, and the package each selector had picked before its latest pick. */
-export type LegacyState = State & { previousPick(selectorId: string): number | undefined };
-
-/** @deprecated How a 0.4.x `next.on` name is made from the events. */
-export interface LegacyEvent<K extends EventName = EventName> {
-  from: K[];
-  when?(e: From<K>, state: LegacyState): boolean;
-  /** The 0.4.x payload; with `each`, a list of payloads, one call each. */
-  data(e: From<K>, state: LegacyState): unknown;
-  each?: boolean;
-  /** At most one call per listener. */
-  once?: boolean;
-  /** A listener added later also gets this page's earlier ones. */
-  replay?: boolean;
-}
-
-/** @deprecated Types a {@link LegacyEvent} by the events it comes from. */
-export const legacyEvent = <K extends EventName>(spec: LegacyEvent<K>) => spec as unknown as LegacyEvent;
 const alias = legacyEvent;
 
 /** 0.4.43 sent one item event per cart action; none for a swap-mode selector's pick, emptying or replacing the cart. */
@@ -64,7 +40,6 @@ const onePackage = ({ selector_id, lines: [line, ...more] }: Selector) => ({
   selectorId: selector_id,
   ...(line && !more.length && { packageId: line.package_id, quantity: line.quantity }),
 });
-export const firstPackage = (s: Selector) => s.lines[0]?.package_id;
 const selectorQuantity = ({ selector_id }: Selector, { selectors }: State) => {
   const state = selectors[selector_id];
   const card = pickedCard(state);
@@ -94,9 +69,6 @@ const COUPON_TEXTS: Record<EventMap['coupon.denied']['reason'], string> = {
   check_failed: "Couldn't check the coupon. Try again.",
 };
 
-/** The click being dispatched, if any: 0.4.x `action:success` named the add-to-cart button whose click changed the cart. */
-let click: Event | undefined;
-export const noteClick = (e: Event) => void (click = e);
 /** Each click's first `cart.added`: 0.4.43 sent one `action:success` per button, whatever its change set off. */
 const firstAdded = new WeakMap<Event, EngineEvent>();
 
@@ -127,6 +99,7 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     each: true,
     data: (e) => {
       const added = e.name === 'cart.added';
+      const click = lastClick();
       if (added && click?.eventPhase) firstAdded.set(click, firstAdded.get(click) ?? e);
       const element = added
         ? firstAdded.get(click!) === e && (click!.target as Element).closest?.('[data-next-action="add-to-cart"]')
