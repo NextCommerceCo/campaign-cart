@@ -10,7 +10,7 @@
  *      site root, and jumps to the *same page* in the version the reader picks.
  *   2. Shows a banner when the reader is on an older version than the current release,
  *      or on one of the unreleased folders (`main/`, `dev/`).
- *   3. Splits the sidebar into sections (Guides, Attributes, Events, JavaScript API) with
+ *   3. Splits the sidebar into sections (Guides, Attributes, Events, Analytics, JavaScript API) with
  *      a switcher above it, so the sidebar shows only the section the page is in.
  *
  * That is all it does.
@@ -331,6 +331,14 @@
       icon: '<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>',
     },
     {
+      id: 'analytics',
+      name: 'Analytics',
+      blurb: 'GA4 tracking events',
+      path: 'analytics',
+      groups: ['Analytics Reference'],
+      icon: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    },
+    {
       id: 'api',
       name: 'JavaScript API',
       blurb: 'window.next and types',
@@ -356,6 +364,7 @@
   function sectionOfPage(page) {
     if (page === 'attributes' || page.startsWith('attribute-reference/')) return 'attributes';
     if (page === 'events' || page.startsWith('event-reference/')) return 'events';
+    if (page === 'analytics' || page.startsWith('analytics-reference/')) return 'analytics';
     if (page === 'javascript-api') return 'api';
     return 'guides';
   }
@@ -532,6 +541,7 @@ ${SECTIONS.map(
 .cc-section-icon[data-cc-section='guides'] { --cc-hue: #2563eb; }
 .cc-section-icon[data-cc-section='attributes'] { --cc-hue: #ea580c; }
 .cc-section-icon[data-cc-section='events'] { --cc-hue: #db2777; }
+.cc-section-icon[data-cc-section='analytics'] { --cc-hue: #7c3aed; }
 .cc-section-icon[data-cc-section='api'] { --cc-hue: #059669; }
 .cc-section-menu {
   position: fixed; z-index: 60;

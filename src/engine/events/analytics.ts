@@ -69,7 +69,7 @@ export interface AnalyticsMap {
    * @group Carts
    */
   add_to_cart: Ecommerce & {
-    /** No package was added in this browser before. */
+    /** No package was added in this tab before. */
     first_in_session: boolean;
   };
   /**

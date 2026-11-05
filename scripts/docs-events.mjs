@@ -241,8 +241,9 @@ order: 0
 # Analytics events
 
 Every tracking event the SDK sends, under its GA4 name. \`next.analytics.on(name, (event) => …)\` receives
-one, \`'*'\` every one; each is also pushed to \`dataLayer\` in the 0.4.x format, as [Events](/events)
-describes. An event's \`params\` are the fields below; \`context\` is the same on every event.
+one, \`'*'\` every one; each is also pushed to \`dataLayer\` in the 0.4.x format, as
+[dataLayer (0.4.x)](/analytics-reference/data-layer) describes. [How analytics works](/analytics-reference/how-it-works)
+says when each is sent. An event's \`params\` are the fields below; \`context\` is the same on every event.
 
 ${index(events, ANALYTICS)}
 `;

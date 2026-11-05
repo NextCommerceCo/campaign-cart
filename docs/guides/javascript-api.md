@@ -12,7 +12,7 @@ added later gets it too).
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `next.version`                                            | SDK version                                                                                                                 |
 | `next.on(event, fn)`                                      | Listen to an [event](events.md), starting with the ones this page already sent; returns an unsubscribe function             |
-| `next.analytics.on(name, fn)`                             | Listen to a tracking event by its GA4 name, or `'*'` for every one ([Analytics](events.md#analytics))                       |
+| `next.analytics.on(name, fn)`                             | Listen to a tracking event by its GA4 name, or `'*'` for every one ([Analytics](analytics-reference/how-it-works.md))       |
 | `next.snapshot()`                                         | What the page shows now: `campaign`, `cart`, `checkout`, `order`, `selectors`, the same objects the events carry            |
 | `next.getState()`                                         | The SDK's internal state, for debugging; its shape changes between releases                                                 |
 | `next.context()`                                          | The page, campaign, session, attribution and browser now, as on tracking events                                             |
