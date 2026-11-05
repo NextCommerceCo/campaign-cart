@@ -8,9 +8,10 @@ order: 0.1
 
 The SDK turns what happens on a page into tracking events named like GA4's: `add_to_cart`,
 `begin_checkout`, `purchase`. It builds them from its own [events](/events), so they come at the
-same moments, and sends each one three ways: to `next.analytics.on`, to the 0.4.x
-[dataLayer](data-layer.md) for GTM, and to the NEXT campaign script. The SDK sends nothing to GA4,
-Meta or any other vendor itself; [Sending events on](sending-events.md) shows how.
+same moments, and sends each one to `next.analytics.on` and to the 0.4.x [dataLayer](data-layer.md)
+for GTM; the NEXT campaign script gets a `page_view`. The SDK sends nothing to GA4, Meta or any
+other vendor itself; [Providers](providers.md) lists what each gets and
+[Sending events on](sending-events.md) shows how to reach the rest.
 
 ![Tracking events across a funnel: the landing page sends page_view, view_item or view_item_list, and the cart events; the checkout sends begin_checkout, generate_lead, add_shipping_info, add_payment_info and purchase; an upsell page sends view_upsell, skip_upsell and upsell_purchase for the page before; the receipt sends upsell_purchase and any purchase still owed](tracking-funnel.svg)
 
@@ -78,25 +79,8 @@ first `add_to_cart` of the tab, for tags that should send only one AddToCart.
 
 ## Turning parts off
 
-Everything is on by default. The 0.4.x `nextConfig.analytics` still turns parts off:
-
-```html
-<script>
-  window.nextConfig = {
-    analytics: {
-      enabled: true,
-      providers: { nextCampaign: { enabled: false }, gtm: { enabled: false } },
-    },
-  };
-</script>
-```
-
-| Setting                                       | Effect                                                                                               |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `analytics.enabled: false`                    | No analytics at all: the chunk does not load and `next.analytics.on` receives nothing                |
-| `providers.nextCampaign.enabled: false`       | The NEXT campaign script is not added to the page                                                    |
-| `providers.gtm.enabled: false`                | Events stay out of `window.dataLayer`; they still reach `window.NextDataLayer`                       |
-| `providers.facebook`, `rudderstack`, `custom` | No longer built in: the SDK logs a warning. Send them through GTM or [a listener](sending-events.md) |
+Everything is on by default; `nextConfig.analytics` turns analytics or one provider off, and
+nothing for a provider that is off loads. See [Providers](providers.md).
 
 ## Debugging
 
