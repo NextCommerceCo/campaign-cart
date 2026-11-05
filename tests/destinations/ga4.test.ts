@@ -163,6 +163,7 @@ describe('startGa4', () => {
           name: 'view_item',
           tracking: 'product_viewed',
           event_id: 'ev-product_viewed',
+          payload: ga4Event(event('product_viewed'))!.params,
         },
       }),
       expect.objectContaining({ message: 'destination ga4 purchase sent' }),

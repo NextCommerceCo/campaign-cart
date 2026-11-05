@@ -154,6 +154,15 @@ export interface AnalyticsTrace {
   id?: string;
 }
 
+export interface DestinationTrace {
+  trace: 'destination';
+  destination: 'ga4' | 'meta' | 'rudderstack';
+  name: string;
+  tracking: TrackingName;
+  event_id: string;
+  payload: unknown;
+}
+
 export interface AnalyticsEvents {
   /** @internal One tracking event, for `next.analytics.on`. */
   analytics: TrackingEvent;

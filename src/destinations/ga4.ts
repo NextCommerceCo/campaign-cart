@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { TrackingEvent, TrackingName } from '../engine/events/analytics';
+import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { CartItem } from '../engine/events/carts';
 import type { OrderItem } from '../engine/events/orders';
 import { addDollars } from '../engine/format';
@@ -291,7 +291,8 @@ export function startGa4(engine: Engine): void {
           name: ga4.name,
           tracking: e.event_type,
           event_id: e.event_id,
-        });
+          payload: ga4.params,
+        } satisfies DestinationTrace);
       } catch (err) {
         engine.log.error('GA4 destination failed', err);
       }

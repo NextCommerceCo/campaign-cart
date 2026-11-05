@@ -32,6 +32,8 @@ button.item:hover{background:var(--accent)}
 .danger{color:var(--destructive)}
 hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .count{font-weight:600}
+.reach{display:inline-flex;gap:4px;margin-left:8px;vertical-align:-2px}.reach .icon,.dest .icon{width:14px;height:14px}
+.dest{display:inline-flex;align-items:center;gap:6px}
 .red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.dim,.time{color:var(--muted-foreground)}
 .panel{flex-direction:column;width:min(600px,calc(100vw - 40px));height:min(640px,calc(100vh - 100px));container:panel/inline-size}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}

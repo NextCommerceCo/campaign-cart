@@ -295,16 +295,22 @@ describe('debug tools', () => {
     $('.fab').click();
     menuItem('Analytics').click();
     const rows = [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
-    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/ ([a-z_]+) \{/)![1];
+    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/^\S+ ([a-z_]+)/)![1];
     expect(new Set(rows.map(name))).toEqual(
       new Set(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']),
     );
     expect(name(rows.at(-1)!)).toBe('page_viewed');
     const added = rows.find((d) => name(d) === 'product_added_to_cart')!;
-    expect(added.querySelector('summary')!.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart \{/);
+    expect(added.querySelector('summary')!.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart$/);
+    expect([...added.querySelectorAll<HTMLElement>(':scope > summary .reach .icon')].map((i) => i.title)).toContain(
+      'NextDataLayer',
+    );
     added.open = true;
-    expect(added.textContent).toContain(got[0]!.event_id);
-    expect(added.textContent).toContain('event_type "product_added_to_cart"');
+    const event = [...added.querySelectorAll<HTMLDetailsElement>(':scope > details')][0]!;
+    expect(event.querySelector('summary')!.textContent).toMatch(/^next\.analytics\.on/);
+    event.open = true;
+    expect(event.textContent).toContain(got[0]!.event_id);
+    expect(event.textContent).toContain('event_type "product_added_to_cart"');
   });
 
   it('lists every SDK element with what it resolves to', async () => {

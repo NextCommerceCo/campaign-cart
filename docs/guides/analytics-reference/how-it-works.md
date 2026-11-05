@@ -93,7 +93,8 @@ analytics off or one destination on or off, and nothing for a destination that i
 ## Debugging
 
 `?debug=1` opens the debug panel. Its Analytics tab lists each tracking event this page sent, newest
-first, with any problem on its row; open one for the event as `next.analytics.on` gets it.
+first, with the logo of each place it reached and any problem on its row; open one for what
+`next.analytics.on`, each data layer, GA4, Meta and RudderStack got.
 
 Every event, and every one the SDK chose not to send, is also a debug log line with its reason:
 

@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import type { TrackingEvent, TrackingName } from '../engine/events/analytics';
+import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { CartItem } from '../engine/events/carts';
 import type { OrderItem } from '../engine/events/orders';
 import { addDollars } from '../engine/format';
@@ -188,8 +188,9 @@ export function startMeta(engine: Engine, options: MetaOptions = {}): void {
           destination: 'meta',
           name: meta.name,
           tracking: e.event_type,
-          event_id: meta.event_id,
-        });
+          event_id: e.event_id,
+          payload: { params: meta.params, eventID: meta.event_id },
+        } satisfies DestinationTrace);
       } catch (err) {
         engine.log.error('Meta destination failed', err);
       }

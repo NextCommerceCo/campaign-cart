@@ -1,4 +1,5 @@
 import type { Engine } from '../../engine/engine';
+import type { DestinationTrace } from '../../engine/events/analytics';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -59,7 +60,8 @@ export function startRudderStack(engine: Engine, options: Pick<RudderStackOption
               name: name ?? c.call,
               tracking: e.event_type,
               event_id: e.event_id,
-            });
+              payload: c,
+            } satisfies DestinationTrace);
           } catch (err) {
             engine.log.error('RudderStack destination failed', err);
           }

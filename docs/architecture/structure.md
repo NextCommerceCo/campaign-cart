@@ -187,8 +187,9 @@ src/
                                    Fill test details call engine.checkout
     picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
                                    Add and the stepper set the quantity through engine.cart
-    analytics.ts                   the Analytics tab: setup notes, then this page's tracking events with their problems, each
-                                   opening to its envelope; the problems and notes Issues lists
+    analytics.ts                   the Analytics tab: setup notes, then this page's tracking events with the logo of each place
+                                   they reached and their problems, each opening to the envelope, the data layer pushes and
+                                   what each destination's trace says it sent; the problems and notes Issues lists
     legacy.ts                      the attributes v2 name of each earlier attribute, shown in the Elements tab
     providers.ts                   setup notes on the destinations, engine event → tracking event / dl_* wiring (checked
                                    against compat/analytics/), the checks each tracking event's object passes

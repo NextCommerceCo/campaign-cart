@@ -486,6 +486,7 @@ describe('startRudderStack', () => {
           name: 'Product Viewed',
           tracking: 'product_viewed',
           event_id: 'ev-product_viewed',
+          payload: { call: 'track', name: 'Product Viewed', properties: ra.track.mock.calls[1]![1] },
         },
       }),
       expect.objectContaining({ message: 'destination rudderstack identify sent' }),

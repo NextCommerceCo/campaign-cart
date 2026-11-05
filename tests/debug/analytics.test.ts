@@ -7,6 +7,7 @@ import { nodes } from '../../src/debug/view';
 import { GA4 } from '../../src/destinations/ga4';
 import {
   type AnalyticsTrace,
+  type DestinationTrace,
   OBJECTS,
   type TrackingEvent,
   type TrackingMap,
@@ -93,12 +94,23 @@ function setup(config: ProviderConfig = ON) {
       r.textContent!.replace(/^\d\d:\d\d:\d\d\.\d{3} /, '').replace(/ \{.*\}$/, ''),
     );
   const notes = () => [...root.querySelectorAll(':scope > .summary')].map((n) => n.textContent);
+  const row = (nth: number) => root.querySelectorAll<HTMLDetailsElement>(':scope > details')[nth]!;
+  const logos = (nth: number) =>
+    [...row(nth).querySelectorAll<HTMLElement>(':scope > summary .reach .icon')].map((i) => i.title);
   const open = (nth: number) => {
-    const row = root.querySelectorAll<HTMLDetailsElement>(':scope > details')[nth]!;
-    row.open = true;
-    return row.textContent!;
+    row(nth).open = true;
+    const parts = [...row(nth).querySelectorAll<HTMLDetailsElement>(':scope > details')];
+    const label = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.replace(/ [{[].*$/, '');
+    return {
+      sections: parts.map(label),
+      section: (start: string) => {
+        const part = parts.find((p) => label(p).startsWith(start))!;
+        part.open = true;
+        return part.textContent!;
+      },
+    };
   };
-  return { engine, root, flow, paint, decide, send, rows, notes, open };
+  return { engine, root, flow, paint, decide, send, rows, notes, logos, open };
 }
 
 afterEach(() => {
@@ -222,19 +234,45 @@ describe('analytics tab', () => {
     win.nextCampaign = { event() {} };
   });
 
-  it('lists the events sent on this page, newest first, each opening to the event next.analytics.on gets', () => {
-    const { engine, paint, send, decide, rows, notes, open } = setup();
+  it('lists the events sent on this page, newest first, each opening to what next.analytics.on and each destination got', () => {
+    const { engine, paint, send, decide, rows, notes, logos, open } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
     decide('sdk.ready', 'product_viewed', false, 'No package on the page');
     send('cart.calculated', 'cart_updated', CART, 'cu');
+    const ga4: DestinationTrace = {
+      trace: 'destination',
+      destination: 'ga4',
+      name: 'update_cart',
+      tracking: 'cart_updated',
+      event_id: 'cu',
+      payload: { currency: 'USD', value: 49 },
+    };
+    engine.log.debug('destination ga4 update_cart sent', ga4);
+    engine.log.debug('destination meta AddToCart sent', {
+      ...ga4,
+      destination: 'meta',
+      name: 'AddToCart',
+      payload: { params: { value: 49 }, eventID: 'cu' },
+    });
     paint();
     expect(notes()).toEqual(['2 events sent on this page, newest first']);
     expect(rows()).toEqual(['cart_updated', 'page_viewed']);
-    const event = open(0);
+    expect(logos(0)).toEqual(['NextDataLayer', 'GTM dataLayer', 'GA4', 'Meta']);
+    expect(logos(1)).toEqual(['NextDataLayer', 'GTM dataLayer']);
+    const row = open(0);
+    expect(row.sections).toEqual([
+      'next.analytics.on',
+      'NextDataLayerdl_cart_updated',
+      'GTM dataLayerdl_cart_updated',
+      'GA4update_cart',
+      'MetaAddToCart',
+    ]);
+    const event = row.section('next.analytics.on');
     expect(event).toContain('event_id "cu"');
     expect(event).toContain('session_id "s1"');
-    expect(event).toContain('context');
+    expect(row.section('GA4')).toContain('value 49');
+    expect(row.section('Meta')).toContain('eventID "cu"');
   });
 
   it('shows an incomplete object and a push that did not arrive on its row, and in Issues', () => {
@@ -279,7 +317,9 @@ describe('analytics tab', () => {
     decide('promotion.viewed', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
     expect(rows()).toEqual(['dl_exit_intent_shown']);
-    expect(open(0)).toContain('event "dl_exit_intent_shown"');
+    const row = open(0);
+    expect(row.sections).toEqual(['NextDataLayerdl_exit_intent_shown', 'GTM dataLayerdl_exit_intent_shown']);
+    expect(row.section('NextDataLayer')).toContain('event_id "x1"');
   });
 
   it('puts setup notes on top, and only the warnings in Issues', () => {

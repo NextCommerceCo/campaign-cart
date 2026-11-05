@@ -159,9 +159,16 @@ describe('startMeta', () => {
           name: 'ViewContent',
           tracking: 'product_viewed',
           event_id: 'ev-product_viewed',
+          payload: { params: metaEvent(event('product_viewed'))!.params, eventID: 'ev-product_viewed' },
         },
       }),
-      expect.objectContaining({ message: 'destination meta Purchase sent' }),
+      expect.objectContaining({
+        message: 'destination meta Purchase sent',
+        data: expect.objectContaining({
+          event_id: '1001',
+          payload: expect.objectContaining({ eventID: 'shop-1001' }),
+        }),
+      }),
     ]);
   });
 
