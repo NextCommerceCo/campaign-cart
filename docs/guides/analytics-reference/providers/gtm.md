@@ -1,14 +1,15 @@
 ---
-title: 'dataLayer (0.4.x)'
-group: 'Analytics Reference'
-order: 0.3
+title: 'GTM'
+group: 'Analytics Reference/Providers'
+order: 0.21
 ---
 
-# dataLayer (0.4.x)
+# GTM
 
-**Deprecated, and still sent.** Each tracking event is also pushed in the 0.4.x Elevar format, for
-GTM containers and forwarders built on it. New code listens with `next.analytics.on` (see
-[Sending events on](sending-events.md)).
+Built in. Each standard event is pushed to `dataLayer` in the 0.4.x Elevar format, for GTM
+containers and forwarders built on it. The SDK does not load GTM: the container is the page's own
+tag. The format is **deprecated, and still sent**; new code listens with `next.analytics.on` (see
+[Providers](overview.md)).
 
 ## Where pushes go
 
@@ -23,24 +24,7 @@ GTM containers and forwarders built on it. New code listens with `next.analytics
 
 ## Names
 
-| `next.analytics.on` | `dataLayer`            |
-| ------------------- | ---------------------- |
-| `page_view`         | `dl_user_data`         |
-| `view_item`         | `dl_view_item`         |
-| `view_item_list`    | `dl_view_item_list`    |
-| `add_to_cart`       | `dl_add_to_cart`       |
-| `remove_from_cart`  | `dl_remove_from_cart`  |
-| `update_cart`       | `dl_cart_updated`      |
-| `begin_checkout`    | `dl_begin_checkout`    |
-| `add_shipping_info` | `dl_add_shipping_info` |
-| `add_payment_info`  | `dl_add_payment_info`  |
-| `generate_lead`     | `dl_generate_lead`     |
-| `purchase`          | `dl_purchase`          |
-| `upsell_purchase`   | `dl_upsell_purchase`   |
-| `view_upsell`       | `dl_viewed_upsell`     |
-| `skip_upsell`       | `dl_skipped_upsell`    |
-| `view_promotion`    | `dl_view_promotion`    |
-| `select_promotion`  | `dl_select_promotion`  |
+<!-- gtm-events -->
 
 `dl_purchase` is pushed once per order, only once it is paid.
 
@@ -71,6 +55,21 @@ Some events add 0.4.x fields of their own:
 | `dl_purchase` / `dl_upsell_purchase`     | `pageType: 'purchase'` / `'upsell'`; the upsell's details as `upsell_metadata`              |
 | `dl_viewed_upsell` / `dl_skipped_upsell` | `order_id`, `page_path` (viewed), and `upsell` with `package_id` and `package_name`         |
 | `dl_generate_lead`                       | `currency`, `value` and `lead_source` at the top level                                      |
+
+## GA4 names instead
+
+A container built on GA4 names can get the standard events as they are, with each event's
+`ecommerce` cleared first:
+
+```js
+next.analytics.on('*', ({ name, id, params }) => {
+  window.dataLayer.push({ ecommerce: null });
+  window.dataLayer.push({ event: name, event_id: id, ecommerce: params });
+});
+```
+
+Doing both sends each event twice to the container. Turn the `dl_*` pushes off with
+`providers.gtm.enabled: false` (they still reach `window.NextDataLayer`).
 
 ## Exit-intent popup
 

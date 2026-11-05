@@ -7,9 +7,11 @@
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
  * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
- * The Analytics Reference is the same for `AnalyticsMap`: a page per analytics event under
- * `docs/.staged/analytics-reference/`, its params from `docs/analytics-examples.json`
- * (`tests/analytics-examples.test.ts`), and `analytics.md` listing them. Nothing here is committed.
+ * The Analytics Reference is the same for `AnalyticsMap`: a page per standard event under
+ * `docs/.staged/analytics-reference/`, its triggers, params and `dataLayer` push from
+ * `docs/analytics-examples.json` (`tests/analytics-examples.test.ts`), and `analytics.md` listing
+ * them. The provider pages' `<!-- … -->` markers get the tables built from the same data and from
+ * `GA4` and `META` below. Nothing here is committed.
  */
 import { readdirSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -25,6 +27,35 @@ const SOURCES = [
   'src/engine/types.ts',
 ];
 const MARKER = '<!-- event-index -->';
+const PROVIDERS = '/analytics-reference/providers';
+
+/** An internal engine event that triggers a standard event, as the public event it follows. */
+const INTERNAL_TRIGGERS = { 'shipping.settled': ['shipping.selected', ', once the cart is priced with it'] };
+
+/** How GA4 takes each standard event under its own name: `automatic` is GA4's own page_view. */
+const GA4 = {
+  page_view: 'automatic',
+  update_cart: 'custom',
+  upsell_purchase: 'custom',
+  view_upsell: 'custom',
+  skip_upsell: 'custom',
+};
+const ga4Of = (name) => GA4[name] ?? 'recommended';
+const GA4_KIND = {
+  recommended: 'a recommended event',
+  custom: 'a custom event',
+  automatic: 'sent by `gtag` itself; leave it out',
+};
+
+/** The Meta pixel standard event each standard event maps to in the Meta recipe. */
+const META = {
+  view_item: 'ViewContent',
+  add_to_cart: 'AddToCart',
+  begin_checkout: 'InitiateCheckout',
+  add_payment_info: 'AddPaymentInfo',
+  generate_lead: 'Lead',
+  purchase: 'Purchase',
+};
 const WHEN = ['@priced', '@campaign'];
 const PRESENT =
   '**Present**: `always`; `optional` when it may be missing; `campaign` once the campaign is loaded; `priced` once the server priced the cart.';
@@ -197,14 +228,16 @@ const CONTEXT = {
   browser: { user_agent: 'Mozilla/5.0 …', language: 'en-US', device_type: 'desktop' },
 };
 
-function analyticsPage(event, order, example) {
+function analyticsPage(event, order, example, linkTo) {
   const envelope = {
     name: event.name,
     id: '3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e',
     time: '2026-11-04T08:30:00.000Z',
-    params: example,
+    params: example.params,
     context: CONTEXT,
   };
+  const triggers = example.triggers.map(linkTo).join(', ');
+  const meta = META[event.name];
   return `---
 title: '${event.name}'
 group: '${ANALYTICS}/${event.group}'
@@ -219,6 +252,8 @@ ${event.summary}
 next.analytics.on('${event.name}', (event) => {});
 \`\`\`
 
+**Triggered by** ${triggers}.
+
 ## Params
 
 ${tables()(fieldsOf(event.member.type))}
@@ -228,25 +263,95 @@ ${tables()(fieldsOf(event.member.type))}
 \`\`\`json
 ${JSON.stringify(envelope, null, 2)}
 \`\`\`
+
+## Sent to
+
+| Provider | As |
+| --- | --- |
+| [GTM](${PROVIDERS}/gtm) | \`${example.dataLayer.event}\` on \`dataLayer\` and \`NextDataLayer\`, below |
+| [NEXT campaign script](${PROVIDERS}/next-campaign) | ${event.name === 'page_view' ? '`page_view` with `{ title, url }`' : 'Not sent'} |
+| [GA4](${PROVIDERS}/ga4), from a listener | \`${event.name}\`, ${GA4_KIND[ga4Of(event.name)]} |
+| [Meta pixel](${PROVIDERS}/meta), from a listener | ${meta ? `\`${meta}\`` : 'Not sent'} |
+
+### dataLayer push
+
+\`\`\`json
+${JSON.stringify(example.dataLayer, null, 2)}
+\`\`\`
 `;
 }
 
 function analyticsOverview(events) {
   return `---
-title: 'Analytics events'
+title: 'Standard events'
 group: '${ANALYTICS}'
 order: 0
 ---
 
-# Analytics events
+# Standard events
 
-Every tracking event the SDK sends, under its GA4 name. \`next.analytics.on(name, (event) => …)\` receives
-one, \`'*'\` every one; each is also pushed to \`dataLayer\` in the 0.4.x format, as
-[dataLayer (0.4.x)](/analytics-reference/data-layer) describes. [How analytics works](/analytics-reference/how-it-works)
-says when each is sent. An event's \`params\` are the fields below; \`context\` is the same on every event.
+The SDK's own tracking events, one shape for every page: \`{ name, id, time, params, context }\`.
+They are the contract, like [Events](/events): each [provider](${PROVIDERS}/overview) takes them and
+remaps them to its own format. Names follow GA4 ecommerce where GA4 has one.
+\`next.analytics.on(name, (event) => …)\` receives one, \`'*'\` every one.
+[How analytics works](/analytics-reference/how-it-works) says how each is sent; each event's page has
+what triggers it, its \`params\`, and what each provider gets.
 
 ${index(events, ANALYTICS)}
 `;
+}
+
+/** Each provider page's markers and the markdown they become. */
+function providerTables(tracked, examples) {
+  const row = (cells) => `| ${cells.join(' | ')} |`;
+  const link = (e) => `[\`${e.name}\`](${linkOf(e, ANALYTICS)})`;
+  const mapped = tracked.filter((e) => META[e.name]);
+  return {
+    'gtm.md': {
+      '<!-- gtm-events -->': [
+        row(['Standard event', '`dataLayer`']),
+        row(['---', '---']),
+        ...tracked.map((e) => row([link(e), `\`${examples[e.name].dataLayer.event}\``])),
+      ].join('\n'),
+    },
+    'ga4.md': {
+      '<!-- ga4-events -->': [
+        row(['Standard event', 'In GA4']),
+        row(['---', '---']),
+        ...tracked.map((e) => row([link(e), GA4_KIND[ga4Of(e.name)]])),
+      ].join('\n'),
+    },
+    'meta.md': {
+      '<!-- meta-events -->': [
+        row(['Standard event', 'Meta event']),
+        row(['---', '---']),
+        ...mapped.map((e) => row([link(e), `\`${META[e.name]}\``])),
+      ].join('\n'),
+      '<!-- meta-recipe -->': `\`\`\`js
+const META = {
+${mapped.map((e) => `  ${e.name}: '${META[e.name]}',`).join('\n')}
+};
+
+next.analytics.on('*', ({ name, id, params }) => {
+  const event = META[name];
+  if (!event) return;
+  const items = params.items ?? [];
+  fbq(
+    'track',
+    event,
+    {
+      value: params.value,
+      currency: params.currency,
+      content_ids: items.map((item) => item.item_id),
+      contents: items.map((item) => ({ id: item.item_id, quantity: item.quantity })),
+      content_type: 'product',
+    },
+    { eventID: id },
+  );
+});
+\`\`\``,
+    },
+  };
 }
 
 function index(events, root = GROUP) {
@@ -290,6 +395,12 @@ export async function stageEventReference(root, out) {
     const first = events.findIndex((e) => e.group === group) + 1;
     if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
   }
+  const linkTo = (name) => {
+    const event = events.find((e) => e.name === name);
+    if (event) return `[\`${name}\`](${linkOf(event)})`;
+    if (name in INTERNAL_TRIGGERS) return linkTo(INTERNAL_TRIGGERS[name][0]) + INTERNAL_TRIGGERS[name][1];
+    throw new Error(`docs-events: ${name} triggers an analytics event but has no Event Reference page`);
+  };
   const overview = join(out, 'events.md');
   const staged = await readFile(overview, 'utf8');
   if (!staged.includes(MARKER)) throw new Error(`docs-events: ${MARKER} is missing from docs/guides/events.md`);
@@ -306,8 +417,17 @@ export async function stageEventReference(root, out) {
       throw new Error(`docs-events: no analytics example for ${event.name}; run UPDATE_DOCS=1 npm test`);
     const file = join(out, slugifyPath([ANALYTICS, event.group]), `${event.name}.md`);
     await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, analyticsPage(event, i + 1, analyticsExamples[event.name]));
+    await writeFile(file, analyticsPage(event, i + 1, analyticsExamples[event.name], linkTo));
   }
   await writeFile(join(out, 'analytics.md'), analyticsOverview(tracked));
+  for (const [page, markers] of Object.entries(providerTables(tracked, analyticsExamples))) {
+    const file = join(out, slugifyPath([ANALYTICS]), 'providers', page);
+    let staged = await readFile(file, 'utf8');
+    for (const [marker, markdown] of Object.entries(markers)) {
+      if (!staged.includes(marker)) throw new Error(`docs-events: ${marker} is missing from ${file}`);
+      staged = staged.replace(marker, markdown);
+    }
+    await writeFile(file, staged);
+  }
   return { events: events.length, analytics: tracked.length };
 }

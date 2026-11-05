@@ -1,9 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { startAnalytics } from '../src/analytics';
+import { NAMES as DATA_LAYER } from '../src/compat/analytics';
 import { createCheckout } from '../src/checkout/state/checkout';
 import type { Engine } from '../src/engine/engine';
 import type { AnalyticsName } from '../src/engine/events/analytics';
+import { WIRING } from '../src/debug/providers';
 import { createOrder } from '../src/order/state';
 import { fakeApi, json } from './fixtures/api';
 import { flush, makeEngine } from './fixtures/engine';
@@ -12,7 +14,7 @@ import { fakeRules } from './fixtures/rules';
 import { MemoryStorage } from './fixtures/storage';
 
 const FILE = 'docs/analytics-examples.json';
-const OPTIONS = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false, dataLayer: false };
+const OPTIONS = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false, dataLayer: true };
 
 const NAMES: Record<AnalyticsName, true> = {
   page_view: true,
@@ -48,12 +50,30 @@ async function page(html: string, engine = makeEngine({ local: new MemoryStorage
   return engine;
 }
 
+/** The fields that differ on every run, fixed so the example stays put. */
+const STABLE = {
+  event_id: '3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e',
+  event_time: '2026-11-04T08:30:00.000Z',
+  campaign_session_id: '0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d',
+};
+
+type Push = { event?: string; attribution: { metadata: object } };
+const win = window as Window & { dataLayer?: Push[] };
+
+const dataLayerPush = (name: AnalyticsName) => {
+  const push = win.dataLayer!.find((p) => p.event === DATA_LAYER[name]);
+  if (!push) return undefined;
+  const metadata = { ...push.attribution.metadata, sdk_version: OPTIONS.version, conversion_timestamp: 1793781000000 };
+  return JSON.parse(JSON.stringify({ ...push, ...STABLE, attribution: { ...push.attribution, metadata } }));
+};
+
 afterEach(() => {
   document.body.innerHTML = '';
 });
 
 describe('analytics examples', () => {
-  it('records the params of every analytics event, as the Analytics Reference shows them', async () => {
+  it('records the params, triggers and dataLayer push of every analytics event, as the Analytics Reference shows them', async () => {
+    win.dataLayer = [];
     await page('<div data-next-package-id="1"></div><div data-next-package-id="2"></div>');
     await page('<div data-next-package-id="1"></div>');
 
@@ -95,7 +115,17 @@ describe('analytics examples', () => {
     upsell.events.emit('upsell.skipped', { ref_id: 'R1', page: '/upsell/', lines: [{ package_id: 3, quantity: 1 }] });
 
     expect(Object.keys(NAMES).filter((name) => !(name in examples))).toEqual([]);
-    const ordered = Object.fromEntries(Object.keys(NAMES).map((name) => [name, examples[name]]));
+    const ordered = Object.fromEntries(
+      (Object.keys(NAMES) as AnalyticsName[]).map((name) => [
+        name,
+        {
+          triggers: WIRING.find((w) => w.ga === name)?.from ?? [],
+          params: examples[name],
+          dataLayer: dataLayerPush(name),
+        },
+      ]),
+    );
+    expect(Object.entries(ordered).filter(([, e]) => !e.dataLayer || !e.triggers.length)).toEqual([]);
     if (process.env.UPDATE_DOCS || !existsSync(FILE)) writeFileSync(FILE, `${JSON.stringify(ordered, null, 2)}\n`);
     expect(JSON.parse(readFileSync(FILE, 'utf8'))).toEqual(ordered);
   });
