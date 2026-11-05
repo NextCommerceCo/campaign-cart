@@ -11,15 +11,9 @@ import type { EventMap, EventName, InternalEventName } from './engine/events/bus
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
 import type { Campaign } from './engine/types';
-import {
-  announceLegacyReady,
-  legacyAnalytics,
-  legacyEvents,
-  readLegacyAnalytics,
-  legacyApi,
-  type LegacyApi,
-  removeLegacyPersonalData,
-} from './compat/legacy';
+import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
+import { legacyEvents } from './compat/legacy/registry';
+import { legacyAnalytics, readLegacyAnalytics, removeLegacyPersonalData } from './compat/legacy/globals';
 
 declare const __VERSION__: string;
 

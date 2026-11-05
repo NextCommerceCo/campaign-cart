@@ -17,7 +17,6 @@ const LAZY: Record<string, string[]> = {
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
-  'compat/legacy.ts': 653,
   'debug/analytics.ts': 583,
   'checkout/state/checkout.ts': 306,
   'debug/index.ts': 437,

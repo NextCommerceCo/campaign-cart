@@ -295,7 +295,7 @@ shipped CSS), `data-next-catalog-component` (54), `data-next-content` (9), `data
 ## Events
 
 `next.on` takes 59 of the 75 0.4.43 `EventMap` keys, each made from the new events at the moment
-0.4.43 sent it, with its 0.4.x payload: `src/compat/legacy.ts` has the boot chunk's, and
+0.4.43 sent it, with its 0.4.x payload: `src/compat/legacy/events.ts` has the boot chunk's, and
 `compat/checkout.ts` and `compat/order.ts` add the checkout's and the order's when those chunks
 load. Page moments no event marks (`checkout:form-initialized`, `checkout:payment-ready`,
 `address:fields-rendered`, `upsell:initialized`, `timer:expired`, `accordion:*`,

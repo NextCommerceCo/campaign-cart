@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { legacyCheckoutEvents } from '../../src/compat/checkout';
-import { legacyEvents } from '../../src/compat/legacy';
+import { legacyEvents } from '../../src/compat/legacy/registry';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { fakeRules } from '../fixtures/rules';

@@ -177,7 +177,7 @@ queued across a redirect.
 
 Each event's payload and when it fires is in `EventMap` (`src/engine/events/`, one file per event group), which the Event
 Reference is generated from; `docs/guides/events.md` explains the model. Names are
-`namespace.action` with one dot; 0.4.x names are made from them in `src/compat/` (`legacy.ts`, and
+`namespace.action` with one dot; 0.4.x names are made from them in `src/compat/` (`legacy/events.ts`, and
 `checkout.ts` / `order.ts` for their chunks' events).
 `next.on` takes every event but `campaign.loaded` and `analytics`, and replays the page's
 earlier ones from the last 100.

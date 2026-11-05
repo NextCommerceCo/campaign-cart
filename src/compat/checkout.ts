@@ -4,7 +4,8 @@ import type { Checkout } from '../engine/events/checkout';
 import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
 import type { AddressSuggestion } from '../checkout/state/types';
-import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy';
+import { type From, legacyEvent } from './legacy/events';
+import { addLegacyEvents, legacyFire } from './legacy/registry';
 
 /** @deprecated Page field names. Use the API names: `first_name`, `last_name`, `line1`, `line2`, `state`, `postcode`, `phone_number`. */
 export const LEGACY_FIELDS: Record<string, string> = {

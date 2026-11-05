@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../../src/bindings';
-import { legacyEvents } from '../../src/compat/legacy';
+import { legacyEvents } from '../../src/compat/legacy/registry';
 import { bindOrder } from '../../src/order';
 import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';

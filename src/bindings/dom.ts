@@ -3,7 +3,7 @@ import type { Engine } from '../engine/engine';
 import { format, truthy, type Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
 import { resolve } from '../engine/values';
-import { legacySelectorId } from '../compat/legacy';
+import { legacySelectorId } from '../compat/legacy/events';
 
 const VISIBLE = 0.5;
 

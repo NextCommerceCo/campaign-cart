@@ -27,7 +27,8 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 4. **Imports go one way** (table below), enforced by `tests/architecture.test.ts`.
 5. **Named exports only.** `index.ts` only as a chunk entry, never a re-export barrel.
    Enforced by the same test.
-6. **Compat code lives in `compat/`, one file per chunk that uses it.** Each item is
+6. **Compat code lives in `compat/`, one file (or one folder, once it passes the line limit) per chunk that
+   uses it.** Each item is
    `@deprecated` with its replacement. A file there still ships in the chunk that imports it,
    so the folder decides ownership, not loading. Dropping 0.4.x support = deleting `compat/`.
 7. **`src/` root holds the entries** `loader.ts`, `boot.ts` and `config.ts`. Every other
@@ -166,8 +167,10 @@ src/
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
-    legacy.ts          boot        window.next 0.4.x API, selector ids, 0.4.x event names and payloads (lazy chunks
-                                   add their own with addLegacyEvents)
+    legacy/            boot        events.ts: selector ids, the 0.4.x event names made from the new events;
+                                   payloads.ts: their 0.4.x cart and item shapes; registry.ts: next.on for 0.4.x names
+                                   (lazy chunks add theirs with addLegacyEvents); api.ts: the window.next 0.4.x API,
+                                   nextReady; globals.ts: nextConfig.analytics, the old SDK's stored personal data
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
     widgets.ts         widgets     deprecated page widgets 0.4.x pages rely on: accordion, tooltip, scroll hint, countdown
     checkout.ts        checkout    page field names, os-* names, old config (express checks), step guard,
@@ -194,13 +197,13 @@ src/
 | File                      | May import                                                                                            |
 | ------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                     |
-| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`                                             |
+| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`                                              |
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`              |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                    |
 | `analytics/*`             | `engine/*`, `compat/analytics.ts`                                                                     |
 | `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
 | `compat/*`                | `engine/*`, `compat/*`; `compat/analytics.ts` also `analytics/ecommerce.ts`                           |
-| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy.ts`; lazy chunks only via `import()`            |
+| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`; lazy chunks only via `import()`             |
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 

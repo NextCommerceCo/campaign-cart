@@ -1,7 +1,8 @@
 import type { Engine } from '../engine/engine';
 import type { EventMap } from '../engine/events/bus';
 import type { Promotion } from '../engine/events/promotions';
-import { addLegacyEvents, type From, legacyEvent, legacyFire, type LegacyPopup, legacyRegistry } from './legacy';
+import { type From, legacyEvent } from './legacy/events';
+import { addLegacyEvents, legacyFire, type LegacyPopup, legacyRegistry } from './legacy/registry';
 
 export interface ExitIntentOptions {
   id?: string;

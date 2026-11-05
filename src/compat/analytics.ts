@@ -2,7 +2,7 @@ import { currency, ecommerce, valueOf } from '../analytics/ecommerce';
 import { withoutQuery } from '../engine/attribution';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
-import { legacyRegistry } from './legacy';
+import { legacyRegistry } from './legacy/registry';
 import type { EngineEvent } from '../engine/events/bus';
 import type { AnalyticsEvent, AnalyticsName, AnalyticsTrace } from '../engine/events/analytics';
 import type { EventMap, EventName } from '../engine/events/bus';

@@ -26,7 +26,7 @@ publish a public link
 - Named exports only; `index.ts` only as a chunk entry.
 - `src/` root holds `loader.ts`, `boot.ts` and `config.ts`; every other feature lives in a folder.
 - Code over comments; explanations go in `docs/`. 0.4.x compatibility lives only in `src/compat/`,
-  one file per chunk that uses it, each `@deprecated`.
+  one file (or folder) per chunk that uses it, each `@deprecated`.
 - Tests mirror `src/` under `tests/`; headless tests (`tests/engine/**`, `tests/*/state*`) run in
   Node. Every bug fix adds a test that fails without it.
 - Log through `engine.log` (`src/engine/log.ts`); only it and `loader.ts`, which runs before an
