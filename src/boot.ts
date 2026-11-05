@@ -150,23 +150,28 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     (name: ActionName) =>
     (args?: ActionArgs): Promise<ActionResult> =>
       (attributes ??= import('./attributes')).then((m) => (made ??= m.pageActions(engine))[name](args));
-  const actions = Object.fromEntries(
-    (
-      [
-        'addItem',
-        'removeItem',
-        'setQuantity',
-        'select',
-        'clear',
-        'applyCoupon',
-        'removeCoupon',
-        'setShipping',
-        'acceptUpsell',
-        'skipUpsell',
-        'go',
-      ] as const
-    ).map((n) => [n, action(n)]),
-  ) as Actions;
+  const names = [
+    'addItem',
+    'removeItem',
+    'setQuantity',
+    'select',
+    'clear',
+    'applyCoupon',
+    'removeCoupon',
+    'setShipping',
+    'acceptUpsell',
+    'skipUpsell',
+    'selectVariant',
+    'go',
+  ] as const;
+  const actions = Object.fromEntries(names.map((n) => [n, action(n)])) as Actions;
+  const V2 = `[data-next-query],[data-next-each],[data-next-for],[data-next-selector],[data-next-option],[data-next-field]:not(form[data-next-checkout] *),${names.map((n) => `[data-next-action="${n}"]`)}`;
+  const v2In = (root: ParentNode) => !!root.querySelector(V2) || (root instanceof Element && root.matches(V2));
+  let v2: Promise<{ bind(root: ParentNode): void }> | undefined;
+  const bindV2 = () =>
+    (v2 ??= (attributes ??= import('./attributes')).then((m) =>
+      m.bindAttributes(document, engine, query, { deferred: bindings.deferred }),
+    ));
   const positional = <A extends unknown[], R>(legacy: (...a: A) => R, current: (args: ActionArgs) => unknown) =>
     ((...a: A) => (typeof a[0] === 'object' && a[0] !== null ? current(a[0] as ActionArgs) : legacy(...a))) as never;
 
@@ -205,7 +210,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     getState: () => engine.getState(),
     context: () => engine.eventContext(),
     log: engine.log,
-    bind: (root) => bindings.bind(root),
+    bind: (root) => {
+      bindings.bind(root);
+      if (v2 || v2In(root)) void bindV2().then((b) => b.bind(root));
+    },
     query: (path) => query.get(path),
     watch: (path, fn) => query.watch(path, fn),
     define: (type, name, derive, options) => query.define(type, name, derive, options),
@@ -280,6 +288,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
+      (v2In(document) || bindings.deferred.size > 0) && bindV2(),
       bindings.ready,
     ].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);

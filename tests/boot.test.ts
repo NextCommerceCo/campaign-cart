@@ -472,6 +472,44 @@ describe('boot', () => {
     expect(await next.actions.addItem({})).toMatchObject({ ok: false });
   });
 
+  it('loads attributes v2 for a page that has one, and binds it before the page is ready', async () => {
+    document.body.innerHTML = `
+      <div data-next-selector="main"><div data-next-option="one" data-next-items="1" data-next-selected>
+        <span id="price" data-next-query="total"></span></div></div>
+      <p id="saved" data-next-show="cart.quantity > 0">In your cart</p>
+      <p id="old" data-next-show="cart.hasItems">Old</p>`;
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    await vi.waitFor(() => expect(document.querySelector('#price')!.textContent).toBe('$49.00'));
+    expect(document.querySelector<HTMLElement>('#saved')!.hidden).toBe(false);
+    expect(document.querySelector<HTMLElement>('#old')!.style.display).toBe('');
+  });
+
+  it('accepts a v2 offer on a page opened with ?ref_id, and announces it like a 0.4.x offer', async () => {
+    history.replaceState(null, '', '/upsell/?ref_id=R1');
+    vi.stubGlobal('IntersectionObserver', undefined);
+    document.body.innerHTML = `<div data-next-option="offer" data-next-items="9">
+      <span id="offer-price" data-next-query="total"></span>
+      <button id="yes" data-next-action="acceptUpsell">Yes</button></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    const seen: string[] = [];
+    next.on('*', (_, e) => void seen.push(e.event_type));
+    await vi.waitFor(() => expect(document.querySelector('#offer-price')!.textContent).toBe('$4.50'));
+    await vi.waitFor(() => expect(seen).toContain('upsell.viewed'));
+    document.querySelector<HTMLElement>('#yes')!.click();
+    await vi.waitFor(() => expect(seen).toContain('upsell.accepted'));
+    expect(next.query('order.lines.1.upsell')).toBe(true);
+  });
+
+  it('leaves legacy pages without v2 markup on the 0.4.x bindings alone', async () => {
+    document.body.innerHTML = `<span data-next-display="cart.total"></span><p data-next-show="cart.hasItems">x</p>`;
+    const imports = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    expect(imports).not.toHaveBeenCalled();
+    expect(document.querySelector('p')!.hasAttribute('hidden')).toBe(false);
+  });
+
   it('lets page scripts quiet the console and read the log stream', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));

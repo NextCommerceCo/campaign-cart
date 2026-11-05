@@ -1,4 +1,6 @@
 import type { CartLine } from './cart/types';
+import { cardSlots } from './cart/selectors';
+import { variantChoices } from './cart/variants';
 import type { Engine } from './engine';
 
 /** What every action resolves to: it never throws. */
@@ -143,6 +145,48 @@ export function createActions(
       const order = engine.order;
       if (!order) return fail('order', 'no order on this page');
       order.skip(offer(args), host.page());
+      return OK;
+    },
+    async selectVariant(args = {}) {
+      const code = text(args.code);
+      const value = text(args.value);
+      if (!code || value === undefined) return fail('value', 'selectVariant needs code and value');
+      const state = engine.getState();
+      const packages = state.campaign?.packages ?? [];
+      const packageFor = (current: number) =>
+        variantChoices(packages, current)
+          .find((c) => c.code === code)
+          ?.options.find((o) => o.value === value)?.packageId;
+      const selectorId = selectorOf(args);
+      const optionId = text(args.option_id);
+      const selector = selectorId ? state.selectors[selectorId] : undefined;
+      const card = selector?.cards.find((c) => c.id === optionId);
+      if (selector && card && args.slot_index !== undefined) {
+        const index = Number(args.slot_index);
+        const slot = cardSlots(selector, card)[index];
+        const packageId = slot && packageFor(slot.packageId);
+        if (!packageId) return fail('value', `no package for ${code} ${value}`);
+        await engine.selectors.setSlot(selectorId!, card.id, index, { packageId });
+        return OK;
+      }
+      if (selector && card) {
+        const [line, ...others] = card.lines;
+        const packageId = line && !others.length && packageFor(line.packageId);
+        if (!packageId) return fail('value', `no package for ${code} ${value}`);
+        const cards = selector.cards.map((c) => (c === card ? { ...c, lines: [{ ...line, packageId }] } : c));
+        await engine.selectors.register(selectorId!, cards, selector.mode);
+        if (selector.picked !== card.id) await engine.selectors.pick(selectorId!, card.id);
+        return OK;
+      }
+      const current = num(args.package_id);
+      const items = state.cart.groups.items;
+      const own = items?.lines.find((l) => l.packageId === current);
+      const packageId = current && packageFor(current);
+      if (!items || !own || !packageId) return fail('value', 'this line cannot change its variant');
+      await engine.cart.setGroup('items', {
+        ...items,
+        lines: items.lines.map((l) => (l === own ? { ...l, packageId } : l)),
+      });
       return OK;
     },
     async go(args = {}) {
