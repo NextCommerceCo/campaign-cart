@@ -59,7 +59,20 @@ export function bindShow(root: ParentNode, a: AttributeContext, only?: Set<Eleme
   return renders;
 }
 
-/** `data-next-each="list"`: one copy of the first child `<template>` per item; each copy reads that item. */
+const IDS = ['package_id', 'option_id', 'selector_id', 'slot_index', 'id', 'code', 'value'];
+
+/** What makes an item the same row across renders: its ids, else the item itself. */
+const identity = (item: unknown) => {
+  if (!item || typeof item !== 'object') return item;
+  const ids = IDS.filter((k) => k in item).map((k) => (item as Record<string, unknown>)[k]);
+  return ids.length ? ids : item;
+};
+
+/**
+ * `data-next-each="list"`: one copy of the first child `<template>` per item; each copy reads that
+ * item. Copies are drawn again only when the items change, not their values, so an input in a row
+ * keeps its focus and text while prices update.
+ */
 export function bindEach(root: ParentNode, a: AttributeContext): Render[] {
   return own(root, 'data-next-each')
     .filter((el) => a.b.claim(el, 'data-next-each'))
@@ -77,10 +90,10 @@ export function bindEach(root: ParentNode, a: AttributeContext): Render[] {
         () => {
           const list = a.read(path, container);
           const next = Array.isArray(list) ? list : [];
-          const key = JSON.stringify(next);
+          const key = JSON.stringify(next.map(identity));
+          items = next;
           if (key !== shown) {
             shown = key;
-            items = next;
             container.replaceChildren(template);
             rows = [];
             items.forEach((_, i) => {

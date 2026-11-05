@@ -104,6 +104,25 @@ describe('attributes v2: reading values', () => {
     expect(titles()).toEqual(['Earbuds ×1']);
   });
 
+  it('keeps a row, and the input in it, while only its values change', async () => {
+    const { engine } = await mount(`
+      <div data-next-each="cart.lines"><template>
+        <div><input class="note"><span class="qty" data-next-query="quantity"></span></div>
+      </template></div>`);
+    await engine.cart.addItem(1);
+    await settle(engine);
+    const input = document.querySelector<HTMLInputElement>('.note')!;
+    input.value = 'gift';
+    await engine.cart.setQuantity(1, 3);
+    await settle(engine);
+    expect(document.querySelector('.note')).toBe(input);
+    expect(input.value).toBe('gift');
+    expect(document.querySelector('.qty')!.textContent).toBe('3');
+    await engine.cart.addItem(9);
+    await settle(engine);
+    expect(document.querySelectorAll('.note')).toHaveLength(2);
+  });
+
   it('reads short paths from data-next-for, and roots from inside it', async () => {
     const { $ } = await mount(`
       <div data-next-for="package.2"><span id="name" data-next-query="product_title"></span>
