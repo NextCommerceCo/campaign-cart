@@ -35,6 +35,6 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 ## Reading this site
 
 - [**Start Here**](./guides/migrating-from-0.4.md) is for a page moving from 0.4.x.
-- [**Reference**](./guides/attributes.md) is for looking things up mid-build: an [attribute](./guides/attributes.md) you found in markup, a [method](./guides/javascript-api.md), an [event](./guides/events.md).
+- **Attributes**, **Events** and **JavaScript API**, picked with the switcher above the sidebar, are for looking things up mid-build: an [attribute](./guides/attributes.md) you found in markup, a [method](./guides/javascript-api.md), an [event](./guides/events.md).
 - The **Event Reference** is generated from the SDK's types, so its fields always match the shipped code.
 - The version selector at the top of the page switches between released SDK versions. A page pinned to an older version documents that version, not this one.

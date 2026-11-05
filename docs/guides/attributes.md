@@ -1,7 +1,7 @@
 ---
-title: 'Reference/Attributes'
-group: 'Reference'
-category: 'Reference'
+title: 'Attributes'
+group: 'Attribute Reference'
+order: 0
 ---
 
 # Attributes

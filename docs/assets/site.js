@@ -317,7 +317,7 @@
     {
       id: 'attributes',
       name: 'Attributes',
-      blurb: 'Everything a page can use',
+      blurb: 'What a page can use',
       path: 'attributes',
       groups: ['Attribute Reference'],
       icon: '<path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>',
@@ -333,9 +333,9 @@
     {
       id: 'api',
       name: 'JavaScript API',
-      blurb: 'window.next and its types',
+      blurb: 'window.next and types',
       path: 'javascript-api',
-      groups: [],
+      groups: ['JavaScript API'],
       icon: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
     },
   ];
@@ -352,50 +352,40 @@
       .slice(decodeURIComponent(sectionRoot.pathname).length)
       .replace(/(\/index)?\.html$|\/+$/, '');
 
-  /**
-   * The section a sidebar link belongs to. The links outside every group, except Home,
-   * are the pages TypeDoc generates from the source (`NextApi`, `SdkEvent`, …).
-   */
-  function sectionOfLink(link, grouped) {
-    const page = pageOf(link.href);
+  /** The section of a page from its path, for a page whose sidebar link is not shown. */
+  function sectionOfPage(page) {
     if (page === 'attributes' || page.startsWith('attribute-reference/')) return 'attributes';
     if (page === 'events' || page.startsWith('event-reference/')) return 'events';
-    if (page === 'javascript-api' || (!grouped && page !== '')) return 'api';
+    if (page === 'javascript-api') return 'api';
     return 'guides';
   }
 
   /**
-   * Tags each top-level group of a sidebar, and each entry of a group, with the sections
-   * of the links inside it. CSS then hides what is not in the current section; a group
-   * such as Reference, which holds a page of three sections, keeps only its own entry.
+   * Tags each top-level group of a sidebar with its section, by its heading rather than
+   * its links: a collapsed group renders no links, and the theme remembers which groups
+   * the reader collapsed. The two groups without a heading are Home and the pages TypeDoc
+   * generates from the source (`NextApi`, `SdkEvent`, …). A heading no section names
+   * stays untagged, so it shows in every section rather than in none.
    */
   function tagSidebar(nav) {
     for (const group of nav.children) {
-      const heading = group.querySelector(':scope > button');
-      const named = SECTIONS.find((section) => section.groups.includes(heading?.textContent.trim()))?.id;
-      const sections = new Set();
-      for (const item of group.querySelectorAll(':scope > ul > li')) {
-        const own = new Set([...item.querySelectorAll('a[href]')].map((link) => sectionOfLink(link, !!heading)));
-        // A collapsed subgroup renders no links until it is opened.
-        if (!own.size && named) own.add(named);
-        item.dataset.ccSections = [...own].join(' ');
-        own.forEach((section) => sections.add(section));
-      }
-      if (!sections.size && named) sections.add(named);
-      group.dataset.ccSections = [...sections].join(' ');
+      const heading = group.querySelector(':scope > button')?.textContent.trim();
+      const section =
+        heading === undefined
+          ? [...group.querySelectorAll('a[href]')].some((link) => pageOf(link.href) !== '')
+            ? 'api'
+            : 'guides'
+          : SECTIONS.find((candidate) => candidate.groups.includes(heading))?.id;
+      if (section) group.dataset.ccSection = section;
+      else delete group.dataset.ccSection;
     }
   }
 
-  /** The current page's section: the one its sidebar link was tagged with. */
+  /** The current page's section: the group holding its sidebar link, else its path. */
   function currentSection(nav) {
     const here = pageOf(window.location.href);
-    for (const group of nav.children) {
-      const grouped = !!group.querySelector(':scope > button');
-      for (const link of group.querySelectorAll('a[href]')) {
-        if (pageOf(link.href) === here) return sectionOfLink(link, grouped);
-      }
-    }
-    return sectionOfLink({ href: window.location.href }, true);
+    const link = [...nav.querySelectorAll('a[href]')].find((candidate) => pageOf(candidate.href) === here);
+    return link?.closest(`${SIDEBAR} > div`)?.dataset.ccSection ?? sectionOfPage(here);
   }
 
   const icon = (section, className) =>
@@ -423,10 +413,18 @@
 
     const button = root.querySelector('button');
     const menu = root.querySelector('ul');
+    // Fixed, under the button: the sidebar scrolls, and clips whatever overflows it.
     const open = (show) => {
+      if (show) {
+        const { bottom, left, width } = button.getBoundingClientRect();
+        Object.assign(menu.style, { top: `${bottom + 4}px`, left: `${left}px`, width: `${width}px` });
+      }
       menu.hidden = !show;
       button.setAttribute('aria-expanded', String(show));
     };
+    const close = () => !menu.hidden && open(false);
+    window.addEventListener('scroll', close, { capture: true, passive: true });
+    window.addEventListener('resize', close);
     button.addEventListener('click', () => open(menu.hidden));
     document.addEventListener('click', (event) => {
       if (!root.contains(event.target)) open(false);
@@ -442,11 +440,12 @@
 
   /**
    * Tags every sidebar nav and gives it a switcher, again whenever the page changes: the
-   * island re-renders, a subgroup opens, or the mobile drawer adds its own nav.
+   * island re-renders, a group opens, or the mobile drawer adds its own nav.
    */
   function startSections() {
     const first = document.querySelector(SIDEBAR);
     if (!first) return;
+    tagSidebar(first);
     const active = currentSection(first);
     document.documentElement.dataset.ccSection = active;
     const withSwitcher = new WeakSet();
@@ -506,8 +505,8 @@
 }
 .cc-stale-banner a { color: inherit; font-weight: 700; }
 ${SECTIONS.map(
-  ({ id }) => `html[data-cc-section='${id}'] ${SIDEBAR} > div[data-cc-sections]:not([data-cc-sections~='${id}']),
-html[data-cc-section='${id}'] ${SIDEBAR} > div > ul > li[data-cc-sections]:not([data-cc-sections~='${id}']) { display: none; }`,
+  ({ id }) =>
+    `html[data-cc-section='${id}'] ${SIDEBAR} > div[data-cc-section]:not([data-cc-section='${id}']) { display: none; }`,
 ).join('\n')}
 .cc-sections { position: relative; margin: 0 0 1rem; }
 .cc-section-current, .cc-section-menu a {
@@ -523,6 +522,7 @@ html[data-cc-section='${id}'] ${SIDEBAR} > div > ul > li[data-cc-sections]:not([
 .cc-section-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .cc-section-name { font-size: 0.875rem; font-weight: 600; }
 .cc-section-blurb { font-size: 0.75rem; color: var(--clean-fg-muted); }
+.cc-section-name, .cc-section-blurb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-section-chevrons, .cc-section-check { margin-left: auto; flex-shrink: 0; color: var(--clean-fg-muted); }
 .cc-section-check { color: var(--clean-accent); }
 .cc-section-icon {
@@ -534,7 +534,7 @@ html[data-cc-section='${id}'] ${SIDEBAR} > div > ul > li[data-cc-sections]:not([
 .cc-section-icon[data-cc-section='events'] { --cc-hue: #db2777; }
 .cc-section-icon[data-cc-section='api'] { --cc-hue: #059669; }
 .cc-section-menu {
-  position: absolute; z-index: 30; top: calc(100% + 0.25rem); left: 0; right: 0;
+  position: fixed; z-index: 60;
   margin: 0; padding: 0.25rem; list-style: none;
   background: var(--clean-bg); border: 1px solid var(--clean-border); border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);

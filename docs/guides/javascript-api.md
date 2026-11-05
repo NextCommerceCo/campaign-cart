@@ -1,7 +1,6 @@
 ---
-title: 'Reference/JavaScript API'
-group: 'Reference'
-category: 'Reference'
+title: 'JavaScript API'
+group: 'JavaScript API'
 ---
 
 # `window.next`

@@ -1,7 +1,7 @@
 ---
-title: 'Reference/Events'
-group: 'Reference'
-category: 'Reference'
+title: 'Events'
+group: 'Event Reference'
+order: 0
 ---
 
 # Events
