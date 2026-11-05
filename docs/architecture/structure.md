@@ -72,7 +72,7 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 ```
 .github/workflows/ci.yml   format check · typecheck · test · build with size budgets
 docs/
-  architecture/            design.md · engine.md · structure.md · parity-0.4.md (what 0.4.43 pages use,
+  architecture/            design.md · engine.md · structure.md · walkthrough.md (one click through the code) · parity-0.4.md (what 0.4.43 pages use,
                            and how each is supported) · redesign-review.md (research before the rewrite)
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4;
                            event-reference/<group>/lifecycle.md, drawn by hand, one per event group

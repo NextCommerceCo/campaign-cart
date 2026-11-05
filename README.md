@@ -14,7 +14,8 @@ and attribution.
 
 **Reading the code for the first time:** run `bun dev`, open a campaign page with `?debug=1`
 and watch the panel's state and events while you click. Then read
-[structure.md](docs/architecture/structure.md): where code goes, and a glossary.
+[structure.md](docs/architecture/structure.md) (where code goes, and a glossary) and
+[walkthrough.md](docs/architecture/walkthrough.md) (one click followed through the code).
 
 | Command              |                                                                                   |
 | -------------------- | --------------------------------------------------------------------------------- |
