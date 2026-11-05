@@ -13,6 +13,7 @@ import { createSelectors, type SelectorActions } from './cart/selectors';
 import { campaignSession, type Cookies } from './session';
 import { StorageAdapter } from './storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
+import { createVisit, type VisitActions } from './visit';
 import type { EventMap, EventName } from './events/bus';
 import type { Campaign, Package, Send, State } from './types';
 
@@ -66,6 +67,7 @@ export class Engine {
   readonly cart: CartActions;
   readonly selectors: SelectorActions;
   readonly toggles: ToggleActions;
+  readonly visit: VisitActions;
   readonly debug: boolean;
   readonly sessionId: () => string;
   checkout?: CheckoutActions;
@@ -132,6 +134,7 @@ export class Engine {
     this.cart = createCart(this.context);
     this.selectors = createSelectors(this.context, this.cart);
     this.toggles = createToggles(this.context);
+    this.visit = createVisit(this.context, () => (this.options.now ?? Date.now)());
 
     if (options.reset) {
       this.session.clear();
@@ -210,18 +213,6 @@ export class Engine {
       this.options.funnel || campaign?.name,
       (this.options.now ?? Date.now)(),
     );
-  }
-
-  noteExitIntentShown(): void {
-    this.update('visit', { exitIntentShown: this.state.visit.exitIntentShown + 1 });
-  }
-
-  timerStart(id: string, durationMs: number): number {
-    const now = (this.options.now ?? Date.now)();
-    const { [id]: start, ...others } = this.state.visit.timers;
-    if (start === undefined) this.update('visit', { timers: { ...others, [id]: now } });
-    else if (start + durationMs <= now) this.update('visit', { timers: others });
-    return start ?? now;
   }
 
   private restore(): void {

@@ -206,7 +206,7 @@ describe('Engine', () => {
   it('counts exit-intent popups for the tab', () => {
     const session = new MemoryStorage();
     const first = makeEngine({ session }).engine;
-    first.noteExitIntentShown();
+    first.visit.noteExitIntentShown();
     const next = makeEngine({ session }).engine;
     expect(next.getState().visit.exitIntentShown).toBe(1);
   });
@@ -214,12 +214,12 @@ describe('Engine', () => {
   it('keeps a countdown running across pages of the tab, and starts it over once it has run out', () => {
     const session = new MemoryStorage();
     let now = 1000;
-    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
+    expect(makeEngine({ session, now: () => now }).engine.visit.timerStart('offer', 60_000)).toBe(1000);
     now = 31_000;
-    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
+    expect(makeEngine({ session, now: () => now }).engine.visit.timerStart('offer', 60_000)).toBe(1000);
     now = 61_000;
-    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(1000);
-    expect(makeEngine({ session, now: () => now }).engine.timerStart('offer', 60_000)).toBe(61_000);
+    expect(makeEngine({ session, now: () => now }).engine.visit.timerStart('offer', 60_000)).toBe(1000);
+    expect(makeEngine({ session, now: () => now }).engine.visit.timerStart('offer', 60_000)).toBe(61_000);
   });
 
   it('stays in debug mode for the tab across storage scopes until ?debug=0', () => {

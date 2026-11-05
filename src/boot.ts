@@ -268,7 +268,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   )
     void import('./compat/widgets').then((m) =>
       m.bindWidgets(document, {
-        timerStart: (id, ms) => engine.timerStart(id, ms),
+        timerStart: (id, ms) => engine.visit.timerStart(id, ms),
         log: engine.log,
         events: legacy.widgets,
       }),

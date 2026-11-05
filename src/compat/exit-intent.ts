@@ -162,7 +162,7 @@ export function exitIntent(engine: Engine, options: ExitIntentOptions): () => vo
     }
     if (o.overlayClosable) overlay.addEventListener('click', () => close('dismissed'));
     document.addEventListener('keydown', onKey);
-    engine.noteExitIntentShown();
+    engine.visit.noteExitIntentShown();
     document.body.append(overlay, popup);
     open = [overlay, popup];
     engine.events.emit('promotion.viewed', promotion);
