@@ -92,8 +92,8 @@ analytics off or one destination on or off, and nothing for a destination that i
 
 ## Debugging
 
-`?debug=1` opens the debug panel. Its Analytics tab shows the funnel of tracking events checked off
-across the tab's pages and each event this page sent, with its `data` and what each data layer got.
+`?debug=1` opens the debug panel. Its Analytics tab lists each tracking event this page sent, newest
+first, with any problem on its row; open one for the event as `next.analytics.on` gets it.
 
 Every event, and every one the SDK chose not to send, is also a debug log line with its reason:
 

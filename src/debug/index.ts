@@ -12,7 +12,7 @@ import { journeyView } from './journey';
 import { logsView } from './logs';
 import type { ProviderConfig } from './providers';
 import { createDebug, type PageKind, type PageVisit } from './state';
-import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
+import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
 
 const TABS = {
@@ -137,7 +137,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS);
+  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS);
   let paymentIcons: Promise<void> | undefined;
   const loadPaymentIcons = () =>
     (paymentIcons ??= import('../../vendor/tsugi/payment-icons.css?raw').then((m) => style.append(m.default)));
@@ -150,17 +150,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
 
   const query = () => filter.value.trim().toLowerCase();
   const events = eventsView(engine, open);
-  const flow = analyticsFlow({
-    open,
-    idOf,
-    render: () => render(),
-    config: info.analytics,
-    pages: () => debug.state().pages,
-  });
+  const flow = analyticsFlow({ open, config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
-  root.append(cart.dialog, flow.dialog);
+  root.append(cart.dialog);
   const logs = logsView(engine, open, idOf);
   const cartText = () => {
     const { campaign } = engine.getState();
@@ -415,7 +409,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open && !flow.dialog.open) setView('closed');
+    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open) setView('closed');
   });
   document.addEventListener('click', (e) => {
     if (view === 'menu' && !e.composedPath().includes(host)) setView('closed');

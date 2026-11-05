@@ -1,6 +1,5 @@
-import type { TrackingEvent, TrackingName } from '../engine/events/analytics';
+import type { TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
-import { format } from '../engine/format';
 
 export interface ProviderConfig {
   enabled: boolean;
@@ -9,12 +8,9 @@ export interface ProviderConfig {
   unsupported: string[];
 }
 
-export interface Provider {
-  id: string;
-  status: 'ok' | 'off' | 'warn' | 'info';
-  name: string;
-  short: string;
-  detail: string;
+export interface Note {
+  warn: boolean;
+  text: string;
 }
 
 type EngineName = Exclude<EventName, 'analytics'>;
@@ -140,8 +136,6 @@ export const WIRING: Wire[] = [
   { from: ['promotion.closed'], dl: 'dl_exit_intent_closed' },
 ];
 
-export const dlOf = (name: string) => WIRING.find((w) => (w.tracking ?? w.dl) === name)?.dl ?? name;
-
 const NEEDS_LINES: ReadonlySet<string> = new Set<TrackingName>([
   'product_viewed',
   'product_list_viewed',
@@ -161,19 +155,11 @@ const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campai
 
 const wireOf = (name: string) => WIRING.find((w) => w.tracking === name);
 const objectOf = (name: string) => wireOf(name)?.object;
-export const ga4Of = (name: string) => wireOf(name)?.ga4;
 
 /** The cart, checkout, order or upsell of a tracking event's `data`: what carries its lines and currency. */
 export const pricedOf = (name: string, data: unknown): Line => {
   const d = (data ?? {}) as Line;
   return objectOf(name) === 'checkout' ? ((d.cart ?? {}) as Line) : d;
-};
-
-export const amount = (event: TrackingEvent) => {
-  const { total, currency } = pricedOf(event.event_type, event.data);
-  return typeof total === 'number'
-    ? format({ type: 'money', value: total }, String(currency ?? event.context.campaign?.currency ?? ''))
-    : '';
 };
 
 export const linesOf = (name: string, data: unknown): Line[] => {
@@ -194,93 +180,31 @@ export function checks(name: string, data: unknown): string[] {
   ].filter((p): p is string => !!p);
 }
 
-export function providers(config: ProviderConfig, started: boolean): Provider[] {
+export function setupNotes(config: ProviderConfig, started: boolean): Note[] {
   const win = window as Win;
-  const p = (id: string, status: Provider['status'], name: string, short: string, detail: string): Provider => ({
-    id,
-    status,
-    name,
-    short,
-    detail,
-  });
-  const extra = [
-    ...config.unsupported.map((id) => {
-      const name = UNSUPPORTED[id] ?? id;
-      return p(
-        id,
-        'warn',
-        name,
-        'not built in',
-        `${name} is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).`,
-      );
-    }),
-    ...(typeof win.NextDataLayerTransformFn === 'function'
-      ? [
-          p(
-            'transform',
-            'info',
-            'NextDataLayerTransformFn',
-            'set',
-            'NextDataLayerTransformFn can change or drop each dl_* event.',
-          ),
-        ]
-      : []),
-  ];
-  if (!config.enabled) {
-    const off = 'Analytics is off: nextConfig.analytics.enabled is false.';
-    return [
-      p('NextDataLayer', 'off', 'NextDataLayer', 'off', off),
-      p('dataLayer', 'off', 'GTM dataLayer', 'off', off),
-      p('listeners', 'off', 'Page scripts', 'off', off),
-      p('nextCampaign', 'off', 'NEXT analytics', 'off', off),
-      ...extra,
-    ];
-  }
-  const idle = 'Starts once the page is idle.';
-  const events = win.NextDataLayer?.length ?? 0;
-  const count = `${events} event${events === 1 ? '' : 's'}`;
-  const containers = Object.keys(win.google_tag_manager ?? {}).filter((k) => k.startsWith('GTM-'));
-  return [
-    started
-      ? p('NextDataLayer', 'ok', 'NextDataLayer', count, `window.NextDataLayer has ${count} (dl_*).`)
-      : p('NextDataLayer', 'off', 'NextDataLayer', 'waits for idle', idle),
+  const unsupported = config.unsupported.map((id) => ({
+    warn: true,
+    text: `${UNSUPPORTED[id] ?? id} is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).`,
+  }));
+  if (!config.enabled)
+    return [{ warn: false, text: 'Analytics is off: nextConfig.analytics.enabled is false.' }, ...unsupported];
+  const gtm = Object.keys(win.google_tag_manager ?? {}).some((k) => k.startsWith('GTM-'));
+  const script = document.querySelector(NEXT_SCRIPT) ? 'did not load' : 'is not on the page';
+  const notes: Array<Note | false> = [
+    !started && { warn: false, text: 'Analytics starts once the page is idle.' },
     !config.dataLayer
-      ? p('dataLayer', 'off', 'GTM dataLayer', 'off', 'Off in nextConfig: analytics.providers.gtm.enabled is false.')
-      : containers.length
-        ? p('dataLayer', 'ok', 'GTM dataLayer', containers[0]!, `window.dataLayer, read by ${containers.join(', ')}.`)
-        : p(
-            'dataLayer',
-            'warn',
-            'GTM dataLayer',
-            'no GTM container',
-            'GTM dataLayer is on, but this page has no GTM container.',
-          ),
-    p(
-      'listeners',
-      'info',
-      'Page scripts',
-      'next.analytics.on',
-      "Page scripts get every event with next.analytics.on('*', fn).",
-    ),
+      ? {
+          warn: false,
+          text: 'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
+        }
+      : !gtm && { warn: true, text: 'GTM dataLayer is on, but this page has no GTM container.' },
     !config.nextCampaign
-      ? p(
-          'nextCampaign',
-          'off',
-          'NEXT analytics',
-          'off',
-          'Off in nextConfig: analytics.providers.nextCampaign.enabled is false.',
-        )
-      : typeof win.nextCampaign?.event === 'function'
-        ? p('nextCampaign', 'ok', 'NEXT analytics', 'own page_view', 'Its own script sends page_view.')
-        : started
-          ? p(
-              'nextCampaign',
-              'warn',
-              'NEXT analytics',
-              'not loaded',
-              `NEXT analytics is on, but its script ${document.querySelector(NEXT_SCRIPT) ? 'did not load' : 'is not on the page'}.`,
-            )
-          : p('nextCampaign', 'off', 'NEXT analytics', 'waits for idle', idle),
-    ...extra,
+      ? { warn: false, text: 'NEXT analytics is off: analytics.providers.nextCampaign.enabled is false in nextConfig.' }
+      : started &&
+        typeof win.nextCampaign?.event !== 'function' && {
+          warn: true,
+          text: `NEXT analytics is on, but its script ${script}.`,
+        },
   ];
+  return [...notes.filter((n): n is Note => !!n), ...unsupported];
 }

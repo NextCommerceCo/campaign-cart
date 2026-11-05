@@ -4,7 +4,7 @@ import { icon } from './icons';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
 
-export const KINDS: Record<PageKind, string> = {
+const KINDS: Record<PageKind, string> = {
   product: 'Landing',
   checkout: 'Checkout',
   upsell: 'Upsell',

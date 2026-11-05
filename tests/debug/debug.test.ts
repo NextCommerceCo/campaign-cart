@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
+import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
@@ -95,8 +95,7 @@ describe('debug tools', () => {
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toContain('Tracking');
-    expect(body()).toContain('On this page');
+    expect(body()).toMatch(/\d+ events? sent on this page, newest first/);
     tab('logs');
     expect(body()).toContain('info storage scope');
     expect(body()).toMatch(/debug api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
@@ -139,7 +138,6 @@ describe('debug tools', () => {
     pick.dispatchEvent(new Event('change'));
     expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
     expect(PANEL_CSS).toContain('@container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}');
-    expect(ANALYTICS_CSS).not.toContain('@media');
   });
 
   it('keeps the panel open on Esc while the product picker is open', async () => {
@@ -284,35 +282,31 @@ describe('debug tools', () => {
     expect($('.issues').textContent).toBe('');
   });
 
-  it('shows the real analytics events, and opens one for why it was sent', async () => {
+  it('lists the tracking events sent on this page, each opening to the event next.analytics.on gets', async () => {
     const next = await start('<button data-next-package-id="1">Buy</button>');
+    const got: Array<{ event_type: string; event_id: string }> = [];
+    next.analytics.on('product_added_to_cart', (event) => {
+      got.push(event);
+    });
     const layer = () => (window as unknown as { NextDataLayer?: Array<{ event: string }> }).NextDataLayer ?? [];
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_view_item'));
     await next.actions.addItem(1);
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
     $('.fab').click();
     menuItem('Analytics').click();
-    const sent = [
-      ...new Set([...shadow().querySelectorAll('.arun.ok code, .arun.warn code')].map((c) => c.textContent)),
-    ];
-    expect(sent.sort()).toEqual(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']);
-    [...shadow().querySelectorAll<HTMLElement>('.arun')]
-      .find((r) => r.querySelector('code')!.textContent === 'product_added_to_cart')!
-      .click();
-    expect(shadow().querySelector('.aevent .adetail dd')!.textContent).toBe(
-      'Added since the last report: Earbuds ×1 ×1Cart priced: cart.calculated',
+    const rows = [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
+    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/ ([a-z_]+) \{/)![1];
+    expect(new Set(rows.map(name))).toEqual(
+      new Set(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']),
     );
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    expect(view()).toBe('panel');
-    [...shadow().querySelectorAll<HTMLElement>('.arun')]
-      .find((r) => r.querySelector('code')!.textContent === 'cart_updated')!
-      .click();
-    const detail = [...shadow().querySelectorAll('.aevent .adetail > dt')].map((dt) => [
-      dt.textContent,
-      dt.nextElementSibling!.textContent,
-    ]);
-    expect(Object.fromEntries(detail).Reached).toMatch(/^dl_cart_updatedNextDataLayer/);
-    expect(shadow().querySelector('.aevent .aitems')!.textContent).toMatch(/^Lines · 1productskuqtypriceEarbuds/);
+    expect(name(rows.at(-1)!)).toBe('page_viewed');
+    const added = rows.find((d) => name(d) === 'product_added_to_cart')!;
+    expect(added.querySelector('summary')!.textContent).toMatch(
+      /^\d\d:\d\d:\d\d\.\d{3}cart_line product_added_to_cart/,
+    );
+    added.open = true;
+    expect(added.textContent).toContain(got[0]!.event_id);
+    expect(added.textContent).toContain('event_type "product_added_to_cart"');
   });
 
   it('lists every SDK element with what it resolves to', async () => {
@@ -375,23 +369,17 @@ describe('debug tools', () => {
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
     expect(shadow().querySelector('style')!.textContent).toBe(
-      TSUGI_CSS + PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS,
+      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
-    const analytics = classes(ANALYTICS_CSS);
     const cart = classes(CART_CSS);
     const journey = classes(JOURNEY_CSS);
     const checkout = classes(CHECKOUT_CSS);
-    expect([...analytics].filter((name) => panel.has(name))).toEqual([]);
-    expect([...cart].filter((name) => panel.has(name) || analytics.has(name))).toEqual([]);
-    expect([...journey].filter((name) => panel.has(name) || analytics.has(name) || cart.has(name))).toEqual([]);
-    expect(
-      [...checkout].filter((name) => panel.has(name) || analytics.has(name) || cart.has(name) || journey.has(name)),
-    ).toEqual([]);
-    const rules = [
-      ...(PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm),
-    ];
+    expect([...cart].filter((name) => panel.has(name))).toEqual([]);
+    expect([...journey].filter((name) => panel.has(name) || cart.has(name))).toEqual([]);
+    expect([...checkout].filter((name) => panel.has(name) || cart.has(name) || journey.has(name))).toEqual([]);
+    const rules = [...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm)];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
     const code = readdirSync('src/debug')
@@ -400,16 +388,14 @@ describe('debug tools', () => {
       .join('\n');
     const unused = (names: Set<string | undefined>) =>
       [...names].filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(code));
-    expect([panel, analytics, cart, journey, checkout].flatMap(unused)).toEqual([]);
+    expect([panel, cart, journey, checkout].flatMap(unused)).toEqual([]);
     const vendored = readFileSync('scripts/tsugi.mjs', 'utf8').match(/const COMPONENTS = \[([^\]]*)\]/)![1]!;
     const CLASSES: Record<string, string> = { button: 'btn', 'native-select': 'select', scrollbar: 'scrollbar-sm' };
     expect(unused(new Set([...vendored.matchAll(/'([\w-]+)'/g)].map(([, name]) => CLASSES[name!] ?? name)))).toEqual(
       [],
     );
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
-    expect(
-      [...panel, ...analytics, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!)),
-    ).toEqual([]);
+    expect([...panel, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!))).toEqual([]);
   });
 
   it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
@@ -425,10 +411,10 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    const ours = PANEL_CSS + ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS;
+    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(ANALYTICS_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });

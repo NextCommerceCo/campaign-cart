@@ -1,155 +1,29 @@
+import type { AnalyticsTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
-import type { AnalyticsTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
-import type { EventName } from '../engine/events/bus';
-import {
-  amount,
-  checks,
-  dlOf,
-  type Layer,
-  type Line,
-  linesOf,
-  type ProviderConfig,
-  providers,
-  type Win,
-  ga4Of,
-} from './providers';
-import { type IconName, icon } from './icons';
-import { KINDS } from './journey';
-import type { PageVisit } from './state';
-import { button, type Child, clock, h, iconButton, nodes, plural, tab as tabButton, tablist, tsugi } from './view';
+import { checks, type Layer, type ProviderConfig, setupNotes, type Win } from './providers';
+import { badge, type Child, empty, h, plural, stamp, tree } from './view';
 
-type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
-type Hit = { id: string; name: string; at: number; host: string; params: Array<[string, string]> };
-type Tab = { id: string; label: string; logo?: IconName; body: () => Child[] };
-type Push = Record<string, unknown> & { event?: string };
 
-const LABELS: Partial<Record<EventName, string>> = {
-  'sdk.ready': 'Page loaded',
-  'cart.updated': 'Cart changed',
-  'cart.calculated': 'Cart priced',
-  'cart.added': 'Added to the cart',
-  'cart.removed': 'Removed from the cart',
-  'checkout.started': 'Checkout started',
-  'user.created': 'User created',
-  'address.entered': 'Address entered',
-  'shipping.settled': 'Shipping picked',
-  'checkout.submitted': 'Order submitted',
-  'order.loaded': 'Order loaded',
-  'order.paid': 'Order paid',
-  'upsell.viewed': 'Upsell shown',
-  'upsell.skipped': 'Upsell skipped',
-  'promotion.viewed': 'Promotion shown',
-  'promotion.clicked': 'Promotion clicked',
-  'promotion.closed': 'Promotion closed',
-};
-
-const NOT_PUSHED: Record<Layer, string> = {
-  NextDataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.NextDataLayer',
-  dataLayer: 'NextDataLayerTransformFn dropped it, or the page replaced window.dataLayer',
-};
-const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: '○', info: '•' };
-const MARK = { ok: 'check', warn: 'warn', skip: 'wait', off: 'wait', info: 'wait' } as const;
-const STATED: Record<State, string> = { ok: 'Sent', warn: 'Sent with problems', skip: 'Not sent', off: '', info: '' };
-const STEP = { done: 'check', warn: 'warn', todo: 'wait' } as const;
-const FUNNEL: Array<[TrackingName, string]> = [
-  ['page_viewed', 'every page load'],
-  ['product_viewed', 'a page showing one package'],
-  ['product_list_viewed', 'a page showing packages'],
-  ['product_added_to_cart', 'something is added to the cart'],
-  ['checkout_started', 'once per checkout, when its form is ready'],
-  ['checkout_shipping_address_submitted', 'once per checkout, when the shipping address is valid'],
-  ['checkout_shipping_method_submitted', 'once per checkout, when a shipping method is picked'],
-  ['checkout_payment_info_submitted', 'once per checkout, when a submit passes its checks'],
-  ['checkout_completed', 'once per order, when it is paid'],
-  ['upsell_viewed', 'once per upsell page, when an offer is shown'],
-  ['upsell_completed', 'once per accepted upsell, when the order is loaded with it'],
-];
-const VIEWS: string[] = ['product_viewed', 'product_list_viewed'] satisfies TrackingName[];
-const UPSELLS: string[] = ['upsell_viewed', 'upsell_completed'] satisfies TrackingName[];
 const BURST: ReadonlySet<string> = new Set<TrackingName>(['product_added_to_cart', 'product_removed_from_cart']);
+const LAYERS: Layer[] = ['NextDataLayer', 'dataLayer'];
 const KEEP = 300;
 
-const label = (name: EventName) => LABELS[name] ?? name;
-const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
 const isTrace = (data: unknown): data is AnalyticsTrace => (data as AnalyticsTrace | undefined)?.trace === 'analytics';
 
-const what = (event: TrackingEvent) => {
-  const { event_type: name, data } = event;
-  const lines = linesOf(name, data)
-    .map((l) => {
-      const title = l.product_title ?? '?';
-      return `${title}${l.variant_title && l.variant_title !== title ? ` (${l.variant_title})` : ''} ×${l.quantity ?? 1}`;
-    })
-    .join(', ');
-  if (name === 'product_added_to_cart') return `+ ${lines}`;
-  if (name === 'product_removed_from_cart') return `− ${lines}`;
-  if (lines) return lines;
-  if (name === 'page_viewed') return event.context.page_title;
-  const ref = (data as { ref_id?: string }).ref_id;
-  return ref ? `order ${ref}` : '';
-};
-
-const ga4Hits = (): Hit[] =>
-  (typeof performance.getEntriesByType === 'function' ? performance.getEntriesByType('resource') : []).flatMap(
-    (entry) => {
-      try {
-        const url = new URL(entry.name);
-        const id = url.searchParams.get('tid') ?? '';
-        return url.pathname.endsWith('/g/collect') && id.startsWith('G-')
-          ? [
-              {
-                id,
-                name: url.searchParams.get('en') ?? '',
-                at: performance.timeOrigin + entry.startTime,
-                host: url.host,
-                params: [...url.searchParams],
-              },
-            ]
-          : [];
-      } catch {
-        return [];
-      }
-    },
-  );
-
 const pushedTo = (layer: Layer, ids: string[]) =>
-  (window as Win)[layer]?.find((p) => ids.includes((p as { event_id?: string } | null)?.event_id ?? '')) as
-    Push | undefined;
+  (window as Win)[layer]?.find((p) => ids.includes((p as { event_id?: string } | null)?.event_id ?? ''));
 
-const COLUMNS = { product_title: 'product', variant_title: 'variant', sku: 'sku', quantity: 'qty', price: 'price' };
-
-const linesTable = (lines: Line[]) => {
-  const columns = (Object.keys(COLUMNS) as Array<keyof typeof COLUMNS>).filter(
-    (c) => c !== 'variant_title' || lines.some((l) => l.variant_title && l.variant_title !== l.product_title),
-  );
-  return h(
-    'table',
-    {},
-    h('tr', {}, ...columns.map((c) => h('th', {}, COLUMNS[c]))),
-    ...lines.map((l) => h('tr', {}, ...columns.map((c) => h('td', c === 'sku' ? 'dim' : {}, String(l[c] ?? ''))))),
-  );
-};
-
-const LOGOS: Record<string, IconName> = { NextDataLayer: 'logo', dataLayer: 'gtm', nextCampaign: 'logo', ga4: 'ga4' };
-
-const chip = (state: State, text: string, title = '', logo?: IconName) =>
-  h('span', { className: `chip ${state}`, title }, logo ? icon(logo) : `${ICON[state]} `, text);
-
-export function analyticsFlow(ui: {
-  open: Set<string>;
-  idOf: (o: object) => number;
-  render: () => void;
-  config: () => ProviderConfig;
-  pages?: () => PageVisit[];
-}) {
-  const received: EngineEvent[] = [];
+export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderConfig }) {
+  const events = new Map<string, TrackingEvent>();
   const runs: Run[] = [];
 
   const record = (e: EngineEvent) => {
-    received.push(e);
-    if (received.length > KEEP) received.shift();
+    if (e.name !== 'analytics') return;
+    const event = (e as EngineEvent<'analytics'>).data;
+    events.set(event.event_id, event);
+    if (events.size > KEEP) events.delete(events.keys().next().value!);
   };
 
   const note = (entry: LogEntry) => {
@@ -160,433 +34,69 @@ export function analyticsFlow(ui: {
 
   const started = () => runs.length > 0 || !!(window as Win).NextDataLayer;
 
-  const snapshot = (config: ProviderConfig) => {
-    const tracking = received.filter(isAnalytics).map((e) => e.data);
-    const events = new Map(tracking.map((e) => [e.event_id, e]));
-    const list = providers(config, started());
+  const burst = (run: Run): string[] => {
+    const event = run.id ? events.get(run.id) : undefined;
+    if (!event || !BURST.has(event.event_type)) return run.id ? [run.id] : [];
+    return [...events.values()]
+      .filter((e) => e.event_type === event.event_type && e.created_at === event.created_at)
+      .map((e) => e.event_id);
+  };
+
+  const issues = (run: Run, config = ui.config()) => {
+    if (!run.sent) return [];
+    const event = run.id ? events.get(run.id) : undefined;
     const enabled = (layer: Layer) => (layer === 'dataLayer' ? config.dataLayer : config.enabled);
-    const trigger = (run: Run) => received.filter((e) => e.name === run.trigger && e.at <= run.at + 5).at(-1);
-    const burst = (run: Run): string[] => {
-      const event = run.id ? events.get(run.id) : undefined;
-      if (!event || !BURST.has(event.event_type)) return run.id ? [run.id] : [];
-      return tracking
-        .filter((e) => e.event_type === event.event_type && e.created_at === event.created_at)
-        .map((e) => e.event_id);
-    };
-    const pushed = (layer: Layer, run: Run) => pushedTo(layer, burst(run));
-    const hits = ga4Hits();
-    const seen = new Map<Run, Hit>();
-    for (const hit of [...hits].sort((a, b) => a.at - b.at)) {
-      const run = [...runs]
-        .reverse()
-        .find((r) => r.sent && ga4Of(r.name) === hit.name && r.at <= hit.at + 50 && !seen.has(r));
-      if (run) seen.set(run, hit);
-    }
-    const issues = (run: Run) => {
-      if (!run.sent) return [];
-      const event = run.id ? events.get(run.id) : undefined;
-      return [
-        ...(event ? checks(event.event_type, event.data) : []),
-        ...(['NextDataLayer', 'dataLayer'] as Layer[])
-          .filter((l) => enabled(l) && !pushed(l, run))
-          .map((l) => `not in ${l}`),
-      ];
-    };
-    return {
-      config,
-      providers: list,
-      provider: (id: string) => list.find((p) => p.id === id)!,
-      event: (id?: string) => (id ? events.get(id) : undefined),
-      trigger,
-      pushed,
-      ga4: [...new Set(hits.map((h) => h.id))],
-      seen: (run: Run) => seen.get(run),
-      enabled,
-      issues,
-    };
-  };
-  type Snapshot = ReturnType<typeof snapshot>;
-  let skipped = false;
-
-  const stateOf = (snap: Snapshot, run: Run): State => (!run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok');
-
-  const fields = (event: TrackingEvent) =>
-    h(
-      'div',
-      'aparams',
-      ...Object.entries(Array.isArray(event.data) ? {} : event.data)
-        .filter(([, v]) => v === null || typeof v !== 'object')
-        .map(([k, v]) => h('span', {}, h('i', {}, k), ` ${v}`)),
-    );
-
-  const json = (title: string, note: string, value: unknown) => {
-    const text = JSON.stringify(value, null, 2);
-    const copy = button(
-      'Copy',
-      () => {
-        void navigator.clipboard?.writeText(text);
-        copy.textContent = 'Copied';
-      },
-      { variant: 'ghost', size: 'sm' },
-    );
-    return h(
-      'div',
-      'ajson',
-      h('div', 'ajhead', h('div', {}, h('b', {}, title), h('small', {}, note)), copy),
-      h('pre', {}, text),
-    );
-  };
-
-  const overview = (snap: Snapshot, run: Run): Child[] => {
-    const dl = dlOf(run.name);
-    const event = snap.event(run.id);
-    const problems = event ? checks(event.event_type, event.data) : [];
-    const lines = event ? linesOf(event.event_type, event.data) : [];
-    const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
-      const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-      const push = snap.pushed(layer, run);
-      if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
-      return push['gtm.uniqueEventId'] !== undefined
-        ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
-        : chip('ok', name, '', LOGOS[layer]);
-    });
-    const hit = snap.seen(run);
-    const reached = [
-      ...layers,
-      hit && chip('ok', `GA4 ${hit.id}`, `A Google Analytics request named ${hit.name} left the page after it.`, 'ga4'),
-    ];
-    const rows: Array<[string, ...Child[]]> = [
-      ['Why', h('span', {}, run.reason), h('small', {}, `${label(run.trigger)}: `, h('code', {}, run.trigger))],
-      ...(problems.length
-        ? [['Problems', ...problems.map((p) => h('span', 'amber', `⚠ ${p}`))] as [string, ...Child[]]]
-        : []),
-      ...(run.sent ? [['Reached', h('div', 'chips', h('code', {}, dl), ...reached)] as [string, ...Child[]]] : []),
-      ...(event ? [['Data', h('code', {}, event.object), fields(event)] as [string, ...Child[]]] : []),
-    ];
     return [
-      h('dl', 'adetail', ...rows.flatMap(([title, ...value]) => [h('dt', {}, title), h('dd', {}, ...value)])),
-      lines.length > 0 && h('div', 'aitems', h('p', {}, `Lines · ${lines.length}`), linesTable(lines)),
+      ...(event ? checks(event.event_type, event.data) : []),
+      ...LAYERS.filter((l) => enabled(l) && !pushedTo(l, burst(run))).map((l) => `not in ${l}`),
     ];
   };
 
-  const tabsOf = (snap: Snapshot, run: Run): Tab[] => {
-    const dl = dlOf(run.name);
-    const event = snap.event(run.id);
-    const trigger = snap.trigger(run);
-    const next = snap.pushed('NextDataLayer', run);
-    const gtm = snap.pushed('dataLayer', run);
-    const hit = snap.seen(run);
-    const tabs: Array<Tab | false | undefined> = [
-      { id: 'summary', label: 'Summary', body: () => overview(snap, run) },
-      (event || trigger) && {
-        id: 'event',
-        label: 'Event',
-        body: () => [
-          event && json(run.name, 'The tracking event, as page scripts get it with next.analytics.on', event),
-          trigger && json(run.trigger, `What triggered it: ${label(run.trigger)}`, trigger.data),
-        ],
-      },
-      next && {
-        id: 'next',
-        label: 'NextDataLayer',
-        logo: 'logo',
-        body: () => [json(dl, 'The push in window.NextDataLayer', next)],
-      },
-      gtm && {
-        id: 'gtm',
-        label: 'GTM dataLayer',
-        logo: 'gtm',
-        body: () => [
-          json(
-            dl,
-            gtm['gtm.uniqueEventId'] !== undefined
-              ? 'The push in window.dataLayer, read by GTM'
-              : 'The push in window.dataLayer, for GTM tags',
-            gtm,
-          ),
-        ],
-      },
-      hit && {
-        id: 'ga4',
-        label: 'GA4',
-        logo: 'ga4',
-        body: () => [
-          h(
-            'div',
-            'aga4',
-            h(
-              'p',
-              {},
-              `The request to ${hit.host} for ${hit.id} that left the page after it. A request that batches several events names only the first in its URL.`,
-            ),
-            h('table', {}, ...hit.params.map(([k, v]) => h('tr', {}, h('td', 'dim', k), h('td', {}, v)))),
-          ),
-        ],
-      },
-    ];
-    return tabs.filter((t): t is Tab => !!t);
-  };
-
-  const sub = (snap: Snapshot, run: Run) => {
-    const event = snap.event(run.id);
-    return !run.sent ? `Not sent: ${run.reason}` : event ? what(event) || 'sent' : 'data layer only';
-  };
-
-  const row = (snap: Snapshot, run: Run) => {
-    const event = snap.event(run.id);
-    return h(
-      'button',
-      { type: 'button', className: `arun ${stateOf(snap, run)}`, onclick: () => inspect(run) },
-      icon(MARK[stateOf(snap, run)]),
-      h(
-        'span',
-        'amain',
-        h('code', {}, run.name),
-        h(
-          'small',
-          {},
-          label(run.trigger),
-          ' · ',
-          snap
-            .issues(run)
-            .map((i) => `⚠ ${i}`)
-            .join(' · ') || sub(snap, run),
-        ),
-      ),
-      h('span', 'aend', event && amount(event) && h('b', {}, amount(event)), clock(run.at)),
-      icon('chevron'),
+  const row = (run: Run, config: ProviderConfig) => {
+    const event = run.id ? events.get(run.id) : undefined;
+    const problems = issues(run, config);
+    const label = h(
+      'span',
+      {},
+      stamp(run.at),
+      badge(event?.object ?? 'data layer', 'outline'),
+      ' ',
+      run.name,
+      problems.length > 0 && h('span', 'red', ` ⚠ ${problems.join(' · ')}`),
     );
-  };
-
-  let shown: Run[] = [];
-  let current: Run | undefined;
-  const heading = h('h2', {});
-  const subtitle = h('p', {});
-  const body = h('section', 'scrollbar-sm');
-  const strip = tablist({ variant: 'line', size: 'sm' });
-  let tab = 'summary';
-  const newer = button('Newer', () => move(-1), { variant: 'outline', size: 'sm' });
-  const older = button('Older', () => move(1), { variant: 'outline', size: 'sm' });
-  const close = iconButton('close', 'Close dialog', () => dialog.close(), 'icon-sm');
-  const dialog = tsugi(
-    h(
-      'dialog',
-      'dialog aevent',
-      h(
-        'div',
-        {},
-        h('header', {}, heading, subtitle),
-        h('div', 'tabs atabs', strip),
-        body,
-        h(
-          'footer',
-          {},
-          newer,
-          older,
-          button('Done', () => dialog.close()),
-        ),
-        close,
-      ),
-    ),
-    { size: 'lg' },
-  );
-  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
-  dialog.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    e.preventDefault();
-    move(e.key === 'ArrowUp' ? -1 : 1);
-  });
-
-  const fill = (snap: Snapshot) => {
-    if (!current || !dialog.open) return;
-    const run = current;
-    const state = stateOf(snap, run);
-    const event = snap.event(run.id);
-    const at = shown.indexOf(run);
-    heading.replaceChildren(icon(MARK[state]), h('code', {}, run.name));
-    heading.className = `ahead ${state}`;
-    subtitle.replaceChildren(
-      [label(run.trigger), clock(run.at), event && amount(event), STATED[state]].filter(Boolean).join(' · '),
-    );
-    const tabs = tabsOf(snap, run);
-    if (!tabs.some((t) => t.id === tab)) tab = 'summary';
-    strip.replaceChildren(
-      ...tabs.map((t) =>
-        tabButton(t.id === tab, () => ((tab = t.id), fill(snapshot(ui.config()))), t.logo && icon(t.logo), t.label),
-      ),
-    );
-    body.replaceChildren(...nodes(tabs.find((t) => t.id === tab)!.body()));
-    newer.disabled = at <= 0;
-    older.disabled = at < 0 || at >= shown.length - 1;
-  };
-
-  const inspect = (run: Run) => {
-    current = run;
-    if (!dialog.open) dialog.showModal();
-    body.scrollTop = 0;
-    fill(snapshot(ui.config()));
-  };
-
-  const move = (by: number) => {
-    const next = shown[shown.indexOf(current!) + by];
-    if (next) inspect(next);
-  };
-
-  const verdict = (snap: Snapshot) => {
-    if (!snap.config.enabled) return h('span', 'dim', snap.provider('NextDataLayer').detail);
-    if (!runs.some((r) => r.sent)) return h('span', 'dim', 'Nothing sent yet: analytics starts once the page is idle.');
-    const bad = runs.filter((r) => r.sent && snap.issues(r).length);
-    const last = bad.at(-1);
-    if (last)
-      return h('span', 'red', `${plural(bad.length, 'event')} with problems: ${last.name} ${snap.issues(last)[0]}`);
-    const warn = snap.providers.find((p) => p.status === 'warn');
-    if (warn) return h('span', 'amber', warn.detail);
-    if (!snap.config.dataLayer) return h('span', 'amber', 'GTM tags get none of these events: GTM dataLayer is off');
-    return h('span', 'green', 'Every event so far carried its object and reached its data layers');
-  };
-
-  const funnel = (snap: Snapshot) => {
-    const before = (ui.pages?.() ?? []).slice(0, -1);
-    const sentAnywhere = (name: string) =>
-      runs.some((r) => r.sent && r.name === name) || before.some((p) => p.sent.includes(name));
-    const views = VIEWS.filter(sentAnywhere);
-    const upsell =
-      (ui.pages?.() ?? []).some((p) => p.kind === 'upsell') ||
-      runs.some((r) => UPSELLS.includes(r.name) || r.trigger === 'upsell.viewed');
-    return FUNNEL.filter(([name]) =>
-      VIEWS.includes(name)
-        ? views.length
-          ? views.includes(name)
-          : name === 'product_list_viewed'
-        : !UPSELLS.includes(name) || upsell,
-    ).map(([name, when]) => {
-      const here = runs.filter((r) => r.name === name);
-      const sent = here.filter((r) => r.sent);
-      const counts = new Map<string, number>();
-      for (const page of before) {
-        const n = page.sent.filter((s) => s === name).length;
-        if (n) counts.set(KINDS[page.kind], (counts.get(KINDS[page.kind]) ?? 0) + n);
-      }
-      if (sent.length) counts.set('this page', sent.length);
-      const where = [...counts].map(([page, n]) => (n > 1 ? `${page} ×${n}` : page)).join(' · ');
-      const problem = sent.flatMap(snap.issues)[0];
-      const last = here.at(-1);
-      const tone = problem ? 'warn' : counts.size ? 'done' : 'todo';
-      const ga4 = sent.some((r) => snap.seen(r)) ? ' · reached GA4' : '';
-      const detail = problem
-        ? `${where} · ${problem}`
-        : where
-          ? `${where}${ga4}`
-          : last && !last.sent
-            ? `Not sent: ${last.reason}`
-            : `Not yet: ${when}`;
-      const parts = [
-        icon(STEP[tone]),
-        h('b', {}, h('code', {}, name)),
-        h('small', {}, detail.charAt(0).toUpperCase() + detail.slice(1)),
-      ];
-      const latest = sent.at(-1);
-      return latest
-        ? h('button', { type: 'button', className: `kstep ${tone}`, onclick: () => inspect(latest) }, ...parts)
-        : h('div', `kstep ${tone}`, ...parts);
-    });
-  };
-
-  const destinations = (snap: Snapshot) => {
-    const list = snap.providers.filter((p) => p.id !== 'listeners');
-    const notes = snap.config.enabled
-      ? [...new Set(list.filter((p) => p.status === 'off' || p.status === 'warn').map((p) => p.detail))]
-      : [];
-    return h(
-      'div',
-      'adest devonly',
-      h(
-        'div',
-        'chips',
-        'Pushed to',
-        ...list.map((p) => chip(p.status, `${p.name} · ${p.short}`, p.detail, LOGOS[p.id])),
-        snap.ga4.length > 0 &&
-          chip(
-            'ok',
-            `GA4 · ${snap.ga4.join(', ')}`,
-            'Google Analytics requests seen leaving this page. An event batched into another request does not show by name.',
-            'ga4',
-          ),
-      ),
-      ...notes.map((note) => h('p', {}, note)),
-    );
-  };
-
-  const events = (snap: Snapshot, query: string) => {
-    const matching = runs.filter((r) =>
-      `${r.name} ${r.trigger} ${label(r.trigger)} ${r.reason}`.toLowerCase().includes(query),
-    );
-    const sent = matching.filter((r) => r.sent);
-    const not = matching.length - sent.length;
-    shown = [...(skipped ? matching : sent)].reverse();
-    const toggle = h(
-      'button',
-      {
-        type: 'button',
-        className: 'link',
-        onclick: () => {
-          skipped = !skipped;
-          ui.render();
-        },
-      },
-      skipped ? 'Hide not sent' : `Show ${not} not sent`,
-    );
-    return h(
-      'div',
-      'block',
-      h(
-        'div',
-        'bhead',
-        h(
-          'div',
-          {},
-          h('h4', {}, 'On this page'),
-          h('p', {}, `${sent.length} sent, newest first. Open one for its data.`),
-        ),
-        not > 0 && h('div', 'bact', toggle),
-      ),
-      shown.length
-        ? h('div', 'alog', ...shown.map((run) => row(snap, run)))
-        : h('p', 'anone', query ? 'Nothing matches the filter.' : 'Nothing sent yet.'),
-    );
+    const value = event ?? (run.id && pushedTo('NextDataLayer', [run.id]));
+    return value ? tree(label, value, `a${run.id}`, ui.open) : h('div', 'row', label);
   };
 
   const view = (query: string): Child[] => {
-    const snap = snapshot(ui.config());
-    const out = [
-      h(
-        'div',
-        'block',
-        h('div', 'bhead', h('div', {}, h('h4', {}, 'Tracking'), h('p', {}, verdict(snap)))),
-        h('div', 'ksteps afunnel', ...funnel(snap)),
-        destinations(snap),
-      ),
-      events(snap, query),
+    const config = ui.config();
+    const notes = setupNotes(config, started()).map((n) => n.text);
+    const sent = runs.filter((r) => r.sent && r.name.includes(query)).reverse();
+    return [
+      ...notes.map((text) => h('div', 'summary', text)),
+      sent.length
+        ? h('div', 'summary', `${plural(sent.length, 'event')} sent on this page, newest first`)
+        : query
+          ? empty('Nothing matches', 'No event name fits the filter.')
+          : empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.'),
+      ...sent.map((run) => row(run, config)),
     ];
-    fill(snap);
-    return out;
   };
 
   const problems = () => {
-    const snap = snapshot(ui.config());
     const byName = new Map<string, Run[]>();
-    for (const run of runs) if (snap.issues(run).length) byName.set(run.name, [...(byName.get(run.name) ?? []), run]);
+    for (const run of runs) if (issues(run).length) byName.set(run.name, [...(byName.get(run.name) ?? []), run]);
     return [...byName].map(([name, list]) => ({
-      text: `${name}: ${snap.issues(list.at(-1)!).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
+      text: `${name}: ${issues(list.at(-1)!).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
       error: true,
     }));
   };
 
   const notes = () =>
     started()
-      ? snapshot(ui.config())
-          .providers.filter((p) => p.status === 'warn')
-          .map((p) => p.detail)
+      ? setupNotes(ui.config(), true)
+          .filter((n) => n.warn)
+          .map((n) => n.text)
       : [];
 
   const summary = () => {
@@ -595,5 +105,5 @@ export function analyticsFlow(ui: {
     return `${ga} sent${n ? ` · ⚠ ${n}` : ''}`;
   };
 
-  return { record, note, view, summary, problems, notes, dialog };
+  return { record, note, view, summary, problems, notes };
 }

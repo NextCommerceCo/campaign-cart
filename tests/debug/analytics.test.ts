@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { analyticsFlow } from '../../src/debug/analytics';
-import type { PageKind, PageVisit } from '../../src/debug/state';
-import { checks, dlOf, linesOf, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
+import { checks, linesOf, type ProviderConfig, setupNotes, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
 import { GA4 } from '../../src/destinations/ga4';
 import {
@@ -47,18 +46,6 @@ const DL: Record<TrackingName, string> = {
   promotion_viewed: 'dl_view_promotion',
   promotion_selected: 'dl_select_promotion',
 };
-const page = (kind: PageKind, sent: string[] = []): PageVisit => ({
-  at: 0,
-  path: `/${kind}`,
-  title: kind,
-  kind,
-  scope: 'test',
-  reloads: 0,
-  units: 0,
-  sent,
-  marks: [],
-});
-
 type Win = Window & {
   NextDataLayer?: unknown[];
   dataLayer?: unknown[];
@@ -68,27 +55,11 @@ type Win = Window & {
 };
 const win = window as Win;
 
-function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
+function setup(config: ProviderConfig = ON) {
   const { engine } = makeEngine();
   const root = document.createElement('div');
-  const ids = new WeakMap<object, number>();
-  let seq = 0;
-  const idOf = (o: object) => {
-    if (!ids.has(o)) ids.set(o, ++seq);
-    return ids.get(o)!;
-  };
-  let filter = '';
-  const flow = analyticsFlow({
-    open: new Set(),
-    idOf,
-    render: () => paint(),
-    config: () => config,
-    pages: () => pages,
-  });
-  const paint = (query = filter) => {
-    filter = query;
-    root.replaceChildren(...nodes(flow.view(query)));
-  };
+  const flow = analyticsFlow({ open: new Set(), config: () => config });
+  const paint = (query = '') => root.replaceChildren(...nodes(flow.view(query)));
   engine.on('*', flow.record);
   engine.log.stream(flow.note, { replay: true });
   const decide = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
@@ -114,42 +85,20 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     } as TrackingEvent);
     if (options.layers !== false)
       for (const layer of [(win.NextDataLayer ??= []), (win.dataLayer ??= [])])
-        layer.push({ event: dlOf(name), event_id: id });
+        layer.push({ event: DL[name], event_id: id });
     decide(trigger, name, true, `reason for ${name}`, id);
   };
   const rows = () =>
-    [...root.querySelectorAll('.arun')].map((r) => [
-      r.classList[1],
-      r.querySelector('code')!.textContent,
-      r.querySelector('small')!.textContent,
-      r.querySelector('.aend')!.textContent,
-    ]);
-  const verdict = () => root.querySelector('.bhead p')!.textContent;
-  const steps = () =>
-    [...root.querySelectorAll('.afunnel > .kstep')].map((step) => [
-      step.classList[1],
-      step.querySelector('code')!.textContent,
-      step.querySelector('small')!.textContent,
-    ]);
-  const toggle = () => root.querySelector<HTMLElement>('.bact .link')!;
-  const chips = () => [...root.querySelectorAll('.adest .chip')].map((c) => c.textContent);
-  const notes = () => [...root.querySelectorAll('.adest p')].map((p) => p.textContent);
-  const tabs = () => [...flow.dialog.querySelectorAll('[role=tab]')].map((t) => t.textContent);
-  const tab = (label: string) => {
-    [...flow.dialog.querySelectorAll<HTMLElement>('[role=tab]')].find((t) => t.textContent === label)!.click();
-    return flow.dialog.querySelector('section')!;
+    [...root.querySelectorAll(':scope > details > summary, :scope > .row')].map((r) =>
+      r.textContent!.replace(/^\d\d:\d\d:\d\d\.\d{3}/, '').replace(/ \{.*\}$/, ''),
+    );
+  const notes = () => [...root.querySelectorAll(':scope > .summary')].map((n) => n.textContent);
+  const open = (nth: number) => {
+    const row = root.querySelectorAll<HTMLDetailsElement>(':scope > details')[nth]!;
+    row.open = true;
+    return row.textContent!;
   };
-  const open = (name: string, nth = 0) => {
-    [...root.querySelectorAll<HTMLElement>('.arun')]
-      .filter((r) => r.querySelector('code')!.textContent === name)
-      [nth]!.click();
-    expect(flow.dialog.open).toBe(true);
-    return [...flow.dialog.querySelectorAll('.adetail > dt')].map((dt) => [
-      dt.textContent,
-      dt.nextElementSibling!.textContent,
-    ]);
-  };
-  return { engine, root, flow, paint, decide, send, rows, verdict, steps, toggle, chips, notes, open, tabs, tab };
+  return { engine, root, flow, paint, decide, send, rows, notes, open };
 }
 
 afterEach(() => {
@@ -179,8 +128,6 @@ describe('the workflows match the analytics code', () => {
       ['promotion.closed', 'dl_exit_intent_dismissed'],
       ['promotion.closed', 'dl_exit_intent_closed'],
     ]);
-    expect(dlOf('checkout_completed')).toBe('dl_purchase');
-    expect(dlOf('dl_exit_intent_shown')).toBe('dl_exit_intent_shown');
   });
 
   it('lists every trigger that sends each event, and nothing the code does not send', async () => {
@@ -236,395 +183,137 @@ describe('the workflows match the analytics code', () => {
   });
 });
 
-const rows = (list: ReturnType<typeof providers>) => list.map((p) => [p.status, p.name, p.short, p.detail]);
+describe('setup notes', () => {
+  const texts = (config: ProviderConfig, started: boolean) => setupNotes(config, started).map((n) => [n.warn, n.text]);
 
-describe('providers', () => {
   it('flags a provider that is on but has nothing to send to', () => {
-    win.NextDataLayer = [{}, {}];
-    expect(rows(providers(ON, true))).toEqual([
-      ['ok', 'NextDataLayer', '2 events', 'window.NextDataLayer has 2 events (dl_*).'],
-      ['warn', 'GTM dataLayer', 'no GTM container', 'GTM dataLayer is on, but this page has no GTM container.'],
-      ['info', 'Page scripts', 'next.analytics.on', "Page scripts get every event with next.analytics.on('*', fn)."],
-      ['warn', 'NEXT analytics', 'not loaded', 'NEXT analytics is on, but its script is not on the page.'],
+    expect(texts(ON, true)).toEqual([
+      [true, 'GTM dataLayer is on, but this page has no GTM container.'],
+      [true, 'NEXT analytics is on, but its script is not on the page.'],
     ]);
   });
 
-  it('shows the GTM container and the NEXT script once they load', () => {
+  it('says nothing once the GTM container and the NEXT script load', () => {
     win.google_tag_manager = { 'GTM-ABC123': {}, 'G-XYZ': {} };
     win.nextCampaign = { event() {} };
-    const list = rows(providers(ON, true));
-    expect(list[1]).toEqual(['ok', 'GTM dataLayer', 'GTM-ABC123', 'window.dataLayer, read by GTM-ABC123.']);
-    expect(list[3]).toEqual(['ok', 'NEXT analytics', 'own page_view', 'Its own script sends page_view.']);
+    expect(texts(ON, true)).toEqual([]);
   });
 
   it('names the nextConfig key that turns a provider off, and providers that are not built in', () => {
-    win.NextDataLayerTransformFn = () => null;
     const config = { enabled: true, nextCampaign: false, dataLayer: false, unsupported: ['custom'] };
-    expect(rows(providers(config, false))).toEqual([
-      ['off', 'NextDataLayer', 'waits for idle', 'Starts once the page is idle.'],
-      ['off', 'GTM dataLayer', 'off', 'Off in nextConfig: analytics.providers.gtm.enabled is false.'],
-      ['info', 'Page scripts', 'next.analytics.on', "Page scripts get every event with next.analytics.on('*', fn)."],
-      ['off', 'NEXT analytics', 'off', 'Off in nextConfig: analytics.providers.nextCampaign.enabled is false.'],
+    expect(texts(config, false)).toEqual([
+      [false, 'Analytics starts once the page is idle.'],
+      [false, 'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.'],
+      [false, 'NEXT analytics is off: analytics.providers.nextCampaign.enabled is false in nextConfig.'],
       [
-        'warn',
-        'Custom endpoint',
-        'not built in',
+        true,
         "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).",
       ],
-      ['info', 'NextDataLayerTransformFn', 'set', 'NextDataLayerTransformFn can change or drop each dl_* event.'],
     ]);
-    expect(providers({ ...ON, enabled: false }, false).map((p) => [p.status, p.detail])).toContainEqual([
-      'off',
-      'Analytics is off: nextConfig.analytics.enabled is false.',
+    expect(texts({ ...ON, enabled: false }, false)).toEqual([
+      [false, 'Analytics is off: nextConfig.analytics.enabled is false.'],
     ]);
   });
 });
 
-describe('analytics workflow', () => {
-  const at = /\d\d:\d\d:\d\d$/;
-
-  it('says whether tracking works, then checks off the funnel with the page each step was sent on', () => {
+describe('analytics tab', () => {
+  beforeEach(() => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
-    const landing = page('product', ['page_viewed', 'product_list_viewed', 'product_added_to_cart', 'cart_updated']);
-    const { engine, flow, paint, send, verdict, steps, root } = setup(ON, [landing, page('checkout')]);
+  });
+
+  it('lists the events sent on this page, newest first, each opening to the event next.analytics.on gets', () => {
+    const { engine, paint, send, decide, rows, notes, open } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
-    engine.events.emit('cart.calculated', CART);
-    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
-    engine.events.emit('checkout.started', CHECKOUT);
-    send('checkout.started', 'checkout_started', CHECKOUT, 'bc');
+    decide('sdk.ready', 'product_viewed', false, 'No package on the page');
+    send('cart.calculated', 'cart_updated', CART, 'cu');
     paint();
-    expect(verdict()).toBe('Every event so far carried its object and reached its data layers');
-    expect(steps()).toEqual([
-      ['done', 'page_viewed', 'Landing · this page'],
-      ['done', 'product_list_viewed', 'Landing'],
-      ['done', 'product_added_to_cart', 'Landing · this page'],
-      ['done', 'checkout_started', 'This page'],
-      ['todo', 'checkout_shipping_address_submitted', 'Not yet: once per checkout, when the shipping address is valid'],
-      ['todo', 'checkout_shipping_method_submitted', 'Not yet: once per checkout, when a shipping method is picked'],
-      ['todo', 'checkout_payment_info_submitted', 'Not yet: once per checkout, when a submit passes its checks'],
-      ['todo', 'checkout_completed', 'Not yet: once per order, when it is paid'],
-    ]);
-    const clickable = [...root.querySelectorAll<HTMLElement>('.afunnel > button')];
-    expect(clickable.map((b) => b.querySelector('code')!.textContent)).toEqual([
-      'page_viewed',
-      'product_added_to_cart',
-      'checkout_started',
-    ]);
-    clickable[2]!.click();
-    expect(flow.dialog.querySelector('h2')!.textContent).toBe('checkout_started');
+    expect(notes()).toEqual(['2 events sent on this page, newest first']);
+    expect(rows()).toEqual(['cart cart_updated', 'page page_viewed']);
+    const event = open(0);
+    expect(event).toContain('event_id "cu"');
+    expect(event).toContain('session_id "s1"');
+    expect(event).toContain('context');
   });
 
-  it('adds the upsell steps once the tab reaches an upsell page', () => {
-    const { engine, paint, send, steps } = setup(ON, [page('checkout'), page('upsell')]);
-    const order = publicOrder(ORDER);
-    engine.events.emit('order.paid', order);
-    send('order.paid', 'checkout_completed', order, '1001');
-    paint();
-    expect(steps().slice(-3)).toEqual([
-      ['done', 'checkout_completed', 'This page'],
-      ['todo', 'upsell_viewed', 'Not yet: once per upsell page, when an offer is shown'],
-      ['todo', 'upsell_completed', 'Not yet: once per accepted upsell, when the order is loaded with it'],
-    ]);
-  });
-
-  it('lists the sent events newest first, and the ones not sent on request', () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    const { engine, root, paint, decide, send, rows, toggle, steps } = setup();
-    vi.setSystemTime(10_000);
-    document.title = 'Olympus';
-    engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_viewed', {}, 'pv');
-    decide('sdk.ready', 'product_list_viewed', false, 'No package on the page');
-    vi.setSystemTime(20_000);
-    engine.events.emit('cart.calculated', CART);
-    decide('cart.calculated', 'product_removed_from_cart', false, 'Nothing was removed since the last report');
-    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
-    paint();
-    expect(steps()[1]).toEqual(['todo', 'product_list_viewed', 'Not sent: No package on the page']);
-    expect(root.querySelectorAll('.bhead p')[1]!.textContent).toBe('2 sent, newest first. Open one for its data.');
-    expect(rows()).toEqual([
-      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1', expect.stringMatching(/^\$49\.00\d\d:/)],
-      ['ok', 'page_viewed', 'Page loaded · Olympus', expect.stringMatching(at)],
-    ]);
-    expect(toggle().textContent).toBe('Show 2 not sent');
-    toggle().click();
-    expect(toggle().textContent).toBe('Hide not sent');
-    expect(rows().map(([state, name, sub]) => [state, name, sub])).toEqual([
-      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1'],
-      ['skip', 'product_removed_from_cart', 'Cart priced · Not sent: Nothing was removed since the last report'],
-      ['skip', 'product_list_viewed', 'Page loaded · Not sent: No package on the page'],
-      ['ok', 'page_viewed', 'Page loaded · Olympus'],
-    ]);
-  });
-
-  it('opens an event in a dialog for why it was sent, the data layer push, its data and lines', () => {
-    win.google_tag_manager = { 'GTM-ABC123': {} };
-    win.nextCampaign = { event() {} };
-    const { engine, flow, paint, send, rows, chips, notes, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', CART);
-    send(
-      'cart.calculated',
-      'product_added_to_cart',
-      { ...EARBUDS, variant_title: 'Black', first_in_session: true },
-      'atc',
-    );
-    paint();
-    expect(chips()).toEqual([
-      'NextDataLayer · 1 event',
-      'GTM dataLayer · GTM-ABC123',
-      'NEXT analytics · own page_view',
-    ]);
-    expect(notes()).toEqual([]);
-    expect(rows()[0]![2]).toBe('Cart priced · + Earbuds (Black) ×1');
-    expect(open('product_added_to_cart')).toEqual([
-      ['Why', 'reason for product_added_to_cartCart priced: cart.calculated'],
-      ['Reached', 'dl_add_to_cartNextDataLayerGTM dataLayer'],
-      [
-        'Data',
-        'cart_linepackage_id 1quantity 1product_title Earbudssku EB-2price 49total 49variant_title Blackfirst_in_session true',
-      ],
-    ]);
-    expect(flow.dialog.querySelector('.aitems')!.textContent).toBe(
-      'Lines · 1productvariantskuqtypriceEarbudsBlackEB-2149',
-    );
-    expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);
-    const event = tab('Event');
-    expect([...event.querySelectorAll('.ajson b')].map((b) => b.textContent)).toEqual([
-      'product_added_to_cart',
-      'cart.calculated',
-    ]);
-    expect(JSON.parse(event.querySelector('pre')!.textContent!)).toMatchObject({
-      event_id: 'atc',
-      event_type: 'product_added_to_cart',
-      object: 'cart_line',
-      data: { product_title: 'Earbuds', first_in_session: true },
-      context: { page_location: 'http://localhost:3000/' },
-    });
-    expect(JSON.parse(tab('NextDataLayer').querySelector('pre')!.textContent!)).toEqual({
-      event: 'dl_add_to_cart',
-      event_id: 'atc',
-    });
-    expect(tab('GTM dataLayer').querySelector('.ajhead small')!.textContent).toBe(
-      'The push in window.dataLayer, for GTM tags',
-    );
-    expect(flow.dialog.querySelector('h2')!.textContent).toBe('product_added_to_cart');
-    expect(flow.dialog.querySelector('header p')!.textContent).toMatch(
-      /^Cart priced · \d\d:\d\d:\d\d · \$49\.00 · Sent$/,
-    );
-  });
-
-  it('shows the lines of a checkout from its cart, and an order by its number', () => {
-    const { engine, paint, send, rows, open } = setup();
-    engine.events.emit('checkout.started', CHECKOUT);
-    send('checkout.started', 'checkout_started', CHECKOUT, 'bc');
-    const order = publicOrder(ORDER);
-    engine.events.emit('order.paid', order);
-    send('order.paid', 'checkout_completed', order, '1001');
-    paint();
-    expect(rows().map(([, name, sub, end]) => [name, sub, end])).toEqual([
-      ['checkout_completed', 'Order paid · Earbuds ×2', expect.stringMatching(/^\$106\.11/)],
-      ['checkout_started', 'Checkout started · Earbuds ×1', expect.stringMatching(/^\$49\.00/)],
-    ]);
-    expect(Object.fromEntries(open('checkout_started')).Data).toBe('checkoutid c1');
-    expect(Object.fromEntries(open('checkout_completed')).Data).toMatch(/^orderref_id R1number 1001currency USD/);
-  });
-
-  it('steps through the listed events with Newer and Older, or the arrow keys', () => {
-    const { engine, flow, paint, send, open } = setup();
-    engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_viewed', {}, 'pv');
-    engine.events.emit('cart.calculated', CART);
-    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
-    paint();
-    open('product_added_to_cart');
-    const button = (text: string) =>
-      [...flow.dialog.querySelectorAll<HTMLButtonElement>('footer .btn')].find((b) => b.textContent === text)!;
-    const heading = () => flow.dialog.querySelector('h2')!.textContent;
-    expect([button('Newer').disabled, button('Older').disabled]).toEqual([true, false]);
-    button('Older').click();
-    expect(heading()).toBe('page_viewed');
-    expect([button('Newer').disabled, button('Older').disabled]).toEqual([false, true]);
-    flow.dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    expect(heading()).toBe('product_added_to_cart');
-    button('Done').click();
-    expect(flow.dialog.open).toBe(false);
-  });
-
-  it('says why an event was not sent', () => {
-    const { engine, flow, paint, decide, toggle, open, tabs } = setup();
-    engine.events.emit('cart.calculated', CART);
-    decide('cart.calculated', 'product_removed_from_cart', false, 'Nothing was removed since the last report');
-    paint();
-    toggle().click();
-    expect(open('product_removed_from_cart')).toEqual([
-      ['Why', 'Nothing was removed since the last reportCart priced: cart.calculated'],
-    ]);
-    expect(tabs()).toEqual(['Summary', 'Event']);
-    expect(flow.dialog.querySelector('header p')!.textContent).toMatch(/ · Not sent$/);
-  });
-
-  it('puts an incomplete object and a push that did not arrive in the verdict, the funnel and the row', () => {
-    const { engine, flow, paint, send, rows, verdict, steps, open } = setup();
+  it('shows an incomplete object and a push that did not arrive on its row, and in Issues', () => {
+    const { engine, flow, paint, send, rows } = setup();
     const order = { ...publicOrder(ORDER), lines: [], currency: undefined, number: undefined };
     engine.events.emit('order.paid', order);
     send('order.paid', 'checkout_completed', order, 'p1', { layers: false });
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
     win.dataLayer = [];
     paint();
-    expect(verdict()).toBe('1 event with problems: checkout_completed lines is empty');
-    expect(steps().find(([, name]) => name === 'checkout_completed')).toEqual([
-      'warn',
-      'checkout_completed',
-      'This page · lines is empty',
-    ]);
-    expect(rows()[0]!.slice(0, 3)).toEqual([
-      'warn',
-      'checkout_completed',
-      'Order paid · ⚠ lines is empty · ⚠ no currency · ⚠ checkout_completed has no order number · ⚠ not in dataLayer',
-    ]);
-    const detail = Object.fromEntries(open('checkout_completed'));
-    expect(detail.Problems).toBe('⚠ lines is empty⚠ no currency⚠ checkout_completed has no order number');
-    expect(detail.Reached).toBe('dl_purchaseNextDataLayerGTM dataLayer: not pushed');
-    expect([...flow.dialog.querySelectorAll('.adetail .chip')].map((c) => c.className)).toEqual([
-      'chip ok',
-      'chip warn',
-    ]);
+    const problems = 'lines is empty · no currency · checkout_completed has no order number · not in dataLayer';
+    expect(rows()).toEqual([`order checkout_completed ⚠ ${problems}`]);
+    expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
+    expect(flow.summary()).toBe('1 sent · ⚠ 1');
   });
 
   it('takes one push for every line of a bundle added or removed at once', () => {
-    const { engine, paint, send, rows, open } = setup();
+    const { engine, paint, send, rows } = setup();
     const created_at = '2026-11-05T10:00:00.000Z';
     const bump: CartItem = { package_id: 2, quantity: 1, product_title: 'Bump', price: 20, total: 20 };
     engine.events.emit('cart.calculated', { ...CART, lines: [EARBUDS, bump] });
-    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'a1', {
-      layers: false,
-      created_at,
-    });
-    send('cart.calculated', 'product_added_to_cart', { ...bump, first_in_session: false }, 'a2', {
-      layers: false,
-      created_at,
-    });
-    send('cart.calculated', 'product_added_to_cart', { ...bump, first_in_session: false }, 'a3', {
-      layers: false,
-      created_at: '2026-11-05T10:00:01.000Z',
-    });
-    send('cart.calculated', 'cart_updated', { ...CART, lines: [EARBUDS, bump] }, 'u1', { layers: false });
+    const add = (data: TrackingMap['product_added_to_cart'], id: string, at = created_at) =>
+      send('cart.calculated', 'product_added_to_cart', data, id, { layers: false, created_at: at });
+    add({ ...EARBUDS, first_in_session: true }, 'a1');
+    add({ ...bump, first_in_session: false }, 'a2');
+    add({ ...bump, first_in_session: false }, 'a3', '2026-11-05T10:00:01.000Z');
     win.NextDataLayer = [{ event: 'dl_add_to_cart', event_id: 'a1' }];
     win.dataLayer = [{ event: 'dl_add_to_cart', event_id: 'a1' }];
     paint();
-    expect(rows().map(([state, name, sub]) => [state, name, sub])).toEqual([
-      ['warn', 'cart_updated', 'Cart priced · ⚠ not in NextDataLayer · ⚠ not in dataLayer'],
-      ['warn', 'product_added_to_cart', 'Cart priced · ⚠ not in NextDataLayer · ⚠ not in dataLayer'],
-      ['ok', 'product_added_to_cart', 'Cart priced · + Bump ×1'],
-      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1'],
+    expect(rows()).toEqual([
+      'cart_line product_added_to_cart ⚠ not in NextDataLayer · not in dataLayer',
+      'cart_line product_added_to_cart',
+      'cart_line product_added_to_cart',
     ]);
-    expect(Object.fromEntries(open('product_added_to_cart', 1)).Reached).toBe(
-      'dl_add_to_cartNextDataLayerGTM dataLayer',
-    );
   });
 
-  it('shows GTM reading a push, and a GA4 request named as GA4 names the event that left the page after it', () => {
-    win.google_tag_manager = { 'GTM-ABC123': {} };
-    win.nextCampaign = { event() {} };
-    const { engine, flow, paint, send, chips, steps, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', CART);
-    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
-    send('cart.calculated', 'cart_updated', CART, 'u1');
-    (win.dataLayer![0] as Record<string, unknown>)['gtm.uniqueEventId'] = 7;
-    const collect = (en: string) => ({
-      name: `https://region1.google-analytics.com/g/collect?v=2&tid=G-TEST1&en=${en}`,
-      startTime: Date.now() - performance.timeOrigin + 20,
-    });
-    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      collect('add_to_cart'),
-      collect('cart_updated'),
-      collect('page_view'),
-      { name: 'https://cdn.test/app.js', startTime: 0 },
-    ] as never);
-    paint();
-    expect(chips()).toContain('GA4 · G-TEST1');
-    expect(steps().find(([, name]) => name === 'product_added_to_cart')).toEqual([
-      'done',
-      'product_added_to_cart',
-      'This page · reached GA4',
-    ]);
-    expect(Object.fromEntries(open('cart_updated')).Reached).toBe('dl_cart_updatedNextDataLayerGTM dataLayer');
-    expect(Object.fromEntries(open('product_added_to_cart')).Reached).toBe(
-      'dl_add_to_cartNextDataLayerGTM dataLayer · read by GTMGA4 G-TEST1',
-    );
-    expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer', 'GA4']);
-    expect(
-      [...flow.dialog.querySelectorAll('.adetail .chip')].map((c) => [
-        c.className,
-        c.textContent,
-        c.querySelector('svg')!.getAttribute('fill'),
-      ]),
-    ).toEqual([
-      ['chip ok', 'NextDataLayer', 'currentColor'],
-      ['chip ok', 'GTM dataLayer · read by GTM', '#246FDB'],
-      ['chip ok', 'GA4 G-TEST1', '#E37400'],
-    ]);
-    expect([...flow.dialog.querySelectorAll('[role=tab]')].map((t) => !!t.querySelector('svg'))).toEqual([
-      false,
-      false,
-      true,
-      true,
-      true,
-    ]);
-    expect(tab('GTM dataLayer').querySelector('.ajhead small')!.textContent).toBe(
-      'The push in window.dataLayer, read by GTM',
-    );
-    const ga4 = tab('GA4');
-    expect(ga4.querySelector('p')!.textContent).toMatch(/^The request to region1\.google-analytics\.com for G-TEST1 /);
-    expect([...ga4.querySelectorAll('tr')].map((r) => r.textContent)).toEqual(['v2', 'tidG-TEST1', 'enadd_to_cart']);
-  });
-
-  it('says what GTM being off means in the verdict, and its nextConfig key once, not on each event', () => {
-    win.nextCampaign = { event() {} };
-    const { engine, paint, send, chips, notes, verdict, open } = setup({ ...ON, dataLayer: false });
-    engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_viewed', {}, 'pv');
-    paint();
-    expect(chips()).toEqual(['NextDataLayer · 1 event', 'GTM dataLayer · off', 'NEXT analytics · own page_view']);
-    expect(verdict()).toBe('GTM tags get none of these events: GTM dataLayer is off');
-    expect(notes()).toEqual(['Off in nextConfig: analytics.providers.gtm.enabled is false.']);
-    expect(Object.fromEntries(open('page_viewed'))['Reached']).toBe('dl_user_dataNextDataLayer');
-  });
-
-  it('runs the exit popup straight to the data layer, and names a provider that cannot deliver', () => {
-    const { engine, paint, decide, rows, verdict, open, tabs } = setup();
+  it('opens an exit popup event, which goes straight to the data layer, to its push', () => {
+    const { engine, paint, decide, rows, open } = setup();
     win.NextDataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
     win.dataLayer = [{ event: 'dl_exit_intent_shown', event_id: 'x1' }];
     engine.events.emit('promotion.viewed', { id: 'exit_intent', type: 'exit_intent' });
     decide('promotion.viewed', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
-    expect(verdict()).toBe('GTM dataLayer is on, but this page has no GTM container.');
-    expect(rows()[0]!.slice(0, 3)).toEqual(['ok', 'dl_exit_intent_shown', 'Promotion shown · data layer only']);
-    expect(open('dl_exit_intent_shown')).toEqual([
-      ['Why', 'Data layer only: there is no analytics eventPromotion shown: promotion.viewed'],
-      ['Reached', 'dl_exit_intent_shownNextDataLayerGTM dataLayer'],
-    ]);
-    expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);
+    expect(rows()).toEqual(['data layer dl_exit_intent_shown']);
+    expect(open(0)).toContain('event "dl_exit_intent_shown"');
   });
 
-  it('filters events, and explains an empty page or analytics turned off', () => {
-    const { engine, root, paint, decide, send, rows, verdict, toggle } = setup();
-    paint();
-    expect(verdict()).toBe('Nothing sent yet: analytics starts once the page is idle.');
-    expect(root.querySelector('.anone')!.textContent).toBe('Nothing sent yet.');
+  it('puts setup notes on top, and only the warnings in Issues', () => {
+    delete win.google_tag_manager;
+    const { engine, flow, paint, send, notes } = setup({ ...ON, dataLayer: false, unsupported: ['custom'] });
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
-    decide('sdk.ready', 'product_viewed', false, 'No package on the page');
-    paint('package');
-    expect(root.querySelector('.anone')!.textContent).toBe('Nothing matches the filter.');
-    toggle().click();
-    expect(rows().map(([, name]) => name)).toEqual(['product_viewed']);
+    paint();
+    const custom =
+      "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).";
+    expect(notes()).toEqual([
+      'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
+      custom,
+      '1 event sent on this page, newest first',
+    ]);
+    expect(flow.notes()).toEqual([custom]);
+  });
+
+  it('filters events by name, and explains an empty page or analytics turned off', () => {
+    const { engine, root, paint, send, rows, notes } = setup();
+    paint();
+    expect(notes()).toEqual(['Analytics starts once the page is idle.']);
+    expect(root.querySelector('.empty')!.textContent).toContain('Nothing sent yet');
+    engine.events.emit('sdk.ready', engine.snapshot());
+    send('sdk.ready', 'page_viewed', {}, 'pv');
+    send('cart.calculated', 'cart_updated', CART, 'cu');
+    paint('page');
+    expect(rows()).toEqual(['page page_viewed']);
+    paint('nope');
+    expect(root.querySelector('.empty')!.textContent).toContain('Nothing matches');
     const off = setup({ ...ON, enabled: false });
     off.paint();
-    expect(off.verdict()).toBe('Analytics is off: nextConfig.analytics.enabled is false.');
-    expect(off.notes()).toEqual([]);
+    expect(off.notes()).toEqual(['Analytics is off: nextConfig.analytics.enabled is false.']);
+    expect(off.flow.notes()).toEqual([]);
   });
 });
 

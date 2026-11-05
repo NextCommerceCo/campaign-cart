@@ -187,14 +187,12 @@ src/
                                    Fill test details call engine.checkout
     picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
                                    Add and the stepper set the quantity through engine.cart
-    analytics.ts                   the Analytics tab: a verdict, the funnel of tracking events checked off across the tab's
-                                   pages, where events are pushed, then this page's events; one opens in tsugi's dialog, a
-                                   tab for its summary (why, what it reached, lines), the envelope and one for what each
-                                   data layer or GA4 got
+    analytics.ts                   the Analytics tab: setup notes, then this page's tracking events with their problems, each
+                                   opening to its envelope; the problems and notes Issues lists
     legacy.ts                      the attributes v2 name of each earlier attribute, shown in the Elements tab
-    providers.ts                   which destinations are on, engine event → tracking event / dl_* wiring (checked against
-                                   compat/analytics/), push checks
-    styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
+    providers.ts                   setup notes on the destinations, engine event → tracking event / dl_* wiring (checked
+                                   against compat/analytics/), the checks each tracking event's object passes
+    styles.ts                      vendored tsugi first, then the panel, cart, checkout and journey stylesheets on its tokens
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy/            boot        events.ts: selector ids, the 0.4.x event names made from the new events;
