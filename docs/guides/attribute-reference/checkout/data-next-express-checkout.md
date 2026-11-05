@@ -38,10 +38,10 @@ being placed.
 
 ## 0.4.x
 
-| 0.4.x                                                                                | Now                                                                                                              |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `nextConfig.paymentConfig.expressCheckout.methodOrder`                               | Still read; only the campaign's express methods are shown                                                        |
-| `nextConfig.paymentConfig.expressCheckout.requireValidation` (with `requiredFields`) | Still read: a button checks the fields listed (page or API names), or the whole form when none are listed, first |
+| 0.4.x                                                                                | Now                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nextConfig.paymentConfig.expressCheckout.methodOrder`                               | Still read; only the campaign's express methods are shown                                                                                                                                            |
+| `nextConfig.paymentConfig.expressCheckout.requireValidation` (with `requiredFields`) | Still read, for PayPal, Apple Pay or Google Pay picked in the form: the fields listed (page or API names), the whole form when none are listed, nothing when `false`. A button never checks the form |
 
 ## Events
 

@@ -20,7 +20,7 @@ import {
   type LegacyCheckoutStarted,
   legacyCountries,
   legacyCheckoutEvents,
-  legacyExpressChecks,
+  legacyWalletChecks,
   legacyStartedEachPage,
   stepUrlOf,
   SUBMIT_ATTRS,
@@ -147,7 +147,7 @@ export function bindCheckout(
     const successUrl = meta(...SUCCESS_URL_META);
     const order = await checkout.placeOrder({
       expressMethod,
-      expressChecks: legacyExpressChecks(),
+      walletChecks: legacyWalletChecks(),
       successUrl,
       failureUrl: failureUrl(),
       pageUrl: location.href,

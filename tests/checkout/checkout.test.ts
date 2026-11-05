@@ -335,7 +335,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(navigate).toHaveBeenCalledWith('https://paypal.test/R4');
   });
 
-  it('checks what nextConfig.paymentConfig.expressCheckout asks before an express button pays, like 0.4.x', async () => {
+  it('applies nextConfig.paymentConfig.expressCheckout checks to a wallet picked in the form, never to an express button, like 0.4.x', async () => {
     const click = async () => {
       document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
       await flush();
@@ -343,28 +343,41 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     };
     const config = (expressCheckout: object) =>
       ((window as unknown as { nextConfig: unknown }).nextConfig = { paymentConfig: { expressCheckout } });
+    const pickPaypal = (page: Awaited<ReturnType<typeof mount>>) => {
+      const radio = page.$('input[name="payment_method"][value="paypal"]');
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+    };
 
-    config({ requireValidation: true, requiredFields: ['email', 'fname'] });
-    const listed = await mount('olympus/checkout.html');
-    listed.type('fname', 'Jane');
+    config({ requireValidation: true, requiredFields: ['email', 'fname', 'lname'] });
+    const button = await mount('olympus/checkout.html');
     await click();
+    expect(button.orders()).toHaveLength(1);
+    expect(Object.keys(button.orders()[0]!.body)).not.toContain('user');
+
+    const listed = await mount('olympus/checkout.html');
+    pickPaypal(listed);
+    listed.fill({ fname: 'Jane', lname: 'Doe' });
+    await listed.submit();
     expect(listed.orders()).toHaveLength(0);
     expect(listed.field('email').classList).toContain('next-error-field');
-    expect(listed.field('lname').classList).not.toContain('next-error-field');
+    expect(listed.field('address1').classList).not.toContain('next-error-field');
     listed.type('email', 'jane@example.com');
-    await click();
-    expect(Object.keys(listed.orders()[0]!.body)).not.toContain('user');
+    await listed.submit();
+    expect(listed.orders()[0]!.body.user).toMatchObject({ email: 'jane@example.com' });
 
     config({ requireValidation: true });
     const whole = await mount('olympus/checkout.html');
+    pickPaypal(whole);
     whole.fill({ email: 'jane@example.com', fname: 'Jane', lname: 'Doe' });
-    await click();
+    await whole.submit();
     expect(whole.orders()).toHaveLength(0);
     expect(whole.field('address1').classList).toContain('next-error-field');
 
-    config({ requireValidation: false, requiredFields: ['email'] });
+    config({ requireValidation: false });
     const off = await mount('olympus/checkout.html');
-    await click();
+    pickPaypal(off);
+    await off.submit();
     expect(off.orders()).toHaveLength(1);
   });
 

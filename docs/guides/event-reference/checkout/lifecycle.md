@@ -49,9 +49,10 @@ later step, a reload, or a return from the gateway. The debug panel shows the st
 An express button (Apple Pay, Google Pay, PayPal, … in `data-next-express-checkout`) pays with the
 wallet's details:
 
-- The form is not checked, only that the cart has lines, unless the 0.4.x
-  `nextConfig.paymentConfig.expressCheckout.requireValidation` asks for its fields.
-- PayPal or Klarna picked as the payment method in the form gets the full checks, like a card.
+- The form is not checked, only that the cart has lines.
+- PayPal, Apple Pay or Google Pay picked as the payment method in the form gets the checks the
+  0.4.x `nextConfig.paymentConfig.expressCheckout.requireValidation` asks for, or the full checks
+  when it is unset. Klarna and the other methods get the full checks, like a card.
 
 ## The cart
 

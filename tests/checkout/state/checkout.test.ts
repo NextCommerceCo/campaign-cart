@@ -935,24 +935,33 @@ describe('checkout payment', () => {
     });
   });
 
-  it('lets an express button pay without the form, or after the checks nextConfig asks for', async () => {
-    const pay = async (expressChecks?: Scope, fields: Record<string, string> = {}) => {
-      const { engine, checkout, fill, posts } = await setup();
+  it('lets an express button pay without the form, whatever a wallet picked in the form checks', async () => {
+    const pay = async (
+      walletChecks: Scope | null | undefined,
+      method?: string,
+      fields: Record<string, string> = {},
+    ) => {
+      const gateway = () => json({ ref_id: 'R1', payment_complete_url: 'https://pay.test/R1' });
+      const { engine, checkout, fill, posts } = await setup({ api: { order: gateway } });
       await engine.cart.addItem(1);
       await checkout.loadCountries();
+      if (method) checkout.setPaymentMethod(method);
       fill(fields);
-      const placed = await checkout.placeOrder({ ...URLS, expressMethod: 'apple-pay', expressChecks });
-      return { placed, body: posts('/orders/')[0]?.body, errors: engine.getState().checkout!.errors };
+      const urls = { ...URLS, walletChecks, ...(!method && { expressMethod: 'apple-pay' }) };
+      const placed = await checkout.placeOrder(urls);
+      return { placed, body: posts('/orders/')[0]?.body, errors: Object.keys(engine.getState().checkout!.errors) };
     };
-    const free = await pay();
-    expect(free.placed).toMatchObject({ ref_id: 'R1' });
-    expect(free.body.payment_detail).toEqual({ payment_method: 'apple_pay' });
-    expect(free.body).not.toHaveProperty('user');
-    expect(Object.keys((await pay(['email', 'first_name'], { first_name: 'Jane' })).errors)).toEqual(['email']);
-    const listed = await pay(['email', 'first_name'], contact);
+    const button = await pay(['email', 'first_name']);
+    expect(button.placed).toMatchObject({ ref_id: 'R1' });
+    expect(button.body.payment_detail).toEqual({ payment_method: 'apple_pay' });
+    expect(button.body).not.toHaveProperty('user');
+    expect((await pay(['email', 'first_name'], 'paypal', { first_name: 'Jane' })).errors).toEqual(['email']);
+    const listed = await pay(['email', 'first_name'], 'paypal', contact);
     expect(listed.placed).toMatchObject({ ref_id: 'R1' });
-    expect(listed.body).not.toHaveProperty('shipping_address');
-    expect(Object.keys((await pay('all', contact)).errors)).toEqual(expect.arrayContaining(['line1']));
+    expect(listed.body.user).toMatchObject({ email: 'jane@example.com' });
+    expect((await pay(null, 'google_pay')).placed).toMatchObject({ ref_id: 'R1' });
+    expect((await pay(undefined, 'paypal', contact)).errors).toEqual(expect.arrayContaining(['line1']));
+    expect((await pay(null, 'card_token', contact)).errors).toEqual(expect.arrayContaining(['line1']));
   });
 });
 

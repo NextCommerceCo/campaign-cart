@@ -10,6 +10,7 @@ import { formErrors, type Scope } from './rules';
 import type { CheckoutState } from './types';
 
 const PHONE_WAIT = 2000;
+const WALLETS = ['paypal', 'apple_pay', 'google_pay'];
 
 const within = (work: Promise<unknown>, ms: number) =>
   Promise.race([work, new Promise((done) => setTimeout(done, ms))]);
@@ -30,9 +31,10 @@ export function redirectFor(
 }
 
 export interface PlaceOrder extends OrderUrls {
-  /** An express button's method: the wallet gives the shopper's details, so the form is not sent. */
+  /** An express button's method: the wallet gives the shopper's details, so the form is neither checked nor sent. */
   expressMethod?: string;
-  expressChecks?: Scope;
+  /** What PayPal, Apple Pay or Google Pay picked in the form checks; `null` checks nothing. Unset, the whole form. */
+  walletChecks?: Scope | null;
   tokenize?: () => Promise<string>;
   phoneRequired?: boolean;
 }
@@ -58,7 +60,11 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
     if (state().status !== 'idle') return undefined;
     const express = !!input.expressMethod;
     const method = input.expressMethod ? paymentCode(input.expressMethod) : state().paymentMethod;
-    const checks = express ? input.expressChecks : 'all';
+    const checks = express
+      ? undefined
+      : WALLETS.includes(method) && input.walletChecks !== undefined
+        ? input.walletChecks
+        : 'all';
     set({ status: 'placing', express });
     cart.freeze(true);
     const fail = (errors: Record<string, CheckoutError>) => {

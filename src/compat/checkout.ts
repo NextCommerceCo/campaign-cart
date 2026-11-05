@@ -66,13 +66,13 @@ export const legacyExpressOrder = () =>
   config().paymentConfig?.expressCheckout?.methodOrder?.map((m) => m.toLowerCase().replace(/-/g, '_'));
 
 /**
- * @deprecated `nextConfig.paymentConfig.expressCheckout.requireValidation` and `requiredFields`: with
- * `requireValidation`, an express button checks the listed fields (page or API names) first, or the whole form
- * when none are listed. Without it, the wallet's details are enough.
+ * @deprecated `nextConfig.paymentConfig.expressCheckout.requireValidation` and `requiredFields`, for PayPal, Apple
+ * Pay or Google Pay picked in the form (an express button never checks the form, as in 0.4.x): `true` checks the
+ * listed fields (page or API names), or the whole form when none are listed; `false` checks nothing.
  */
-export function legacyExpressChecks(): Scope | undefined {
+export function legacyWalletChecks(): Scope | null | undefined {
   const express = config().paymentConfig?.expressCheckout;
-  if (!express?.requireValidation) return undefined;
+  if (!express?.requireValidation) return express?.requireValidation === false ? null : undefined;
   return express.requiredFields?.map((name) => LEGACY_FIELDS[name] ?? name) ?? 'all';
 }
 

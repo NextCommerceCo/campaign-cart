@@ -39,11 +39,12 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 ### Checkout
 
-- **Express buttons** place the order without checking the form.
-  - To check first: `nextConfig.paymentConfig.expressCheckout.requireValidation` (with
-    `requiredFields`).
-  - PayPal or Klarna chosen _in the form_ gets the form's full checks and sends the shopper's
-    details.
+- **Express buttons** place the order without checking the form, as in 0.4.x.
+  - PayPal, Apple Pay or Google Pay chosen _in the form_ checks what
+    `nextConfig.paymentConfig.expressCheckout.requireValidation` asks: the `requiredFields`
+    listed, the whole form when none are listed, nothing when it is `false`. Unset, the whole
+    form. It sends the shopper's details.
+  - Klarna and the other redirect methods chosen in the form get the form's full checks.
 - **Coupon on an empty cart** is checked once the cart is first priced. `next.applyCoupon` still
   answers `true` at once.
 - **Phone placeholder**: the page's own is kept (0.4.43 replaced it with `Phone*`).
