@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createCheckout, type Lead, redirectFor } from '../../../src/checkout/state/checkout';
+import { createCheckout } from '../../../src/checkout/state/checkout';
+import type { Lead } from '../../../src/checkout/state/contact';
+import { redirectFor } from '../../../src/checkout/state/place-order';
 import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
 import type { Scope } from '../../../src/checkout/state/rules';
 import { createOrder } from '../../../src/order/state';

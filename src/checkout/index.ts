@@ -1,5 +1,7 @@
 import { RulesApi } from './state/rules';
-import { type CheckoutActions, createCheckout, type Lead, redirectFor } from './state/checkout';
+import { type CheckoutActions, createCheckout } from './state/checkout';
+import type { Lead } from './state/contact';
+import { redirectFor } from './state/place-order';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import { bindAddress } from './address/country';

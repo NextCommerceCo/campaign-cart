@@ -126,7 +126,8 @@ src/
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
-    state/                         headless: checkout.ts (actions), order-body.ts (order body, payment codes),
+    state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
+                                   place-order.ts (placeOrder, redirectFor), order-body.ts (order body, payment codes),
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)

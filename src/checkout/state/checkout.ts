@@ -1,17 +1,14 @@
-import { orderError, orderFailure } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
 import { newId } from '../../engine/id';
-import { publicOrder, purchaseId, REPORTED, REPORTED_KEEP } from '../../engine/order';
-import { nextUrl } from '../../engine/params';
-import { orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
-import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
-import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
-import type { Address, AddressType, Checkout, User } from '../../engine/events/checkout';
-import type { ApiOrder, CheckoutError, OpenCart } from '../../engine/types';
+import { createContact, type Lead } from './contact';
+import { paymentCode, publicAddress } from './order-body';
+import { createPlaceOrder } from './place-order';
+import { asciiDigits, PHONES, phoneFieldOf, phoneKey } from './phone';
+import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope } from './rules';
+import type { Address, AddressType, Checkout } from '../../engine/events/checkout';
+import type { CheckoutError } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
-
-const PHONE_WAIT = 2000;
 
 const emptyCheckout = (): CheckoutState => ({
   fields: {},
@@ -39,35 +36,6 @@ const emptyCheckout = (): CheckoutState => ({
 const countryOf = (fields: Record<string, string>, name: string) =>
   name.startsWith('billing_') ? fields.billing_country : fields.country;
 
-const within = (work: Promise<unknown>, ms: number) =>
-  Promise.race([work, new Promise((done) => setTimeout(done, ms))]);
-
-export function redirectFor(
-  order: ApiOrder,
-  successUrl: string | undefined,
-  current: URL,
-  params: Record<string, string>,
-) {
-  if (order.payment_complete_url) return order.payment_complete_url;
-  if (!successUrl) {
-    return nextUrl(order.order_status_url ?? `/checkout/confirmation/?ref_id=${order.ref_id}`, current, params);
-  }
-  const url = new URL(successUrl, current);
-  url.searchParams.set('ref_id', order.ref_id);
-  return nextUrl(url.href, current, params);
-}
-
-/** What the shopper must have entered, with their name, to be saved as a lead: the form's `data-next-lead`. */
-export type Lead = 'email' | 'phone' | 'email+phone' | 'off' | 'formStart';
-
-export interface PlaceOrder extends OrderUrls {
-  /** An express button's method: the wallet gives the shopper's details, so the form is not sent. */
-  expressMethod?: string;
-  expressChecks?: Scope;
-  tokenize?: () => Promise<string>;
-  phoneRequired?: boolean;
-}
-
 export function createCheckout(
   ctx: Context,
   cart: CartActions,
@@ -78,43 +46,10 @@ export function createCheckout(
   const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
   let bound = false;
   let open = false;
-  let prospecting = false;
 
   set({ ...emptyCheckout(), ...ctx.saved<Partial<CheckoutState>>('checkout'), status: 'idle', errors: {} });
 
-  type Entered = Omit<User, 'language' | 'ip' | 'user_agent'>;
-  const contactOf = (): Entered | undefined => {
-    const { fields, phones } = state();
-    const [email = '', first_name = '', last_name = ''] = ['email', 'first_name', 'last_name'].map(
-      (n) => fields[n]?.trim() ?? '',
-    );
-    const phone = phoneOf(state(), 'phone_number');
-    const hasEmail = validEmail(email);
-    const hasPhone = !!phones.phone_number;
-    const named = first_name.length >= 2 && last_name.length >= 2;
-    const ready = {
-      email: hasEmail && named,
-      phone: hasPhone && named,
-      'email+phone': hasEmail && hasPhone && named,
-      off: false,
-      formStart: !!(email || first_name || last_name || phone),
-    }[lead];
-    if (!ready) return;
-    return {
-      ...(hasEmail && { email }),
-      first_name,
-      last_name,
-      ...(phone && { phone }),
-      accepts_marketing: fields.accepts_marketing !== 'false',
-    };
-  };
-  const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);
-  const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => ({
-    language: stored?.language || ctx.getState().campaign?.language || '',
-    ...(stored?.ip && { ip: stored.ip }),
-    user_agent: stored?.user_agent || ctx.getState().visit.landing?.device || '',
-  });
-  let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
+  const saveContact = createContact(ctx, cart, lead, () => open);
 
   const loadCountry = async (code: string): Promise<void> => {
     if (!code || state().rules[code]) return;
@@ -124,36 +59,6 @@ export function createCheckout(
     } catch (err) {
       set({ rulesDown: true });
       ctx.fail('address.load_rules', err);
-    }
-  };
-
-  const saveContact = async (): Promise<void> => {
-    const now = contactOf();
-    const campaign = ctx.getState().campaign;
-    if (!open || !now || prospecting || !campaign) return;
-    if (state().prospectSaved) {
-      if (contactKey(now) === contact) return;
-      contact = contactKey(now);
-      const { language, ip, user_agent } = state().user ?? recorded();
-      set({ user: { ...now, language, ...(ip && { ip }), user_agent } });
-      ctx.emit('user.updated', state().user!);
-      return;
-    }
-    prospecting = true;
-    try {
-      const saved = await ctx.api.createCart({
-        lines: cart.lines(),
-        user: userOf(state().fields, campaign.language, now.phone),
-        currency: campaign.currency,
-        attribution: ctx.attribution(),
-      });
-      set({ prospectSaved: true, openCart: saved, user: { ...now, ...recorded(saved.user) } });
-      contact = contactKey(now);
-      ctx.emit('user.created', state().user!);
-    } catch (err) {
-      ctx.fail('user.save', err);
-    } finally {
-      prospecting = false;
     }
   };
 
@@ -249,13 +154,15 @@ export function createCheckout(
   const invalid = (errors: Record<string, CheckoutError>, method?: string) =>
     ctx.emit('checkout.invalid', { ...cart.currentCheckout(), ...(method && { payment_method: method }), errors });
 
-  const markPaid = (order: ApiOrder) => {
-    const reported = ctx.local.get<string[]>(REPORTED) ?? [];
-    ctx.local.set(REPORTED, [...new Set([...reported, purchaseId(order)])].slice(-REPORTED_KEEP));
-    ctx.update('order', { paidOrder: order }, { silent: true });
-  };
+  const placeOrder = createPlaceOrder(ctx, cart, {
+    checkPhone,
+    showErrors,
+    invalid,
+    reset: () => set({ ...emptyCheckout(), status: 'placed' }, { silent: true }),
+  });
 
   return {
+    placeOrder,
     begin(): void {
       bound = true;
       start();
@@ -403,88 +310,6 @@ export function createCheckout(
       country = state().fields.country || (country ?? listed('US') ?? countries[0]?.code);
       if (country && country !== state().fields.country) set({ fields: { ...state().fields, country } });
       await Promise.all([country && loadCountry(country), loadCountry(state().fields.billing_country ?? '')]);
-    },
-
-    async placeOrder(input: PlaceOrder): Promise<ApiOrder | undefined> {
-      if (state().status !== 'idle') return undefined;
-      const express = !!input.expressMethod;
-      const method = input.expressMethod ? paymentCode(input.expressMethod) : state().paymentMethod;
-      const checks = express ? input.expressChecks : 'all';
-      set({ status: 'placing', express });
-      cart.freeze(true);
-      const fail = (errors: Record<string, CheckoutError>) => {
-        set({ status: 'idle', errors });
-        cart.freeze(false);
-        return undefined;
-      };
-      const stop = (errors: Record<string, CheckoutError>) => {
-        invalid(errors, method);
-        return fail(errors);
-      };
-
-      if (checks) {
-        const phones = PHONES.filter((name) => !name.startsWith('billing_') || !state().sameAsShipping);
-        await within(Promise.all(phones.map((name) => checkPhone(name))), PHONE_WAIT);
-      }
-      const errors = checks ? formErrors(state(), checks, input.phoneRequired) : {};
-      if (Object.keys(errors).length) return stop(showErrors(errors));
-      if (!cart.lines().length) return stop({ form: { code: 'empty_cart' } });
-      await cart.settled();
-
-      let token: string | undefined;
-      if (method === 'card_token') {
-        if (!input.tokenize) {
-          ctx.log.warn('card payment needs cc-number and cvv fields and a campaign payment_env_key');
-          return stop({ form: { code: 'card' } });
-        }
-        try {
-          token = await input.tokenize();
-        } catch (err) {
-          return stop({ form: { code: 'card', message: err instanceof Error ? err.message : undefined } });
-        }
-      }
-
-      ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method });
-      const vouchers = cart.vouchers();
-      let order: ApiOrder;
-      try {
-        order = await ctx.api.createOrder(
-          orderBody(ctx.getState(), {
-            method,
-            express,
-            token,
-            lines: cart.lines(),
-            vouchers,
-            attribution: ctx.attribution(),
-            urls: input,
-          }),
-        );
-      } catch (err) {
-        const error = orderFailure(err);
-        if (error.code === 'declined') ctx.emit('payment.failed', { method, error });
-        else {
-          ctx.fail('order.create', err);
-          ctx.emit('checkout.failed', { ...cart.currentCheckout(), payment_method: method, error });
-        }
-        return fail({ form: orderError(err) });
-      }
-      const codes = ctx.getState().cart.coupons;
-      if (vouchers.length)
-        ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0], codes } }, { silent: true });
-      const created = publicOrder(order, codes);
-      if (order.payment_complete_url) {
-        set({ status: 'placed', pendingRef: order.ref_id, pendingMethod: method });
-        ctx.emit('order.created', created);
-        ctx.emit('payment.redirected', { method, ref_id: order.ref_id, url: order.payment_complete_url });
-        return order;
-      }
-      ctx.emit('order.created', created);
-      markPaid(order);
-      ctx.emit('order.paid', created);
-      ctx.emit('checkout.completed', { ...cart.currentCheckout(), payment_method: method, ref_id: order.ref_id });
-      cart.clearAfterOrder();
-      set({ ...emptyCheckout(), status: 'placed' }, { silent: true });
-      return order;
     },
   };
 }
