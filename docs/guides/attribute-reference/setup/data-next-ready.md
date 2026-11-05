@@ -17,13 +17,15 @@ html:not([data-next-ready]) [data-next-display] {
 
 ## Set by the SDK
 
-| On       | Set                                                                                                       |
-| -------- | --------------------------------------------------------------------------------------------------------- |
-| `<html>` | `data-next-ready` (empty value), after [sdk.ready](/event-reference/sdk/sdk.ready)                        |
-| `<html>` | `data-next-error="campaign"` instead, when the campaign could not be loaded and no copy was saved earlier |
+| On       | Set                                                                                  |
+| -------- | ------------------------------------------------------------------------------------ |
+| `<html>` | `data-next-ready` (empty value), after [sdk.ready](/event-reference/sdk/sdk.ready)   |
+| `<html>` | `data-next-error="campaign"`, whenever the campaign could not be loaded from the API |
 
 The campaign saved in this browser from an earlier page counts: on a later page the values show
-from that copy at once, and the API's answer replaces it when it arrives.
+from that copy at once, and the API's answer replaces it when it arrives. When the API fails but a
+copy was saved, the page still becomes ready, so both attributes are set; without a copy, only
+`data-next-error`.
 
 `[data-next-display]` elements are written before the campaign arrives too: a money or text value
 that is not known yet is written as empty, and an element whose path is a yes/no value is hidden.

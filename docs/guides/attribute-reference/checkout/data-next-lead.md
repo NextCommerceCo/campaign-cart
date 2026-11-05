@@ -26,7 +26,8 @@ and a valid email.
 `email phone`, `Email + Phone` or `phone,email` read the same as `email+phone`. A value the checkout
 cannot read logs a warning and uses `email`.
 
-Once saved, a later change to the name, email, phone or `accepts_marketing` updates the lead.
+Once saved, a later change to the name, email, phone or `accepts_marketing` sends `user.updated`;
+the Open Cart keeps the first details, and the order takes the latest.
 
 ## 0.4.x
 
