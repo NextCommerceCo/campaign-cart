@@ -171,9 +171,11 @@ src/
     rudderstack/                   index.ts startRudderStack: the page's rudderanalytics, waiting for ready();
                                    calls.ts the tracking event → 0.4.x RudderStack calls; types.ts RudderStackEventMap
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
+    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds events, elements, state, logs and .devonly detail), window.nextDebug
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
                                    session under next:debug, outside the storage scope
+    events.ts                      the Events tab: each public event in the envelope next.on gets
+    logs.ts                        the Logs tab: every log line, also the Issues tab's warnings and errors
     journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
     icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree

@@ -27,7 +27,7 @@ const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
   'debug/analytics.ts': 579,
   'checkout/state/checkout.ts': 306,
-  'debug/index.ts': 437,
+  'debug/index.ts': 428,
   'debug/cart.ts': 394,
   'order/state.ts': 346,
   'compat/checkout.ts': 339,

@@ -68,6 +68,8 @@ export const time = (at: number) => {
 
 export const clock = (at: number) => time(at).slice(0, 8);
 
+export const stamp = (at: number) => h('span', 'time', time(at));
+
 export const empty = (title: string, detail = '', figure: IconName = 'search') =>
   h(
     'section',

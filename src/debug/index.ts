@@ -1,32 +1,33 @@
 import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import type { LogEntry } from '../engine/log';
 import { format } from '../engine/format';
 import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
 import { checkoutView } from './checkout';
+import { eventsView } from './events';
 import { type IconName, icon } from './icons';
 import { journeyView } from './journey';
+import { logsView } from './logs';
 import type { ProviderConfig } from './providers';
 import { createDebug, type PageKind, type PageVisit } from './state';
 import { ANALYTICS_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
-import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, time, tree } from './view';
+import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
 
 const TABS = {
   journey: 'Journey',
   issues: 'Issues',
   checkout: 'Checkout',
   analytics: 'Analytics',
+  events: 'Events',
   elements: 'Elements',
   state: 'State',
   logs: 'Logs',
 };
-const LEVELS = { debug: 'outline', info: 'info', warn: 'warning', error: 'destructive' };
 type Tab = keyof typeof TABS;
-const FILTERED: Tab[] = ['elements', 'analytics', 'logs'];
-const DEV: Tab[] = ['elements', 'state', 'logs'];
+const FILTERED: Tab[] = ['elements', 'analytics', 'events', 'logs'];
+const DEV: Tab[] = ['events', 'elements', 'state', 'logs'];
 const LIMIT = 200;
 export interface DebugInfo {
   version: string;
@@ -148,6 +149,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   theme();
 
   const query = () => filter.value.trim().toLowerCase();
+  const events = eventsView(engine, open);
   const flow = analyticsFlow({
     open,
     idOf,
@@ -159,11 +161,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog, flow.dialog);
-  const stamp = (at: number) => h('span', 'time', time(at));
-  const logRow = (e: LogEntry) => {
-    const label = h('span', {}, stamp(e.at), badge(e.level, LEVELS[e.level]), ' ', e.message);
-    return e.data === undefined ? h('div', 'row', label) : tree(label, e.data, `l${idOf(e)}`, open);
-  };
+  const logs = logsView(engine, open, idOf);
   const cartText = () => {
     const { campaign } = engine.getState();
     const units = Number(resolve(engine, 'cart.quantity')?.value ?? 0);
@@ -257,7 +255,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
         ...page.map((i) => card(i, box)),
         logged.length > 0 && h('h3', {}, `Warnings and errors · ${logged.length}`),
-        ...logged.map(logRow),
+        ...logged.map(logs.row),
         before,
         ...setup,
       ];
@@ -290,15 +288,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       ];
     },
     analytics: () => flow.view(query()),
-    logs: () => {
-      const rows = engine.log
-        .entries()
-        .filter((e) => e.message.toLowerCase().includes(query()))
-        .slice(-150)
-        .reverse()
-        .map(logRow);
-      return rows.length ? rows : [empty('Nothing matches')];
-    },
+    events: () => events.view(query()),
+    logs: () => logs.view(query()),
   };
 
   const menuItems = (): Child[] => {
@@ -314,6 +305,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       item('Analytics', flow.summary(), () => show('analytics')),
       ...(dev
         ? [
+            item('Events', String(events.count()), () => show('events')),
             item('Logs', String(engine.log.entries().length), () => show('logs')),
             h('hr'),
             item('Pick an element', icon('pick'), () => togglePick()),

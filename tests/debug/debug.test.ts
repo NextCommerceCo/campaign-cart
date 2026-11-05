@@ -76,7 +76,7 @@ describe('debug tools', () => {
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
     await developer();
     menuItem('Logs').click();
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'elements', 'state', 'logs']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events', 'elements', 'state', 'logs']);
     expect($('[aria-label="Pick an element"]').hidden).toBe(false);
     await start('', {});
     expect($('.root').classList.contains('dev')).toBe(true);
@@ -163,6 +163,32 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect(details('cart').textContent).toContain('summary'));
     expect(details('visit').open).toBe(true);
     expect(details('campaign').open).toBe(false);
+  });
+
+  it('lists the public events as next.on gets them, newest first, and filters them by name', async () => {
+    const next = await start();
+    const got: unknown[] = [];
+    next.on('cart.added', (_data, event) => got.push(event));
+    await next.actions.addItem(1);
+    await developer();
+    menuItem('Events').click();
+    const rows = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
+    await vi.waitFor(() => expect(body()).toContain('cart.added'));
+    expect(body()).toMatch(/\d+ events on this page, newest first/);
+    expect(body()).toContain('sdk.ready');
+    expect(body()).not.toContain('campaign.loaded');
+    const names = rows().map((d) => d.querySelector('summary')!.textContent!.match(/[a-z]+\.[a-z]+/)![0]);
+    expect(names.indexOf('cart.added')).toBeLessThan(names.indexOf('sdk.ready'));
+    const added = rows().find((d) => d.querySelector('summary')!.textContent!.includes('cart.added'))!;
+    added.open = true;
+    const { event_id, session_id } = got[0] as { event_id: string; session_id: string };
+    expect(added.textContent).toContain(event_id);
+    expect(added.textContent).toContain(session_id);
+    expect(added.textContent).toContain('object "cart"');
+    const filter = $<HTMLInputElement>('input');
+    filter.value = 'Cart.Add';
+    filter.dispatchEvent(new Event('input'));
+    expect(rows().map((d) => d.querySelector('summary')!.textContent)).toEqual([expect.stringContaining('cart.added')]);
   });
 
   it('filters the logs', async () => {
