@@ -2,10 +2,10 @@ import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
 import type { AnalyticsEvent, AnalyticsTrace } from '../engine/events/analytics';
 import type { EventMap, EventName } from '../engine/events/bus';
-import { format } from '../engine/format';
 import { checks, dlOf, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win } from './providers';
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
+import { addsUp, amount, paramsOf, type Sum } from './reconcile';
 import type { PageVisit } from './state';
 import { button, type Child, clock, h, iconButton, nodes, plural, tab as tabButton, tablist, tsugi } from './view';
 
@@ -13,7 +13,6 @@ type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
 type Hit = { id: string; name: string; at: number; host: string; params: Array<[string, string]> };
 type Tab = { id: string; label: string; logo?: IconName; body: () => Child[] };
-type Sum = { ok: boolean; text: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
   'sdk.ready': 'Page loaded',
@@ -63,7 +62,9 @@ const label = (name: EventName) => LABELS[name] ?? name;
 const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
 const isTrace = (data: unknown): data is AnalyticsTrace => (data as AnalyticsTrace | undefined)?.trace === 'analytics';
 
-const what = ({ name, params }: AnalyticsEvent) => {
+const what = (event: AnalyticsEvent) => {
+  const { name } = event;
+  const params = paramsOf(event);
   const items = itemsOf(params)
     .map((i) => {
       const name = i.item_name ?? i.item_id ?? '?';
@@ -75,49 +76,6 @@ const what = ({ name, params }: AnalyticsEvent) => {
   if (items) return items;
   if (name === 'page_view') return String(params.page_title ?? '');
   return params.order_id ? `order ${params.order_id}` : '';
-};
-
-const money = (value: number, currency: unknown) =>
-  format({ type: 'money', value }, currency ? String(currency) : undefined);
-const amount = (params: Record<string, unknown>) =>
-  typeof params.value === 'number' ? money(params.value, params.currency) : '';
-const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.005);
-const total = (amounts: Array<string | number | undefined>) => amounts.reduce((n: number, v) => n + Number(v ?? 0), 0);
-
-const addsUp = (event: AnalyticsEvent, trigger: EngineEvent): Sum | undefined => {
-  const { value, currency } = event.params;
-  if (typeof value !== 'number') return undefined;
-  const m = (n: number) => money(n, currency);
-  if (event.name === 'update_cart' && trigger.name === 'cart.calculated') {
-    const cart = trigger.data as EventMap['cart.calculated'];
-    if (cart.total === undefined) return undefined;
-    const lines = total(cart.lines.map((l) => l.total));
-    const voucher = total((cart.discounts ?? []).filter((d) => d.source === 'coupon').map((d) => d.amount));
-    if (near(value, lines)) return { ok: true, text: `value ${m(value)} = the cart lines ${m(lines)}` };
-    if (voucher && near(value, lines + voucher))
-      return {
-        ok: true,
-        text: `value ${m(value)} = the cart lines ${m(lines)} before the ${m(voucher)} voucher, sent as coupon`,
-      };
-    return { ok: false, text: `value ${m(value)}, but the cart lines come to ${m(lines)}` };
-  }
-  if (event.name === 'purchase' && trigger.name === 'order.paid') {
-    const order = trigger.data as EventMap['order.paid'];
-    if (!order.total) return undefined;
-    const due = order.total - total(order.lines.filter((l) => l.upsell).map((l) => l.total));
-    const shipping = Number(event.params.shipping ?? 0);
-    const tax = Number(event.params.tax ?? 0);
-    if (near(value + shipping, due))
-      return {
-        ok: true,
-        text: `value ${m(value)} + shipping ${m(shipping)} = ${m(due)}, the order total (prices include tax)`,
-      };
-    const sum = `value ${m(value)} + shipping ${m(shipping)} + tax ${m(tax)} = ${m(value + shipping + tax)}`;
-    return near(value + shipping + tax, due)
-      ? { ok: true, text: `${sum}, the order total` }
-      : { ok: false, text: `${sum}, but the order total is ${m(due)}` };
-  }
-  return undefined;
 };
 
 const ga4Hits = (): Hit[] =>
@@ -212,7 +170,7 @@ export function analyticsFlow(ui: {
       const event = run.id ? events.get(run.id) : undefined;
       const adds = sum(run);
       return [
-        ...(event ? checks(event.data.name, event.data.params) : []),
+        ...(event ? checks(event.data.name, paramsOf(event.data)) : []),
         ...(adds && !adds.ok ? [adds.text] : []),
         ...(['NextDataLayer', 'dataLayer'] as Layer[])
           .filter((l) => enabled(l) && !pushedTo(l, run.id))
@@ -241,7 +199,7 @@ export function analyticsFlow(ui: {
     h(
       'div',
       'aparams',
-      ...Object.entries(event.params)
+      ...Object.entries(paramsOf(event))
         .filter(([, v]) => v === null || typeof v !== 'object')
         .map(([k, v]) => h('span', {}, h('i', {}, k), ` ${v}`)),
     );
@@ -267,8 +225,8 @@ export function analyticsFlow(ui: {
   const overview = (snap: Snapshot, run: Run): Child[] => {
     const dl = dlOf(run.name);
     const event = snap.event(run.id)?.data;
-    const problems = event ? checks(event.name, event.params) : [];
-    const items = event ? itemsOf(event.params) : [];
+    const problems = event ? checks(event.name, paramsOf(event)) : [];
+    const items = event ? itemsOf(paramsOf(event)) : [];
     const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
       const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
       const push = pushedTo(layer, run.id);
@@ -389,7 +347,7 @@ export function analyticsFlow(ui: {
             .join(' · ') || sub(snap, run),
         ),
       ),
-      h('span', 'aend', event && amount(event.params) && h('b', {}, amount(event.params)), clock(run.at)),
+      h('span', 'aend', event && amount(paramsOf(event)) && h('b', {}, amount(paramsOf(event))), clock(run.at)),
       icon('chevron'),
     );
   };
@@ -442,7 +400,7 @@ export function analyticsFlow(ui: {
     heading.replaceChildren(icon(MARK[state]), h('code', {}, run.name));
     heading.className = `ahead ${state}`;
     subtitle.replaceChildren(
-      [label(run.trigger), clock(run.at), event && amount(event.params), STATED[state]].filter(Boolean).join(' · '),
+      [label(run.trigger), clock(run.at), event && amount(paramsOf(event)), STATED[state]].filter(Boolean).join(' · '),
     );
     const tabs = tabsOf(snap, run);
     if (!tabs.some((t) => t.id === tab)) tab = 'summary';
