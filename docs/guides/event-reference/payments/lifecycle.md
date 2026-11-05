@@ -29,7 +29,7 @@ checkout lifecycle. `payment.selected`, the method picked in the form, is a chec
 | `at the gateway` | Paid; the gateway redirects the shopper to the next page, which loads the order        | `paid`                     | `order.loaded`, then `order.paid` and `checkout.completed` the first time; the cart kept for the order is emptied without cart events |
 | `at the gateway` | Not paid; the gateway redirects the shopper back with `payment_failed=true` in the URL | `not paid`                 | `payment.failed` (`method`, `ref_id`, `error` with `code: 'payment_failed'`), once per order                                          |
 | `at the gateway` | The shopper comes back without paying, such as with the browser's Back button          | none, back on the checkout | none                                                                                                                                  |
-| `not paid`       | The shopper submits again                                                              | none, back on the checkout | a new order, from `submitting` in the checkout lifecycle                                                                              |
+| `not paid`       | The shopper submits again                                                              | none, back on the checkout | a new order, from `placing` in the checkout lifecycle                                                                                 |
 
 `order.created` for a gateway payment carries what the store returned when it created the order;
 `order.loaded` carries its details once it is paid. The next page is `next-success-url`, else

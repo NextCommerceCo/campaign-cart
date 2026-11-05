@@ -104,8 +104,8 @@ const loopUp = (from, to, title, events = [], { x = 170, fromH = H, at = 29 } = 
   ];
 };
 
-function svg(name, { title, desc, boxes, parts }) {
-  const height = Math.max(...boxes.map((b) => rowY(b.row) + box(b).h)) + 16;
+function svg(name, { title, desc, boxes, parts, height: fixed }) {
+  const height = fixed ?? Math.max(...boxes.map((b) => rowY(b.row) + box(b).h)) + 16;
   const id = `${name}-lifecycle`;
   const drawn = boxes.map((b) => box(b).svg).join('\n    ');
   const body = parts().flat().join('\n    ').replaceAll('#ARROW', `#${id}-arrow`);
@@ -265,75 +265,66 @@ const LIFECYCLES = {
   },
   checkout: {
     title: 'Checkout lifecycle',
-    desc: 'A checkout page opens and waits until the cart has lines. Then the checkout starts: checkout.started, once per checkout (a later step, a reload or a return from the gateway keeps it and sends nothing). While the shopper fills the form, user.created, user.updated, address.autofilled, address.entered, address.updated and payment.selected arrive in any order; a step of a multi-step form that passes its checks sends checkout.continued. A submit, or an express button, starts submitting: the cart is frozen while the form, the cart and the card are checked. A check that fails sends checkout.invalid and goes back to filling. Checks that pass send checkout.submitted and place the order. An order not placed sends sdk.error, then checkout.failed; a declined card sends payment.failed; both go back to filling. A created order sends order.created. Without a payment_complete_url it is paid at once: order.paid, checkout.completed, and the shopper is redirected to the next page. With one, payment.redirected, and the shopper pays at the gateway: paid, the next page loads the order (order.loaded, order.paid, checkout.completed); not paid, back to the checkout with the cart kept (payment.failed).',
-    rows: 6,
-    rowYs: [70, 236, 376, 556, 661, 826],
+    desc: 'On each checkout page. idle: the shopper fills the form; checkout.started comes once per checkout, when the cart has lines. On a multi-step form, a step whose checks fail sends checkout.invalid; one that passes sends checkout.continued and loads the next step page. A submit, or an express button, moves to placing: the cart is frozen, the form, the cart and the card are checked, then checkout.submitted is sent and the order is created. A check that fails (checkout.invalid), an order not created (sdk.error, checkout.failed) or a declined card (payment.failed) go back to idle. A created order (order.created) is placed and the page redirects: paid at once (order.paid, checkout.completed), to the next page, which loads the order; else (payment.redirected) to the gateway. A checkout page loaded after an unpaid return from the gateway sends payment.failed.',
+    rows: 3,
+    rowYs: [120, 270, 430],
+    height: 638,
     boxes: [
-      { row: 0, title: 'waiting', sub: ['until the cart has lines'] },
-      { row: 1, title: 'filling', sub: ['user, address, payment'], tone: 'active' },
-      { row: 2, title: 'submitting', sub: ['the cart is frozen'], tone: 'waiting' },
-      { row: 3, title: 'placing', sub: ['the order is sent'], tone: 'waiting' },
-      { row: 5, title: 'paid', sub: [code('order.paid'), code('checkout.completed')], tone: 'success' },
-      { col: 'side', row: 4, title: 'at the gateway', sub: ['see Payments'], tone: 'waiting' },
+      { row: 0, title: 'idle', sub: ['the shopper fills the form', code('checkout.started'), 'once per checkout'], tone: 'active' },
+      { row: 1, title: 'placing', sub: ['the cart is frozen', code('checkout.submitted'), 'once the checks pass'], tone: 'waiting' },
+      { row: 2, title: 'placed', sub: ['the page redirects'], tone: 'success' },
     ],
     parts: () => {
       const right = MAIN.x + MAIN.w;
-      const filling = rowY(1);
-      const placing = rowY(3);
-      const gateway = rowY(4);
-      const fork = gateway + 29;
-      const back = 660;
+      const idle = rowY(0);
+      const placing = rowY(1);
+      const placed = rowY(2);
+      const tall = H + 30;
+      const lane = 150;
+      const next = 580;
+      /** Leaves the page: a dashed box on the side, reached by an arrow that bends down into it. */
+      const exit = (y, boxY, title, event, lines) => [
+        arrow(`M${right} ${y} H${SIDE.cx} V${boxY - 6}`),
+        label(right + 6, y - 8, title, { size: 12 }),
+        label(right + 6, y + 17, event, { code: true }),
+        ...entry(SIDE.x, boxY, SIDE.w, lines).svg,
+      ];
+      /** One way back from placing to idle, listed beside the shared lane. */
+      const fails = (y, title, events) => [
+        label(lane - 12, y, title, { anchor: 'end' }),
+        ...events.map((e, i) => label(lane - 12, y + 17 + i * 17, e, { anchor: 'end', code: true })),
+      ];
       return [
         (() => {
-          const e = entry(MAIN.cx - 80, 4, 160, ['a checkout page opens']);
-          return [...e.svg, arrow(`M${MAIN.cx} ${e.bottom} V${rowY(0) - 6}`)];
+          const e = entry(MAIN.cx - 115, 8, 230, [
+            'a checkout page loads:',
+            'the first page, a step, a reload,',
+            'or back from the gateway',
+          ]);
+          return [
+            ...e.svg,
+            arrow(`M${MAIN.cx} ${e.bottom} V${idle - 6}`),
+            label(MAIN.cx + 14, 84, 'back from the gateway unpaid', { size: 12 }),
+            label(MAIN.cx + 14, 104, 'payment.failed', { code: true }),
+          ];
         })(),
-        down(0, 1, 'the cart has lines', ['checkout.started']),
-        label(MAIN.cx + 14, 210, 'once per checkout', { size: 12 }),
-        down(1, 2, 'submit, or an express button'),
-        loopUp(2, 1, 'a check fails', ['checkout.invalid'], { x: 180, at: 44 }),
-        down(2, 3, 'the checks pass', ['checkout.submitted']),
+        loopRight(0, 'a step fails', ['checkout.invalid'], { y: 6, h: 16 }),
+        exit(idle + 72, 230, 'a step passes', 'checkout.continued', ['the next step page']),
+        down(0, 1, 'submit, or an express button', [], { boxH: tall }),
         [
-          arrow(`M${MAIN.x} ${placing + 29} H24 V${filling + 27} H${MAIN.x - 6}`, { dashed: true }),
-          label(36, placing - 112, 'not placed'),
-          label(36, placing - 92, 'sdk.error', { code: true }),
-          label(36, placing - 75, 'checkout.failed', { code: true }),
-          label(36, placing - 47, 'card declined'),
-          label(36, placing - 27, 'payment.failed', { code: true }),
+          arrow(`M${MAIN.x} ${placing + tall / 2} H${lane} V${idle + tall / 2} H${MAIN.x - 6}`, { dashed: true }),
+          ...fails(180, 'a check fails', ['checkout.invalid']),
+          ...fails(222, 'order not placed', ['sdk.error', 'checkout.failed']),
+          ...fails(281, 'card declined', ['payment.failed']),
         ],
-        loopRight(1, 'a step passes', ['checkout.continued'], { y: 8, h: 16 }),
+        down(1, 2, 'the order is created', ['order.created'], { boxH: tall }),
+        exit(placed + 29, 500, 'to a gateway', 'payment.redirected', ['the gateway', 'payment lifecycle']),
         [
-          arrow(`M${back} ${gateway} V${filling + 46} H${right + 6}`, { dashed: true }),
-          label(back - 12, rowY(2) + 14, 'not paid: redirected back', { anchor: 'end', size: 12 }),
-          label(back - 12, rowY(2) + 31, 'payment.failed', { anchor: 'end', code: true }),
-        ],
-        [
-          arrow(`M${MAIN.cx} ${placing + H} V${fork - 18}`),
-          choice(MAIN.cx, fork),
-          label(MAIN.cx - 14, placing + H + 30, 'order.created', { anchor: 'end', code: true }),
-        ],
-        [
-          arrow(`M${MAIN.cx} ${fork + 12} V${rowY(5) - 6}`),
-          mixed(MAIN.cx + 14, fork + 76, [
-            ['no ', false],
-            ['payment_complete_url', true],
-            [': paid at once', false],
-          ]),
-          label(MAIN.cx + 14, fork + 94, 'then redirected to the next page', { size: 12 }),
-        ],
-        [
-          arrow(`M${MAIN.cx + 12} ${fork} H${SIDE.x - 6}`),
-          mixed(MAIN.cx + 26, fork - 8, [
-            ['a ', false],
-            ['payment_complete_url', true],
-          ]),
-          label((MAIN.cx + 12 + SIDE.x) / 2, fork + 18, 'payment.redirected', { anchor: 'middle', code: true }),
-          label((MAIN.cx + 12 + SIDE.x) / 2, fork + 35, 'redirected to it', { anchor: 'middle', size: 12 }),
-        ],
-        [
-          arrow(`M${SIDE.cx} ${gateway + H} V${rowY(5) + 29} H${right + 6}`),
-          label((right + SIDE.cx) / 2, rowY(5) - 14, 'paid: on the next page', { anchor: 'middle', size: 12 }),
-          label((right + SIDE.cx) / 2, rowY(5) + 3, 'order.loaded', { anchor: 'middle', code: true }),
+          arrow(`M${MAIN.cx} ${placed + H} V${next - 6}`),
+          label(MAIN.cx + 14, placed + H + 17, 'paid at once'),
+          label(MAIN.cx + 14, placed + H + 37, 'order.paid', { code: true }),
+          label(MAIN.cx + 14, placed + H + 54, 'checkout.completed', { code: true }),
+          ...entry(MAIN.cx - 100, next, 200, ['the next page', 'loads the order']).svg,
         ],
       ];
     },
