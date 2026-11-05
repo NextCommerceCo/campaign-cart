@@ -24,6 +24,8 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 **[Migrating from 0.4.x](./guides/migrating-from-0.4.md)**: pages built for 0.4.x keep working. This lists what changes for a page builder.
 
+**Building Pages**: one page per step of a funnel: [Landing and Presell](./guides/building-pages/landing-and-presell.md), [Checkout](./guides/building-pages/checkout-page.md), [Upsell](./guides/building-pages/upsell-page.md) and [Receipt](./guides/building-pages/receipt-page.md).
+
 **Reference**: [Attributes](./guides/attributes.md) for everything the SDK reads from a page, [JavaScript API](./guides/javascript-api.md) for `window.next`, and [Events](./guides/events.md) for what `next.on` and `next.analytics.on` receive.
 
 **[Event Reference](./guides/events.md#event-reference)**: every event `next.on` receives, with its fields and an example. [`window.next`](/nextapi) and the [event envelope](/sdkevent) are generated from the source.

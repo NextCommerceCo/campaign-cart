@@ -15,7 +15,7 @@
   "cleanJsdocTheme": {
     "siteName": "Campaign Cart SDK",
     "docs": "docs/.staged",
-    "docGroups": ["Start Here", "Reference", "Event Reference"],
+    "docGroups": ["Start Here", "Building Pages", "Reference", "Event Reference"],
     "fonts": {
       "heading": "Inter",
       "body": "Inter",
