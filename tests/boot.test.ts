@@ -77,6 +77,16 @@ describe('boot', () => {
     window.removeEventListener('next:initialized', onWindow);
   });
 
+  it('runs a nextReady callback pushed after the page is ready at once, with window.next', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await flush();
+    const late = vi.fn();
+
+    (window as unknown as { nextReady: { push(fn: unknown): void } }).nextReady.push(late);
+
+    expect(late).toHaveBeenCalledWith(next);
+  });
+
   it('notes the domain and the page’s Meta pixel for order attribution, like 0.4.x', async () => {
     document.head.innerHTML = `<script>!function(){}(); fbq('init', '1234567890'); fbq('track', 'PageView');</script>`;
     const next = boot(config, Promise.resolve(campaign));

@@ -90,13 +90,11 @@ Anywhere on the page, once `window.next` exists. `next.analytics.on` first repla
 page already sent, so a script that runs late misses nothing. The analytics code loads when the page
 is idle after `sdk.ready`, so the first events arrive after that.
 
-A script that can run before the SDK has set `window.next` waits for it:
+A script that can run before the SDK has set `window.next` queues itself in `window.nextReady`
+(see the [JavaScript API](../javascript-api.md)):
 
 ```js
-const withNext = (fn) =>
-  window.next ? fn(window.next) : document.addEventListener('next:initialized', () => fn(window.next), { once: true });
-
-withNext((next) => next.analytics.on('*', ({ name, params }) => gtag('event', name, params)));
+(window.nextReady ||= []).push((next) => next.analytics.on('*', ({ name, params }) => gtag('event', name, params)));
 ```
 
 ## Checking it

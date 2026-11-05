@@ -24,6 +24,10 @@ being parsed.
 Every page of one funnel uses the same `data-campaign` and `data-funnel`. `?currency=EUR` on the
 URL asks the campaign for that currency (see [URL parameters](url-parameters.md)).
 
+The loader creates `window.nextReady` if the page has not: a queue for scripts that run before the
+SDK, called with `window.next` once the page is ready (see the
+[JavaScript API](../../javascript-api.md)).
+
 ## Set by the SDK
 
 | On       | Set                                                                                                                                                                            |
@@ -34,13 +38,12 @@ URL asks the campaign for that currency (see [URL parameters](url-parameters.md)
 
 ## 0.4.x
 
-| 0.4.x                                                    | Now                                                                          |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `window.nextConfig.apiKey`, `<meta name="next-api-key">` | Still read. Use `data-campaign`                                              |
-| `window.nextConfig.funnel`, `<meta name="next-funnel">`  | Still read. Use `data-funnel`                                                |
-| `window.nextReady` (an array of callbacks)               | Still created and run once the page is ready. Use `next.on('sdk.ready', fn)` |
-| `window` event `next:ready` when the code has loaded     | Still sent                                                                   |
-| `window.dataLayer`                                       | Still created before the SDK starts                                          |
+| 0.4.x                                                    | Now                                 |
+| -------------------------------------------------------- | ----------------------------------- |
+| `window.nextConfig.apiKey`, `<meta name="next-api-key">` | Still read. Use `data-campaign`     |
+| `window.nextConfig.funnel`, `<meta name="next-funnel">`  | Still read. Use `data-funnel`       |
+| `window` event `next:ready` when the code has loaded     | Still sent                          |
+| `window.dataLayer`                                       | Still created before the SDK starts |
 
 ## Events
 

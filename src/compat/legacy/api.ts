@@ -1,5 +1,4 @@
 import type { Engine } from '../../engine/engine';
-import type { Logger } from '../../engine/log';
 import { normalizeCode } from '../../engine/cart/lines';
 import type { CartLine } from '../../engine/cart/types';
 import type { Campaign, Package, ShippingOption } from '../../engine/types';
@@ -91,18 +90,8 @@ export function legacyApi(engine: Engine): LegacyApi {
   };
 }
 
-/** @deprecated Use `next.on('ready', fn)` and `html[data-next-ready]`. */
-export function announceLegacyReady(next: { version: string }, log: Logger): void {
+/** @deprecated Use `window.nextReady`, `next.on('ready', fn)` and `html[data-next-ready]`. */
+export function announceLegacyReady(next: { version: string }): void {
   document.documentElement.classList.add('next-display-ready');
   document.dispatchEvent(new CustomEvent('next:initialized', { bubbles: true, detail: { version: next.version } }));
-  const win = window as unknown as { nextReady?: unknown };
-  const run = (fn: (n: object) => void) => {
-    try {
-      fn(next);
-    } catch (err) {
-      log.error('nextReady callback failed', err);
-    }
-  };
-  if (Array.isArray(win.nextReady)) win.nextReady.forEach(run);
-  win.nextReady = { push: run };
 }

@@ -8,6 +8,18 @@ group: 'JavaScript API'
 Available after the `sdk.ready` event (`next.on('sdk.ready', fn)`, or its alias `ready`; a listener
 added later gets it too).
 
+A script that may run before the SDK, in `<head>` or from a tag manager, queues a callback in
+`window.nextReady`. It is called with `window.next` once the page is ready, or at once when the
+page already is. It works before or after the loader's `<script>`:
+
+```js
+(window.nextReady ||= []).push((next) => {
+  next.on('order.paid', (order) => …);
+});
+```
+
+A callback that throws is logged (`nextReady callback failed`); the others still run.
+
 | Member                                                    | Does                                                                                                                        |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `next.version`                                            | SDK version                                                                                                                 |
@@ -32,8 +44,8 @@ Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 `addItem({ packageId, quantity })`, `clearCart()`, `swapCart(items)`, `applyCoupon(code)`,
 `getPackage(id)`, `getCampaignData()`, `getCartData()` (0.4.x shape), `exitIntent(options)` (its
 `id` and `name` options name the popup on its `promotion.*` events),
-`getShippingMethods()`, `setShippingMethod(id)`, `getSelectedShippingMethod()`, the
-`window.nextReady` queue, and the `next:ready` / `next:initialized` window events.
+`getShippingMethods()`, `setShippingMethod(id)`, `getSelectedShippingMethod()`, and the
+`next:ready` / `next:initialized` window events.
 
 The other 0.4.x members are gone; no live page calls them. [parity-0.4.md](../architecture/parity-0.4.md)
 lists each one with what to use instead.

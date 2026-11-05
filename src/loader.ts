@@ -4,6 +4,7 @@ import { campaignUrl, readConfig } from './config';
 const STYLESHEET = 'campaign-cart.css';
 
 legacyGlobals(window);
+(window as unknown as { nextReady?: unknown[] }).nextReady ??= [];
 const config = readConfig(document, window);
 document.head.append(
   Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL(STYLESHEET, import.meta.url).href }),

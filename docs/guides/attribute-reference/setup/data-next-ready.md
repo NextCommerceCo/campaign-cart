@@ -30,11 +30,11 @@ that is not known yet is written as empty, and an element whose path is a yes/no
 
 ## 0.4.x
 
-| 0.4.x                                                                         | Now                                        |
-| ----------------------------------------------------------------------------- | ------------------------------------------ |
-| `html.next-display-ready` class                                               | Still set, at the same moment              |
-| `document` event `next:initialized`                                           | Still sent. Use `next.on('sdk.ready', fn)` |
-| `[data-next-skeleton]` (faded out by the stylesheet on `.next-display-ready`) | Still works                                |
+| 0.4.x                                                                         | Now                                                              |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `html.next-display-ready` class                                               | Still set, at the same moment                                    |
+| `document` event `next:initialized`                                           | Still sent. Use `window.nextReady` or `next.on('sdk.ready', fn)` |
+| `[data-next-skeleton]` (faded out by the stylesheet on `.next-display-ready`) | Still works                                                      |
 
 ## Events
 

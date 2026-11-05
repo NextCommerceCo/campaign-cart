@@ -25,11 +25,9 @@ export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: b
 
 declare const __VERSION__: string;
 
-/** @deprecated The 0.4.x loader created `window.nextReady` and `window.dataLayer`; pages that push to them early keep working. */
+/** @deprecated The 0.4.x loader created `window.dataLayer`; pages that push to it early keep working. */
 export function legacyGlobals(win: Window): void {
-  const globals = win as unknown as { nextReady?: unknown[]; dataLayer?: unknown[] };
-  globals.nextReady ??= [];
-  globals.dataLayer ??= [];
+  (win as unknown as { dataLayer?: unknown[] }).dataLayer ??= [];
 }
 
 /** @deprecated `window` event `next:ready`, fired when the SDK code has loaded. Use `next.on('sdk.ready')`. */

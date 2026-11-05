@@ -1,5 +1,6 @@
 import { bindAll } from './bindings';
 import { pageEnvironment } from './bindings/environment';
+import { runReadyQueue } from './bindings/ready';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import { type EngineEvent, PUBLIC } from './engine/events/bus';
@@ -215,11 +216,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const orderPage =
     document.querySelector(ORDER_MARKUP) || params.has('ref_id') || params.has('order_ref_id') || paymentFailed;
   const orderChunk = orderPage ? import('./order') : undefined;
-  if (
-    document.querySelector(
-      '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
-    )
-  )
+  const widgetsPage = document.querySelector(
+    '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
+  );
+  if (widgetsPage)
     void import('./compat/widgets').then((m) =>
       m.bindWidgets(document, {
         timerStart: (id, ms) => engine.visit.timerStart(id, ms),
@@ -236,7 +236,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     } finally {
       html.setAttribute('data-next-ready', '');
     }
-    announceLegacyReady(next, engine.log);
+    announceLegacyReady(next);
+    runReadyQueue(next, engine.log);
     const analytics = legacyAnalytics(engine.log);
     if (analytics.enabled) {
       const start = () =>

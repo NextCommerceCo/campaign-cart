@@ -15,6 +15,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 
 ### Events
 
+- **`window.nextReady` is how a script that runs before the SDK reaches `window.next`**: `(window.nextReady ||= []).push((next) => …)`, before or after the loader's tag. It is no longer deprecated, and works as in 0.4.x: each callback gets `window.next` once the page is ready, and a later push runs at once.
 - **Every event is named `namespace.action`, with one dot**: the thing that changed, then what happened to it, as in Next Commerce webhooks: `cart.added`, `checkout.started`, `order.created`. See [Events](docs/guides/events.md).
 - **Each event has its own page in the Event Reference**, like the webhook reference: when it fires, every field of its data, and an example recorded from a real checkout.
 - **A listener gets the data and a webhook-style envelope.** In `next.on('order.created', (data, event) => …)`, `event` has `event_id` (a UUID v4 as 32 hex digits), `event_type`, `object`, `data`, `created_at` and `sdk_version`. Tracking event ids use the same form.
