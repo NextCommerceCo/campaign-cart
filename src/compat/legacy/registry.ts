@@ -3,8 +3,6 @@ import type { EngineEvent, EventName } from '../../engine/events/bus';
 import type { Checkout } from '../../engine/events/checkout';
 import type { State } from '../../engine/types';
 import type { WidgetEvents } from '../widgets';
-
-/** @deprecated Use `data-next-selector-id`. */
 import { firstPackage, type From, LATER, LEGACY_EVENTS, type LegacyEvent, type LegacyState, noteClick } from './events';
 
 type Shape = (data: never, state: State) => unknown;

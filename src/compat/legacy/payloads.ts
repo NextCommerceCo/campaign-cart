@@ -2,7 +2,7 @@ import { mergeLines, normalizeCode } from '../../engine/cart/lines';
 import type { CartSummary, Line, SummaryLine } from '../../engine/cart/types';
 import type { Package, State } from '../../engine/types';
 
-/** @deprecated Use `data-next-selector-id`. */
+/** @deprecated 0.4.x cart payloads carried decimal.js values; this keeps their usual reads. */
 export interface LegacyDecimal {
   toNumber(): number;
   toFixed(digits?: number): string;
@@ -129,6 +129,5 @@ export function legacyCart(state: State) {
   };
 }
 
-/** 0.4.43 sent one item event per cart action; none for a swap-mode selector's pick, emptying or replacing the cart. */
 export const shippingOption = (state: State, id?: number) =>
   state.campaign?.shipping_methods.find((m) => m.ref_id === id);

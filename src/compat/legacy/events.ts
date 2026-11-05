@@ -4,10 +4,9 @@ import type { EngineEvent, EventMap, EventName } from '../../engine/events/bus';
 import type { CartChange } from '../../engine/events/carts';
 import type { Selector } from '../../engine/events/selectors';
 import type { State } from '../../engine/types';
-
-/** @deprecated Use `data-next-selector-id`. */
 import { legacyCart, shippingOption } from './payloads';
 
+/** @deprecated Use `data-next-selector-id`. */
 export function legacySelectorId(el: Element): string | null {
   return el.getAttribute('data-next-id');
 }
@@ -34,7 +33,7 @@ export interface LegacyEvent<K extends EventName = EventName> {
 export const legacyEvent = <K extends EventName>(spec: LegacyEvent<K>) => spec as unknown as LegacyEvent;
 const alias = legacyEvent;
 
-/** @deprecated 0.4.x cart payloads carried decimal.js values; this keeps their usual reads. */
+/** 0.4.43 sent one item event per cart action; none for a swap-mode selector's pick, emptying or replacing the cart. */
 const itemEvent = (map: (c: CartChange, op?: string, source?: string) => object | false) =>
   alias<'cart.added' | 'cart.removed'>({
     from: ['cart.added', 'cart.removed'],
