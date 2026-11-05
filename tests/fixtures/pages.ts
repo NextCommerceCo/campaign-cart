@@ -31,6 +31,7 @@ export async function mount(
   await made.engine.start();
   const navigate = vi.fn();
   const bindings = bindAll(document, made.engine, navigate);
+  await bindings.ready;
   await flush();
   return { ...made, bindings, navigate, $: (s: string) => document.querySelector<HTMLElement>(s)! };
 }

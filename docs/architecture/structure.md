@@ -117,14 +117,16 @@ src/
     cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
                                                 lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
                                                 that events carry), selectors.ts (bundle selectors, and a package's variant
-                                                choices for slots and debug), toggles.ts, types.ts
+                                                choices for slots and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
   bindings/            boot        DOM, one file per attribute family
-    index.ts                       bindAll: scan once, render on subscribe
+    index.ts                       bindAll: scan once, render on subscribe; loads cart-summary.ts when a bound node has
+                                   [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
     context.ts                     BindContext (engine, claim, warn)
     environment.ts                 the page and browser every event's context carries
     dom.ts                         setText, setVisible, setState, token stamping
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
-    cart-summary.ts cart-controls.ts links.ts
+    cart-controls.ts links.ts
+    cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
@@ -181,18 +183,19 @@ src/
     analytics.ts       analytics   dl_* events (Elevar format) into NextDataLayer / dataLayer, built from `analytics`
 ```
 
-| Chunk       | Loaded when                                                         | Budget (gzip) |
-| ----------- | ------------------------------------------------------------------- | ------------- |
-| loader      | always, inline                                                      | 2.5 KB        |
-| boot        | always                                                              | 25 KB         |
-| checkout    | `form[data-next-checkout]`                                          | 30 KB         |
-| order       | `[data-next-upsell]` or `order.*`                                   | 10 KB         |
-| analytics   | idle after ready                                                    | 8 KB          |
-| exit-intent | first `next.exitIntent()`                                           | 3 KB          |
-| slots       | a bundle selector with a slot template                              | 6 KB          |
-| widgets     | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]` | 3 KB          |
-| debug       | `?debug=1`, then every page of the tab until `?debug=0`             | 40 KB         |
-| debug icons | the Checkout tab's payment step                                     | 16 KB         |
+| Chunk        | Loaded when                                                           | Budget (gzip) |
+| ------------ | --------------------------------------------------------------------- | ------------- |
+| loader       | always, inline                                                        | 2.5 KB        |
+| boot         | always                                                                | 25 KB         |
+| checkout     | `form[data-next-checkout]`                                            | 30 KB         |
+| order        | `[data-next-upsell]` or `order.*`                                     | 10 KB         |
+| analytics    | idle after ready                                                      | 8 KB          |
+| exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
+| slots        | a bundle selector with a slot template                                | 6 KB          |
+| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
+| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`   | 3 KB          |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`               | 40 KB         |
+| debug icons  | the Checkout tab's payment step                                       | 16 KB         |
 
 ## Imports
 
@@ -209,7 +212,7 @@ src/
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
 `compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics.ts`, which only their own chunk may import statically.
 

@@ -8,6 +8,7 @@ const LAZY: Record<string, string[]> = {
   order: [],
   debug: [],
   'bindings/slots': [],
+  'bindings/cart-summary': [],
   'compat/exit-intent': [],
   'compat/widgets': [],
   'compat/checkout': ['checkout'],
@@ -25,7 +26,6 @@ const SHRINKING: Record<string, number> = {
   'compat/checkout.ts': 339,
   'engine/engine.ts': 310,
   'engine/cart/selectors.ts': 313,
-  'boot.ts': 307,
   'checkout/payment/card.ts': 305,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);

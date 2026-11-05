@@ -29,7 +29,7 @@ async function setup(html: string) {
   document.body.innerHTML = html;
   const { engine } = makeEngine();
   await engine.start();
-  bindAll(document, engine, vi.fn());
+  await bindAll(document, engine, vi.fn()).ready;
   return {
     engine,
     $: (s: string) => document.querySelector<HTMLElement>(s)!,
@@ -74,6 +74,24 @@ describe('cart summary', () => {
     const { $ } = await setup(SUMMARY);
     expect($('#summary').classList.contains('next-cart-empty')).toBe(true);
     expect($('.total').textContent).toBe('');
+  });
+
+  it('loads nothing on a page without a summary or discounts', async () => {
+    document.body.innerHTML = '<div data-next-display="cart.total"></div>';
+    const { engine } = makeEngine();
+    await engine.start();
+    expect(bindAll(document, engine, vi.fn()).ready).toBeUndefined();
+  });
+
+  it('binds a summary the page adds later through bind()', async () => {
+    const { engine, $ } = await setup('<div id="late"></div>');
+    const bindings = bindAll(document.createElement('div'), engine, vi.fn());
+    $('#late').innerHTML = SUMMARY;
+    bindings.bind($('#late'));
+    await bindings.ready;
+    await engine.cart.addItem(2);
+    await flush();
+    expect($('.subtotal').textContent).toBe('$89.00');
   });
 
   it('changes quantity from controls inside rendered lines', async () => {

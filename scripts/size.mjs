@@ -9,6 +9,7 @@ const BUDGETS = [
   { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
   { match: /^order-.*\.js$/, name: 'order', kb: 10 },
   { match: /^slots-.*\.js$/, name: 'slots', kb: 6 },
+  { match: /^cart-summary-.*\.js$/, name: 'cart summary', kb: 3 },
   { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
   { match: /^debug-.*\.js$/, name: 'debug', kb: 40 },
   { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },

@@ -2,7 +2,7 @@ import { bindAll } from './bindings';
 import { pageEnvironment } from './bindings/environment';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
-import type { EngineEvent } from './engine/events/bus';
+import { type EngineEvent, PUBLIC } from './engine/events/bus';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
@@ -36,52 +36,6 @@ const pixelId = () =>
 
 /** The names `next.on` takes: every event but the SDK's internal ones. */
 export type PublicEventName = Exclude<EventName, InternalEventName>;
-
-const PUBLIC_EVENTS: Record<PublicEventName, true> = {
-  'sdk.ready': true,
-  'sdk.error': true,
-  'selector.viewed': true,
-  'selector.selected': true,
-  'selector.updated': true,
-  'selector.deselected': true,
-  'selector.calculating': true,
-  'selector.calculated': true,
-  'cart.updated': true,
-  'cart.calculating': true,
-  'cart.calculated': true,
-  'cart.added': true,
-  'cart.removed': true,
-  'shipping.selected': true,
-  'coupon.applied': true,
-  'coupon.removed': true,
-  'coupon.denied': true,
-  'checkout.started': true,
-  'user.created': true,
-  'user.updated': true,
-  'address.entered': true,
-  'address.updated': true,
-  'address.autofilled': true,
-  'payment.selected': true,
-  'checkout.continued': true,
-  'checkout.submitted': true,
-  'checkout.invalid': true,
-  'checkout.failed': true,
-  'checkout.completed': true,
-  'payment.redirected': true,
-  'payment.failed': true,
-  'order.created': true,
-  'order.loaded': true,
-  'order.paid': true,
-  'order.updated': true,
-  'upsell.viewed': true,
-  'upsell.accepted': true,
-  'upsell.skipped': true,
-  'upsell.failed': true,
-  'promotion.viewed': true,
-  'promotion.clicked': true,
-  'promotion.closed': true,
-};
-const PUBLIC = new Set(Object.keys(PUBLIC_EVENTS));
 
 export interface SdkEvent<K extends EventName = EventName> {
   event_id: string;
@@ -305,6 +259,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
+      bindings.ready,
     ].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);
     else reveal();
