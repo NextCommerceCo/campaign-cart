@@ -6,7 +6,7 @@ order: 0.21
 
 # GTM
 
-Built in. Each standard event is pushed to `dataLayer` in the 0.4.x Elevar format, for GTM
+Built in. Each tracking event is pushed to `dataLayer` in the 0.4.x Elevar format, for GTM
 containers and forwarders built on it. The SDK does not load GTM: the container is the page's own
 tag. The format is **deprecated, and still sent**; new code listens with `next.analytics.on` (see
 [Providers](overview.md)).
@@ -26,21 +26,24 @@ tag. The format is **deprecated, and still sent**; new code listens with `next.a
 
 <!-- gtm-events -->
 
-`dl_purchase` is pushed once per order, only once it is paid.
+`dl_purchase` is pushed once per order, only once it is paid. `dl_add_to_cart` is pushed once per
+burst of added lines, where `product_added_to_cart` comes once per line; `dl_add_shipping_info`
+once per checkout, for the first of `checkout_shipping_address_submitted` and
+`checkout_shipping_method_submitted`.
 
 ## Fields on every push
 
-| Field                                                                                                               | Is                                                                                      |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `event`                                                                                                             | The `dl_*` name                                                                         |
-| `event_id`                                                                                                          | The tracking event's `id`; the transaction id on `dl_purchase` and `dl_upsell_purchase` |
-| `event_time`                                                                                                        | Its ISO time                                                                            |
-| `page_location`, `page_title`, `page_referrer`                                                                      | The page, without the query string                                                      |
-| `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key`, `campaign_session_id` | At the top level, as 0.4.30 sent them                                                   |
-| `attribution`                                                                                                       | UTM parameters, affiliate and click ids, landing page                                   |
-| `user_properties`                                                                                                   | `{ visitor_type: 'guest' }`, in the Elevar format                                       |
-| `ecommerce`                                                                                                         | The event's `params`, on ecommerce events                                               |
-| `_metadata`                                                                                                         | `{ source: 'NextDataLayer', version }`                                                  |
+| Field                                                                                                               | Is                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `event`                                                                                                             | The `dl_*` name                                                                               |
+| `event_id`                                                                                                          | The tracking event's `event_id`; the transaction id on `dl_purchase` and `dl_upsell_purchase` |
+| `event_time`                                                                                                        | Its ISO time                                                                                  |
+| `page_location`, `page_title`, `page_referrer`                                                                      | The page, without the query string                                                            |
+| `campaign_id`, `campaign_name`, `campaign_currency`, `campaign_language`, `campaign_api_key`, `campaign_session_id` | At the top level, as 0.4.30 sent them                                                         |
+| `attribution`                                                                                                       | UTM parameters, affiliate and click ids, landing page                                         |
+| `user_properties`                                                                                                   | `{ visitor_type: 'guest' }`, in the Elevar format                                             |
+| `ecommerce`                                                                                                         | GA4-style `currency`, `value` and `items`, built from the event's `data`                      |
+| `_metadata`                                                                                                         | `{ source: 'NextDataLayer', version }`                                                        |
 
 Some events add 0.4.x fields of their own:
 
@@ -56,17 +59,19 @@ Some events add 0.4.x fields of their own:
 | `dl_viewed_upsell` / `dl_skipped_upsell` | `order_id`, `page_path` (viewed), and `upsell` with `package_id` and `package_name`         |
 | `dl_generate_lead`                       | `currency`, `value` and `lead_source` at the top level                                      |
 
-## GA4 names instead
+## Tracking names instead
 
-A container built on GA4 names can get the standard events as they are, with each event's
-`ecommerce` cleared first:
+A container built on the tracking names can get each event as it is, with its `data` spread on
+the push:
 
 ```js
-next.analytics.on('*', ({ name, id, params }) => {
-  window.dataLayer.push({ ecommerce: null });
-  window.dataLayer.push({ event: name, event_id: id, ecommerce: params });
+next.analytics.on('*', ({ event_type, event_id, data }) => {
+  window.dataLayer.push({ event: event_type, event_id, ...data });
 });
 ```
+
+A tag that wants GA4's `ecommerce` object builds it as the [GA4](ga4.md) listener does, and pushes
+`{ ecommerce: null }` first so GTM clears the previous one.
 
 Doing both sends each event twice to the container. Turn the `dl_*` pushes off with
 `providers.gtm.enabled: false` (they still reach `window.NextDataLayer`).

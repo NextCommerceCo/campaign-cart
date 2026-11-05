@@ -35,12 +35,20 @@ describe('debug journey', () => {
     await landing.engine.cart.addItem(1);
     await landing.engine.cart.setQuantity(1, 2);
     await landing.engine.cart.applyCoupon('nope');
-    landing.engine.log.debug('analytics add_to_cart sent', { trace: 'analytics', name: 'add_to_cart', sent: true });
-    landing.engine.log.debug('analytics view_item not sent', { trace: 'analytics', name: 'view_item', sent: false });
+    landing.engine.log.debug('analytics product_added_to_cart sent', {
+      trace: 'analytics',
+      name: 'product_added_to_cart',
+      sent: true,
+    });
+    landing.engine.log.debug('analytics product_viewed not sent', {
+      trace: 'analytics',
+      name: 'product_viewed',
+      sent: false,
+    });
 
     const checkout = page(session, '/checkout/', { kind: 'checkout' });
     const [first, second] = checkout.debug.state().pages;
-    expect(first).toMatchObject({ path: '/landing/', kind: 'product', units: 2, sent: ['add_to_cart'] });
+    expect(first).toMatchObject({ path: '/landing/', kind: 'product', units: 2, sent: ['product_added_to_cart'] });
     expect(first!.marks.map((m) => [m.tone, m.text])).toEqual([
       [undefined, 'Added Earbuds ×1 ×1'],
       [undefined, 'Earbuds ×1 ×1 → ×2'],
@@ -112,11 +120,11 @@ describe('debug journey', () => {
   it('folds a reload into its page, and starts a new step for a page opened again by a link', async () => {
     const session = new MemoryStorage();
     const first = page(session, '/checkout/');
-    first.engine.log.debug('analytics page_view sent', { trace: 'analytics', name: 'page_view', sent: true });
+    first.engine.log.debug('analytics page_viewed sent', { trace: 'analytics', name: 'page_viewed', sent: true });
     const again = page(session, '/checkout/', { reload: true });
-    again.engine.log.debug('analytics page_view sent', { trace: 'analytics', name: 'page_view', sent: true });
+    again.engine.log.debug('analytics page_viewed sent', { trace: 'analytics', name: 'page_viewed', sent: true });
     expect(again.debug.state().pages).toMatchObject([
-      { path: '/checkout/', reloads: 1, sent: ['page_view', 'page_view'], marks: [{ text: 'Reloaded' }] },
+      { path: '/checkout/', reloads: 1, sent: ['page_viewed', 'page_viewed'], marks: [{ text: 'Reloaded' }] },
     ]);
     expect(page(session, '/checkout/').debug.state().pages).toHaveLength(2);
   });

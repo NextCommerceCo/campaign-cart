@@ -1,24 +1,52 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import { createCheckout } from '../../src/checkout/state/checkout';
-import { EXIT_INTENT, NAMES } from '../../src/compat/analytics';
 import { analyticsFlow } from '../../src/debug/analytics';
 import type { PageKind, PageVisit } from '../../src/debug/state';
-import { checks, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
+import { checks, dlOf, linesOf, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
-import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/events/analytics';
+import {
+  type AnalyticsTrace,
+  GA4,
+  OBJECTS,
+  type TrackingEvent,
+  type TrackingMap,
+  type TrackingName,
+} from '../../src/engine/events/analytics';
 import type { EventName } from '../../src/engine/events/bus';
+import type { Cart, CartItem } from '../../src/engine/events/carts';
+import type { Checkout } from '../../src/engine/events/checkout';
 import type { Promotion } from '../../src/engine/events/promotions';
 import { publicOrder } from '../../src/engine/order';
-import type { ApiOrder } from '../../src/engine/types';
 import { createOrder } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 import { fakeRules } from '../fixtures/rules';
 
-const EARBUDS = { item_id: '11', item_name: 'Earbuds', quantity: 1, price: 49 };
+const EARBUDS: CartItem = { package_id: 1, quantity: 1, product_title: 'Earbuds', sku: 'EB-2', price: 49, total: 49 };
+const CART: Cart = { lines: [EARBUDS], coupons: [], currency: 'USD', total: 49 };
+const CHECKOUT: Checkout = { id: 'c1', cart: CART };
 const ON: ProviderConfig = { enabled: true, nextCampaign: true, dataLayer: true, unsupported: [] };
+const DL: Record<TrackingName, string> = {
+  page_viewed: 'dl_user_data',
+  product_viewed: 'dl_view_item',
+  product_list_viewed: 'dl_view_item_list',
+  product_added_to_cart: 'dl_add_to_cart',
+  product_removed_from_cart: 'dl_remove_from_cart',
+  cart_updated: 'dl_cart_updated',
+  checkout_started: 'dl_begin_checkout',
+  checkout_contact_info_submitted: 'dl_generate_lead',
+  checkout_shipping_address_submitted: 'dl_add_shipping_info',
+  checkout_shipping_method_submitted: 'dl_add_shipping_info',
+  checkout_payment_info_submitted: 'dl_add_payment_info',
+  checkout_completed: 'dl_purchase',
+  upsell_completed: 'dl_upsell_purchase',
+  upsell_viewed: 'dl_viewed_upsell',
+  upsell_skipped: 'dl_skipped_upsell',
+  promotion_viewed: 'dl_view_promotion',
+  promotion_selected: 'dl_select_promotion',
+};
 const page = (kind: PageKind, sent: string[] = []): PageVisit => ({
   at: 0,
   path: `/${kind}`,
@@ -67,11 +95,26 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     const trace: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };
     engine.log.debug(`analytics ${name}`, trace);
   };
-  const send = (trigger: EventName, name: string, params: Record<string, unknown>, id: string, layers = true) => {
-    engine.events.emit('analytics', { name, id, time: '', params, context: {} } as unknown as AnalyticsEvent);
-    if (layers)
+  const send = <K extends TrackingName>(
+    trigger: EventName,
+    name: K,
+    data: TrackingMap[K],
+    id: string,
+    options: { layers?: boolean; created_at?: string } = {},
+  ) => {
+    engine.events.emit('analytics', {
+      event_id: id,
+      event_type: name,
+      object: OBJECTS[name],
+      data,
+      created_at: options.created_at ?? new Date().toISOString(),
+      session_id: 's1',
+      sdk_version: 'test',
+      context: { ...engine.eventContext(), campaign: { id: 1, name: 'Olympus', currency: 'USD', language: 'en' } },
+    } as TrackingEvent);
+    if (options.layers !== false)
       for (const layer of [(win.NextDataLayer ??= []), (win.dataLayer ??= [])])
-        layer.push({ event: `dl_${name}`, event_id: id });
+        layer.push({ event: dlOf(name), event_id: id });
     decide(trigger, name, true, `reason for ${name}`, id);
   };
   const rows = () =>
@@ -96,10 +139,10 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     [...flow.dialog.querySelectorAll<HTMLElement>('[role=tab]')].find((t) => t.textContent === label)!.click();
     return flow.dialog.querySelector('section')!;
   };
-  const open = (name: string) => {
+  const open = (name: string, nth = 0) => {
     [...root.querySelectorAll<HTMLElement>('.arun')]
-      .find((r) => r.querySelector('code')!.textContent === name)!
-      .click();
+      .filter((r) => r.querySelector('code')!.textContent === name)
+      [nth]!.click();
     expect(flow.dialog.open).toBe(true);
     return [...flow.dialog.querySelectorAll('.adetail > dt')].map((dt) => [
       dt.textContent,
@@ -119,11 +162,19 @@ afterEach(() => {
 });
 
 describe('the workflows match the analytics code', () => {
-  it('names the same data layer event as the data layer code for every analytics event', () => {
-    const ga = WIRING.filter((w) => w.ga).map((w) => [w.ga, w.dl]);
-    expect(Object.fromEntries(ga)).toEqual(NAMES);
-    const exits = WIRING.filter((w) => !w.ga).map((w) => [w.from[0], w.dl]);
-    expect(exits).toEqual(EXIT_INTENT.map(([from, name]) => [from, `dl_exit_intent_${name}`]));
+  it('wires every tracking event once, to its data layer event, and the exit popup straight to dl_exit_intent_*', () => {
+    const tracked = WIRING.filter((w) => w.tracking).map((w) => [w.tracking, w.dl]);
+    expect(Object.fromEntries(tracked)).toEqual(DL);
+    expect(tracked).toHaveLength(Object.keys(OBJECTS).length);
+    expect(WIRING.filter((w) => !w.tracking).map((w) => [w.from[0], w.dl])).toEqual([
+      ['promotion.viewed', 'dl_exit_intent_shown'],
+      ['promotion.clicked', 'dl_exit_intent_accepted'],
+      ['promotion.clicked', 'dl_exit_intent_action'],
+      ['promotion.closed', 'dl_exit_intent_dismissed'],
+      ['promotion.closed', 'dl_exit_intent_closed'],
+    ]);
+    expect(dlOf('checkout_completed')).toBe('dl_purchase');
+    expect(dlOf('dl_exit_intent_shown')).toBe('dl_exit_intent_shown');
   });
 
   it('lists every trigger that sends each event, and nothing the code does not send', async () => {
@@ -150,6 +201,7 @@ describe('the workflows match the analytics code', () => {
       country: 'US',
       type: 'shipping',
     });
+    engine.events.emit('shipping.settled', { id: 1, code: 'standard' });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
@@ -170,10 +222,10 @@ describe('the workflows match the analytics code', () => {
       .map((e) => e.data as AnalyticsTrace | undefined)
       .filter((d): d is AnalyticsTrace => d?.trace === 'analytics' && d.sent)
       .map((d) => `${d.trigger} → ${d.name}`);
-    const allowed = new Set(WIRING.flatMap((w) => w.from.map((f) => `${f} → ${w.ga ?? w.dl}`)));
+    const allowed = new Set(WIRING.flatMap((w) => w.from.map((f) => `${f} → ${w.tracking ?? w.dl}`)));
     expect(traced.filter((pair) => !allowed.has(pair))).toEqual([]);
     expect(new Set(traced.map((pair) => pair.split(' → ')[1]))).toEqual(
-      new Set(WIRING.map((w) => w.ga ?? w.dl).filter((name) => name !== 'view_item_list')),
+      new Set(WIRING.map((w) => w.tracking ?? w.dl).filter((name) => name !== 'product_list_viewed')),
     );
   });
 });
@@ -225,56 +277,49 @@ describe('providers', () => {
 describe('analytics workflow', () => {
   const at = /\d\d:\d\d:\d\d$/;
 
-  it('says whether tracking works, then checks off the GA4 funnel with the page each step was sent on', () => {
+  it('says whether tracking works, then checks off the funnel with the page each step was sent on', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
-    const landing = page('product', ['page_view', 'view_item_list', 'add_to_cart', 'update_cart']);
+    const landing = page('product', ['page_viewed', 'product_list_viewed', 'product_added_to_cart', 'cart_updated']);
     const { engine, flow, paint, send, verdict, steps, root } = setup(ON, [landing, page('checkout')]);
     engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_view', { page_title: 'Checkout' }, 'pv');
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
-    engine.events.emit('checkout.started', engine.cart.currentCheckout());
-    send('checkout.started', 'begin_checkout', { currency: 'USD', value: 49, items: [EARBUDS] }, 'bc');
+    send('sdk.ready', 'page_viewed', {}, 'pv');
+    engine.events.emit('cart.calculated', CART);
+    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
+    engine.events.emit('checkout.started', CHECKOUT);
+    send('checkout.started', 'checkout_started', CHECKOUT, 'bc');
     paint();
-    expect(verdict()).toBe('Every event so far was pushed with the fields GA4 requires');
+    expect(verdict()).toBe('Every event so far carried its object and reached its data layers');
     expect(steps()).toEqual([
-      ['done', 'page_view', 'Landing · this page'],
-      ['done', 'view_item_list', 'Landing'],
-      ['done', 'add_to_cart', 'Landing · this page'],
-      ['done', 'begin_checkout', 'This page'],
-      [
-        'todo',
-        'add_shipping_info',
-        'Not yet: once per checkout, when the shipping address is valid or a shipping method is picked',
-      ],
-      ['todo', 'add_payment_info', 'Not yet: once per checkout, when a submit passes its checks'],
-      ['todo', 'purchase', 'Not yet: once per order, when it is paid'],
+      ['done', 'page_viewed', 'Landing · this page'],
+      ['done', 'product_list_viewed', 'Landing'],
+      ['done', 'product_added_to_cart', 'Landing · this page'],
+      ['done', 'checkout_started', 'This page'],
+      ['todo', 'checkout_shipping_address_submitted', 'Not yet: once per checkout, when the shipping address is valid'],
+      ['todo', 'checkout_shipping_method_submitted', 'Not yet: once per checkout, when a shipping method is picked'],
+      ['todo', 'checkout_payment_info_submitted', 'Not yet: once per checkout, when a submit passes its checks'],
+      ['todo', 'checkout_completed', 'Not yet: once per order, when it is paid'],
     ]);
     const clickable = [...root.querySelectorAll<HTMLElement>('.afunnel > button')];
     expect(clickable.map((b) => b.querySelector('code')!.textContent)).toEqual([
-      'page_view',
-      'add_to_cart',
-      'begin_checkout',
+      'page_viewed',
+      'product_added_to_cart',
+      'checkout_started',
     ]);
     clickable[2]!.click();
-    expect(flow.dialog.querySelector('h2')!.textContent).toBe('begin_checkout');
+    expect(flow.dialog.querySelector('h2')!.textContent).toBe('checkout_started');
   });
 
   it('adds the upsell steps once the tab reaches an upsell page', () => {
     const { engine, paint, send, steps } = setup(ON, [page('checkout'), page('upsell')]);
-    engine.events.emit('order.paid', publicOrder(ORDER));
-    send(
-      'order.paid',
-      'purchase',
-      { currency: 'USD', value: 89, shipping: 9.99, tax: 7.12, transaction_id: 'R1', items: [EARBUDS] },
-      'p1',
-    );
+    const order = publicOrder(ORDER);
+    engine.events.emit('order.paid', order);
+    send('order.paid', 'checkout_completed', order, '1001');
     paint();
     expect(steps().slice(-3)).toEqual([
-      ['done', 'purchase', 'This page'],
-      ['todo', 'view_upsell', 'Not yet: each upsell page, when half of an offer is on screen'],
-      ['todo', 'upsell_purchase', 'Not yet: each accepted upsell, when the order loads'],
+      ['done', 'checkout_completed', 'This page'],
+      ['todo', 'upsell_viewed', 'Not yet: once per upsell page, when an offer is shown'],
+      ['todo', 'upsell_completed', 'Not yet: once per accepted upsell, when the order is loaded with it'],
     ]);
   });
 
@@ -282,38 +327,43 @@ describe('analytics workflow', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const { engine, root, paint, decide, send, rows, toggle, steps } = setup();
     vi.setSystemTime(10_000);
+    document.title = 'Olympus';
     engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
-    decide('sdk.ready', 'view_item_list', false, 'No package on the page');
+    send('sdk.ready', 'page_viewed', {}, 'pv');
+    decide('sdk.ready', 'product_list_viewed', false, 'No package on the page');
     vi.setSystemTime(20_000);
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
-    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
+    engine.events.emit('cart.calculated', CART);
+    decide('cart.calculated', 'product_removed_from_cart', false, 'Nothing was removed since the last report');
+    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
     paint();
-    expect(steps()[1]).toEqual(['todo', 'view_item_list', 'Not sent: No package on the page']);
+    expect(steps()[1]).toEqual(['todo', 'product_list_viewed', 'Not sent: No package on the page']);
     expect(root.querySelectorAll('.bhead p')[1]!.textContent).toBe('2 sent, newest first. Open one for its data.');
     expect(rows()).toEqual([
-      ['ok', 'add_to_cart', 'Cart priced · + Earbuds ×1', expect.stringMatching(/^\$49\.00\d\d:/)],
-      ['ok', 'page_view', 'Page loaded · Olympus', expect.stringMatching(at)],
+      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1', expect.stringMatching(/^\$49\.00\d\d:/)],
+      ['ok', 'page_viewed', 'Page loaded · Olympus', expect.stringMatching(at)],
     ]);
     expect(toggle().textContent).toBe('Show 2 not sent');
     toggle().click();
     expect(toggle().textContent).toBe('Hide not sent');
     expect(rows().map(([state, name, sub]) => [state, name, sub])).toEqual([
-      ['ok', 'add_to_cart', 'Cart priced · + Earbuds ×1'],
-      ['skip', 'remove_from_cart', 'Cart priced · Not sent: Nothing was removed since the last report'],
-      ['skip', 'view_item_list', 'Page loaded · Not sent: No package on the page'],
-      ['ok', 'page_view', 'Page loaded · Olympus'],
+      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1'],
+      ['skip', 'product_removed_from_cart', 'Cart priced · Not sent: Nothing was removed since the last report'],
+      ['skip', 'product_list_viewed', 'Page loaded · Not sent: No package on the page'],
+      ['ok', 'page_viewed', 'Page loaded · Olympus'],
     ]);
   });
 
-  it('opens an event in a dialog for why it was sent, the data layer push, its params and items', () => {
+  it('opens an event in a dialog for why it was sent, the data layer push, its data and lines', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
     const { engine, flow, paint, send, rows, chips, notes, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    const items = [{ ...EARBUDS, item_variant: 'Black' }];
-    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items }, 'atc');
+    engine.events.emit('cart.calculated', CART);
+    send(
+      'cart.calculated',
+      'product_added_to_cart',
+      { ...EARBUDS, variant_title: 'Black', first_in_session: true },
+      'atc',
+    );
     paint();
     expect(chips()).toEqual([
       'NextDataLayer · 1 event',
@@ -322,17 +372,30 @@ describe('analytics workflow', () => {
     ]);
     expect(notes()).toEqual([]);
     expect(rows()[0]![2]).toBe('Cart priced · + Earbuds (Black) ×1');
-    expect(open('add_to_cart')).toEqual([
-      ['Why', 'reason for add_to_cartCart priced: cart.calculated'],
+    expect(open('product_added_to_cart')).toEqual([
+      ['Why', 'reason for product_added_to_cartCart priced: cart.calculated'],
       ['Reached', 'dl_add_to_cartNextDataLayerGTM dataLayer'],
-      ['Params', 'currency USDvalue 49'],
+      [
+        'Data',
+        'cart_linepackage_id 1quantity 1product_title Earbudssku EB-2price 49total 49variant_title Blackfirst_in_session true',
+      ],
     ]);
-    expect(flow.dialog.querySelector('.aitems')!.textContent).toBe('Items · 1itemvariantidqtypriceEarbudsBlack11149');
+    expect(flow.dialog.querySelector('.aitems')!.textContent).toBe(
+      'Lines · 1productvariantskuqtypriceEarbudsBlackEB-2149',
+    );
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer']);
-    expect([...tab('Event').querySelectorAll('.ajson b')].map((b) => b.textContent)).toEqual([
-      'analytics',
+    const event = tab('Event');
+    expect([...event.querySelectorAll('.ajson b')].map((b) => b.textContent)).toEqual([
+      'product_added_to_cart',
       'cart.calculated',
     ]);
+    expect(JSON.parse(event.querySelector('pre')!.textContent!)).toMatchObject({
+      event_id: 'atc',
+      event_type: 'product_added_to_cart',
+      object: 'cart_line',
+      data: { product_title: 'Earbuds', first_in_session: true },
+      context: { page_location: 'http://localhost:3000/' },
+    });
     expect(JSON.parse(tab('NextDataLayer').querySelector('pre')!.textContent!)).toEqual({
       event: 'dl_add_to_cart',
       event_id: 'atc',
@@ -340,62 +403,83 @@ describe('analytics workflow', () => {
     expect(tab('GTM dataLayer').querySelector('.ajhead small')!.textContent).toBe(
       'The push in window.dataLayer, for GTM tags',
     );
-    expect(flow.dialog.querySelector('h2')!.textContent).toBe('add_to_cart');
+    expect(flow.dialog.querySelector('h2')!.textContent).toBe('product_added_to_cart');
     expect(flow.dialog.querySelector('header p')!.textContent).toMatch(
       /^Cart priced · \d\d:\d\d:\d\d · \$49\.00 · Sent$/,
     );
   });
 
+  it('shows the lines of a checkout from its cart, and an order by its number', () => {
+    const { engine, paint, send, rows, open } = setup();
+    engine.events.emit('checkout.started', CHECKOUT);
+    send('checkout.started', 'checkout_started', CHECKOUT, 'bc');
+    const order = publicOrder(ORDER);
+    engine.events.emit('order.paid', order);
+    send('order.paid', 'checkout_completed', order, '1001');
+    paint();
+    expect(rows().map(([, name, sub, end]) => [name, sub, end])).toEqual([
+      ['checkout_completed', 'Order paid · Earbuds ×2', expect.stringMatching(/^\$106\.11/)],
+      ['checkout_started', 'Checkout started · Earbuds ×1', expect.stringMatching(/^\$49\.00/)],
+    ]);
+    expect(Object.fromEntries(open('checkout_started')).Data).toBe('checkoutid c1');
+    expect(Object.fromEntries(open('checkout_completed')).Data).toMatch(/^orderref_id R1number 1001currency USD/);
+  });
+
   it('steps through the listed events with Newer and Older, or the arrow keys', () => {
     const { engine, flow, paint, send, open } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
+    send('sdk.ready', 'page_viewed', {}, 'pv');
+    engine.events.emit('cart.calculated', CART);
+    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
     paint();
-    open('add_to_cart');
+    open('product_added_to_cart');
     const button = (text: string) =>
       [...flow.dialog.querySelectorAll<HTMLButtonElement>('footer .btn')].find((b) => b.textContent === text)!;
     const heading = () => flow.dialog.querySelector('h2')!.textContent;
     expect([button('Newer').disabled, button('Older').disabled]).toEqual([true, false]);
     button('Older').click();
-    expect(heading()).toBe('page_view');
+    expect(heading()).toBe('page_viewed');
     expect([button('Newer').disabled, button('Older').disabled]).toEqual([false, true]);
     flow.dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    expect(heading()).toBe('add_to_cart');
+    expect(heading()).toBe('product_added_to_cart');
     button('Done').click();
     expect(flow.dialog.open).toBe(false);
   });
 
   it('says why an event was not sent', () => {
     const { engine, flow, paint, decide, toggle, open, tabs } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    decide('cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report');
+    engine.events.emit('cart.calculated', CART);
+    decide('cart.calculated', 'product_removed_from_cart', false, 'Nothing was removed since the last report');
     paint();
     toggle().click();
-    expect(open('remove_from_cart')).toEqual([
+    expect(open('product_removed_from_cart')).toEqual([
       ['Why', 'Nothing was removed since the last reportCart priced: cart.calculated'],
     ]);
     expect(tabs()).toEqual(['Summary', 'Event']);
     expect(flow.dialog.querySelector('header p')!.textContent).toMatch(/ · Not sent$/);
   });
 
-  it('puts missing GA4 fields and a push that did not arrive in the verdict, the funnel and the row', () => {
+  it('puts an incomplete object and a push that did not arrive in the verdict, the funnel and the row', () => {
     const { engine, flow, paint, send, rows, verdict, steps, open } = setup();
-    engine.events.emit('order.paid', publicOrder(ORDER));
-    send('order.paid', 'purchase', { value: 89, shipping: 9.99, tax: 7.12, items: [] }, 'p1', false);
+    const order = { ...publicOrder(ORDER), lines: [], currency: undefined, number: undefined };
+    engine.events.emit('order.paid', order);
+    send('order.paid', 'checkout_completed', order, 'p1', { layers: false });
     win.NextDataLayer = [{ event: 'dl_purchase', event_id: 'p1' }];
     win.dataLayer = [];
     paint();
-    expect(verdict()).toBe('1 event with problems: purchase items is empty');
-    expect(steps().find(([, name]) => name === 'purchase')).toEqual(['warn', 'purchase', 'This page · items is empty']);
+    expect(verdict()).toBe('1 event with problems: checkout_completed lines is empty');
+    expect(steps().find(([, name]) => name === 'checkout_completed')).toEqual([
+      'warn',
+      'checkout_completed',
+      'This page · lines is empty',
+    ]);
     expect(rows()[0]!.slice(0, 3)).toEqual([
       'warn',
-      'purchase',
-      'Order paid · ⚠ items is empty · ⚠ value is set without currency · ⚠ transaction_id is missing · ⚠ not in dataLayer',
+      'checkout_completed',
+      'Order paid · ⚠ lines is empty · ⚠ no currency · ⚠ checkout_completed has no order number · ⚠ not in dataLayer',
     ]);
-    const detail = Object.fromEntries(open('purchase'));
-    expect(detail.Problems).toBe('⚠ items is empty⚠ value is set without currency⚠ transaction_id is missing');
+    const detail = Object.fromEntries(open('checkout_completed'));
+    expect(detail.Problems).toBe('⚠ lines is empty⚠ no currency⚠ checkout_completed has no order number');
     expect(detail.Reached).toBe('dl_purchaseNextDataLayerGTM dataLayer: not pushed');
     expect([...flow.dialog.querySelectorAll('.adetail .chip')].map((c) => c.className)).toEqual([
       'chip ok',
@@ -403,81 +487,65 @@ describe('analytics workflow', () => {
     ]);
   });
 
-  it('checks update_cart against the cart lines, and a voucher GA4 takes as coupon', () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    const { engine, paint, send, verdict, open } = setup();
-    const priced = (value: number, voucher?: string) => {
-      vi.setSystemTime(Date.now() + 1000);
-      engine.events.emit('cart.calculated', {
-        lines: [{ package_id: 1, quantity: 1, total: 49 }],
-        coupons: voucher ? ['SAVE'] : [],
-        total: 49,
-        discounts: voucher
-          ? [{ name: 'Save', amount: Number(voucher), source: 'coupon', code: 'SAVE', offer_id: 1 }]
-          : [],
-      });
-      send('cart.calculated', 'update_cart', { currency: 'USD', value, items: [EARBUDS] }, `u${value}${voucher ?? ''}`);
-      paint();
-      return Object.fromEntries(open('update_cart'))['Adds up'];
-    };
-    expect(priced(49)).toBe('✓ value $49.00 = the cart lines $49.00');
-    expect(priced(59, '10.00')).toBe(
-      '✓ value $59.00 = the cart lines $49.00 before the $10.00 voucher, sent as coupon',
+  it('takes one push for every line of a bundle added or removed at once', () => {
+    const { engine, paint, send, rows, open } = setup();
+    const created_at = '2026-11-05T10:00:00.000Z';
+    const bump: CartItem = { package_id: 2, quantity: 1, product_title: 'Bump', price: 20, total: 20 };
+    engine.events.emit('cart.calculated', { ...CART, lines: [EARBUDS, bump] });
+    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'a1', {
+      layers: false,
+      created_at,
+    });
+    send('cart.calculated', 'product_added_to_cart', { ...bump, first_in_session: false }, 'a2', {
+      layers: false,
+      created_at,
+    });
+    send('cart.calculated', 'product_added_to_cart', { ...bump, first_in_session: false }, 'a3', {
+      layers: false,
+      created_at: '2026-11-05T10:00:01.000Z',
+    });
+    send('cart.calculated', 'cart_updated', { ...CART, lines: [EARBUDS, bump] }, 'u1', { layers: false });
+    win.NextDataLayer = [{ event: 'dl_add_to_cart', event_id: 'a1' }];
+    win.dataLayer = [{ event: 'dl_add_to_cart', event_id: 'a1' }];
+    paint();
+    expect(rows().map(([state, name, sub]) => [state, name, sub])).toEqual([
+      ['warn', 'cart_updated', 'Cart priced · ⚠ not in NextDataLayer · ⚠ not in dataLayer'],
+      ['warn', 'product_added_to_cart', 'Cart priced · ⚠ not in NextDataLayer · ⚠ not in dataLayer'],
+      ['ok', 'product_added_to_cart', 'Cart priced · + Bump ×1'],
+      ['ok', 'product_added_to_cart', 'Cart priced · + Earbuds ×1'],
+    ]);
+    expect(Object.fromEntries(open('product_added_to_cart', 1)).Reached).toBe(
+      'dl_add_to_cartNextDataLayerGTM dataLayer',
     );
-    expect(priced(59)).toBe('⚠ value $59.00, but the cart lines come to $49.00');
-    expect(verdict()).toBe('1 event with problems: update_cart value $59.00, but the cart lines come to $49.00');
   });
 
-  it('checks a purchase against the order total, with tax added or included in the prices', () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    const { engine, paint, send, steps, open } = setup();
-    const bought = (order: ApiOrder, params: Record<string, unknown>, id: string) => {
-      vi.setSystemTime(Date.now() + 1000);
-      engine.events.emit('order.paid', publicOrder(order));
-      send('order.paid', 'purchase', { currency: 'USD', transaction_id: 'R1', items: [EARBUDS], ...params }, id);
-      paint();
-      return Object.fromEntries(open('purchase'))['Adds up'];
-    };
-    expect(bought(ORDER, { value: 89, shipping: 9.99, tax: 7.12 }, 'p1')).toBe(
-      '✓ value $89.00 + shipping $9.99 + tax $7.12 = $106.11, the order total',
-    );
-    expect(bought(ORDER, { value: 96.12, shipping: 9.99, tax: 7.12 }, 'p2')).toBe(
-      '✓ value $96.12 + shipping $9.99 = $106.11, the order total (prices include tax)',
-    );
-    const upsold = { ...withUpsell(ORDER, 12, 1), total_incl_tax: '126.11' };
-    expect(bought(upsold, { value: 89, shipping: 9.99, tax: 7.12 }, 'p3')).toBe(
-      '✓ value $89.00 + shipping $9.99 + tax $7.12 = $106.11, the order total',
-    );
-    expect(bought(ORDER, { value: 50, shipping: 9.99, tax: 7.12 }, 'p4')).toBe(
-      '⚠ value $50.00 + shipping $9.99 + tax $7.12 = $67.11, but the order total is $106.11',
-    );
-    expect(steps().find(([, name]) => name === 'purchase')![0]).toBe('warn');
-  });
-
-  it('shows GTM reading a push, and a GA4 request that left the page after an event', () => {
+  it('shows GTM reading a push, and a GA4 request named as GA4 names the event that left the page after it', () => {
     win.google_tag_manager = { 'GTM-ABC123': {} };
     win.nextCampaign = { event() {} };
     const { engine, flow, paint, send, chips, steps, open, tabs, tab } = setup();
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
-    send('cart.calculated', 'add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] }, 'atc');
+    engine.events.emit('cart.calculated', CART);
+    send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'atc');
+    send('cart.calculated', 'cart_updated', CART, 'u1');
     (win.dataLayer![0] as Record<string, unknown>)['gtm.uniqueEventId'] = 7;
     const collect = (en: string) => ({
       name: `https://region1.google-analytics.com/g/collect?v=2&tid=G-TEST1&en=${en}`,
       startTime: Date.now() - performance.timeOrigin + 20,
     });
     vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      collect('add_to_cart'),
+      collect(GA4.product_added_to_cart!),
+      collect('cart_updated'),
       collect('page_view'),
       { name: 'https://cdn.test/app.js', startTime: 0 },
     ] as never);
     paint();
     expect(chips()).toContain('GA4 · G-TEST1');
-    expect(steps().find(([, name]) => name === 'add_to_cart')).toEqual([
+    expect(steps().find(([, name]) => name === 'product_added_to_cart')).toEqual([
       'done',
-      'add_to_cart',
+      'product_added_to_cart',
       'This page · reached GA4',
     ]);
-    expect(Object.fromEntries(open('add_to_cart')).Reached).toBe(
+    expect(Object.fromEntries(open('cart_updated')).Reached).toBe('dl_cart_updatedNextDataLayerGTM dataLayer');
+    expect(Object.fromEntries(open('product_added_to_cart')).Reached).toBe(
       'dl_add_to_cartNextDataLayerGTM dataLayer · read by GTMGA4 G-TEST1',
     );
     expect(tabs()).toEqual(['Summary', 'Event', 'NextDataLayer', 'GTM dataLayer', 'GA4']);
@@ -511,12 +579,12 @@ describe('analytics workflow', () => {
     win.nextCampaign = { event() {} };
     const { engine, paint, send, chips, notes, verdict, open } = setup({ ...ON, dataLayer: false });
     engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_view', { page_title: 'Olympus' }, 'pv');
+    send('sdk.ready', 'page_viewed', {}, 'pv');
     paint();
     expect(chips()).toEqual(['NextDataLayer · 1 event', 'GTM dataLayer · off', 'NEXT analytics · own page_view']);
     expect(verdict()).toBe('GTM tags get none of these events: GTM dataLayer is off');
     expect(notes()).toEqual(['Off in nextConfig: analytics.providers.gtm.enabled is false.']);
-    expect(Object.fromEntries(open('page_view'))['Reached']).toBe('dl_user_dataNextDataLayer');
+    expect(Object.fromEntries(open('page_viewed'))['Reached']).toBe('dl_user_dataNextDataLayer');
   });
 
   it('runs the exit popup straight to the data layer, and names a provider that cannot deliver', () => {
@@ -541,12 +609,12 @@ describe('analytics workflow', () => {
     expect(verdict()).toBe('Nothing sent yet: analytics starts once the page is idle.');
     expect(root.querySelector('.anone')!.textContent).toBe('Nothing sent yet.');
     engine.events.emit('sdk.ready', engine.snapshot());
-    send('sdk.ready', 'page_view', {}, 'pv');
-    decide('sdk.ready', 'view_item', false, 'No package on the page');
+    send('sdk.ready', 'page_viewed', {}, 'pv');
+    decide('sdk.ready', 'product_viewed', false, 'No package on the page');
     paint('package');
     expect(root.querySelector('.anone')!.textContent).toBe('Nothing matches the filter.');
     toggle().click();
-    expect(rows().map(([, name]) => name)).toEqual(['view_item']);
+    expect(rows().map(([, name]) => name)).toEqual(['product_viewed']);
     const off = setup({ ...ON, enabled: false });
     off.paint();
     expect(off.verdict()).toBe('Analytics is off: nextConfig.analytics.enabled is false.');
@@ -555,13 +623,30 @@ describe('analytics workflow', () => {
 });
 
 describe('checks', () => {
-  it('checks what GA4 requires', () => {
-    expect(checks('page_view', { page_title: 'x' })).toEqual([]);
-    expect(checks('add_to_cart', { currency: 'USD', value: 49, items: [EARBUDS] })).toEqual([]);
-    expect(checks('add_to_cart', { value: 49, items: [{ quantity: 1 }] })).toEqual([
-      'an item has neither item_id nor item_name',
-      'value is set without currency',
+  it('finds the lines of each object', () => {
+    expect(linesOf('page_viewed', {})).toEqual([]);
+    expect(linesOf('product_viewed', EARBUDS)).toEqual([EARBUDS]);
+    expect(linesOf('product_list_viewed', [EARBUDS])).toEqual([EARBUDS]);
+    expect(linesOf('product_removed_from_cart', EARBUDS)).toEqual([EARBUDS]);
+    expect(linesOf('cart_updated', CART)).toEqual([EARBUDS]);
+    expect(linesOf('checkout_payment_info_submitted', CHECKOUT)).toEqual([EARBUDS]);
+    expect(linesOf('upsell_viewed', { ref_id: 'R1', page: '/u', lines: [EARBUDS] })).toEqual([EARBUDS]);
+    expect(linesOf('checkout_completed', publicOrder(ORDER))).toHaveLength(1);
+    expect(linesOf('promotion_viewed', { id: 'x', type: 'banner' })).toEqual([]);
+  });
+
+  it('checks that each event carries its object whole', () => {
+    expect(checks('page_viewed', {})).toEqual([]);
+    expect(checks('product_added_to_cart', { ...EARBUDS, first_in_session: true })).toEqual([]);
+    expect(checks('product_added_to_cart', { package_id: 1, quantity: 1 })).toEqual(['a line has no product_title']);
+    expect(checks('cart_updated', { lines: [], coupons: [] })).toEqual(['no currency']);
+    expect(checks('checkout_started', { id: 'c1', cart: { lines: [], coupons: [] } })).toEqual([
+      'lines is empty',
+      'no currency',
     ]);
-    expect(checks('upsell_purchase', { currency: 'USD', items: [EARBUDS] })).toEqual(['transaction_id is missing']);
+    expect(checks('checkout_completed', publicOrder(ORDER))).toEqual([]);
+    expect(checks('upsell_completed', { ...publicOrder(ORDER), number: undefined })).toEqual([
+      'upsell_completed has no order number',
+    ]);
   });
 });

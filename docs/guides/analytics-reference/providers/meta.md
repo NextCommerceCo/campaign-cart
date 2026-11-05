@@ -6,15 +6,17 @@ order: 0.23
 
 # Meta pixel
 
-Not built in: a listener maps the standard events to Meta standard events and sends them to `fbq`.
+Not built in: a listener maps the tracking events to Meta standard events and sends them to `fbq`.
 The pixel's base code sends `PageView` itself.
 
 <!-- meta-events -->
 
-`eventID` is the standard event's `id`, so a server-side Conversions API event with the same id is
-counted once:
+`eventID` is the tracking event's `event_id`, so a server-side Conversions API event with the same
+id is counted once. The lines come from `data`: the CartItem itself, the Cart's `lines`, or the
+Checkout's `cart.lines`:
 
 <!-- meta-recipe -->
 
-`add_to_cart` has `first_in_session: true` on the first add in the browser, for a pixel that should
-count one AddToCart per shopper: `if (name === 'add_to_cart' && !params.first_in_session) return;`.
+`product_added_to_cart` has `first_in_session: true` on the first add in the browser, for a pixel
+that should count one AddToCart per shopper:
+`if (event_type === 'product_added_to_cart' && !data.first_in_session) return;`.

@@ -1,7 +1,15 @@
 import type { Engine } from '../engine/engine';
-import type { AnalyticsEvent, AnalyticsMap, AnalyticsName, AnalyticsTrace } from '../engine/events/analytics';
+import {
+  OBJECTS,
+  type AnalyticsTrace,
+  type TrackingEvent,
+  type TrackingMap,
+  type TrackingName,
+} from '../engine/events/analytics';
 import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
 import { newId } from '../engine/id';
+
+declare const __VERSION__: string;
 
 export interface Why {
   trigger: EventName;
@@ -17,13 +25,22 @@ export function createReport(engine: Engine) {
     const data: AnalyticsTrace = { trace: 'analytics', trigger, name, sent, reason, ...(id && { id }) };
     engine.log.debug(`analytics ${name} ${sent ? 'sent' : 'not sent'}: ${reason}`, data);
   };
-  const skip = (trigger: EventName, name: AnalyticsName, reason: string) => trace(trigger, name, false, reason);
+  const skip = (trigger: EventName, name: TrackingName, reason: string) => trace(trigger, name, false, reason);
 
-  const emit = <K extends AnalyticsName>(name: K, params: AnalyticsMap[K], why: Why) => {
-    const id = why.id ?? newId();
-    const event = { name, id, time: new Date().toISOString(), params, context: engine.eventContext() };
-    engine.events.emit('analytics', event as AnalyticsEvent);
-    trace(why.trigger, name, true, why.reason, id);
+  const emit = <K extends TrackingName>(name: K, data: TrackingMap[K], why: Why) => {
+    const event_id = why.id ?? newId();
+    const event = {
+      event_id,
+      event_type: name,
+      object: OBJECTS[name],
+      data,
+      created_at: new Date().toISOString(),
+      session_id: engine.sessionId(),
+      sdk_version: __VERSION__,
+      context: engine.eventContext(),
+    } as TrackingEvent;
+    engine.events.emit('analytics', event);
+    trace(why.trigger, name, true, why.reason, event_id);
   };
 
   return { engine, skip, emit };

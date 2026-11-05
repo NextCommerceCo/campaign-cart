@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readConfig } from '../src/config';
 import { boot, type NextApi } from '../src/boot';
 import { createCheckout } from '../src/checkout/state/checkout';
+import type { TrackingEvent } from '../src/engine/events/analytics';
 import { funnelFromPath, storageScope } from '../src/engine/scope';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi, json } from './fixtures/api';
@@ -276,6 +277,7 @@ describe('boot', () => {
     expect(document.cookie).toContain(`ncsid=${session}`);
     expect(next.context()).toEqual({
       page_location: location.origin + location.pathname,
+      page_title: document.title,
       page_referrer: '',
       campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
       session_id: session,
@@ -384,14 +386,28 @@ describe('boot', () => {
     expect(ready).not.toHaveBeenCalled();
   });
 
-  it('lets page scripts listen to one tracking event by its GA4 name', async () => {
+  it('lets page scripts listen to one tracking event by name, in the SDK event envelope', async () => {
+    document.title = 'Olympus Earbuds';
     const next = boot(config, Promise.resolve(campaign));
-    const views: string[] = [];
-    next.analytics.on('page_view', (e) => views.push(e.name));
-    await vi.waitFor(() => expect(views).toEqual(['page_view']));
+    const views: TrackingEvent[] = [];
+    next.analytics.on('page_viewed', (e) => views.push(e));
+    await vi.waitFor(() => expect(views.map((e) => e.event_type)).toEqual(['page_viewed']));
+    expect(views[0]).toEqual({
+      event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      event_type: 'page_viewed',
+      object: 'page',
+      data: {},
+      created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT.*Z$/),
+      session_id: next.context().session_id,
+      sdk_version: next.version,
+      context: expect.objectContaining({
+        page_title: 'Olympus Earbuds',
+        page_location: location.origin + location.pathname,
+      }),
+    });
     const all: string[] = [];
-    next.analytics.on('*', (e) => all.push(e.name));
-    expect(all).toContain('page_view');
+    next.analytics.on('*', (e) => all.push(e.event_type));
+    expect(all).toContain('page_viewed');
   });
 
   it('keeps the SDK’s internal events off next.on: tracking events come through next.analytics.on', async () => {
@@ -402,8 +418,8 @@ describe('boot', () => {
     const tracked = vi.fn();
     next.on('analytics' as never, tracked);
     const views: string[] = [];
-    next.analytics.on('page_view', (e) => views.push(e.name));
-    await vi.waitFor(() => expect(views).toEqual(['page_view']));
+    next.analytics.on('page_viewed', (e) => views.push(e.event_type));
+    await vi.waitFor(() => expect(views).toEqual(['page_viewed']));
     const late: string[] = [];
     next.on('*', (_, e) => late.push(e.event_type));
     expect(early).toContain('sdk.ready');

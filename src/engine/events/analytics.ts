@@ -1,159 +1,169 @@
-import type { EventName } from './bus';
+import type { Envelope, EventName } from './bus';
+import type { Cart, CartItem } from './carts';
+import type { Checkout } from './checkout';
 import type { EventContext } from './context';
+import type { Order, OrderItem } from './orders';
+import type { Promotion, PromotionEvents } from './promotions';
+import type { Upsell } from './upsells';
 
-/** A product line as GA4 reads it. Prices are numbers in `currency`. */
-export interface AnalyticsItem {
-  /** The package's SKU, else its id. */
-  item_id: string;
-  item_name: string;
-  /** On order items: the product name, else the campaign name. */
-  item_brand?: string;
-  /** The campaign name. */
-  item_category?: string;
-  item_variant?: string;
-  item_product_id?: string;
-  item_variant_id?: string;
-  item_sku?: string;
-  item_image?: string;
-  /** Unit price paid. */
-  price: number;
-  /** Unit discount, when the shopper paid less than the listed price. */
-  discount?: number;
-  quantity: number;
-  currency: string;
-  /** Position in `items`, from 0. */
-  index: number;
-}
-
-/** GA4's ecommerce block. */
-export interface Ecommerce {
-  currency: string;
-  /** Σ `price × quantity` of `items`. */
-  value: number;
-  items: AnalyticsItem[];
-  /** The first coupon on the cart. */
-  coupon?: string;
-  /** The selected shipping method's price. */
-  shipping?: number;
-}
-
-/** A paid order or upsell. */
-export interface Purchase extends Ecommerce {
-  transaction_id: string;
-  tax: number;
-  shipping: number;
-  affiliation: 'Online Store' | 'Upsell';
-  /** The order's discounts, when it has any. */
-  discount?: number;
-}
-
-/** Every tracking event the analytics chunk sends, by its GA4 name, and its `params`. */
-export interface AnalyticsMap {
+/**
+ * Every tracking event the analytics chunk sends, and its `data`: the same objects the SDK's
+ * events carry, at the moments that count for tracking. Each provider remaps them to its own format.
+ */
+export interface TrackingMap {
   /**
    * Every page load, when the SDK is ready.
    * @group Pages
    */
-  page_view: { page_location: string; page_title: string; page_referrer: string };
+  page_viewed: Record<never, never>;
   /**
-   * On ready, when the page shows exactly one package.
+   * On ready, when the page shows exactly one package, at its catalog price.
    * @group Pages
    */
-  view_item: Ecommerce;
+  product_viewed: CartItem;
   /**
-   * On ready, when the page shows more than one package.
+   * On ready, when the page shows more than one package, at their catalog prices.
    * @group Pages
    */
-  view_item_list: Omit<Ecommerce, 'value'> & { item_list_id: 'product_list'; item_list_name: 'Product List' };
+  product_list_viewed: CartItem[];
   /**
-   * When the cart gained packages since the last report, after its price; on ready for a cart filled before the page.
+   * One per line the cart gained since the last report, after its price; on ready for a cart filled before the page.
    * @group Carts
    */
-  add_to_cart: Ecommerce & {
+  product_added_to_cart: CartItem & {
     /** No package was added in this tab before. */
     first_in_session: boolean;
   };
   /**
-   * When the cart lost packages since the last report, at the prices they were reported with.
+   * One per line the cart lost since the last report, at the price it was reported with.
    * @group Carts
    */
-  remove_from_cart: Ecommerce;
+  product_removed_from_cart: CartItem;
   /**
    * After every price update.
    * @group Carts
    */
-  update_cart: Ecommerce;
+  cart_updated: Cart;
   /**
    * Once per checkout, when its form is ready.
    * @group Checkout
    */
-  begin_checkout: Ecommerce;
+  checkout_started: Checkout;
   /**
    * Once, when the contact details saved an Open Cart.
    * @group Checkout
    */
-  generate_lead: { currency: string; value: number; lead_source: 'checkout' };
+  checkout_contact_info_submitted: Checkout;
   /**
-   * Once per checkout, when the shipping address is valid or a shipping method is picked.
+   * Once per checkout, when the shipping address is valid.
    * @group Checkout
    */
-  add_shipping_info: Ecommerce & {
-    /** The shipping method's name, `Standard` when the cart has none. */
-    shipping_tier: string;
-  };
+  checkout_shipping_address_submitted: Checkout;
+  /**
+   * Once per checkout, when a shipping method is picked and the cart is priced with it.
+   * @group Checkout
+   */
+  checkout_shipping_method_submitted: Checkout;
   /**
    * Once per checkout, when a submit passes its checks.
    * @group Checkout
    */
-  add_payment_info: Ecommerce & {
-    /** `Credit Card` for a card, else the payment method; none before one is chosen. */
-    payment_type?: string;
-  };
+  checkout_payment_info_submitted: Checkout;
   /**
    * Once per order, when it is paid; on a later page when the paying page was left before it was sent.
    * @group Orders
    */
-  purchase: Purchase;
+  checkout_completed: Order;
   /**
    * Once per accepted upsell, when the order is loaded with it.
    * @group Upsells
    */
-  upsell_purchase: Purchase & {
-    upsell: { original_order_id: string; upsell_number: number; package_id: string; package_name: string };
+  upsell_completed: Order & {
+    /** Which line this upsell added. */
+    upsell: {
+      /** 1 for the first upsell on the order. */
+      number: number;
+      line: OrderItem;
+    };
   };
   /**
    * Once per upsell page, when an offer is shown.
    * @group Upsells
    */
-  view_upsell: { order_id: string; page_path: string; currency: string };
+  upsell_viewed: Upsell;
   /**
    * Every time an upsell is skipped.
    * @group Upsells
    */
-  skip_upsell: { order_id: string; package_id?: number; package_name?: string };
+  upsell_skipped: Upsell;
   /**
    * Every time a promotion is shown.
    * @group Promotions
    */
-  view_promotion: AnalyticsPromotion;
+  promotion_viewed: Promotion;
   /**
    * Every time a promotion is clicked.
    * @group Promotions
    */
-  select_promotion: AnalyticsPromotion;
+  promotion_selected: PromotionEvents['promotion.clicked'];
 }
 
-/** A promotion as GA4 reads it. */
-export interface AnalyticsPromotion {
-  promotion_id: string;
-  promotion_name?: string;
-  creative_name?: string;
-}
+export type TrackingName = keyof TrackingMap;
 
-export type AnalyticsName = keyof AnalyticsMap;
+/** The `object` of each tracking event's envelope: what its `data` is. */
+export const OBJECTS = {
+  page_viewed: 'page',
+  product_viewed: 'product',
+  product_list_viewed: 'products',
+  product_added_to_cart: 'cart_line',
+  product_removed_from_cart: 'cart_line',
+  cart_updated: 'cart',
+  checkout_started: 'checkout',
+  checkout_contact_info_submitted: 'checkout',
+  checkout_shipping_address_submitted: 'checkout',
+  checkout_shipping_method_submitted: 'checkout',
+  checkout_payment_info_submitted: 'checkout',
+  checkout_completed: 'order',
+  upsell_completed: 'order',
+  upsell_viewed: 'upsell',
+  upsell_skipped: 'upsell',
+  promotion_viewed: 'promotion',
+  promotion_selected: 'promotion',
+} as const satisfies Record<TrackingName, string>;
 
-/** One tracking event: `name` decides the shape of `params`. */
-export type AnalyticsEvent<K extends AnalyticsName = AnalyticsName> = {
-  [N in K]: { name: N; id: string; time: string; params: AnalyticsMap[N]; context: EventContext };
+/** The GA4 event each tracking event is sent as, for the events GA4 has a name for. */
+export const GA4: Partial<Record<TrackingName, string>> = {
+  page_viewed: 'page_view',
+  product_viewed: 'view_item',
+  product_list_viewed: 'view_item_list',
+  product_added_to_cart: 'add_to_cart',
+  product_removed_from_cart: 'remove_from_cart',
+  cart_updated: 'update_cart',
+  checkout_started: 'begin_checkout',
+  checkout_contact_info_submitted: 'generate_lead',
+  checkout_shipping_address_submitted: 'add_shipping_info',
+  checkout_shipping_method_submitted: 'add_shipping_info',
+  checkout_payment_info_submitted: 'add_payment_info',
+  checkout_completed: 'purchase',
+  upsell_completed: 'upsell_purchase',
+  upsell_viewed: 'view_upsell',
+  upsell_skipped: 'skip_upsell',
+  promotion_viewed: 'view_promotion',
+  promotion_selected: 'select_promotion',
+};
+
+/**
+ * One tracking event, as `next.analytics.on` gets it: the SDK event envelope, `data` by
+ * `event_type`, and the `context` it happened in. `event_id` is the transaction id on
+ * `checkout_completed` and `upsell_completed`.
+ */
+export type TrackingEvent<K extends TrackingName = TrackingName> = {
+  [N in K]: Envelope & {
+    event_type: N;
+    object: (typeof OBJECTS)[N];
+    data: TrackingMap[N];
+    context: EventContext;
+  };
 }[K];
 
 export interface AnalyticsTrace {
@@ -166,6 +176,6 @@ export interface AnalyticsTrace {
 }
 
 export interface AnalyticsEvents {
-  /** @internal One tracking event under its GA4 name, for `next.analytics.on`. */
-  analytics: AnalyticsEvent;
+  /** @internal One tracking event, for `next.analytics.on`. */
+  analytics: TrackingEvent;
 }

@@ -20,6 +20,7 @@ import type { Campaign, Package, Send, State } from './types';
 /** The page and the browser now; supplied by the page, since the engine has no DOM. */
 export interface Environment {
   page_location: string;
+  page_title: string;
   page_referrer: string;
   browser: Browser;
 }

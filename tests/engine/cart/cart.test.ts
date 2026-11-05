@@ -473,7 +473,9 @@ describe('cart', () => {
     await engine.cart.settled();
     expect(seen).toEqual([
       {
-        lines: [{ package_id: 1, quantity: 1, product_id: 400, image: 'https://cdn.test/1.png' }],
+        lines: [
+          { package_id: 1, quantity: 1, product_id: 400, product_title: 'Earbuds ×1', image: 'https://cdn.test/1.png' },
+        ],
         coupons: [],
         currency: 'USD',
         changes: [{ package_id: 1, product_id: 400, quantity: 1, from: 0, to: 1 }],
@@ -683,7 +685,7 @@ describe('cart', () => {
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
     await engine.cart.setGroup('toggle:9', null);
     const line = (quantity: number) =>
-      `[{"package_id":9,"quantity":${quantity},"product_id":900,"image":"https://cdn.test/9.png"}]`;
+      `[{"package_id":9,"quantity":${quantity},"product_id":900,"product_title":"Protection plan","image":"https://cdn.test/9.png"}]`;
     expect(seen).toEqual([
       `selector.selected {"selector_id":"toggle:9","type":"toggle","lines":${line(1)},"currency":"USD"}`,
       `selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":${line(2)},"currency":"USD"}`,

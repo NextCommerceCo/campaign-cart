@@ -3,7 +3,7 @@ import { startAnalytics } from '../../src/analytics';
 import { exitIntent } from '../../src/compat/exit-intent';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
-import type { AnalyticsEvent, AnalyticsTrace } from '../../src/engine/events/analytics';
+import type { AnalyticsTrace, TrackingEvent } from '../../src/engine/events/analytics';
 import type { Address } from '../../src/engine/events/checkout';
 import type { Promotion } from '../../src/engine/events/promotions';
 import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
@@ -277,11 +277,11 @@ describe('analytics', () => {
       back.engine.log
         .entries()
         .map((e) => e.data as AnalyticsTrace | undefined)
-        .filter((d) => d?.trace === 'analytics' && !d.sent && d.name.endsWith('_info'))
+        .filter((d) => d?.trace === 'analytics' && !d.sent && d.name.endsWith('_submitted'))
         .map((d) => [d!.name, d!.reason]),
     ).toEqual([
-      ['add_shipping_info', 'Already sent for this checkout'],
-      ['add_payment_info', 'Already sent for this checkout'],
+      ['checkout_shipping_address_submitted', 'Already sent for this checkout'],
+      ['checkout_payment_info_submitted', 'Already sent for this checkout'],
     ]);
     back.engine.attach((ctx) => ctx.forget('checkout'));
     expect((await page()).sent).toEqual(steps);
@@ -376,20 +376,24 @@ describe('analytics', () => {
     });
   });
 
-  it('builds purchase from the paid order in state, with the first code the checkout sent with it', async () => {
+  it('builds checkout_completed from the paid order in state, keyed by the order number, with the codes it was paid with', async () => {
     const engine = await loadOrder(ORDER, { coupon: { refId: 'R1', code: 'CARD5', codes: ['SAVE10'] } });
-    const seen: AnalyticsEvent[] = [];
+    const seen: TrackingEvent[] = [];
     engine.on('analytics', (e) => void seen.push(e.data));
     startAnalytics(engine, options);
-    expect(seen.find((e) => e.name === 'purchase')!.params).toEqual({
+    const completed = seen.find((e) => e.event_type === 'checkout_completed')!;
+    expect(completed).toMatchObject({ event_id: '1001', object: 'order' });
+    expect(completed.data).toEqual(publicOrder(ORDER, ['SAVE10']));
+    expect(completed.data).toMatchObject({
+      ref_id: 'R1',
+      number: '1001',
       currency: 'USD',
-      transaction_id: '1001',
-      value: 89,
+      paid: true,
+      total: 106.11,
       tax: 7.12,
-      shipping: 9.99,
-      affiliation: 'Online Store',
-      items: [expect.objectContaining({ item_id: 'EB-2', price: 44.5, quantity: 2 })],
-      coupon: 'CARD5',
+      shipping_method: { name: 'Express', price: 9.99 },
+      coupons: ['SAVE10'],
+      lines: [expect.objectContaining({ sku: 'EB-2', price: 48.06, original_price: 99, quantity: 2, upsell: false })],
     });
     delete win.NextDataLayer;
     const other = await loadOrder(
@@ -400,7 +404,7 @@ describe('analytics', () => {
     expect(win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!.ecommerce).not.toHaveProperty('coupon');
   });
 
-  it('builds purchase from the order as it was paid, when an upsell was accepted before analytics loaded', async () => {
+  it('builds checkout_completed from the order as it was paid, when an upsell was accepted before analytics loaded', async () => {
     const engine = await loadOrder(ORDER);
     const upsold: ApiOrder = {
       ...withUpsell(ORDER, 99, 1),
@@ -410,12 +414,12 @@ describe('analytics', () => {
       shipping_incl_tax: '0.00',
     };
     engine.attach((ctx) => ctx.update('order', { order: upsold }));
-    const seen: AnalyticsEvent[] = [];
+    const seen: TrackingEvent[] = [];
     engine.on('analytics', (e) => void seen.push(e.data));
     startAnalytics(engine, options);
-    const purchase = seen.find((e) => e.name === 'purchase')!.params;
-    expect(purchase).toMatchObject({ value: 89, tax: 7.12, shipping: 9.99 });
-    expect(purchase).not.toHaveProperty('discount');
+    const order = seen.find((e) => e.event_type === 'checkout_completed')!.data;
+    expect(order).toMatchObject({ total: 106.11, tax: 7.12, total_discount: 0, shipping_method: { price: 9.99 } });
+    expect(order.lines.map((l) => l.upsell)).toEqual([false]);
   });
 
   it('sends no purchase for a paid order other than the one in state', async () => {
@@ -461,7 +465,7 @@ describe('analytics', () => {
     expect(win.NextDataLayer!.filter((e) => e.event === 'dl_purchase')).toMatchObject([
       { event_id: '1001', ecommerce: { transaction_id: '1001', value: 89 } },
     ]);
-    expect(traces.find((t) => t.name === 'purchase' && t.sent)).toMatchObject({ trigger: 'order.loaded' });
+    expect(traces.find((t) => t.name === 'checkout_completed' && t.sent)).toMatchObject({ trigger: 'order.loaded' });
     await page();
     expect(names()).not.toContain('dl_purchase');
   });
@@ -696,20 +700,18 @@ describe('analytics', () => {
 
   it('reports a marked banner as a promotion, without the exit-intent data layer events', async () => {
     const engine = await ready();
-    const seen: AnalyticsEvent[] = [];
+    const seen: TrackingEvent[] = [];
     engine.on('analytics', (e) => void seen.push(e.data));
     startAnalytics(engine, options);
     const banner: Promotion = { id: 'summer', type: 'banner', name: 'Summer sale', creative: 'hero' };
     engine.events.emit('promotion.viewed', banner);
-    engine.events.emit('promotion.clicked', banner);
+    engine.events.emit('promotion.clicked', { ...banner, action: 'apply-coupon', coupon_code: 'SUMMER' });
     expect(seen.slice(-2)).toMatchObject([
+      { event_type: 'promotion_viewed', object: 'promotion', data: banner },
       {
-        name: 'view_promotion',
-        params: { promotion_id: 'summer', promotion_name: 'Summer sale', creative_name: 'hero' },
-      },
-      {
-        name: 'select_promotion',
-        params: { promotion_id: 'summer', promotion_name: 'Summer sale', creative_name: 'hero' },
+        event_type: 'promotion_selected',
+        object: 'promotion',
+        data: { ...banner, action: 'apply-coupon', coupon_code: 'SUMMER' },
       },
     ]);
     expect(names().slice(1)).toEqual(['dl_view_promotion', 'dl_select_promotion']);
@@ -747,14 +749,14 @@ describe('analytics', () => {
   });
 });
 
-describe('analytics events (GA4 names)', () => {
+describe('tracking events', () => {
   const listen = (engine: Engine) => {
-    const seen: AnalyticsEvent[] = [];
+    const seen: TrackingEvent[] = [];
     engine.on('analytics', (e) => void seen.push(e.data));
     return seen;
   };
 
-  it('sends each event under its GA4 name with flat GA4 params, and the dl_* event mirrors it id for id', async () => {
+  it('sends each event in the SDK envelope with the SDK object as data, and the dl_* event mirrors it id for id', async () => {
     const engine = await ready();
     const seen = listen(engine);
     startAnalytics(engine, options);
@@ -763,13 +765,13 @@ describe('analytics events (GA4 names)', () => {
     startCheckout(engine);
     engine.events.emit('address.entered', SHIPPING);
     submitted(engine);
-    expect(seen.map((e) => e.name)).toEqual([
-      'page_view',
-      'add_to_cart',
-      'update_cart',
-      'begin_checkout',
-      'add_shipping_info',
-      'add_payment_info',
+    expect(seen.map((e) => e.event_type)).toEqual([
+      'page_viewed',
+      'product_added_to_cart',
+      'cart_updated',
+      'checkout_started',
+      'checkout_shipping_address_submitted',
+      'checkout_payment_info_submitted',
     ]);
     expect(names()).toEqual([
       'dl_user_data',
@@ -779,23 +781,122 @@ describe('analytics events (GA4 names)', () => {
       'dl_add_shipping_info',
       'dl_add_payment_info',
     ]);
-    expect(win.NextDataLayer!.map((e) => e.event_id)).toEqual(seen.map((e) => e.id));
-    const add = seen.find((e) => e.name === 'add_to_cart')!;
-    expect(add.params).toEqual({
-      currency: 'USD',
-      value: expect.any(Number),
-      items: [expect.objectContaining({ item_id: '11' })],
+    expect(win.NextDataLayer!.map((e) => e.event_id)).toEqual(seen.map((e) => e.event_id));
+    const add = seen.find((e) => e.event_type === 'product_added_to_cart')!;
+    expect(add).toMatchObject({
+      event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
+      object: 'cart_line',
+      created_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+      session_id: engine.sessionId(),
+      sdk_version: expect.any(String),
+    });
+    expect(add.data).toEqual({
+      package_id: 1,
+      quantity: 1,
+      product_id: 400,
+      product_title: 'Earbuds ×1',
+      image: 'https://cdn.test/1.png',
+      price: 49,
+      original_price: 99,
+      total_discount: 0,
+      total: 49,
+      discounts: [],
       first_in_session: true,
     });
     expect(add.context).toMatchObject({
       campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
       page_location: location.origin + location.pathname,
+      page_title: document.title,
     });
-    expect(seen.at(-2)!.params).toMatchObject({ shipping_tier: 'Standard' });
-    expect(seen.at(-1)!.params).toMatchObject({ payment_type: 'Credit Card' });
+    const checkoutId = engine.getState().checkout!.id;
+    expect(seen.find((e) => e.event_type === 'cart_updated')!.data).toEqual(engine.cart.current());
+    expect(seen.slice(-3).map((e) => e.object)).toEqual(['checkout', 'checkout', 'checkout']);
+    expect(seen.at(-2)!.data).toMatchObject({ id: checkoutId, cart: { lines: [{ package_id: 1, total: 49 }] } });
+    expect(seen.at(-1)!.data).toMatchObject({ id: checkoutId, payment_method: 'card_token' });
   });
 
-  it('reports a lead and promotions, and add_shipping_info for the shipping address only', async () => {
+  it('sends one product_added_to_cart per line of a bundle, all with the same first_in_session', async () => {
+    const engine = await ready();
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    await engine.cart.setGroup('bundle:main', {
+      lines: [
+        { packageId: 1, quantity: 1 },
+        { packageId: 9, quantity: 2 },
+      ],
+      vouchers: [],
+    });
+    await flush();
+    const added = seen.filter((e) => e.event_type === 'product_added_to_cart');
+    expect(added.map((e) => e.data)).toMatchObject([
+      { package_id: 1, quantity: 1, price: 49, total: 49, first_in_session: true },
+      { package_id: 9, quantity: 2, price: 9, total: 18, first_in_session: true },
+    ]);
+    await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 2 }], vouchers: [] });
+    await flush();
+    expect(seen.slice(-3).map((e) => [e.event_type, e.data])).toMatchObject([
+      ['product_removed_from_cart', { package_id: 9, quantity: 2, price: 9, total: 18 }],
+      ['product_added_to_cart', { package_id: 1, quantity: 1, price: 49, total: 49, first_in_session: false }],
+      ['cart_updated', { lines: [{ package_id: 1, quantity: 2 }] }],
+    ]);
+  });
+
+  it('sends product_viewed at the catalog price, with the package sku', async () => {
+    document.body.innerHTML = `<div data-next-package-id="2"></div>`;
+    const packages = campaign.packages.map((p) => (p.ref_id === 2 ? { ...p, product_sku: 'EB-2' } : p));
+    const { engine } = makeEngine({ campaign: Promise.resolve({ ...campaign, packages }) });
+    await engine.start();
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    expect(seen.map((e) => e.event_type)).toEqual(['page_viewed', 'product_viewed']);
+    expect(seen[1]).toMatchObject({ object: 'product' });
+    expect(seen[1]!.data).toEqual({
+      package_id: 2,
+      quantity: 1,
+      product_id: 400,
+      product_title: 'Earbuds ×2',
+      sku: 'EB-2',
+      image: 'https://cdn.test/2.png',
+      price: 89,
+      original_price: 198,
+      total_discount: 0,
+      total: 89,
+      discounts: [],
+    });
+  });
+
+  it('sends product_list_viewed with every package the page shows', async () => {
+    const engine = await ready(`<div data-next-package-id="1"></div><div data-next-package-id="9"></div>`);
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    const list = seen.find((e) => e.event_type === 'product_list_viewed')!;
+    expect(list).toMatchObject({ object: 'products' });
+    expect(list.data).toMatchObject([
+      { package_id: 1, quantity: 1, price: 49, original_price: 99 },
+      { package_id: 9, quantity: 1, price: 9, original_price: 9 },
+    ]);
+  });
+
+  it('sends the shipping address and the shipping method each once per checkout', async () => {
+    const engine = await ready('', {}, (e) => void e.cart.addItem(2));
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    await flush();
+    startCheckout(engine);
+    const method = { id: 1, code: 'standard', name: 'Standard', price: 0 };
+    engine.events.emit('address.entered', SHIPPING);
+    engine.events.emit('shipping.settled', method);
+    engine.events.emit('address.entered', SHIPPING);
+    engine.events.emit('shipping.settled', method);
+    const shipping = seen.filter((e) => e.event_type.startsWith('checkout_shipping'));
+    expect(shipping.map((e) => e.event_type)).toEqual([
+      'checkout_shipping_address_submitted',
+      'checkout_shipping_method_submitted',
+    ]);
+    for (const e of shipping) expect(e.data).toMatchObject({ id: engine.getState().checkout!.id, cart: { total: 89 } });
+  });
+
+  it('reports a lead and promotions, and the shipping address for the shipping address only', async () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     const seen = listen(engine);
     startAnalytics(engine, options);
@@ -815,10 +916,10 @@ describe('analytics events (GA4 names)', () => {
     engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' });
     engine.events.emit('address.entered', SHIPPING);
     expect(seen.slice(-4)).toMatchObject([
-      { name: 'generate_lead', params: { currency: 'USD', value: 89, lead_source: 'checkout' } },
-      { name: 'view_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },
-      { name: 'select_promotion', params: { promotion_id: 'exit_intent', creative_name: 'exit' } },
-      { name: 'add_shipping_info' },
+      { event_type: 'checkout_contact_info_submitted', object: 'checkout', data: { cart: { total: 89 } } },
+      { event_type: 'promotion_viewed', data: template },
+      { event_type: 'promotion_selected', data: { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' } },
+      { event_type: 'checkout_shipping_address_submitted', data: { cart: { total: 89 } } },
     ]);
     expect(names().slice(-6)).toEqual([
       'dl_generate_lead',
@@ -847,19 +948,51 @@ describe('analytics events (GA4 names)', () => {
     const seen = listen(engine);
     startAnalytics(engine, options);
     const [, upsell, purchase] = seen;
-    expect(purchase).toMatchObject({ name: 'purchase', id: '1001', params: { transaction_id: '1001', value: 89 } });
+    expect(purchase).toMatchObject({
+      event_type: 'checkout_completed',
+      event_id: '1001',
+      object: 'order',
+      data: { ref_id: 'R1', number: '1001', total: 106.11 },
+    });
     expect(upsell).toMatchObject({
-      name: 'upsell_purchase',
-      id: 'R1-US1',
-      params: { transaction_id: 'R1-US1', upsell: { original_order_id: 'R1', upsell_number: 1 } },
+      event_type: 'upsell_completed',
+      event_id: 'R1-US1',
+      object: 'order',
+      data: {
+        ref_id: 'R1',
+        number: '1001',
+        lines: [
+          { sku: 'EB-2', upsell: false },
+          { id: '99', upsell: true },
+        ],
+        upsell: {
+          number: 1,
+          line: { id: '99', product_title: 'Bump', quantity: 1, price: 20, total: 20, upsell: true },
+        },
+      },
     });
   });
 
-  it('keeps sending GA4-named events when the page turned the dl_* data layer off', async () => {
+  it('passes the upsell offer through on upsell_viewed and upsell_skipped', async () => {
+    const engine = await ready();
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    const offer = { ref_id: 'R1', page: '/up/', selector_id: 'a', lines: [{ package_id: 3, quantity: 1 }], total: 40 };
+    engine.events.emit('upsell.viewed', offer);
+    engine.events.emit('upsell.viewed', { ...offer, selector_id: 'b' });
+    engine.events.emit('upsell.skipped', offer);
+    expect(seen.slice(1)).toMatchObject([
+      { event_type: 'upsell_viewed', object: 'upsell', data: offer },
+      { event_type: 'upsell_skipped', object: 'upsell', data: offer },
+    ]);
+  });
+
+  it('keeps sending tracking events when the page turned the dl_* data layer off', async () => {
     const engine = await ready();
     const seen = listen(engine);
     startAnalytics(engine, { ...options, dataLayer: false });
-    expect(seen.map((e) => e.name)).toEqual(['page_view']);
+    expect(seen.map((e) => e.event_type)).toEqual(['page_viewed']);
+    expect(seen[0]!.data).toEqual({});
     expect(win.dataLayer).toBeUndefined();
   });
 });
@@ -878,21 +1011,21 @@ describe('analytics decisions', () => {
     await engine.cart.addItem(1);
     await flush();
     expect(traces(engine)).toEqual([
-      ['sdk.ready', 'page_view', true, 'Every page load'],
-      ['sdk.ready', 'view_item_list', true, '2 packages on the page'],
-      ['sdk.ready', 'view_item', false, '2 packages on the page, so view_item_list instead'],
-      ['sdk.ready', 'add_to_cart', false, 'Nothing was added since the last report'],
-      ['sdk.ready', 'remove_from_cart', false, 'Nothing was removed since the last report'],
-      ['cart.calculated', 'remove_from_cart', false, 'Nothing was removed since the last report'],
-      ['cart.calculated', 'add_to_cart', true, 'Added since the last report: Earbuds ×1 ×1'],
-      ['cart.calculated', 'update_cart', true, 'After every price update'],
+      ['sdk.ready', 'page_viewed', true, 'Every page load'],
+      ['sdk.ready', 'product_list_viewed', true, '2 packages on the page'],
+      ['sdk.ready', 'product_viewed', false, '2 packages on the page, so product_list_viewed instead'],
+      ['sdk.ready', 'product_added_to_cart', false, 'Nothing was added since the last report'],
+      ['sdk.ready', 'product_removed_from_cart', false, 'Nothing was removed since the last report'],
+      ['cart.calculated', 'product_removed_from_cart', false, 'Nothing was removed since the last report'],
+      ['cart.calculated', 'product_added_to_cart', true, 'Added since the last report: Earbuds ×1 ×1'],
+      ['cart.calculated', 'cart_updated', true, 'After every price update'],
     ]);
   });
 
   it('names the analytics event id on each trace of a sent event', async () => {
     const engine = await ready('<div data-next-package-id="1"></div>');
     const ids: string[] = [];
-    engine.on('analytics', (e) => ids.push(e.data.id), { replay: true });
+    engine.on('analytics', (e) => ids.push(e.data.event_id), { replay: true });
     startAnalytics(engine, options);
     const traced = engine.log
       .entries()

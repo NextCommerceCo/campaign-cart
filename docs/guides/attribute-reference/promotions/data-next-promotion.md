@@ -38,5 +38,5 @@ The exit-intent popup is a promotion too, set up with `next.exitIntent({ id, nam
 
 [promotion.viewed](/event-reference/promotions/promotion.viewed) and
 [promotion.clicked](/event-reference/promotions/promotion.clicked), with `type: 'banner'`; their
-tracking events are `view_promotion` and `select_promotion`. See the
+tracking events are `promotion_viewed` and `promotion_selected`. See the
 [Promotion lifecycle](../../event-reference/promotions/lifecycle.md).

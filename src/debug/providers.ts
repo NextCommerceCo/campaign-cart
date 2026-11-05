@@ -1,5 +1,6 @@
-import type { AnalyticsName } from '../engine/events/analytics';
+import { OBJECTS, type TrackingEvent, type TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
+import { format } from '../engine/format';
 
 export interface ProviderConfig {
   enabled: boolean;
@@ -17,7 +18,7 @@ export interface Provider {
 }
 
 type EngineName = Exclude<EventName, 'analytics'>;
-export type Item = Record<string, unknown>;
+export type Line = Record<string, unknown>;
 export type Layer = 'NextDataLayer' | 'dataLayer';
 export type Win = Window &
   Partial<Record<Layer, unknown[]>> & {
@@ -28,27 +29,32 @@ export type Win = Window &
 
 export interface Wire {
   from: EngineName[];
-  ga?: AnalyticsName;
+  tracking?: TrackingName;
   dl: string;
 }
 
 export const WIRING: Wire[] = [
-  { from: ['sdk.ready'], ga: 'page_view', dl: 'dl_user_data' },
-  { from: ['sdk.ready'], ga: 'view_item', dl: 'dl_view_item' },
-  { from: ['sdk.ready'], ga: 'view_item_list', dl: 'dl_view_item_list' },
-  { from: ['sdk.ready', 'cart.calculated'], ga: 'add_to_cart', dl: 'dl_add_to_cart' },
-  { from: ['sdk.ready', 'cart.calculated', 'cart.updated'], ga: 'remove_from_cart', dl: 'dl_remove_from_cart' },
-  { from: ['cart.calculated'], ga: 'update_cart', dl: 'dl_cart_updated' },
-  { from: ['checkout.started'], ga: 'begin_checkout', dl: 'dl_begin_checkout' },
-  { from: ['user.created'], ga: 'generate_lead', dl: 'dl_generate_lead' },
-  { from: ['address.entered', 'shipping.settled'], ga: 'add_shipping_info', dl: 'dl_add_shipping_info' },
-  { from: ['checkout.submitted'], ga: 'add_payment_info', dl: 'dl_add_payment_info' },
-  { from: ['order.paid', 'order.loaded'], ga: 'purchase', dl: 'dl_purchase' },
-  { from: ['order.loaded'], ga: 'upsell_purchase', dl: 'dl_upsell_purchase' },
-  { from: ['upsell.viewed'], ga: 'view_upsell', dl: 'dl_viewed_upsell' },
-  { from: ['upsell.skipped'], ga: 'skip_upsell', dl: 'dl_skipped_upsell' },
-  { from: ['promotion.viewed'], ga: 'view_promotion', dl: 'dl_view_promotion' },
-  { from: ['promotion.clicked'], ga: 'select_promotion', dl: 'dl_select_promotion' },
+  { from: ['sdk.ready'], tracking: 'page_viewed', dl: 'dl_user_data' },
+  { from: ['sdk.ready'], tracking: 'product_viewed', dl: 'dl_view_item' },
+  { from: ['sdk.ready'], tracking: 'product_list_viewed', dl: 'dl_view_item_list' },
+  { from: ['sdk.ready', 'cart.calculated'], tracking: 'product_added_to_cart', dl: 'dl_add_to_cart' },
+  {
+    from: ['sdk.ready', 'cart.calculated', 'cart.updated'],
+    tracking: 'product_removed_from_cart',
+    dl: 'dl_remove_from_cart',
+  },
+  { from: ['cart.calculated'], tracking: 'cart_updated', dl: 'dl_cart_updated' },
+  { from: ['checkout.started'], tracking: 'checkout_started', dl: 'dl_begin_checkout' },
+  { from: ['user.created'], tracking: 'checkout_contact_info_submitted', dl: 'dl_generate_lead' },
+  { from: ['address.entered'], tracking: 'checkout_shipping_address_submitted', dl: 'dl_add_shipping_info' },
+  { from: ['shipping.settled'], tracking: 'checkout_shipping_method_submitted', dl: 'dl_add_shipping_info' },
+  { from: ['checkout.submitted'], tracking: 'checkout_payment_info_submitted', dl: 'dl_add_payment_info' },
+  { from: ['order.paid', 'order.loaded'], tracking: 'checkout_completed', dl: 'dl_purchase' },
+  { from: ['order.loaded'], tracking: 'upsell_completed', dl: 'dl_upsell_purchase' },
+  { from: ['upsell.viewed'], tracking: 'upsell_viewed', dl: 'dl_viewed_upsell' },
+  { from: ['upsell.skipped'], tracking: 'upsell_skipped', dl: 'dl_skipped_upsell' },
+  { from: ['promotion.viewed'], tracking: 'promotion_viewed', dl: 'dl_view_promotion' },
+  { from: ['promotion.clicked'], tracking: 'promotion_selected', dl: 'dl_select_promotion' },
   { from: ['promotion.viewed'], dl: 'dl_exit_intent_shown' },
   { from: ['promotion.clicked'], dl: 'dl_exit_intent_accepted' },
   { from: ['promotion.clicked'], dl: 'dl_exit_intent_action' },
@@ -56,19 +62,22 @@ export const WIRING: Wire[] = [
   { from: ['promotion.closed'], dl: 'dl_exit_intent_closed' },
 ];
 
-export const dlOf = (name: string) => WIRING.find((w) => (w.ga ?? w.dl) === name)?.dl ?? name;
+export const dlOf = (name: string) => WIRING.find((w) => (w.tracking ?? w.dl) === name)?.dl ?? name;
 
-const NEEDS_ITEMS = new Set([
-  'view_item',
-  'view_item_list',
-  'add_to_cart',
-  'remove_from_cart',
-  'begin_checkout',
-  'add_shipping_info',
-  'add_payment_info',
-  'purchase',
-  'upsell_purchase',
+const NEEDS_LINES: ReadonlySet<string> = new Set<TrackingName>([
+  'product_viewed',
+  'product_list_viewed',
+  'product_added_to_cart',
+  'product_removed_from_cart',
+  'checkout_started',
+  'checkout_shipping_address_submitted',
+  'checkout_shipping_method_submitted',
+  'checkout_payment_info_submitted',
+  'checkout_completed',
+  'upsell_completed',
 ]);
+const PRICED: ReadonlySet<string> = new Set(['cart', 'checkout', 'order', 'upsell']);
+const ORDERS: ReadonlySet<string> = new Set<TrackingName>(['checkout_completed', 'upsell_completed']);
 const UNSUPPORTED: Record<string, string> = {
   facebook: 'Meta Pixel',
   rudderstack: 'RudderStack',
@@ -76,16 +85,36 @@ const UNSUPPORTED: Record<string, string> = {
 };
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 
-export const itemsOf = (params: Record<string, unknown>) =>
-  Array.isArray(params.items) ? (params.items as Item[]) : [];
+const objectOf = (name: string) => OBJECTS[name as TrackingName];
 
-export function checks(name: string, params: Record<string, unknown>): string[] {
-  const items = Array.isArray(params.items) ? (params.items as Item[]) : undefined;
+/** The cart, checkout, order or upsell of a tracking event's `data`: what carries its lines and currency. */
+export const pricedOf = (name: string, data: unknown): Line => {
+  const d = (data ?? {}) as Line;
+  return objectOf(name) === 'checkout' ? ((d.cart ?? {}) as Line) : d;
+};
+
+export const amount = (event: TrackingEvent) => {
+  const { total, currency } = pricedOf(event.event_type, event.data);
+  return typeof total === 'number'
+    ? format({ type: 'money', value: total }, String(currency ?? event.context.campaign?.currency ?? ''))
+    : '';
+};
+
+export const linesOf = (name: string, data: unknown): Line[] => {
+  const object = objectOf(name);
+  const lines =
+    object === 'product' || object === 'cart_line' ? [data] : object === 'products' ? data : pricedOf(name, data).lines;
+  return Array.isArray(lines) ? (lines as Line[]) : [];
+};
+
+export function checks(name: string, data: unknown): string[] {
+  const lines = linesOf(name, data);
+  const priced = pricedOf(name, data);
   return [
-    NEEDS_ITEMS.has(name) && !items?.length && 'items is empty',
-    items?.some((i) => !i.item_id && !i.item_name) && 'an item has neither item_id nor item_name',
-    params.value !== undefined && !params.currency && 'value is set without currency',
-    name.endsWith('purchase') && !params.transaction_id && 'transaction_id is missing',
+    NEEDS_LINES.has(name) && !lines.length && 'lines is empty',
+    lines.some((l) => !l.product_title) && 'a line has no product_title',
+    PRICED.has(objectOf(name)) && !priced.currency && 'no currency',
+    ORDERS.has(name) && !priced.number && `${name} has no order number`,
   ].filter((p): p is string => !!p);
 }
 

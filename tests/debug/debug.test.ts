@@ -267,9 +267,9 @@ describe('debug tools', () => {
     const sent = [
       ...new Set([...shadow().querySelectorAll('.arun.ok code, .arun.warn code')].map((c) => c.textContent)),
     ];
-    expect(sent.sort()).toEqual(['add_to_cart', 'page_view', 'update_cart', 'view_item']);
+    expect(sent.sort()).toEqual(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']);
     [...shadow().querySelectorAll<HTMLElement>('.arun')]
-      .find((r) => r.querySelector('code')!.textContent === 'add_to_cart')!
+      .find((r) => r.querySelector('code')!.textContent === 'product_added_to_cart')!
       .click();
     expect(shadow().querySelector('.aevent .adetail dd')!.textContent).toBe(
       'Added since the last report: Earbuds ×1 ×1Cart priced: cart.calculated',
@@ -277,13 +277,14 @@ describe('debug tools', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(view()).toBe('panel');
     [...shadow().querySelectorAll<HTMLElement>('.arun')]
-      .find((r) => r.querySelector('code')!.textContent === 'update_cart')!
+      .find((r) => r.querySelector('code')!.textContent === 'cart_updated')!
       .click();
     const detail = [...shadow().querySelectorAll('.aevent .adetail > dt')].map((dt) => [
       dt.textContent,
       dt.nextElementSibling!.textContent,
     ]);
-    expect(Object.fromEntries(detail)['Adds up']).toMatch(/^✓ value \$[\d.]+ = the cart lines \$[\d.]+$/);
+    expect(Object.fromEntries(detail).Reached).toMatch(/^dl_cart_updatedNextDataLayer/);
+    expect(shadow().querySelector('.aevent .aitems')!.textContent).toMatch(/^Lines · 1productskuqtypriceEarbuds/);
   });
 
   it('lists every SDK element with what it resolves to', async () => {

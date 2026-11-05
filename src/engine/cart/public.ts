@@ -25,9 +25,10 @@ export function cartItem(state: State, line: Line, priced?: SummaryLine): CartIt
   return {
     ...line,
     ...(p?.product_id !== undefined && { product_id: p.product_id }),
-    ...(p?.product_name && { product_title: p.product_name }),
+    ...(p && { product_title: p.product_name || p.name }),
     ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
     ...(p?.product_variant_name && { variant_title: p.product_variant_name }),
+    ...(p?.product_sku && { sku: p.product_sku }),
     ...(p?.image && { image: p.image }),
     ...(priced && {
       price: dollars(priced.package_price),

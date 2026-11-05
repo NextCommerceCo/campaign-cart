@@ -59,8 +59,9 @@ FontAwesome; 0.5 has no runtime dependencies, and its debug panel is not downloa
 - **Every event has its own page** in the Event Reference, generated from the SDK's types with
   an example recorded from a real checkout, so the fields always match the shipped code.
 - **`order.paid` comes once per order**, however it was paid, on the page after the checkout.
-- **Tracking events have their own listener**: `next.analytics.on('add_to_cart', fn)`, by GA4
-  name. The 0.4.x `dl_*` pushes are still sent.
+- **Tracking events have their own listener**: `next.analytics.on('product_added_to_cart', fn)`,
+  named in the storefront style and carrying the same objects as `next.on`, with a `context`. Each
+  provider remaps them; the 0.4.x `dl_*` pushes are still sent.
 
 ## Errors that say what happened
 

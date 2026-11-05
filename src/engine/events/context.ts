@@ -51,6 +51,8 @@ export interface Browser {
 export interface EventContext {
   /** Origin and path, without the query string. */
   page_location: string;
+  /** The page's title. */
+  page_title: string;
   /** Without the query string. */
   page_referrer: string;
   /** Once the campaign has loaded. */

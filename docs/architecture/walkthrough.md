@@ -45,8 +45,8 @@ and watch the panel's state and events while you read.
   `data-next-display="cart.total"` element reads the value through `resolve`
   (`src/engine/values.ts:252`) and shows the new total.
 - **Page scripts**: `next.on('cart.added', fn)` gets the event with its envelope (`src/boot.ts`).
-- **Analytics**: `src/analytics/carts.ts:60` turns `cart.calculated` into `add_to_cart` and
-  `update_cart`, typed by `AnalyticsMap` (`src/engine/events/analytics.ts`).
+- **Analytics**: `src/analytics/carts.ts` turns `cart.calculated` into `product_added_to_cart`
+  (one per line) and `cart_updated`, typed by `TrackingMap` (`src/engine/events/analytics.ts`).
 - **0.4.x pages**: `src/compat/legacy/events.ts:39` turns `cart.added` into `cart:item-added`;
   `next.on` takes 0.4.x names through `src/compat/legacy/registry.ts`.
 - **Debug**: the panel (`src/debug/`) lists the event and the state change.
@@ -56,4 +56,4 @@ and watch the panel's state and events while you read.
 - A checkout page: `src/checkout/index.ts` binds the form, `src/checkout/state/checkout.ts`
   holds its actions, `place-order.ts` places the order.
 - Every event and its payload: the Event Reference, generated from `src/engine/events/`.
-- Every analytics event: the Analytics Reference, generated from `AnalyticsMap`.
+- Every tracking event: the Analytics Reference, generated from `TrackingMap`.

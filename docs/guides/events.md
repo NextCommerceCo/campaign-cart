@@ -127,6 +127,7 @@ The Checkout has:
 
 ## Analytics
 
-Tracking events have a listener of their own: `next.analytics.on`. See the
-[Standard events](/analytics), [How analytics works](analytics-reference/how-it-works.md), and the
+Tracking events have a listener of their own: `next.analytics.on`. They carry the same objects as
+these events, in the same envelope plus a `context`. See the [Tracking events](/analytics),
+[How analytics works](analytics-reference/how-it-works.md), and the
 [Providers](analytics-reference/providers/overview.md) that get them: GTM, GA4, Meta and others.

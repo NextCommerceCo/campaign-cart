@@ -1,67 +1,60 @@
-import type { AnalyticsMap, AnalyticsName } from '../engine/events/analytics';
-import type { EventMap, EventName } from '../engine/events/bus';
-import { cartEcommerce } from './ecommerce';
+import type { TrackingMap } from '../engine/events/analytics';
+import type { EventName } from '../engine/events/bus';
+import type { Checkout } from '../engine/events/checkout';
 import type { Handlers, Report } from './report';
 
-export function checkoutReports({ engine, emit, skip }: Report) {
-  const tier = () => engine.getState().cart.summary?.shipping_method?.name ?? 'Standard';
+type OncePerCheckout = { [K in keyof TrackingMap]: TrackingMap[K] extends Checkout ? K : never }[keyof TrackingMap];
 
-  const oncePerCheckout = <K extends AnalyticsName>(
-    trigger: EventName,
-    name: K,
-    params: () => AnalyticsMap[K],
-    reason: string,
-  ) => {
-    const checkout = engine.checkout;
-    if (!checkout || !engine.getState().checkout?.id) return skip(trigger, name, 'The checkout has not started');
-    if (checkout.reported(name)) return skip(trigger, name, 'Already sent for this checkout');
-    emit(name, params(), { trigger, reason });
-    checkout.markReported(name);
+export function checkoutReports({ engine, emit, skip }: Report) {
+  const current = () => engine.cart.currentCheckout();
+
+  const oncePerCheckout = (trigger: EventName, name: OncePerCheckout, checkout: () => Checkout, reason: string) => {
+    const actions = engine.checkout;
+    if (!actions || !engine.getState().checkout?.id) return skip(trigger, name, 'The checkout has not started');
+    if (actions.reported(name)) return skip(trigger, name, 'Already sent for this checkout');
+    emit(name, checkout(), { trigger, reason });
+    actions.markReported(name);
   };
 
-  const shippingInfo = (trigger: EventName, method?: EventMap['shipping.settled']) =>
-    oncePerCheckout(
-      trigger,
-      'add_shipping_info',
-      () => ({
-        ...cartEcommerce(engine),
-        ...(method?.price !== undefined && { shipping: method.price }),
-        shipping_tier: method?.name ?? tier(),
-      }),
-      'Once per checkout, when the shipping address is valid or a shipping method is picked',
-    );
-
   const handlers: Handlers = {
-    'checkout.started': (_, name) =>
-      oncePerCheckout(name, 'begin_checkout', () => cartEcommerce(engine), 'Once per checkout, when its form is ready'),
-    'user.created': (_, name) => {
-      const { currency, value } = cartEcommerce(engine);
-      emit(
-        'generate_lead',
-        { currency, value, lead_source: 'checkout' },
-        { trigger: name, reason: 'Once, when the contact details saved an open cart' },
-      );
-    },
-    'address.entered': (address, name) => (address.type === 'shipping' ? shippingInfo(name) : undefined),
-    'shipping.settled': (method, name) => shippingInfo(name, method),
-    'checkout.submitted': ({ payment_method }, name) =>
+    'checkout.started': (checkout, name) =>
+      oncePerCheckout(name, 'checkout_started', () => checkout, 'Once per checkout, when its form is ready'),
+    'user.created': (_, name) =>
+      emit('checkout_contact_info_submitted', current(), {
+        trigger: name,
+        reason: 'Once, when the contact details saved an open cart',
+      }),
+    'address.entered': (address, name) =>
+      address.type === 'shipping'
+        ? oncePerCheckout(
+            name,
+            'checkout_shipping_address_submitted',
+            current,
+            'Once per checkout, when the shipping address is valid',
+          )
+        : undefined,
+    'shipping.settled': (_, name) =>
       oncePerCheckout(
         name,
-        'add_payment_info',
-        () => ({
-          ...cartEcommerce(engine),
-          payment_type: payment_method === 'card_token' ? 'Credit Card' : payment_method,
-        }),
+        'checkout_shipping_method_submitted',
+        current,
+        'Once per checkout, when a shipping method is picked and the cart is priced with it',
+      ),
+    'checkout.submitted': (checkout, name) =>
+      oncePerCheckout(
+        name,
+        'checkout_payment_info_submitted',
+        () => checkout,
         'Once per checkout, when a submit passes its checks',
       ),
   };
 
   const beginOwed = () => {
-    if (engine.getState().checkout?.id && engine.checkout && !engine.checkout.reported('begin_checkout'))
+    if (engine.getState().checkout?.id && engine.checkout && !engine.checkout.reported('checkout_started'))
       oncePerCheckout(
         'checkout.started',
-        'begin_checkout',
-        () => cartEcommerce(engine),
+        'checkout_started',
+        current,
         'Not sent on the page that started this checkout',
       );
   };

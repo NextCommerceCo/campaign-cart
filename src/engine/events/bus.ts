@@ -26,12 +26,40 @@ export interface EventMap
 
 export type EventName = keyof EventMap;
 
+declare const __VERSION__: string;
+
 export interface EngineEvent<K extends EventName = EventName> {
   id: string;
   name: K;
   data: EventMap[K];
   at: number;
 }
+
+/** What every event `next.on` and `next.analytics.on` hand out carries, shaped like a webhook. */
+export interface Envelope {
+  event_id: string;
+  /** What `data` is, such as `order`. */
+  object: string;
+  created_at: string;
+  /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
+  session_id: string;
+  sdk_version: string;
+}
+
+export interface SdkEvent<K extends EventName = EventName> extends Envelope {
+  event_type: K;
+  data: EventMap[K];
+}
+
+export const envelope = <K extends EventName>(e: EngineEvent<K>, sessionId: string): SdkEvent<K> => ({
+  event_id: e.id,
+  event_type: e.name,
+  object: e.name.split('.')[0]!,
+  data: e.data,
+  created_at: new Date(e.at).toISOString(),
+  session_id: sessionId,
+  sdk_version: __VERSION__,
+});
 
 type Listener = (event: EngineEvent) => void;
 

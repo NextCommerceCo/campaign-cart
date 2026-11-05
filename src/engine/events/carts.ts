@@ -17,12 +17,14 @@ export interface Subscription {
 export interface CartItem extends Line {
   /** The product in the store. @campaign */
   product_id?: number;
-  /** The product's name as customers see it, as on an order line. @campaign */
+  /** The product's name as customers see it, as on an order line; the package's name for a package without one. @campaign */
   product_title?: string;
   /** The product variant, for a product with variants. @campaign */
   variant_id?: number;
   /** The variant's name, such as `Black / M`, for a product with variants. @campaign */
   variant_title?: string;
+  /** The product's Stock Keeping Unit. @campaign */
+  sku?: string;
   /** The package's image URL. @campaign */
   image?: string;
   /** What one package costs after discounts. @priced */

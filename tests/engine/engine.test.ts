@@ -259,6 +259,7 @@ describe('Engine', () => {
     await engine.start();
     expect(engine.eventContext()).toEqual({
       page_location: 'https://shop.test/',
+      page_title: 'Shop',
       page_referrer: '',
       campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
       session_id: expect.stringMatching(/^[0-9a-f]{32}$/),

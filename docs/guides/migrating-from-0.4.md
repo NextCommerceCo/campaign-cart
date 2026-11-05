@@ -58,8 +58,8 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 - `checkout:started` still comes on every checkout page; the new `checkout.started` comes once per
   checkout.
-- `next.exitIntent()` also takes `id` and `name`, which reach `view_promotion` and
-  `select_promotion`.
+- `next.exitIntent()` also takes `id` and `name`, which reach `promotion_viewed` and
+  `promotion_selected`.
 
 ### dataLayer
 
@@ -85,17 +85,17 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 Still works. Use the right column on new pages.
 
-| 0.4.x                                                                                              | Use instead                                                                                                                                 |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-next-checkout-field="fname"`, `address1`, `postal`, …                                        | `first_name`, `last_name`, `line1`, `line2`, `city`, `state`, `postcode`, `phone_number`                                                    |
-| `os-checkout-field`, `os-checkout-element`, `os-checkout-step`                                     | `data-next-checkout-field`, `data-next-component`, `data-next-checkout-step`                                                                |
-| `data-trigger-on`, `data-auto-create="false"` on the form                                          | [`data-next-lead`](attribute-reference/checkout/data-next-lead.md): `email`, `phone`, `email+phone`, `off`                                  |
-| `next:prospect-cart-created` on the form                                                           | `next.on('user.created')`                                                                                                                   |
-| `next.getShippingMethods / setShippingMethod / getSelectedShippingMethod`                          | Read `next.snapshot().cart.shipping_method`; set with `next.actions.setShipping(id)`                                                        |
-| `data-next-bundle-selector-id` on the offer                                                        | Put the `[data-next-bundle-selector]` inside `[data-next-upsell]`                                                                           |
-| `next.on('cart:updated')` and the other 0.4.x event names                                          | The [Event Reference](events.md) names. The old ones still fire with their 0.4.43 payloads                                                  |
-| `dl_*` in `window.dataLayer` / `NextDataLayer`, `NextDataLayerTransformFn`                         | `next.analytics.on(name, fn)` with GA4 names: `dl_add_to_cart` → `add_to_cart`, `dl_purchase` → `purchase`, `dl_user_data` → `page_view`, … |
-| `data-next-timer`, `data-next-accordion`, `data-next-tooltip`, `data-next-component="scroll-hint"` | Your own script or CSS: `<details>` for an accordion, `title` or CSS for a tooltip                                                          |
+| 0.4.x                                                                                              | Use instead                                                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-next-checkout-field="fname"`, `address1`, `postal`, …                                        | `first_name`, `last_name`, `line1`, `line2`, `city`, `state`, `postcode`, `phone_number`                                                                                                 |
+| `os-checkout-field`, `os-checkout-element`, `os-checkout-step`                                     | `data-next-checkout-field`, `data-next-component`, `data-next-checkout-step`                                                                                                             |
+| `data-trigger-on`, `data-auto-create="false"` on the form                                          | [`data-next-lead`](attribute-reference/checkout/data-next-lead.md): `email`, `phone`, `email+phone`, `off`                                                                               |
+| `next:prospect-cart-created` on the form                                                           | `next.on('user.created')`                                                                                                                                                                |
+| `next.getShippingMethods / setShippingMethod / getSelectedShippingMethod`                          | Read `next.snapshot().cart.shipping_method`; set with `next.actions.setShipping(id)`                                                                                                     |
+| `data-next-bundle-selector-id` on the offer                                                        | Put the `[data-next-bundle-selector]` inside `[data-next-upsell]`                                                                                                                        |
+| `next.on('cart:updated')` and the other 0.4.x event names                                          | The [Event Reference](events.md) names. The old ones still fire with their 0.4.43 payloads                                                                                               |
+| `dl_*` in `window.dataLayer` / `NextDataLayer`, `NextDataLayerTransformFn`                         | `next.analytics.on(name, fn)` with the [tracking names](/analytics): `dl_add_to_cart` → `product_added_to_cart`, `dl_purchase` → `checkout_completed`, `dl_user_data` → `page_viewed`, … |
+| `data-next-timer`, `data-next-accordion`, `data-next-tooltip`, `data-next-component="scroll-hint"` | Your own script or CSS: `<details>` for an accordion, `title` or CSS for a tooltip                                                                                                       |
 
 The page widgets (timer, accordion, tooltip, scroll hint) load in a small chunk only on pages that
 use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordion:*`,

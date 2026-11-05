@@ -8,6 +8,7 @@ import { MemoryStorage } from './storage';
 
 const HEADLESS: Environment = {
   page_location: 'https://shop.test/',
+  page_title: 'Shop',
   page_referrer: '',
   browser: { user_agent: 'test', language: 'en-US', device_type: 'desktop' },
 };

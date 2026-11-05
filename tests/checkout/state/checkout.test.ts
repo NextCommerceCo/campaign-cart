@@ -898,17 +898,17 @@ describe('one checkout per tab', () => {
   it('remembers what analytics reported for the checkout until an order is paid', async () => {
     const session = new MemoryStorage();
     const first = await page(session);
-    expect(first.checkout.reported('add_shipping_info')).toBe(false);
-    first.checkout.markReported('add_shipping_info');
-    first.checkout.markReported('add_shipping_info');
-    expect(first.engine.getState().checkout!.reported).toEqual(['add_shipping_info']);
+    expect(first.checkout.reported('checkout_shipping_address_submitted')).toBe(false);
+    first.checkout.markReported('checkout_shipping_address_submitted');
+    first.checkout.markReported('checkout_shipping_address_submitted');
+    expect(first.engine.getState().checkout!.reported).toEqual(['checkout_shipping_address_submitted']);
     const next = await page(session);
-    expect(next.checkout.reported('add_shipping_info')).toBe(true);
-    expect(next.checkout.reported('add_payment_info')).toBe(false);
+    expect(next.checkout.reported('checkout_shipping_address_submitted')).toBe(true);
+    expect(next.checkout.reported('checkout_payment_info_submitted')).toBe(false);
     await next.checkout.loadCountries();
     next.fill(SHIPPING);
     await next.checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
-    expect((await page(session)).checkout.reported('add_shipping_info')).toBe(false);
+    expect((await page(session)).checkout.reported('checkout_shipping_address_submitted')).toBe(false);
   });
 });
 

@@ -1,11 +1,20 @@
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
-import type { AnalyticsEvent, AnalyticsTrace } from '../engine/events/analytics';
+import { type AnalyticsTrace, GA4, type TrackingEvent, type TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
-import { checks, dlOf, type Item, itemsOf, type Layer, type ProviderConfig, providers, type Win } from './providers';
+import {
+  amount,
+  checks,
+  dlOf,
+  type Layer,
+  type Line,
+  linesOf,
+  type ProviderConfig,
+  providers,
+  type Win,
+} from './providers';
 import { type IconName, icon } from './icons';
 import { KINDS } from './journey';
-import { addsUp, amount, paramsOf, type Sum } from './reconcile';
 import type { PageVisit } from './state';
 import { button, type Child, clock, h, iconButton, nodes, plural, tab as tabButton, tablist, tsugi } from './view';
 
@@ -13,6 +22,7 @@ type State = 'ok' | 'skip' | 'warn' | 'off' | 'info';
 type Run = AnalyticsTrace & { at: number };
 type Hit = { id: string; name: string; at: number; host: string; params: Array<[string, string]> };
 type Tab = { id: string; label: string; logo?: IconName; body: () => Child[] };
+type Push = Record<string, unknown> & { event?: string };
 
 const LABELS: Partial<Record<EventName, string>> = {
   'sdk.ready': 'Page loaded',
@@ -42,40 +52,42 @@ const ICON: Record<State, string> = { ok: '✓', skip: '–', warn: '⚠', off: 
 const MARK = { ok: 'check', warn: 'warn', skip: 'wait', off: 'wait', info: 'wait' } as const;
 const STATED: Record<State, string> = { ok: 'Sent', warn: 'Sent with problems', skip: 'Not sent', off: '', info: '' };
 const STEP = { done: 'check', warn: 'warn', todo: 'wait' } as const;
-const FUNNEL: Array<[string, string]> = [
-  ['page_view', 'every page load'],
-  ['view_item', 'a page showing one package'],
-  ['view_item_list', 'a page showing packages'],
-  ['add_to_cart', 'something is added to the cart'],
-  ['begin_checkout', 'once per checkout, when its form is ready'],
-  ['add_shipping_info', 'once per checkout, when the shipping address is valid or a shipping method is picked'],
-  ['add_payment_info', 'once per checkout, when a submit passes its checks'],
-  ['purchase', 'once per order, when it is paid'],
-  ['view_upsell', 'each upsell page, when half of an offer is on screen'],
-  ['upsell_purchase', 'each accepted upsell, when the order loads'],
+const FUNNEL: Array<[TrackingName, string]> = [
+  ['page_viewed', 'every page load'],
+  ['product_viewed', 'a page showing one package'],
+  ['product_list_viewed', 'a page showing packages'],
+  ['product_added_to_cart', 'something is added to the cart'],
+  ['checkout_started', 'once per checkout, when its form is ready'],
+  ['checkout_shipping_address_submitted', 'once per checkout, when the shipping address is valid'],
+  ['checkout_shipping_method_submitted', 'once per checkout, when a shipping method is picked'],
+  ['checkout_payment_info_submitted', 'once per checkout, when a submit passes its checks'],
+  ['checkout_completed', 'once per order, when it is paid'],
+  ['upsell_viewed', 'once per upsell page, when an offer is shown'],
+  ['upsell_completed', 'once per accepted upsell, when the order is loaded with it'],
 ];
-const VIEWS = ['view_item', 'view_item_list'];
-const UPSELLS = ['view_upsell', 'upsell_purchase'];
+const VIEWS: string[] = ['product_viewed', 'product_list_viewed'] satisfies TrackingName[];
+const UPSELLS: string[] = ['upsell_viewed', 'upsell_completed'] satisfies TrackingName[];
+const BURST: ReadonlySet<string> = new Set<TrackingName>(['product_added_to_cart', 'product_removed_from_cart']);
 const KEEP = 300;
 
 const label = (name: EventName) => LABELS[name] ?? name;
 const isAnalytics = (e: EngineEvent): e is EngineEvent<'analytics'> => e.name === 'analytics';
 const isTrace = (data: unknown): data is AnalyticsTrace => (data as AnalyticsTrace | undefined)?.trace === 'analytics';
 
-const what = (event: AnalyticsEvent) => {
-  const { name } = event;
-  const params = paramsOf(event);
-  const items = itemsOf(params)
-    .map((i) => {
-      const name = i.item_name ?? i.item_id ?? '?';
-      return `${name}${i.item_variant && i.item_variant !== name ? ` (${i.item_variant})` : ''} ×${i.quantity ?? 1}`;
+const what = (event: TrackingEvent) => {
+  const { event_type: name, data } = event;
+  const lines = linesOf(name, data)
+    .map((l) => {
+      const title = l.product_title ?? '?';
+      return `${title}${l.variant_title && l.variant_title !== title ? ` (${l.variant_title})` : ''} ×${l.quantity ?? 1}`;
     })
     .join(', ');
-  if (name === 'add_to_cart') return `+ ${items}`;
-  if (name === 'remove_from_cart') return `− ${items}`;
-  if (items) return items;
-  if (name === 'page_view') return String(params.page_title ?? '');
-  return params.order_id ? `order ${params.order_id}` : '';
+  if (name === 'product_added_to_cart') return `+ ${lines}`;
+  if (name === 'product_removed_from_cart') return `− ${lines}`;
+  if (lines) return lines;
+  if (name === 'page_viewed') return event.context.page_title;
+  const ref = (data as { ref_id?: string }).ref_id;
+  return ref ? `order ${ref}` : '';
 };
 
 const ga4Hits = (): Hit[] =>
@@ -101,23 +113,21 @@ const ga4Hits = (): Hit[] =>
     },
   );
 
-const pushedTo = (layer: Layer, id: string | undefined) =>
-  id
-    ? ((window as Win)[layer]?.find((p) => (p as { event_id?: unknown } | null)?.event_id === id) as
-        (Record<string, unknown> & { event?: string }) | undefined)
-    : undefined;
+const pushedTo = (layer: Layer, ids: string[]) =>
+  (window as Win)[layer]?.find((p) => ids.includes((p as { event_id?: string } | null)?.event_id ?? '')) as
+    Push | undefined;
 
-const COLUMNS = { item_name: 'item', item_variant: 'variant', item_id: 'id', quantity: 'qty', price: 'price' };
+const COLUMNS = { product_title: 'product', variant_title: 'variant', sku: 'sku', quantity: 'qty', price: 'price' };
 
-const itemsTable = (items: Item[]) => {
+const linesTable = (lines: Line[]) => {
   const columns = (Object.keys(COLUMNS) as Array<keyof typeof COLUMNS>).filter(
-    (c) => c !== 'item_variant' || items.some((i) => i.item_variant && i.item_variant !== i.item_name),
+    (c) => c !== 'variant_title' || lines.some((l) => l.variant_title && l.variant_title !== l.product_title),
   );
   return h(
     'table',
     {},
     h('tr', {}, ...columns.map((c) => h('th', {}, COLUMNS[c]))),
-    ...items.map((i) => h('tr', {}, ...columns.map((c) => h('td', c === 'item_id' ? 'dim' : {}, String(i[c] ?? ''))))),
+    ...lines.map((l) => h('tr', {}, ...columns.map((c) => h('td', c === 'sku' ? 'dim' : {}, String(l[c] ?? ''))))),
   );
 };
 
@@ -150,30 +160,34 @@ export function analyticsFlow(ui: {
   const started = () => runs.length > 0 || !!(window as Win).NextDataLayer;
 
   const snapshot = (config: ProviderConfig) => {
-    const events = new Map(received.filter(isAnalytics).map((e) => [e.data.id, e]));
+    const tracking = received.filter(isAnalytics).map((e) => e.data);
+    const events = new Map(tracking.map((e) => [e.event_id, e]));
     const list = providers(config, started());
     const enabled = (layer: Layer) => (layer === 'dataLayer' ? config.dataLayer : config.enabled);
     const trigger = (run: Run) => received.filter((e) => e.name === run.trigger && e.at <= run.at + 5).at(-1);
-    const sum = (run: Run): Sum | undefined => {
-      const event = run.id ? events.get(run.id)?.data : undefined;
-      const cause = trigger(run);
-      return event && cause ? addsUp(event, cause) : undefined;
+    const burst = (run: Run): string[] => {
+      const event = run.id ? events.get(run.id) : undefined;
+      if (!event || !BURST.has(event.event_type)) return run.id ? [run.id] : [];
+      return tracking
+        .filter((e) => e.event_type === event.event_type && e.created_at === event.created_at)
+        .map((e) => e.event_id);
     };
+    const pushed = (layer: Layer, run: Run) => pushedTo(layer, burst(run));
     const hits = ga4Hits();
     const seen = new Map<Run, Hit>();
     for (const hit of [...hits].sort((a, b) => a.at - b.at)) {
-      const run = [...runs].reverse().find((r) => r.sent && r.name === hit.name && r.at <= hit.at + 50 && !seen.has(r));
+      const run = [...runs]
+        .reverse()
+        .find((r) => r.sent && GA4[r.name as TrackingName] === hit.name && r.at <= hit.at + 50 && !seen.has(r));
       if (run) seen.set(run, hit);
     }
     const issues = (run: Run) => {
       if (!run.sent) return [];
       const event = run.id ? events.get(run.id) : undefined;
-      const adds = sum(run);
       return [
-        ...(event ? checks(event.data.name, paramsOf(event.data)) : []),
-        ...(adds && !adds.ok ? [adds.text] : []),
+        ...(event ? checks(event.event_type, event.data) : []),
         ...(['NextDataLayer', 'dataLayer'] as Layer[])
-          .filter((l) => enabled(l) && !pushedTo(l, run.id))
+          .filter((l) => enabled(l) && !pushed(l, run))
           .map((l) => `not in ${l}`),
       ];
     };
@@ -183,7 +197,7 @@ export function analyticsFlow(ui: {
       provider: (id: string) => list.find((p) => p.id === id)!,
       event: (id?: string) => (id ? events.get(id) : undefined),
       trigger,
-      sum,
+      pushed,
       ga4: [...new Set(hits.map((h) => h.id))],
       seen: (run: Run) => seen.get(run),
       enabled,
@@ -195,11 +209,11 @@ export function analyticsFlow(ui: {
 
   const stateOf = (snap: Snapshot, run: Run): State => (!run.sent ? 'skip' : snap.issues(run).length ? 'warn' : 'ok');
 
-  const params = (event: AnalyticsEvent) =>
+  const fields = (event: TrackingEvent) =>
     h(
       'div',
       'aparams',
-      ...Object.entries(paramsOf(event))
+      ...Object.entries(Array.isArray(event.data) ? {} : event.data)
         .filter(([, v]) => v === null || typeof v !== 'object')
         .map(([k, v]) => h('span', {}, h('i', {}, k), ` ${v}`)),
     );
@@ -224,12 +238,12 @@ export function analyticsFlow(ui: {
 
   const overview = (snap: Snapshot, run: Run): Child[] => {
     const dl = dlOf(run.name);
-    const event = snap.event(run.id)?.data;
-    const problems = event ? checks(event.name, paramsOf(event)) : [];
-    const items = event ? itemsOf(paramsOf(event)) : [];
+    const event = snap.event(run.id);
+    const problems = event ? checks(event.event_type, event.data) : [];
+    const lines = event ? linesOf(event.event_type, event.data) : [];
     const layers = (['NextDataLayer', 'dataLayer'] as Layer[]).filter(snap.enabled).map((layer) => {
       const name = layer === 'dataLayer' ? 'GTM dataLayer' : layer;
-      const push = pushedTo(layer, run.id);
+      const push = snap.pushed(layer, run);
       if (!push) return chip('warn', `${name}: not pushed`, NOT_PUSHED[layer], LOGOS[layer]);
       return push['gtm.uniqueEventId'] !== undefined
         ? chip('ok', `${name} · read by GTM`, 'GTM marked this push with gtm.uniqueEventId.', LOGOS[layer])
@@ -240,35 +254,26 @@ export function analyticsFlow(ui: {
       ...layers,
       hit && chip('ok', `GA4 ${hit.id}`, `A Google Analytics request named ${hit.name} left the page after it.`, 'ga4'),
     ];
-    const adds = snap.sum(run);
     const rows: Array<[string, ...Child[]]> = [
       ['Why', h('span', {}, run.reason), h('small', {}, `${label(run.trigger)}: `, h('code', {}, run.trigger))],
       ...(problems.length
         ? [['Problems', ...problems.map((p) => h('span', 'amber', `⚠ ${p}`))] as [string, ...Child[]]]
         : []),
       ...(run.sent ? [['Reached', h('div', 'chips', h('code', {}, dl), ...reached)] as [string, ...Child[]]] : []),
-      ...(event ? [['Params', params(event)] as [string, ...Child[]]] : []),
-      ...(adds
-        ? [
-            ['Adds up', h('span', adds.ok ? 'green' : 'amber', `${adds.ok ? '✓' : '⚠'} ${adds.text}`)] as [
-              string,
-              ...Child[],
-            ],
-          ]
-        : []),
+      ...(event ? [['Data', h('code', {}, event.object), fields(event)] as [string, ...Child[]]] : []),
     ];
     return [
       h('dl', 'adetail', ...rows.flatMap(([title, ...value]) => [h('dt', {}, title), h('dd', {}, ...value)])),
-      items.length > 0 && h('div', 'aitems', h('p', {}, `Items · ${items.length}`), itemsTable(items)),
+      lines.length > 0 && h('div', 'aitems', h('p', {}, `Lines · ${lines.length}`), linesTable(lines)),
     ];
   };
 
   const tabsOf = (snap: Snapshot, run: Run): Tab[] => {
     const dl = dlOf(run.name);
-    const event = snap.event(run.id)?.data;
+    const event = snap.event(run.id);
     const trigger = snap.trigger(run);
-    const next = pushedTo('NextDataLayer', run.id);
-    const gtm = pushedTo('dataLayer', run.id);
+    const next = snap.pushed('NextDataLayer', run);
+    const gtm = snap.pushed('dataLayer', run);
     const hit = snap.seen(run);
     const tabs: Array<Tab | false | undefined> = [
       { id: 'summary', label: 'Summary', body: () => overview(snap, run) },
@@ -276,7 +281,7 @@ export function analyticsFlow(ui: {
         id: 'event',
         label: 'Event',
         body: () => [
-          event && json('analytics', "The SDK's event, as page scripts get it with next.analytics.on", event),
+          event && json(run.name, 'The tracking event, as page scripts get it with next.analytics.on', event),
           trigger && json(run.trigger, `What triggered it: ${label(run.trigger)}`, trigger.data),
         ],
       },
@@ -322,12 +327,12 @@ export function analyticsFlow(ui: {
   };
 
   const sub = (snap: Snapshot, run: Run) => {
-    const event = snap.event(run.id)?.data;
+    const event = snap.event(run.id);
     return !run.sent ? `Not sent: ${run.reason}` : event ? what(event) || 'sent' : 'data layer only';
   };
 
   const row = (snap: Snapshot, run: Run) => {
-    const event = snap.event(run.id)?.data;
+    const event = snap.event(run.id);
     return h(
       'button',
       { type: 'button', className: `arun ${stateOf(snap, run)}`, onclick: () => inspect(run) },
@@ -347,7 +352,7 @@ export function analyticsFlow(ui: {
             .join(' · ') || sub(snap, run),
         ),
       ),
-      h('span', 'aend', event && amount(paramsOf(event)) && h('b', {}, amount(paramsOf(event))), clock(run.at)),
+      h('span', 'aend', event && amount(event) && h('b', {}, amount(event)), clock(run.at)),
       icon('chevron'),
     );
   };
@@ -395,12 +400,12 @@ export function analyticsFlow(ui: {
     if (!current || !dialog.open) return;
     const run = current;
     const state = stateOf(snap, run);
-    const event = snap.event(run.id)?.data;
+    const event = snap.event(run.id);
     const at = shown.indexOf(run);
     heading.replaceChildren(icon(MARK[state]), h('code', {}, run.name));
     heading.className = `ahead ${state}`;
     subtitle.replaceChildren(
-      [label(run.trigger), clock(run.at), event && amount(paramsOf(event)), STATED[state]].filter(Boolean).join(' · '),
+      [label(run.trigger), clock(run.at), event && amount(event), STATED[state]].filter(Boolean).join(' · '),
     );
     const tabs = tabsOf(snap, run);
     if (!tabs.some((t) => t.id === tab)) tab = 'summary';
@@ -436,7 +441,7 @@ export function analyticsFlow(ui: {
     const warn = snap.providers.find((p) => p.status === 'warn');
     if (warn) return h('span', 'amber', warn.detail);
     if (!snap.config.dataLayer) return h('span', 'amber', 'GTM tags get none of these events: GTM dataLayer is off');
-    return h('span', 'green', 'Every event so far was pushed with the fields GA4 requires');
+    return h('span', 'green', 'Every event so far carried its object and reached its data layers');
   };
 
   const funnel = (snap: Snapshot) => {
@@ -451,7 +456,7 @@ export function analyticsFlow(ui: {
       VIEWS.includes(name)
         ? views.length
           ? views.includes(name)
-          : name === 'view_item_list'
+          : name === 'product_list_viewed'
         : !UPSELLS.includes(name) || upsell,
     ).map(([name, when]) => {
       const here = runs.filter((r) => r.name === name);

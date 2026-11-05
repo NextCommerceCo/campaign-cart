@@ -3,11 +3,11 @@ import { pageEnvironment } from './bindings/environment';
 import { runReadyQueue } from './bindings/ready';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
-import { type EngineEvent, PUBLIC } from './engine/events/bus';
+import { envelope, PUBLIC, type SdkEvent } from './engine/events/bus';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { AnalyticsEvent, AnalyticsName } from './engine/events/analytics';
+import type { TrackingEvent, TrackingName } from './engine/events/analytics';
 import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
@@ -38,27 +38,6 @@ const pixelId = () =>
 /** The names `next.on` takes: every event but the SDK's internal ones. */
 export type PublicEventName = Exclude<EventName, InternalEventName>;
 
-export interface SdkEvent<K extends EventName = EventName> {
-  event_id: string;
-  event_type: K;
-  object: string;
-  data: EventMap[K];
-  created_at: string;
-  /** The campaign session: the `ncsid` the NEXT analytics script and the Campaigns API share. */
-  session_id: string;
-  sdk_version: string;
-}
-
-const envelope = <K extends EventName>(e: EngineEvent<K>, engine: Engine): SdkEvent<K> => ({
-  event_id: e.id,
-  event_type: e.name,
-  object: e.name.split('.')[0]!,
-  data: e.data,
-  created_at: new Date(e.at).toISOString(),
-  session_id: engine.sessionId(),
-  sdk_version: __VERSION__,
-});
-
 export interface NextApi extends LegacyApi {
   version: string;
   /**
@@ -71,7 +50,8 @@ export interface NextApi extends LegacyApi {
     fn: (data: EventMap[K], event: SdkEvent<K>) => void,
   ): () => void;
   analytics: {
-    on(name: AnalyticsName | '*', fn: (event: AnalyticsEvent) => void): () => void;
+    /** Calls `fn` with every `name` tracking event, or every one for `*`, starting with the ones this page already sent. */
+    on(name: TrackingName | '*', fn: (event: TrackingEvent) => void): () => void;
   };
   /** What the page shows now: the campaign, cart, checkout, order and selectors, as the events carry them. */
   snapshot(): Snapshot;
@@ -167,7 +147,9 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
-      const legacyOff = legacy.on(name, (data, e) => fn(data as never, (e && envelope(e, engine)) as never));
+      const legacyOff = legacy.on(name, (data, e) =>
+        fn(data as never, (e && envelope(e, engine.sessionId())) as never),
+      );
       if (legacyOff) return legacyOff;
       const event = (name === 'ready' ? 'sdk.ready' : name) as EventName | '*';
       if (event !== '*' && !PUBLIC.has(event)) {
@@ -178,7 +160,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         event,
         (e) => {
           if (event === '*' && !PUBLIC.has(e.name)) return;
-          fn(e.data as never, envelope(e, engine) as never);
+          fn(e.data as never, envelope(e, engine.sessionId()) as never);
         },
         { replay: true },
       );
@@ -188,7 +170,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         engine.on(
           'analytics',
           (e) => {
-            if (name === '*' || e.data.name === name) fn(e.data);
+            if (name === '*' || e.data.event_type === name) fn(e.data);
           },
           { replay: true },
         ),

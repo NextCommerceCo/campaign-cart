@@ -126,12 +126,15 @@ loader.js (tiny)  →  core  →  features, loaded only when the page uses them
 Analytics is a subscriber in its own chunk. It loads when the browser is idle after
 `sdk.ready` and replays the events it missed, so it never delays prices.
 
-- **Tracking events under GA4 names** (`add_to_cart`, `begin_checkout`, `purchase`, …), made from
-  the engine's events, for page scripts through `next.analytics.on`. `begin_checkout`,
-  `add_shipping_info` and `add_payment_info` go once per checkout, `purchase` once per order and
-  only when paid, `upsell_purchase` once per accepted upsell; `add_to_cart` and
-  `remove_from_cart` compare the priced cart with what the tab already reported, so a cart filled
-  before the page loaded is reported once. The list is in `docs/guides/events.md`.
+- **Tracking events are the SDK's own contract** (`product_added_to_cart`, `checkout_started`,
+  `checkout_completed`, …), storefront-style names carrying the same objects as the engine's
+  events (`TrackingMap` in `src/engine/events/analytics.ts`), for page scripts through
+  `next.analytics.on`; each provider remaps them, GA4 included. `checkout_started`, the two
+  shipping events and `checkout_payment_info_submitted` go once per checkout, `checkout_completed`
+  once per order and only when paid, `upsell_completed` once per accepted upsell;
+  `product_added_to_cart` and `product_removed_from_cart` compare the priced cart with what the
+  tab already reported, one event per line, so a cart filled before the page loaded is reported
+  once. The list is the Analytics Reference, generated from `TrackingMap`.
 - **Each also as its `dl_*` event in the 0.4.x shape** (`event`, `event_id`, `event_time`,
   `user_properties`, `ecommerce {currency, value, items}`, `attribution`, `campaign_*`).
   Each one goes through `window.NextDataLayerTransformFn` first (a falsy return drops it),
@@ -139,7 +142,7 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   Page forwarders and GTM keep working unchanged.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
   `page_location` has no query string.
-- **NEXT page view:** the `nextCampaign` script loads on idle and sends one `page_view`.
+- **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.
 - **Vendors** (Meta, TikTok, GA4, …) go through GTM or the page's forwarder adapters. The
   old built-in Meta, RudderStack and custom providers are not rebuilt; enabling them in
   `nextConfig` prints a warning.
