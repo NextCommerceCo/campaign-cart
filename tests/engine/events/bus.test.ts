@@ -6,7 +6,7 @@ import type { EventContext } from '../../../src/engine/events/context';
 import type { Snapshot } from '../../../src/engine/events/sdk';
 import { makeEngine } from '../../fixtures/engine';
 
-const READY: Snapshot = { cart: { lines: [], coupons: [] }, selectors: [] };
+const READY: Snapshot = { cart: { lines: [], coupons: [], quantity: 0 }, selectors: [] };
 const ANALYTICS: TrackingEvent = {
   event_id: 'a1',
   event_type: 'page_viewed',
@@ -67,7 +67,7 @@ describe('events', () => {
     engine.on('sdk.ready', () => engine.on('sdk.ready', late, { replay: true }));
     engine.events.emit('sdk.ready', READY);
     expect(late).toHaveBeenCalledTimes(1);
-    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [], quantity: 0 });
     const later = vi.fn();
     engine.on('sdk.ready', later, { replay: true });
     expect(later).toHaveBeenCalledTimes(1);
@@ -92,7 +92,7 @@ describe('events', () => {
     };
     engine.events.emit('sdk.ready', READY);
     engine.events.emit('coupon.removed', { code: 'A', reason: 'shopper' });
-    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [], quantity: 0 });
     expect(replayed().map((e) => e.name)).toEqual([
       'sdk.ready',
       'coupon.removed',
@@ -125,9 +125,15 @@ describe('events', () => {
   it('keeps selector.updated and analytics events while state updates flood the buffer', () => {
     const { engine } = makeEngine();
     engine.events.emit('sdk.ready', READY);
-    engine.events.emit('selector.updated', { selector_id: 's', type: 'bundle', lines: [] });
+    engine.events.emit('selector.updated', {
+      selector_id: 's',
+      type: 'bundle',
+      lines: [],
+      quantity: 0,
+      in_cart: false,
+    });
     engine.events.emit('analytics', ANALYTICS);
-    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    for (let i = 0; i < 150; i++) engine.events.emit('cart.calculated', { lines: [], coupons: [], quantity: 0 });
     expect(replayed(engine, 'selector.updated')).toEqual(['selector.updated']);
     expect(replayed(engine, 'analytics')).toEqual(['analytics']);
   });
@@ -136,7 +142,7 @@ describe('events', () => {
     const { engine } = makeEngine();
     engine.events.emit('sdk.ready', READY);
     for (let i = 0; i < 99; i++) engine.events.emit('coupon.denied', { code: `C${i}`, reason: 'no_discount' });
-    engine.events.emit('cart.calculated', { lines: [], coupons: [] });
+    engine.events.emit('cart.calculated', { lines: [], coupons: [], quantity: 0 });
     expect(replayed(engine, 'cart.calculated')).toEqual(['cart.calculated']);
     for (let i = 0; i < 150; i++) engine.events.emit('analytics', ANALYTICS);
     expect(replayed(engine, '*')).toEqual(['sdk.ready', ...Array<string>(98).fill('coupon.denied'), 'analytics']);

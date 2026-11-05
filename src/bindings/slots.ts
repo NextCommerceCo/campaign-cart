@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/engine';
-import { cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
+import { cardSlots, pickedCard } from '../engine/cart/selectors';
+import { variantChoices } from '../engine/cart/variants';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents } from '../engine/format';

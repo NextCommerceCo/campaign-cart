@@ -800,6 +800,8 @@ describe('tracking events', () => {
       original_price: 99,
       total_discount: 0,
       total: 49,
+      subtotal: 49,
+      discount_percentage: 0,
       discounts: [],
       first_in_session: true,
     });
@@ -861,6 +863,8 @@ describe('tracking events', () => {
       original_price: 198,
       total_discount: 0,
       total: 89,
+      subtotal: 89,
+      discount_percentage: 0,
       discounts: [],
     });
   });

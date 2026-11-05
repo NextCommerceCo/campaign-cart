@@ -1,6 +1,6 @@
 import type { CartActions } from './cart';
 import { apiLines, lineKey, mergeLines } from './lines';
-import { cartItems } from './public';
+import { cartItems, optionPrice, unitsOf } from './public';
 import type { Context } from '../engine';
 import type { Selector, SelectorOption } from '../events/selectors';
 import { cents } from '../format';
@@ -16,7 +16,7 @@ import type {
   Slot,
   SummaryLine,
 } from './types';
-import type { Campaign, Package, State } from '../types';
+import type { Campaign, State } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
 
@@ -84,10 +84,15 @@ function publicOption(state: State, selector: SelectorState, card: SelectorCard)
   const quoted = selector.quotes?.[card.id]?.lines;
   const lines = cartItems(state, apiLines(cardLines(selector, card)), quoted);
   const priced = !!quoted && lines.every((l) => l.price !== undefined);
+  const quantity = unitsOf(lines);
+  const total = priced ? amount(quoted, 'total') : undefined;
+  const subtotal = priced ? amount(quoted, 'subtotal') : undefined;
   return {
     option_id: card.id,
     lines,
-    ...(priced && { total: amount(quoted, 'total'), original_total: amount(quoted, 'subtotal') }),
+    quantity,
+    selected: selector.picked === card.id,
+    ...(priced && { ...optionPrice(subtotal!, total!, quantity), total, original_total: subtotal }),
   };
 }
 
@@ -107,6 +112,17 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     const selector = get(id)!;
     const options = selector.cards.map((card) => publicOption(state, selector, card));
     const picked = options.find((o) => o.option_id === selector.picked);
+    const card = pickedCard(selector);
+    const group = state.cart.groups[bundleGroup(id)];
+    const inCart =
+      !!card && !!group && groupKey(group) === groupKey({ lines: cardLines(selector, card), vouchers: card.vouchers });
+    const price = picked?.total !== undefined && {
+      price: picked.price,
+      original_price: picked.original_price,
+      subtotal: picked.subtotal,
+      total_discount: picked.total_discount,
+      discount_percentage: picked.discount_percentage,
+    };
     return {
       selector_id: id,
       type: typeOf(selector),
@@ -114,6 +130,9 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       lines: picked?.lines ?? [],
       ...(state.campaign && { currency: state.campaign.currency }),
       ...(picked?.total !== undefined && { total: picked.total }),
+      ...price,
+      quantity: picked?.quantity ?? 0,
+      in_cart: inCart,
       options,
     };
   };
@@ -292,41 +311,3 @@ export function createSelectors(ctx: Context, cart: CartActions) {
 }
 
 export type SelectorActions = ReturnType<typeof createSelectors>;
-
-export interface VariantOption {
-  value: string;
-  packageId?: number;
-}
-
-export interface VariantChoice {
-  code: string;
-  name: string;
-  value?: string;
-  options: VariantOption[];
-}
-
-export function variantChoices(packages: Package[], packageId: number): VariantChoice[] {
-  const current = packages.find((p) => p.ref_id === packageId);
-  const own = current?.product_variant_attribute_values ?? [];
-  if (!current?.product_id || !own.length) return [];
-  const family = packages.filter((p) => p.product_id === current.product_id);
-  const attributes = family.flatMap((p) => p.product_variant_attribute_values ?? []);
-  const selected = Object.fromEntries(own.map((a) => [a.code, a.value]));
-  const matching = (wanted: Record<string, string>) =>
-    family.find(
-      (p) =>
-        p.product_purchase_availability !== 'unavailable' &&
-        Object.entries(wanted).every(([code, value]) =>
-          p.product_variant_attribute_values?.some((a) => a.code === code && a.value === value),
-        ),
-    );
-  return [...new Map(attributes.map((a) => [a.code, a.name]))].map(([code, name]) => ({
-    code,
-    name,
-    value: selected[code],
-    options: [...new Set(attributes.filter((a) => a.code === code).map((a) => a.value))].map((value) => ({
-      value,
-      packageId: matching({ ...selected, [code]: value })?.ref_id,
-    })),
-  }));
-}

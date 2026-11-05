@@ -119,8 +119,8 @@ src/
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
     cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
                                                 lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
-                                                that events carry), selectors.ts (bundle selectors, and a package's variant
-                                                choices for slots and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
+                                                that events carry), selectors.ts (bundle selectors), variants.ts (a package's
+                                                variant choices, for slots, variant pickers and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe; loads cart-summary.ts when a bound node has
                                    [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)

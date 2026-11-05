@@ -69,7 +69,7 @@ describe('cart', () => {
         {
           code: 'SAVE10',
           amount: 1,
-          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }],
+          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10, percentage: 10 }],
         },
       ],
     ]);
@@ -477,6 +477,7 @@ describe('cart', () => {
           { package_id: 1, quantity: 1, product_id: 400, product_title: 'Earbuds ×1', image: 'https://cdn.test/1.png' },
         ],
         coupons: [],
+        quantity: 1,
         currency: 'USD',
         changes: [{ package_id: 1, product_id: 400, quantity: 1, from: 0, to: 1 }],
       },
@@ -491,12 +492,16 @@ describe('cart', () => {
     engine.on('cart.calculated', (e) => carts.push(e.data));
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: ['SAVE10'] });
     await engine.cart.settled();
-    expect(carts.at(-1)!.discounts).toEqual([{ name: 'SAVE10', amount: 1, source: 'offer', offer_id: 10 }]);
+    expect(carts.at(-1)!.discounts).toEqual([
+      { name: 'SAVE10', amount: 1, source: 'offer', offer_id: 10, percentage: 10 },
+    ]);
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await engine.cart.applyCoupon('save10');
     await engine.cart.settled();
     const cart = carts.at(-1)!;
-    expect(cart.discounts).toEqual([{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }]);
+    expect(cart.discounts).toEqual([
+      { name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10, percentage: 10 },
+    ]);
     expect(cart.lines[0]).toMatchObject({ price: 49, original_price: 99, total: 49, total_discount: 0 });
     expect(cart.shipping_method).toEqual({
       id: 1,
@@ -527,7 +532,7 @@ describe('cart', () => {
         {
           code: 'SAVE10',
           amount: 1,
-          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10 }],
+          discounts: [{ name: 'SAVE10', amount: 1, source: 'coupon', code: 'SAVE10', offer_id: 10, percentage: 10 }],
         },
       ],
       ['coupon.denied', { code: 'SAVE10', reason: 'duplicate' }],
@@ -563,7 +568,7 @@ describe('cart', () => {
     engine.on('*', (e) => (e.name === 'cart.updated' || e.name.startsWith('coupon.')) && seen.push([e.name, e.data]));
     await engine.cart.clear();
     expect(seen).toEqual([
-      ['cart.updated', { lines: [], coupons: [], currency: 'USD' }],
+      ['cart.updated', { lines: [], coupons: [], quantity: 0, currency: 'USD' }],
       ['coupon.removed', { code: 'SAVE10', reason: 'cleared' }],
     ]);
   });
@@ -687,8 +692,8 @@ describe('cart', () => {
     const line = (quantity: number) =>
       `[{"package_id":9,"quantity":${quantity},"product_id":900,"product_title":"Protection plan","image":"https://cdn.test/9.png"}]`;
     expect(seen).toEqual([
-      `selector.selected {"selector_id":"toggle:9","type":"toggle","lines":${line(1)},"currency":"USD"}`,
-      `selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":${line(2)},"currency":"USD"}`,
+      `selector.selected {"selector_id":"toggle:9","type":"toggle","lines":${line(1)},"currency":"USD","quantity":1,"in_cart":true}`,
+      `selector.deselected {"selector_id":"toggle:9","type":"toggle","lines":${line(2)},"currency":"USD","quantity":2,"in_cart":false}`,
     ]);
   });
 
@@ -720,12 +725,26 @@ describe('cart', () => {
     engine.toggles.price(9, 2);
     await flush();
     const off = { selector_id: 'toggle:9', type: 'toggle', currency: 'USD' };
+    const priced = {
+      total: 18,
+      price: 9,
+      original_price: 9,
+      subtotal: 18,
+      total_discount: 0,
+      discount_percentage: 0,
+      quantity: 2,
+    };
     const line = expect.objectContaining({ package_id: 9, quantity: 2 });
     expect(seen).toEqual([
-      ['selector.calculating', { ...off, lines: [line] }],
+      ['selector.calculating', { ...off, lines: [line], quantity: 2, in_cart: false }],
       [
         'selector.calculated',
-        { ...off, lines: [expect.objectContaining({ package_id: 9, quantity: 2, total: 18 })], total: 18 },
+        {
+          ...off,
+          lines: [expect.objectContaining({ package_id: 9, quantity: 2, total: 18 })],
+          ...priced,
+          in_cart: false,
+        },
       ],
     ]);
     expect((seen[0] as [string, Selector])[1].lines[0]).not.toHaveProperty('price');
@@ -740,7 +759,8 @@ describe('cart', () => {
           type: 'toggle',
           lines: [expect.objectContaining({ package_id: 9, quantity: 2, price: 9, total: 18 })],
           currency: 'USD',
-          total: 18,
+          ...priced,
+          in_cart: true,
         },
       ],
     ]);

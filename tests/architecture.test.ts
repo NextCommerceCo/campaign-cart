@@ -28,7 +28,6 @@ const SHRINKING: Record<string, number> = {
   'order/state.ts': 346,
   'compat/checkout.ts': 339,
   'engine/engine.ts': 311,
-  'engine/cart/selectors.ts': 313,
   'checkout/payment/card.ts': 305,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);

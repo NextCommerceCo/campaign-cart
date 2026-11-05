@@ -29,7 +29,7 @@ const track = <K extends TrackingName>(engine: Engine, event_type: K, data: Trac
 };
 
 const line = (package_id: number, quantity: number, price: number): CartItem => ({ package_id, quantity, price });
-const emptyCart: Cart = { lines: [], coupons: [], currency: 'USD' };
+const emptyCart: Cart = { lines: [], coupons: [], quantity: 0, currency: 'USD' };
 
 async function started() {
   const { engine } = makeEngine();

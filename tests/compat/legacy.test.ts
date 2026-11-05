@@ -437,7 +437,7 @@ describe('0.4.x event names', () => {
     legacyCheckoutEvents(engines[0]!.engine, document.createElement('form'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const heardBy = engines.map(({ legacy }) => heard(legacy, 'payment:tokenized'));
-    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
+    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [], quantity: 0 } };
     for (const { engine } of engines)
       engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token' });
     expect(heardBy).toEqual([[{ paymentMethod: 'credit-card' }], []]);
@@ -495,7 +495,7 @@ describe('0.4.x event names', () => {
     const completed = heard(legacy, 'express-checkout:completed');
     const done = heard(legacy, 'checkout:express-completed');
     const failed = heard(legacy, 'express-checkout:failed');
-    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
+    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [], quantity: 0 } };
     const emit = engine.events.emit.bind(engine.events);
     const placedBy = (express: boolean) => engine.attach((ctx) => ctx.update('checkout', { express }));
     placedBy(false);
@@ -547,7 +547,7 @@ describe('0.4.x event names', () => {
     legacyCheckoutEvents(engine, document.createElement('form'));
     const one = heard(legacy, 'payment:tokenized');
     const two = heard(legacy, 'payment:tokenized');
-    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
+    const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [], quantity: 0 } };
     for (let i = 0; i < 2; i++) engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token' });
     expect([...one, ...two]).toEqual(Array(4).fill({ paymentMethod: 'credit-card' }));
     expect(engine.log.entries().filter((e) => e.message.includes('payment:tokenized'))).toEqual([

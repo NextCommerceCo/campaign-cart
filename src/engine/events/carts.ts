@@ -35,6 +35,10 @@ export interface CartItem extends Line {
   total_discount?: number;
   /** `price × quantity`. @priced */
   total?: number;
+  /** The line before discounts: `total = subtotal − total_discount`. @priced */
+  subtotal?: number;
+  /** `total_discount ÷ subtotal × 100`, to two decimals; `0` without a discount. @priced */
+  discount_percentage?: number;
   /** The discounts on the line. @priced */
   discounts?: Discount[];
   /** For a package billed again every interval. @campaign */
@@ -78,6 +82,10 @@ export interface Cart {
   total?: number;
   /** The discounts on the products, one per offer. @priced */
   discounts?: Discount[];
+  /** `total_discount ÷ subtotal × 100`, to two decimals; `0` without a discount. @priced */
+  discount_percentage?: number;
+  /** Units in the cart: each line's quantity. */
+  quantity: number;
 }
 
 /** A package added to or removed from the cart by one change. */
