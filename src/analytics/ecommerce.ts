@@ -1,8 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
+import { dollars } from '../engine/format';
 import type { ApiOrder, ApiOrderLine } from '../engine/types';
-
-export const cents = (n: number) => Math.round(n * 100) / 100;
 
 export const currency = (engine: Engine) =>
   engine.getState().cart.summary?.currency ?? engine.getState().campaign?.currency ?? 'USD';
@@ -11,6 +10,9 @@ const ids = (product?: number, variant?: number) => ({
   ...(product != null && { item_product_id: String(product) }),
   ...(variant != null && { item_variant_id: String(variant) }),
 });
+
+export const valueOf = (items: Array<{ price: number; quantity: number }>) =>
+  dollars(items.reduce((n, i) => n + i.price * i.quantity, 0));
 
 type Priced = Pick<SummaryLine, 'unit_price'> & Partial<Pick<SummaryLine, 'original_unit_price'>>;
 
@@ -28,7 +30,7 @@ const item = (engine: Engine, packageId: number, count: number, index: number, l
     ...(pkg.product_sku && { item_sku: pkg.product_sku }),
     item_image: pkg.image,
     price,
-    ...(before > price && { discount: cents(before - price) }),
+    ...(before > price && { discount: dollars(before - price) }),
     quantity: pkg.qty * count,
     currency: currency(engine),
     index,
@@ -44,7 +46,7 @@ export const ecommerce = (
   const items = lines
     .map((l, i) => item(engine, l.package_id, l.quantity, i, priced(l.package_id)))
     .filter((i): i is NonNullable<typeof i> => !!i);
-  return { currency: currency(engine), value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)), items };
+  return { currency: currency(engine), value: valueOf(items), items };
 };
 
 export const cartEcommerce = (engine: Engine) => {
@@ -87,8 +89,8 @@ export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, i
     ...ids(line.product_id ?? pkg?.product_id, line.variant_id ?? pkg?.product_variant_id),
     ...(sku && { item_sku: sku }),
     ...(image && { item_image: image }),
-    price: cents(paid),
-    ...(listed > paid && { discount: cents(listed - paid) }),
+    price: dollars(paid),
+    ...(listed > paid && { discount: dollars(listed - paid) }),
     quantity: line.quantity,
     currency: order.currency ?? currency(engine),
     index,

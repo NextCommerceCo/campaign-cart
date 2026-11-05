@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { cents, format } from '../engine/format';
+import { cents, formatCents } from '../engine/format';
 import type { ApiOrderLine } from '../engine/types';
 
 const DEFAULT_TEMPLATE =
@@ -50,7 +50,7 @@ export function bindReceipt(engine: Engine): Array<() => void> {
     let shown = '';
     return () => {
       const { order: state, campaign } = engine.getState();
-      const money = (c: number) => format({ type: 'money', value: c / 100 }, campaign?.currency, campaign?.language);
+      const money = (c: number) => formatCents(c, campaign);
       const lines = state?.order?.lines ?? [];
       const status =
         state?.status === 'loading'

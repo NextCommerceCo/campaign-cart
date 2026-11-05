@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard, variantChoices } from '../engine/cart/selectors';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
-import { cents, discountPercent, format } from '../engine/format';
+import { cents, discountPercent, dollars, format, formatCents } from '../engine/format';
 import { cardQuote } from '../engine/values';
 import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './dom';
 
@@ -21,7 +21,7 @@ function itemValues(
   line?: SummaryLine,
 ): Record<string, string> {
   const { campaign } = engine.getState();
-  const money = (c: number) => format({ type: 'money', value: c / 100 }, campaign?.currency, campaign?.language);
+  const money = (c: number) => formatCents(c, campaign);
   const unit = line ? cents(line.package_price) : cents(pkg?.price);
   const retail = line ? cents(line.original_package_price) : cents(pkg?.price_retail ?? pkg?.price);
   const total = line ? unit : cents(pkg?.price_total);
@@ -129,7 +129,7 @@ function renderStage(
             'discount.percentage': discountPercent(d.percentage, engine.getState().campaign?.language),
             'discount.name': d.name ?? '',
             'discount.amount': format(
-              { type: 'money', value: cents(d.amount) / 100 },
+              { type: 'money', value: dollars(d.amount) },
               engine.getState().campaign?.currency,
               engine.getState().campaign?.language,
             ),

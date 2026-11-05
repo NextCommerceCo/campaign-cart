@@ -1,4 +1,5 @@
 import { failureOf } from '../api';
+import { addDollars, cents, dollars } from '../format';
 import type { Context } from '../engine';
 import type { State } from '../types';
 import type { Cart, CartChange, CartItem, Checkout, Discount, EventMap, Selector } from '../events';
@@ -47,16 +48,12 @@ export function mergeLines(groups: Record<string, CartGroup>): Line[] {
 
 export const normalizeCode = (code: string) => code.trim().toUpperCase();
 
-const cents = (amount: string | undefined) => Math.round(Number(amount ?? 0) * 100);
-const money = (amount: string | undefined) => cents(amount) / 100;
-const sum = (amounts: number[]) => Math.round(amounts.reduce((n, a) => n + a * 100, 0)) / 100;
-
 const discountOf = (d: SummaryDiscount, coupons: string[]): Discount => {
   const code = d.description?.toUpperCase();
   const coupon = !!code && coupons.includes(code);
   return {
     name: d.name ?? '',
-    amount: money(d.amount),
+    amount: dollars(d.amount),
     source: coupon ? 'coupon' : 'offer',
     ...(coupon && { code }),
     offer_id: d.offer_id ?? 0,
@@ -74,10 +71,10 @@ export function cartItem(state: State, line: Line, priced?: SummaryLine): CartIt
     ...(p?.product_variant_name && { variant_title: p.product_variant_name }),
     ...(p?.image && { image: p.image }),
     ...(priced && {
-      price: money(priced.package_price),
-      original_price: money(priced.original_package_price),
-      total_discount: money(priced.total_discount),
-      total: money(priced.total),
+      price: dollars(priced.package_price),
+      original_price: dollars(priced.original_package_price),
+      total_discount: dollars(priced.total_discount),
+      total: dollars(priced.total),
       discounts: priced.discounts.map((d) => discountOf(d, state.cart.coupons)),
     }),
     ...(interval && {
@@ -85,8 +82,8 @@ export function cartItem(state: State, line: Line, priced?: SummaryLine): CartIt
         interval,
         interval_count: p!.interval_count ?? 1,
         ...(priced?.price_recurring && {
-          price: money(priced.price_recurring),
-          original_price: money(priced.original_recurring_price ?? priced.price_recurring),
+          price: dollars(priced.price_recurring),
+          original_price: dollars(priced.original_recurring_price ?? priced.price_recurring),
         }),
       },
     }),
@@ -113,7 +110,7 @@ export function publicToggle(state: State, id: string, group?: CartGroup): Selec
     type: 'toggle',
     lines: items,
     ...(currency && { currency }),
-    ...(priced && { total: sum(items.map((l) => l.total!)) }),
+    ...(priced && { total: addDollars(items.map((l) => l.total!)) }),
   };
 }
 
@@ -130,8 +127,8 @@ export function publicCart(state: State, priced?: CartSummary): Cart {
         id: method.id,
         code: method.code,
         name: method.name,
-        price: money(method.price),
-        original_price: money(method.original_price),
+        price: dollars(method.price),
+        original_price: dollars(method.original_price),
         discounts: (method.discounts ?? []).map((d) => discountOf(d, coupons)),
       }
     : shippingId !== undefined
@@ -140,7 +137,7 @@ export function publicCart(state: State, priced?: CartSummary): Cart {
   const byOffer = new Map<number, Discount>();
   for (const d of lines.flatMap((l) => l.discounts ?? [])) {
     const seen = byOffer.get(d.offer_id);
-    byOffer.set(d.offer_id, seen ? { ...seen, amount: sum([seen.amount, d.amount]) } : d);
+    byOffer.set(d.offer_id, seen ? { ...seen, amount: addDollars([seen.amount, d.amount]) } : d);
   }
   return {
     lines,
@@ -148,9 +145,9 @@ export function publicCart(state: State, priced?: CartSummary): Cart {
     ...(campaign && { currency: campaign.currency }),
     ...(shipping_method && { shipping_method }),
     ...(summary && {
-      subtotal: money(summary.subtotal),
-      total_discount: sum(lines.map((l) => l.total_discount ?? 0)),
-      total: money(summary.total),
+      subtotal: dollars(summary.subtotal),
+      total_discount: addDollars(lines.map((l) => l.total_discount ?? 0)),
+      total: dollars(summary.total),
       discounts: [...byOffer.values()],
     }),
   };
@@ -249,7 +246,7 @@ export function createCart(ctx: Context) {
         quantity: Math.abs(to - from),
         from,
         to,
-        ...(charged !== undefined && { price: money(charged) }),
+        ...(charged !== undefined && { price: dollars(charged) }),
       });
     }
     return { added, removed };
@@ -270,7 +267,7 @@ export function createCart(ctx: Context) {
     const discounts = [...(cart.discounts ?? []), ...(cart.shipping_method?.discounts ?? [])].filter(
       (d) => d.code === code,
     );
-    return discounts.length ? { amount: sum(discounts.map((d) => d.amount)), discounts } : {};
+    return discounts.length ? { amount: addDollars(discounts.map((d) => d.amount)), discounts } : {};
   };
 
   const answer = (code: string, applied: boolean) => {

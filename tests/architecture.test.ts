@@ -20,7 +20,7 @@ const SHRINKING: Record<string, number> = {
   'engine/events.ts': 855,
   'compat/legacy.ts': 662,
   'debug/analytics.ts': 634,
-  'engine/cart/cart.ts': 557,
+  'engine/cart/cart.ts': 554,
   'checkout/state/checkout.ts': 492,
   'debug/index.ts': 452,
   'debug/cart.ts': 402,

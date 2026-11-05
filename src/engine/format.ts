@@ -6,6 +6,8 @@ export interface Value {
 }
 
 export const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
+export const dollars = (amount: string | number | undefined): number => cents(amount) / 100;
+export const addDollars = (amounts: number[]): number => Math.round(amounts.reduce((n, a) => n + a * 100, 0)) / 100;
 export const money = (c: number | undefined): Value => ({
   type: 'money',
   value: c === undefined ? undefined : c / 100,
@@ -51,6 +53,9 @@ export function format(v: Value, currency: string | undefined, locale?: string, 
       return String(v.value);
   }
 }
+
+export const formatCents = (c: number, campaign?: { currency?: string; language?: string }): string =>
+  format(money(c), campaign?.currency, campaign?.language);
 
 export function discountPercent(value: string | undefined, locale?: string): string {
   const n = Number(value);

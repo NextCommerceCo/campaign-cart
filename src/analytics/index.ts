@@ -6,7 +6,7 @@ import { startLegacyDataLayer } from '../compat/analytics';
 import { newId } from '../engine/id';
 import { purchaseId, upsellId } from '../engine/order';
 import { createLedger } from './state';
-import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
+import { cartEcommerce, currency, ecommerce, orderItem, taxIncluded, valueOf } from './ecommerce';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -169,7 +169,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
       {
         currency: order.currency ?? currency(engine),
         transaction_id: transaction,
-        value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
+        value: valueOf(items),
         tax: Number(order.total_tax ?? 0),
         shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
         affiliation: 'Online Store',
@@ -219,7 +219,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         {
           currency: item.currency,
           transaction_id: transaction,
-          value: cents(item.price * item.quantity),
+          value: valueOf([item]),
           tax: 0,
           shipping: 0,
           affiliation: 'Upsell',

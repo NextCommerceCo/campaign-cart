@@ -1,4 +1,4 @@
-import { cents, currency, ecommerce } from '../analytics/ecommerce';
+import { currency, ecommerce, valueOf } from '../analytics/ecommerce';
 import { withoutQuery } from '../engine/attribution';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
@@ -77,7 +77,7 @@ const legacyCart = (engine: Engine) => {
     currency: currency(engine),
     items,
     total_items: items.reduce((n, i) => n + i.quantity, 0),
-    total_value: cents(items.reduce((n, i) => n + i.price * i.quantity, 0)),
+    total_value: valueOf(items),
   };
 };
 
