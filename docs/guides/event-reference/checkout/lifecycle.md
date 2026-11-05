@@ -80,33 +80,92 @@ wallet's details:
 
 ## User
 
-![User lifecycle: no user yet, saving, created or not saved, with user.created and user.updated](user-lifecycle.svg)
+![User lifecycle: no user yet, saving, created and not saved, with the events each step sends](user-lifecycle.svg)
 
-`user.created` fires once per checkout, after `checkout.started`, when the checkout saves the
-shopper as a lead: a first and last name of at least two characters each and a valid
-email by default, or what `data-next-lead` asks for (see Lead capture in
-[data-next-lead](../../attribute-reference/checkout/data-next-lead.md)), checked each time the shopper leaves a field they
-changed, or picks an option. A failed save sends `sdk.error` (`user.save`) and is tried again on
-the next field change. `user.updated` fires when the details change and are still valid; an
-invalid change sends nothing. The Open Cart keeps the first details; the order takes the latest.
-`language`, `ip` and `user_agent` are what the store recorded with the Open Cart.
+The lifecycle is the lead's: one shopper on one checkout, saved with an Open Cart. The Checkout's
+`user` is the User from `user.created` on.
+
+| State         | Means                                                                     |
+| ------------- | ------------------------------------------------------------------------- |
+| `no user yet` | The checkout has not started, or what `data-next-lead` asks for is not in |
+| `saving`      | The Open Cart is being created                                            |
+| `not saved`   | The Open Cart was not created; the details are kept                       |
+| `created`     | The Open Cart exists; the Checkout has the `user`                         |
+
+| From          | What happens                                                                                                         | To          | Events, in order                               |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------- |
+| `no user yet` | What `data-next-lead` asks for is in: when the checkout starts, or when the shopper then leaves a field they changed | `saving`    | none; the Open Cart is sent                    |
+| `saving`      | The store creates the Open Cart                                                                                      | `created`   | `user.created`                                 |
+| `saving`      | The Open Cart is not created: refused, or the request fails                                                          | `not saved` | `sdk.error` (`user.save`)                      |
+| `not saved`   | The shopper leaves the next field they changed, with the details still in                                            | `saving`    | none; the Open Cart is sent again              |
+| `created`     | The details change and are still what `data-next-lead` asks for                                                      | `created`   | `user.updated`                                 |
+| `created`     | The details change and are not                                                                                       | `created`   | none; the Checkout keeps the last valid `user` |
+
+- What `data-next-lead` asks for: by default a first and last name of at least two characters each
+  and a valid email; see [data-next-lead](../../attribute-reference/checkout/data-next-lead.md).
+  With `off`, nothing is saved and no `user.*` comes.
+- Checked each time the shopper leaves a field they changed, or picks an option. Once per checkout:
+  a step, a reload or a return from the gateway keeps the saved user; a paid order starts over.
+- The details are `first_name`, `last_name`, `email` when valid, `phone` once the address service
+  read it, and `accepts_marketing`. The Open Cart keeps the first ones; the order takes the latest.
+- `language`, `ip` and `user_agent` are what the store recorded with the Open Cart, else the
+  campaign's language and the browser's user agent, with no `ip`; the same on every `user.updated`.
 
 ## Address
 
-![Address lifecycle: loading rules, incomplete, suggesting and entered, with address.autofilled, address.entered and address.updated](address-lifecycle.svg)
+![Address lifecycle: loading rules, incomplete, suggesting and entered, with the events each step sends](address-lifecycle.svg)
 
-When the form is bound the country list loads, then the rules of the country it picks: the
-field's value, `?country`, the shopper's location, else the US. A country change loads its rules
-again. Typing at least two words in line 1 shows suggestions after a moment; picking one fills
-line 1, the city, the postcode, the country and the state, and sends `address.autofilled` with the
-fields it filled.
+The lifecycle is one address `type`'s on one checkout: `shipping`, and `billing` while it is
+separate from shipping. The Checkout's `shipping_address` and `billing_address` are the Address
+from `address.entered` on.
 
-`address.entered` fires once per `type` per checkout, when that address is valid: every field its country requires passes its check, and so does each
-optional field the shopper filled. Addresses are checked once the checkout is open on the page:
-the form is bound and the cart has lines. `address.updated` fires when the address changes, the
-phone included, and is still valid; an invalid change sends nothing and the last valid address is
-kept. A `billing` address is sent only while billing is separate from shipping;
-`billing_same_as_shipping` on the Checkout says which.
+| State           | Means                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| `loading rules` | The country list, then the country's fields, are loading; a `data-next-address` shows nothing |
+| `incomplete`    | A field the country requires is missing, or a filled field fails its check                    |
+| `suggesting`    | A list of addresses is open under line 1                                                      |
+| `entered`       | Every field passes its check; the Checkout has the Address                                    |
+
+| From            | What happens                                                                                | To              | Events, in order                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| none            | The form is bound                                                                           | `loading rules` | none                                                                                                                           |
+| `loading rules` | The country list and the country's rules load                                               | `incomplete`    | none                                                                                                                           |
+| `loading rules` | The country list, or the country's rules, cannot load                                       | `incomplete`    | `sdk.error` (`address.load_rules`); the campaign's countries for the list, a built-in layout and simpler checks for the fields |
+| `incomplete`    | The shopper picks another country                                                           | `loading rules` | none; the state is emptied and the phone read again, then the address is checked again                                         |
+| `incomplete`    | Two words are in line 1, with `addressConfig.enableAutocomplete`                            | `suggesting`    | none; `sdk.error` (`address.suggest`) and no list when the lookup fails                                                        |
+| `suggesting`    | The list closes: Escape, a click elsewhere, or line 1 back under two words                  | `incomplete`    | none                                                                                                                           |
+| `suggesting`    | The shopper picks a suggestion                                                              | `incomplete`    | `address.autofilled` with the fields it fills; then line 1, the city, the postcode, the country and the state change           |
+| `incomplete`    | The shopper leaves a field they changed and every field is valid, once the checkout is open | `entered`       | `address.entered`                                                                                                              |
+| `entered`       | The address changes, the name and the phone included, and is still valid                    | `entered`       | `address.updated`                                                                                                              |
+| `entered`       | The address changes and is not                                                              | `entered`       | none; the Checkout keeps the last valid Address                                                                                |
+
+### The country
+
+- The list is the campaign's shipping countries, narrowed by the 0.4.x `addressConfig.countries`.
+- The country at load: the field's value; else the first listed of `?country`, the shopper's
+  location and `US`; else the first in the list.
+- A `billing` address is sent only while billing is separate from shipping;
+  `billing_same_as_shipping` on the Checkout says which. Unticking it starts the billing address
+  with the shipping country.
+
+### Suggestions
+
+- Only with the 0.4.x `nextConfig.addressConfig.enableAutocomplete`; the lookup runs 300 ms after
+  the second word, or on focus, for the country picked (else `US`).
+- Picking one fills the fields through the form, so `address.entered` or `address.updated` follows
+  once the address is valid.
+
+### The checks
+
+- Addresses are checked once the checkout is open on the page: the form is bound and the cart has
+  lines. Once per `type` per checkout: a step, a reload or a return from the gateway keeps the
+  saved address; a paid order starts over.
+- Leaving a field checks what is in it: its format, the phone through the address service, the
+  postcode with the state (a doubt is a `warning`). Blanks come up at a submit.
+- Valid: every field the country requires is filled and passes its check, and so does each optional
+  field the shopper filled, the phone included; the email is not part of it.
+- On one field: the phone or postcode read first, then `address.*`, then `user.*`. At
+  `checkout.started` too, `address.entered` comes before `user.created`.
 
 ## Errors
 

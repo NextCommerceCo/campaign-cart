@@ -270,8 +270,18 @@ const LIFECYCLES = {
     rowYs: [120, 270, 430],
     height: 638,
     boxes: [
-      { row: 0, title: 'idle', sub: ['the shopper fills the form', code('checkout.started'), 'once per checkout'], tone: 'active' },
-      { row: 1, title: 'placing', sub: ['the cart is frozen', code('checkout.submitted'), 'once the checks pass'], tone: 'waiting' },
+      {
+        row: 0,
+        title: 'idle',
+        sub: ['the shopper fills the form', code('checkout.started'), 'once per checkout'],
+        tone: 'active',
+      },
+      {
+        row: 1,
+        title: 'placing',
+        sub: ['the cart is frozen', code('checkout.submitted'), 'once the checks pass'],
+        tone: 'waiting',
+      },
       { row: 2, title: 'placed', sub: ['the page redirects'], tone: 'success' },
     ],
     parts: () => {
@@ -350,7 +360,7 @@ const LIFECYCLES = {
   },
   'checkout/address': {
     title: 'Address lifecycle',
-    desc: "For each type, shipping and billing. When the form is bound the country list and the chosen country's rules load (sdk.error if they cannot: the campaign's countries and simpler checks). A country change loads its rules again. Typing at least two words in line 1 shows suggestions; picking one fills the address fields and sends address.autofilled. Fields are checked when the shopper leaves one they changed. Once the checkout is open, an address whose every required field is valid, and each optional field filled, sends address.entered, once per type per checkout. A later valid change, the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept. Billing counts only while separate from shipping.",
+    desc: "For each type, shipping and billing while it is separate from shipping. When the form is bound the country list and the chosen country's rules load (sdk.error if they cannot: the campaign's countries, a built-in layout and simpler checks). A country change loads its rules again. With addressConfig.enableAutocomplete, two words in line 1 show suggestions; picking one sends address.autofilled and fills the fields. Fields are checked when the shopper leaves one they changed. Once the checkout is open, an address whose every required field is valid, and each optional field filled, sends address.entered, once per type per checkout. A later valid change, the name and the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept.",
     rows: 3,
     rowYs: [70, 250, 430],
     boxes: [
@@ -379,7 +389,6 @@ const LIFECYCLES = {
         arrow(`M${SIDE.x} ${y + 44} H${MAIN.x + MAIN.w + 6}`, { dashed: true }),
         label(SIDE.cx, y + 82, 'picked: fields filled', { anchor: 'middle', size: 12 }),
         label(SIDE.cx, y + 100, 'address.autofilled', { anchor: 'middle', code: true }),
-        `<text x="${SIDE.cx}" y="${y + 116}" text-anchor="middle" style="fill: ${C.waiting}; font-size: 11px">proposed, not sent today</text>`,
         down(1, 2, 'every field is valid'),
         label(MAIN.cx + 14, 386, 'once the checkout is open', { size: 12 }),
         loopRight(2, 'changes, still valid', ['address.updated']),
@@ -437,94 +446,140 @@ const LIFECYCLES = {
   },
   orders: {
     title: 'Order lifecycle',
-    desc: 'An order paid at once on the checkout sends order.created and order.paid there, and the shopper is redirected to the next page; an order paid at a gateway comes back to the next page. A page whose URL has ref_id or order_ref_id loads the order: order.loaded, then order.paid the first time this browser has it paid (after a gateway). If it cannot load, sdk.error. An upsell added to the order sends upsell.accepted, then order.updated. Each later page loads the order again and sends order.loaded.',
-    rows: 3,
-    rowYs: [110, 290, 450],
+    desc: "On each page after the checkout. idle: the page has no order yet; the checkout back from the gateway unpaid sends payment.failed. A URL with ref_id or order_ref_id loads the order: ready at once from a copy this tab loaded in the last 15 minutes, else loading from the API, 10 seconds at most, and failed (sdk.error) if it cannot. ready sends order.loaded, then order.paid the first time this browser has the order paid, then checkout.completed when this tab's checkout sent it to the gateway. Accepting an upsell moves to accepting: added, upsell.accepted then order.updated, back in ready; not added, back in ready without an order event. The next page has ref_id in its URL and loads the order again.",
+    rows: 4,
+    rowYs: [124, 274, 424, 624],
     boxes: [
-      { row: 0, title: 'loading', sub: ['ref_id in the URL'] },
+      { row: 0, title: 'idle', sub: ['the page has no order yet'] },
+      { row: 1, title: 'loading', sub: ['the API, 10 seconds at most'], tone: 'waiting' },
       {
-        row: 1,
-        title: 'loaded',
-        sub: [code('order.loaded'), code('order.paid'), 'once, after a gateway'],
+        row: 2,
+        title: 'ready',
+        sub: [
+          code('order.loaded'),
+          code('order.paid'),
+          'once per order in this browser',
+          code('checkout.completed'),
+          'after a gateway',
+        ],
         tone: 'success',
       },
-      { row: 2, title: 'updated', sub: [code('order.updated')] },
-      { col: 'side', row: 0, title: 'not loaded', sub: [code('sdk.error')], tone: 'failure' },
+      { row: 3, title: 'accepting', sub: ['the upsell is sent'], tone: 'active' },
+      { col: 'side', row: 1, title: 'failed', sub: [code('sdk.error')], tone: 'failure' },
     ],
     parts: () => {
       const right = MAIN.x + MAIN.w;
       const gap = (right + SIDE.x) / 2;
+      const idle = rowY(0);
+      const ready = rowY(2);
+      const accepting = rowY(3);
+      const tall = H + 60;
       return [
         (() => {
-          const e = entry(8, 4, 116, ['the checkout']);
+          const e = entry(MAIN.cx - 115, 8, 230, [
+            'a page loads: the next page',
+            'after the checkout or the gateway,',
+            'or the checkout, back unpaid',
+          ]);
           return [
             ...e.svg,
-            arrow(`M60 ${e.bottom} V${rowY(0) + 20} H${MAIN.x - 6}`),
-            label(72, 46, 'paid at once', { size: 12 }),
-            label(72, 63, 'order.created', { code: true }),
-            label(72, 79, 'order.paid', { code: true }),
-            label(72, 96, 'redirected', { size: 12 }),
+            arrow(`M${MAIN.cx} ${e.bottom} V${idle - 6}`),
+            label(MAIN.cx + 14, 84, 'back unpaid', { size: 12 }),
+            label(MAIN.cx + 14, 104, 'payment.failed', { code: true }),
           ];
         })(),
-        (() => {
-          const e = entry(448, 4, 116, ['the gateway']);
-          return [
-            ...e.svg,
-            arrow(`M500 ${e.bottom} V${rowY(0) + 14} H${right + 6}`),
-            label(512, 50, 'paid:', { size: 12 }),
-            label(512, 66, 'redirected to', { size: 12 }),
-            label(512, 82, 'the next page', { size: 12 }),
-          ];
-        })(),
+        down(0, 1, 'no copy from the last 15 minutes'),
         [
-          arrow(`M${right} ${rowY(0) + 44} H${SIDE.x - 6}`, { dashed: true }),
-          label(gap, rowY(0) + 36, 'fails', { anchor: 'middle', size: 12 }),
+          arrow(`M${MAIN.x} ${idle + 29} H170 V${ready + 24} H${MAIN.x - 6}`),
+          label(158, 290, 'a copy from this tab,', { anchor: 'end' }),
+          label(158, 308, 'under 15 minutes old', { anchor: 'end' }),
         ],
-        down(0, 1, 'the order arrives', [], { boxH: H }),
-        down(1, 2, 'an upsell is added', ['upsell.accepted'], { boxH: H + 30 }),
+        toSide(1, 'cannot load', { dashed: true }),
+        down(1, 2, 'the order arrives'),
         [
-          arrow(`M${MAIN.x} ${rowY(2) + 29} H170 V${rowY(0) + 42} H${MAIN.x - 6}`, { dashed: true }),
-          `<path d="M${MAIN.x} ${rowY(1) + 36} H170" style="fill: none; stroke: ${C.muted}; stroke-width: 1.5; stroke-dasharray: 5 4" />`,
-          label(158, rowY(1) - 52, 'each later page', { anchor: 'end' }),
+          arrow(`M${right} ${ready + 29} H${SIDE.x - 6}`),
+          label(gap, ready + 21, 'moves on', { anchor: 'middle', size: 12 }),
+          ...entry(SIDE.x, ready + 8, SIDE.w, ['the next page:', 'ref_id in the URL']).svg,
+        ],
+        down(2, 3, 'accept an upsell', [], { boxH: tall }),
+        [
+          arrow(`M${MAIN.x} ${accepting + 29} H150 V${ready + 60} H${MAIN.x - 6}`, { dashed: true }),
+          label(138, 520, 'added', { anchor: 'end' }),
+          label(138, 537, 'upsell.accepted', { anchor: 'end', code: true }),
+          label(138, 554, 'order.updated', { anchor: 'end', code: true }),
+          label(138, 580, 'not added', { anchor: 'end' }),
+          label(138, 597, 'upsell lifecycle', { anchor: 'end' }),
         ],
       ];
     },
   },
   upsells: {
     title: 'Upsell lifecycle',
-    desc: 'An offer is shown when the order takes upsells; upsell.viewed comes once per offer, when half of it is on screen. Accepting sends it to the order. Added, upsell.accepted then order.updated, and the shopper is redirected to the next page. Declined, payment.failed; refused, sdk.error then upsell.failed; either way the shopper is redirected on after a second. With no answer (a timeout or a server error), the order is loaded again: if it has the offer, it was accepted; if not, it failed. Skipping sends upsell.skipped and moves on.',
+    desc: 'On one upsell page, opened with the order’s ref_id. The page loads the order (order.loaded): an order that takes upsells shows the offer, next-available, and upsell.viewed comes once per offer, when half of it is on screen; one that does not, or cannot load (sdk.error), keeps it next-hidden. Accepting sends the offer to the order: next-processing. Added, next-success (upsell.accepted, then order.updated) and the next page opens after a tenth of a second. Declined (upsell.declined, payment.failed), refused, or no answer and the order loaded again does not have it (sdk.error, upsell.failed): next-error, and the next page opens after a second. With no answer and the order loaded again having the offer, it was added. Skipping is next-skipped (upsell.skipped) and opens the next page at once. The next page loads the order again.',
     rows: 4,
-    rowYs: [16, 196, 330, 480],
+    rowYs: [110, 290, 424, 574],
+    height: 770,
     boxes: [
-      { row: 0, title: 'shown', sub: [code('upsell.viewed'), 'once half of it is on screen'] },
-      { row: 1, title: 'adding', sub: ['the offer is sent'], tone: 'active' },
-      {
-        row: 3,
-        title: 'accepted',
-        sub: [code('upsell.accepted'), code('order.updated')],
-        tone: 'success',
-      },
-      { col: 'side', row: 0, title: 'skipped', sub: [code('upsell.skipped')] },
-      { col: 'side', row: 2, title: 'failed', sub: ['redirected after a second'], tone: 'failure' },
+      { row: 0, title: 'next-available', sub: [code('upsell.viewed'), 'once half of it is on screen'], tone: 'active' },
+      { row: 1, title: 'next-processing', sub: ['the offer is sent'], tone: 'waiting' },
+      { row: 3, title: 'next-success', sub: [code('upsell.accepted'), code('order.updated')], tone: 'success' },
+      { col: 'side', row: 0, title: 'next-hidden', sub: ['the offer stays hidden'] },
+      { col: 'side', row: 1, title: 'next-skipped', sub: [code('upsell.skipped')] },
+      { col: 'side', row: 2, title: 'next-error', sub: ['not added'], tone: 'failure' },
     ],
     parts: () => {
-      const fork = rowY(2) + 29;
+      const right = MAIN.x + MAIN.w;
+      const sideRight = SIDE.x + SIDE.w;
+      const available = rowY(0);
+      const processing = rowY(1);
+      const error = rowY(2);
+      const success = rowY(3);
+      const fork = error + 29;
       const gap = (MAIN.cx + 12 + SIDE.x) / 2;
+      const tall = H + 15;
+      const next = 712;
       return [
-        down(0, 1, 'accept'),
-        toSide(0, 'skip'),
-        [arrow(`M${MAIN.cx} ${rowY(1) + H} V${fork - 18}`), choice(MAIN.cx, fork)],
+        (() => {
+          const e = entry(MAIN.cx - 115, 8, 230, ['the page loads the order']);
+          return [
+            ...e.svg,
+            arrow(`M${MAIN.cx} ${e.bottom} V${available - 6}`),
+            label(MAIN.cx - 14, 62, 'takes upsells', { anchor: 'end' }),
+            label(MAIN.cx - 14, 82, 'order.loaded', { anchor: 'end', code: true }),
+            arrow(`M${e.right} ${e.mid} H${SIDE.cx} V${available - 6}`),
+            label(610, 45, 'does not take upsells', { anchor: 'end', size: 12 }),
+            label(610, 61, 'or cannot load', { anchor: 'end', size: 12 }),
+            label(610, 79, 'order.loaded, or sdk.error', { anchor: 'end', code: true }),
+          ];
+        })(),
+        down(0, 1, 'accept', [], { boxH: tall }),
         [
-          arrow(`M${MAIN.cx} ${fork + 12} V${rowY(3) - 6}`),
+          arrow(`M${right} ${available + 40} H490 V${processing + 20} H${SIDE.x - 6}`),
+          label(502, 225, 'skip', { size: 12 }),
+          label(502, 243, 'upsell.skipped', { code: true }),
+        ],
+        [arrow(`M${MAIN.cx} ${processing + H} V${fork - 18}`), choice(MAIN.cx, fork)],
+        [
+          arrow(`M${MAIN.cx} ${fork + 12} V${success - 6}`),
           label(MAIN.cx + 14, fork + 72, 'added, or no answer'),
           label(MAIN.cx + 14, fork + 90, 'and the order has it'),
         ],
         [
           arrow(`M${MAIN.cx + 12} ${fork} H${SIDE.x - 6}`, { dashed: true }),
-          label(gap, fork - 26, 'declined', { anchor: 'middle', size: 12 }),
-          label(gap, fork - 9, 'payment.failed', { anchor: 'middle', code: true }),
+          label(gap, fork - 40, 'declined', { anchor: 'middle', size: 12 }),
+          label(gap, fork - 24, 'upsell.declined', { anchor: 'middle', code: true }),
+          label(gap, fork - 8, 'payment.failed', { anchor: 'middle', code: true }),
           label(gap, fork + 20, 'refused, or not on the order', { anchor: 'middle', size: 12 }),
           label(gap, fork + 37, 'sdk.error, upsell.failed', { anchor: 'middle', code: true }),
+        ],
+        [
+          arrow(`M${MAIN.cx} ${success + tall} V${next - 6}`),
+          label(MAIN.cx + 14, success + tall + 24, 'after a tenth of a second', { size: 12 }),
+          arrow(`M${SIDE.cx} ${error + H} V${next - 6}`),
+          label(SIDE.cx - 12, error + H + 60, 'after a second', { anchor: 'end', size: 12 }),
+          arrow(`M${sideRight} ${processing + 29} H712 V${next + 20} H${sideRight + 6}`),
+          label(sideRight, error + H + 80, 'at once', { anchor: 'end', size: 12 }),
+          ...entry(MAIN.x, next, sideRight - MAIN.x, ['the next page', 'loads the order']).svg,
         ],
       ];
     },
