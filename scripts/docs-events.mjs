@@ -269,7 +269,6 @@ ${JSON.stringify(envelope, null, 2)}
 | Provider | As |
 | --- | --- |
 | [GTM](${PROVIDERS}/gtm) | \`${example.dataLayer.event}\` on \`dataLayer\` and \`NextDataLayer\`, below |
-| [NEXT campaign script](${PROVIDERS}/next-campaign) | ${event.name === 'page_view' ? '`page_view` with `{ title, url }`' : 'Not sent'} |
 | [GA4](${PROVIDERS}/ga4), from a listener | \`${event.name}\`, ${GA4_KIND[ga4Of(event.name)]} |
 | [Meta pixel](${PROVIDERS}/meta), from a listener | ${meta ? `\`${meta}\`` : 'Not sent'} |
 
