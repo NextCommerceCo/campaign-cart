@@ -7,7 +7,13 @@ import type { Snapshot } from '../../../src/engine/events/sdk';
 import { makeEngine } from '../../fixtures/engine';
 
 const READY: Snapshot = { cart: { lines: [], coupons: [] }, selectors: [] };
-const ANALYTICS: AnalyticsEvent = { name: 'page_view', id: 'a1', time: '', params: {}, context: {} as EventContext };
+const ANALYTICS: AnalyticsEvent = {
+  name: 'page_view',
+  id: 'a1',
+  time: '',
+  params: { page_location: '', page_title: '', page_referrer: '' },
+  context: {} as EventContext,
+};
 
 const replayed = (engine: Engine, name: EventName | '*') => {
   const seen: string[] = [];

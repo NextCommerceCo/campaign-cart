@@ -23,7 +23,6 @@ const SHRINKING: Record<string, number> = {
   'checkout/state/checkout.ts': 480,
   'debug/index.ts': 437,
   'debug/cart.ts': 394,
-  'analytics/index.ts': 352,
   'order/state.ts': 346,
   'compat/checkout.ts': 339,
   'engine/engine.ts': 320,
