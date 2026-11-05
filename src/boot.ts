@@ -284,7 +284,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     const binding = [
       checkoutForm &&
         checkoutChunk!.then((m) =>
-          m.bindCheckout(engine, checkoutForm, { legacyCheckoutStarted: legacy.checkoutStarted }),
+          m.bindCheckout(engine, checkoutForm, { legacyCheckoutStarted: legacy.checkoutStarted, query }),
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),

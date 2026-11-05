@@ -1,10 +1,10 @@
 import type { CheckoutActions } from '../state/checkout';
 import { paymentCode } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
-import { FIELD_ATTRS } from '../../compat/checkout';
 import { showField } from '../form/errors';
-import { option } from '../form/fields';
+import { fieldControl, FIELDS, rawName } from '../form/fields';
 import { cardText, label } from '../form/texts';
+import { bindExpiry } from './expiry';
 
 declare const __VERSION__: string;
 
@@ -27,20 +27,6 @@ declare global {
 const SCRIPT = 'https://payments.29next.com/js/v1/payment.js';
 const CREDENTIALS_TTL = 60 * 60 * 1000;
 const TOKENIZE_TIMEOUT = 30_000;
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 const FIELD_STYLE = {
   color: '#212529',
   fontSize: '.925rem',
@@ -49,9 +35,6 @@ const FIELD_STYLE = {
   height: '100%',
   fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif',
 };
-
-const control = <T extends Element = HTMLElement>(root: ParentNode, ...names: string[]) =>
-  root.querySelector<T>(names.flatMap((n) => FIELD_ATTRS.map((a) => `[${a}="${n}"]`)).join(', '));
 
 let script: Promise<void> | undefined;
 
@@ -74,18 +57,6 @@ function loadScript(envKey: string, fresh: boolean): Promise<void> {
   return script;
 }
 
-function fillExpiry(month: HTMLSelectElement | null, year: HTMLSelectElement | null): void {
-  if (month && month.options.length <= 1) {
-    month.append(
-      ...MONTHS.map((m, i) => option(`(${String(i + 1).padStart(2, '0')}) ${m}`, String(i + 1).padStart(2, '0'))),
-    );
-  }
-  if (year && year.options.length <= 1) {
-    const now = new Date().getFullYear();
-    year.append(...Array.from({ length: 20 }, (_, i) => option(String(now + i), String(now + i))));
-  }
-}
-
 export interface Card {
   tokenize(): Promise<string>;
   check(): void;
@@ -93,10 +64,8 @@ export interface Card {
 }
 
 export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Card | undefined {
-  const number = control(form, 'cc-number');
-  const cvv = control(form, 'cvv');
-  const month = control<HTMLSelectElement>(form, 'exp-month', 'cc-month');
-  const year = control<HTMLSelectElement>(form, 'exp-year', 'cc-year');
+  const number = fieldControl(form, 'cc-number');
+  const cvv = fieldControl(form, 'cvv');
   const campaign = engine.getState().campaign;
   const envKey = campaign?.payment_env_key;
   if (!number || !cvv || !campaign || !envKey) return undefined;
@@ -109,7 +78,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     el.setAttribute('data-spreedly', field);
     el.classList.add('spreedly-field-transition');
   }
-  fillExpiry(month, year);
+  const expiry = bindExpiry(form);
 
   const errors = new Map<string, string>();
   const valid = { number: false, cvv: false };
@@ -130,16 +99,11 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
       el.classList.toggle('next-focused', focused[field]);
       el.classList.toggle('has-focus', focused[field]);
     }
-    for (const [el, field] of [
-      [month, 'month'],
-      [year, 'year'],
-    ] as const) {
-      if (el) showField(el, field, errors.has(field) ? 'error' : 'neutral', errors.get(field));
-    }
+    expiry.render(errors);
   };
 
   const ready = () => {
-    if (valid.number && valid.cvv && month?.value && year?.value) checkout.paymentReady();
+    if (valid.number && valid.cvv && expiry.month() && expiry.year()) checkout.paymentReady();
   };
 
   const settle = (token?: string, error?: string) => {
@@ -206,22 +170,12 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && loadedAt && stale()) void load(true).catch(() => {});
   });
-  for (const el of [month, year]) {
-    el?.addEventListener('change', () => {
-      errors.delete(el === month ? 'month' : 'year');
-      ready();
-      render();
-    });
-  }
-
-  const checkExpiry = () => {
-    const now = new Date();
-    if (!month?.value) errors.set('month', cardText('month'));
-    if (!year?.value) errors.set('year', cardText('year'));
-    if (month?.value && Number(year?.value) === now.getFullYear() && Number(month.value) < now.getMonth() + 1) {
-      errors.set('month', cardText('expired'));
-    }
-  };
+  expiry.onChange((cleared) => {
+    cleared.forEach((key) => errors.delete(key));
+    ready();
+    render();
+  });
+  const checkExpiry = () => expiry.check(errors);
 
   return {
     render,
@@ -250,8 +204,8 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
           {
             full_name: `${names.first_name} ${names.last_name}`.trim(),
             ...names,
-            month: month!.value,
-            year: year!.value,
+            month: expiry.month(),
+            year: expiry.year(),
           },
           {
             metadata: {
@@ -267,10 +221,10 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   };
 }
 
-const RADIOS = ['input[name="payment_method"]', ...FIELD_ATTRS.map((a) => `[${a}="payment-method"]`)].join(', ');
-
 export function bindPayment(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): () => void {
-  const radios = [...form.querySelectorAll<HTMLInputElement>(RADIOS)].filter((r) => r.type === 'radio');
+  const radios = [...form.querySelectorAll<HTMLInputElement>(`input[name="payment_method"], ${FIELDS}`)].filter(
+    (r) => r.type === 'radio' && (r.name === 'payment_method' || rawName(r) === 'payment-method'),
+  );
   const panels = [...form.querySelectorAll<HTMLElement>('[data-next-payment-method]')];
   const offered = engine.getState().campaign?.available_payment_methods?.map((m) => paymentCode(m.code));
   const codeOf = (el: Element, attr: string) => paymentCode(el.getAttribute(attr) ?? '');
@@ -284,7 +238,8 @@ export function bindPayment(engine: Engine, checkout: CheckoutActions, form: HTM
     }
   }
 
-  const usable = (radio: HTMLInputElement) => !radio.closest<HTMLElement>('[data-next-payment-method].next-hidden');
+  const usable = (radio: HTMLInputElement) =>
+    !radio.hidden && !radio.closest<HTMLElement>('[data-next-payment-method].next-hidden');
   const saved = engine.getState().checkout?.paymentMethod;
   const initial =
     radios.find((r) => usable(r) && paymentCode(r.value) === saved) ??

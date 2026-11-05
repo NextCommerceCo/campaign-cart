@@ -1,5 +1,5 @@
 import type { CheckoutError } from '../../engine/types';
-import type { CountryRules } from '../state/types';
+import type { CheckoutState, CountryRules } from '../state/types';
 
 const LABELS: Record<string, string> = {
   email: 'Email',
@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   cvv: 'Security code',
   month: 'Expiration month',
   year: 'Expiration year',
+  expiry: 'Expiration date',
 };
 
 const FIELD: Record<string, string> = {
@@ -33,6 +34,7 @@ const CARD: Record<string, string> = {
   cvv: 'Enter a valid security code',
   month: 'Select an expiry month',
   year: 'Select an expiry year',
+  expiry: 'Enter the expiry date as MM / YY',
   expired: 'This card has expired. Check the expiry date',
 };
 
@@ -68,6 +70,23 @@ export function fieldText(name: string, error: CheckoutError, rules?: CountryRul
 export function formText(error: CheckoutError, fill: Record<string, string> = {}): string {
   const text = error.message ?? FORM[error.code] ?? FORM.failed!;
   return Object.entries(fill).reduce((t, [k, v]) => t.replace(`{${k}}`, v), text);
+}
+
+/** The `data-next-field` key of a field: `phone_number` is `phone`. */
+export const v2Key = (name: string) => name.replace(/phone_number$/, 'phone');
+
+const rulesOf = (state: CheckoutState, name: string) =>
+  state.rules[(name.startsWith('billing_') ? state.fields.billing_country : state.fields.country) ?? ''];
+
+/** `checkout.errors` as a page reads it: each field's message under its name and key, and `payment`, the error box's. */
+export function errorTexts(state: CheckoutState, payment: string): Record<string, string> {
+  const texts: Record<string, string> = {};
+  for (const [name, error] of Object.entries(state.errors)) {
+    if (name === 'form') continue;
+    texts[name] = texts[v2Key(name)] = fieldText(name, error, rulesOf(state, name));
+  }
+  if (payment) texts.payment = payment;
+  return texts;
 }
 
 export const cardText = (problem: string) => CARD[problem]!;

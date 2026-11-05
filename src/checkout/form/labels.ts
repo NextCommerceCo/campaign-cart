@@ -1,4 +1,4 @@
-import { FIELD_ATTRS } from '../../compat/checkout';
+import { FIELD_ATTRS } from './fields';
 
 type Field = HTMLInputElement | HTMLSelectElement;
 

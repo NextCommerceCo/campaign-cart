@@ -7,7 +7,7 @@ import { reformat } from '../form/reformat';
 
 const WRAPPER =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';
-const BUILT = '[data-next-address]';
+const BUILT = '[data-next-address-field]';
 const SIGNIFICANT = /[\p{L}\p{N}]/u;
 const INPUT_ATTRS = { max_length: 'maxlength', input_mode: 'inputmode', auto_capitalize: 'autocapitalize' } as const;
 

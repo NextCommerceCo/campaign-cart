@@ -10,19 +10,26 @@ export function shown(el: Element): boolean {
   return true;
 }
 
-export function showField(field: HTMLElement, name: string, state: 'error' | 'valid' | 'neutral', text = ''): void {
+export function showField(
+  field: HTMLElement,
+  name: string,
+  state: 'error' | 'valid' | 'neutral',
+  text = '',
+  inline = true,
+): void {
   const wrapper = wrapperOf(field);
   field.classList.toggle('has-error', state === 'error');
   field.classList.toggle('next-error-field', state === 'error');
   field.classList.toggle('no-error', state === 'valid');
   wrapper?.classList.toggle('addErrorIcon', state === 'error');
   wrapper?.classList.toggle('addTick', state === 'valid');
+  if (field.hasAttribute('data-next-field')) field.toggleAttribute('data-next-invalid', state === 'error');
   if (state === 'error') field.setAttribute('aria-invalid', 'true');
   else field.removeAttribute('aria-invalid');
 
   const host = field.closest('.form-group') ?? wrapper;
   let label = host?.querySelector<HTMLElement>(`.next-error-label[data-next-error-for="${name}"]`);
-  if (state !== 'error') return label?.remove();
+  if (state !== 'error' || !inline) return label?.remove();
   if (!label && host) {
     label = Object.assign(document.createElement('div'), { className: 'next-error-label' });
     label.setAttribute('data-next-error-for', name);

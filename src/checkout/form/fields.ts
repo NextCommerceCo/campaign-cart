@@ -1,9 +1,9 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
 import type { CheckoutState } from '../state/types';
-import { FIELD_ATTRS, LEGACY_FIELDS } from '../../compat/checkout';
+import { LEGACY_FIELD_ATTRS, LEGACY_FIELDS } from '../../compat/checkout';
 import { showField } from './errors';
-import { fieldText } from './texts';
+import { fieldText, v2Key } from './texts';
 
 export type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 export type Fields = Map<string, Control>;
@@ -11,9 +11,48 @@ export type Fields = Map<string, Control>;
 export const option = (text: string, value: string) =>
   Object.assign(document.createElement('option'), { textContent: text, value });
 
-const NOT_ADDRESS = ['cc-number', 'cvv', 'exp-month', 'exp-year', 'cc-month', 'cc-year', 'payment-method'];
+export const FIELD_ATTR = 'data-next-field';
+export const FIELD_ATTRS = [FIELD_ATTR, ...LEGACY_FIELD_ATTRS];
+export const FIELDS = FIELD_ATTRS.map((a) => `[${a}]`).join(', ');
 
-export const rawName = (el: Element) => FIELD_ATTRS.map((a) => el.getAttribute(a)).find(Boolean) ?? '';
+const NOT_ADDRESS = [
+  'cc-number',
+  'cvv',
+  'exp-month',
+  'exp-year',
+  'cc-month',
+  'cc-year',
+  'cc-expiry',
+  'payment-method',
+  'use-shipping-address',
+];
+
+const V2_NAMES: Record<string, string> = {
+  'card.number': 'cc-number',
+  'card.cvv': 'cvv',
+  'card.expiry': 'cc-expiry',
+  payment_method: 'payment-method',
+  billing_same_as_shipping: 'use-shipping-address',
+};
+
+const ADDRESS_KEYS = ['first_name', 'last_name', 'phone', 'country', 'line1', 'line2', 'city', 'state', 'postcode'];
+
+/** The legacy name a `data-next-field` key stands for; address keys inside `[data-next-address="billing"]` are billing fields. */
+function v2Name(el: Element, key: string): string {
+  if (V2_NAMES[key]) return V2_NAMES[key];
+  const billing = el.closest('[data-next-address]')?.getAttribute('data-next-address') === 'billing';
+  return billing && ADDRESS_KEYS.includes(key) ? `billing-${key}` : key;
+}
+
+export function rawName(el: Element): string {
+  const key = el.getAttribute(FIELD_ATTR);
+  if (key) return v2Name(el, key);
+  return LEGACY_FIELD_ATTRS.map((a) => el.getAttribute(a)).find(Boolean) ?? '';
+}
+
+/** The first field in `root` whose legacy name is one of `names`. */
+export const fieldControl = <T extends Element = HTMLElement>(root: ParentNode, ...names: string[]) =>
+  [...root.querySelectorAll<T>(FIELDS)].find((el) => names.includes(rawName(el))) ?? null;
 
 export function fieldName(el: Element): string | undefined {
   const raw = rawName(el);
@@ -28,7 +67,7 @@ const isControl = (el: Element): el is Control =>
 
 export function scanFields(form: HTMLFormElement, fields: Fields = new Map()): Fields {
   fields.clear();
-  form.querySelectorAll(FIELD_ATTRS.map((a) => `[${a}]`).join(', ')).forEach((el) => {
+  form.querySelectorAll(FIELDS).forEach((el) => {
     const name = fieldName(el);
     if (name && isControl(el) && !fields.has(name)) fields.set(name, el);
   });
@@ -63,6 +102,12 @@ export function bindFields(
   form: HTMLFormElement,
   fields: Fields,
 ): () => void {
+  const placed = new Set(
+    [...document.querySelectorAll('[data-next-query^="checkout.errors."]')].map((el) =>
+      el.getAttribute('data-next-query')!.slice('checkout.errors.'.length),
+    ),
+  );
+  const inline = (name: string) => !placed.has(name) && !placed.has(v2Key(name));
   const saved = engine.getState().checkout?.fields ?? {};
   const left = new Set(Object.keys(saved).filter((name) => saved[name]?.trim()));
   const listen = (type: string, fn: (name: string, el: Control) => void) =>
@@ -98,7 +143,7 @@ export function bindFields(
       const error = state.errors[name];
       const rules =
         state.rules[(name.startsWith('billing_') ? state.fields.billing_country : state.fields.country) ?? ''];
-      if (error) showField(el, name, 'error', fieldText(name, error, rules));
+      if (error) showField(el, name, 'error', fieldText(name, error, rules), inline(name));
       else showField(el, name, left.has(name) && value?.trim() ? 'valid' : 'neutral');
     }
   };
