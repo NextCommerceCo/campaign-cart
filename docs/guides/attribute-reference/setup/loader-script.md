@@ -32,7 +32,7 @@ SDK, called with `window.next` once the page is ready (see the
 
 | On       | Set                                                                                                                                                                            |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `<html>` | `data-next-ready` once the page shows the campaign's values ([data-next-ready](data-next-ready.md))                                                                            |
+| `<html>` | `data-next-ready` once the page shows the campaign's values ([Page state](page-state.md))                                                                                      |
 | `<html>` | `data-next-error`: `config` (no campaign key), `load` (the SDK code failed to load), `campaign` (the campaign could not be loaded and there was no copy saved in this browser) |
 | `<head>` | A `<link rel="stylesheet">` to `campaign-cart.css`, next to `loader.js`                                                                                                        |
 

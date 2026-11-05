@@ -47,8 +47,8 @@ and watch the panel's state and events while you read.
 - **Page scripts**: `next.on('cart.added', fn)` gets the event with its envelope (`src/boot.ts`).
 - **Analytics**: `src/analytics/carts.ts` turns `cart.calculated` into `product_added_to_cart`
   (one per line) and `cart_updated`, typed by `TrackingMap` (`src/engine/events/analytics.ts`).
-- **0.4.x pages**: `src/compat/legacy/events.ts:39` turns `cart.added` into `cart:item-added`;
-  `next.on` takes 0.4.x names through `src/compat/legacy/registry.ts`.
+- **0.4.x pages**: `src/compat/legacy/events.ts` (the lazy legacy chunk) turns `cart.added` into
+  `cart:item-added`; `next.on` takes 0.4.x names through `src/compat/legacy/registry.ts`.
 - **Debug**: the panel (`src/debug/`) lists the event and the state change.
 
 ## What to read next

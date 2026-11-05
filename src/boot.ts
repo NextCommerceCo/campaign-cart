@@ -6,12 +6,13 @@ import { Engine } from './engine/engine';
 import { envelope, PUBLIC, type SdkEvent } from './engine/events/bus';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
-import type { CartLine } from './engine/cart/types';
 import type { TrackingEvent, TrackingName } from './engine/events/analytics';
 import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
 import type { Campaign } from './engine/types';
+import type { NextActions } from './engine/actions';
+import type { ModelType, Query } from './engine/query';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
 import { legacyEvents } from './compat/legacy/registry';
 import { legacyAnalytics, readLegacyAnalytics, removeLegacyPersonalData } from './compat/legacy/globals';
@@ -20,6 +21,9 @@ declare const __VERSION__: string;
 
 const ORDER_MARKUP =
   '[data-next-upsell], [data-next-order-items], [data-next-display^="order."], [data-next-show^="order."], [data-next-hide^="order."]';
+/** 0.4.x and 0.5 markup the checkout and order chunks bind, beside what `bindAll` binds. */
+const LEGACY_FORMS =
+  '[data-next-checkout-field], [os-checkout-field], [data-next-upsell], [data-next-upsell-action], [data-next-order-items]';
 
 const browserStorage = (get: () => Storage): Storage | null => {
   try {
@@ -61,16 +65,14 @@ export interface NextApi extends LegacyApi {
   context(): EventContext;
   log: Pick<Logger, 'level' | 'entries' | 'stream'>;
   bind(root: ParentNode): void;
-  actions: {
-    addItem(packageId: number, quantity?: number): Promise<void>;
-    removeItem(packageId: number): Promise<void>;
-    setQuantity(packageId: number, quantity: number): Promise<void>;
-    clear(): Promise<void>;
-    applyCoupon(code: string): Promise<boolean>;
-    removeCoupon(code: string): Promise<void>;
-    setShipping(shippingId: number | undefined): Promise<void>;
-    setGroup(id: string, group: { lines: CartLine[]; vouchers?: string[] } | null): Promise<void>;
-  };
+  /** Reads a path of the object model, as `data-next-query` does: `await next.query('cart.total')`. Its code loads on the first call. */
+  query(path: string): Promise<unknown>;
+  /** Calls `fn` with the path's value once its code has loaded, then each time it changes; returns an unsubscribe function. */
+  watch(path: string, fn: (value: unknown) => void): () => void;
+  /** Adds a field the page computes to every object of a type, read like the SDK's own: `next.define('Option', 'per_day', (o) => o.total / 30, { format: 'currency' })`. */
+  define(type: ModelType, name: string, derive: (object: any) => unknown, options?: { format?: string }): void;
+  /** Every action `data-next-action` names, taking one object of the model's field names and resolving to `{ ok, errors }`. */
+  actions: NextActions;
 }
 
 /** @internal */
@@ -134,7 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
 
-  const legacy = legacyEvents(engine);
+  const legacy = legacyEvents(engine, () => import('./compat/legacy'));
   const bindings = bindAll(document, engine);
   const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
   const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
@@ -144,6 +146,26 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     }
   }
 
+  let query: Promise<Query> | undefined;
+  const queried = () => (query ??= import('./engine/query').then((m) => new m.Query(engine)));
+  let attributes: Promise<typeof import('./attributes')> | undefined;
+  /** Every `next.actions` call loads the actions on first use; 0.5's positional calls work there too. */
+  const actions = new Proxy({} as NextActions, {
+    get:
+      (_, name: string) =>
+      (...args: unknown[]) =>
+        (attributes ??= import('./attributes')).then((m) => m.runAction(engine, name, args)),
+  });
+  const V2 =
+    '[data-next-query],[data-next-each],[data-next-for],[data-next-selector],[data-next-option],[data-next-field],[data-next-action]:not([data-next-action=add-to-cart],[data-next-action=select-variants],[data-next-action=checkout])';
+  const v2In = (root: ParentNode) => !!root.querySelector(V2) || (root instanceof Element && root.matches(V2));
+  let v2: Promise<{ bind(root: ParentNode): void }> | undefined;
+  const bindV2 = () =>
+    (v2 ??= Promise.all([(attributes ??= import('./attributes')), queried()]).then(([m, q]) =>
+      m.bindAttributes(document, engine, q, { deferred: bindings.deferred }),
+    ));
+  const legacyPage = bindings.legacy || !v2In(document) || !!document.querySelector(LEGACY_FORMS);
+  if (legacyPage) void legacy.preload();
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
@@ -179,18 +201,17 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     getState: () => engine.getState(),
     context: () => engine.eventContext(),
     log: engine.log,
-    bind: (root) => bindings.bind(root),
-    actions: {
-      addItem: (packageId, quantity) => engine.cart.addItem(packageId, quantity),
-      removeItem: (packageId) => engine.cart.removeItem(packageId),
-      setQuantity: (packageId, quantity) => engine.cart.setQuantity(packageId, quantity),
-      clear: () => engine.cart.clear(),
-      applyCoupon: (code) => engine.cart.applyCoupon(code),
-      removeCoupon: (code) => engine.cart.removeCoupon(code),
-      setShipping: (shippingId) => engine.cart.setShipping(shippingId),
-      setGroup: (id, group) =>
-        engine.cart.setGroup(id, group && { lines: group.lines, vouchers: group.vouchers ?? [] }),
+    bind: (root) => {
+      bindings.bind(root);
+      if (v2 || v2In(root)) void bindV2().then((b) => b.bind(root));
     },
+    query: (path) => queried().then((q) => q.get(path)),
+    watch: (path, fn) => {
+      const off = queried().then((q) => q.watch(path, fn));
+      return () => void off.then((stop) => stop());
+    },
+    define: (...args) => void queried().then((q) => q.define(...args)),
+    actions,
     ...legacyApi(engine),
   };
   (window as unknown as { next: NextApi }).next = next;
@@ -235,13 +256,18 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     }
   };
   engine.on('sdk.ready', () => {
+    const v2Page = v2In(document) || bindings.deferred.size > 0;
     const binding = [
       checkoutForm &&
-        checkoutChunk!.then((m) =>
-          m.bindCheckout(engine, checkoutForm, { legacyCheckoutStarted: legacy.checkoutStarted }),
+        Promise.all([checkoutChunk!, v2Page && queried()]).then(([m, q]) =>
+          m.bindCheckout(engine, checkoutForm, {
+            legacyCheckoutStarted: legacy.checkoutStarted,
+            query: q || undefined,
+          }),
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
+      v2Page && bindV2(),
       bindings.ready,
     ].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);

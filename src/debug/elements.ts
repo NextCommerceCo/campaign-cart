@@ -2,6 +2,7 @@ import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
 import { format, truthy } from '../engine/format';
 import { resolve } from '../engine/values';
+import { replacementFor } from './legacy';
 import { h } from './view';
 
 const PREFIX = 'data-next-';
@@ -11,6 +12,8 @@ export interface Note {
   value: string;
   note?: string;
   bad?: boolean;
+  /** The attributes v2 name an earlier attribute has. */
+  legacy?: string;
 }
 
 export interface Inspected {
@@ -67,7 +70,8 @@ function noteFor(engine: Engine, el: Element, attr: string, value: string): Omit
 export function explain(engine: Engine, el: Element): Note[] {
   return sdkAttrs(el).map((attr) => {
     const value = el.getAttribute(attr) ?? '';
-    return { attr, value, ...noteFor(engine, el, attr, value) };
+    const legacy = replacementFor(attr, value);
+    return { attr, value, ...noteFor(engine, el, attr, value), ...(legacy && { legacy }) };
   });
 }
 
@@ -123,6 +127,7 @@ export function card({ el, notes, bad }: Inspected, box: Box): HTMLElement {
         '=',
         h('span', 's', `"${n.value}"`),
         n.note && h('span', 'note', ` → ${n.note}`),
+        n.legacy && h('span', 'note', ` · legacy, now ${n.legacy}`),
       ),
     ),
   );

@@ -96,7 +96,7 @@ describe('Engine', () => {
   });
   it('shows the checkout and the order a page loaded as their events carry them', async () => {
     const { engine } = makeEngine();
-    expect(engine.snapshot()).toEqual({ cart: { lines: [], coupons: [] }, selectors: [] });
+    expect(engine.snapshot()).toEqual({ cart: { lines: [], coupons: [], quantity: 0 }, selectors: [] });
     await engine.start();
     await engine.cart.addItem(1);
     const sent: Record<string, unknown> = {};

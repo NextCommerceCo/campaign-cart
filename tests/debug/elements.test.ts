@@ -32,6 +32,21 @@ describe('explain', () => {
     expect(notes(engine, '#compare')[0]!.note).toBe('"USD" → hidden');
   });
 
+  it('names the attributes v2 replacement of each earlier attribute, and none for a current one', async () => {
+    const engine = await ready();
+    document.body.innerHTML = `
+      <button id="old" data-next-action="add-to-cart" data-next-package-id="1" data-next-url="/c"></button>
+      <button id="new" data-next-action="addItem" data-next-package-id="1" data-next-go="/c"></button>`;
+    const legacy = (selector: string) =>
+      explain(engine, document.querySelector(selector)!).map((n) => [n.attr, n.legacy]);
+    expect(legacy('#old')).toEqual([
+      ['data-next-action', 'data-next-action="addItem"'],
+      ['data-next-package-id', undefined],
+      ['data-next-url', 'data-next-go'],
+    ]);
+    expect(legacy('#new').every(([, l]) => l === undefined)).toBe(true);
+  });
+
   it('flags unknown paths, unreadable conditions and packages the campaign lacks', async () => {
     const engine = await ready();
     document.body.innerHTML = `

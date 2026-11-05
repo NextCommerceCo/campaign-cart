@@ -5,6 +5,8 @@ export type Render = () => void;
 
 export class BindContext {
   readonly cards = new WeakMap<Element, CardRef>();
+  /** `data-next-show` / `-hide` elements these bindings leave to attributes v2: a condition or a path they do not know. */
+  readonly deferred = new Set<Element>();
   private bound = new WeakMap<Element, Set<string>>();
   private warned = new Set<string>();
 

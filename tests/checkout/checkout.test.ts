@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindCheckout } from '../../src/checkout';
 import type { Checkout } from '../../src/engine/events/checkout';
+import { Query } from '../../src/engine/query';
+import { migrate } from '../../scripts/migrate.mjs';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
@@ -69,22 +71,34 @@ async function mount(
     markup?: (body: HTMLElement) => void;
     empty?: boolean;
     legacyCheckoutStarted?: (checkout: Checkout) => void;
+    html?: string;
+    campaign?: Partial<Campaign>;
   } = {},
 ) {
-  const doc = new DOMParser().parseFromString(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), 'text/html');
+  const source = options.html ?? readFileSync(`tests/fixtures/pages/${file}`, 'utf8');
+  const doc = new DOMParser().parseFromString(source, 'text/html');
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
   options.markup?.(document.body);
   vi.stubGlobal('fetch', fakeRules({ geo: 'US', down: options.rulesDown }).send);
   (window as unknown as { NextPayment: unknown }).NextPayment = FakeNextPayment;
   const api = fakeApi({ order: options.order });
-  const campaign = { ...CAMPAIGN, ...(options.countries && { available_shipping_countries: options.countries }) };
+  const campaign = {
+    ...CAMPAIGN,
+    ...(options.countries && { available_shipping_countries: options.countries }),
+    ...options.campaign,
+  };
   const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(campaign), session: sessionStorage });
   await engine.start();
   if (!options.empty) await engine.cart.addItem(2);
   const navigate = vi.fn();
   const form = document.querySelector<HTMLFormElement>('form[data-next-checkout]')!;
-  const checkout = bindCheckout(engine, form, { navigate, legacyCheckoutStarted: options.legacyCheckoutStarted });
+  const query = new Query(engine);
+  const checkout = bindCheckout(engine, form, {
+    navigate,
+    legacyCheckoutStarted: options.legacyCheckoutStarted,
+    query,
+  });
   await flush();
   await flush();
   const $ = <T extends HTMLElement = HTMLInputElement>(s: string) => document.querySelector<T>(s)!;
@@ -106,7 +120,7 @@ async function mount(
     $<HTMLSelectElement>('[data-next-checkout-field="exp-month"]').value = '12';
     $<HTMLSelectElement>('[data-next-checkout-field="exp-year"]').value = String(new Date().getFullYear() + 2);
   };
-  return { engine, checkout, form, navigate, api, $, field, type, fill, submit, orders, card };
+  return { engine, checkout, form, navigate, api, query, $, field, type, fill, submit, orders, card };
 }
 
 beforeEach(() => {
@@ -298,6 +312,19 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
       billing_same_as_shipping_address: false,
       billing_address: { first_name: 'Ann', line1: '2 Side St', line4: 'Reno', state: 'NY', country: 'US' },
     });
+  });
+
+  it('clones v2 fields into billing rows as billing fields', async () => {
+    const html = migrate(readFileSync('tests/fixtures/pages/olympus-multi-variant/checkout.html', 'utf8')).html;
+    const { $, engine } = await mount('', { html });
+    const billing = (key: string) => $(`[data-next-address="billing"] [data-next-field="${key}"]`);
+    expect(billing('first_name').getAttribute('name')).toBe('billing_fname');
+    expect(document.querySelectorAll('[data-next-field="email"]')).toHaveLength(1);
+    expect($<HTMLSelectElement>('#billing_shipping_province').options[0]!.text).not.toBe('Select State');
+    billing('first_name').value = 'Ann';
+    billing('first_name').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(engine.getState().checkout!.fields).toMatchObject({ billing_first_name: 'Ann' });
+    expect(engine.getState().checkout!.fields.first_name).toBeUndefined();
   });
 
   it('pays with PayPal express from the injected button, before the form is filled, like 0.4.x', async () => {
@@ -927,5 +954,265 @@ describe('three-step checkout (shop-three-step)', () => {
     expect($('[data-next-checkout-review="email"]').textContent).toBe('jane@example.com');
     expect($('[data-next-checkout-review="address"]').textContent).toContain('1 Main St, Austin');
     expect($('[data-next-checkout-review="phone"]').classList).toContain('next-review-empty');
+  });
+});
+
+describe('attributes v2 checkout (data-next-field, data-next-address, data-next-payment)', () => {
+  const ADDRESS = `
+    <input data-next-field="first_name" required><input data-next-field="last_name" required>
+    <select data-next-field="country"></select>
+    <input data-next-field="line1" required><input data-next-field="line2">
+    <input data-next-field="city" required><select data-next-field="state"></select>
+    <input data-next-field="postcode" required>`;
+  const page = ({
+    form = 'data-next-go="/upsell/"',
+    billing = '<span class="spinner"></span>',
+    payment = '',
+    head = '',
+    extra = '',
+  } = {}) => `<html><head>${head}</head><body>
+    <div data-next-express></div>
+    <form data-next-checkout ${form}>
+      <input data-next-field="email" type="email" required>
+      <input data-next-field="phone" type="tel">
+      <input data-next-field="accepts_marketing" type="checkbox">
+      <div data-next-address="shipping"><div class="form-group">${ADDRESS}</div></div>
+      <label><input type="checkbox" data-next-field="billing_same_as_shipping" checked> Same as shipping</label>
+      <div data-next-address="billing">${billing}</div>
+      <div data-next-payment>${payment}</div>
+      ${extra}
+      <button type="submit">Pay</button>
+    </form></body></html>`;
+
+  const v2 = (key: string, root: ParentNode = document) =>
+    root.querySelector<HTMLInputElement>(`[data-next-field="${key}"]`)!;
+  const type = (el: HTMLInputElement | HTMLSelectElement, value: string) => {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const fillShipping = () => {
+    const shipping = document.querySelector('[data-next-address="shipping"]')!;
+    type(v2('email'), 'jane@example.com');
+    for (const [key, value] of Object.entries({
+      first_name: 'Jane',
+      last_name: 'Doe',
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'CA',
+      postcode: '90210',
+    }))
+      type(v2(key, shipping), value);
+  };
+  const pick = (method: string) => {
+    const radio = document.querySelector<HTMLInputElement>(`[data-next-field="payment_method"][value="${method}"]`)!;
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  it('places a card order from v2 fields, with the card expiry typed as MM / YY, and goes to data-next-go', async () => {
+    const { submit, orders, navigate, engine } = await mount('', {
+      html: page({ head: '<meta name="next-success-url" content="/meta-success/">' }),
+    });
+    fillShipping();
+    v2('accepts_marketing').checked = true;
+    v2('accepts_marketing').dispatchEvent(new Event('change', { bubbles: true }));
+    type(v2('card.expiry'), '12 / 30');
+    expect(engine.getState().checkout!.paymentMethod).toBe('card_token');
+    await submit();
+    await flush();
+    expect(FakeNextPayment.submitted[0]).toMatchObject({ full_name: 'Jane Doe', month: '12', year: '2030' });
+    expect(orders()[0]!.body).toMatchObject({
+      payment_detail: { payment_method: 'card_token', card_token: 'tok_1' },
+      user: { email: 'jane@example.com', first_name: 'Jane', accepts_marketing: true },
+      shipping_address: { first_name: 'Jane', line1: '1 Main St', line4: 'Austin', state: 'CA', country: 'US' },
+      billing_same_as_shipping_address: true,
+      success_url: `${location.origin}/upsell/`,
+    });
+    expect(navigate).toHaveBeenCalledWith(`${location.origin}/upsell/?ref_id=R1`);
+  });
+
+  it('reads the expiry as MM/YY or MM/YYYY and refuses anything else before the card is sent', async () => {
+    const { submit, $ } = await mount('', { html: page() });
+    fillShipping();
+    type(v2('card.expiry'), '13/30');
+    await submit();
+    expect(FakeNextPayment.submitted).toHaveLength(0);
+    expect($('.next-error-label[data-next-error-for="expiry"]').textContent).toBe('Enter the expiry date as MM / YY');
+    type(v2('card.expiry'), `01/${new Date().getFullYear() - 1}`);
+    await submit();
+    expect($('.next-error-label[data-next-error-for="expiry"]').textContent).toBe(
+      'This card has expired. Check the expiry date',
+    );
+    type(v2('card.expiry'), '3/2031');
+    await submit();
+    await flush();
+    expect(FakeNextPayment.submitted[0]).toMatchObject({ month: '03', year: '2031' });
+  });
+
+  it('keeps the success meta tag working without data-next-go', async () => {
+    const { submit, navigate } = await mount('', {
+      html: page({ form: '', head: '<meta name="next-success-url" content="/meta-success/">' }),
+    });
+    fillShipping();
+    pick('paypal');
+    await submit();
+    await flush();
+    expect(navigate).toHaveBeenCalledWith(`${location.origin}/meta-success/?ref_id=R1`);
+  });
+
+  it('draws one radio per campaign method, in its order, with the card fields under the card', async () => {
+    const { $, engine } = await mount('', { html: page() });
+    const methods = [...document.querySelectorAll('[data-next-payment] > [data-next-value]')];
+    expect(methods.map((m) => m.getAttribute('data-next-value'))).toEqual(['card_token', 'paypal', 'klarna']);
+    expect(methods.map((m) => m.querySelector('.next-payment-label')!.textContent)).toEqual([
+      'Card',
+      'PayPal',
+      'Klarna',
+    ]);
+    const card = $('[data-next-value="card_token"]');
+    expect(card.hasAttribute('data-next-selected')).toBe(true);
+    expect([...card.querySelectorAll('[data-next-field]')].map((f) => f.getAttribute('data-next-field'))).toEqual([
+      'payment_method',
+      'card.number',
+      'card.cvv',
+      'card.expiry',
+    ]);
+    expect($('[data-next-field="card.number"]').id).toBe('spreedly-number');
+    pick('paypal');
+    await flush();
+    expect(engine.getState().checkout!.paymentMethod).toBe('paypal');
+    expect($('[data-next-value="paypal"]').hasAttribute('data-next-selected')).toBe(true);
+    expect(card.hasAttribute('data-next-selected')).toBe(false);
+    expect($('.next-payment-fields').style.height).toBe('0px');
+  });
+
+  it("hides the page's own radios, and their labels, for methods the campaign does not offer", async () => {
+    const { submit, orders } = await mount('', {
+      html: page({
+        payment: `
+          <label data-next-value="card_token"><input type="radio" data-next-field="payment_method" value="card_token"> Card</label>
+          <div data-next-field="card.number"></div><div data-next-field="card.cvv"></div>
+          <input data-next-field="card.expiry">
+          <input type="radio" id="pay-venmo" data-next-field="payment_method" value="venmo"><label for="pay-venmo">Venmo</label>
+          <label><input type="radio" data-next-field="payment_method" value="paypal"> PayPal</label>`,
+      }),
+    });
+    const venmo = document.querySelector<HTMLInputElement>('[value="venmo"]')!;
+    expect(venmo.hidden).toBe(true);
+    expect(document.querySelector<HTMLLabelElement>('label[for="pay-venmo"]')!.hidden).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('[value="paypal"]')!.hidden).toBe(false);
+    expect(document.querySelector('[data-next-value="card_token"]')!.hasAttribute('data-next-selected')).toBe(true);
+    pick('paypal');
+    await flush();
+    expect(document.querySelector('[value="paypal"]')!.closest('label')!.hasAttribute('data-next-selected')).toBe(true);
+    fillShipping();
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'paypal' });
+  });
+
+  it('draws a billing address that holds no field, hidden while billing is the shipping address', async () => {
+    const { submit, orders, $ } = await mount('', { html: page() });
+    const billing = $<HTMLElement>('[data-next-address="billing"]');
+    expect(billing.getAttribute('data-next-address-state')).toBe('ready');
+    expect(billing.querySelector('.spinner')).toBeNull();
+    expect(billing.hidden).toBe(true);
+    const same = v2('billing_same_as_shipping');
+    same.checked = false;
+    same.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect(billing.hidden).toBe(false);
+    fillShipping();
+    const drawn = (name: string) => billing.querySelector<HTMLInputElement>(`[data-next-checkout-field="${name}"]`)!;
+    for (const [name, value] of Object.entries({
+      'billing-fname': 'Ann',
+      'billing-lname': 'Lee',
+      'billing-address1': '2 Side St',
+      'billing-city': 'Reno',
+      'billing-province': 'NY',
+      'billing-postal': '10001',
+    }))
+      type(drawn(name), value);
+    pick('paypal');
+    await submit();
+    await flush();
+    expect(orders()[0]!.body).toMatchObject({
+      billing_same_as_shipping_address: false,
+      billing_address: { first_name: 'Ann', line1: '2 Side St', line4: 'Reno', state: 'NY', country: 'US' },
+    });
+  });
+
+  it("lays out the page's own billing fields inside data-next-address and sends them as the billing address", async () => {
+    const { submit, orders, $ } = await mount('', { html: page({ billing: ADDRESS }) });
+    const billing = $<HTMLElement>('[data-next-address="billing"]');
+    const shipping = $<HTMLElement>('[data-next-address="shipping"]');
+    expect(billing.hasAttribute('data-next-address-state')).toBe(false);
+    expect(shipping.querySelector('.next-address-row')).toBeNull();
+    expect((v2('country', billing) as unknown as HTMLSelectElement).options.length).toBeGreaterThan(1);
+    const same = v2('billing_same_as_shipping');
+    same.checked = false;
+    same.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    fillShipping();
+    for (const [key, value] of Object.entries({
+      first_name: 'Ann',
+      last_name: 'Lee',
+      line1: '2 Side St',
+      city: 'Reno',
+      state: 'NY',
+      postcode: '10001',
+    }))
+      type(v2(key, billing), value);
+    pick('paypal');
+    await submit();
+    await flush();
+    expect(orders()[0]!.body).toMatchObject({
+      shipping_address: { first_name: 'Jane', line1: '1 Main St' },
+      billing_address: { first_name: 'Ann', line1: '2 Side St', line4: 'Reno', state: 'NY', postcode: '10001' },
+    });
+  });
+
+  it('makes a data-next-step form a middle step that goes to its data-next-go', async () => {
+    history.replaceState(null, '', '/v2/information/');
+    const { submit, navigate, orders, engine } = await mount('', {
+      html: page({ form: 'data-next-step data-next-go="/v2/payment/"' }),
+    });
+    expect(engine.getState().checkout!.step).toBe(1);
+    fillShipping();
+    await submit();
+    expect(orders()).toHaveLength(0);
+    expect(navigate).toHaveBeenCalledWith(`${location.origin}/v2/payment/`);
+  });
+
+  it('draws the express buttons in data-next-express, and hides it when the campaign offers none', async () => {
+    await mount('', { html: page() });
+    const express = document.querySelector<HTMLElement>('[data-next-express]')!;
+    expect(
+      [...express.querySelectorAll('[data-next-express-checkout]')].map((b) =>
+        b.getAttribute('data-next-express-checkout'),
+      ),
+    ).toEqual(['paypal', 'apple_pay']);
+    await mount('', { html: page(), campaign: { available_express_payment_methods: [] } });
+    expect(document.querySelector<HTMLElement>('[data-next-express]')!.style.display).toBe('none');
+  });
+
+  it('gives checkout.errors.payment the error box text, and leaves a field message to the place the page made for it', async () => {
+    const { submit, query, $ } = await mount('', {
+      html: page({ extra: '<p data-next-query="checkout.errors.email"></p>' }),
+      order: () => json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400),
+    });
+    await submit();
+    expect(query.get('checkout.errors.email')).toBe('Email is required');
+    expect(query.get('checkout.errors.first_name')).toBe('First name is required');
+    expect(document.querySelector('.next-error-label[data-next-error-for="email"]')).toBeNull();
+    expect(v2('email').hasAttribute('data-next-invalid')).toBe(true);
+    expect($('.next-error-label[data-next-error-for="first_name"]').textContent).toBe('First name is required');
+    fillShipping();
+    pick('paypal');
+    await submit();
+    await flush();
+    expect(query.get('checkout.errors.payment')).toBe('Insufficient funds');
+    expect(query.get('checkout.errors.email')).toBeUndefined();
   });
 });

@@ -6,146 +6,112 @@ category: 'Building Pages'
 
 # Checkout Page
 
-The checkout turns the cart into an order. A `form[data-next-checkout]` loads the checkout code;
-the page tells it where to send the shopper once they have paid.
+The checkout turns the cart into an order. A `form[data-next-checkout]` loads the checkout code,
+and its `data-next-go` names the page the shopper goes to once they have paid (an upsell or the
+receipt, opened with `?ref_id=<order>` and the visit's parameters). A declined or cancelled payment
+comes back to this page.
 
 ```html
-<head>
-  <meta name="next-success-url" content="upsell.html" />
-  <meta name="next-failure-url" content="checkout.html" />
-  <script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="my-funnel"></script>
-</head>
+<form data-next-checkout data-next-go="upsell.html">…</form>
 ```
-
-| Meta               | Means                                                                                                            |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `next-success-url` | The page after a paid order (an upsell or the receipt), opened with `?ref_id=<order>` and the visit's parameters |
-| `next-failure-url` | The page a declined or cancelled payment returns to. Without it, this page with `?payment_failed=true`           |
-
-Without `next-success-url` the SDK logs an error: a paid order goes to the store's order page,
-where the purchase is not tracked.
 
 ## The cart on the page
 
-A checkout often keeps its own bundle selector, so the shopper can change their pick here. The
-summary draws its `<template>` with the cart's lines and totals, again on each new price, and gets
-`next-calculating` while new prices are on the way (see
-[data-next-cart-summary](../attribute-reference/cart/data-next-cart-summary.md)).
+A checkout often keeps its own selector, so the shopper can change their pick here, and lists the
+cart with [data-next-each](../attribute-reference/display/data-next-each.md):
 
 ```html
-<div data-next-cart-summary>
+<div data-next-each="cart.lines">
   <template>
-    <div data-summary-lines>
-      <template>
-        <div class="line">{item.name} × {item.quantity} {item.price}</div>
-      </template>
+    <div class="line">
+      <span data-next-query="product_title"></span> × <span data-next-query="quantity"></span>
+      <span data-next-query="total"></span>
     </div>
   </template>
 </div>
 
 <dl>
   <dt>Subtotal</dt>
-  <dd data-next-display="cart.subtotal"></dd>
+  <dd data-next-query="cart.subtotal"></dd>
   <dt>Shipping</dt>
-  <dd data-next-hide="shipping.isFree" data-next-display="shipping.cost"></dd>
-  <dd data-next-show="shipping.isFree">Free</dd>
-  <dt data-next-show="cart.hasCoupon">Discount</dt>
-  <dd data-next-show="cart.hasCoupon" data-next-display="cart.discountAmount"></dd>
+  <dd data-next-show="cart.shipping_method.price > 0" data-next-query="cart.shipping_method.price"></dd>
+  <dd data-next-show="cart.shipping_method.price == 0">Free</dd>
+  <dt data-next-show="cart.total_discount > 0">Discount</dt>
+  <dd data-next-show="cart.total_discount > 0" data-next-query="cart.total_discount"></dd>
   <dt>Total</dt>
-  <dd data-next-display="cart.total"></dd>
+  <dd data-next-query="cart.total"></dd>
 </dl>
 
-<div data-next-coupon>
-  <input type="text" placeholder="Coupon" />
-  <button type="button">Apply</button>
-</div>
+<form data-next-action="applyCoupon">
+  <input data-next-field="code" placeholder="Coupon" />
+  <button>Apply</button>
+</form>
+<p data-next-query="errors.code"></p>
 ```
 
-An order bump is a `data-next-toggle-card` with its package (see
-[data-next-toggle-card](../attribute-reference/cart/data-next-toggle-card.md)).
+An order bump is an option on its own (see [Selector and option](../attribute-reference/objects/selector.md)):
+
+```html
+<div data-next-option="protect" data-next-items="9">Add protection for <span data-next-query="total"></span></div>
+```
 
 ## Contact and address
 
-Name each input with `data-next-checkout-field`. The SDK checks every field, saves what was typed
-in this tab, and marks the field with `has-error` or `no-error`; the message goes in a
-`div.next-error-label` inside its `.form-group` (see
-[Error messages](../attribute-reference/checkout/error-messages.md)).
+Name each input with [data-next-field](../attribute-reference/inputs/data-next-field.md). The SDK
+checks every field as the shopper leaves it, saves what was typed in this tab, and gives a field
+with an error `data-next-invalid`; its message reads as `checkout.errors.<field>`.
 
 ```html
-<form data-next-checkout>
-  <div class="form-group"><input data-next-checkout-field="email" type="email" /></div>
-  <div class="form-group"><input data-next-checkout-field="first_name" /></div>
-  <div class="form-group"><input data-next-checkout-field="last_name" /></div>
-  <div class="form-group"><select data-next-checkout-field="country"></select></div>
-  <div class="form-group"><input data-next-checkout-field="line1" /></div>
-  <div data-next-component="location">
-    <div class="form-group"><input data-next-checkout-field="city" /></div>
-    <div class="form-group"><select data-next-checkout-field="state"></select></div>
-    <div class="form-group"><input data-next-checkout-field="postcode" /></div>
-  </div>
-  <div class="form-group"><input data-next-checkout-field="phone_number" type="tel" /></div>
+<form data-next-checkout data-next-go="upsell.html">
+  <input data-next-field="email" type="email" autocomplete="email" required />
+  <p data-next-query="checkout.errors.email"></p>
+  <input data-next-field="first_name" autocomplete="given-name" required />
+  <input data-next-field="last_name" autocomplete="family-name" required />
+  <div data-next-address="shipping"></div>
+  <input data-next-field="phone" type="tel" autocomplete="tel" />
+
+  <label><input data-next-field="billing_same_as_shipping" type="checkbox" checked /> Billing same as shipping</label>
+  <div data-next-address="billing"></div>
   …
 </form>
 ```
 
-The country list is the campaign's shipping countries. Once a country is picked, city, state and
-postcode take that country's labels, order and format; a `<div data-next-address="shipping">`
-instead draws the whole address for the country. The phone field gets the country's flag and mask.
-
-For a billing address, add `input[name="use_shipping_address"]` and a
-`data-next-component="billing-form"` with the same fields prefixed `billing-`.
+[data-next-address](../attribute-reference/widgets/data-next-address.md) draws the address for the
+selected country: its fields, order, labels and postcode format. The country list is the
+campaign's shipping countries. The billing address hides while `billing_same_as_shipping` is
+ticked. The phone field gets the country's flag and mask.
 
 As soon as the checkout has started and the shopper has a name and an email, the checkout saves
-them as a lead (`user.created`),
-the cart that `cart.abandoned` follows up. `data-next-lead` changes when; see
-[data-next-lead](../attribute-reference/checkout/data-next-lead.md).
+them as a lead (`user.created`), the cart that `cart.abandoned` follows up. `data-next-lead` changes
+when; see [Checkout](../attribute-reference/objects/checkout.md).
 
 ## Payment
 
-Each method is a radio and a panel. A panel for a method the campaign does not offer is hidden;
-the picked panel gets `next-selected` and its `data-next-payment-form` opens.
-
 ```html
-<div data-next-payment-method="card_token">
-  <label><input type="radio" name="payment_method" value="card_token" checked /> Card</label>
-  <div data-next-payment-form>
-    <div data-next-checkout-field="cc-number"></div>
-    <div data-next-checkout-field="cvv"></div>
-    <select data-next-checkout-field="exp-month"></select>
-    <select data-next-checkout-field="exp-year"></select>
-  </div>
-  <div data-next-component="credit-error"><span data-next-component="credit-error-text"></span></div>
-</div>
-
-<div data-next-payment-method="paypal">
-  <label><input type="radio" name="payment_method" value="paypal" /> PayPal</label>
-  <div data-next-component="paypal-error"><span data-next-component="paypal-error-text"></span></div>
-</div>
-
-<div data-next-express-checkout="container">
-  <div data-next-express-checkout="buttons"></div>
-</div>
-
-<button type="submit">Complete order</button>
+<div data-next-payment></div>
+<p data-next-query="checkout.errors.payment"></p>
+<div data-next-express></div>
+<button>Complete order</button>
 ```
 
-The card number and CVV are drawn by the payment provider inside those elements; the page never
-sees the card. Errors show in the selected method's `-error` box, or `credit-error` when it has
-none. Express buttons (Apple Pay, Google Pay, PayPal) are added to
-`data-next-express-checkout="buttons"` inside a `data-next-express-checkout="container"` and place the order with the wallet's details.
+[data-next-payment](../attribute-reference/widgets/data-next-payment.md) draws the methods the
+campaign offers, with the card fields under the card; the card number and CVV are drawn by the
+payment provider, so the page never sees the card.
+[data-next-express](../attribute-reference/widgets/data-next-express.md) adds Apple Pay, Google Pay
+and PayPal buttons, which place the order with the wallet's details.
 
 ## Multi-step checkout
 
-Split the form across pages with `data-next-checkout-step` (the next step's URL) on each step's
-form. Submitting a step checks the form and opens the next step, carrying the visit's parameters;
-the last step is the one with the payment and no `data-next-checkout-step`. `data-next-checkout-review="<field>"` shows on a later step what was
-entered on an earlier one:
+Split the form across pages: a middle step has `data-next-step`, and its `data-next-go` is the
+next step. Submitting a step checks its fields and opens the next page with the visit's
+parameters; the last step has the payment and no `data-next-step`. A later step shows what was
+entered with `checkout.*`:
 
 ```html
-<form data-next-checkout data-next-checkout-step="payment.html">…</form>
+<form data-next-checkout data-next-step data-next-go="payment.html">…</form>
 
 <!-- payment.html -->
-<p>Ship to <span data-next-checkout-review="address"></span></p>
+<p>Ship to <span data-next-query="checkout.shipping_address"></span></p>
 ```
 
 Events for each step are in the [Checkout lifecycle](../event-reference/checkout/lifecycle.md), and

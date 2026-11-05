@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const LAZY: Record<string, string[]> = {
   analytics: ['compat/analytics'],
+  attributes: [],
   checkout: [],
   order: [],
   debug: [],
@@ -11,6 +12,9 @@ const LAZY: Record<string, string[]> = {
   'bindings/cart-summary': [],
   'compat/exit-intent': [],
   'compat/widgets': [],
+  'compat/legacy/index': [],
+  'compat/legacy/events': ['compat/legacy/index'],
+  'compat/legacy/payloads': ['compat/legacy/index', 'compat/legacy/events'],
   'compat/checkout': ['checkout'],
   'compat/order': ['order'],
   'compat/analytics': ['analytics'],
@@ -28,8 +32,6 @@ const SHRINKING: Record<string, number> = {
   'order/state.ts': 346,
   'compat/checkout.ts': 339,
   'engine/engine.ts': 311,
-  'engine/cart/selectors.ts': 313,
-  'checkout/payment/card.ts': 305,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
@@ -42,6 +44,7 @@ const ALLOWED: Record<string, string[]> = {
   checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
+  attributes: ['engine', 'attributes', 'bindings/context', 'bindings/dom'],
   destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
   compat: ['engine'],

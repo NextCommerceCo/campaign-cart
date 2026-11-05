@@ -1,6 +1,6 @@
 import type { Engine } from '../../engine/engine';
 import type { CountryRules, FieldRule } from '../state/types';
-import { type Control, type Fields, scanFields } from '../form/fields';
+import { type Control, FIELD_ATTR, type Fields, scanFields } from '../form/fields';
 import { pageFieldName } from '../../compat/checkout';
 
 interface Block {
@@ -106,10 +106,9 @@ export function bindAddressForms(
   fields: Fields,
   rebuilt: () => void,
 ): () => void {
-  const blocks: Block[] = [...form.querySelectorAll<HTMLElement>('[data-next-address]')].map((el) => ({
-    el,
-    prefix: el.getAttribute('data-next-address') === 'billing' ? 'billing_' : '',
-  }));
+  const blocks: Block[] = [...form.querySelectorAll<HTMLElement>('[data-next-address]')]
+    .filter((el) => !el.querySelector(`[${FIELD_ATTR}]`))
+    .map((el) => ({ el, prefix: el.getAttribute('data-next-address') === 'billing' ? 'billing_' : '' }));
   const elsewhere = new Set(fields.keys());
 
   return () => {

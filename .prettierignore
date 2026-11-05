@@ -5,3 +5,5 @@ package-lock.json
 tests/fixtures/pages/
 public/campaign-cart.css
 vendor/
+tests/golden/
+.golden/

@@ -1,8 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { pickedCard } from '../engine/cart/selectors';
 import type { Upsell } from '../engine/events/upsells';
-import { legacyEvent, legacySelectorId } from './legacy/events';
-import { addLegacyEvents, legacyFire } from './legacy/registry';
+import { addLegacyEvents, legacyEvent, legacyFire, legacySelectorId } from './legacy/registry';
 
 /** @deprecated `accept` / `decline`. Use `data-next-upsell-action="add"` / `"skip"`. */
 export const ACCEPT_WORDS = ['add', 'accept'];

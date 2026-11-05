@@ -19,6 +19,7 @@
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD"
     },
     "selectors": []
@@ -44,6 +45,8 @@
       }
     ],
     "currency": "USD",
+    "quantity": 1,
+    "in_cart": false,
     "options": [
       {
         "option_id": "one",
@@ -57,7 +60,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/1.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": true
       },
       {
         "option_id": "two",
@@ -71,7 +76,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/2.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": false
       }
     ]
   },
@@ -91,6 +98,8 @@
       }
     ],
     "currency": "USD",
+    "quantity": 1,
+    "in_cart": false,
     "options": [
       {
         "option_id": "one",
@@ -104,7 +113,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/1.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": false
       },
       {
         "option_id": "two",
@@ -118,7 +129,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/2.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": true
       }
     ]
   },
@@ -138,6 +151,8 @@
       }
     ],
     "currency": "USD",
+    "quantity": 2,
+    "in_cart": false,
     "options": [
       {
         "option_id": "one",
@@ -151,7 +166,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/1.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": false
       },
       {
         "option_id": "two",
@@ -165,7 +182,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/2.png"
           }
-        ]
+        ],
+        "quantity": 2,
+        "selected": true
       }
     ]
   },
@@ -183,7 +202,9 @@
         "image": "https://cdn.test/9.png"
       }
     ],
-    "currency": "USD"
+    "currency": "USD",
+    "quantity": 1,
+    "in_cart": false
   },
   "selector.calculating": {
     "selector_id": "main",
@@ -201,6 +222,8 @@
       }
     ],
     "currency": "USD",
+    "quantity": 1,
+    "in_cart": false,
     "options": [
       {
         "option_id": "one",
@@ -214,7 +237,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/1.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": true
       },
       {
         "option_id": "two",
@@ -228,7 +253,9 @@
             "variant_title": "Black",
             "image": "https://cdn.test/2.png"
           }
-        ]
+        ],
+        "quantity": 1,
+        "selected": false
       }
     ]
   },
@@ -249,11 +276,20 @@
         "original_price": 198,
         "total_discount": 0,
         "total": 178,
+        "subtotal": 178,
+        "discount_percentage": 0,
         "discounts": []
       }
     ],
     "currency": "USD",
     "total": 178,
+    "price": 89,
+    "original_price": 89,
+    "subtotal": 178,
+    "total_discount": 0,
+    "discount_percentage": 0,
+    "quantity": 2,
+    "in_cart": false,
     "options": [
       {
         "option_id": "one",
@@ -270,9 +306,18 @@
             "original_price": 99,
             "total_discount": 0,
             "total": 49,
+            "subtotal": 49,
+            "discount_percentage": 0,
             "discounts": []
           }
         ],
+        "quantity": 1,
+        "selected": false,
+        "price": 49,
+        "original_price": 49,
+        "subtotal": 49,
+        "total_discount": 0,
+        "discount_percentage": 0,
         "total": 49,
         "original_total": 49
       },
@@ -291,9 +336,18 @@
             "original_price": 198,
             "total_discount": 0,
             "total": 178,
+            "subtotal": 178,
+            "discount_percentage": 0,
             "discounts": []
           }
         ],
+        "quantity": 2,
+        "selected": true,
+        "price": 89,
+        "original_price": 89,
+        "subtotal": 178,
+        "total_discount": 0,
+        "discount_percentage": 0,
         "total": 178,
         "original_total": 178
       }
@@ -321,6 +375,7 @@
       }
     ],
     "coupons": [],
+    "quantity": 2,
     "currency": "USD"
   },
   "cart.calculating": {
@@ -336,6 +391,7 @@
       }
     ],
     "coupons": [],
+    "quantity": 1,
     "currency": "USD"
   },
   "cart.calculated": {
@@ -352,6 +408,8 @@
         "original_price": 99,
         "total_discount": 0,
         "total": 49,
+        "subtotal": 49,
+        "discount_percentage": 0,
         "discounts": []
       },
       {
@@ -366,10 +424,13 @@
         "original_price": 198,
         "total_discount": 0,
         "total": 89,
+        "subtotal": 89,
+        "discount_percentage": 0,
         "discounts": []
       }
     ],
     "coupons": [],
+    "quantity": 2,
     "currency": "USD",
     "shipping_method": {
       "id": 1,
@@ -382,7 +443,8 @@
     "subtotal": 138,
     "total_discount": 0,
     "total": 138,
-    "discounts": []
+    "discounts": [],
+    "discount_percentage": 0
   },
   "cart.added": {
     "lines": [
@@ -406,6 +468,7 @@
       }
     ],
     "coupons": [],
+    "quantity": 2,
     "currency": "USD",
     "changes": [
       {
@@ -431,6 +494,7 @@
       }
     ],
     "coupons": [],
+    "quantity": 1,
     "currency": "USD",
     "changes": [
       {
@@ -457,7 +521,8 @@
         "amount": 1,
         "source": "coupon",
         "code": "SAVE10",
-        "offer_id": 10
+        "offer_id": 10,
+        "percentage": 10
       }
     ]
   },
@@ -484,6 +549,7 @@
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD"
     },
     "billing_same_as_shipping": true,
@@ -554,10 +620,13 @@
           "original_price": 99,
           "total_discount": 0,
           "total": 49,
+          "subtotal": 49,
+          "discount_percentage": 0,
           "discounts": []
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD",
       "shipping_method": {
         "id": 1,
@@ -570,7 +639,8 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
-      "discounts": []
+      "discounts": [],
+      "discount_percentage": 0
     },
     "user": {
       "email": "jane.doe@example.com",
@@ -610,10 +680,13 @@
           "original_price": 99,
           "total_discount": 0,
           "total": 49,
+          "subtotal": 49,
+          "discount_percentage": 0,
           "discounts": []
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD",
       "shipping_method": {
         "id": 1,
@@ -626,7 +699,8 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
-      "discounts": []
+      "discounts": [],
+      "discount_percentage": 0
     },
     "user": {
       "email": "jane.doe@example.com",
@@ -665,10 +739,13 @@
           "original_price": 99,
           "total_discount": 0,
           "total": 49,
+          "subtotal": 49,
+          "discount_percentage": 0,
           "discounts": []
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD",
       "shipping_method": {
         "id": 1,
@@ -681,7 +758,8 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
-      "discounts": []
+      "discounts": [],
+      "discount_percentage": 0
     },
     "billing_same_as_shipping": true,
     "payment_method": "card_token",
@@ -726,10 +804,13 @@
           "original_price": 99,
           "total_discount": 0,
           "total": 49,
+          "subtotal": 49,
+          "discount_percentage": 0,
           "discounts": []
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD",
       "shipping_method": {
         "id": 1,
@@ -742,7 +823,8 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
-      "discounts": []
+      "discounts": [],
+      "discount_percentage": 0
     },
     "user": {
       "email": "jane.doe@example.com",
@@ -787,10 +869,13 @@
           "original_price": 99,
           "total_discount": 0,
           "total": 49,
+          "subtotal": 49,
+          "discount_percentage": 0,
           "discounts": []
         }
       ],
       "coupons": [],
+      "quantity": 1,
       "currency": "USD",
       "shipping_method": {
         "id": 1,
@@ -803,7 +888,8 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
-      "discounts": []
+      "discounts": [],
+      "discount_percentage": 0
     },
     "user": {
       "email": "jane.doe@example.com",

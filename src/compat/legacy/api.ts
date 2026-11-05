@@ -3,7 +3,6 @@ import { normalizeCode } from '../../engine/cart/lines';
 import type { CartLine } from '../../engine/cart/types';
 import type { Campaign, Package, ShippingOption } from '../../engine/types';
 import type { ExitIntentOptions } from '../exit-intent';
-import { shippingOption } from './payloads';
 
 export interface LegacyCartLine {
   packageId: number;
@@ -86,7 +85,10 @@ export function legacyApi(engine: Engine): LegacyApi {
     exitIntent: (options) => import('../exit-intent').then((m) => m.exitIntent(engine, options)),
     getShippingMethods: () => engine.getState().campaign?.shipping_methods ?? [],
     setShippingMethod: (id) => engine.cart.setShipping(id),
-    getSelectedShippingMethod: () => shippingOption(engine.getState(), engine.getState().cart.shippingId),
+    getSelectedShippingMethod: () => {
+      const { campaign, cart } = engine.getState();
+      return campaign?.shipping_methods.find((m) => m.ref_id === cart.shippingId);
+    },
   };
 }
 

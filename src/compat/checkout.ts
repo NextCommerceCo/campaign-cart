@@ -4,8 +4,7 @@ import type { Checkout } from '../engine/events/checkout';
 import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
 import type { AddressSuggestion } from '../checkout/state/types';
-import { type From, legacyEvent } from './legacy/events';
-import { addLegacyEvents, legacyFire } from './legacy/registry';
+import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy/registry';
 
 /** @deprecated Page field names. Use the API names: `first_name`, `last_name`, `line1`, `line2`, `state`, `postcode`, `phone_number`. */
 export const LEGACY_FIELDS: Record<string, string> = {
@@ -23,8 +22,8 @@ const API_TO_LEGACY = Object.fromEntries(Object.entries(LEGACY_FIELDS).map(([pag
 /** @deprecated The page name of an API field (`line1` → `address1`). Fields built by `data-next-address` keep 0.4.x names, which page CSS selects. */
 export const pageFieldName = (name: string) => API_TO_LEGACY[name] ?? name;
 
-/** @deprecated `os-checkout-field`. Use `data-next-checkout-field`. */
-export const FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
+/** @deprecated `data-next-checkout-field` / `os-checkout-field`. Use `data-next-field`. */
+export const LEGACY_FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
 
 /** @deprecated `os-checkout-submit`. Use `data-next-checkout-submit`. */
 export const SUBMIT_ATTRS = ['data-next-checkout-submit', 'os-checkout-submit'];

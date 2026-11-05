@@ -25,7 +25,7 @@ import { ORDER, withUpsell } from '../fixtures/order';
 import { fakeRules } from '../fixtures/rules';
 
 const EARBUDS: CartItem = { package_id: 1, quantity: 1, product_title: 'Earbuds', sku: 'EB-2', price: 49, total: 49 };
-const CART: Cart = { lines: [EARBUDS], coupons: [], currency: 'USD', total: 49 };
+const CART: Cart = { lines: [EARBUDS], coupons: [], quantity: 1, currency: 'USD', total: 49 };
 const CHECKOUT: Checkout = { id: 'c1', cart: CART };
 const ON: ProviderConfig = { enabled: true, nextCampaign: true, dataLayer: true, unsupported: [] };
 const DL: Record<TrackingName, string> = {

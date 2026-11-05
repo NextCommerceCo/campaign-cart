@@ -2,6 +2,8 @@ import { conditionMet, parseCondition } from '../engine/condition';
 import type { Value } from '../engine/format';
 import { resolve, resolveCard, resolveToggle } from '../engine/values';
 import { type BindContext, type Render } from './context';
+
+const V2_SCOPE = '[data-next-option],[data-next-for],[data-next-selector],[data-next-each]';
 import { setVisible, writeValue } from './dom';
 
 const write = (el: HTMLElement, v: Value, b: BindContext) => writeValue(el, v, b.engine);
@@ -47,8 +49,11 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
     b.each(root, attr, (el) => {
       const source = el.getAttribute(attr) ?? '';
       const condition = parseCondition(source);
-      if (!condition) return b.warn(`cannot read ${attr}="${source}"`);
       const ctx = b.contextOf(el);
+      const unknown = !condition || !resolve(b.engine, condition.path, ctx);
+      // Attributes v2 paths are snake_case: a 0.4.x path such as `cart.hasItems` stays here, warned as before.
+      if (el.closest(V2_SCOPE) || (unknown && !/[A-Z]/.test(source))) return void b.deferred.add(el);
+      if (!condition) return b.warn(`cannot read ${attr}="${source}"`);
       renders.push(() => {
         const v = resolve(b.engine, condition.path, ctx);
         if (!v) return b.warn(`unknown path "${condition.path}" in ${attr}`);

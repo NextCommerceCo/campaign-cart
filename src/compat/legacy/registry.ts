@@ -1,9 +1,45 @@
 import type { Engine } from '../../engine/engine';
 import type { EngineEvent, EventName } from '../../engine/events/bus';
 import type { Checkout } from '../../engine/events/checkout';
+import type { Selector } from '../../engine/events/selectors';
 import type { State } from '../../engine/types';
 import type { WidgetEvents } from '../widgets';
-import { firstPackage, type From, LATER, LEGACY_EVENTS, type LegacyEvent, type LegacyState, noteClick } from './events';
+
+/** @deprecated Use `data-next-selector-id`. */
+export function legacySelectorId(el: Element): string | null {
+  return el.getAttribute('data-next-id');
+}
+
+export type From<K extends EventName> = { [N in K]: EngineEvent<N> }[K];
+
+/** The state a 0.4.x payload is made from, and the package each selector had picked before its latest pick. */
+export type LegacyState = State & { previousPick(selectorId: string): number | undefined };
+
+/** @deprecated How a 0.4.x `next.on` name is made from the events. */
+export interface LegacyEvent<K extends EventName = EventName> {
+  from: K[];
+  when?(e: From<K>, state: LegacyState): boolean;
+  /** The 0.4.x payload; with `each`, a list of payloads, one call each. */
+  data(e: From<K>, state: LegacyState): unknown;
+  each?: boolean;
+  /** At most one call per listener. */
+  once?: boolean;
+  /** A listener added later also gets this page's earlier ones. */
+  replay?: boolean;
+}
+
+/** @deprecated Types a {@link LegacyEvent} by the events it comes from. */
+export const legacyEvent = <K extends EventName>(spec: LegacyEvent<K>) => spec as unknown as LegacyEvent;
+
+export const firstPackage = (s: Selector) => s.lines[0]?.package_id;
+
+/** The click being dispatched, if any: 0.4.x `action:success` named the add-to-cart button whose click changed the cart. */
+let click: Event | undefined;
+const noteClick = (e: Event) => void (click = e);
+export const lastClick = () => click;
+
+/** The legacy chunk: the 0.4.x names made from the events, loaded by {@link legacyEvents} when a page needs them. */
+export type LegacyTranslator = typeof import('./index');
 
 type Shape = (data: never, state: State) => unknown;
 
@@ -19,6 +55,8 @@ interface Registry {
   shapes: Record<string, Shape>;
   popups: Record<string, LegacyPopup>;
   fire?(name: string, data: unknown, keep?: boolean): void;
+  /** The package a selector had picked before the pick `e` made. */
+  previousPick?(e: EngineEvent, selectorId: string): number | undefined;
   /** The data layer's `dl_exit_intent_action` for a custom popup button, once its action has run. */
   customAction?(): void;
 }
@@ -87,14 +125,32 @@ export const legacyFire = (engine: Engine, name: string, data: unknown, keep?: b
 export interface LegacyEvents {
   /** `next.on` for a 0.4.x name; undefined for any other name. */
   on(name: string, fn: (data: unknown, event?: EngineEvent) => void): (() => void) | undefined;
+  /** Loads the names made from events, so a listener added from now on hears each one as it happens. */
+  preload(): Promise<void>;
   /** `bindCheckout`'s `legacyCheckoutStarted`: 0.4.x `checkout:started`, once a page. */
   checkoutStarted(checkout: Checkout): void;
   /** `bindWidgets`'s `events`: `timer:expired`, `accordion:*`, `scroll-hint:updated`. */
   widgets: WidgetEvents;
 }
 
-/** @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. */
-export function legacyEvents(engine: Engine): LegacyEvents {
+/**
+ * @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. Page moments
+ * are kept here; the names made from events come from `load`, and a listener added before it has loaded gets the
+ * events since then once it has.
+ */
+export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Promise<LegacyTranslator>): LegacyEvents {
+  let loaded: LegacyTranslator | undefined;
+  let loading: Promise<LegacyTranslator> | undefined;
+  const translator = (): LegacyTranslator | Promise<LegacyTranslator> => {
+    if (loaded) return loaded;
+    if (!loading) {
+      const m = load();
+      if (!(m instanceof Promise)) return (loaded = m);
+      loading = m.then((done) => (loaded = done));
+    }
+    return loading;
+  };
+
   const kept = new Map<string, unknown[]>();
   const listeners = new Map<string, Set<(data: unknown) => void>>();
   const call = (fn: (data: unknown) => void, data: unknown) => {
@@ -122,6 +178,7 @@ export function legacyEvents(engine: Engine): LegacyEvents {
     previous.set(data.selector_id, picks.get(data.selector_id));
     picks.set(data.selector_id, firstPackage(data));
   };
+  r.previousPick = (e, id) => (picked(e as EngineEvent<'selector.selected'>), previous.get(id));
   engine.on('selector.bound', picked);
   engine.on('selector.selected', picked);
   addEventListener('click', noteClick, true);
@@ -140,29 +197,41 @@ export function legacyEvents(engine: Engine): LegacyEvents {
         kept.get(name)?.forEach((data) => call(fn, data));
         return () => void set.delete(fn);
       }
-      const boot = own(LEGACY_EVENTS, name);
-      if (!boot && !LATER.includes(name)) return undefined;
-      let done = false;
-      const off = engine.on(
-        '*',
-        (event) => {
-          const e = event as From<EventName>;
-          const alias = boot ?? r.added[name];
-          if (done || !alias?.from.includes(e.name)) return;
-          const state: LegacyState = {
-            ...engine.getState(),
-            previousPick: (id) => (picked(e as EngineEvent<'selector.selected'>), previous.get(id)),
-          };
-          if (alias.when && !alias.when(e, state)) return;
-          const data = alias.data(e, state);
-          (alias.each ? (data as unknown[]) : [data]).forEach((payload) => fn(payload, e));
-          done = !!alias.once;
-        },
-        { replay: boot?.replay },
-      );
-      if (done) off();
-      return off;
+      if (!name.includes(':')) return undefined;
+      let stop = false;
+      let off = () => {};
+      const start = (m: LegacyTranslator, queued: EngineEvent[] = []) => {
+        const handler = m.legacyHandler(engine, name, fn);
+        if (!handler) return engine.log.warn(`next.on: unknown event "${name}"`);
+        if (!handler.replay) for (const e of queued) stop ||= handler.handle(e);
+        if (stop) return;
+        off = engine.on('*', (e) => void (stop ||= handler.handle(e)), { replay: handler.replay });
+        if (stop) off();
+      };
+      const now = translator();
+      if (!(now instanceof Promise)) start(now);
+      else {
+        const queued: EngineEvent[] = [];
+        const collect = engine.on('*', (e) => void queued.push(e));
+        off = collect;
+        void now.then(
+          (m) => {
+            collect();
+            if (!stop) start(m, queued);
+          },
+          () => collect(),
+        );
+      }
+      return () => {
+        stop = true;
+        off();
+      };
     },
+    preload: () =>
+      Promise.resolve(translator()).then(
+        () => {},
+        (err) => engine.log.error('the 0.4.x event names failed to load', err),
+      ),
     checkoutStarted: (checkout) => fire('checkout:started', checkout, true),
     widgets: {
       timerExpired: (id) => fire('timer:expired', { persistenceId: id }),

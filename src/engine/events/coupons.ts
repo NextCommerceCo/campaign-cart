@@ -10,6 +10,8 @@ export interface Discount {
   code?: string;
   /** The offer that gave it. */
   offer_id: number;
+  /** The percentage the offer is set to take off, as the API reports it, such as `20`. Its configured value, for a label such as “20% off”; the amount actually taken off is `amount`. */
+  percentage?: number;
 }
 
 export interface CouponEvents {

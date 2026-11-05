@@ -2,20 +2,41 @@ import type { CartItem } from './carts';
 
 export type SelectorType = 'bundle' | 'offer' | 'toggle';
 
+/** The price fields every option and selector shares with a cart line: `total = subtotal − total_discount`. */
+export interface OptionPrice {
+  /** `total ÷ quantity`: one package, after discounts. @priced */
+  price?: number;
+  /** `subtotal ÷ quantity`: one package, before discounts. @priced */
+  original_price?: number;
+  /** What it costs before discounts. @priced */
+  subtotal?: number;
+  /** `subtotal − total`. @priced */
+  total_discount?: number;
+  /** `total_discount ÷ subtotal × 100`, to two decimals. @priced */
+  discount_percentage?: number;
+}
+
 /** One option of a selector, at the quantity it would be added. */
-export interface SelectorOption {
-  /** The option's `data-next-bundle-id`. */
+export interface SelectorOption extends OptionPrice {
+  /** The option's `data-next-bundle-id`, or `data-next-option`. */
   option_id: string;
   /** The lines the option puts in the cart. Priced once the option has a price. */
   lines: CartItem[];
+  /** Packages the option adds: its lines' quantities. */
+  quantity: number;
+  /** `true` for the selector's picked option. */
+  selected: boolean;
   /** What the option costs after discounts. @priced */
   total?: number;
-  /** What the option costs before discounts. @priced */
+  /**
+   * What the option costs before discounts. @priced
+   * @deprecated Use `subtotal`.
+   */
   original_total?: number;
 }
 
 /** A selector and the option picked in it, the same on every `selector.*` event. */
-export interface Selector {
+export interface Selector extends OptionPrice {
   /** `data-next-selector-id`, or `toggle:<package_id>` for a toggle. */
   selector_id: string;
   type: SelectorType;
@@ -30,6 +51,10 @@ export interface Selector {
   currency?: string;
   /** What the picked option costs after discounts. @priced */
   total?: number;
+  /** Packages the picked option adds. */
+  quantity: number;
+  /** `true` while the picked option's lines are in the cart. */
+  in_cart: boolean;
   /** Every option of a bundle or offer selector; none for a toggle. */
   options?: SelectorOption[];
 }

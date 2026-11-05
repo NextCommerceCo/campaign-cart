@@ -82,6 +82,8 @@ docs/
   destination-examples.json  what GTM, GA4, Meta and RudderStack send for each tracking event, recorded by tests/destinations/examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
+scripts/migrate.mjs        node scripts/migrate.mjs <page.html|styles.css> [--write]: rewrites a page's earlier attributes to
+                           attributes v2; tests/migrate.test.ts renders real pages both ways when MIGRATE_PAGES is set
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
 scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event Reference page per EventMap event, an
                            Analytics Reference page per tracking event and per destination
@@ -113,14 +115,17 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
+    query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines;
+                                                a chunk of its own, loaded by the first next.query, attributes v2 or a v2 checkout
+    actions.ts                                  next.actions / data-next-action: every action, one object of field names in, { ok, errors } out
     visit.ts                                    the visit's timers and exit-intent count (engine.visit)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
     cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
                                                 lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
-                                                that events carry), selectors.ts (bundle selectors, and a package's variant
-                                                choices for slots and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
+                                                that events carry), selectors.ts (bundle selectors), variants.ts (a package's
+                                                variant choices, for slots, variant pickers and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe; loads cart-summary.ts when a bound node has
                                    [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
@@ -132,6 +137,14 @@ src/
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
+  attributes/          attributes  attributes v2, loaded when a page has one or a script calls a new action; legacy pages never load it
+    index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
+    context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
+    display.ts                     data-next-for, -query, -show / -hide, -each
+    condition.ts value.ts          the condition grammar (&&, ||, > <); a value written by its field's type or data-next-format
+    options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
+    actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
+    fields.ts                      data-next-field outside a checkout: variants.<code> pickers, a slot's properties
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
@@ -139,7 +152,8 @@ src/
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
-    payment/                       card.ts (payment radios and panels, payment.js), express.ts, logos.ts
+    payment/                       card.ts (payment radios and panels, payment.js), expiry.ts (month + year selects or
+                                   card.expiry), widget.ts ([data-next-payment]), express.ts, logos.ts
     form/                          fields.ts, labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
     review.ts                      [data-next-checkout-review]
   order/               order       loaded when the page has an upsell offer or order.* values
@@ -175,6 +189,7 @@ src/
                                    pages, where events are pushed, then this page's events; one opens in tsugi's dialog, a
                                    tab for its summary (why, what it reached, lines), the envelope and one for what each
                                    data layer or GA4 got
+    legacy.ts                      the attributes v2 name of each earlier attribute, shown in the Elements tab
     providers.ts                   which destinations are on, engine event → tracking event / dl_* wiring (checked against
                                    compat/analytics/), push checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
@@ -195,22 +210,26 @@ src/
                                    schema.ts: DataLayerEventMap, the type of every dl_* push (types only, for the docs)
 ```
 
-| Chunk        | Loaded when                                                           | Budget (gzip) |
-| ------------ | --------------------------------------------------------------------- | ------------- |
-| loader       | always, inline                                                        | 2.5 KB        |
-| boot         | always                                                                | 25 KB         |
-| checkout     | `form[data-next-checkout]`                                            | 30 KB         |
-| order        | `[data-next-upsell]` or `order.*`                                     | 10 KB         |
-| analytics    | idle after ready                                                      | 8 KB          |
-| ga4          | after analytics, when `destinations.ga4` is on                        | 2 KB          |
-| meta         | after analytics, when `destinations.meta` is on                       | 2 KB          |
-| rudderstack  | after analytics, when `destinations.rudderstack` is on                | 3 KB          |
-| exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
-| slots        | a bundle selector with a slot template                                | 6 KB          |
-| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
-| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`   | 3 KB          |
-| debug        | `?debug=1`, then every page of the tab until `?debug=0`               | 40 KB         |
-| debug icons  | the Checkout tab's payment step                                       | 16 KB         |
+| Chunk        | Loaded when                                                                                 | Budget (gzip) |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------- |
+| loader       | always, inline                                                                              | 2.5 KB        |
+| boot         | always                                                                                      | 25 KB         |
+| checkout     | `form[data-next-checkout]`                                                                  | 30 KB         |
+| order        | `[data-next-upsell]` or `order.*`                                                           | 10 KB         |
+| analytics    | idle after ready                                                                            | 8 KB          |
+| ga4          | after analytics, when `destinations.ga4` is on                                              | 2 KB          |
+| meta         | after analytics, when `destinations.meta` is on                                             | 2 KB          |
+| rudderstack  | after analytics, when `destinations.rudderstack` is on                                      | 3 KB          |
+| exit-intent  | first `next.exitIntent()`                                                                   | 3 KB          |
+| slots        | a bundle selector with a slot template                                                      | 6 KB          |
+| attributes   | a v2 attribute on the page, or a script's first new-style action                            | 12 KB         |
+| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)                           | 1 KB          |
+| query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
+| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
+| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
+| legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
+| debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
 
 ## Imports
 
@@ -221,6 +240,7 @@ src/
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`              |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                    |
 | `analytics/*`             | `engine/*`, `compat/analytics/*`; `destinations/*` only via `import()`                                |
+| `attributes/*`            | `engine/*`, `attributes/*`, `bindings/context.ts`, `bindings/dom.ts`                                  |
 | `destinations/*`          | `engine/*`                                                                                            |
 | `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
 | `compat/*`                | `engine/*`, `compat/*`                                                                                |
@@ -228,10 +248,16 @@ src/
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `destinations/ga4.ts`, `destinations/meta.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
-`compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
-`compat/analytics/`, which only their own chunk may import statically.
+`compat/exit-intent.ts`, `compat/widgets.ts`, `compat/legacy/index.ts` (with the `events.ts` and
+`payloads.ts` beside it), plus `compat/checkout.ts`, `compat/order.ts` and `compat/analytics/`,
+which only their own chunk may import statically.
+
+The legacy chunk makes 0.4.x `next.on` names from the events. Boot keeps the rest of
+`compat/legacy/`: `window.next`'s 0.4.x methods, the page moments (`checkout:started`, …) and the
+picks and clicks the payloads read. A listener added before the chunk has loaded is held, and
+hears the events since it was added once it has; from then on each as it happens.
 
 A type used by one domain sits in that domain's `types.ts` (`engine/cart/`, `checkout/state/`) or
 beside its actions (`OrderState` in `order/state.ts`); one that several domains share stays in
@@ -252,6 +278,8 @@ tests/
   engine/ checkout/state/ order/state.test.ts   headless code, runs in Node — proves it never needs a DOM
   bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
+  golden.test.ts                   binds and renders every fixture page, compared with tests/golden/; GOLDEN_PAGES=dir,dir
+                                   adds my-campaigns and the starter templates (snapshots in .golden/, not committed)
   event-examples.test.ts           records docs/event-examples.json; fails on a public event without an example
   analytics-examples.test.ts       records docs/analytics-examples.json; fails on an analytics event without an example
   destinations/examples.test.ts    records docs/destination-examples.json; fails on a vendor event without an example

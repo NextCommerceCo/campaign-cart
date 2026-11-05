@@ -32,7 +32,9 @@ export function expressMethods(engine: Engine): string[] {
 }
 
 export function bindExpress(engine: Engine, pay: (method: string) => Promise<void>): () => void {
-  const containers = [...document.querySelectorAll<HTMLElement>('[data-next-express-checkout="container"]')];
+  const containers = [
+    ...document.querySelectorAll<HTMLElement>('[data-next-express-checkout="container"], [data-next-express]'),
+  ];
   if (!containers.length) return () => {};
   const methods = expressMethods(engine);
   const buttons: HTMLButtonElement[] = [];

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../../src/bindings';
+import * as translator from '../../src/compat/legacy';
 import { legacyEvents } from '../../src/compat/legacy/registry';
 import { bindOrder } from '../../src/order';
 import { fakeApi, json } from '../fixtures/api';
@@ -17,7 +18,7 @@ async function upsellPage(api = fakeApi()) {
   document.body.innerHTML = `<div id="offer" data-next-upsell data-next-package-id="3"><button data-next-upsell-action="add">Add</button></div>`;
   const { engine } = makeEngine({ fetch: api.fetch, params: { ref_id: 'R1' }, session: sessionStorage });
   await engine.start();
-  const legacy = legacyEvents(engine);
+  const legacy = legacyEvents(engine, () => translator);
   const viewed = heard(legacy, 'upsell:viewed');
   const error = heard(legacy, 'upsell:error');
   const failed = heard(legacy, 'action:failed');

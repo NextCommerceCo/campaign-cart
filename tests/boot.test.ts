@@ -234,7 +234,7 @@ describe('boot', () => {
     expect(error.mock.calls[0]![1]).not.toHaveProperty('campaign');
   });
 
-  it('maps old next.on names to the new events and passes the payload', async () => {
+  it('maps old next.on names to the new events and passes the payload, one heard before its names loaded too', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
       <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div>
@@ -245,11 +245,26 @@ describe('boot', () => {
     next.on('fomo:shown' as never, vi.fn());
     next.on('nope:event' as never, vi.fn());
     document.querySelector<HTMLElement>('#two')!.click();
-    expect(changed).toHaveBeenCalledWith(
-      { selectorId: 'main', items: [{ packageId: 2, quantity: 1 }] },
-      expect.anything(),
+    await vi.waitFor(() =>
+      expect(changed).toHaveBeenCalledWith(
+        { selectorId: 'main', items: [{ packageId: 2, quantity: 1 }] },
+        expect.anything(),
+      ),
     );
     expect(warn.mock.calls).toEqual([['[next] next.on: unknown event "nope:event"']]);
+  });
+
+  it('hears an old next.on name on a page built only with attributes v2', async () => {
+    vi.stubGlobal('fetch', fakeApi().fetch);
+    document.body.innerHTML = '<span data-next-query="cart.total"></span>';
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    const added = vi.fn();
+    next.on('cart:item-added' as never, added);
+    await next.addItem({ packageId: 1 });
+    await vi.waitFor(() =>
+      expect(added).toHaveBeenCalledWith({ packageId: 1, quantity: 1, source: 'direct' }, expect.anything()),
+    );
   });
 
   it('hands each event with an envelope like a webhook, and keeps ready for scripts that listen late', async () => {
@@ -446,6 +461,76 @@ describe('boot', () => {
     expect(snapshot.campaign).toEqual(next.context().campaign);
   });
 
+  it('reads the object model through next.query and next.watch once their code loads, as data-next-query does', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    const seen = vi.fn();
+    next.watch('cart.quantity', seen);
+    next.define('Cart', 'doubled', (c: { quantity: number }) => c.quantity * 2);
+    await vi.waitFor(() => expect(seen).toHaveBeenCalledWith(0));
+    await next.actions.addItem(1, 2);
+    await flush();
+    expect(await next.query('cart.quantity')).toBe(2);
+    expect(await next.query('cart.doubled')).toBe(4);
+    expect(await next.query('package.2.price')).toBe(89);
+    expect(seen.mock.calls.map(([v]) => v)).toEqual([0, 2]);
+  });
+
+  it('takes one object of field names on every action, and the 0.5 positional calls still', async () => {
+    const next = boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    expect(await next.actions.addItem({ items: '1x2' })).toEqual({ ok: true });
+    expect(await next.actions.setQuantity({ package_id: 1, quantity: '+1' })).toEqual({ ok: true });
+    expect(await next.query('cart.quantity')).toBe(3);
+    expect(await next.actions.applyCoupon('nope')).toBe(false);
+    await next.actions.removeItem(1);
+    expect(await next.query('cart.quantity')).toBe(0);
+    expect(await next.actions.addItem({})).toMatchObject({ ok: false });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await (next.actions as unknown as Record<string, () => Promise<unknown>>).nope!()).toMatchObject({
+      ok: false,
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unknown action "nope"'), ...[]);
+  });
+
+  it('loads attributes v2 for a page that has one, and binds it before the page is ready', async () => {
+    document.body.innerHTML = `
+      <div data-next-selector="main"><div data-next-option="one" data-next-items="1" data-next-selected>
+        <span id="price" data-next-query="total"></span></div></div>
+      <p id="saved" data-next-show="cart.quantity > 0">In your cart</p>
+      <p id="old" data-next-show="cart.hasItems">Old</p>`;
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    await vi.waitFor(() => expect(document.querySelector('#price')!.textContent).toBe('$49.00'));
+    expect(document.querySelector<HTMLElement>('#saved')!.hidden).toBe(false);
+    expect(document.querySelector<HTMLElement>('#old')!.style.display).toBe('');
+  });
+
+  it('accepts a v2 offer on a page opened with ?ref_id, and announces it like a 0.4.x offer', async () => {
+    history.replaceState(null, '', '/upsell/?ref_id=R1');
+    vi.stubGlobal('IntersectionObserver', undefined);
+    document.body.innerHTML = `<div data-next-option="offer" data-next-items="9">
+      <span id="offer-price" data-next-query="total"></span>
+      <button id="yes" data-next-action="acceptUpsell">Yes</button></div>`;
+    const next = boot(config, Promise.resolve(campaign));
+    const seen: string[] = [];
+    next.on('*', (_, e) => void seen.push(e.event_type));
+    await vi.waitFor(() => expect(document.querySelector('#offer-price')!.textContent).toBe('$4.50'));
+    await vi.waitFor(() => expect(seen).toContain('upsell.viewed'));
+    document.querySelector<HTMLElement>('#yes')!.click();
+    await vi.waitFor(() => expect(seen).toContain('upsell.accepted'));
+    expect(await next.query('order.lines.1.upsell')).toBe(true);
+  });
+
+  it('leaves legacy pages without v2 markup on the 0.4.x bindings alone', async () => {
+    document.body.innerHTML = `<span data-next-display="cart.total"></span><p data-next-show="cart.hasItems">x</p>`;
+    const imports = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    boot(config, Promise.resolve(campaign));
+    await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    expect(imports).not.toHaveBeenCalled();
+    expect(document.querySelector('p')!.hasAttribute('hidden')).toBe(false);
+  });
+
   it('lets page scripts quiet the console and read the log stream', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));
@@ -453,9 +538,9 @@ describe('boot', () => {
     next.log.stream((e) => streamed.push(e.message));
     next.log.level = 'silent';
     next.on('nope:event' as never, vi.fn());
+    await vi.waitFor(() => expect(streamed).toContain('next.on: unknown event "nope:event"'));
     expect(warn).not.toHaveBeenCalled();
-    expect(streamed).toEqual(['next.on: unknown event "nope:event"']);
-    expect(next.log.entries().at(-1)).toMatchObject({ level: 'warn', message: 'next.on: unknown event "nope:event"' });
+    expect(next.log.entries().find((e) => e.message.startsWith('next.on'))).toMatchObject({ level: 'warn' });
   });
 
   it('keeps old clearCart and swapCart working the way the variant picker uses them', async () => {

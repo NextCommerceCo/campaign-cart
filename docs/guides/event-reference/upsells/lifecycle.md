@@ -9,7 +9,7 @@ Events: `upsell.*`, with `order.updated` after an accept and `payment.failed` fo
 
 ![Upsell lifecycle: next-available, next-processing, next-success, next-error, next-skipped and next-hidden on one upsell page, with the events each step sends and the page it leaves for](upsell-lifecycle.svg)
 
-The lifecycle is one offer's ([data-next-upsell](../../attribute-reference/upsells/data-next-upsell.md))
+The lifecycle is one [offer](../../attribute-reference/objects/selector.md)'s
 on one page after the checkout, opened with the order's `ref_id`. Its state is the class on the
 offer; while it is added, the order's `status` is `accepting`.
 
