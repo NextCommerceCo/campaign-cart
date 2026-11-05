@@ -22,7 +22,8 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    `order/state.ts`): no browser globals, and the only code that calls the API or storage.
    Three levels at most: `src/<feature>/<part>/<file>.ts`.
 3. **Split by domain, never by kind of code.** No `managers/`, `services/`, `utils/`,
-   `helpers/`. When a file passes ~300 lines, split it by domain.
+   `helpers/`. When a file passes 300 lines, split it by domain. `tests/architecture.test.ts`
+   holds a budget for each file still over: it only shrinks, and goes when the file is split.
 4. **Imports go one way** (table below), enforced by `tests/architecture.test.ts`.
 5. **Named exports only.** `index.ts` only as a chunk entry, never a re-export barrel.
    Enforced by the same test.
@@ -31,13 +32,39 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    so the folder decides ownership, not loading. Dropping 0.4.x support = deleting `compat/`.
 7. **`src/` root holds the entries** `loader.ts`, `boot.ts` and `config.ts`. Every other
    feature is a folder or a file inside one.
-8. **Comments are rare.** Code says what it does; `docs/` says why.
+8. **Comments are rare.** Code says what it does; `docs/` says why. The exception is async
+   ordering the code cannot show (an identity token, a serialized chain, latest-wins): one line
+   on why.
 9. **Build output is never committed.** CI builds `dist/`.
 10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
     attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
     skeleton, button spinners, `.hide` utilities, radio and validation styles), so
     `public/campaign-cart.css` is a verbatim copy that the loader links from its own folder.
     New CSS never goes there; trimming it is a decision for after the 0.4.x pages move.
+11. **A class owns a resource, a factory owns a domain's actions, a function does the rest.**
+    A class holds something long-lived with identity (`Engine`, `Api`, `StorageAdapter`,
+    `BindContext`); a `create<Domain>(ctx)` factory returns a domain's actions on Engine state,
+    which they change only through `ctx.update`; bindings and transforms are plain functions. No
+    inheritance beyond `Error`; a union with a `switch` until the same switch appears three times.
+
+## Glossary
+
+| Term            | Meaning                                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| selector        | A bundle selector (`data-next-bundle-selector`): cards to pick from, mode `swap`, `select` or `offer`. Pages say bundle            |
+| card            | One option of a selector (`data-next-bundle-card`), with its lines and its quote                                                   |
+| slot            | One unit of a configurable card line, which can be its own variant (`data-next-bundle-slot-template-id`)                           |
+| toggle          | A package switched on or off by its own card (`data-next-toggle-card`), kept in the cart as its own group                          |
+| group           | A named part of the cart: its lines and vouchers. `items`, a selector id or a toggle id; the cart is every group merged            |
+| held            | A coupon entered before the cart could be priced, checked at its next price                                                        |
+| frozen          | The cart while an order is placed: every cart action is a no-op, so a double click cannot change what is paid for                  |
+| calculating     | A price request is running; latest wins, so an older answer is dropped                                                             |
+| settled         | Internal moment once a change was priced (or failed): `shipping.settled` is when 0.4.x sent its shipping events                    |
+| lead            | The Open Cart the checkout saves once the name and the `data-next-lead` contact fields (`email`, `phone`, both or `off`) are valid |
+| attach          | `engine.attach(ctx => create…(ctx))`: a lazy chunk adds its actions to the Engine (`engine.checkout`, `engine.order`)              |
+| domain event    | An `EventMap` event (`cart.added`): what happened, for page scripts, analytics and debug                                           |
+| analytics event | A GA4-named event the analytics chunk derives from domain events (`add_to_cart`); `next.analytics.on`, `dataLayer`                 |
+| compat          | 0.4.x names and behaviour, only in `src/compat/`; deleting the folder drops 0.4.x support                                          |
 
 ## Repository
 

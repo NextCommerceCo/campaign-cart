@@ -8,10 +8,13 @@ analytics and debug tools subscribe to its events. Design:
 <script type="module" src=".../loader.js" data-campaign="pk_live_…" data-funnel="my-funnel"></script>
 ```
 
-**Status:** landing, cart and checkout are built and run on the live 0.4.x template markup
-(see [migrating-from-0.4.md](docs/guides/migrating-from-0.4.md)), plus analytics and
-attribution. Upsell and receipt are not built yet, so this is not a drop-in replacement for
-the 0.4.x SDK on those pages.
+**Status:** landing, cart, checkout, upsell and receipt pages are built and run on the live 0.4.x
+template markup (see [migrating-from-0.4.md](docs/guides/migrating-from-0.4.md)), plus analytics
+and attribution.
+
+**Reading the code for the first time:** run `bun dev`, open a campaign page with `?debug=1`
+and watch the panel's state and events while you click. Then read
+[structure.md](docs/architecture/structure.md): where code goes, and a glossary.
 
 | Command              |                                                                                   |
 | -------------------- | --------------------------------------------------------------------------------- |
