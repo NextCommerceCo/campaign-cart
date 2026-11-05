@@ -292,6 +292,16 @@ describe('attributes v2: actions', () => {
     expect(engine.getState().cart.coupons).toEqual([]);
   });
 
+  it('empties the cart before an addItem with data-next-replace', async () => {
+    const { engine, $ } = await mount(
+      '<button id="only" data-next-action="addItem" data-next-package-id="2" data-next-replace>Buy</button>',
+    );
+    await engine.cart.addItem(1);
+    await settle(engine);
+    $('#only').click();
+    await vi.waitFor(() => expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]));
+  });
+
   it('leaves an element alone when its data-next-action names no action', async () => {
     const { engine, $ } = await mount(`<button id="b" data-next-action="select-variants">Pick</button>`);
     $('#b').click();
