@@ -446,17 +446,18 @@ describe('boot', () => {
     expect(snapshot.campaign).toEqual(next.context().campaign);
   });
 
-  it('reads the object model through next.query and next.watch, as data-next-query does', async () => {
+  it('reads the object model through next.query and next.watch once their code loads, as data-next-query does', async () => {
     const next = boot(config, Promise.resolve(campaign));
     await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
     const seen = vi.fn();
     next.watch('cart.quantity', seen);
     next.define('Cart', 'doubled', (c: { quantity: number }) => c.quantity * 2);
+    await vi.waitFor(() => expect(seen).toHaveBeenCalledWith(0));
     await next.actions.addItem(1, 2);
     await flush();
-    expect(next.query('cart.quantity')).toBe(2);
-    expect(next.query('cart.doubled')).toBe(4);
-    expect(next.query('package.2.price')).toBe(89);
+    expect(await next.query('cart.quantity')).toBe(2);
+    expect(await next.query('cart.doubled')).toBe(4);
+    expect(await next.query('package.2.price')).toBe(89);
     expect(seen.mock.calls.map(([v]) => v)).toEqual([0, 2]);
   });
 
@@ -465,11 +466,16 @@ describe('boot', () => {
     await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
     expect(await next.actions.addItem({ items: '1x2' })).toEqual({ ok: true });
     expect(await next.actions.setQuantity({ package_id: 1, quantity: '+1' })).toEqual({ ok: true });
-    expect(next.query('cart.quantity')).toBe(3);
+    expect(await next.query('cart.quantity')).toBe(3);
     expect(await next.actions.applyCoupon('nope')).toBe(false);
     await next.actions.removeItem(1);
-    expect(next.query('cart.quantity')).toBe(0);
+    expect(await next.query('cart.quantity')).toBe(0);
     expect(await next.actions.addItem({})).toMatchObject({ ok: false });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await (next.actions as unknown as Record<string, () => Promise<unknown>>).nope!()).toMatchObject({
+      ok: false,
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unknown action "nope"'), ...[]);
   });
 
   it('loads attributes v2 for a page that has one, and binds it before the page is ready', async () => {
@@ -498,7 +504,7 @@ describe('boot', () => {
     await vi.waitFor(() => expect(seen).toContain('upsell.viewed'));
     document.querySelector<HTMLElement>('#yes')!.click();
     await vi.waitFor(() => expect(seen).toContain('upsell.accepted'));
-    expect(next.query('order.lines.1.upsell')).toBe(true);
+    expect(await next.query('order.lines.1.upsell')).toBe(true);
   });
 
   it('leaves legacy pages without v2 markup on the 0.4.x bindings alone', async () => {

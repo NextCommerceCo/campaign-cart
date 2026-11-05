@@ -26,7 +26,7 @@ Every other attribute is a parameter of one of these, named after a field of the
 ```
 
 ```js
-next.query('cart.total'); // 39
+await next.query('cart.total'); // 39
 next.on('cart.calculated', (cart) => cart.total); // the same Cart
 ```
 

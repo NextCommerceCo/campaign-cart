@@ -113,7 +113,8 @@ src/
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
-    query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines
+    query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines;
+                                                a chunk of its own, loaded by the first next.query, attributes v2 or a v2 checkout
     actions.ts                                  next.actions / data-next-action: every action, one object of field names in, { ok, errors } out
     visit.ts                                    the visit's timers and exit-intent count (engine.visit)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
@@ -207,24 +208,25 @@ src/
                                    schema.ts: DataLayerEventMap, the type of every dl_* push (types only, for the docs)
 ```
 
-| Chunk        | Loaded when                                                           | Budget (gzip) |
-| ------------ | --------------------------------------------------------------------- | ------------- |
-| loader       | always, inline                                                        | 2.5 KB        |
-| boot         | always                                                                | 26 KB         |
-| checkout     | `form[data-next-checkout]`                                            | 30 KB         |
-| order        | `[data-next-upsell]` or `order.*`                                     | 10 KB         |
-| analytics    | idle after ready                                                      | 8 KB          |
-| ga4          | after analytics, when `destinations.ga4` is on                        | 2 KB          |
-| meta         | after analytics, when `destinations.meta` is on                       | 2 KB          |
-| rudderstack  | after analytics, when `destinations.rudderstack` is on                | 3 KB          |
-| exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
-| slots        | a bundle selector with a slot template                                | 6 KB          |
-| attributes   | a v2 attribute on the page, or a script's first new-style action      | 12 KB         |
-| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)     | 1 KB          |
-| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
-| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`   | 3 KB          |
-| debug        | `?debug=1`, then every page of the tab until `?debug=0`               | 40 KB         |
-| debug icons  | the Checkout tab's payment step                                       | 16 KB         |
+| Chunk        | Loaded when                                                                                 | Budget (gzip) |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------- |
+| loader       | always, inline                                                                              | 2.5 KB        |
+| boot         | always                                                                                      | 25 KB         |
+| checkout     | `form[data-next-checkout]`                                                                  | 30 KB         |
+| order        | `[data-next-upsell]` or `order.*`                                                           | 10 KB         |
+| analytics    | idle after ready                                                                            | 8 KB          |
+| ga4          | after analytics, when `destinations.ga4` is on                                              | 2 KB          |
+| meta         | after analytics, when `destinations.meta` is on                                             | 2 KB          |
+| rudderstack  | after analytics, when `destinations.rudderstack` is on                                      | 3 KB          |
+| exit-intent  | first `next.exitIntent()`                                                                   | 3 KB          |
+| slots        | a bundle selector with a slot template                                                      | 6 KB          |
+| attributes   | a v2 attribute on the page, or a script's first new-style action                            | 12 KB         |
+| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)                           | 1 KB          |
+| query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
+| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
+| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
+| debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
 
 ## Imports
 

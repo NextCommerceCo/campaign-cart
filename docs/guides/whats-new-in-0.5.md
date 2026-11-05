@@ -14,7 +14,7 @@ order; the page's attributes and every listener read from it. Pages built for 0.
 ## One set of names
 
 Attributes, `next.query()`, `next.actions` and events read the same objects with the same
-snake_case fields: `data-next-query="cart.total"` is `next.query('cart.total')` is a
+snake_case fields: `data-next-query="cart.total"` is `await next.query('cart.total')` is a
 `cart.calculated` event's `total`. Five roles cover every attribute a page writes (see
 [Attributes](attributes.md)), and a page that uses only them never downloads the code for the
 earlier names.
