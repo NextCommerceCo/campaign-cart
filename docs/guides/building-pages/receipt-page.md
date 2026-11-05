@@ -68,7 +68,7 @@ The list gets `order-loading`, `order-has-items`, `order-empty` or `order-error`
 | Path                                                                                            | Is                                                                                                         |
 | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `order.number`, `order.refId`, `order.currency`                                                 | The order                                                                                                  |
-| `order.total`, `order.subtotal`, `order.shipping`, `order.tax`, `order.discounts`               | Money, in the order's currency; `totalExclTax`, `shippingExclTax` too                                      |
+| `order.total`, `order.subtotal`, `order.shipping`, `order.tax`, `order.discounts`               | Money, in the campaign's currency; `totalExclTax`, `shippingExclTax` too                                   |
 | `order.hasTax`, `order.hasShipping`, `order.hasDiscounts`, `order.hasUpsells`, `order.hasItems` | For `data-next-show` / `data-next-hide`                                                                    |
 | `order.itemCount`                                                                               | Number of lines                                                                                            |
 | `order.shippingMethod`, `order.paymentMethod`                                                   | Their names                                                                                                |

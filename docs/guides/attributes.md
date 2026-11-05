@@ -6,149 +6,93 @@ category: 'Reference'
 
 # Attributes
 
-Everything the SDK reads from a page. The SDK sets classes and attributes; pages own their
-CSS. Names marked _0.4.x_ are kept for old templates (see
-[migrating-from-0.4.md](migrating-from-0.4.md)).
+Everything the SDK reads from a page, one page per attribute in the **Attribute Reference**. The
+SDK sets classes and attributes; pages own their CSS. Names from 0.4.x still work and are listed
+on each page (see [Migrating from 0.4.x](migrating-from-0.4.md)).
 
-## Setup
+## Attribute Reference
 
-```html
-<script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="my-funnel"></script>
-```
+### Setup
 
-| Attribute / tag         | Meaning                                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
-| `data-campaign`         | Campaign API key. _0.4.x:_ `nextConfig.apiKey`, `<meta name="next-api-key">`                      |
-| `data-funnel`           | Storage scope: two funnels on one domain never share a cart. _0.4.x:_ `<meta name="next-funnel">` |
-| `html[data-next-ready]` | Set by the SDK when values are on the page (also 0.4.x's `next-display-ready` class)              |
+| Page                                                            | For                                                                  |
+| --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Loader script](attribute-reference/setup/loader-script.md)     | `data-campaign`, `data-funnel`: loading the SDK                      |
+| [data-next-ready](attribute-reference/setup/data-next-ready.md) | Set on `<html>` once values are on the page                          |
+| [URL parameters](attribute-reference/setup/url-parameters.md)   | `forcePackageId`, `forceBundleId`, `reset`, `debug`, kept parameters |
 
-## Values
+### Values
 
-| Attribute                           | Meaning                                                                      |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| `data-next-display="<path>"`        | Writes a value. Money and percentages are formatted in the campaign currency |
-| `data-next-show` / `data-next-hide` | `path`, `!path`, `path == 'x'`, `path != 'x'`; `path()` also accepted        |
-| `data-next-format`                  | Overrides the format (`currency`, `percentage`, …)                           |
+| Page                                                                            | For                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------ |
+| [data-next-display](attribute-reference/values/data-next-display.md)            | Writes a value, and every path it can name |
+| [data-next-show / data-next-hide](attribute-reference/values/data-next-show.md) | Shows or hides an element on a condition   |
+| [data-next-format](attribute-reference/values/data-next-format.md)              | Overrides how a value is formatted         |
 
-Paths: `cart.*` (total, subtotal, shipping, discountAmount, savingsAmount, savingsPercentage,
-quantity, itemCount, hasItems, isEmpty, hasCoupon, discountCode, isCalculating, …),
-`shipping.*` (name, code, cost, isFree), `campaign.*`, `param.<name>`, `package.<id>.*`
-(or `package.*` inside `[data-next-package-id]`), `bundle.<selector or card id>.*`,
-`toggle.<package id>.*`, and on post-purchase pages `order.*`.
+### Bundles
 
-## Bundles
+| Page                                                                                  | For                                      |
+| ------------------------------------------------------------------------------------- | ---------------------------------------- |
+| [data-next-bundle-selector](attribute-reference/bundles/data-next-bundle-selector.md) | A group of cards, one picked             |
+| [data-next-bundle-card](attribute-reference/bundles/data-next-bundle-card.md)         | A card: its lines, vouchers and shipping |
+| [data-next-bundle-display](attribute-reference/bundles/data-next-bundle-display.md)   | A card's own prices and discount         |
+| [Quantity stepper](attribute-reference/bundles/data-next-bundle-qty-for.md)           | `data-next-bundle-qty-for`               |
+| [Variant slots](attribute-reference/bundles/data-next-bundle-slot-template-id.md)     | One slot per unit, with variant selects  |
+| [Personalisation properties](attribute-reference/bundles/data-next-property.md)       | Properties sent with a line              |
+| [data-next-upsell-context](attribute-reference/bundles/data-next-upsell-context.md)   | Cards priced as a post-purchase offer    |
+| [data-next-discounts](attribute-reference/bundles/data-next-discounts.md)             | A card's discounts, from a template      |
 
-| Attribute                                                                                                | Meaning                                                                                                                                           |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-next-bundle-selector`, `data-next-selector-id`                                                     | A group of cards; one is picked. _0.4.x:_ `data-next-id`                                                                                          |
-| `data-next-selection-mode="swap\|select"`                                                                | `swap` (default) puts the pick in the cart; `select` only records it                                                                              |
-| `data-next-bundle-card`, `data-next-bundle-id`                                                           | A card                                                                                                                                            |
-| `data-next-bundle-items='[{"packageId":1,"quantity":2,"configurable":true}]'`                            | The card's lines; `configurable` makes one slot per unit                                                                                          |
-| `data-next-bundle-vouchers`, `data-next-shipping-id`                                                     | Vouchers and shipping method that come with the card                                                                                              |
-| `data-next-selected="true"`                                                                              | The card picked first (the cart's own pick wins after a reload; `?forceBundleId=<card>` or `<selector>:<card>` wins over both, on that page only) |
-| `data-next-quantity`, `data-next-min-quantity`, `data-next-max-quantity`                                 | Card quantity and its limits                                                                                                                      |
-| `data-next-bundle-qty-for="<selector id>"` with `data-next-quantity-increase` / `-decrease` / `-display` | Quantity stepper                                                                                                                                  |
-| `data-next-bundle-display="<prop>"`                                                                      | A card's own value (price, originalPrice, discountPercentage, hasDiscount, …)                                                                     |
-| `data-next-bundle-slot-template-id`, `data-next-bundle-slots-for`                                        | Multi-variant slots: template and where they are drawn                                                                                            |
-| `data-next-variant-selectors`                                                                            | Inside a slot template: variant `<select>`s are drawn here                                                                                        |
-| `data-next-property="<name>"`                                                                            | Inside a slot or bump: a personalisation sent with that line                                                                                      |
-| `data-next-default-property="<name>"`                                                                    | A page-wide personalisation added to every line…                                                                                                  |
-| `data-next-exclude-property="<name,…\|*>"`                                                               | …except on this card                                                                                                                              |
-| `data-next-upsell-context`                                                                               | Cards priced as a post-purchase offer (`?upsell=true`)                                                                                            |
-| `data-next-discounts="offer\|voucher"` (with a `<template>`) inside a card                               | That card's discounts                                                                                                                             |
+### Cart
 
-Every card is priced on the server with its vouchers and the shopper's coupons, as in 0.4.x;
-the campaign's package prices show until the quote arrives. A card's quote is kept for 10
-minutes, so the next page, a reload or a quantity a shopper picked before shows it without
-asking the server again; a coupon or a new quantity prices that card again.
+| Page                                                                           | For                                    |
+| ------------------------------------------------------------------------------ | -------------------------------------- |
+| [data-next-action="add-to-cart"](attribute-reference/cart/data-next-action.md) | A button that adds a package or a pick |
+| [data-next-toggle-card](attribute-reference/cart/data-next-toggle-card.md)     | An order bump                          |
+| [data-next-cart-summary](attribute-reference/cart/data-next-cart-summary.md)   | Cart lines and totals                  |
+| [data-next-coupon](attribute-reference/cart/data-next-coupon.md)               | A coupon field                         |
+| [Remove and quantity controls](attribute-reference/cart/cart-controls.md)      | Editing cart lines                     |
 
-## Order bumps and cart
+### Checkout
 
-| Attribute                                                      | Meaning                                                                                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `data-next-toggle-card`, `data-next-package-id`                | A bump that adds or removes its package. `data-next-is-upsell="true"` flags the line                                     |
-| `data-next-package-sync` / `data-next-product-sync`            | The bump's quantity follows these packages / products in the cart                                                        |
-| `data-next-toggle-display`, `data-next-toggle-image`           | The bump's own values (server-priced, like 0.4.x) and image                                                              |
-| `data-next-action="add-to-cart"`                               | With `data-next-package-id` (+ `data-next-quantity`) or `data-next-selector-id`; `data-next-clear-cart`, `data-next-url` |
-| `data-next-cart-summary`                                       | Cart lines and totals. Gets `next-calculating` while prices are on the way                                               |
-| `data-next-coupon`, `data-next-remove-item`, quantity controls | Cart editing controls. A code is kept only when the server gives a discount for it                                       |
+| Page                                                                                     | For                                        |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------ |
+| [data-next-checkout](attribute-reference/checkout/data-next-checkout.md)                 | The form, and where a paid order goes      |
+| [data-next-checkout-field](attribute-reference/checkout/data-next-checkout-field.md)     | Every field name                           |
+| [data-next-address](attribute-reference/checkout/data-next-address.md)                   | The country's address fields               |
+| [Phone field](attribute-reference/checkout/phone-field.md)                               | Flag, mask and E.164                       |
+| [Billing address](attribute-reference/checkout/billing-address.md)                       | Same-as-shipping toggle and billing fields |
+| [data-next-lead](attribute-reference/checkout/data-next-lead.md)                         | When the shopper is saved as a lead        |
+| [Payment methods](attribute-reference/checkout/payment-methods.md)                       | Method radios, panels and card fields      |
+| [data-next-express-checkout](attribute-reference/checkout/data-next-express-checkout.md) | Apple Pay, Google Pay and PayPal buttons   |
+| [Error messages](attribute-reference/checkout/error-messages.md)                         | Where order and payment errors show        |
+| [data-next-checkout-step](attribute-reference/checkout/data-next-checkout-step.md)       | Multi-step checkout                        |
+| [data-next-checkout-review](attribute-reference/checkout/data-next-checkout-review.md)   | What was entered on an earlier step        |
+| [Floating labels](attribute-reference/checkout/floating-labels.md)                       | `has-value` and `is-focused` on labels     |
 
-## Checkout
+### Upsells
 
-| Attribute                                                                                                   | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `form[data-next-checkout]`                                                                                  | Loads the checkout chunk                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `data-next-checkout-field="<name>"`                                                                         | email, first_name, last_name, line1, line2, city, state, postcode, country, phone_number, accepts_marketing; `billing-` prefix for billing. _0.4.x:_ fname, lname, address1, address2, province, postal, phone, `os-checkout-field`                                                                                                                                                                                          |
-| `data-next-required="true"` / `required`                                                                    | On the phone field: make it required                                                                                                                                                                                                                                                                                                                                                                                         |
-| `input[name="use_shipping_address"]`, `data-next-component="different-billing-address"` / `"billing-form"`  | Same-as-shipping toggle, billing section, rows cloned from `shipping-field-row`                                                                                                                                                                                                                                                                                                                                              |
-| `data-next-component="location"`                                                                            | Shown once a street address is typed                                                                                                                                                                                                                                                                                                                                                                                         |
-| `data-next-address="shipping" / "billing"`                                                                  | The country's address fields, built from i18n-rules in its order (`.next-address-row` › `.form-group.next-address-field` › control + `label.next-address-label`); skips fields the form writes itself; `data-next-address-state`                                                                                                                                                                                             |
-| City, state and postcode on the page (once the country's rules load)                                        | Label and placeholder text from the rules, keeping the page's trailing `*` where the field is required; hidden where the country has no such field; `maxlength`, `autocapitalize` and `inputmode` from the rules (`inputmode="numeric"` kept only for an all-digit postcode); the state `<select>` becomes a text input where the country asks for a typed region; the postcode written in the country's mask as it is typed |
-| `data-next-phone-e164` (set by the SDK)                                                                     | On the phone field while i18n-rules reads the number as valid: the number in E.164                                                                                                                                                                                                                                                                                                                                           |
-| `data-next-phone-country`, `.next-phone-input`, `.next-phone-field`, `img.next-phone-flag` (set by the SDK) | The phone field's country (the address country, or the number's own once read) and its flag from i18n-rules, inside the field's right edge                                                                                                                                                                                                                                                                                   |
-| `nextConfig.addressConfig.enableAutocomplete: true`                                                         | Address suggestions under the street field (NextCommerce lookup)                                                                                                                                                                                                                                                                                                                                                             |
-| `.form-group label.label-checkout`                                                                          | Floating label: gets `has-value` (and `is-focused` with `data-label-behavior="placeholder"`)                                                                                                                                                                                                                                                                                                                                 |
-| `input[name="payment_method"]`, `data-next-payment-method`, `data-next-payment-form`                        | Payment choice and its panels. A method picked here, PayPal and Klarna too, is checked like a card: every field the form asks for                                                                                                                                                                                                                                                                                            |
-| `data-next-checkout-field="cc-number" / "cvv" / "exp-month" / "exp-year"`                                   | Card fields (payment.js)                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `data-next-express-checkout="container" / "buttons"`                                                        | Express buttons are added here. A button places the order with the wallet's details, without the form's checks; _0.4.x:_ `nextConfig.paymentConfig.expressCheckout.requireValidation` checks the `requiredFields` it lists first, or the whole form                                                                                                                                                                          |
-| `data-next-component="<method>-error"` (+ `-error-text`)                                                    | Where order and payment errors are shown                                                                                                                                                                                                                                                                                                                                                                                     |
-| `data-next-checkout-step="<next url>"`, `data-next-step-number`                                             | Multi-step checkout                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `data-next-checkout-review="<field>"`                                                                       | Shows what was entered (email, address, phone, shippingMethod.name, …)                                                                                                                                                                                                                                                                                                                                                       |
-| `<meta name="next-success-url">`, `next-failure-url`                                                        | Where the shopper goes after paying. Without `next-success-url` the SDK logs an error: a paid order goes to the store's order page, where the purchase is not tracked, and a payment gateway sends the shopper to `/success`                                                                                                                                                                                                 |
+| Page                                                                              | For                        |
+| --------------------------------------------------------------------------------- | -------------------------- |
+| [data-next-upsell](attribute-reference/upsells/data-next-upsell.md)               | A post-purchase offer      |
+| [data-next-upsell-action](attribute-reference/upsells/data-next-upsell-action.md) | Accept and decline buttons |
 
-### Lead capture
+### Orders
 
-The checkout saves the shopper as a lead, the Open Cart that `cart.abandoned` follows up, as soon as
-they have entered a first and last name of at least two characters each and an email. `user.created` fires then. To wait for a phone
-number too, set `data-next-lead` on the form:
+| Page                                                                         | For                         |
+| ---------------------------------------------------------------------------- | --------------------------- |
+| [data-next-order-items](attribute-reference/orders/data-next-order-items.md) | Order lines from a template |
+| [order.\* values](attribute-reference/orders/order-values.md)                | Every `order.*` path        |
 
-```html
-<form data-next-checkout data-next-lead="email+phone"></form>
-```
+### Promotions
 
-| `data-next-lead`  | The lead is saved once the name and                |
-| ----------------- | -------------------------------------------------- |
-| `email` (default) | a valid email                                      |
-| `phone`           | a valid phone number (read by the address service) |
-| `email+phone`     | both                                               |
-| `off`             | never                                              |
+| Page                                                                         | For                                       |
+| ---------------------------------------------------------------------------- | ----------------------------------------- |
+| [data-next-promotion](attribute-reference/promotions/data-next-promotion.md) | Banners, cards and links that are tracked |
 
-`email phone`, `Email + Phone` or `phone,email` read the same as `email+phone`. A value the checkout
-cannot read logs a warning and uses `email`. _0.4.x:_ `data-trigger-on` (`emailEntry`, `phoneEntry`,
-`emailAndPhone`, `manual`, `formStart`) and `data-auto-create="false"` still work; `formStart` saves
-as soon as an email, a name or a phone is filled, without waiting for the rest.
+### Widgets
 
-## Upsell and receipt
-
-| Attribute                                          | Meaning                                                                                                  |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `data-next-upsell="offer"`                         | An offer; its first bundle selector supplies the lines (or `data-next-package-id`)                       |
-| `data-next-bundle-selector-id` on the offer        | _0.4.x:_ the selector supplying the lines sits outside the offer                                         |
-| `data-next-upsell-action="add\|skip"`              | Accept or decline; `data-next-url` or `<meta name="next-upsell-accept-url">` / `-decline-url`            |
-| `[data-next-order-items]`, `data-item-template-id` | Order lines from a template with `{item.name}`, `{item.quantity}`, `{item.lineTotal}`, `{item.image}`, … |
-
-## Promotions
-
-A banner, a card or a link the page promotes: `promotion.viewed` once half of it is on screen,
-`promotion.clicked` on each click, and their `view_promotion` / `select_promotion` tracking events.
-The exit-intent popup is a promotion too, named with `next.exitIntent({ id, name, … })`.
-
-```html
-<a href="#offer" data-next-promotion="summer-sale" data-next-promotion-name="Summer sale">…</a>
-```
-
-| Attribute                      | Meaning                                             |
-| ------------------------------ | --------------------------------------------------- |
-| `data-next-promotion="<id>"`   | The promotion's `id`, sent as `promotion_id`        |
-| `data-next-promotion-name`     | Its name, sent as `promotion_name`                  |
-| `data-next-promotion-creative` | The image or version shown, sent as `creative_name` |
-
-## Page widgets
-
-`data-next-timer` with `data-duration` (seconds), `data-persistence-id` and `data-format`
-(`mm:ss`, `hh:mm:ss`, `ss`): counts down in `[data-next-timer-display]` from where the tab left it,
-then hides itself and shows `[data-next-timer-expired][data-persistence-id]`.
-
-`data-next-accordion` (with `-trigger`, `-panel`, `-text`), `data-next-tooltip`, and
-`data-next-component="scroll-hint"` (`data-next-scroll-target`, `data-next-scroll-threshold`):
-`cart-items__scroll-hint--active` stays on only while the list it sits by can scroll and is at the top.
+| Page                                                                      | For                                |
+| ------------------------------------------------------------------------- | ---------------------------------- |
+| [data-next-timer](attribute-reference/widgets/data-next-timer.md)         | A countdown that survives a reload |
+| [data-next-accordion](attribute-reference/widgets/data-next-accordion.md) | Open and close panels              |
+| [data-next-tooltip](attribute-reference/widgets/data-next-tooltip.md)     | A tooltip                          |
+| [Scroll hint](attribute-reference/widgets/scroll-hint.md)                 | A hint while a list can scroll     |

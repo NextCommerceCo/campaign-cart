@@ -66,7 +66,7 @@ with its `type`, and `payment.selected` the Payment.
 `user.created` fires once per tab, kept across pages until an order is paid, when the checkout
 saves the shopper as a lead: a first and last name of at least two characters each and a valid
 email by default, or what `data-next-lead` asks for (see Lead capture in
-[Attributes](../../attributes.md#lead-capture)), checked each time the shopper leaves a field they
+[data-next-lead](../../attribute-reference/checkout/data-next-lead.md)), checked each time the shopper leaves a field they
 changed, or picks an option. A failed save sends `sdk.error` (`user.save`) and is tried again on
 the next field change. `user.updated` fires when the details change and are still valid; an
 invalid change sends nothing. The Open Cart keeps the first details; the order takes the latest.

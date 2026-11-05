@@ -20,8 +20,8 @@ cart the landing page filled.
 
 ## Prices and packages
 
-Write the campaign's own values into the page with `data-next-display`. Text already inside the
-element shows until the campaign loads.
+Write the campaign's own values into the page with `data-next-display`. The element is emptied until
+the campaign loads, so placeholder text inside it does not show on the first page.
 
 ```html
 <div data-next-package-id="42">
@@ -61,7 +61,7 @@ pick is the cart, so a landing page can send the shopper straight on.
 
 Each card is priced on the server, so its price includes vouchers and coupons. The picked card
 gets `next-selected`. Cards and their attributes are listed under
-[Bundles](../attributes.md#bundles).
+[Bundles](../attribute-reference/bundles/data-next-bundle-selector.md).
 
 ## Add to cart buttons
 
@@ -104,12 +104,12 @@ tracked.
 <div data-next-timer data-duration="600" data-persistence-id="presell" data-format="mm:ss">
   Offer ends in <span data-next-timer-display>10:00</span>
 </div>
-<div data-next-timer-expired data-persistence-id="presell" hidden>The offer has ended</div>
+<div data-next-timer-expired data-persistence-id="presell" style="display: none">The offer has ended</div>
 
 <a href="landing.html" data-next-promotion="presell-cta" data-next-promotion-name="Presell CTA">See the offer</a>
 ```
 
 The timer carries on from where the shopper left it when they come back in the same tab.
 `data-next-promotion` sends `promotion.viewed` and `promotion.clicked` (see
-[Promotions](../attributes.md#promotions)). An exit-intent popup is set up with
+[data-next-promotion](../attribute-reference/promotions/data-next-promotion.md)). An exit-intent popup is set up with
 `next.exitIntent({ … })` (see the [JavaScript API](../javascript-api.md)).

@@ -28,10 +28,20 @@ where the purchase is not tracked.
 ## The cart on the page
 
 A checkout often keeps its own bundle selector, so the shopper can change their pick here. The
-summary shows lines and totals and gets `next-calculating` while new prices are on the way.
+summary draws its `<template>` with the cart's lines and totals, again on each new price, and gets
+`next-calculating` while new prices are on the way (see
+[data-next-cart-summary](../attribute-reference/cart/data-next-cart-summary.md)).
 
 ```html
-<div data-next-cart-summary></div>
+<div data-next-cart-summary>
+  <template>
+    <div data-summary-lines>
+      <template>
+        <div class="line">{item.name} × {item.quantity} {item.price}</div>
+      </template>
+    </div>
+  </template>
+</div>
 
 <dl>
   <dt>Subtotal</dt>
@@ -52,12 +62,14 @@ summary shows lines and totals and gets `next-calculating` while new prices are 
 ```
 
 An order bump is a `data-next-toggle-card` with its package (see
-[Order bumps and cart](../attributes.md#order-bumps-and-cart)).
+[data-next-toggle-card](../attribute-reference/cart/data-next-toggle-card.md)).
 
 ## Contact and address
 
 Name each input with `data-next-checkout-field`. The SDK checks every field, saves what was typed
-in this tab, and marks the field's `.form-group` with `has-error` or `no-error`.
+in this tab, and marks the field with `has-error` or `no-error`; the message goes in a
+`div.next-error-label` inside its `.form-group` (see
+[Error messages](../attribute-reference/checkout/error-messages.md)).
 
 ```html
 <form data-next-checkout>
@@ -85,7 +97,7 @@ For a billing address, add `input[name="use_shipping_address"]` and a
 
 As soon as the shopper has a name and an email, the checkout saves them as a lead (`user.created`),
 the cart that `cart.abandoned` follows up. `data-next-lead` changes when; see
-[Lead capture](../attributes.md#lead-capture).
+[data-next-lead](../attribute-reference/checkout/data-next-lead.md).
 
 ## Payment
 
@@ -109,7 +121,9 @@ the picked panel gets `next-selected` and its `data-next-payment-form` opens.
   <div data-next-component="paypal-error"><span data-next-component="paypal-error-text"></span></div>
 </div>
 
-<div data-next-express-checkout="buttons"></div>
+<div data-next-express-checkout="container">
+  <div data-next-express-checkout="buttons"></div>
+</div>
 
 <button type="submit">Complete order</button>
 ```
@@ -117,7 +131,7 @@ the picked panel gets `next-selected` and its `data-next-payment-form` opens.
 The card number and CVV are drawn by the payment provider inside those elements; the page never
 sees the card. Errors show in the selected method's `-error` box, or `credit-error` when it has
 none. Express buttons (Apple Pay, Google Pay, PayPal) are added to
-`data-next-express-checkout="buttons"` and place the order with the wallet's details.
+`data-next-express-checkout="buttons"` inside a `data-next-express-checkout="container"` and place the order with the wallet's details.
 
 ## Multi-step checkout
 
