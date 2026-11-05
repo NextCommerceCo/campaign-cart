@@ -45,5 +45,6 @@ While the offer is being added, further clicks on any of its buttons do nothing.
 
 [upsell.accepted](/event-reference/upsells/upsell.accepted),
 [upsell.failed](/event-reference/upsells/upsell.failed),
+[payment.failed](/event-reference/payments/payment.failed) for a decline,
 [upsell.skipped](/event-reference/upsells/upsell.skipped); see the
 [Upsell lifecycle](../../event-reference/upsells/lifecycle.md).

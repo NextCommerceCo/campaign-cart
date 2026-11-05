@@ -7,6 +7,7 @@ describe('publicOrder', () => {
     expect(publicOrder(ORDER, ['SAVE10'])).toEqual({
       ref_id: 'R1',
       number: '1001',
+      paid: true,
       currency: 'USD',
       test: false,
       lines: [

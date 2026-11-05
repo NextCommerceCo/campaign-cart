@@ -74,8 +74,8 @@ The SDK sets classes on the `[data-next-upsell]` element; the page styles them.
 | `next-disabled` (on the buttons) | While an offer is being added, or the page is leaving                                    |
 
 An offer is added once per order and page: going back and clicking again moves on without
-charging twice. Each offer sends `upsell.viewed` once it is shown, then `upsell.accepted` (with
-`order.updated`) or `upsell.skipped`; see the [Upsell lifecycle](../event-reference/upsells/lifecycle.md).
+charging twice. Each offer sends `upsell.viewed` once half of it is on screen, then `upsell.accepted` (with
+`order.updated`), `upsell.skipped`, or `payment.failed` for a decline; see the [Upsell lifecycle](../event-reference/upsells/lifecycle.md).
 
 Values of the order are available here too, as on the [receipt](receipt-page.md):
 `<span data-next-display="order.customer.firstName"></span>, one more thing…`

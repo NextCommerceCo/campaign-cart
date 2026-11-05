@@ -11,6 +11,7 @@ import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
 import { fakeRules } from '../fixtures/rules';
+import { FakeObserver } from '../bindings/observer';
 
 const config = { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: '', debug: false, reset: false };
 
@@ -228,8 +229,8 @@ describe('0.4.x event names', () => {
     await flush();
     expect(next.getState().cart.groups['toggle:9']?.lines).toEqual([{ packageId: 9, quantity: 3 }]);
     expect(added).toEqual([
-      { packageId: 9, quantity: 1 },
       { packageId: 1, quantity: 1, source: 'direct' },
+      { packageId: 9, quantity: 1 },
       { packageId: 9, quantity: 2 },
     ]);
     expect(changed).toEqual([{ packageId: 1, quantity: 3, oldQuantity: 1 }]);
@@ -387,6 +388,21 @@ describe('0.4.x event names', () => {
     ]);
   });
 
+  it('selection events of a selector bound off screen fire at bind, before its selector.viewed, as 0.4.43', async () => {
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+    document.body.innerHTML = `<div data-next-bundle-selector data-next-selector-id="main">
+      <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'></div></div>`;
+    const { engine } = makeEngine();
+    await engine.start();
+    const single = heard(legacyEvents(engine), 'selector:selection-changed');
+    const viewed = vi.fn();
+    engine.on('selector.viewed', viewed);
+    bindAll(document, engine, vi.fn());
+    await flush();
+    expect(single).toEqual([{ selectorId: 'main', packageId: 1, quantity: 1 }]);
+    expect(viewed).not.toHaveBeenCalled();
+  });
+
   it('selector:item-selected names the previous pick whichever order the listeners run in', async () => {
     const { engine } = makeEngine();
     await engine.start();
@@ -420,7 +436,7 @@ describe('0.4.x event names', () => {
     const heardBy = engines.map(({ legacy }) => heard(legacy, 'payment:tokenized'));
     const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
     for (const { engine } of engines)
-      engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+      engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token' });
     expect(heardBy).toEqual([[{ paymentMethod: 'credit-card' }], []]);
   });
 
@@ -430,9 +446,13 @@ describe('0.4.x event names', () => {
     const changed = heard(next, 'shipping:method-changed');
     const selected = heard(next, 'shipping:method-selected');
     await next.addItem({ packageId: 1 });
+    await flush();
+    const order: string[] = [];
+    for (const name of ['cart:updated', 'shipping:method-changed']) next.on(name as never, () => order.push(name));
     await next.actions.setShipping(1);
     await vi.waitFor(() => expect(changed).toEqual([{ methodId: 1, method: campaign.shipping_methods[0] }]));
     expect(selected).toEqual([{ shippingId: '1' }]);
+    expect(order).toEqual(['cart:updated', 'shipping:method-changed']);
   });
 
   it('checkout:started carries the form under 0.4.x field names', async () => {
@@ -476,24 +496,18 @@ describe('0.4.x event names', () => {
     const emit = engine.events.emit.bind(engine.events);
     const placedBy = (express: boolean) => engine.attach((ctx) => ctx.update('checkout', { express }));
     placedBy(false);
-    emit('checkout.submitted', {
+    emit('checkout.invalid', {
       ...checkout,
       payment_method: 'card_token',
-      valid: false,
       errors: { form: { code: 'card', message: 'Enter a valid card number' } },
     });
-    emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+    emit('checkout.submitted', { ...checkout, payment_method: 'card_token' });
     placedBy(true);
-    emit('checkout.submitted', { ...checkout, payment_method: 'paypal', valid: true, errors: {} });
-    emit('checkout.submitted', {
-      ...checkout,
-      payment_method: 'apple_pay',
-      valid: false,
-      errors: { form: { code: 'empty_cart' } },
-    });
+    emit('checkout.submitted', { ...checkout, payment_method: 'paypal' });
+    emit('checkout.invalid', { ...checkout, payment_method: 'apple_pay', errors: { form: { code: 'empty_cart' } } });
     const declined = { code: 'declined', status: 400, message: 'Your card was declined.', decline_code: '05' } as const;
     placedBy(false);
-    emit('checkout.failed', { ...checkout, payment_method: 'card_token', error: declined });
+    emit('payment.failed', { method: 'card_token', error: declined });
     placedBy(true);
     emit('checkout.failed', {
       ...checkout,
@@ -531,8 +545,7 @@ describe('0.4.x event names', () => {
     const one = heard(legacy, 'payment:tokenized');
     const two = heard(legacy, 'payment:tokenized');
     const checkout: Checkout = { id: 'c1', cart: { lines: [], coupons: [] } };
-    for (let i = 0; i < 2; i++)
-      engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token', valid: true, errors: {} });
+    for (let i = 0; i < 2; i++) engine.events.emit('checkout.submitted', { ...checkout, payment_method: 'card_token' });
     expect([...one, ...two]).toEqual(Array(4).fill({ paymentMethod: 'credit-card' }));
     expect(engine.log.entries().filter((e) => e.message.includes('payment:tokenized'))).toEqual([
       expect.objectContaining({

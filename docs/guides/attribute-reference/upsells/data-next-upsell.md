@@ -58,9 +58,10 @@ page without adding it twice.
 
 ## Events
 
-[upsell.viewed](/event-reference/upsells/upsell.viewed) once the offer is shown, then
+[upsell.viewed](/event-reference/upsells/upsell.viewed) once half of the offer is on screen, then
 [upsell.accepted](/event-reference/upsells/upsell.accepted) with
 [order.updated](/event-reference/orders/order.updated),
+[payment.failed](/event-reference/payments/payment.failed) for a decline,
 [upsell.failed](/event-reference/upsells/upsell.failed) or
 [upsell.skipped](/event-reference/upsells/upsell.skipped); see the
 [Upsell lifecycle](../../event-reference/upsells/lifecycle.md).

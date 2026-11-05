@@ -5,6 +5,22 @@ import type { Tokens } from '../engine/tokens';
 import { resolve } from '../engine/values';
 import { legacySelectorId } from '../compat/legacy';
 
+const VISIBLE = 0.5;
+
+/** Calls `fn` once, when half of `el` is on screen; at once where the browser cannot tell. */
+export function onceVisible(el: Element, fn: () => void): void {
+  if (typeof IntersectionObserver === 'undefined') return fn();
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((e) => e.intersectionRatio >= VISIBLE)) return;
+      observer.disconnect();
+      fn();
+    },
+    { threshold: VISIBLE },
+  );
+  observer.observe(el);
+}
+
 export function selectorIdOf(el: Element): string {
   return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';
 }

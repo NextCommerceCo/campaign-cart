@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 562" width="720" height="562" role="img" aria-labelledby="selectors-lifecycle-title selectors-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" width="720" height="450" role="img" aria-labelledby="selectors-lifecycle-title selectors-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="selectors-lifecycle-title">Selector lifecycle</title>
-  <desc id="selectors-lifecycle-desc">A selector is bound and picks its option (selector.viewed, once): ?forceBundleId, the one in the cart, data-next-selected, else the first. Options with no price from the last 10 minutes are calculated (selector.calculating), then priced (selector.calculated); when every price is from the last 10 minutes it is priced at once, and those prices are checked again once a page (selector.calculated again). Picking another option sends selector.selected. Changing the picked option’s quantity or a slot sends selector.updated and prices again; a coupon change prices again without selector.updated. Pricing that fails sends sdk.error and moves to unpriced: each option keeps its last price, else the package price; the next change prices again.</desc>
+  <desc id="selectors-lifecycle-desc">A selector is bound and picks its option: ?forceBundleId, the one in the cart, data-next-selected, else the first; selector.viewed comes once a page, when half of it is on screen. Options with no price from the last 10 minutes are calculated (selector.calculating), then priced (selector.calculated); when every price is from the last 10 minutes it is priced at once, and those prices are checked again once a page (selector.calculated again). Picking another option sends selector.selected. Changing the picked option’s quantity or a slot sends selector.updated and prices again; a coupon change prices again without selector.updated. Pricing that fails sends sdk.error and moves to unpriced: each option keeps its last price, else the package price; the next change prices again. A toggle follows the same lifecycle, its line priced while it is off.</desc>
   <defs>
     <marker id="selectors-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -26,9 +26,10 @@
     <text x="482" y="411" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.selected</text>
   </g>
   <g text-anchor="middle">
-    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <rect x="220" y="16" width="220" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
     <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">picked</text>
     <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.viewed</text>
+    <text x="330" y="76" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once half of it is on screen</text>
     <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">calculating</text>
     <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">selector.calculating</text>
@@ -39,9 +40,4 @@
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">unpriced</text>
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
   </g>
-  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Prices from the last 10 minutes are checked again once a page: selector.calculated again</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A coupon change prices the options again, without selector.updated</tspan></text>
-  <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Swap mode (the default) also puts the pick in the cart: cart.updated follows</tspan></text>
-  <text x="360" y="528" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A toggle: selector.selected when switched on, selector.deselected when its line leaves the cart</tspan></text>
-  <text x="360" y="548" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · selector.calculate</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → unpriced: each option keeps its last price, else the package price</tspan></text>
 </svg>

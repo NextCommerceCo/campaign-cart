@@ -14,6 +14,7 @@ async function setup(withCheckout = true, offers: Partial<typeof campaign> = {})
   await engine.start();
   if (withCheckout) {
     engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+    engine.checkout.begin();
     await engine.checkout.loadCountries();
   }
   const root = document.createElement('div');

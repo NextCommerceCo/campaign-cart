@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 726" width="720" height="726" role="img" aria-labelledby="coupons-lifecycle-title coupons-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 594" width="720" height="594" role="img" aria-labelledby="coupons-lifecycle-title coupons-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="coupons-lifecycle-title">Coupon lifecycle</title>
   <desc id="coupons-lifecycle-desc">A code entered on a cart with lines is checked: the cart is priced with and without it. When it takes money off it is applied (cart.updated, then coupon.applied); when it takes nothing off, or cannot be checked (sdk.error first), it is denied (coupon.denied) and the cart does not change. A code entered on an empty cart, or before the campaign loads, is held until the cart is first priced, then checked. A code already on the cart, held or being checked is denied at once (duplicate). Removing an applied code sends cart.updated, then coupon.removed; clearing the cart sends cart.updated, cart.removed, then coupon.removed. Removing or clearing drops a held code, or one being checked, without events.</desc>
   <defs>
@@ -7,16 +7,19 @@
     </marker>
   </defs>
   <g>
-    <path d="M24 69 H214" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="24" y="41" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">entered on an</text>
-    <text x="24" y="57" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">empty cart</text>
-    <path d="M24 229 H214" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-    <text x="24" y="201" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">entered on a</text>
-    <text x="24" y="217" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">cart with lines</text>
-    <path d="M620 24 V194" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
-    <text x="608" y="80" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">entered again:</text>
-    <text x="608" y="96" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">already on the cart,</text>
-    <text x="608" y="112" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 12px">held or checking</text>
+    <rect x="16" y="48" width="116" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="74" y="66" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">entered on an</text>
+    <text x="74" y="81" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">empty cart</text>
+    <path d="M132 69 H214" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <rect x="16" y="208" width="116" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="74" y="226" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">entered on a</text>
+    <text x="74" y="241" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">cart with lines</text>
+    <path d="M132 229 H214" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <rect x="540" y="54" width="160" height="57" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="72" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">entered again: already</text>
+    <text x="620" y="87" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">on the cart, held</text>
+    <text x="620" y="102" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or checking</text>
+    <path d="M620 111 V194" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <path d="M330 98 V194" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="146" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the cart is first priced</text>
     <path d="M330 258 V354" marker-end="url(#coupons-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
@@ -47,10 +50,4 @@
     <text x="620" y="225" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">denied</text>
     <text x="620" y="245" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">coupon.denied</text>
   </g>
-  <text x="360" y="612" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">reason: no_discount, duplicate, or check_failed (after sdk.error)</tspan></text>
-  <text x="360" y="632" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Applied or removed, a cart with lines is priced again: cart.calculating, cart.calculated</tspan></text>
-  <text x="360" y="652" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">removeCoupon: reason shopper · clearing the cart: cart.removed first, then reason cleared</tspan></text>
-  <text x="360" y="672" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Removing or clearing drops a held code, or one being checked, without events</tspan></text>
-  <text x="360" y="692" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">A held code is kept across pages in this tab · a frozen cart takes no code and sends nothing</tspan></text>
-  <text x="360" y="712" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · coupon.check</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → denied with check_failed; applyCoupon resolves false</tspan></text>
 </svg>

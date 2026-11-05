@@ -1,12 +1,25 @@
-import { mergeLines, toggleGroup } from './cart';
+import { mergeLines, publicToggle, toggleGroup } from './cart';
 import type { Context } from '../engine';
+import type { Selector } from '../events';
 
 export { toggleGroup };
 
 export function createToggles(ctx: Context) {
   const inFlight = new Map<number, AbortController>();
+  const viewed = new Set<number>();
+
+  const selectorOf = (packageId: number, quantity: number): Selector => {
+    const state = ctx.getState();
+    const id = toggleGroup(packageId);
+    return publicToggle(state, id, state.cart.groups[id] ?? { lines: [{ packageId, quantity }], vouchers: [] });
+  };
 
   return {
+    view(packageId: number, quantity: number): void {
+      if (viewed.has(packageId)) return;
+      viewed.add(packageId);
+      ctx.emit('selector.viewed', selectorOf(packageId, quantity));
+    },
     price(packageId: number, quantity: number): void {
       const { campaign, cart, toggles } = ctx.getState();
       const group = toggleGroup(packageId);
@@ -20,12 +33,14 @@ export function createToggles(ctx: Context) {
       const controller = new AbortController();
       inFlight.set(packageId, controller);
       ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
+      ctx.emit('selector.calculating', selectorOf(packageId, quantity));
       ctx.api
         .calculate({ lines, vouchers: cart.coupons, currency: campaign.currency }, { signal: controller.signal })
         .then((summary) => {
           const line = summary.lines.find((l) => l.package_id === packageId);
           if (inFlight.get(packageId) !== controller) return;
           ctx.update('toggles', { [packageId]: { key, quantity, line } });
+          ctx.emit('selector.calculated', selectorOf(packageId, quantity));
         })
         .catch((err: unknown) => {
           if (inFlight.get(packageId) === controller) ctx.fail('selector.calculate', err);

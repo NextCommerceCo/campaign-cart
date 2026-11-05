@@ -4,7 +4,7 @@ import { exitIntent } from '../../src/compat/exit-intent';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
 import type { Address, AnalyticsEvent, AnalyticsTrace, Promotion } from '../../src/engine/events';
-import { publicOrder } from '../../src/engine/order';
+import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
 import type { ApiOrder } from '../../src/engine/types';
 import { upsellId } from '../../src/engine/order';
 import { createOrder, type OrderState } from '../../src/order/state';
@@ -43,8 +43,6 @@ const submitted = (engine: Engine, payment_method = 'card_token') =>
   engine.events.emit('checkout.submitted', {
     ...engine.cart.currentCheckout(),
     payment_method,
-    valid: true,
-    errors: {},
   });
 
 async function loadOrder(order: ApiOrder, opts: { local?: Storage; coupon?: OrderState['coupon'] } = {}) {
@@ -425,6 +423,63 @@ describe('analytics', () => {
     expect(names()).not.toContain('dl_purchase');
   });
 
+  it('sends purchase on the checkout for an order paid at once, and not again on the page after', async () => {
+    const local = new MemoryStorage();
+    const { engine } = makeEngine({ local });
+    await engine.start();
+    startAnalytics(engine, options);
+    engine.attach((ctx) => {
+      ctx.update('order', { paidOrder: ORDER });
+      ctx.local.set(REPORTED, [purchaseId(ORDER)]);
+    });
+    engine.events.emit('order.created', publicOrder(ORDER));
+    engine.events.emit('order.paid', publicOrder(ORDER));
+    expect(names().filter((n) => n === 'dl_purchase')).toHaveLength(1);
+
+    delete win.NextDataLayer;
+    const after = await loadOrder(ORDER, { local });
+    startAnalytics(after, options);
+    expect(names()).not.toContain('dl_purchase');
+  });
+
+  it('sends purchase on the page after when the checkout that paid the order was left before it was sent', async () => {
+    const local = new MemoryStorage();
+    const { engine: checkout } = makeEngine({ local });
+    checkout.attach((ctx) => ctx.local.set(REPORTED, [purchaseId(ORDER)]));
+    const traces: AnalyticsTrace[] = [];
+    const page = async () => {
+      delete win.NextDataLayer;
+      const engine = await loadOrder(ORDER, { local });
+      vi.spyOn(engine.log, 'debug').mockImplementation((_, data) => void traces.push(data as AnalyticsTrace));
+      startAnalytics(engine, options);
+      return engine;
+    };
+    const first = await page();
+    expect(first.getState().order?.paidOrder).toBeUndefined();
+    expect(win.NextDataLayer!.filter((e) => e.event === 'dl_purchase')).toMatchObject([
+      { event_id: '1001', ecommerce: { transaction_id: '1001', value: 89 } },
+    ]);
+    expect(traces.find((t) => t.name === 'purchase' && t.sent)).toMatchObject({ trigger: 'order.loaded' });
+    await page();
+    expect(names()).not.toContain('dl_purchase');
+  });
+
+  it('sends no remove_from_cart when the cart is emptied after a paid order', async () => {
+    const session = new MemoryStorage();
+    const { engine } = makeEngine({ session, params: { forcePackageId: '2' } });
+    await engine.start();
+    startAnalytics(engine, options);
+    await flush();
+    expect(names()).toContain('dl_add_to_cart');
+    engine.cart.clearAfterOrder();
+    await flush();
+    const { engine: next } = makeEngine({ session });
+    await next.start();
+    startAnalytics(next, options);
+    await flush();
+    expect(names()).not.toContain('dl_remove_from_cart');
+  });
+
   it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
     const local = new MemoryStorage();
     const run = async () => {
@@ -533,7 +588,7 @@ describe('analytics', () => {
     const one = withUpsell(ORDER, 99, 1);
     const first = await run(one);
     expect(first.sent).toEqual(['R1-US1']);
-    expect(first.engine.order!.reported()).toEqual(['1001', upsellId(one, one.lines!.at(-1)!)]);
+    expect(first.engine.order!.reported()).toEqual(['1001', upsellId(one, one.lines!.at(-1)!), 'purchase:1001']);
     const two = withUpsell(one, 100, 2);
     expect((await run(two)).sent).toEqual(['R1-US2']);
     expect((await run(two)).sent).toEqual([]);

@@ -90,7 +90,7 @@ describe('cart', () => {
     expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
   });
 
-  it('records the cart action behind each change on its payload, whatever a listener changes before it is delivered', async () => {
+  it('records the cart action behind each change on its payload, and a listener’s change comes after the change it heard', async () => {
     const { engine } = makeEngine();
     await engine.start();
     const seen: Array<[string, unknown]> = [];
@@ -117,8 +117,8 @@ describe('cart', () => {
       ['cart.removed', { action: 'setGroups' }],
       ['cart.added', { action: 'setGroups' }],
       ['cart.removed', { action: 'clear' }],
-      ['cart.added', { action: 'setGroup', group: 'toggle:9' }],
       ['cart.added', { action: 'addItem', group: 'items' }],
+      ['cart.added', { action: 'setGroup', group: 'toggle:9' }],
     ]);
   });
 
@@ -332,21 +332,23 @@ describe('cart', () => {
     expect(seen).toEqual([{ id: 2 }, { id: 1, code: 'standard' }]);
   });
 
-  it('announces a shipping method once the cart is priced with it, with its price', async () => {
+  it('announces a shipping method right after its cart.updated, without prices, and settles it once the cart is priced', async () => {
     const { engine } = makeEngine();
     await engine.start();
     await engine.cart.addItem(1);
     const seen: unknown[] = [];
     engine.on('*', (e) => {
-      if (e.name === 'shipping.selected') seen.push([e.name, e.data]);
+      if (e.name.startsWith('shipping.')) seen.push([e.name, e.data]);
       else if (e.name.startsWith('cart.')) seen.push(e.name);
     });
     await engine.cart.setShipping(1);
+    const priced = { id: 1, code: 'standard', name: 'Standard', price: 0, original_price: 0, discounts: [] };
     expect(seen).toEqual([
       'cart.updated',
+      ['shipping.selected', { id: 1, code: 'standard' }],
       'cart.calculating',
       'cart.calculated',
-      ['shipping.selected', { id: 1, code: 'standard', name: 'Standard', price: 0, original_price: 0, discounts: [] }],
+      ['shipping.settled', priced],
     ]);
   });
 
@@ -562,6 +564,45 @@ describe('cart', () => {
     ]);
   });
 
+  it('sends one change’s events as one block before any listener runs, from a listener too', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1);
+    await engine.cart.setShipping(1);
+    const seen: string[] = [];
+    engine.on(
+      '*',
+      (e) => /^(cart\.(updated|added|removed)|selector|shipping\.selected|coupon)/.test(e.name) && seen.push(e.name),
+    );
+    const onNextUpdate = (fn: () => void) => {
+      const off = engine.on('cart.updated', () => {
+        off();
+        fn();
+      });
+    };
+
+    onNextUpdate(() => void engine.cart.setGroup('toggle:9', toggle(9)));
+    await engine.cart.setShipping(2);
+    await engine.cart.settled();
+    expect(seen.splice(0)).toEqual([
+      'cart.updated',
+      'shipping.selected',
+      'selector.selected',
+      'cart.updated',
+      'cart.added',
+    ]);
+
+    onNextUpdate(() => void engine.cart.setGroup('toggle:9', null));
+    await engine.cart.applyCoupon('save10');
+    onNextUpdate(() => void engine.cart.setGroup('toggle:9', toggle(9)));
+    await engine.cart.removeCoupon('save10');
+    await engine.cart.settled();
+    expect(seen).toEqual([
+      ...['cart.updated', 'coupon.applied', 'selector.deselected', 'cart.updated', 'cart.removed'],
+      ...['cart.updated', 'coupon.removed', 'selector.selected', 'cart.updated', 'cart.added'],
+    ]);
+  });
+
   it('takes no coupon change while the cart is frozen for an order, and takes them again once it thaws', async () => {
     const { engine, api } = makeEngine();
     await engine.start();
@@ -666,15 +707,26 @@ describe('cart', () => {
     expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
   });
 
-  it('prices a toggle without announcing it, and carries the price on selector.selected', async () => {
+  it('prices a toggle’s line while it is off with selector.calculating and selector.calculated, and carries the price on selector.selected', async () => {
     const { engine } = makeEngine();
     await engine.start();
     const seen: unknown[] = [];
     engine.on('*', (e) => e.name.startsWith('selector.') && seen.push([e.name, e.data]));
     engine.toggles.price(9, 2);
+    engine.toggles.price(9, 2);
     await flush();
-    expect(seen).toEqual([]);
+    const off = { selector_id: 'toggle:9', type: 'toggle', currency: 'USD' };
+    const line = expect.objectContaining({ package_id: 9, quantity: 2 });
+    expect(seen).toEqual([
+      ['selector.calculating', { ...off, lines: [line] }],
+      [
+        'selector.calculated',
+        { ...off, lines: [expect.objectContaining({ package_id: 9, quantity: 2, total: 18 })], total: 18 },
+      ],
+    ]);
+    expect((seen[0] as [string, Selector])[1].lines[0]).not.toHaveProperty('price');
     expect(engine.getState().toggles[9]).toMatchObject({ quantity: 2, line: { package_id: 9, quantity: 2 } });
+    seen.length = 0;
     await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 2 }], vouchers: [] });
     expect(seen).toEqual([
       [
@@ -690,7 +742,7 @@ describe('cart', () => {
     ]);
   });
 
-  it('reports a toggle it cannot price only as sdk.error', async () => {
+  it('reports a toggle it cannot price as sdk.error after its selector.calculating', async () => {
     const failing = (async () => new Response('{}', { status: 502 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing, campaign: Promise.resolve(campaign) });
     vi.spyOn(engine.log, 'error').mockImplementation(() => {});
@@ -699,7 +751,7 @@ describe('cart', () => {
     engine.on('*', (e) => seen.push(e.name));
     engine.toggles.price(9, 1);
     await flush();
-    expect(seen).toEqual(['sdk.error']);
+    expect(seen).toEqual(['selector.calculating', 'sdk.error']);
   });
 
   it('names the checkout, and its step from the second step of a multi-step checkout', () => {

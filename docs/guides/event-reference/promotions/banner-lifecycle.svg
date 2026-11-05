@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 302" width="720" height="302" role="img" aria-labelledby="promotions-banner-lifecycle-title promotions-banner-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 270" width="720" height="270" role="img" aria-labelledby="promotions-banner-lifecycle-title promotions-banner-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="promotions-banner-lifecycle-title">Banner lifecycle</title>
   <desc id="promotions-banner-lifecycle-desc">An element marked data-next-promotion sends promotion.viewed once a page, when half of it is in view, and promotion.clicked on every click, before it is viewed too. A banner never sends promotion.closed.</desc>
   <defs>
@@ -24,5 +24,4 @@
     <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">viewed</text>
     <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.viewed</text>
   </g>
-  <text x="360" y="288" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">data-next-promotion="&lt;id&gt;": viewed once a page, clicked on every click, never closed</tspan></text>
 </svg>

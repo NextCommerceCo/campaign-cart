@@ -75,6 +75,7 @@ The list gets `order-loading`, `order-has-items`, `order-empty` or `order-error`
 | `order.customer.name`, `.firstName`, `.lastName`, `.email`, `.phone`                            | The shopper                                                                                                |
 | `order.shippingAddress`, `order.billingAddress`                                                 | The address on one line; `.line1`, `.line2`, `.city`, `.state`, `.postcode`, `.country`, `.name` each part |
 
-`order.paid` is sent once per order, on the first page after the checkout, so the purchase is
-tracked even when the shopper reloads the receipt; see the
+`order.paid` is sent once per order: on the checkout for an order paid at once, else on the first
+page that loads it paid after the gateway, so a reload of the receipt never tracks the purchase
+twice; see the
 [Order lifecycle](../event-reference/orders/lifecycle.md).

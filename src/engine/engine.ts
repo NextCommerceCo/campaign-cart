@@ -52,6 +52,7 @@ export interface Context {
   getState(): State;
   update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
+  batch(fn: () => void): void;
   on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
   fail(action: ErrorAction, err: unknown): void;
   log: Logger;
@@ -120,6 +121,7 @@ export class Engine {
       getState: () => this.state,
       update: (slice, patch, opts) => this.update(slice, patch, opts),
       emit: (name, data) => this.events.emit(name, data),
+      batch: (fn) => this.events.batch(fn),
       on: (name, fn, options) => this.events.on(name, fn, options),
       fail: (action, err) => this.fail(action, err),
       log: this.log,

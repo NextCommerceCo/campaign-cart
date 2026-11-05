@@ -5,6 +5,7 @@ import { bindOrder } from '../../src/order';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
+import { FakeObserver, visible } from '../bindings/observer';
 
 const mount = (file: string, api: FakeApiOptions = {}) =>
   mountHtml(readFileSync(`tests/fixtures/pages/${file}`, 'utf8'), api);
@@ -39,9 +40,11 @@ async function mountHtml(html: string, api: FakeApiOptions = {}) {
 beforeEach(() => {
   history.replaceState(null, '', '/apollo/upsell-bundle-stepper/?ref_id=R1');
   sessionStorage.clear();
+  vi.stubGlobal('IntersectionObserver', undefined);
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   document.head.innerHTML = '';
   document.body.innerHTML = '';
 });
@@ -108,7 +111,11 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     const { $, navigate, dataOf, events } = await mount('apollo/upsell-bundle-stepper.html', { delays: [50] });
     $('[data-next-upsell-action="skip"]').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
-    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual(['upsell.viewed', 'upsell.skipped']);
+    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual([
+      'upsell.shown',
+      'upsell.viewed',
+      'upsell.skipped',
+    ]);
     expect(dataOf('upsell.viewed')[0]).toMatchObject({ lines: [{ package_id: 3, quantity: 1 }] });
     expect(dataOf('upsell.viewed')[0]).not.toHaveProperty('total');
     await new Promise((r) => setTimeout(r, 80));
@@ -119,7 +126,11 @@ describe('upsell page (apollo stepper, 0.4.43 markup)', () => {
     const { $, navigate, events } = await mount('apollo/upsell-bundle-stepper.html', { delays: [50] });
     $('[data-next-upsell-action="add"]').click();
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(NEXT));
-    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual(['upsell.viewed', 'upsell.accepted']);
+    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual([
+      'upsell.shown',
+      'upsell.viewed',
+      'upsell.accepted',
+    ]);
   });
 
   it('does not charge again after Back, and moves on', async () => {
@@ -179,6 +190,49 @@ describe('upsell page with two offers', () => {
       { ref_id: 'R1', page: '/up/', lines: [expect.objectContaining({ package_id: 2, quantity: 1 })], currency: 'USD' },
       { ref_id: 'R1', page: '/up/', lines: [expect.objectContaining({ package_id: 3, quantity: 2 })], currency: 'USD' },
     ]);
+  });
+});
+
+describe('upsell page below the fold', () => {
+  const OFFER = `<body><div data-next-upsell="offer" data-next-package-id="2"><a data-next-upsell-action="skip" href="#">No</a></div></body>`;
+
+  beforeEach(() => {
+    FakeObserver.all = [];
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+    history.replaceState(null, '', '/up/?ref_id=R1');
+  });
+
+  it('sends upsell.viewed once, when half of the shown offer is on screen', async () => {
+    const { $, dataOf } = await mountHtml(OFFER);
+    const offer = $('[data-next-upsell="offer"]');
+    expect(offer.classList).toContain('next-available');
+    expect(dataOf('upsell.shown')).toHaveLength(1);
+    expect(dataOf('upsell.viewed')).toEqual([]);
+    visible(offer, 0.3);
+    expect(dataOf('upsell.viewed')).toEqual([]);
+    visible(offer, 0.5);
+    visible(offer, 1);
+    expect(dataOf('upsell.viewed')).toEqual([
+      { ref_id: 'R1', page: '/up/', lines: [expect.objectContaining({ package_id: 2 })], currency: 'USD' },
+    ]);
+  });
+
+  it('sends upsell.viewed before the skip of a shopper who answers before it is on screen', async () => {
+    const { $, events } = await mountHtml(OFFER);
+    $('[data-next-upsell-action="skip"]').click();
+    expect(events.filter((name) => name.startsWith('upsell.'))).toEqual([
+      'upsell.shown',
+      'upsell.viewed',
+      'upsell.skipped',
+    ]);
+  });
+
+  it('sends no upsell.viewed for an offer on screen that the order cannot take', async () => {
+    const { $, dataOf } = await mountHtml(OFFER, {
+      getOrder: () => json({ ...ORDER, supports_post_purchase_upsells: false }),
+    });
+    visible($('[data-next-upsell="offer"]'), 1);
+    expect(dataOf('upsell.viewed')).toEqual([]);
   });
 });
 

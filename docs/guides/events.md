@@ -9,8 +9,8 @@ category: 'Reference'
 `next.on(name, (data, event) => …)`. `'*'` receives every event. Each name is `namespace.action`,
 with one dot: the namespace is the thing that changed, the action what happened to it, as in Next
 Commerce webhooks. `user.created` is the user the store keeps for marketing, saved with the Cart the
-`cart.abandoned` webhook sends later. `order.paid` comes once per order, on the page after the
-checkout, however the order was paid.
+`cart.abandoned` webhook sends later. `order.paid` comes once per order: on the checkout for an
+order paid at once, else on the page after the payment gateway.
 
 `event` is the envelope, shaped like a webhook's:
 
@@ -49,9 +49,15 @@ ShippingMethod, `payment.*` the Payment (with the order's `ref_id` for a payment
 Failure (`code`, `message`, `status`, `decline_code`) with the `action` that failed; every
 `*.failed` event carries one as `error`.
 
+`sdk.error` comes whenever the SDK or the API could not do a step. When that failure changes what
+the shopper sees, the step's own event follows it: `checkout.failed`, `upsell.failed`, or
+`coupon.denied` with `reason: 'check_failed'`. A payment that is not taken is not an SDK failure:
+a declined card or upsell, or a shopper back from a gateway unpaid, sends `payment.failed` alone.
+
 ## Event Reference
 
-A group whose events follow a lifecycle starts with a page that draws it, such as the cart's.
+A group whose events follow a lifecycle starts with a page that draws it, such as the cart's, and
+names the events it covers, including those of other namespaces that come with it.
 Each event has its own page with its fields and an example, generated from `EventMap` in
 `src/engine/events.ts`. The `user` and `address` events are checked when the shopper leaves a
 field (its `change`), not on each key.
@@ -105,9 +111,10 @@ that sends `next.on` events on. No personal data is sent.
 `add_payment_info` are sent once per checkout (its `id`): `begin_checkout` on `checkout.started`,
 or on the checkout's next page when the page that started it was left before analytics loaded;
 `add_shipping_info` on `address.entered` for the shipping address or on `shipping.selected`,
-whichever comes first; `add_payment_info` on the first `checkout.submitted` that passes its checks
-(for a card, once it is tokenized). `purchase` is sent on `order.paid`, and `upsell_purchase` for
-each accepted upsell on the `order.loaded` of the page after it.
+whichever comes first; `add_payment_info` on the first `checkout.submitted` (for a card, once it
+is tokenized). `purchase` is sent on `order.paid`, or on the next page's `order.loaded` when the
+checkout page was left before analytics sent it, and `upsell_purchase` for each accepted upsell on
+the `order.loaded` of the page after it.
 
 `add_to_cart` and `remove_from_cart` compare the priced cart with what earlier events in the tab
 already reported, on `sdk.ready` and after each server calculation, so an add on a page that was

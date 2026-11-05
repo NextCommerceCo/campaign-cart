@@ -1,8 +1,8 @@
 import { failureOf, orderError, orderFailure } from '../engine/api';
-import { apiLines, type CartActions, cartItems } from '../engine/cart/cart';
+import { apiLines, type CartActions, cartItems, publicCheckout } from '../engine/cart/cart';
 import type { Context } from '../engine/engine';
-import type { ErrorCode, Failure, Upsell } from '../engine/events';
-import { appliedCodes, publicOrder } from '../engine/order';
+import type { Checkout, ErrorCode, Failure, Upsell } from '../engine/events';
+import { appliedCodes, publicOrder, purchaseId, REPORTED, REPORTED_KEEP } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { bool, cents, money, type Value } from '../engine/format';
 import type { CartLine, Line } from '../engine/cart/types';
@@ -24,8 +24,6 @@ export interface OrderState {
 
 const ORDER_TTL = 15 * 60 * 1000;
 const LOAD_TIMEOUT = 10_000;
-const REPORTED = 'reported';
-const REPORTED_KEEP = 50;
 
 const PAYMENT_LABELS: Record<string, string> = {
   card_token: 'Credit Card',
@@ -47,10 +45,10 @@ const PAYMENT_LABELS: Record<string, string> = {
   shop_pay: 'Shop Pay',
 };
 
-const purchaseId = (order: ApiOrder) => String(order.number ?? order.ref_id);
+const methodCode = (method: ApiOrder['payment_method']) => (typeof method === 'string' ? method : (method?.code ?? ''));
 
 function paymentLabel(method: ApiOrder['payment_method']): string {
-  const raw = typeof method === 'string' ? method : (method?.code ?? '');
+  const raw = methodCode(method);
   const code = raw.toLowerCase().replace(/[\s-]/g, '_');
   return PAYMENT_LABELS[code] ?? raw;
 }
@@ -219,19 +217,29 @@ export function createOrder(ctx: Context, cart: CartActions) {
     };
   };
 
+  /** The checkout that sent the shopper to the gateway, as it was then: its saved slice and the cart. */
+  const pendingCheckout = (saved: Partial<CheckoutState>): Checkout => ({
+    ...publicCheckout({ ...ctx.getState(), checkout: saved as CheckoutState }),
+    cart: cart.current(),
+    payment_method: saved.pendingMethod || saved.paymentMethod || '',
+  });
+
   const settle = (order: ApiOrder) => {
     const paid = !order.payment_complete_url;
-    const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
-    if (paid && checkout?.pendingRef === order.ref_id) {
+    const saved = ctx.saved<Partial<CheckoutState>>('checkout');
+    const completed = paid && saved?.pendingRef === order.ref_id ? pendingCheckout(saved) : undefined;
+    if (completed) {
       cart.clearAfterOrder();
       ctx.forget('checkout');
     }
     const data = publicOrder(order, appliedCodes(order, state().coupon));
     ctx.emit('order.loaded', data);
-    if (!paid || reported().includes(purchaseId(order))) return;
-    markReported([purchaseId(order)]);
-    set({ paidOrder: order });
-    ctx.emit('order.paid', data);
+    if (paid && !reported().includes(purchaseId(order))) {
+      markReported([purchaseId(order)]);
+      set({ paidOrder: order });
+      ctx.emit('order.paid', data);
+    }
+    if (completed) ctx.emit('checkout.completed', { ...completed, ref_id: order.ref_id });
   };
 
   return {
@@ -263,6 +271,13 @@ export function createOrder(ctx: Context, cart: CartActions) {
       }
     },
 
+    /** The offer is shown: the order loaded and takes upsells, and its selector is priced. */
+    shown(offer: Offer, page: string): void {
+      const { refId, order } = state();
+      if (refId && order) ctx.emit('upsell.shown', upsellOf(offer, page));
+    },
+
+    /** The shown offer is on screen. */
     view(offer: Offer, page: string): void {
       const { refId, order } = state();
       if (refId && order) ctx.emit('upsell.viewed', upsellOf(offer, page));
@@ -313,8 +328,14 @@ export function createOrder(ctx: Context, cart: CartActions) {
           }
         }
         set({ status: 'ready', error: orderError(err) });
+        const error = orderFailure(err);
+        if (error.code === 'declined') {
+          ctx.emit('upsell.declined', { ...upsell, error, message: failureOf(err).message });
+          ctx.emit('payment.failed', { method: methodCode(order.payment_method), ref_id: refId, error });
+          return 'failed';
+        }
         ctx.fail('upsell.add', err);
-        ctx.emit('upsell.failed', { ...upsell, error: orderFailure(err) });
+        ctx.emit('upsell.failed', { ...upsell, error });
         return 'failed';
       }
     },

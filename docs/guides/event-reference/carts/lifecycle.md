@@ -5,6 +5,8 @@ group: 'Event Reference/Carts'
 
 # Cart lifecycle
 
+Events: `cart.*`, `shipping.selected`, and with a change `coupon.applied`, `coupon.removed` and a toggle's `selector.selected` or `selector.deselected`.
+
 ![Cart lifecycle: empty, calculating, priced and unpriced, with the events each step sends](cart-lifecycle.svg)
 
 | State         | Means                                                                                                  |
@@ -19,25 +21,27 @@ group: 'Event Reference/Carts'
 | none                                | A page opens with a cart saved earlier in this tab, once the campaign is in (from the API, or the saved copy if the API fails) | `calculating` | `cart.calculating`; a package the campaign no longer has is removed first, with `cart.updated`, `cart.removed`                                                         |
 | `empty`                             | A package is added                                                                                                             | `calculating` | `cart.updated`, `cart.added`, `cart.calculating`                                                                                                                       |
 | `calculating`                       | Another change before the prices arrive                                                                                        | `calculating` | `cart.updated`, then `cart.removed` and `cart.added` for the packages it removed or added; no second `cart.calculating`, and only the latest request's prices are used |
-| `calculating`                       | The server prices the cart                                                                                                     | `priced`      | `cart.calculated`, then `shipping.selected` if the shipping method changed                                                                                             |
-| `calculating`                       | Pricing fails                                                                                                                  | `unpriced`    | `sdk.error` (`cart.calculate`), then `shipping.selected` without prices if the shipping method changed                                                                 |
+| `calculating`                       | The server prices the cart                                                                                                     | `priced`      | `cart.calculated`                                                                                                                                                      |
+| `calculating`                       | Pricing fails                                                                                                                  | `unpriced`    | `sdk.error` (`cart.calculate`)                                                                                                                                         |
 | `priced`, `unpriced`                | A package or a quantity changes                                                                                                | `calculating` | `cart.updated`, `cart.removed`, `cart.added` (each only when the change removed or added packages), `cart.calculating`                                                 |
 | `priced`, `unpriced`                | A coupon is applied or removed                                                                                                 | `calculating` | `cart.updated`, `coupon.applied` or `coupon.removed`, `cart.calculating`                                                                                               |
-| `priced`, `unpriced`                | The shipping method changes                                                                                                    | `calculating` | `cart.updated`, `cart.calculating`; `shipping.selected` comes with the prices                                                                                          |
+| `priced`, `unpriced`                | The shipping method changes                                                                                                    | `calculating` | `cart.updated`, `shipping.selected`, `cart.calculating`                                                                                                                |
 | `calculating`, `priced`, `unpriced` | The last package is removed, or the cart is cleared                                                                            | `empty`       | `cart.updated`, `cart.removed`; clearing then sends `coupon.removed` for each code                                                                                     |
-| `empty`                             | A coupon is removed, or the shipping method changes                                                                            | `empty`       | `cart.updated`, then `coupon.removed` or `shipping.selected` without prices                                                                                            |
+| `empty`                             | A coupon is removed, or the shipping method changes                                                                            | `empty`       | `cart.updated`, then `coupon.removed` or `shipping.selected`                                                                                                           |
 
-`cart.removed` and `cart.added` come once per change, after its `cart.updated`, with the cart
-after the change and its `changes`: each package with the quantity it had (`from`) and has (`to`),
-and `price` when the cart's last pricing had one. Events that `cart.updated` sets off come between
-them, such as `checkout.started` when the first lines reach a checkout page, or the selectors
-pricing again when clearing the cart takes its coupons off. A toggle switched on or off sends
+A change sends its own events together, before anything they set off: `cart.updated`, then
+`shipping.selected` for a new shipping method, `cart.removed` and `cart.added` for the packages it
+removed or added, and `coupon.applied` or `coupon.removed`. Then come the events other features
+send because of it, such as `checkout.started` when the first lines reach a checkout page, or the
+selectors pricing again when the coupons change, and then `cart.calculating`. The order is the
+same when a listener makes the change. A toggle switched on or off sends
 `selector.selected` or `selector.deselected` just before the change's `cart.updated`.
 
-`shipping.selected` comes once the cart is priced with the new method: after `cart.calculated`, or
-without prices after the `sdk.error` when pricing fails. On an empty cart, or before the campaign
-loads, it comes right after `cart.updated`, without prices. A bundle card with its own shipping
-method sets it when it is picked.
+`cart.removed` and `cart.added` carry the cart after the change and its `changes`: each package
+with the quantity it had (`from`) and has (`to`), and `price` when the cart's last pricing had
+one. `shipping.selected` carries the new method without prices; its price comes with the next
+`cart.calculated`, as the cart's `shipping_method`. A bundle card with its own shipping method sets
+it when it is picked.
 
 Before the campaign loads, a change sends its `cart.updated`, `cart.removed` and `cart.added`
 (and `shipping.selected` or a toggle's `selector.selected` when it changes those) but no pricing

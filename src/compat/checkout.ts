@@ -176,15 +176,21 @@ const placedWith = (e: Placed) => (e.name === 'payment.redirected' ? e.data.meth
 const expressPlaced = (data: (e: Placed) => unknown) =>
   legacyEvent<Placed['name']>({
     from: ['payment.redirected', 'order.created'],
-    when: (_, state) => express(state),
+    when: (e, state) => express(state) && (e.name === 'payment.redirected' || e.data.paid),
     data,
   });
-const expressFailed = legacyEvent({
-  from: ['checkout.failed'],
-  when: (_, state) => express(state),
-  data: ({ data }) => ({ method: data.payment_method, error: data.error.message ?? data.error.code }),
+type Failed = From<'checkout.failed' | 'payment.failed'>;
+/** A declined card on the checkout is `payment.failed` without a `ref_id`; 0.4.x reported it with the other order failures. */
+const orderFailed = (e: Failed) => e.name === 'checkout.failed' || (!e.data.ref_id && e.data.error.code === 'declined');
+const expressFailed = legacyEvent<Failed['name']>({
+  from: ['checkout.failed', 'payment.failed'],
+  when: (e, state) => orderFailed(e) && express(state),
+  data: (e) => ({
+    method: e.name === 'payment.failed' ? e.data.method : e.data.payment_method,
+    error: e.data.error.message ?? e.data.error.code,
+  }),
 });
-const formError = (e: EventMap['checkout.submitted']) => e.errors.form?.code;
+const formError = (e: EventMap['checkout.invalid']) => e.errors.form?.code;
 
 const ORDER_FAILED = 'Failed to process order. Please try again.';
 const CARD_FAILED = 'Please check your card details and try again.';
@@ -194,7 +200,7 @@ const tokenized = (engine: Engine) => {
   let told = false;
   return legacyEvent({
     from: ['checkout.submitted'],
-    when: (e) => e.data.valid && e.data.payment_method === 'card_token',
+    when: (e) => e.data.payment_method === 'card_token',
     data: () => {
       if (!told) engine.log.warn('next.on: "payment:tokenized" no longer sends token and pmData');
       told = true;
@@ -205,10 +211,10 @@ const tokenized = (engine: Engine) => {
 
 const CHECKOUT_EVENTS = {
   'payment:error': legacyEvent({
-    from: ['checkout.failed', 'checkout.submitted'],
-    when: (e) => e.name === 'checkout.failed' || formError(e.data) === 'card',
+    from: ['checkout.failed', 'payment.failed', 'checkout.invalid'],
+    when: (e) => (e.name === 'checkout.invalid' ? formError(e.data) === 'card' : orderFailed(e)),
     data: (e) => {
-      if (e.name === 'checkout.submitted') return { message: e.data.errors.form?.message || CARD_FAILED };
+      if (e.name === 'checkout.invalid') return { message: e.data.errors.form?.message || CARD_FAILED };
       const { error } = e.data;
       const shown = (error.code === 'declined' || error.code === 'rejected') && error.message;
       return {
@@ -220,11 +226,11 @@ const CHECKOUT_EVENTS = {
   }),
   'express-checkout:started': legacyEvent({
     from: ['checkout.submitted'],
-    when: ({ data }, state) => data.valid && express(state),
+    when: (_, state) => express(state),
     data: ({ data }) => ({ method: data.payment_method, itemCount: data.cart.lines.length }),
   }),
   'express-checkout:error': legacyEvent({
-    from: ['checkout.submitted'],
+    from: ['checkout.invalid'],
     when: ({ data }, state) => formError(data) === 'empty_cart' && express(state),
     data: ({ data }) => ({ method: data.payment_method, error: 'Cart is empty' }),
   }),

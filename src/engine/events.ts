@@ -293,6 +293,8 @@ export interface Order {
   currency?: string;
   /** `true` for a test order. */
   test: boolean;
+  /** `true` once the order is paid; `false` while the shopper pays at a gateway. */
+  paid: boolean;
   lines: OrderItem[];
   /** The codes the shopper applied at checkout in this tab, uppercase. */
   coupons: string[];
@@ -465,11 +467,13 @@ export interface EventMap {
   /** @internal */
   'campaign.loaded': { campaign: Campaign; fromCache: boolean };
   /**
-   * A selector is on the page, with the option it picked: from `?forceBundleId`, the cart,
-   * `data-next-selected`, else its first option. Not for toggles.
+   * Once a page, when half of the selector is on screen, with the option it picked: from
+   * `?forceBundleId`, the cart, `data-next-selected`, else its first option.
    * @group Selectors
    */
   'selector.viewed': Selector;
+  /** @internal A selector's first bind on this page, with the option it picked: the moment of 0.4.x selection events. */
+  'selector.bound': Selector;
   /**
    * The shopper picked another option, or switched a toggle on.
    * @group Selectors
@@ -486,13 +490,13 @@ export interface EventMap {
    */
   'selector.deselected': Selector;
   /**
-   * Pricing the options that have no price yet starts. Not for toggles.
+   * Pricing the options that have no price yet starts; a toggle's line while it is off.
    * @group Selectors
    */
   'selector.calculating': Selector;
   /**
    * Every option has a price. Prices are kept 10 minutes and checked again once a page, so a later
-   * page may get this at once and again when fresh prices arrive. Not for toggles.
+   * page may get this at once and again when fresh prices arrive. A toggle is priced while it is off.
    * @group Selectors
    */
   'selector.calculated': Selector;
@@ -528,12 +532,13 @@ export interface EventMap {
     changes: CartChange[];
   };
   /**
-   * The shipping method changed, once the cart is priced with it; without prices when the cart
-   * cannot be priced (empty, before the campaign loads, or pricing failed). A bundle card can set
-   * it on the landing page too.
+   * The shipping method changed, right after the change's `cart.updated`, without prices; they
+   * come with `cart.calculated` as `shipping_method`. A bundle card can set it on the landing page too.
    * @group Carts
    */
   'shipping.selected': ShippingMethod;
+  /** @internal The shipping method a change selected, once the cart was priced with it or could not be: the moment of 0.4.x shipping events. */
+  'shipping.settled': ShippingMethod;
   /**
    * A code takes money off and is on the cart. A code entered while the cart is empty waits for the
    * cart's first price.
@@ -574,10 +579,10 @@ export interface EventMap {
    */
   'checkout.started': Checkout;
   /**
-   * Once per tab until an order is paid, when the store saves the shopper with a new Open Cart:
-   * what `data-next-lead` asks for is in (by default a first and last name and a valid email),
-   * checked when the shopper leaves a field they changed. The store keeps the user for marketing,
-   * as `accepts_marketing` allows, and the cart for `cart.abandoned`.
+   * Once per checkout, after `checkout.started`, when the store saves the shopper with a new Open
+   * Cart: what `data-next-lead` asks for is in (by default a first and last name and a valid
+   * email), checked when the shopper leaves a field they changed. The store keeps the user for
+   * marketing, as `accepts_marketing` allows, and the cart for `cart.abandoned`.
    * @group Checkout
    */
   'user.created': User;
@@ -588,9 +593,9 @@ export interface EventMap {
    */
   'user.updated': User;
   /**
-   * Once per `type` per tab until an order is paid, when that address is valid: every field its
-   * country requires is filled and valid, and so is each optional one filled. Checked when the
-   * shopper leaves a field they changed, once the checkout has started.
+   * Once per `type` per checkout, when that address is valid: every field its country requires is
+   * filled and valid, and so is each optional one filled. Checked when the shopper leaves a field
+   * they changed, once the checkout has started.
    * @group Checkout
    */
   'address.entered': Address & {
@@ -603,7 +608,14 @@ export interface EventMap {
    */
   'address.updated': Address & { type: AddressType };
   /**
-   * The payment method changed.
+   * The shopper picked an address suggestion under line 1, and it filled these fields. After
+   * `checkout.started`; `address.entered` or `address.updated` follows once the address is valid.
+   * @group Checkout
+   */
+  'address.autofilled': Partial<Address> & { type: AddressType };
+  /**
+   * The shopper changed the payment method, after `checkout.started`. The method the form starts
+   * with is the Checkout's `payment_method`.
    * @group Checkout
    */
   'payment.selected': Payment;
@@ -613,22 +625,34 @@ export interface EventMap {
    */
   'checkout.continued': Checkout;
   /**
-   * Each submit that places the order, once its checks ran: the fields, then the card tokenized.
-   * A valid submit is followed by `order.created`, `payment.redirected` or `checkout.failed`.
+   * A submit passed its checks (the fields, then the card tokenized) and the order is being sent.
+   * Followed by `order.created`, `payment.failed` or `checkout.failed`.
    * @group Checkout
    */
-  'checkout.submitted': Checkout & {
-    /** `true` when the order is being sent. */
-    valid: boolean;
-    /** What stopped it, by field name; empty when valid. */
+  'checkout.submitted': Checkout;
+  /**
+   * A submit, or a step of a multi-step checkout, did not pass its checks; nothing is sent.
+   * @group Checkout
+   */
+  'checkout.invalid': Checkout & {
+    /** What stopped it, by field name. */
     errors: Record<string, CheckoutError>;
   };
   /**
-   * The order could not be placed: refused, declined, or the request failed. The shopper stays
-   * on the checkout.
+   * The order could not be placed: refused, or the request failed. A declined card is
+   * `payment.failed`. The shopper stays on the checkout.
    * @group Checkout
    */
   'checkout.failed': Checkout & { error: Failure };
+  /**
+   * The checkout's order is paid; once per checkout. An order paid at once sends it on the
+   * checkout, after `order.paid`; an order paid at a gateway on the page after it.
+   * @group Checkout
+   */
+  'checkout.completed': Checkout & {
+    /** The paid order. */
+    ref_id: string;
+  };
   /**
    * The shopper is about to leave for the payment gateway (PayPal, 3-D Secure, …) to pay the order
    * `ref_id`.
@@ -641,17 +665,19 @@ export interface EventMap {
     url: string;
   };
   /**
-   * The shopper came back from the payment gateway unpaid; the cart is kept. Once per order.
+   * A payment was not taken: a card declined on the checkout, the shopper back from a gateway
+   * unpaid, or an upsell declined. The cart is kept. Once per order at a gateway.
    * @group Payments
    */
   'payment.failed': Payment & {
-    /** The order the payment was for. */
-    ref_id: string;
+    /** The order the payment was for; none for a card declined before an order was created. */
+    ref_id?: string;
+    /** `declined` (`decline_code` from the gateway) or `payment_failed` (back from a gateway). */
     error: Failure;
   };
   /**
-   * The store created the order, paid. A payment at a gateway sends `payment.redirected` instead,
-   * and the order comes with `order.loaded` once it is paid.
+   * The store created the order, on the checkout: `paid` when it was paid at once, else
+   * `payment.redirected` follows and the shopper pays at the gateway.
    * @group Orders
    */
   'order.created': Order;
@@ -661,8 +687,8 @@ export interface EventMap {
    */
   'order.loaded': Order;
   /**
-   * The order is paid: once per order in this browser, after `order.loaded` on the first page that
-   * loads it, the page after the checkout or after the payment gateway.
+   * The order is paid, once per order in this browser: on the checkout after `order.created` when
+   * it was paid at once, else after `order.loaded` on the first page that loads it paid.
    * @group Orders
    */
   'order.paid': Order;
@@ -672,7 +698,7 @@ export interface EventMap {
    */
   'order.updated': Order;
   /**
-   * An offer is on the page; once per offer.
+   * Once per offer, when half of it is on screen.
    * @group Upsells
    */
   'upsell.viewed': Upsell;
@@ -687,10 +713,14 @@ export interface EventMap {
    */
   'upsell.skipped': Upsell;
   /**
-   * Adding the offer failed, such as a decline.
+   * Adding the offer failed: refused, or the order does not have it. A decline is `payment.failed`.
    * @group Upsells
    */
   'upsell.failed': Upsell & { error: Failure };
+  /** @internal */
+  'upsell.shown': Upsell;
+  /** @internal */
+  'upsell.declined': Upsell & { error: Failure; message: string };
   /**
    * The promotion is on screen: the popup opened, or half of a marked element is visible.
    * @group Promotions
@@ -730,7 +760,17 @@ export interface EngineEvent<K extends EventName = EventName> {
 type Listener = (event: EngineEvent) => void;
 
 const BUFFER_SIZE = 100;
-const INTERNAL: ReadonlySet<EventName> = new Set<EventName>(['analytics', 'campaign.loaded']);
+const INTERNAL_EVENTS = [
+  'analytics',
+  'campaign.loaded',
+  'selector.bound',
+  'shipping.settled',
+  'upsell.shown',
+  'upsell.declined',
+] as const satisfies readonly EventName[];
+/** The SDK's own events, which `next.on` does not take. */
+export type InternalEventName = (typeof INTERNAL_EVENTS)[number];
+const INTERNAL: ReadonlySet<EventName> = new Set<EventName>(INTERNAL_EVENTS);
 const STATE_SYNC: ReadonlySet<EventName> = new Set<EventName>([
   'cart.updated',
   'cart.calculating',
@@ -757,6 +797,18 @@ export class Events {
         this.buffer.find((e) => e.name !== 'sdk.ready'));
     this.buffer = [...this.buffer.filter((e) => e !== drop), event];
     this.queue.push(event);
+    this.drain();
+  }
+
+  /** Sends the events `fn` emits as one block: listeners run after the last of them. */
+  batch(fn: () => void): void {
+    if (this.emitting) return fn();
+    this.emitting = true;
+    try {
+      fn();
+    } finally {
+      this.emitting = false;
+    }
     this.drain();
   }
 

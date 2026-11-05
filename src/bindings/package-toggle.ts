@@ -1,6 +1,6 @@
 import { toggleGroup } from '../engine/cart/toggles';
 import { type BindContext, type Render } from './context';
-import { isFormControl, ownProperties, pageProperties, setState } from './dom';
+import { isFormControl, onceVisible, ownProperties, pageProperties, setState } from './dom';
 
 export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
   const renders: Render[] = [];
@@ -53,6 +53,7 @@ export function bindPackageToggles(root: ParentNode, b: BindContext): Render[] {
       void add();
     };
     addPreselected();
+    onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1));
 
     const inputs = [
       ...el.querySelectorAll('[data-next-property]'),

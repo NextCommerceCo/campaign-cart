@@ -95,7 +95,8 @@ instead draws the whole address for the country. The phone field gets the countr
 For a billing address, add `input[name="use_shipping_address"]` and a
 `data-next-component="billing-form"` with the same fields prefixed `billing-`.
 
-As soon as the shopper has a name and an email, the checkout saves them as a lead (`user.created`),
+As soon as the checkout has started and the shopper has a name and an email, the checkout saves
+them as a lead (`user.created`),
 the cart that `cart.abandoned` follows up. `data-next-lead` changes when; see
 [data-next-lead](../attribute-reference/checkout/data-next-lead.md).
 

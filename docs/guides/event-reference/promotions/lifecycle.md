@@ -5,6 +5,8 @@ group: 'Event Reference/Promotions'
 
 # Promotion lifecycle
 
+Events: `promotion.*`.
+
 A promotion is the exit-intent popup (`type: 'exit_intent'`) or an element the page marks with
 `data-next-promotion` (`type: 'banner'`). Every promotion event carries its `Promotion`: `id`,
 `type`, and `name` and `creative` when set.

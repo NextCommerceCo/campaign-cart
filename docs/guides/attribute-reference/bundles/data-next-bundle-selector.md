@@ -68,7 +68,7 @@ While an order is being placed, a `swap` selector does not change.
 
 ## Events
 
-[selector.viewed](/event-reference/selectors/selector.viewed) when the selector is bound,
+[selector.viewed](/event-reference/selectors/selector.viewed) when half of the selector is on screen,
 [selector.selected](/event-reference/selectors/selector.selected) on each new pick,
 [selector.updated](/event-reference/selectors/selector.updated) when the picked card's quantity
 or slots change, and [selector.calculating](/event-reference/selectors/selector.calculating) /

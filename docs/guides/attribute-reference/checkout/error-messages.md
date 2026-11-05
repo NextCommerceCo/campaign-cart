@@ -50,6 +50,6 @@ After a failed submit the page scrolls to the first field with an error and focu
 
 ## Events
 
-[checkout.submitted](/event-reference/checkout/checkout.submitted) carries `valid` and the
-`errors` of each submit; [checkout.failed](/event-reference/checkout/checkout.failed) and
+[checkout.invalid](/event-reference/checkout/checkout.invalid) carries the `errors` of a submit
+or a step that did not pass; [checkout.failed](/event-reference/checkout/checkout.failed) and
 [payment.failed](/event-reference/payments/payment.failed) carry the order and payment errors.

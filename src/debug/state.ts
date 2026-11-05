@@ -164,16 +164,18 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   );
   on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
   on('checkout.continued', (e) => change({}, { at: e.at, text: `Step ${e.data.step ?? 1} passed its checks` }));
-  on('checkout.submitted', (e) =>
+  on('address.autofilled', (e) =>
     change(
       {},
-      {
-        at: e.at,
-        text: e.data.valid
-          ? 'Order submitted'
-          : `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}`,
-      },
+      { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address filled from a suggestion` },
     ),
+  );
+  on('checkout.submitted', (e) => change({}, { at: e.at, text: 'Order submitted' }));
+  on('checkout.invalid', (e) =>
+    change({}, { at: e.at, text: `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}` }),
+  );
+  on('checkout.completed', (e) =>
+    change({}, { at: e.at, tone: 'done', text: `Checkout completed: order ${e.data.ref_id}` }),
   );
   on('user.created', (e) => change({}, { at: e.at, text: 'User created: open cart saved on the store' }));
   on('checkout.failed', (e) =>
@@ -183,7 +185,17 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     change({}, { at: e.at, text: `Left for the payment gateway to pay order ${e.data.ref_id}` }),
   );
   on('payment.failed', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Payment for order ${e.data.ref_id} not completed at the gateway` }),
+    change(
+      {},
+      {
+        at: e.at,
+        tone: 'warn',
+        text:
+          e.data.error.code === 'declined'
+            ? `Payment declined${e.data.ref_id ? ` for order ${e.data.ref_id}` : ''}: ${e.data.error.decline_code ?? e.data.error.message ?? 'no reason given'}`
+            : `Payment for order ${e.data.ref_id} not completed at the gateway`,
+      },
+    ),
   );
   on('order.created', (e) =>
     change(

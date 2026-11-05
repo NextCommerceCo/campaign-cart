@@ -38,6 +38,13 @@ function item(raw: ApiOrderLine): OrderItem {
   };
 }
 
+/** The browser's ledger of what was reported once: paid orders, upsell lines, failed payments. */
+export const REPORTED = 'reported';
+export const REPORTED_KEEP = 50;
+
+/** The ledger key of a paid order: `order.paid` and `purchase` come once per key. */
+export const purchaseId = (order: ApiOrder) => String(order.number ?? order.ref_id);
+
 /** The ledger key of an upsell line, reported once per browser. */
 export const upsellId = (order: ApiOrder, line: ApiOrderLine) => `${order.ref_id}:${line.id}`;
 
@@ -61,6 +68,7 @@ export function publicOrder(raw: ApiOrder, coupons: string[] = []): Order {
     ...(raw.number !== undefined && { number: String(raw.number) }),
     ...(raw.currency && { currency: raw.currency }),
     test: !!raw.is_test,
+    paid: !raw.payment_complete_url,
     lines: (raw.lines ?? []).map(item),
     coupons,
     total_discount: amount(raw.total_discounts),

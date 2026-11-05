@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, SELECTOR } from '../fixtures/pages';
 
 afterEach(() => {
@@ -9,6 +9,8 @@ import { bindAll } from '../../src/bindings';
 import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
+import type { Selector } from '../../src/engine/events';
+import { FakeObserver, visible } from './observer';
 
 describe('order bump', () => {
   it('marks the card and its container the way the live CSS expects', async () => {
@@ -136,5 +138,36 @@ describe('order bump', () => {
     expect($('#warranty').getAttribute('data-next-in-cart')).toBe('true');
     expect($('#warranty img').getAttribute('src')).toBe('https://cdn.test/9.png');
     expect($('#warranty img').getAttribute('alt')).toBe('Protection plan');
+  });
+});
+
+describe('order bump lifecycle', () => {
+  beforeEach(() => {
+    FakeObserver.all = [];
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('prices its line while it is off, and sends selector.viewed once half of it is on screen, once a page', async () => {
+    document.body.innerHTML = `<div id="bump" data-next-toggle-card data-next-package-id="9" data-next-quantity="2"></div>`;
+    const { engine } = makeEngine();
+    const seen: string[] = [];
+    engine.on('*', (e) => {
+      const s = e.data as Selector;
+      if (e.name.startsWith('selector.'))
+        seen.push(`${e.name} ${s.selector_id} ${s.lines.map((l) => `${l.package_id}x${l.quantity}`)} ${s.total ?? ''}`);
+    });
+    await engine.start();
+    const bindings = bindAll(document, engine, vi.fn());
+    await flush();
+    const bump = document.querySelector('#bump')!;
+    visible(bump, 0.3);
+    expect(seen).toEqual(['selector.calculating toggle:9 9x2 ', 'selector.calculated toggle:9 9x2 18']);
+    visible(bump, 0.5);
+    (bump as HTMLElement).click();
+    await flush();
+    bindings.bind(document.body);
+    visible(bump, 1);
+    expect(seen.slice(2)).toEqual(['selector.viewed toggle:9 9x2 18', 'selector.selected toggle:9 9x2 18']);
   });
 });

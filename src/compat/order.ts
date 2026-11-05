@@ -25,7 +25,7 @@ const ORDER_EVENTS = {
     data: (_, state) => state.order?.order,
   }),
   'upsell:viewed': legacyEvent({
-    from: ['upsell.viewed'],
+    from: ['upsell.shown'],
     once: true,
     data: ({ data }) => ({ pagePath: data.page, orderId: data.ref_id }),
   }),
@@ -49,12 +49,12 @@ const ORDER_EVENTS = {
     }),
   }),
   'action:failed': legacyEvent({
-    from: ['sdk.error'],
-    when: (e) => e.data.action === 'upsell.add',
+    from: ['sdk.error', 'upsell.declined'],
+    when: (e) => e.name === 'upsell.declined' || e.data.action === 'upsell.add',
     data: (e) => ({ action: 'AcceptUpsellEnhancer', error: new Error(e.data.message) }),
   }),
   'upsell:error': legacyEvent({
-    from: ['upsell.failed'],
+    from: ['upsell.failed', 'upsell.declined'],
     data: ({ data }) => ({ packageId: offerPackage(data) ?? 0, error: data.error.message ?? 'Unknown error' }),
   }),
 };

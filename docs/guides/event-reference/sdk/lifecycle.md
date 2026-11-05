@@ -5,6 +5,8 @@ group: 'Event Reference/SDK'
 
 # SDK lifecycle
 
+Events: `sdk.ready` and `sdk.error`.
+
 ![SDK lifecycle: starting, ready and failed, with the events each step sends](sdk-lifecycle.svg)
 
 | State      | Means                                                                                    |
@@ -32,26 +34,28 @@ ones. The page keeps its last 100 events for this, dropping the oldest price upd
 
 ## Errors
 
-Every failure sends `sdk.error`: `action` names the step, `code` says why, `status` is the HTTP
-status when the API answered, `decline_code` is the gateway's code for a declined card, and
-`message` is for developers and logs, never for shoppers. `checkout.failed` and `upsell.failed`
-follow their `sdk.error` with the failure as `error`, and `coupon.denied` follows `coupon.check`'s
-with `reason: 'check_failed'`. A payment the gateway did not take sends `payment.failed` alone, with
-`code: 'payment_failed'`, because the SDK did not fail.
+`sdk.error` comes whenever the SDK or the API could not do a step: `action` names the step,
+`code` says why, `status` is the HTTP status when the API answered, and `message` is for
+developers and logs, never for shoppers. A step whose failure changes what the shopper sees
+follows it with an event of its own: `checkout.failed` and `upsell.failed` carry the failure as
+`error`, and `coupon.denied` follows `coupon.check`'s with `reason: 'check_failed'`. A payment that
+is not taken is not an SDK failure: a declined card or upsell, or a shopper back from a gateway
+unpaid, sends `payment.failed` alone, with `code: 'declined'` (and the gateway's `decline_code`) or
+`code: 'payment_failed'`.
 
-| `action`             | When                                                              | What the SDK does next                                                                       | Also sent                                                   | Likely `code`                               |
-| -------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------- |
-| `campaign.load`      | The campaign cannot load                                          | Stops at `failed`, without `sdk.ready`, when there is no saved copy; otherwise stays `ready` | `html[data-next-error="campaign"]`                          | `network`, `auth`, `server`                 |
-| `cart.calculate`     | The cart cannot be priced                                         | The cart is `unpriced`; the summary keeps its totals from before the change                  | `shipping.selected` without prices, when the method changed | `network`, `server`, `rejected`             |
-| `selector.calculate` | Options or a toggle cannot be priced                              | Each option keeps its last price, else shows its package price                               | none                                                        | `network`, `server`                         |
-| `coupon.check`       | A coupon cannot be checked                                        | The code is not applied; `applyCoupon` resolves `false`                                      | `coupon.denied` (`check_failed`)                            | `network`, `server`                         |
-| `user.save`          | The Open Cart cannot be created                                   | Tries again on the next field change                                                         | none                                                        | `network`, `server`, `rejected`             |
-| `address.load_rules` | The country list or a country's rules cannot load                 | Uses the campaign's countries and simpler checks                                             | none                                                        | `network`, `server`                         |
-| `address.suggest`    | Address suggestions cannot load                                   | Shows no suggestions                                                                         | none                                                        | `network`, `server`                         |
-| `order.create`       | The order is not created: refused, declined, or the request fails | Back to filling; the cart unfreezes                                                          | `checkout.failed`                                           | `declined`, `rejected`, `network`, `server` |
-| `order.load`         | A page after the checkout cannot load the order                   | No `order.loaded` or `order.paid`; the page shows no order values and offers stay hidden     | none                                                        | `network`, `timeout`, `server`              |
-| `upsell.add`         | The offer cannot be added                                         | Redirected to the next page after a second                                                   | `upsell.failed`                                             | `declined`, `rejected`, `network`           |
-| `storage.write`      | Storage is blocked or full                                        | Works on without saving the cart across pages                                                | none                                                        | `unavailable`                               |
+| `action`             | When                                                    | What the SDK does next                                                                       | Also sent                                                   | Likely `code`                   |
+| -------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------- |
+| `campaign.load`      | The campaign cannot load                                | Stops at `failed`, without `sdk.ready`, when there is no saved copy; otherwise stays `ready` | `html[data-next-error="campaign"]`                          | `network`, `auth`, `server`     |
+| `cart.calculate`     | The cart cannot be priced                               | The cart is `unpriced`; the summary keeps its totals from before the change                  | `shipping.selected` without prices, when the method changed | `network`, `server`, `rejected` |
+| `selector.calculate` | Options or a toggle cannot be priced                    | Each option keeps its last price, else shows its package price                               | none                                                        | `network`, `server`             |
+| `coupon.check`       | A coupon cannot be checked                              | The code is not applied; `applyCoupon` resolves `false`                                      | `coupon.denied` (`check_failed`)                            | `network`, `server`             |
+| `user.save`          | The Open Cart cannot be created                         | Tries again on the next field change                                                         | none                                                        | `network`, `server`, `rejected` |
+| `address.load_rules` | The country list or a country's rules cannot load       | Uses the campaign's countries and simpler checks                                             | none                                                        | `network`, `server`             |
+| `address.suggest`    | Address suggestions cannot load                         | Shows no suggestions                                                                         | none                                                        | `network`, `server`             |
+| `order.create`       | The order is not created: refused, or the request fails | Back to filling; the cart unfreezes                                                          | `checkout.failed`                                           | `rejected`, `network`, `server` |
+| `order.load`         | A page after the checkout cannot load the order         | No `order.loaded` or `order.paid`; the page shows no order values and offers stay hidden     | none                                                        | `network`, `timeout`, `server`  |
+| `upsell.add`         | The offer cannot be added                               | Redirected to the next page after a second                                                   | `upsell.failed`                                             | `rejected`, `network`           |
+| `storage.write`      | Storage is blocked or full                              | Works on without saving the cart across pages                                                | none                                                        | `unavailable`                   |
 
 | `code`              | Means                                                              |
 | ------------------- | ------------------------------------------------------------------ |
@@ -59,7 +63,7 @@ with `reason: 'check_failed'`. A payment the gateway did not take sends `payment
 | `timeout`           | The SDK stopped waiting, such as the 10-second order load          |
 | `server`            | The API failed (HTTP 5xx)                                          |
 | `rejected`          | The API refused the request (HTTP 4xx)                             |
-| `declined`          | The card or the payment gateway declined                           |
+| `declined`          | The card or the payment gateway declined; only on `payment.failed` |
 | `payment_failed`    | The gateway sent the shopper back unpaid; only on `payment.failed` |
 | `auth`              | The campaign key is not allowed (HTTP 401, 403)                    |
 | `too_many_requests` | Rate limited (HTTP 429)                                            |

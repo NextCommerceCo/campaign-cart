@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, SELECTOR } from '../fixtures/pages';
 
 afterEach(() => {
@@ -8,6 +8,7 @@ afterEach(() => {
 import { fakeApi } from '../fixtures/api';
 import { flush } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
+import { FakeObserver, visible } from './observer';
 
 async function mountWithApi(html: string) {
   const api = fakeApi();
@@ -132,5 +133,30 @@ describe('bundle selector', () => {
       `<div data-next-upsell="offer"></div>${SELECTOR.replace(/<div data-next-toggle-container>[\s\S]*?<\/div>\s*<\/div>/, '')}`,
     );
     expect(upsell.engine.cart.lines()).toEqual([]);
+  });
+});
+
+describe('bundle selector visibility', () => {
+  beforeEach(() => {
+    FakeObserver.all = [];
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('sends selector.viewed once half of the selector is on screen, once a page however often its id is bound', async () => {
+    const { engine, bindings } = await mount(SELECTOR);
+    const seen: string[] = [];
+    engine.on('selector.viewed', (e) => seen.push(`${e.data.selector_id}:${e.data.option_id}`));
+    const [first] = document.querySelectorAll('[data-next-bundle-selector]');
+    visible(first!, 0.4);
+    expect(seen).toEqual([]);
+    visible(first!, 0.5);
+    visible(first!, 1);
+    const again = document.createElement('div');
+    again.innerHTML = SELECTOR;
+    document.body.append(again);
+    bindings.bind(again);
+    visible(again.querySelector('[data-next-bundle-selector]')!, 1);
+    expect(seen).toEqual(['main:two']);
   });
 });

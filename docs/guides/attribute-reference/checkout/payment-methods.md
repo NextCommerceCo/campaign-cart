@@ -65,6 +65,7 @@ or `next-failure-url` (see [data-next-checkout](data-next-checkout.md)).
 
 ## Events
 
-[payment.selected](/event-reference/checkout/payment.selected) when the method changes,
+[payment.selected](/event-reference/checkout/payment.selected) when the shopper changes the
+method after the checkout started,
 [payment.redirected](/event-reference/payments/payment.redirected) before the shopper leaves for
 the provider. See the [Payments lifecycle](../../event-reference/payments/lifecycle.md).

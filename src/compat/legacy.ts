@@ -176,8 +176,8 @@ const itemEvent = (map: (c: CartChange, op?: string, source?: string) => object 
     },
   });
 
-type Picked = From<'selector.viewed' | 'selector.selected' | 'selector.updated' | 'selector.deselected'>;
-const SELECTIONS = ['selector.viewed', 'selector.selected', 'selector.updated'] as const;
+type Picked = From<'selector.bound' | 'selector.selected' | 'selector.updated' | 'selector.deselected'>;
+const SELECTIONS = ['selector.bound', 'selector.selected', 'selector.updated'] as const;
 /** A bundle or offer selector's event; `offer` limits it to one of the two. */
 const selector = (from: Picked['name'][], data: (s: Selector, state: LegacyState) => unknown, offer?: boolean) =>
   alias<Picked['name']>({
@@ -213,7 +213,7 @@ const toggleCards = () =>
 
 const shippingOption = (state: State, id?: number) => state.campaign?.shipping_methods.find((m) => m.ref_id === id);
 const shipping = alias({
-  from: ['shipping.selected'],
+  from: ['shipping.settled'],
   when: (e, state) => !!shippingOption(state, e.data.id),
   data: (e, state) => ({ methodId: e.data.id, method: shippingOption(state, e.data.id) }),
 });
@@ -326,7 +326,7 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     }),
   }),
   'shipping:method-changed': shipping,
-  'shipping:method-selected': alias({ from: ['shipping.selected'], data: (e) => ({ shippingId: String(e.data.id) }) }),
+  'shipping:method-selected': alias({ from: ['shipping.settled'], data: (e) => ({ shippingId: String(e.data.id) }) }),
 };
 
 /** 0.4.x names of checkout, order and exit popup events: those chunks add them with {@link addLegacyEvents} when they load. */
@@ -460,14 +460,14 @@ export function legacyEvents(engine: Engine): LegacyEvents {
   const previous = new Map<string, number | undefined>();
   const counted = new WeakSet<EngineEvent>();
   /** Once per pick, whichever reads it first: this listener or a '*' listener's `previousPick`. */
-  const picked = (e: EngineEvent<'selector.viewed' | 'selector.selected'>) => {
+  const picked = (e: EngineEvent<'selector.bound' | 'selector.selected'>) => {
     const { data } = e;
     if (data.type === 'toggle' || counted.has(e)) return;
     counted.add(e);
     previous.set(data.selector_id, picks.get(data.selector_id));
     picks.set(data.selector_id, firstPackage(data));
   };
-  engine.on('selector.viewed', picked);
+  engine.on('selector.bound', picked);
   engine.on('selector.selected', picked);
   addEventListener('click', (e) => (click = e), true);
 

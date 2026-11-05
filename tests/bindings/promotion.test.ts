@@ -1,36 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../../src/bindings';
 import { makeEngine } from '../fixtures/engine';
-
-class FakeObserver {
-  static all: FakeObserver[] = [];
-  readonly targets = new Set<Element>();
-  constructor(
-    readonly callback: IntersectionObserverCallback,
-    readonly options?: IntersectionObserverInit,
-  ) {
-    FakeObserver.all.push(this);
-  }
-  observe(el: Element) {
-    this.targets.add(el);
-  }
-  unobserve(el: Element) {
-    this.targets.delete(el);
-  }
-  disconnect() {
-    this.targets.clear();
-  }
-}
-
-const visible = (el: Element, intersectionRatio: number) =>
-  FakeObserver.all
-    .filter((o) => o.targets.has(el))
-    .forEach((o) =>
-      o.callback(
-        [{ target: el, intersectionRatio, isIntersecting: intersectionRatio > 0 } as IntersectionObserverEntry],
-        o as unknown as IntersectionObserver,
-      ),
-    );
+import { FakeObserver, visible } from './observer';
 
 async function page(html: string) {
   document.body.innerHTML = html;

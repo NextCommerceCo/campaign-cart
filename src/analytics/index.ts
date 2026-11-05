@@ -4,7 +4,8 @@ import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engi
 import type { ApiOrder, ApiOrderLine } from '../engine/types';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { newId } from '../engine/id';
-import { upsellId } from '../engine/order';
+import { purchaseId, upsellId } from '../engine/order';
+import { createLedger } from './state';
 import { cartEcommerce, cents, currency, ecommerce, orderItem, taxIncluded } from './ecommerce';
 
 export interface AnalyticsOptions {
@@ -22,6 +23,7 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
+  const ledger = engine.attach(createLedger);
   const legacyExitIntent = startLegacyDataLayer(engine, {
     apiKey: options.apiKey,
     version: options.version,
@@ -154,12 +156,10 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     else skip(trigger, 'add_to_cart', nothingAdded);
   };
 
-  const onPaid = ({ ref_id }: EventMap['order.paid']) => {
-    const order = engine.getState().order?.paidOrder;
-    if (order?.ref_id !== ref_id) return skip('order.paid', 'purchase', 'The order is not in the state');
-    const { coupon } = engine.getState().order!;
-    const code = coupon?.refId === ref_id ? coupon.code : undefined;
-    const transaction = String(order.number ?? order.ref_id);
+  const sendPurchase = (order: ApiOrder, why: { trigger: EventName; reason: string }) => {
+    const coupon = engine.getState().order?.coupon;
+    const code = coupon?.refId === order.ref_id ? coupon.code : undefined;
+    const transaction = purchaseId(order);
     const lines = (order.lines ?? []).filter((l) => !l.is_upsell);
     const incl = taxIncluded(engine, order);
     const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
@@ -177,19 +177,38 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         ...(code && { coupon: code }),
         ...(discount > 0 && { discount }),
       },
-      { trigger: 'order.paid', reason: 'Once per order, when it is paid', id: transaction },
+      { ...why, id: transaction },
     );
+    ledger.mark([`purchase:${transaction}`]);
+  };
+
+  const onPaid = ({ ref_id }: EventMap['order.paid']) => {
+    const order = engine.getState().order?.paidOrder;
+    if (order?.ref_id !== ref_id) return skip('order.paid', 'purchase', 'The order is not in the state');
+    if (ledger.has(`purchase:${purchaseId(order)}`))
+      return skip('order.paid', 'purchase', 'Already sent for this order in this browser');
+    sendPurchase(order, { trigger: 'order.paid', reason: 'Once per order, when it is paid' });
+  };
+
+  /** order.paid came on an earlier page, such as the checkout, that was left before purchase was sent. */
+  const purchaseOwed = (order: ApiOrder) => {
+    const id = purchaseId(order);
+    const onThisPage = !ledger.has(id) || engine.getState().order?.paidOrder?.ref_id === order.ref_id;
+    if (order.payment_complete_url || onThisPage || ledger.has(`purchase:${id}`)) return;
+    sendPurchase(order, {
+      trigger: 'order.loaded',
+      reason: 'order.paid came on an earlier page that was left before purchase was sent',
+    });
   };
 
   const onLoaded = ({ ref_id }: EventMap['order.loaded']) => {
     const order = rawOrder(ref_id);
-    const ledger = engine.order;
-    if (!order || !ledger) return skip('order.loaded', 'upsell_purchase', 'The order is not in the state');
-    const done = ledger.reported();
+    if (!order) return skip('order.loaded', 'upsell_purchase', 'The order is not in the state');
+    purchaseOwed(order);
     const upsells = (order.lines ?? [])
       .filter((l) => l.is_upsell)
       .map((line, i) => ({ id: upsellId(order, line), number: i + 1, line }))
-      .filter((u) => !done.includes(u.id));
+      .filter((u) => !ledger.has(u.id));
     if (!upsells.length) return skip('order.loaded', 'upsell_purchase', 'No new accepted upsell');
     const incl = taxIncluded(engine, order);
     for (const { number, line } of upsells) {
@@ -215,7 +234,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
         { trigger: 'order.loaded', reason: `Accepted upsell ${number}`, id: transaction },
       );
     }
-    ledger.markReported(upsells.map((u) => u.id));
+    ledger.mark(upsells.map((u) => u.id));
   };
 
   engine.on(
@@ -257,9 +276,9 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           );
         }
         case 'address.entered':
-        case 'shipping.selected': {
+        case 'shipping.settled': {
           if (e.name === 'address.entered' && (e.data as EventMap['address.entered']).type !== 'shipping') return;
-          const method = e.name === 'shipping.selected' ? (e.data as EventMap['shipping.selected']) : undefined;
+          const method = e.name === 'shipping.settled' ? (e.data as EventMap['shipping.settled']) : undefined;
           return oncePerCheckout(
             e.name,
             'add_shipping_info',
@@ -272,8 +291,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
           );
         }
         case 'checkout.submitted': {
-          const { valid, payment_method } = e.data as EventMap['checkout.submitted'];
-          if (!valid) return;
+          const { payment_method } = e.data as EventMap['checkout.submitted'];
           return oncePerCheckout(
             e.name,
             'add_payment_info',

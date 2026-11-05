@@ -6,7 +6,15 @@ import type { EngineEvent } from './engine/events';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type { AnalyticsEvent, AnalyticsName, EventContext, EventMap, EventName, Snapshot } from './engine/events';
+import type {
+  AnalyticsEvent,
+  AnalyticsName,
+  EventContext,
+  EventMap,
+  EventName,
+  InternalEventName,
+  Snapshot,
+} from './engine/events';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,
@@ -38,7 +46,7 @@ const pixelId = () =>
   [...document.scripts].map((s) => s.text.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/)?.[1]).find(Boolean);
 
 /** The names `next.on` takes: every event but the SDK's internal ones. */
-export type PublicEventName = Exclude<EventName, 'campaign.loaded' | 'analytics'>;
+export type PublicEventName = Exclude<EventName, InternalEventName>;
 
 const PUBLIC_EVENTS: Record<PublicEventName, true> = {
   'sdk.ready': true,
@@ -63,10 +71,13 @@ const PUBLIC_EVENTS: Record<PublicEventName, true> = {
   'user.updated': true,
   'address.entered': true,
   'address.updated': true,
+  'address.autofilled': true,
   'payment.selected': true,
   'checkout.continued': true,
   'checkout.submitted': true,
+  'checkout.invalid': true,
   'checkout.failed': true,
+  'checkout.completed': true,
   'payment.redirected': true,
   'payment.failed': true,
   'order.created': true,

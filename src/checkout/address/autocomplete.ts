@@ -204,9 +204,11 @@ export function bindAutocomplete(fields: Fields, checkout: CheckoutActions): voi
     if (!(input instanceof HTMLInputElement) || attached.has(input)) continue;
     attached.add(input);
     const country = () => fields.get(`${prefix}country`)?.value || 'US';
+    const type = prefix ? 'billing' : 'shipping';
     attach(input, country, checkout.suggestAddresses, (s) => {
+      checkout.autofill(type, s);
       fill(fields, prefix, s);
-      legacyAddressFilled(input, prefix ? 'billing' : 'shipping', s);
+      legacyAddressFilled(input, type, s);
     });
   }
 }

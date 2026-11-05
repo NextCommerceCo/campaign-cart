@@ -55,7 +55,9 @@ Submitting the form checks every field and places the order with the selected
 ## Events
 
 [checkout.started](/event-reference/checkout/checkout.started),
+[checkout.invalid](/event-reference/checkout/checkout.invalid),
 [checkout.submitted](/event-reference/checkout/checkout.submitted),
-[checkout.failed](/event-reference/checkout/checkout.failed). The whole flow is in the
+[checkout.failed](/event-reference/checkout/checkout.failed),
+[checkout.completed](/event-reference/checkout/checkout.completed). The whole flow is in the
 [Checkout lifecycle](../../event-reference/checkout/lifecycle.md) and the
 [Payments lifecycle](../../event-reference/payments/lifecycle.md).

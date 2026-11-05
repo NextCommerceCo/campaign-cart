@@ -6,6 +6,7 @@ import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
 import { campaign } from '../../fixtures/campaign';
 import { flush, makeEngine, type MakeEngine, wait } from '../../fixtures/engine';
+import { ORDER } from '../../fixtures/order';
 import { fakeRules } from '../../fixtures/rules';
 import { MemoryStorage } from '../../fixtures/storage';
 
@@ -55,6 +56,7 @@ describe('checkout', () => {
       campaign: Promise.resolve({ ...campaign, language: 'fr' }),
     });
     await engine.cart.addItem(1);
+    checkout.begin();
     fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
     await checkout.leave('last_name');
     expect(posts('/carts/')[0]!.body).toMatchObject({ user: { language: 'fr' } });
@@ -227,6 +229,8 @@ describe('checkout', () => {
     const updated = vi.fn();
     engine.on('user.created', (e) => saved(e.data));
     engine.on('user.updated', (e) => updated(e.data));
+    await engine.cart.addItem(1);
+    checkout.begin();
     fill({ email: 'jane@example.com', first_name: 'J', last_name: 'Doe' });
     await checkout.leave('last_name');
     expect(posts('/carts/')).toHaveLength(0);
@@ -257,6 +261,7 @@ describe('checkout', () => {
     next.engine.on('cart.updated', (e) => updates(e.data));
     await next.engine.cart.addItem(2);
     expect(updates.mock.calls[0]![0]).not.toHaveProperty('user');
+    next.checkout.begin();
     next.engine.on('user.updated', (e) => updated(e.data));
     next.checkout.setField('email', 'jane@example.org');
     await next.checkout.leave('email');
@@ -270,6 +275,7 @@ describe('checkout', () => {
       const users: unknown[] = [];
       engine.on('user.created', (e) => users.push(e.data));
       await engine.cart.addItem(1);
+      checkout.begin();
       fill({ country: 'US', ...fields });
       await checkout.leave(leave);
       return { users, body: posts('/carts/')[0]?.body.user };
@@ -288,6 +294,52 @@ describe('checkout', () => {
     expect((await created('email+phone', { ...email, ...phone }, 'phone_number')).users).toHaveLength(1);
     expect((await created('formStart', { first_name: 'J' }, 'first_name')).body).toMatchObject({ first_name: 'J' });
     expect((await created('off', { ...email, ...phone }, 'phone_number')).users).toEqual([]);
+  });
+
+  it('saves the shopper and reports a payment method change only once the checkout has started', async () => {
+    const { engine, checkout, fill, posts } = await setup();
+    const seen: string[] = [];
+    let started: unknown;
+    engine.on('*', (e) => /^(checkout\.started|user\.|payment\.selected)/.test(e.name) && seen.push(e.name));
+    engine.on('checkout.started', (e) => (started = e.data));
+    checkout.setPaymentMethod('paypal');
+    fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
+    await checkout.leave('last_name');
+    expect(posts('/carts/')).toHaveLength(0);
+    await engine.cart.addItem(1);
+    checkout.begin();
+    await flush();
+    expect(seen).toEqual(['checkout.started', 'user.created']);
+    expect(posts('/carts/')).toHaveLength(1);
+    expect(started).toMatchObject({ payment_method: 'paypal' });
+    checkout.setPaymentMethod('paypal');
+    checkout.setPaymentMethod('klarna');
+    expect(seen).toEqual(['checkout.started', 'user.created', 'payment.selected']);
+  });
+
+  it('reports the fields an address suggestion filled, once the checkout has started', async () => {
+    const { engine, checkout } = await setup();
+    const filled: unknown[] = [];
+    engine.on('address.autofilled', (e) => filled.push(e.data));
+    const address = {
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'Texas',
+      state_code: 'TX',
+      postcode: '78701',
+      country: 'United States',
+      country_code: 'US',
+    };
+    checkout.autofill('shipping', { label: '1 Main St, Austin', address });
+    expect(filled).toEqual([]);
+    await engine.cart.addItem(1);
+    checkout.begin();
+    checkout.autofill('shipping', { label: '1 Main St, Austin', address });
+    checkout.autofill('billing', { label: '1 Main St', address: { ...address, city: '', state_code: '' } });
+    expect(filled).toEqual([
+      { line1: '1 Main St', city: 'Austin', postcode: '78701', country: 'US', state: 'TX', type: 'shipping' },
+      { line1: '1 Main St', postcode: '78701', country: 'US', type: 'billing' },
+    ]);
   });
 
   it('reports begin once, the address when it is valid then each change, and each change of payment method', async () => {
@@ -419,18 +471,22 @@ describe('checkout', () => {
     ]);
   });
 
-  it('says whether each submit passed its checks, and why an order the server refused failed', async () => {
+  it('sends checkout.invalid for a failed check, checkout.submitted only for an order being sent, and why it failed', async () => {
     const answers = [
       json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400),
       json({ message: 'Card expired' }, 400),
       json({}, 502),
     ];
     const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });
-    const submitted: unknown[] = [];
     const seen: string[] = [];
+    const invalid: unknown[] = [];
+    const submitted: unknown[] = [];
+    const declined: unknown[] = [];
     const failed: unknown[] = [];
-    engine.on('checkout.submitted', (e) => submitted.push([e.data.valid, Object.keys(e.data.errors)]));
-    engine.on('*', (e) => /^(sdk\.error|checkout\.failed|order\.)/.test(e.name) && seen.push(e.name));
+    engine.on('*', (e) => /^(sdk\.error|checkout\.|order\.|payment\.)/.test(e.name) && seen.push(e.name));
+    engine.on('checkout.invalid', (e) => invalid.push(e.data));
+    engine.on('checkout.submitted', (e) => submitted.push(e.data));
+    engine.on('payment.failed', (e) => declined.push(e.data));
     engine.on('checkout.failed', (e) => failed.push(e.data));
     await engine.cart.addItem(1);
     checkout.begin();
@@ -439,31 +495,44 @@ describe('checkout', () => {
     await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
     fill(SHIPPING);
     for (let i = 0; i < 3; i++) await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
-    expect(submitted).toEqual([
-      [false, expect.arrayContaining(['email'])],
-      [true, []],
-      [true, []],
-      [true, []],
-    ]);
     expect(seen).toEqual([
+      'checkout.started',
+      'checkout.invalid',
+      'checkout.submitted',
+      'payment.failed',
+      'checkout.submitted',
       'sdk.error',
       'checkout.failed',
+      'checkout.submitted',
       'sdk.error',
       'checkout.failed',
-      'sdk.error',
-      'checkout.failed',
+    ]);
+    expect(invalid).toEqual([
+      expect.objectContaining({
+        payment_method: 'card_token',
+        errors: expect.objectContaining({ email: expect.anything() }),
+      }),
+    ]);
+    expect(submitted[0]).toMatchObject({ id: engine.getState().checkout!.id, payment_method: 'card_token' });
+    expect(submitted[0]).not.toHaveProperty('valid');
+    expect(submitted[0]).not.toHaveProperty('errors');
+    expect(declined).toEqual([
+      {
+        method: 'card_token',
+        error: { code: 'declined', status: 400, message: 'Insufficient funds', decline_code: '51' },
+      },
     ]);
     expect(failed[0]).toMatchObject({
       id: engine.getState().checkout!.id,
       cart: { lines: [{ package_id: 1, quantity: 1 }] },
       payment_method: 'card_token',
-      error: { code: 'declined', status: 400, message: 'Insufficient funds', decline_code: '51' },
     });
     expect(failed.map((f) => (f as { error: unknown }).error)).toEqual([
-      expect.anything(),
       { code: 'rejected', status: 400, message: 'Card expired' },
       { code: 'server', status: 502, message: expect.stringContaining('502') },
     ]);
+    expect(engine.getState().checkout).toMatchObject({ status: 'idle' });
+    expect(engine.getState().cart.frozen).toBe(false);
   });
 
   it('reports shipping once the fields the country requires are valid, for a country with no city', async () => {
@@ -559,7 +628,13 @@ describe('checkout', () => {
 
   it('sends the order it created with its coupons, and remembers them for the purchase on the next page', async () => {
     const session = new MemoryStorage();
-    const { engine, checkout, fill } = await setup({ session });
+    const order = () =>
+      json({
+        ref_id: 'R1',
+        payment_complete_url: 'https://pay.test/R1',
+        order_status_url: 'https://shop.test/status/R1',
+      });
+    const { engine, checkout, fill } = await setup({ session, api: { order } });
     const created = vi.fn();
     engine.on('order.created', (e) => created(e.data));
     await engine.cart.addItem(1);
@@ -568,7 +643,12 @@ describe('checkout', () => {
     fill(SHIPPING);
     await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
     expect(created).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ ref_id: 'R1', coupons: ['SAVE10'], status_url: 'https://shop.test/status/R1' }),
+      expect.objectContaining({
+        ref_id: 'R1',
+        paid: false,
+        coupons: ['SAVE10'],
+        status_url: 'https://shop.test/status/R1',
+      }),
     );
     const next = makeEngine({ session, fetch: fakeApi().fetch }).engine;
     await next.start();
@@ -577,6 +657,42 @@ describe('checkout', () => {
     next.on('order.paid', (e) => paid(e.data));
     await next.order.load('R1');
     expect(paid).toHaveBeenCalledWith(expect.objectContaining({ coupons: ['SAVE10'] }));
+  });
+
+  it('reports an order paid at once as created, paid and completed, and not as paid again on the next page', async () => {
+    const session = new MemoryStorage();
+    const local = new MemoryStorage();
+    const { engine, checkout, fill } = await setup({ session, local, api: { order: () => json(ORDER) } });
+    const seen: Array<[string, unknown]> = [];
+    engine.on('*', (e) => /^(order\.|payment\.|checkout\.completed)/.test(e.name) && seen.push([e.name, e.data]));
+    let paidOrder: unknown;
+    engine.on('order.paid', () => (paidOrder = engine.getState().order?.paidOrder));
+    await engine.cart.addItem(1);
+    checkout.begin();
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    const id = engine.getState().checkout!.id;
+    await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok' });
+    expect(seen.map(([name]) => name)).toEqual(['order.created', 'order.paid', 'checkout.completed']);
+    expect(seen[0]![1]).toMatchObject({ ref_id: ORDER.ref_id, paid: true });
+    expect(seen[1]![1]).toEqual(seen[0]![1]);
+    expect(seen[2]![1]).toMatchObject({
+      id,
+      ref_id: ORDER.ref_id,
+      payment_method: 'card_token',
+      cart: { lines: [{ package_id: 1, quantity: 1 }] },
+      shipping_address: { line1: '1 Main St' },
+    });
+    expect(paidOrder).toEqual(ORDER);
+    expect(engine.cart.lines()).toEqual([]);
+
+    const next = makeEngine({ session, local, fetch: fakeApi().fetch }).engine;
+    await next.start();
+    next.order = next.attach((ctx) => createOrder(ctx, next.cart));
+    const later: string[] = [];
+    next.on('*', (e) => /^(order\.|checkout\.)/.test(e.name) && later.push(e.name));
+    await next.order.load(ORDER.ref_id);
+    expect(later).toEqual(['order.loaded']);
   });
 
   it('keeps the cart when the gateway takes over, so a failed payment can retry', async () => {
@@ -590,7 +706,10 @@ describe('checkout', () => {
     checkout.setField('first_name', 'Jane');
     checkout.setField('last_name', 'Doe');
     expect(await checkout.placeOrder({ ...URLS, expressMethod: 'paypal' })).toMatchObject({ ref_id: 'R2' });
-    expect(seen).toEqual([['payment.redirected', { method: 'paypal', ref_id: 'R2', url: 'https://pay.test/R2' }]]);
+    expect(seen).toEqual([
+      ['order.created', expect.objectContaining({ ref_id: 'R2', paid: false })],
+      ['payment.redirected', { method: 'paypal', ref_id: 'R2', url: 'https://pay.test/R2' }],
+    ]);
     expect(engine.getState().checkout).toMatchObject({ status: 'placed', pendingRef: 'R2' });
     expect(engine.getState().checkout).not.toHaveProperty('failurePath');
     expect(makeEngine({ session }).engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1 }]);
@@ -754,15 +873,20 @@ describe('one checkout per tab', () => {
   it('sends checkout.continued with the step that passed, then moves to the next step', async () => {
     const { engine, checkout, fill } = await page(new MemoryStorage());
     const continued: unknown[] = [];
+    const invalid: unknown[] = [];
     engine.on('checkout.continued', (e) => continued.push(e.data));
+    engine.on('checkout.invalid', (e) => invalid.push(e.data.errors));
     checkout.setStep(1);
     expect(checkout.nextStep()).toBe(false);
     expect(continued).toEqual([]);
     expect(engine.getState().checkout!.errors).toHaveProperty('email');
+    expect(invalid).toEqual([engine.getState().checkout!.errors]);
     fill(SHIPPING);
     await flush();
     expect(checkout.nextStep(true)).toBe(false);
     expect(engine.getState().checkout!.errors).toEqual({ phone_number: { code: 'blank' } });
+    expect(invalid).toHaveLength(2);
+    expect(invalid[1]).toEqual({ phone_number: { code: 'blank' } });
     expect(checkout.nextStep()).toBe(true);
     expect(continued).toHaveLength(1);
     expect(continued[0]).toMatchObject({ id: engine.getState().checkout!.id, cart: { lines: [{ package_id: 1 }] } });

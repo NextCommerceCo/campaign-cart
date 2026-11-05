@@ -151,8 +151,6 @@ describe('the workflows match the analytics code', () => {
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
-      valid: true,
-      errors: {},
     });
     engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
     await engine.order.load('R1');
@@ -249,7 +247,7 @@ describe('analytics workflow', () => {
         'Not yet: once per checkout, when the shipping address is valid or a shipping method is picked',
       ],
       ['todo', 'add_payment_info', 'Not yet: once per checkout, when a submit passes its checks'],
-      ['todo', 'purchase', 'Not yet: once per order, when the page after payment loads it'],
+      ['todo', 'purchase', 'Not yet: once per order, when it is paid'],
     ]);
     const clickable = [...root.querySelectorAll<HTMLElement>('.afunnel > button')];
     expect(clickable.map((b) => b.querySelector('code')!.textContent)).toEqual([
@@ -273,7 +271,7 @@ describe('analytics workflow', () => {
     paint();
     expect(steps().slice(-3)).toEqual([
       ['done', 'purchase', 'This page'],
-      ['todo', 'view_upsell', 'Not yet: each upsell page with an offer shown'],
+      ['todo', 'view_upsell', 'Not yet: each upsell page, when half of an offer is on screen'],
       ['todo', 'upsell_purchase', 'Not yet: each accepted upsell, when the order loads'],
     ]);
   });

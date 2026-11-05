@@ -98,17 +98,20 @@ runs the same checks without showing them, for the debug panel.
    frozen cart, set **before** the card is tokenised.
 2. Validate. A method picked in the form, PayPal and Klarna included, checks the whole form; an
    express button (`method`) checks only the fields `expressChecks` lists, none by default. On
-   errors: write `checkout.errors`, send `checkout.submitted` with `valid: false`, unfreeze, stop.
+   errors: write `checkout.errors`, send `checkout.invalid`, unfreeze, stop.
 3. Wait for the running cart calculation.
 4. `await tokenize()` for card payments (payment.js, 30 s, in the checkout chunk); a card that
-   fails stops as in 2. Then `checkout.submitted` with `valid: true`.
+   fails stops as in 2. Then `checkout.submitted`.
 5. Post one body built by pure `orderBody(state, …)` — the form's method with the user and
    addresses, or an express button's without them.
 6. Success with `payment_complete_url` (gateway, 3-D Secure): keep the cart, set
-   `checkout.pendingRef`, send `payment.redirected`, return the order. The cart is cleared when
-   that ref later loads as paid. Success without it: send `order.created`, clear cart and checkout
-   **silently** (no `cart.updated`), return the order. Failure: `sdk.error` (`order.create`) and
-   `checkout.failed`, write `checkout.errors`, unfreeze, return `undefined`.
+   `checkout.pendingRef`, send `order.created` (`paid: false`) and `payment.redirected`, return the
+   order. The cart is cleared when that ref later loads as paid, with `order.paid` and
+   `checkout.completed`. Success without it: send `order.created` (`paid: true`), put the order in
+   the paid ledger and `order.paidOrder`, send `order.paid` and `checkout.completed`, clear cart and
+   checkout **silently** (no `cart.updated`), return the order. A declined card: `payment.failed`
+   (`declined`) without `sdk.error`. Other failures: `sdk.error` (`order.create`) and
+   `checkout.failed`. Either way write `checkout.errors`, unfreeze, return `undefined`.
 
 `Idempotency-Key` is **not** sent until backend ask B1 ships (a custom header fails the API's
 CORS preflight today). When it does, one key per order attempt is reused for retries after an

@@ -23,7 +23,7 @@ const LABELS: Partial<Record<EventName, string>> = {
   'checkout.started': 'Checkout started',
   'user.created': 'User created',
   'address.entered': 'Address entered',
-  'shipping.selected': 'Shipping picked',
+  'shipping.settled': 'Shipping picked',
   'checkout.submitted': 'Order submitted',
   'order.loaded': 'Order loaded',
   'order.paid': 'Order paid',
@@ -50,8 +50,8 @@ const FUNNEL: Array<[string, string]> = [
   ['begin_checkout', 'once per checkout, when its form is ready'],
   ['add_shipping_info', 'once per checkout, when the shipping address is valid or a shipping method is picked'],
   ['add_payment_info', 'once per checkout, when a submit passes its checks'],
-  ['purchase', 'once per order, when the page after payment loads it'],
-  ['view_upsell', 'each upsell page with an offer shown'],
+  ['purchase', 'once per order, when it is paid'],
+  ['view_upsell', 'each upsell page, when half of an offer is on screen'],
   ['upsell_purchase', 'each accepted upsell, when the order loads'],
 ];
 const VIEWS = ['view_item', 'view_item_list'];

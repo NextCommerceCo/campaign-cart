@@ -3,7 +3,7 @@ import { createCheckout } from '../../src/checkout/state/checkout';
 import { upsellId } from '../../src/engine/order';
 import { createOrder, orderValue } from '../../src/order/state';
 import { format } from '../../src/engine/format';
-import { publicOrder } from '../../src/engine/order';
+import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
 import type { EngineEvent } from '../../src/engine/events';
 import type { CheckoutState } from '../../src/checkout/state/types';
 import type { ApiOrderLine } from '../../src/engine/types';
@@ -81,6 +81,49 @@ describe('order', () => {
     });
     await unpaid.order.load('R2');
     expect(unpaid.paid).not.toHaveBeenCalled();
+  });
+
+  it('sends no order.paid for an order the checkout already reported paid in this browser', async () => {
+    const local = new MemoryStorage();
+    const { engine: checkout } = makeEngine({ local });
+    checkout.attach((ctx) => ctx.local.set(REPORTED, [purchaseId(ORDER)]));
+    const page = await setup({ local });
+    await page.order.load('R1');
+    expect(page.loaded).toHaveBeenCalledTimes(1);
+    expect(page.paid).not.toHaveBeenCalled();
+    expect(page.engine.getState().order?.paidOrder).toBeUndefined();
+  });
+
+  it('completes the gateway checkout once, right after order.paid, with its id and the cart before it is emptied', async () => {
+    const session = new MemoryStorage();
+    const local = new MemoryStorage();
+    await gatewayPending(session, { id: 'C1', pendingRef: 'R1', paymentMethod: 'card_token', pendingMethod: 'paypal' });
+    const page = await setup({ session, local });
+    await page.order.load('R1');
+    const order = ['order.loaded', 'order.paid', 'checkout.completed'];
+    expect(page.events.map((e) => e.name).filter((n) => order.includes(n))).toEqual(order);
+    expect(page.sent('checkout.completed')).toEqual([
+      expect.objectContaining({
+        id: 'C1',
+        ref_id: 'R1',
+        payment_method: 'paypal',
+        cart: expect.objectContaining({ lines: [expect.objectContaining({ package_id: 1, quantity: 1 })] }),
+      }),
+    ]);
+    expect(page.engine.cart.lines()).toEqual([]);
+
+    const reload = await setup({ session, local });
+    await reload.order.load('R1');
+    expect(reload.sent('checkout.completed')).toEqual([]);
+
+    const unpaid = new MemoryStorage();
+    await gatewayPending(unpaid, { id: 'C2', pendingRef: 'R1' });
+    const gateway = await setup({
+      session: unpaid,
+      api: { getOrder: () => json({ ...ORDER, payment_complete_url: 'https://pay.test' }) },
+    });
+    await gateway.order.load('R1');
+    expect(gateway.sent('checkout.completed')).toEqual([]);
   });
 
   it('sends order.loaded and order.paid with the order itself and the code applied at its checkout', async () => {
@@ -411,14 +454,16 @@ describe('order', () => {
     });
   });
 
-  it('gives a declined upsell the gateway’s decline code', async () => {
+  it('sends a declined upsell as payment.failed with the gateway’s decline code, not as upsell.failed', async () => {
     const declined = json({ payment_response_code: 'insufficient_funds', payment_details: 'Insufficient funds' }, 400);
-    const { engine, order, sent } = await setup({ api: { upsell: () => declined } });
+    const { order, sent } = await setup({ api: { upsell: () => declined } });
     await order.load('R1');
-    await order.accept(PLAIN, '/up/');
-    expect(sent('upsell.failed')).toMatchObject([
-      { error: { code: 'declined', status: 400, decline_code: 'insufficient_funds', message: 'Insufficient funds' } },
-    ]);
+    expect(await order.accept(PLAIN, '/up/')).toBe('failed');
+    const error = { code: 'declined', status: 400, decline_code: 'insufficient_funds', message: 'Insufficient funds' };
+    expect(sent('payment.failed')).toEqual([{ method: 'card_token', ref_id: 'R1', error }]);
+    expect(sent('upsell.failed')).toEqual([]);
+    expect(sent('sdk.error')).toEqual([]);
+    expect(sent('upsell.declined')).toMatchObject([{ ref_id: 'R1', page: '/up/', error }]);
   });
 
   it('answers the receipt’s order.* paths', async () => {

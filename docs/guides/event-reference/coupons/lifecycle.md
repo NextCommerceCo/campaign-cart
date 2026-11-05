@@ -5,6 +5,8 @@ group: 'Event Reference/Coupons'
 
 # Coupon lifecycle
 
+Events: `coupon.*`, with the cart's `cart.updated`, `cart.calculating` and `cart.calculated`.
+
 ![Coupon lifecycle: held, checking, applied, denied and removed, with the events each step sends](coupon-lifecycle.svg)
 
 | State      | Means                                                                                                                           |

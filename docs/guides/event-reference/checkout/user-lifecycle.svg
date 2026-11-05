@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 522" width="720" height="522" role="img" aria-labelledby="checkout-user-lifecycle-title checkout-user-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" width="720" height="450" role="img" aria-labelledby="checkout-user-lifecycle-title checkout-user-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="checkout-user-lifecycle-title">User lifecycle</title>
-  <desc id="checkout-user-lifecycle-desc">Lead capture. There is no user until the shopper has entered what data-next-lead asks for, checked each time the shopper leaves a field they changed: by default a first and last name of at least two characters each and a valid email. Then the checkout saves them with an Open Cart and sends user.created, once per tab until an order is paid. If saving fails it sends sdk.error and tries again on the next field change. After that, a change that is still valid sends user.updated and an invalid one sends nothing; the Open Cart keeps the first details, the order takes the latest. With data-next-lead off it never saves.</desc>
+  <desc id="checkout-user-lifecycle-desc">Lead capture, once the checkout has started. There is no user until the shopper has entered what data-next-lead asks for, checked each time the shopper leaves a field they changed: by default a first and last name of at least two characters each and a valid email. Then the checkout saves them with an Open Cart and sends user.created, once per checkout. If saving fails it sends sdk.error and tries again on the next field change. After that, a change that is still valid sends user.updated and an invalid one sends nothing; the Open Cart keeps the first details, the order takes the latest. With data-next-lead off it never saves.</desc>
   <defs>
     <marker id="checkout-user-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -9,6 +9,7 @@
   <g>
     <path d="M330 74 V190" marker-end="url(#checkout-user-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">a name and a valid email are in</text>
+    <text x="344" y="156" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">once the checkout has started</text>
     <path d="M330 254 V370" marker-end="url(#checkout-user-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
     <text x="344" y="312" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">saved</text>
     <path d="M440 214 H534" marker-end="url(#checkout-user-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
@@ -33,7 +34,4 @@
     <text x="620" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">not saved</text>
     <text x="620" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
   </g>
-  <text x="360" y="468" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">data-next-lead="phone": a phone instead of the email · "email+phone": both · "off": never saves</tspan></text>
-  <text x="360" y="488" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--clean-fg-muted, #6b7280)">Once per tab until an order is paid · the Open Cart keeps the first details</tspan></text>
-  <text x="360" y="508" text-anchor="middle" style="font-size: 12px"><tspan style="fill: var(--color-rose-500, #e11d48); font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error · user.save</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280)"> → not saved; tried again on the next field change</tspan></text>
 </svg>

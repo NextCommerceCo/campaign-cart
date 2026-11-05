@@ -91,6 +91,7 @@ function publicOption(state: State, selector: SelectorState, card: SelectorCard)
 
 export function createSelectors(ctx: Context, cart: CartActions) {
   const inFlight = new Map<string, AbortController>();
+  const bound = new Set<string>();
   const viewed = new Set<string>();
   const fetched: SavedQuotes = {};
   const quotedOn = new Map<string, string>();
@@ -243,13 +244,18 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       ctx.update('selectors', {
         [id]: { mode, cards, quantities, picked: initial?.id, ...(slots && { slots: { [restored!.id]: slots } }) },
       });
-      if (!viewed.has(id)) {
-        viewed.add(id);
-        ctx.emit('selector.viewed', publicSelector(id));
+      if (!bound.has(id)) {
+        bound.add(id);
+        ctx.emit('selector.bound', publicSelector(id));
       } else if (initial && initial.id !== previous) ctx.emit('selector.selected', publicSelector(id));
       const adding = mode === 'swap' ? addToCart(id) : Promise.resolve();
       void quote(id);
       return adding;
+    },
+    view(id: string): void {
+      if (viewed.has(id) || !get(id)) return;
+      viewed.add(id);
+      ctx.emit('selector.viewed', publicSelector(id));
     },
     pick,
     addToCart,

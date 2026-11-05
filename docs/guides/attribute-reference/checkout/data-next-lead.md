@@ -46,5 +46,6 @@ Once saved, a later change to the name, email, phone or `accepts_marketing` upda
 
 ## Events
 
-[user.created](/event-reference/checkout/user.created) when the lead is saved,
+[user.created](/event-reference/checkout/user.created) when the lead is saved, after the checkout
+started,
 [user.updated](/event-reference/checkout/user.updated) when it changes.

@@ -446,11 +446,7 @@
   },
   "shipping.selected": {
     "id": 1,
-    "code": "standard",
-    "name": "Standard",
-    "price": 0,
-    "original_price": 0,
-    "discounts": []
+    "code": "standard"
   },
   "coupon.applied": {
     "code": "SAVE10",
@@ -519,6 +515,14 @@
     "state": "CA",
     "postcode": "90210",
     "country": "US",
+    "type": "shipping"
+  },
+  "address.autofilled": {
+    "line1": "1 Main St",
+    "city": "Austin",
+    "postcode": "78701",
+    "country": "US",
+    "state": "TX",
     "type": "shipping"
   },
   "address.updated": {
@@ -643,9 +647,67 @@
       "country": "US"
     },
     "billing_same_as_shipping": true,
+    "payment_method": "card_token"
+  },
+  "checkout.invalid": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
+    "cart": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "product_id": 400,
+          "product_title": "Olympus Earbuds",
+          "variant_id": 4001,
+          "variant_title": "Black",
+          "image": "https://cdn.test/1.png",
+          "price": 49,
+          "original_price": 99,
+          "total_discount": 0,
+          "total": 49,
+          "discounts": []
+        }
+      ],
+      "coupons": [],
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "code": "standard",
+        "name": "Standard",
+        "price": 0,
+        "original_price": 0,
+        "discounts": []
+      },
+      "subtotal": 49,
+      "total_discount": 0,
+      "total": 49,
+      "discounts": []
+    },
+    "billing_same_as_shipping": true,
     "payment_method": "card_token",
-    "valid": true,
-    "errors": {}
+    "errors": {
+      "email": {
+        "code": "blank"
+      },
+      "first_name": {
+        "code": "blank"
+      },
+      "last_name": {
+        "code": "blank"
+      },
+      "line1": {
+        "code": "blank"
+      },
+      "city": {
+        "code": "blank"
+      },
+      "state": {
+        "code": "not_selected"
+      },
+      "postcode": {
+        "code": "blank"
+      }
+    }
   },
   "checkout.failed": {
     "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
@@ -703,11 +765,67 @@
     "billing_same_as_shipping": true,
     "payment_method": "card_token",
     "error": {
-      "code": "declined",
-      "status": 400,
-      "message": "Insufficient funds",
-      "decline_code": "51"
+      "code": "server",
+      "status": 503,
+      "message": "Service unavailable"
     }
+  },
+  "checkout.completed": {
+    "id": "4f1d2c8e9a7b6c5d4e3f2a1b0c9d8e7f",
+    "step": 2,
+    "cart": {
+      "lines": [
+        {
+          "package_id": 1,
+          "quantity": 1,
+          "product_id": 400,
+          "product_title": "Olympus Earbuds",
+          "variant_id": 4001,
+          "variant_title": "Black",
+          "image": "https://cdn.test/1.png",
+          "price": 49,
+          "original_price": 99,
+          "total_discount": 0,
+          "total": 49,
+          "discounts": []
+        }
+      ],
+      "coupons": [],
+      "currency": "USD",
+      "shipping_method": {
+        "id": 1,
+        "code": "standard",
+        "name": "Standard",
+        "price": 0,
+        "original_price": 0,
+        "discounts": []
+      },
+      "subtotal": 49,
+      "total_discount": 0,
+      "total": 49,
+      "discounts": []
+    },
+    "user": {
+      "email": "jane.doe@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "accepts_marketing": true,
+      "language": "en",
+      "ip": "203.0.113.7",
+      "user_agent": "Mozilla/5.0 (test)"
+    },
+    "shipping_address": {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "line1": "1 Main St",
+      "city": "Dallas",
+      "state": "CA",
+      "postcode": "90210",
+      "country": "US"
+    },
+    "billing_same_as_shipping": true,
+    "payment_method": "paypal",
+    "ref_id": "R1"
   },
   "payment.redirected": {
     "method": "paypal",
@@ -715,68 +833,31 @@
     "url": "https://pay.test/R2"
   },
   "payment.failed": {
-    "method": "paypal",
-    "ref_id": "R2",
+    "method": "card_token",
     "error": {
-      "code": "payment_failed"
+      "code": "declined",
+      "status": 400,
+      "message": "Insufficient funds",
+      "decline_code": "51"
     }
   },
   "order.created": {
-    "ref_id": "R1",
-    "number": "1001",
-    "currency": "USD",
+    "ref_id": "R2",
     "test": false,
-    "lines": [
-      {
-        "id": "11",
-        "product_title": "Earbuds",
-        "sku": "EB-2",
-        "image": "https://img.test/eb.png",
-        "quantity": 2,
-        "price": 48.06,
-        "original_price": 99,
-        "total": 96.12,
-        "upsell": false
-      }
-    ],
+    "paid": false,
+    "lines": [],
     "coupons": [],
     "total_discount": 0,
-    "shipping_method": {
-      "name": "Express",
-      "price": 9.99
-    },
-    "tax": 7.12,
-    "total": 106.11,
-    "user": {
-      "email": "jane@example.com",
-      "first_name": "Jane",
-      "last_name": "Doe"
-    },
-    "shipping_address": {
-      "first_name": "Jane",
-      "last_name": "Doe",
-      "line1": "1 Main St",
-      "city": "Austin",
-      "state": "TX",
-      "postcode": "73301",
-      "country": "US"
-    },
-    "billing_address": {
-      "first_name": "Ann",
-      "last_name": "Lee",
-      "line1": "2 Side St",
-      "city": "Reno",
-      "state": "NV",
-      "country": "US"
-    },
-    "payment_method": "card_token",
-    "supports_upsells": true
+    "tax": 0,
+    "total": 0,
+    "supports_upsells": false
   },
   "order.loaded": {
     "ref_id": "R1",
     "number": "1001",
     "currency": "USD",
     "test": false,
+    "paid": true,
     "lines": [
       {
         "id": "11",
@@ -828,6 +909,7 @@
     "number": "1001",
     "currency": "USD",
     "test": false,
+    "paid": true,
     "lines": [
       {
         "id": "11",
@@ -879,6 +961,7 @@
     "number": "1001",
     "currency": "USD",
     "test": false,
+    "paid": true,
     "lines": [
       {
         "id": "11",

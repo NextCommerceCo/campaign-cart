@@ -1,7 +1,7 @@
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, selectorIdOf, setState, stamp } from './dom';
+import { isFormControl, onceVisible, selectorIdOf, setState, stamp } from './dom';
 import { discountTokens } from '../engine/tokens';
 import { cardQuote } from '../engine/values';
 
@@ -109,6 +109,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
 
     const preferred = [...els].find(([, el]) => el.getAttribute('data-next-selected') === 'true')?.[0];
     void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred);
+    onceVisible(selectorEl, () => b.engine.selectors.view(selectorId));
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {

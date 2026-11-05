@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../src/checkout/state/checkout';
 import { exitIntent } from '../src/compat/exit-intent';
 import type { Engine } from '../src/engine/engine';
-import type { EventName } from '../src/engine/events';
+import type { EventName, InternalEventName } from '../src/engine/events';
 import type { Campaign } from '../src/engine/types';
 import { createOrder } from '../src/order/state';
 import { fakeApi, json, type FakeApiOptions } from './fixtures/api';
@@ -15,7 +15,7 @@ import { MemoryStorage } from './fixtures/storage';
 
 const FILE = 'docs/event-examples.json';
 
-const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> = {
+const PUBLIC: Record<Exclude<EventName, InternalEventName>, true> = {
   'sdk.ready': true,
   'sdk.error': true,
   'selector.viewed': true,
@@ -37,11 +37,14 @@ const PUBLIC: Record<Exclude<EventName, 'campaign.loaded' | 'analytics'>, true> 
   'user.created': true,
   'user.updated': true,
   'address.entered': true,
+  'address.autofilled': true,
   'address.updated': true,
   'payment.selected': true,
   'checkout.continued': true,
   'checkout.submitted': true,
+  'checkout.invalid': true,
   'checkout.failed': true,
+  'checkout.completed': true,
   'payment.redirected': true,
   'payment.failed': true,
   'order.created': true,
@@ -114,6 +117,7 @@ describe('event examples', () => {
       'select',
       'one',
     );
+    landing.selectors.view('main');
     await landing.selectors.pick('main', 'two');
     await landing.selectors.setQuantity('main', 2);
     await landing.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
@@ -127,6 +131,19 @@ describe('event examples', () => {
     await form.loadCountries();
     form.setField('country', 'US');
     await flush();
+    form.nextStep();
+    form.autofill('shipping', {
+      label: '1 Main St, Austin, TX 78701, US',
+      address: {
+        line1: '1 Main St',
+        city: 'Austin',
+        state: 'Texas',
+        state_code: 'TX',
+        postcode: '78701',
+        country: 'United States',
+        country_code: 'US',
+      },
+    });
     const shipping = {
       email: 'jane@example.com',
       first_name: 'Jane',
@@ -151,6 +168,12 @@ describe('event examples', () => {
       pageUrl: 'https://shop.test/checkout/',
     };
     await form.placeOrder({ ...urls, tokenize: async () => 'tok_1' });
+
+    const unavailable = { order: () => json({ message: 'Service unavailable' }, 503) };
+    const failing = await page({ session, local, api: unavailable });
+    const retry = failing.attach((ctx) => createCheckout(ctx, failing.cart, fakeRules().api));
+    await retry.loadCountries();
+    await retry.placeOrder({ ...urls, tokenize: async () => 'tok_1' });
 
     const gateway = { order: () => json({ ref_id: 'R2', payment_complete_url: 'https://pay.test/R2' }) };
     const redirect = await page({ session, local, api: gateway });

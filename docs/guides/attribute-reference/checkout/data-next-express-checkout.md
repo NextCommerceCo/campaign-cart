@@ -46,5 +46,6 @@ being placed.
 ## Events
 
 [checkout.submitted](/event-reference/checkout/checkout.submitted), then
+[order.created](/event-reference/orders/order.created), and
 [payment.redirected](/event-reference/payments/payment.redirected) for a wallet that takes the
-shopper away. See the [Payments lifecycle](../../event-reference/payments/lifecycle.md).
+shopper away or [payment.failed](/event-reference/payments/payment.failed) for a decline. See the [Payments lifecycle](../../event-reference/payments/lifecycle.md).

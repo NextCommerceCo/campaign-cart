@@ -255,11 +255,11 @@ export function createCart(ctx: Context) {
     return { added, removed };
   };
 
-  const announceShipping = (run: number, summary?: CartSummary) => {
+  const settleShipping = (run: number, summary?: CartSummary) => {
     if (shippingAt === undefined || run <= shippingAt) return;
     shippingAt = undefined;
     const method = cartOf(summary).shipping_method;
-    if (method) ctx.emit('shipping.selected', method);
+    if (method) ctx.emit('shipping.settled', method);
   };
 
   const deny = (code: string, reason: EventMap['coupon.denied']['reason'], message?: string) =>
@@ -307,9 +307,9 @@ export function createCart(ctx: Context) {
         deny(code, 'no_discount');
         return 'denied';
       }
-      const done = commit({ coupons: [...state().coupons, code], held: unheld(code) });
-      ctx.emit('coupon.applied', { code, ...discountsOf(code, withCode) });
-      await done;
+      await commit({ coupons: [...state().coupons, code], held: unheld(code) }, undefined, () =>
+        ctx.emit('coupon.applied', { code, ...discountsOf(code, withCode) }),
+      );
       return 'applied';
     };
     return (checks = checks.then(go, go));
@@ -337,7 +337,7 @@ export function createCart(ctx: Context) {
     if (!lines().length || !ctx.getState().campaign) {
       if (state().calculating) set({ calculating: false });
       busy = false;
-      announceShipping(current);
+      settleShipping(current);
       return;
     }
     if (!state().calculating) set({ calculating: true });
@@ -353,7 +353,7 @@ export function createCart(ctx: Context) {
       unpriced = false;
       set({ summary, calculating: false });
       ctx.emit('cart.calculated', cartOf(summary));
-      announceShipping(current, summary);
+      settleShipping(current, summary);
       if (state().held.length && !state().frozen) void checkHeld();
     } catch (err) {
       if (current !== seq) return;
@@ -361,7 +361,7 @@ export function createCart(ctx: Context) {
       unpriced = true;
       set({ calculating: false });
       ctx.fail('cart.calculate', err);
-      announceShipping(current);
+      settleShipping(current);
     }
   };
 
@@ -378,9 +378,19 @@ export function createCart(ctx: Context) {
     }
   };
 
-  const commit = (patch: Partial<CartState>, operation?: CartOperation): Promise<void> => {
+  const commit = (patch: Partial<CartState>, operation?: CartOperation, also?: () => void): Promise<void> => {
+    let done = Promise.resolve();
+    ctx.batch(() => {
+      done = apply(patch, operation);
+      also?.();
+    });
+    return done;
+  };
+
+  const apply = (patch: Partial<CartState>, operation?: CartOperation): Promise<void> => {
     if (state().frozen) return Promise.resolve();
     const before = state().groups;
+    const shipped = 'shippingId' in patch && patch.shippingId !== state().shippingId;
     const after = patch.groups ?? before;
     const priced = state().summary?.lines;
     const hasLines = mergeLines(after).length > 0;
@@ -397,6 +407,7 @@ export function createCart(ctx: Context) {
         ctx.emit('selector.selected', publicToggle(ctx.getState(), id, after[id]));
     const cart = cartOf();
     ctx.emit('cart.updated', cart);
+    if (shipped && cart.shipping_method) ctx.emit('shipping.selected', cart.shipping_method);
     const { added, removed } = changesOf(quantities(before), quantities(after), priced);
     operations.set(added, operation).set(removed, operation);
     if (removed.length) ctx.emit('cart.removed', { ...cart, changes: removed });
@@ -505,8 +516,9 @@ export function createCart(ctx: Context) {
       if (state().frozen) return Promise.resolve();
       const { coupons, held } = state();
       checking.clear();
-      const done = commit({ groups: {}, coupons: [], held: [], dismissed: [] }, { action: 'clear' });
-      for (const code of coupons) ctx.emit('coupon.removed', { code, reason: 'cleared' });
+      const done = commit({ groups: {}, coupons: [], held: [], dismissed: [] }, { action: 'clear' }, () => {
+        for (const code of coupons) ctx.emit('coupon.removed', { code, reason: 'cleared' });
+      });
       for (const code of held) answer(code, false);
       return done;
     },
@@ -530,9 +542,9 @@ export function createCart(ctx: Context) {
         answer(normalized, false);
       }
       if (!state().coupons.includes(normalized)) return Promise.resolve();
-      const done = commit({ coupons: state().coupons.filter((c) => c !== normalized) });
-      ctx.emit('coupon.removed', { code: normalized, reason: 'shopper' });
-      return done;
+      return commit({ coupons: state().coupons.filter((c) => c !== normalized) }, undefined, () =>
+        ctx.emit('coupon.removed', { code: normalized, reason: 'shopper' }),
+      );
     },
     setShipping(shippingId: number | undefined) {
       if (state().frozen || shippingId === state().shippingId) return Promise.resolve();

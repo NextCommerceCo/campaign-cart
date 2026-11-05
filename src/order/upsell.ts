@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from './state';
 import { nextUrl } from '../engine/params';
-import { selectorIdOf } from '../bindings/dom';
+import { onceVisible, selectorIdOf } from '../bindings/dom';
 import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from '../compat/order';
 
 const FEEDBACK_MS = 1000;
@@ -34,19 +34,33 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
     };
     const go = (url: string | undefined, delay: number) => url && setTimeout(() => navigate(url), delay);
     let leaving = false;
+    let shown = false;
+    let onScreen = false;
     let viewed = false;
     const view = () => {
-      if (viewed || !engine.getState().order?.order) return;
+      if (viewed || !shown || !onScreen) return;
       viewed = true;
       order.view(spec, page);
     };
+    const show = () => {
+      if (shown || !engine.getState().order?.order) return;
+      shown = true;
+      order.shown(spec, page);
+      view();
+    };
+    const seen = () => {
+      onScreen = true;
+      view();
+    };
+    onceVisible(offer, seen);
 
     for (const button of buttons) {
       const accept = ACCEPT_WORDS.includes(button.getAttribute('data-next-upsell-action') ?? '');
       button.addEventListener('click', async (e) => {
         e.preventDefault();
         if (leaving || offer.classList.contains('next-processing')) return;
-        view();
+        show();
+        seen();
         const url = targetUrl(button, accept, engine);
         if (!accept) {
           leaving = true;
@@ -75,7 +89,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         offer.classList.toggle('next-available', available);
         offer.classList.toggle('next-hidden', !available);
         const quoting = selectorId && engine.getState().selectors[selectorId]?.quoting;
-        if (available && !quoting) view();
+        if (available && !quoting) show();
       }
       const busy = state?.status === 'accepting' || leaving;
       for (const button of buttons) button.classList.toggle('next-disabled', busy);
