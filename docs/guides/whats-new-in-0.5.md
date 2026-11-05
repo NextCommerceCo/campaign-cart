@@ -13,6 +13,8 @@ order; the page's attributes and every listener read from it. Pages built for 0.
 
 ## Less JavaScript
 
+![JavaScript a page downloads, gzip on one scale: a 0.4.x landing page 215 KB, a 0.5 landing page 31 KB, a 0.5 checkout page 56 KB](javascript-size.svg)
+
 JavaScript a landing page downloads, gzip:
 
 |                                         | 0.4.x      | 0.5                         |
