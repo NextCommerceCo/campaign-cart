@@ -16,6 +16,7 @@ const LAZY: Record<string, string[]> = {
   'compat/analytics': ['analytics'],
   'destinations/ga4': [],
   'destinations/meta': [],
+  'destinations/rudderstack': [],
 };
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;

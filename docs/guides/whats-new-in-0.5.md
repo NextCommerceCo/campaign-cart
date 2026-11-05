@@ -62,7 +62,7 @@ FontAwesome; 0.5 has no runtime dependencies, and its debug panel is not downloa
 - **Tracking events have their own listener**: `next.analytics.on('product_added_to_cart', fn)`,
   named in the storefront style and carrying the same objects as `next.on`, with a `context`. Each
   [destination](analytics-reference/destinations/overview.md) remaps them: GTM gets the 0.4.x
-  `dl_*` pushes as before, and GA4 and the Meta pixel are built in, off until turned on.
+  `dl_*` pushes as before, and GA4, the Meta pixel and RudderStack are built in, off until turned on.
 
 ## Errors that say what happened
 

@@ -257,9 +257,9 @@ describe('providers', () => {
     expect(list[3]).toEqual(['ok', 'NEXT analytics', 'own page_view', 'Its own script sends page_view.']);
   });
 
-  it('names the nextConfig key that turns a provider off, and providers that are no longer built in', () => {
+  it('names the nextConfig key that turns a provider off, and providers that are not built in', () => {
     win.NextDataLayerTransformFn = () => null;
-    const config = { enabled: true, nextCampaign: false, dataLayer: false, unsupported: ['facebook'] };
+    const config = { enabled: true, nextCampaign: false, dataLayer: false, unsupported: ['custom'] };
     expect(rows(providers(config, false))).toEqual([
       ['off', 'NextDataLayer', 'waits for idle', 'Starts once the page is idle.'],
       ['off', 'GTM dataLayer', 'off', 'Off in nextConfig: analytics.providers.gtm.enabled is false.'],
@@ -267,9 +267,9 @@ describe('providers', () => {
       ['off', 'NEXT analytics', 'off', 'Off in nextConfig: analytics.providers.nextCampaign.enabled is false.'],
       [
         'warn',
-        'Meta Pixel',
+        'Custom endpoint',
         'not built in',
-        'Meta Pixel is on in nextConfig, but the SDK no longer sends to it. Add it as a GTM tag.',
+        "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).",
       ],
       ['info', 'NextDataLayerTransformFn', 'set', 'NextDataLayerTransformFn can change or drop each dl_* event.'],
     ]);

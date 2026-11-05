@@ -32,6 +32,7 @@ const SOURCES = [
   'src/compat/analytics/schema.ts',
   'src/destinations/ga4.ts',
   'src/destinations/meta.ts',
+  'src/destinations/rudderstack/types.ts',
 ];
 const MARKER = '<!-- event-index -->';
 const DESTINATIONS = '/analytics-reference/destinations';
@@ -304,8 +305,8 @@ ${JSON.stringify(envelope, null, 2)}
 | Destination | As |
 | --- | --- |
 ${DESTINATION_PAGES.map((d) => {
-  const sent = sentTo(d.key, event.name);
-  return `| [${d.title}](${DESTINATIONS}/${d.key}) | ${sent ? `[\`${sent}\`](${DESTINATIONS}/${d.key}#${slugifyHeading(sent)})` : 'Not sent'} |`;
+  const sent = sentTo(d.key, event.name).map((s) => `[\`${s}\`](${DESTINATIONS}/${d.key}#${slugifyHeading(s)})`);
+  return `| [${d.title}](${DESTINATIONS}/${d.key}) | ${sent.join(', ') || 'Not sent'} |`;
 }).join('\n')}
 `;
 }
@@ -475,7 +476,45 @@ event with the same id is counted once. With \`storeName\`, an order's \`Purchas
         e.storeName_event_id ? `\n\nWith \`storeName: 'shop'\`: \`{ eventID: '${e.storeName_event_id}' }\`.` : ''
       }`,
   },
+  {
+    key: 'rudderstack',
+    title: 'RudderStack',
+    order: 0.24,
+    map: 'RudderStackEventMap',
+    vendor: 'RudderStack ecommerce spec',
+    reference: 'RudderStack reference',
+    as: 'RudderStack call',
+    intro: `Sends each tracking event to the page's \`rudderanalytics\` as the 0.4.x RudderStack provider did:
+the same \`page()\`, \`identify()\` and \`track()\` calls, event names and properties, so RudderStack
+destinations and warehouse tables built on 0.4.x keep working.`,
+    config: `Off by default. On:
+
+${config('{ rudderstack: { enabled: true } }')}
+
+The 0.4.x \`analytics.providers.rudderstack.enabled: true\` turns it on too.`,
+    loads: `\`rudderstack-*.js\` (about 3 KB), only when it is on. The SDK never loads RudderStack: the page has
+its JavaScript SDK snippet, whose \`ready()\` the SDK waits for. Without \`rudderanalytics\` the SDK
+logs one warning and sends nothing.`,
+    notes: `\`page_viewed\` is a \`page()\` and a \`<Page type> Page View\` track: the page type is
+\`<meta name="next-page-type">\`, else \`nextConfig.pageType\`, else \`product\`; the page name
+\`<meta name="next-page-name">\`, else the page's title. Every track carries \`page_type\`,
+\`page_name\` and the \`campaign_*\` fields. \`cart_id\` and \`checkout_id\` are the session id, the
+same across the cart, the checkout and the order. \`identify()\` comes when the shopper leaves their
+details (with an email) and before each \`Order Completed\`, from the order's billing address.
+\`Checkout Step Completed\` is sent once per checkout, for the first of its two tracking events.
+\`Order Completed\` prices are before tax, unless the campaign's prices include it, with
+\`total = subtotal + tax + shipping\`; each accepted upsell is an \`Order Completed\` of its own.`,
+    call: (name, e) => `\`\`\`js\n${e.calls.map(rudderCall).join('\n')}\n\`\`\``,
+  },
 ];
+
+/** One recorded `rudderanalytics` call, as page code would write it. */
+const rudderCall = (c) =>
+  c.call === 'page'
+    ? `rudderanalytics.page(${js(c.category)}, ${js(c.name)}, ${js(c.properties)});`
+    : c.call === 'identify'
+      ? `rudderanalytics.identify(${js(c.userId)}, ${js(c.traits)});`
+      : `rudderanalytics.track(${js(c.name)}, ${js(c.properties)});`;
 
 const seeOf = (r) => text(r?.comment?.getTag('@see')?.content);
 
@@ -486,8 +525,8 @@ function destinationPage(d, map, examples = {}, tracked) {
     return e ? `[\`${name}\`](${linkOf(e, ANALYTICS)})` : `\`${name}\``;
   };
   const anchor = (name) => `[\`${name}\`](#${slugifyHeading(name)})`;
-  const sentAs = (name) => Object.entries(examples).find(([, e]) => e.from.includes(name))?.[0];
-  const rows = tracked.map((e) => `| ${link(e.name)} | ${sentAs(e.name) ? anchor(sentAs(e.name)) : 'Not sent'} |`);
+  const sentAs = (name) => Object.keys(examples).filter((key) => examples[key].from.includes(name));
+  const rows = tracked.map((e) => `| ${link(e.name)} | ${sentAs(e.name).map(anchor).join(', ') || 'Not sent'} |`);
   const render = tables();
   const sections = (map.children ?? []).map((member) => {
     const example = examples[member.name];
@@ -583,9 +622,11 @@ export async function stageEventReference(root, out) {
   if (!staged.includes(MARKER)) throw new Error(`docs-events: ${MARKER} is missing from docs/guides/events.md`);
   await writeFile(overview, staged.replace(MARKER, index(events)));
 
-  /** The vendor event `destination` sends for tracking event `name`, from the recorded examples. */
+  /** The vendor events `destination` sends for tracking event `name`, from the recorded examples. */
   const sentTo = (destination, name) =>
-    Object.entries(sent[destination] ?? {}).find(([, e]) => e.from.includes(name))?.[0];
+    Object.entries(sent[destination] ?? {})
+      .filter(([, e]) => e.from.includes(name))
+      .map(([key]) => key);
   const tracked = (tracking.children ?? []).map((member) => ({
     name: member.name,
     group: text(member.comment?.getTag('@group')?.content),

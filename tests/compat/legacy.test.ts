@@ -3,6 +3,7 @@ import { boot, type NextApi } from '../../src/boot';
 import { bindAll } from '../../src/bindings';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { legacyCheckoutEvents } from '../../src/compat/checkout';
+import { legacyAnalytics, readLegacyAnalytics } from '../../src/compat/legacy/globals';
 import type { LegacyDecimal } from '../../src/compat/legacy/payloads';
 import { legacyEvents } from '../../src/compat/legacy/registry';
 import type { EngineEvent } from '../../src/engine/events/bus';
@@ -946,5 +947,44 @@ describe('exitIntent', () => {
     await next.exitIntent({ image: 'https://cdn.test/exit.png' });
     leave();
     expect(document.querySelector('.exit-intent-popup')).toBeNull();
+  });
+});
+
+describe('nextConfig.analytics (0.4.x)', () => {
+  const win = window as unknown as { nextConfig?: unknown };
+  afterEach(() => delete win.nextConfig);
+
+  it('turns the built-in destinations on from providers, and warns once for a custom endpoint', () => {
+    win.nextConfig = {
+      storeName: 'shop',
+      analytics: {
+        providers: { facebook: { enabled: true }, rudderstack: { enabled: true }, custom: { enabled: true } },
+      },
+    };
+    const { engine } = makeEngine();
+    engine.log.level = 'silent';
+    expect(legacyAnalytics(engine.log)).toEqual({
+      enabled: true,
+      nextCampaign: true,
+      dataLayer: true,
+      meta: true,
+      rudderstack: true,
+      storeName: 'shop',
+      unsupported: ['custom'],
+    });
+    expect(
+      engine.log
+        .entries()
+        .filter((e) => e.level === 'warn')
+        .map((e) => e.message),
+    ).toEqual([
+      'analytics provider "custom" is not built in: send events to your endpoint from next.analytics.on("*", fn)',
+    ]);
+  });
+
+  it('leaves RudderStack off unless its provider is on', () => {
+    expect(readLegacyAnalytics()).toMatchObject({ rudderstack: false, unsupported: [] });
+    win.nextConfig = { analytics: { providers: { rudderstack: { enabled: false } } } };
+    expect(readLegacyAnalytics()).toMatchObject({ rudderstack: false });
   });
 });

@@ -17,7 +17,7 @@ export interface AnalyticsOptions {
   version: string;
   nextCampaign: boolean;
   /** What the 0.4.x `nextConfig.analytics` and `storeName` asked for. */
-  legacy?: Pick<LegacyAnalytics, 'dataLayer' | 'meta' | 'storeName'>;
+  legacy?: Pick<LegacyAnalytics, 'dataLayer' | 'meta' | 'rudderstack' | 'storeName'>;
 }
 
 type Win = Window & {
@@ -62,7 +62,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     { replay: true },
   );
   checkout.beginOwed();
-  startDestinations(engine, destinations);
+  startDestinations(engine, destinations, { apiKey: options.apiKey });
 
   if (options.nextCampaign && !document.querySelector(`script[src="${NEXT_CAMPAIGN_SCRIPT}"]`)) {
     const script = Object.assign(document.createElement('script'), { src: NEXT_CAMPAIGN_SCRIPT, async: true });

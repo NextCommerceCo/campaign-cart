@@ -65,7 +65,7 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 | attach         | `engine.attach(ctx => create…(ctx))`: a lazy chunk adds its actions to the Engine (`engine.checkout`, `engine.order`)                                                                         |
 | domain event   | An `EventMap` event (`cart.added`): what happened, for page scripts, analytics and debug                                                                                                      |
 | tracking event | An event the analytics chunk derives from domain events at the moments that count for tracking, carrying the same objects (`product_added_to_cart`); `next.analytics.on` and the destinations |
-| destination    | Where tracking events go, remapped to a vendor's format: GTM (`dl_*` pushes), GA4 (`gtag`), Meta pixel (`fbq`); each loaded only when it is on                                                |
+| destination    | Where tracking events go, remapped to a vendor's format: GTM (`dl_*` pushes), GA4 (`gtag`), Meta pixel (`fbq`), RudderStack (`rudderanalytics`); each loaded only when it is on               |
 | compat         | 0.4.x names and behaviour, only in `src/compat/`; deleting the folder drops 0.4.x support                                                                                                     |
 
 ## Repository
@@ -79,7 +79,7 @@ docs/
                            event-reference/<group>/lifecycle.md, drawn by hand, one per event group
   event-examples.json      an example payload of every public event, recorded by tests/event-examples.test.ts
   analytics-examples.json  the object, data, triggers and dataLayer push of every tracking event, recorded by tests/analytics-examples.test.ts
-  destination-examples.json  what GTM, GA4 and Meta send for each tracking event, recorded by tests/destinations/examples.test.ts
+  destination-examples.json  what GTM, GA4, Meta and RudderStack send for each tracking event, recorded by tests/destinations/examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
@@ -151,9 +151,11 @@ src/
     items.ts                       a CartItem at the price the server gave it, the catalog's, or the one it was reported with
     state.ts                       headless: the browser's REPORTED ledger, shared with the order state and the checkout
     destinations.ts                which destinations are on (nextConfig.analytics.destinations over the 0.4.x keys); import() of each
-  destinations/        ga4, meta   one chunk per built-in destination, loaded after analytics when it is on
+  destinations/        ga4, meta, rudderstack   one chunk per built-in destination, loaded after analytics when it is on
     ga4.ts                         Ga4EventMap, the tracking event → GA4 remap, startGa4: the page's gtag
     meta.ts                        MetaEventMap, the tracking event → Meta remap, startMeta: the page's fbq
+    rudderstack/                   index.ts startRudderStack: the page's rudderanalytics, waiting for ready();
+                                   calls.ts the tracking event → 0.4.x RudderStack calls; types.ts RudderStackEventMap
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
@@ -202,6 +204,7 @@ src/
 | analytics    | idle after ready                                                      | 8 KB          |
 | ga4          | after analytics, when `destinations.ga4` is on                        | 2 KB          |
 | meta         | after analytics, when `destinations.meta` is on                       | 2 KB          |
+| rudderstack  | after analytics, when `destinations.rudderstack` is on                | 3 KB          |
 | exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
 | slots        | a bundle selector with a slot template                                | 6 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
@@ -225,7 +228,8 @@ src/
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `destinations/ga4.ts`, `destinations/meta.ts`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `destinations/ga4.ts`, `destinations/meta.ts`,
+`destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
 `compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics/`, which only their own chunk may import statically.
 

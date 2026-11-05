@@ -141,13 +141,15 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
-  `page_location` has no query string.
+  `page_location` has no query string. The one exception is the RudderStack destination's
+  `identify()`, which sends the shopper's email, name, phone and address as 0.4.x did.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.
-- **Destinations:** GTM (the `dl_*` pushes, on by default), GA4 (`gtag`) and the Meta pixel
-  (`fbq`) are built in, GA4 and Meta each a ~2 KB chunk loaded only when
-  `nextConfig.analytics.destinations` turns it on. The SDK never loads a vendor's tag. Other
-  vendors (TikTok, …) go through GTM or a `next.analytics.on` listener; `providers.rudderstack`
-  and `providers.custom` are not rebuilt, and enabling them in `nextConfig` prints a warning.
+- **Destinations:** GTM (the `dl_*` pushes, on by default), GA4 (`gtag`), the Meta pixel
+  (`fbq`) and RudderStack (`rudderanalytics`, the 0.4.x calls and properties) are built in, GA4
+  and Meta each a ~2 KB chunk and RudderStack a ~3 KB one, loaded only when
+  `nextConfig.analytics.destinations` (or the 0.4.x `providers.*` key) turns it on. The SDK never
+  loads a vendor's tag. Other vendors (TikTok, …) go through GTM or a `next.analytics.on`
+  listener; `providers.custom` is not rebuilt, and enabling it in `nextConfig` prints a warning.
 - **Attribution:** UTM, gclid, fbclid, affiliate, sub1–5, clickid, evclid, `_fbp`/`_fbc`
   and the funnel are kept for the tab session, with the first landing page. The same
   object goes on every event and on the order.

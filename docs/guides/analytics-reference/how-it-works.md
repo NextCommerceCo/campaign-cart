@@ -86,7 +86,7 @@ from an add-to-cart button) sends `product_added_to_cart` at the cart price. A b
 
 ## Turning parts off
 
-Analytics and GTM are on by default, GA4 and the Meta pixel off; `nextConfig.analytics` turns
+Analytics and GTM are on by default, GA4, the Meta pixel and RudderStack off; `nextConfig.analytics` turns
 analytics off or one destination on or off, and nothing for a destination that is off loads. See
 [Destinations](destinations/overview.md#config).
 

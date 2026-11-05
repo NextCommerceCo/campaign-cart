@@ -11,6 +11,8 @@ export interface LegacyAnalytics {
   dataLayer: boolean;
   /** `providers.facebook`: the Meta destination. */
   meta: boolean;
+  /** `providers.rudderstack`: the RudderStack destination. */
+  rudderstack: boolean;
   /** `nextConfig.storeName`, for Meta's `Purchase` event id. */
   storeName?: string;
   unsupported: string[];
@@ -27,16 +29,19 @@ export function readLegacyAnalytics(): LegacyAnalytics {
     nextCampaign: providers.nextCampaign?.enabled !== false,
     dataLayer: providers.gtm?.enabled !== false,
     meta: providers.facebook?.enabled === true,
+    rudderstack: providers.rudderstack?.enabled === true,
     ...(next?.storeName && { storeName: next.storeName }),
-    unsupported: ['rudderstack', 'custom'].filter((name) => providers[name]?.enabled),
+    unsupported: ['custom'].filter((name) => providers[name]?.enabled),
   };
 }
 
-/** @deprecated {@link readLegacyAnalytics}, warning once for each provider that is no longer built in. */
+/** @deprecated {@link readLegacyAnalytics}, warning once for each provider that is not built in. */
 export function legacyAnalytics(log: Logger): LegacyAnalytics {
   const analytics = readLegacyAnalytics();
   for (const name of analytics.unsupported)
-    log.warn(`analytics provider "${name}" is no longer built in; send it through GTM or a forwarder`);
+    log.warn(
+      `analytics provider "${name}" is not built in: send events to your endpoint from next.analytics.on("*", fn)`,
+    );
   return analytics;
 }
 

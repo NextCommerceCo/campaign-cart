@@ -156,11 +156,7 @@ const NEEDS_LINES: ReadonlySet<string> = new Set<TrackingName>([
 ]);
 const PRICED: ReadonlySet<string> = new Set(['cart', 'checkout', 'order', 'upsell']);
 const ORDERS: ReadonlySet<string> = new Set<TrackingName>(['checkout_completed', 'upsell_completed']);
-const UNSUPPORTED: Record<string, string> = {
-  facebook: 'Meta Pixel',
-  rudderstack: 'RudderStack',
-  custom: 'Custom endpoint',
-};
+const UNSUPPORTED: Record<string, string> = { custom: 'Custom endpoint' };
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 
 const wireOf = (name: string) => WIRING.find((w) => w.tracking === name);
@@ -215,7 +211,7 @@ export function providers(config: ProviderConfig, started: boolean): Provider[] 
         'warn',
         name,
         'not built in',
-        `${name} is on in nextConfig, but the SDK no longer sends to it. Add it as a GTM tag.`,
+        `${name} is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).`,
       );
     }),
     ...(typeof win.NextDataLayerTransformFn === 'function'
