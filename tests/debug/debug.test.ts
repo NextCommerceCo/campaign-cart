@@ -50,6 +50,8 @@ describe('debug tools', () => {
     expect(menu).toContain('CampaignOlympus · USD');
     expect(menu).not.toContain('APIapi.test');
     expect(menu).toContain('Developer modeOff · Elements, State, Logs');
+    expect(PANEL_CSS).toContain('.item>span:first-child{flex-shrink:0;white-space:nowrap}');
+    expect(PANEL_CSS).toMatch(/\.value\{flex:1;min-width:0;/);
     await developer();
     expect($('.menu').textContent).toContain('APIapi.test');
     expect($('.menu').textContent).toContain('Funnelf1');

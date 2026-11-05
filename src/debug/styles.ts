@@ -26,7 +26,8 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .menu{width:272px;padding:6px}
 .item{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;padding:7px 10px;border-radius:8px;text-align:left}
 button.item:hover{background:var(--accent)}
-.value{max-width:60%;overflow:hidden;color:var(--muted-foreground);font-size:12px;white-space:nowrap;text-overflow:ellipsis}
+.item>span:first-child{flex-shrink:0;white-space:nowrap}
+.value{flex:1;min-width:0;overflow:hidden;color:var(--muted-foreground);font-size:12px;text-align:right;white-space:nowrap;text-overflow:ellipsis}
 .value .icon{width:14px;height:14px}
 .danger{color:var(--destructive)}
 hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
