@@ -10,8 +10,11 @@
  * The Analytics Reference is the same for `TrackingMap`: a page per tracking event under
  * `docs/.staged/analytics-reference/`, its triggers, its `data` (the same objects, with the same
  * tables) and its `dataLayer` push from `docs/analytics-examples.json`
- * (`tests/analytics-examples.test.ts`), and `analytics.md` listing them. The provider pages'
- * `<!-- … -->` markers get the tables built from the same data and from `GA4` and `META` below.
+ * (`tests/analytics-examples.test.ts`), what each destination sends for it from
+ * `docs/destination-examples.json` (`tests/destinations/examples.test.ts`), and `analytics.md` listing
+ * them. Each destination gets a page under `docs/.staged/analytics-reference/destinations/`: its
+ * config, the tracking event → vendor event table from the same examples, and a section per vendor
+ * event from `DataLayerEventMap`, `Ga4EventMap` or `MetaEventMap` (TSDoc, `@see`, schema, example).
  * Nothing here is committed.
  */
 import { readdirSync } from 'node:fs';
@@ -26,78 +29,16 @@ const SOURCES = [
   ...readdirSync('src/engine/events').map((f) => `src/engine/events/${f}`),
   'src/engine/cart/types.ts',
   'src/engine/types.ts',
+  'src/compat/analytics/schema.ts',
+  'src/destinations/ga4.ts',
+  'src/destinations/meta.ts',
 ];
 const MARKER = '<!-- event-index -->';
-const PROVIDERS = '/analytics-reference/providers';
+const DESTINATIONS = '/analytics-reference/destinations';
 
 /** An internal engine event that triggers a tracking event, as the public event it follows. */
 const INTERNAL_TRIGGERS = { 'shipping.settled': ['shipping.selected', ', once the cart is priced with it'] };
 
-/** The `object` of each tracking event's envelope, as `OBJECTS` in `src/engine/events/analytics.ts`. */
-const OBJECTS = {
-  page_viewed: 'page',
-  product_viewed: 'product',
-  product_list_viewed: 'products',
-  product_added_to_cart: 'cart_line',
-  product_removed_from_cart: 'cart_line',
-  cart_updated: 'cart',
-  checkout_started: 'checkout',
-  checkout_contact_info_submitted: 'checkout',
-  checkout_shipping_address_submitted: 'checkout',
-  checkout_shipping_method_submitted: 'checkout',
-  checkout_payment_info_submitted: 'checkout',
-  checkout_completed: 'order',
-  upsell_completed: 'order',
-  upsell_viewed: 'upsell',
-  upsell_skipped: 'upsell',
-  promotion_viewed: 'promotion',
-  promotion_selected: 'promotion',
-};
-
-/** The GA4 event each tracking event is remapped to, as the `ga4` column of `WIRING` in `src/debug/providers.ts`. */
-const GA4 = {
-  page_viewed: 'page_view',
-  product_viewed: 'view_item',
-  product_list_viewed: 'view_item_list',
-  product_added_to_cart: 'add_to_cart',
-  product_removed_from_cart: 'remove_from_cart',
-  cart_updated: 'update_cart',
-  checkout_started: 'begin_checkout',
-  checkout_contact_info_submitted: 'generate_lead',
-  checkout_shipping_address_submitted: 'add_shipping_info',
-  checkout_shipping_method_submitted: 'add_shipping_info',
-  checkout_payment_info_submitted: 'add_payment_info',
-  checkout_completed: 'purchase',
-  upsell_completed: 'upsell_purchase',
-  upsell_viewed: 'view_upsell',
-  upsell_skipped: 'skip_upsell',
-  promotion_viewed: 'view_promotion',
-  promotion_selected: 'select_promotion',
-};
-/** How GA4 takes each one: `automatic` is GA4's own page_view, `custom` a name GA4 has no event for. */
-const GA4_KIND_OF = {
-  page_viewed: 'automatic',
-  cart_updated: 'custom',
-  upsell_completed: 'custom',
-  upsell_viewed: 'custom',
-  upsell_skipped: 'custom',
-};
-const GA4_KIND = {
-  recommended: 'a recommended event',
-  custom: 'a custom event',
-  automatic: 'sent by `gtag` itself; leave it out',
-};
-const ga4Kind = (name) => GA4_KIND[GA4_KIND_OF[name] ?? 'recommended'];
-
-/** The Meta pixel standard event each tracking event maps to in the Meta recipe. */
-const META = {
-  product_viewed: 'ViewContent',
-  product_added_to_cart: 'AddToCart',
-  checkout_started: 'InitiateCheckout',
-  checkout_payment_info_submitted: 'AddPaymentInfo',
-  checkout_contact_info_submitted: 'Lead',
-  checkout_completed: 'Purchase',
-};
 const WHEN = ['@priced', '@campaign'];
 const PRESENT =
   '**Present**: `always`; `optional` when it may be missing; `campaign` once the campaign is loaded; `priced` once the server priced the cart.';
@@ -133,7 +74,10 @@ async function reference(root) {
   const map = named('EventMap');
   const tracking = named('TrackingMap');
   if (!map || !tracking) throw new Error('docs-events: EventMap or TrackingMap not found in src/engine/events/');
-  return { map, tracking };
+  const vendors = Object.fromEntries(DESTINATION_PAGES.map((d) => [d.key, named(d.map)]));
+  const missing = DESTINATION_PAGES.filter((d) => !vendors[d.key]).map((d) => d.map);
+  if (missing.length) throw new Error(`docs-events: ${missing.join(', ')} not found`);
+  return { map, tracking, vendors };
 }
 
 /**
@@ -222,20 +166,39 @@ function tables() {
     return [...head, ...body.map(line)].join('\n');
   };
 
-  const withObjects = (first) => {
-    const sections = [first];
-    for (let i = 0; i < objects.length; i++) {
-      const r = objects[i];
+  let shown = 0;
+  /** A table for each object linked since the last call, and the objects those link. */
+  const objectTables = () => {
+    const sections = [];
+    for (; shown < objects.length; shown++) {
+      const r = objects[shown];
       sections.push(`### ${r.name}\n\n${text(r.comment?.summary)}\n\n${table(r.children ?? [])}`);
     }
-    return sections.join('\n\n');
+    return sections;
   };
+  const withObjects = (first) => [first, ...objectTables()].join('\n\n');
 
   /** The tables of `type`: its fields, or for an array of objects the element's table. */
-  return (type) =>
+  const render = (type) =>
     type?.type === 'array' && objectOf(type.elementType)
       ? withObjects(`${typeMd(type)}, one per package.`)
       : withObjects(table(fieldsOf(type)));
+  /** `type` as a link to each object it is made of and a table of its other fields, objects left for `objects()`. */
+  render.schema = (type) => {
+    const parts = type?.type === 'intersection' ? type.types : [type];
+    const linked = parts.filter(objectOf).map(typeMd);
+    const fields = new Map(
+      parts
+        .filter((t) => !objectOf(t))
+        .flatMap(fieldsOf)
+        .map((f) => [f.name, f]),
+    );
+    if (!linked.length) return table([...fields.values()]);
+    const of = `The fields of ${linked.join(' and ')}`;
+    return fields.size ? `${of}, and:\n\n${table([...fields.values()])}` : `${of}.`;
+  };
+  render.objects = () => objectTables().join('\n\n');
+  return render;
 }
 
 function page(event, order, example, version) {
@@ -294,11 +257,11 @@ const trackingId = (name, data) => {
   return EVENT_ID;
 };
 
-function trackingPage(event, order, example, linkTo, version) {
+function trackingPage(event, order, example, linkTo, version, sentTo) {
   const envelope = {
     event_id: trackingId(event.name, example.data),
     event_type: event.name,
-    object: OBJECTS[event.name],
+    object: example.object,
     data: example.data,
     created_at: CREATED_AT,
     session_id: SESSION_ID,
@@ -307,8 +270,6 @@ function trackingPage(event, order, example, linkTo, version) {
   };
   const triggers = example.triggers.map(linkTo).join(', ');
   const data = tables()(event.member.type);
-  const meta = META[event.name];
-  const push = example.dataLayer;
   return `---
 title: '${event.name}'
 group: '${ANALYTICS}/${event.group}'
@@ -340,22 +301,13 @@ ${JSON.stringify(envelope, null, 2)}
 
 ## Sent to
 
-| Provider | As |
+| Destination | As |
 | --- | --- |
-| [GTM](${PROVIDERS}/gtm) | ${push ? `\`${push.event}\` on \`dataLayer\` and \`NextDataLayer\`, below` : 'Not pushed'} |
-| [GA4](${PROVIDERS}/ga4), from a listener | \`${GA4[event.name]}\`, ${ga4Kind(event.name)} |
-| [Meta pixel](${PROVIDERS}/meta), from a listener | ${meta ? `\`${meta}\`` : 'Not sent'} |
-${
-  push
-    ? `
-### dataLayer push
-
-\`\`\`json
-${JSON.stringify(push, null, 2)}
-\`\`\`
-`
-    : ''
-}`;
+${DESTINATION_PAGES.map((d) => {
+  const sent = sentTo(d.key, event.name);
+  return `| [${d.title}](${DESTINATIONS}/${d.key}) | ${sent ? `[\`${sent}\`](${DESTINATIONS}/${d.key}#${slugifyHeading(sent)})` : 'Not sent'} |`;
+}).join('\n')}
+`;
 }
 
 function trackingOverview(events) {
@@ -371,68 +323,211 @@ The SDK's own tracking contract: what happened on the page, at the moments that 
 tracking, named in the storefront style (\`product_added_to_cart\`, \`checkout_completed\`). Each
 carries the same object the SDK's [events](/events) carry (the Cart, a CartItem, the Checkout, the
 Order), in one envelope: \`{ event_id, event_type, object, data, created_at, session_id,
-sdk_version, context }\`. Each [provider](${PROVIDERS}/overview) remaps them to its own format.
+sdk_version, context }\`. Each [destination](${DESTINATIONS}/overview) remaps them to its own format.
 \`next.analytics.on(name, (event) => …)\` receives one, \`'*'\` every one.
 [How analytics works](/analytics-reference/how-it-works) says how each is sent; each event's page has
-what triggers it, its \`data\`, and what each provider gets.
+what triggers it, its \`data\`, and what each destination gets.
 
 ${index(events, ANALYTICS)}
 `;
 }
 
-/** Each provider page's markers and the markdown they become. */
-function providerTables(tracked, examples) {
-  const row = (cells) => `| ${cells.join(' | ')} |`;
-  const link = (e) => `[\`${e.name}\`](${linkOf(e, ANALYTICS)})`;
-  const mapped = tracked.filter((e) => META[e.name]);
-  return {
-    'gtm.md': {
-      '<!-- gtm-events -->': [
-        row(['Tracking event', '`dataLayer`']),
-        row(['---', '---']),
-        ...tracked.map((e) =>
-          row([link(e), examples[e.name].dataLayer ? `\`${examples[e.name].dataLayer.event}\`` : '—']),
-        ),
-      ].join('\n'),
-    },
-    'ga4.md': {
-      '<!-- ga4-events -->': [
-        row(['Tracking event', 'GA4 event', '']),
-        row(['---', '---', '---']),
-        ...tracked.map((e) => row([link(e), `\`${GA4[e.name]}\``, ga4Kind(e.name)])),
-      ].join('\n'),
-    },
-    'meta.md': {
-      '<!-- meta-events -->': [
-        row(['Tracking event', 'Meta event']),
-        row(['---', '---']),
-        ...mapped.map((e) => row([link(e), `\`${META[e.name]}\``])),
-      ].join('\n'),
-      '<!-- meta-recipe -->': `\`\`\`js
-const META = {
-${mapped.map((e) => `  ${e.name}: '${META[e.name]}',`).join('\n')}
+/** `value` as a JS literal: bare keys, single quotes, arrays of scalars on one line. */
+const js = (value, indent = '') => {
+  if (typeof value === 'string') return `'${value.replace(/'/g, "\\'")}'`;
+  if (value === null || typeof value !== 'object') return String(value);
+  const inner = `${indent}  `;
+  if (Array.isArray(value)) {
+    if (!value.length) return '[]';
+    if (value.every((v) => v === null || typeof v !== 'object')) return `[${value.map((v) => js(v)).join(', ')}]`;
+    return `[\n${value.map((v) => `${inner}${js(v, inner)},`).join('\n')}\n${indent}]`;
+  }
+  const entries = Object.entries(value);
+  if (!entries.length) return '{}';
+  const key = (k) => (/^[A-Za-z_$][\w$]*$/.test(k) ? k : `'${k}'`);
+  return `{\n${entries.map(([k, v]) => `${inner}${key(k)}: ${js(v, inner)},`).join('\n')}\n${indent}}`;
 };
 
-next.analytics.on('*', ({ event_type, event_id, data }) => {
-  const event = META[event_type];
-  if (!event) return;
-  const lines = Array.isArray(data) ? data : (data.lines ?? data.cart?.lines ?? [data]);
-  fbq(
-    'track',
-    event,
-    {
-      value: data.total ?? data.cart?.total ?? data.price,
-      currency: data.currency ?? data.cart?.currency,
-      content_ids: lines.map((line) => line.sku ?? String(line.package_id)),
-      contents: lines.map((line) => ({ id: line.sku ?? String(line.package_id), quantity: line.quantity })),
-      content_type: 'product',
-    },
-    { eventID: event_id },
-  );
-});
-\`\`\``,
+/** The fields every `dl_*` push carries, which the examples after `dl_user_data` leave out but `event` and `event_id`. */
+const COMMON = [
+  'event_time',
+  'user_properties',
+  'page_location',
+  'page_title',
+  'page_referrer',
+  'campaign_id',
+  'campaign_name',
+  'campaign_currency',
+  'campaign_language',
+  'campaign_api_key',
+  'campaign_session_id',
+  'attribution',
+  '_metadata',
+];
+const ownFields = (push) => Object.fromEntries(Object.entries(push).filter(([k]) => !COMMON.includes(k)));
+
+const config = (destinations) => `\`\`\`html
+<script>
+  window.nextConfig = {
+    analytics: {
+      destinations: ${destinations},
     },
   };
+</script>
+\`\`\``;
+
+/** One page per built-in destination: its prose, how it is turned on, and how its call is written. */
+const DESTINATION_PAGES = [
+  {
+    key: 'gtm',
+    title: 'GTM',
+    order: 0.21,
+    map: 'DataLayerEventMap',
+    vendor: 'Elevar data layer',
+    reference: 'Elevar reference',
+    as: '`dl_*` push',
+    intro: `Pushes each tracking event to \`window.dataLayer\` and \`window.NextDataLayer\` in the 0.4.x
+format, for GTM containers and forwarders built on it. The format is **deprecated, and still sent**;
+new code listens with \`next.analytics.on\`.`,
+    config: `On by default. Off, pushes still reach \`window.NextDataLayer\` but not \`window.dataLayer\`:
+
+${config('{ gtm: { enabled: false } }')}
+
+The 0.4.x \`analytics.providers.gtm.enabled: false\` does the same.`,
+    loads: `Nothing of its own: the analytics chunk pushes. The SDK never loads GTM: the container is the
+page's own tag.`,
+    notes: `\`dl_add_to_cart\` and \`dl_remove_from_cart\` are pushed once per burst of lines, where
+\`product_added_to_cart\` comes once per line; \`dl_add_shipping_info\` once per checkout, for the
+first of its two tracking events; \`dl_purchase\` once per order, once it is paid.
+
+## Where pushes go
+
+1. \`window.NextDataLayerTransformFn(event)\`, when the page defines it, gets each push first and
+   returns the push to send. A falsy return drops it; an error logs and drops it.
+2. The push goes to \`window.NextDataLayer\`.
+3. Then to \`window.dataLayer\`, after \`{ ecommerce: null }\` so GTM clears the previous ecommerce
+   object.
+
+A container built on the tracking names instead pushes them from a listener, with
+\`{ ecommerce: null }\` first when it sends an \`ecommerce\` object. Turn the \`dl_*\` pushes off then,
+or the container gets each event twice:
+
+\`\`\`js
+next.analytics.on('*', ({ event_type, event_id, data }) => {
+  window.dataLayer.push({ event: event_type, event_id, ...data });
+});
+\`\`\`
+
+The exit-intent popup of \`next.exitIntent()\` pushes \`dl_view_promotion\` and \`dl_select_promotion\`
+like any promotion, and the five \`dl_exit_intent_*\` pushes below, which have no tracking event. A
+close after a click, or the page removing the popup, sends neither \`_dismissed\` nor \`_closed\`.
+
+Every push carries the fields of [\`DataLayerPush\`](#datalayerpush). The examples show them on
+\`dl_user_data\`; the others leave them out but \`event\` and \`event_id\`.`,
+    call: (name, e) =>
+      `\`\`\`json\n${JSON.stringify(name === 'dl_user_data' ? e.push : ownFields(e.push), null, 2)}\n\`\`\``,
+  },
+  {
+    key: 'ga4',
+    title: 'GA4',
+    order: 0.22,
+    map: 'Ga4EventMap',
+    vendor: 'GA4 events',
+    reference: 'GA4 reference',
+    as: 'GA4 event',
+    intro: `Sends each tracking event to the page's \`gtag\` as a GA4 event, \`gtag('event', name, params)\`,
+with GA4's \`items\` built from the SDK's lines.`,
+    config: `Off by default. On:
+
+${config('{ ga4: { enabled: true } }')}`,
+    loads: `\`ga4-*.js\` (about 2 KB), only when it is on. The SDK never loads the Google tag: the page has
+\`gtag\`. Without it the SDK logs one warning and sends nothing.`,
+    notes: `\`page_viewed\` is not sent: \`gtag('config', …)\` sends GA4's own \`page_view\`. \`checkout_completed\`
+and each \`upsell_completed\` are a \`purchase\` of their own, with the tracking event's \`event_id\` as
+\`transaction_id\`, so GA4 counts each once. A property tagged through GTM uses the
+[GTM](${DESTINATIONS}/gtm) pushes instead; with both on, it gets each event twice.`,
+    call: (name, e) => `\`\`\`js\ngtag('event', '${name}', ${js(e.params)});\n\`\`\``,
+  },
+  {
+    key: 'meta',
+    title: 'Meta pixel',
+    order: 0.23,
+    map: 'MetaEventMap',
+    vendor: 'Meta Pixel standard events',
+    reference: 'Meta reference',
+    as: 'Meta event',
+    intro: `Sends six tracking events to the page's \`fbq\` as Meta Pixel standard events,
+\`fbq('track', name, params, { eventID })\`. The pixel's base code sends \`PageView\` itself.`,
+    config: `Off by default. On, with the store's name:
+
+${config("{ meta: { enabled: true, storeName: 'shop' } }")}
+
+The 0.4.x \`analytics.providers.facebook.enabled: true\` turns it on too, and \`nextConfig.storeName\`
+is read when \`storeName\` is not set.`,
+    loads: `\`meta-*.js\` (about 2 KB), only when it is on. The SDK never loads the pixel: the page has its
+base code. Without \`fbq\` the SDK logs one warning and sends nothing.`,
+    notes: `\`eventID\` is the tracking event's \`event_id\`, so a
+[Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events)
+event with the same id is counted once. With \`storeName\`, an order's \`Purchase\` has
+\`eventID: '<storeName>-<order number>'\`, the id the store's server-side events use.`,
+    call: (name, e) =>
+      `\`\`\`js\nfbq('track', '${name}', ${js(e.params)}, { eventID: '${e.event_id}' });\n\`\`\`${
+        e.storeName_event_id ? `\n\nWith \`storeName: 'shop'\`: \`{ eventID: '${e.storeName_event_id}' }\`.` : ''
+      }`,
+  },
+];
+
+const seeOf = (r) => text(r?.comment?.getTag('@see')?.content);
+
+/** A destination's page: config, the event table, then a section per vendor event and the objects they carry. */
+function destinationPage(d, map, examples = {}, tracked) {
+  const link = (name) => {
+    const e = tracked.find((t) => t.name === name);
+    return e ? `[\`${name}\`](${linkOf(e, ANALYTICS)})` : `\`${name}\``;
+  };
+  const anchor = (name) => `[\`${name}\`](#${slugifyHeading(name)})`;
+  const sentAs = (name) => Object.entries(examples).find(([, e]) => e.from.includes(name))?.[0];
+  const rows = tracked.map((e) => `| ${link(e.name)} | ${sentAs(e.name) ? anchor(sentAs(e.name)) : 'Not sent'} |`);
+  const render = tables();
+  const sections = (map.children ?? []).map((member) => {
+    const example = examples[member.name];
+    const see = seeOf(member);
+    const from = example ? `\n\nFrom ${example.from.map(link).join(', ')}.` : '';
+    return `## ${member.name}
+
+${[text(member.comment?.summary), see && `See the [${d.reference}](${see}).`].filter(Boolean).join(' ')}${from}
+
+${render.schema(member.type)}${example ? `\n\n${d.call(member.name, example)}` : ''}`;
+  });
+  const objects = render.objects();
+  return `---
+title: '${d.title}'
+group: '${ANALYTICS}/Destinations'
+order: ${d.order}
+---
+
+# ${d.title}
+
+${d.intro} Vendor docs: [${d.vendor}](${seeOf(map)}).
+
+## Config
+
+${d.config}
+
+## What loads
+
+${d.loads}
+
+## Events
+
+| Tracking event | ${d.as} |
+| --- | --- |
+${rows.join('\n')}
+
+${d.notes}
+
+${sections.join('\n\n')}
+${objects ? `\n## Types\n\n${objects}\n` : ''}`;
 }
 
 function index(events, root = GROUP) {
@@ -451,7 +546,8 @@ export async function stageEventReference(root, out) {
   const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
   const examples = JSON.parse(await readFile(join(root, 'docs/event-examples.json'), 'utf8'));
   const trackingExamples = JSON.parse(await readFile(join(root, 'docs/analytics-examples.json'), 'utf8'));
-  const { map, tracking } = await reference(root);
+  const sent = JSON.parse(await readFile(join(root, 'docs/destination-examples.json'), 'utf8'));
+  const { map, tracking, vendors } = await reference(root);
   const groups = (map.extendedTypes ?? []).map((t) => t.toString());
   const groupOf = (member) => groups.indexOf(member.inheritedFrom?.name.split('.')[0] ?? '');
   const events = [...(map.children ?? [])]
@@ -487,6 +583,9 @@ export async function stageEventReference(root, out) {
   if (!staged.includes(MARKER)) throw new Error(`docs-events: ${MARKER} is missing from docs/guides/events.md`);
   await writeFile(overview, staged.replace(MARKER, index(events)));
 
+  /** The vendor event `destination` sends for tracking event `name`, from the recorded examples. */
+  const sentTo = (destination, name) =>
+    Object.entries(sent[destination] ?? {}).find(([, e]) => e.from.includes(name))?.[0];
   const tracked = (tracking.children ?? []).map((member) => ({
     name: member.name,
     group: text(member.comment?.getTag('@group')?.content),
@@ -496,21 +595,15 @@ export async function stageEventReference(root, out) {
   for (const [i, event] of tracked.entries()) {
     if (!(event.name in trackingExamples))
       throw new Error(`docs-events: no tracking example for ${event.name}; run UPDATE_DOCS=1 npm test`);
-    if (!(event.name in OBJECTS) || !(event.name in GA4))
-      throw new Error(`docs-events: ${event.name} is missing from OBJECTS or GA4 in scripts/docs-events.mjs`);
     const file = join(out, slugifyPath([ANALYTICS, event.group]), `${event.name}.md`);
     await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, trackingPage(event, i + 1, trackingExamples[event.name], linkTo, version));
+    await writeFile(file, trackingPage(event, i + 1, trackingExamples[event.name], linkTo, version, sentTo));
   }
   await writeFile(join(out, 'analytics.md'), trackingOverview(tracked));
-  for (const [page, markers] of Object.entries(providerTables(tracked, trackingExamples))) {
-    const file = join(out, slugifyPath([ANALYTICS]), 'providers', page);
-    let staged = await readFile(file, 'utf8');
-    for (const [marker, markdown] of Object.entries(markers)) {
-      if (!staged.includes(marker)) throw new Error(`docs-events: ${marker} is missing from ${file}`);
-      staged = staged.replace(marker, markdown);
-    }
-    await writeFile(file, staged);
+  for (const d of DESTINATION_PAGES) {
+    const file = join(out, slugifyPath([ANALYTICS]), 'destinations', `${d.key}.md`);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, destinationPage(d, vendors[d.key], sent[d.key], tracked));
   }
   return { events: events.length, analytics: tracked.length };
 }

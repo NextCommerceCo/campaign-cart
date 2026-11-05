@@ -228,7 +228,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
             apiKey: config.apiKey,
             version: next.version,
             nextCampaign: analytics.nextCampaign,
-            dataLayer: analytics.dataLayer,
+            legacy: analytics,
           }),
         );
       (window.requestIdleCallback ?? setTimeout)(() => void start());

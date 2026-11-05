@@ -108,7 +108,7 @@ export const WIRING: Wire[] = [
     from: ['order.loaded'],
     tracking: 'upsell_completed',
     object: 'order',
-    ga4: 'upsell_purchase',
+    ga4: 'purchase',
     dl: 'dl_upsell_purchase',
   },
   { from: ['upsell.viewed'], tracking: 'upsell_viewed', object: 'upsell', ga4: 'view_upsell', dl: 'dl_viewed_upsell' },

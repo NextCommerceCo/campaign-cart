@@ -5,6 +5,7 @@ import { analyticsFlow } from '../../src/debug/analytics';
 import type { PageKind, PageVisit } from '../../src/debug/state';
 import { checks, dlOf, linesOf, type ProviderConfig, providers, WIRING } from '../../src/debug/providers';
 import { nodes } from '../../src/debug/view';
+import { GA4 } from '../../src/destinations/ga4';
 import {
   type AnalyticsTrace,
   OBJECTS,
@@ -166,6 +167,11 @@ describe('the workflows match the analytics code', () => {
     expect(Object.fromEntries(tracked)).toEqual(DL);
     expect(tracked).toHaveLength(Object.keys(OBJECTS).length);
     expect(Object.fromEntries(WIRING.filter((w) => w.tracking).map((w) => [w.tracking, w.object]))).toEqual(OBJECTS);
+    expect(
+      Object.fromEntries(
+        WIRING.filter((w) => w.tracking !== 'page_viewed' && w.tracking).map((w) => [w.tracking, w.ga4]),
+      ),
+    ).toEqual(GA4);
     expect(WIRING.filter((w) => !w.tracking).map((w) => [w.from[0], w.dl])).toEqual([
       ['promotion.viewed', 'dl_exit_intent_shown'],
       ['promotion.clicked', 'dl_exit_intent_accepted'],

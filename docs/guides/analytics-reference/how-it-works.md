@@ -10,8 +10,8 @@ The SDK turns what happens on a page into [tracking events](/analytics): `produc
 `checkout_started`, `checkout_completed`. They are the SDK's own contract, named in the storefront
 style, and each carries the same object the SDK's [events](/events) carry. It builds them from
 those events, so they come at the same moments, and hands each one to `next.analytics.on` and to
-the built-in [providers](providers/overview.md); every other vendor, GA4 and Meta included, remaps
-them from a listener.
+the [destinations](destinations/overview.md) that are on: GTM, GA4 and the Meta pixel are built in;
+any other vendor remaps them from a listener.
 
 ![Tracking events across a funnel: the landing page sends page_viewed, product_viewed or product_list_viewed, and the cart events; the checkout sends checkout_started, checkout_contact_info_submitted, checkout_shipping_address_submitted, checkout_shipping_method_submitted, checkout_payment_info_submitted and checkout_completed; an upsell page sends upsell_viewed, upsell_skipped and upsell_completed for the page before; the receipt sends upsell_completed and any checkout_completed still owed](tracking-funnel.svg)
 
@@ -86,8 +86,9 @@ from an add-to-cart button) sends `product_added_to_cart` at the cart price. A b
 
 ## Turning parts off
 
-Everything is on by default; `nextConfig.analytics` turns analytics or one provider off, and
-nothing for a provider that is off loads. See [Providers](providers/overview.md#config).
+Analytics and GTM are on by default, GA4 and the Meta pixel off; `nextConfig.analytics` turns
+analytics off or one destination on or off, and nothing for a destination that is off loads. See
+[Destinations](destinations/overview.md#config).
 
 ## Debugging
 

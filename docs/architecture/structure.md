@@ -50,22 +50,23 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 
 ## Glossary
 
-| Term           | Meaning                                                                                                                                                                               |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| selector       | A bundle selector (`data-next-bundle-selector`): cards to pick from, mode `swap`, `select` or `offer`. Pages say bundle                                                               |
-| card           | One option of a selector (`data-next-bundle-card`), with its lines and its quote                                                                                                      |
-| slot           | One unit of a configurable card line, which can be its own variant (`data-next-bundle-slot-template-id`)                                                                              |
-| toggle         | A package switched on or off by its own card (`data-next-toggle-card`), kept in the cart as its own group                                                                             |
-| group          | A named part of the cart: its lines and vouchers. `items`, a selector id or a toggle id; the cart is every group merged                                                               |
-| held           | A coupon entered before the cart could be priced, checked at its next price                                                                                                           |
-| frozen         | The cart while an order is placed: every cart action is a no-op, so a double click cannot change what is paid for                                                                     |
-| calculating    | A price request is running; latest wins, so an older answer is dropped                                                                                                                |
-| settled        | Internal moment once a change was priced (or failed): `shipping.settled` is when 0.4.x sent its shipping events                                                                       |
-| lead           | The Open Cart the checkout saves once the name and the `data-next-lead` contact fields (`email`, `phone`, both or `off`) are valid                                                    |
-| attach         | `engine.attach(ctx => create…(ctx))`: a lazy chunk adds its actions to the Engine (`engine.checkout`, `engine.order`)                                                                 |
-| domain event   | An `EventMap` event (`cart.added`): what happened, for page scripts, analytics and debug                                                                                              |
-| tracking event | An event the analytics chunk derives from domain events at the moments that count for tracking, carrying the same objects (`product_added_to_cart`); `next.analytics.on`, `dataLayer` |
-| compat         | 0.4.x names and behaviour, only in `src/compat/`; deleting the folder drops 0.4.x support                                                                                             |
+| Term           | Meaning                                                                                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| selector       | A bundle selector (`data-next-bundle-selector`): cards to pick from, mode `swap`, `select` or `offer`. Pages say bundle                                                                       |
+| card           | One option of a selector (`data-next-bundle-card`), with its lines and its quote                                                                                                              |
+| slot           | One unit of a configurable card line, which can be its own variant (`data-next-bundle-slot-template-id`)                                                                                      |
+| toggle         | A package switched on or off by its own card (`data-next-toggle-card`), kept in the cart as its own group                                                                                     |
+| group          | A named part of the cart: its lines and vouchers. `items`, a selector id or a toggle id; the cart is every group merged                                                                       |
+| held           | A coupon entered before the cart could be priced, checked at its next price                                                                                                                   |
+| frozen         | The cart while an order is placed: every cart action is a no-op, so a double click cannot change what is paid for                                                                             |
+| calculating    | A price request is running; latest wins, so an older answer is dropped                                                                                                                        |
+| settled        | Internal moment once a change was priced (or failed): `shipping.settled` is when 0.4.x sent its shipping events                                                                               |
+| lead           | The Open Cart the checkout saves once the name and the `data-next-lead` contact fields (`email`, `phone`, both or `off`) are valid                                                            |
+| attach         | `engine.attach(ctx => create…(ctx))`: a lazy chunk adds its actions to the Engine (`engine.checkout`, `engine.order`)                                                                         |
+| domain event   | An `EventMap` event (`cart.added`): what happened, for page scripts, analytics and debug                                                                                                      |
+| tracking event | An event the analytics chunk derives from domain events at the moments that count for tracking, carrying the same objects (`product_added_to_cart`); `next.analytics.on` and the destinations |
+| destination    | Where tracking events go, remapped to a vendor's format: GTM (`dl_*` pushes), GA4 (`gtag`), Meta pixel (`fbq`); each loaded only when it is on                                                |
+| compat         | 0.4.x names and behaviour, only in `src/compat/`; deleting the folder drops 0.4.x support                                                                                                     |
 
 ## Repository
 
@@ -77,11 +78,13 @@ docs/
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4;
                            event-reference/<group>/lifecycle.md, drawn by hand, one per event group
   event-examples.json      an example payload of every public event, recorded by tests/event-examples.test.ts
-  analytics-examples.json  the data, triggers and dataLayer push of every tracking event, recorded by tests/analytics-examples.test.ts
+  analytics-examples.json  the object, data, triggers and dataLayer push of every tracking event, recorded by tests/analytics-examples.test.ts
+  destination-examples.json  what GTM, GA4 and Meta send for each tracking event, recorded by tests/destinations/examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
-scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event Reference page per EventMap event
+scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event Reference page per EventMap event, an
+                           Analytics Reference page per tracking event and per destination
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
 vendor/tsugi/payment-icons.css  tsugi's payment icons the payment step shows, inlined; a chunk of its own
@@ -147,6 +150,10 @@ src/
     pages.ts carts.ts checkout.ts orders.ts promotions.ts   one file per event group: what it sends, and when
     items.ts                       a CartItem at the price the server gave it, the catalog's, or the one it was reported with
     state.ts                       headless: the browser's REPORTED ledger, shared with the order state and the checkout
+    destinations.ts                which destinations are on (nextConfig.analytics.destinations over the 0.4.x keys); import() of each
+  destinations/        ga4, meta   one chunk per built-in destination, loaded after analytics when it is on
+    ga4.ts                         Ga4EventMap, the tracking event → GA4 remap, startGa4: the page's gtag
+    meta.ts                        MetaEventMap, the tracking event → Meta remap, startMeta: the page's fbq
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
@@ -166,7 +173,7 @@ src/
                                    pages, where events are pushed, then this page's events; one opens in tsugi's dialog, a
                                    tab for its summary (why, what it reached, lines), the envelope and one for what each
                                    data layer or GA4 got
-    providers.ts                   which providers are on, engine event → tracking event / dl_* wiring (checked against
+    providers.ts                   which destinations are on, engine event → tracking event / dl_* wiring (checked against
                                    compat/analytics/), push checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
   compat/                          @deprecated 0.4.x support; each file ships with its importer
@@ -182,7 +189,8 @@ src/
     order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
     analytics/         analytics   index.ts: dl_* events (Elevar format) into NextDataLayer / dataLayer, built from the
                                    tracking events; ga4.ts: their GA4-style ecommerce payloads (items, value, purchase);
-                                   burst.ts: one dl_add_to_cart / dl_remove_from_cart push per burst of line events
+                                   burst.ts: one dl_add_to_cart / dl_remove_from_cart push per burst of line events;
+                                   schema.ts: DataLayerEventMap, the type of every dl_* push (types only, for the docs)
 ```
 
 | Chunk        | Loaded when                                                           | Budget (gzip) |
@@ -192,6 +200,8 @@ src/
 | checkout     | `form[data-next-checkout]`                                            | 30 KB         |
 | order        | `[data-next-upsell]` or `order.*`                                     | 10 KB         |
 | analytics    | idle after ready                                                      | 8 KB          |
+| ga4          | after analytics, when `destinations.ga4` is on                        | 2 KB          |
+| meta         | after analytics, when `destinations.meta` is on                       | 2 KB          |
 | exit-intent  | first `next.exitIntent()`                                             | 3 KB          |
 | slots        | a bundle selector with a slot template                                | 6 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card | 3 KB          |
@@ -207,14 +217,15 @@ src/
 | `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`                                              |
 | `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/checkout.ts`              |
 | `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`, `compat/order.ts`                    |
-| `analytics/*`             | `engine/*`, `compat/analytics/*`                                                                      |
+| `analytics/*`             | `engine/*`, `compat/analytics/*`; `destinations/*` only via `import()`                                |
+| `destinations/*`          | `engine/*`                                                                                            |
 | `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
 | `compat/*`                | `engine/*`, `compat/*`                                                                                |
 | `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`; lazy chunks only via `import()`             |
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
 | `config.ts`               | `compat/config.ts`                                                                                    |
 
-Lazy chunks are `checkout/`, `order/`, `analytics/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
+Lazy chunks are `checkout/`, `order/`, `analytics/`, `destinations/ga4.ts`, `destinations/meta.ts`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
 `compat/exit-intent.ts`, `compat/widgets.ts`, plus `compat/checkout.ts`, `compat/order.ts` and
 `compat/analytics/`, which only their own chunk may import statically.
 
@@ -239,6 +250,7 @@ tests/
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
   event-examples.test.ts           records docs/event-examples.json; fails on a public event without an example
   analytics-examples.test.ts       records docs/analytics-examples.json; fails on an analytics event without an example
+  destinations/examples.test.ts    records docs/destination-examples.json; fails on a vendor event without an example
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts order.ts rules.ts
     pages/<campaign>/<page>.html           my-campaigns pages, copied verbatim, source on line 1
@@ -260,7 +272,8 @@ cannot drift silently.
 - `docs/guides/` — for people building campaign pages: every attribute, the `window.next` API,
   every event, and the 0.4.x → new migration table. Written by hand, kept short; each event's own
   page is generated from `EventMap` and `docs/event-examples.json`, and each tracking event's from
-  `TrackingMap` and `docs/analytics-examples.json`.
+  `TrackingMap` and `docs/analytics-examples.json`, and each destination's from its event map
+  (`DataLayerEventMap`, `Ga4EventMap`, `MetaEventMap`) and `docs/destination-examples.json`.
 
 ## Recipes
 

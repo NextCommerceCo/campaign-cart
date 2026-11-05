@@ -5,6 +5,8 @@ const BUDGETS = [
   { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
   { match: /^boot-.*\.js$/, name: 'boot', kb: 25 },
   { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
+  { match: /^ga4-.*\.js$/, name: 'ga4', kb: 2 },
+  { match: /^meta-.*\.js$/, name: 'meta', kb: 2 },
   { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
   { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
   { match: /^order-.*\.js$/, name: 'order', kb: 10 },

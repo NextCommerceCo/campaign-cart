@@ -3,6 +3,7 @@
     "triggers": [
       "sdk.ready"
     ],
+    "object": "page",
     "data": {},
     "dataLayer": {
       "event": "dl_user_data",
@@ -51,6 +52,7 @@
     "triggers": [
       "sdk.ready"
     ],
+    "object": "product",
     "data": {
       "package_id": 1,
       "quantity": 1,
@@ -122,6 +124,7 @@
     "triggers": [
       "sdk.ready"
     ],
+    "object": "products",
     "data": [
       {
         "package_id": 1,
@@ -221,6 +224,7 @@
       "sdk.ready",
       "cart.calculated"
     ],
+    "object": "cart_line",
     "data": {
       "package_id": 1,
       "quantity": 1,
@@ -296,6 +300,7 @@
       "cart.calculated",
       "cart.updated"
     ],
+    "object": "cart_line",
     "data": {
       "package_id": 1,
       "quantity": 1,
@@ -367,6 +372,7 @@
     "triggers": [
       "cart.calculated"
     ],
+    "object": "cart",
     "data": {
       "lines": [
         {
@@ -470,6 +476,7 @@
     "triggers": [
       "checkout.started"
     ],
+    "object": "checkout",
     "data": {
       "id": "7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a",
       "cart": {
@@ -566,6 +573,7 @@
     "triggers": [
       "user.created"
     ],
+    "object": "checkout",
     "data": {
       "id": "7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a",
       "cart": {
@@ -645,6 +653,7 @@
     "triggers": [
       "address.entered"
     ],
+    "object": "checkout",
     "data": {
       "id": "7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a",
       "cart": {
@@ -745,6 +754,7 @@
     "triggers": [
       "shipping.settled"
     ],
+    "object": "checkout",
     "data": {
       "id": "7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a",
       "cart": {
@@ -845,6 +855,7 @@
     "triggers": [
       "checkout.submitted"
     ],
+    "object": "checkout",
     "data": {
       "id": "7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a",
       "cart": {
@@ -945,6 +956,7 @@
       "order.paid",
       "order.loaded"
     ],
+    "object": "order",
     "data": {
       "ref_id": "R1",
       "number": "1001",
@@ -1070,6 +1082,7 @@
     "triggers": [
       "order.loaded"
     ],
+    "object": "order",
     "data": {
       "ref_id": "R1",
       "number": "1001",
@@ -1211,6 +1224,7 @@
     "triggers": [
       "upsell.viewed"
     ],
+    "object": "upsell",
     "data": {
       "ref_id": "R1",
       "page": "/upsell/",
@@ -1264,6 +1278,7 @@
     "triggers": [
       "upsell.skipped"
     ],
+    "object": "upsell",
     "data": {
       "ref_id": "R1",
       "page": "/upsell/",
@@ -1320,6 +1335,7 @@
     "triggers": [
       "promotion.viewed"
     ],
+    "object": "promotion",
     "data": {
       "id": "exit_intent",
       "type": "exit_intent",
@@ -1372,6 +1388,7 @@
     "triggers": [
       "promotion.clicked"
     ],
+    "object": "promotion",
     "data": {
       "id": "exit_intent",
       "type": "exit_intent",

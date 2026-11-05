@@ -129,7 +129,7 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
 - **Tracking events are the SDK's own contract** (`product_added_to_cart`, `checkout_started`,
   `checkout_completed`, …), storefront-style names carrying the same objects as the engine's
   events (`TrackingMap` in `src/engine/events/analytics.ts`), for page scripts through
-  `next.analytics.on`; each provider remaps them, GA4 included. `checkout_started`, the two
+  `next.analytics.on`; each destination remaps them. `checkout_started`, the two
   shipping events and `checkout_payment_info_submitted` go once per checkout, `checkout_completed`
   once per order and only when paid, `upsell_completed` once per accepted upsell;
   `product_added_to_cart` and `product_removed_from_cart` compare the priced cart with what the
@@ -143,9 +143,11 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
   `page_location` has no query string.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.
-- **Vendors** (Meta, TikTok, GA4, …) go through GTM or the page's forwarder adapters. The
-  old built-in Meta, RudderStack and custom providers are not rebuilt; enabling them in
-  `nextConfig` prints a warning.
+- **Destinations:** GTM (the `dl_*` pushes, on by default), GA4 (`gtag`) and the Meta pixel
+  (`fbq`) are built in, GA4 and Meta each a ~2 KB chunk loaded only when
+  `nextConfig.analytics.destinations` turns it on. The SDK never loads a vendor's tag. Other
+  vendors (TikTok, …) go through GTM or a `next.analytics.on` listener; `providers.rudderstack`
+  and `providers.custom` are not rebuilt, and enabling them in `nextConfig` prints a warning.
 - **Attribution:** UTM, gclid, fbclid, affiliate, sub1–5, clickid, evclid, `_fbp`/`_fbc`
   and the funnel are kept for the tab session, with the first landing page. The same
   object goes on every event and on the order.

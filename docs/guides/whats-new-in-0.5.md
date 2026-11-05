@@ -61,7 +61,8 @@ FontAwesome; 0.5 has no runtime dependencies, and its debug panel is not downloa
 - **`order.paid` comes once per order**, however it was paid, on the page after the checkout.
 - **Tracking events have their own listener**: `next.analytics.on('product_added_to_cart', fn)`,
   named in the storefront style and carrying the same objects as `next.on`, with a `context`. Each
-  provider remaps them; the 0.4.x `dl_*` pushes are still sent.
+  [destination](analytics-reference/destinations/overview.md) remaps them: GTM gets the 0.4.x
+  `dl_*` pushes as before, and GA4 and the Meta pixel are built in, off until turned on.
 
 ## Errors that say what happened
 

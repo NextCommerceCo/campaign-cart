@@ -105,7 +105,7 @@ describe('analytics', () => {
 
   it('leaves dataLayer alone when the page turned the GTM provider off, like 0.4.x', async () => {
     const engine = await ready();
-    startAnalytics(engine, { ...options, dataLayer: false });
+    startAnalytics(engine, { ...options, legacy: { dataLayer: false, meta: false } });
     expect(names()).toEqual(['dl_user_data']);
     expect(win.dataLayer).toBeUndefined();
   });
@@ -990,7 +990,7 @@ describe('tracking events', () => {
   it('keeps sending tracking events when the page turned the dl_* data layer off', async () => {
     const engine = await ready();
     const seen = listen(engine);
-    startAnalytics(engine, { ...options, dataLayer: false });
+    startAnalytics(engine, { ...options, legacy: { dataLayer: false, meta: false } });
     expect(seen.map((e) => e.event_type)).toEqual(['page_viewed']);
     expect(seen[0]!.data).toEqual({});
     expect(win.dataLayer).toBeUndefined();

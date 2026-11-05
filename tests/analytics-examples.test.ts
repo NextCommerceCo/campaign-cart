@@ -14,7 +14,7 @@ import { fakeRules } from './fixtures/rules';
 import { MemoryStorage } from './fixtures/storage';
 
 const FILE = 'docs/analytics-examples.json';
-const OPTIONS = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false, dataLayer: true };
+const OPTIONS = { apiKey: 'pk_test', version: '1.0.0', nextCampaign: false };
 
 const NAMES: Record<TrackingName, true> = {
   page_viewed: true,
@@ -37,6 +37,7 @@ const NAMES: Record<TrackingName, true> = {
 };
 
 const examples: Partial<Record<TrackingName, unknown>> = {};
+const objects: Partial<Record<TrackingName, string>> = {};
 const CHECKOUT_ID = '7c1e4d2a9b3f4e5d8a6c0b1f2e3d4c5a';
 
 const record = (engine: Engine) =>
@@ -44,6 +45,7 @@ const record = (engine: Engine) =>
     const data = JSON.parse(JSON.stringify(e.data.data));
     if (e.data.object === 'checkout') data.id = CHECKOUT_ID;
     examples[e.data.event_type] ??= data;
+    objects[e.data.event_type] ??= e.data.object;
   });
 
 async function page(html: string, engine = makeEngine({ local: new MemoryStorage() }).engine) {
@@ -77,7 +79,7 @@ afterEach(() => {
 });
 
 describe('analytics examples', () => {
-  it('records the data, triggers and dataLayer push of every tracking event, as the Analytics Reference shows them', async () => {
+  it('records the object, data, triggers and dataLayer push of every tracking event, as the Analytics Reference shows them', async () => {
     win.dataLayer = [];
     await page('<div data-next-package-id="1"></div><div data-next-package-id="2"></div>');
     await page('<div data-next-package-id="1"></div>');
@@ -127,6 +129,7 @@ describe('analytics examples', () => {
         name,
         {
           triggers: WIRING.find((w) => w.tracking === name)?.from ?? [],
+          object: objects[name],
           data: examples[name],
           dataLayer: dataLayerPush(name),
         },

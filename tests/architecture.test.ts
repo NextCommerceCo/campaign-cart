@@ -14,6 +14,8 @@ const LAZY: Record<string, string[]> = {
   'compat/checkout': ['checkout'],
   'compat/order': ['order'],
   'compat/analytics': ['analytics'],
+  'destinations/ga4': [],
+  'destinations/meta': [],
 };
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
@@ -39,6 +41,7 @@ const ALLOWED: Record<string, string[]> = {
   checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
   order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
+  destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
   compat: ['engine'],
   boot: ['engine', 'bindings', 'compat/legacy'],
