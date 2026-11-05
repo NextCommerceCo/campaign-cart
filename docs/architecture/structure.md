@@ -76,6 +76,7 @@ docs/
   guides/                  for page builders: attributes · javascript-api · events · migrating-from-0.4;
                            event-reference/<group>/lifecycle.md, drawn by hand, one per event group
   event-examples.json      an example payload of every public event, recorded by tests/event-examples.test.ts
+  analytics-examples.json  the params of every analytics event, recorded by tests/analytics-examples.test.ts
 public/campaign-cart.css   the 0.4.x stylesheet, unchanged; copied to dist/ beside loader.js
 scripts/size.mjs           gzip budget per chunk; fails the build over one, or on a chunk without one
 scripts/tsugi.mjs          npm run tsugi -- <tag>: compiles the tsugi design system at a release tag into vendor/
@@ -133,7 +134,9 @@ src/
   order/               order       loaded when the page has an upsell offer or order.* values
     index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
   analytics/           analytics   subscriber, loaded on idle
-    index.ts                       startAnalytics: engine events → GA4-named `analytics` events
+    index.ts                       startAnalytics: engine events → each group's handlers → GA4-named `analytics` events
+    report.ts                      emit and skip with their trace, typed by `AnalyticsMap`; Handlers and dispatch
+    pages.ts carts.ts checkout.ts orders.ts promotions.ts   one file per event group: what it sends, and when
     ecommerce.ts                   item, cart and order ecommerce payloads
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds elements, state, logs and .devonly detail), window.nextDebug
@@ -154,6 +157,7 @@ src/
                                    events are pushed, then this page's events; one opens in tsugi's dialog, a tab for its
                                    summary (why, what it reached, whether its value adds up, items), the raw event and one
                                    for what each data layer or GA4 got
+    reconcile.ts                   whether an event's value adds up to the cart or the order it came from
     providers.ts                   which providers are on, engine event → GA4 / dl_* wiring (checked against
                                    compat/analytics.ts), parameter checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
@@ -221,6 +225,7 @@ tests/
   bindings/ checkout/ order/ analytics/ compat/ debug/   the rest, happy-dom
   boot.test.ts · loader.test.ts · pages.test.ts · architecture.test.ts
   event-examples.test.ts           records docs/event-examples.json; fails on a public event without an example
+  analytics-examples.test.ts       records docs/analytics-examples.json; fails on an analytics event without an example
   fixtures/
     campaign.ts api.ts storage.ts engine.ts pages.ts order.ts rules.ts
     pages/<campaign>/<page>.html           my-campaigns pages, copied verbatim, source on line 1
@@ -241,7 +246,8 @@ cannot drift silently.
 - `docs/architecture/` — why the code is shaped this way.
 - `docs/guides/` — for people building campaign pages: every attribute, the `window.next` API,
   every event, and the 0.4.x → new migration table. Written by hand, kept short; each event's own
-  page is generated from `EventMap` and `docs/event-examples.json`.
+  page is generated from `EventMap` and `docs/event-examples.json`, and each analytics event's from
+  `AnalyticsMap` and `docs/analytics-examples.json`.
 
 ## Recipes
 

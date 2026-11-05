@@ -104,6 +104,8 @@ await writeFile(
 );
 await rename(temporaryHome, stagedHome);
 
-const events = await stageEventReference(ROOT, OUT);
+const { events, analytics } = await stageEventReference(ROOT, OUT);
 
-console.log(`docs: staged ${count} guide file(s) and ${events} event page(s) into docs/.staged`);
+console.log(
+  `docs: staged ${count} guide file(s), ${events} event page(s) and ${analytics} analytics page(s) into docs/.staged`,
+);

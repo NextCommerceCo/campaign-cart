@@ -1,0 +1,244 @@
+{
+  "page_view": {
+    "page_location": "http://localhost:3000/",
+    "page_title": "Olympus Earbuds",
+    "page_referrer": ""
+  },
+  "view_item": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ]
+  },
+  "view_item_list": {
+    "currency": "USD",
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      },
+      {
+        "item_id": "12",
+        "item_name": "Earbuds ×2",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/2.png",
+        "price": 44.5,
+        "discount": 54.5,
+        "quantity": 2,
+        "currency": "USD",
+        "index": 1
+      }
+    ],
+    "item_list_id": "product_list",
+    "item_list_name": "Product List"
+  },
+  "add_to_cart": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "first_in_session": true
+  },
+  "remove_from_cart": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ]
+  },
+  "update_cart": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "shipping": 0
+  },
+  "begin_checkout": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "shipping": 0
+  },
+  "generate_lead": {
+    "currency": "USD",
+    "value": 49,
+    "lead_source": "checkout"
+  },
+  "add_shipping_info": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "shipping": 0,
+    "shipping_tier": "Standard"
+  },
+  "add_payment_info": {
+    "currency": "USD",
+    "value": 49,
+    "items": [
+      {
+        "item_id": "11",
+        "item_name": "Earbuds ×1",
+        "item_category": "Olympus",
+        "item_product_id": "400",
+        "item_image": "https://cdn.test/1.png",
+        "price": 49,
+        "discount": 50,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "shipping": 0,
+    "payment_type": "Credit Card"
+  },
+  "purchase": {
+    "currency": "USD",
+    "transaction_id": "1001",
+    "value": 89,
+    "tax": 7.12,
+    "shipping": 9.99,
+    "affiliation": "Online Store",
+    "items": [
+      {
+        "item_id": "EB-2",
+        "item_name": "Earbuds",
+        "item_brand": "Olympus",
+        "item_category": "Olympus",
+        "item_sku": "EB-2",
+        "item_image": "https://img.test/eb.png",
+        "price": 44.5,
+        "quantity": 2,
+        "currency": "USD",
+        "index": 0
+      }
+    ]
+  },
+  "upsell_purchase": {
+    "currency": "USD",
+    "transaction_id": "R1-US1",
+    "value": 20,
+    "tax": 0,
+    "shipping": 0,
+    "affiliation": "Upsell",
+    "items": [
+      {
+        "item_id": "SKU-99",
+        "item_name": "Bump",
+        "item_brand": "Olympus",
+        "item_category": "Olympus",
+        "price": 20,
+        "quantity": 1,
+        "currency": "USD",
+        "index": 0
+      }
+    ],
+    "upsell": {
+      "original_order_id": "R1",
+      "upsell_number": 1,
+      "package_id": "99",
+      "package_name": "Bump"
+    }
+  },
+  "view_upsell": {
+    "order_id": "R1",
+    "page_path": "/upsell/",
+    "currency": "USD"
+  },
+  "skip_upsell": {
+    "order_id": "R1",
+    "package_id": 3,
+    "package_name": "Earbuds case"
+  },
+  "view_promotion": {
+    "promotion_id": "exit_intent",
+    "promotion_name": "Exit offer",
+    "creative_name": "exit-offer"
+  },
+  "select_promotion": {
+    "promotion_id": "exit_intent",
+    "promotion_name": "Exit offer",
+    "creative_name": "exit-offer"
+  }
+}

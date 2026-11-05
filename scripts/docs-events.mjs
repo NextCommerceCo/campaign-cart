@@ -7,7 +7,9 @@
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
  * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
- * Nothing here is committed.
+ * The Analytics Reference is the same for `AnalyticsMap`: a page per analytics event under
+ * `docs/.staged/analytics-reference/`, its params from `docs/analytics-examples.json`
+ * (`tests/analytics-examples.test.ts`), and `analytics.md` listing them. Nothing here is committed.
  */
 import { readdirSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -16,6 +18,7 @@ import { slugifyHeading, slugifyPath } from '@clean-jsdoc-theme/utils';
 import { Application, OptionDefaults, ReflectionKind, TSConfigReader } from 'typedoc';
 
 const GROUP = 'Event Reference';
+const ANALYTICS = 'Analytics Reference';
 const SOURCES = [
   ...readdirSync('src/engine/events').map((f) => `src/engine/events/${f}`),
   'src/engine/cart/types.ts',
@@ -28,7 +31,7 @@ const PRESENT =
 
 const firstSentence = (s) => s.match(/^.*?\.(?=\s|$)/s)?.[0] ?? s;
 const cell = (s) => s.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
-const linkOf = (e) => `/${slugifyPath([GROUP, e.group, e.name])}`;
+const linkOf = (e, root = GROUP) => `/${slugifyPath([root, e.group, e.name])}`;
 
 const text = (parts = []) =>
   parts
@@ -36,7 +39,7 @@ const text = (parts = []) =>
     .join('')
     .trim();
 
-async function eventMap(root) {
+async function reference(root) {
   const app = await Application.bootstrap(
     {
       entryPoints: SOURCES.map((s) => join(root, s)),
@@ -50,9 +53,11 @@ async function eventMap(root) {
     [new TSConfigReader()],
   );
   const project = await app.convert();
-  const map = project?.getReflectionsByKind(ReflectionKind.Interface).find((r) => r.name === 'EventMap');
-  if (!map) throw new Error('docs-events: EventMap not found in src/engine/events/');
-  return map;
+  const named = (name) => project?.getReflectionsByKind(ReflectionKind.Interface).find((r) => r.name === name);
+  const map = named('EventMap');
+  const analytics = named('AnalyticsMap');
+  if (!map || !analytics) throw new Error('docs-events: EventMap or AnalyticsMap not found in src/engine/events/');
+  return { map, analytics };
 }
 
 /** Fields of an event's data: a literal, an interface, or an intersection of them, the last of a name winning. */
@@ -183,12 +188,72 @@ ${JSON.stringify(envelope, null, 2)}
 `;
 }
 
-function index(events) {
+const CONTEXT = {
+  page_location: 'https://shop.test/checkout/',
+  page_referrer: '',
+  campaign: { id: 1310, name: 'Olympus', currency: 'USD', language: 'en' },
+  session_id: '0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d',
+  attribution: { funnel: 'Olympus' },
+  browser: { user_agent: 'Mozilla/5.0 …', language: 'en-US', device_type: 'desktop' },
+};
+
+function analyticsPage(event, order, example) {
+  const envelope = {
+    name: event.name,
+    id: '3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e',
+    time: '2026-11-04T08:30:00.000Z',
+    params: example,
+    context: CONTEXT,
+  };
+  return `---
+title: '${event.name}'
+group: '${ANALYTICS}/${event.group}'
+order: ${order}
+---
+
+# ${event.name}
+
+${event.summary}
+
+\`\`\`js
+next.analytics.on('${event.name}', (event) => {});
+\`\`\`
+
+## Params
+
+${tables()(fieldsOf(event.member.type))}
+
+## Example
+
+\`\`\`json
+${JSON.stringify(envelope, null, 2)}
+\`\`\`
+`;
+}
+
+function analyticsOverview(events) {
+  return `---
+title: 'Analytics events'
+group: '${ANALYTICS}'
+order: 0
+---
+
+# Analytics events
+
+Every tracking event the SDK sends, under its GA4 name. \`next.analytics.on(name, (event) => …)\` receives
+one, \`'*'\` every one; each is also pushed to \`dataLayer\` in the 0.4.x format, as [Events](/events)
+describes. An event's \`params\` are the fields below; \`context\` is the same on every event.
+
+${index(events, ANALYTICS)}
+`;
+}
+
+function index(events, root = GROUP) {
   return [...new Set(events.map((e) => e.group))]
     .map((group) => {
       const list = events
         .filter((e) => e.group === group)
-        .map((e) => `| [\`${e.name}\`](${linkOf(e)}) | ${cell(firstSentence(e.summary))} |`);
+        .map((e) => `| [\`${e.name}\`](${linkOf(e, root)}) | ${cell(firstSentence(e.summary))} |`);
       return [`### ${group}`, '', '| Event | When |', '| --- | --- |', ...list].join('\n');
     })
     .join('\n\n');
@@ -198,7 +263,8 @@ function index(events) {
 export async function stageEventReference(root, out) {
   const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
   const examples = JSON.parse(await readFile(join(root, 'docs/event-examples.json'), 'utf8'));
-  const map = await eventMap(root);
+  const analyticsExamples = JSON.parse(await readFile(join(root, 'docs/analytics-examples.json'), 'utf8'));
+  const { map, analytics } = await reference(root);
   const groups = (map.extendedTypes ?? []).map((t) => t.toString());
   const groupOf = (member) => groups.indexOf(member.inheritedFrom?.name.split('.')[0] ?? '');
   const events = [...(map.children ?? [])]
@@ -227,5 +293,20 @@ export async function stageEventReference(root, out) {
   const staged = await readFile(overview, 'utf8');
   if (!staged.includes(MARKER)) throw new Error(`docs-events: ${MARKER} is missing from docs/guides/events.md`);
   await writeFile(overview, staged.replace(MARKER, index(events)));
-  return events.length;
+
+  const tracked = (analytics.children ?? []).map((member) => ({
+    name: member.name,
+    group: text(member.comment?.getTag('@group')?.content),
+    summary: text(member.comment?.summary),
+    member,
+  }));
+  for (const [i, event] of tracked.entries()) {
+    if (!(event.name in analyticsExamples))
+      throw new Error(`docs-events: no analytics example for ${event.name}; run UPDATE_DOCS=1 npm test`);
+    const file = join(out, slugifyPath([ANALYTICS, event.group]), `${event.name}.md`);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, analyticsPage(event, i + 1, analyticsExamples[event.name]));
+  }
+  await writeFile(join(out, 'analytics.md'), analyticsOverview(tracked));
+  return { events: events.length, analytics: tracked.length };
 }
