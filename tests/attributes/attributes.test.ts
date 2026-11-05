@@ -219,6 +219,18 @@ describe('attributes v2: options', () => {
     expect(engine.getState().cart.dismissed).toContain('toggle:9');
   });
 
+  it('sends what the shopper types into an option’s properties with its lines', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-selector="engrave"><div data-next-option="one" data-next-items="1" data-next-selected>
+        <input id="text" data-next-field="properties.engraving"></div></div>`);
+    ($('#text') as HTMLInputElement).value = ' For Sam ';
+    $('#text').dispatchEvent(new Event('change'));
+    await settle(engine);
+    expect(engine.getState().cart.groups['bundle:engrave']!.lines).toEqual([
+      { packageId: 1, quantity: 1, properties: { engraving: 'For Sam' } },
+    ]);
+  });
+
   it('draws a variant picker for a one-line option, and swaps the option’s package when one is picked', async () => {
     const { engine, $ } = await mount(`
       <div data-next-selector="tee">

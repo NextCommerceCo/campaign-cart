@@ -103,6 +103,35 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
   const mode: SelectorMode = orderPage() ? 'offer' : selectorEl.hasAttribute('data-next-defer') ? 'select' : 'swap';
   const preferred = [...els].find(([, el]) => preselected(el))?.[0];
   void a.engine.selectors.register(id, cards, mode, preferred);
+  els.forEach((el, optionId) => {
+    const own = [...el.querySelectorAll('[data-next-field^="properties."]')].filter(
+      (i) => !i.closest('[data-next-each]'),
+    );
+    for (const input of own)
+      input.addEventListener('change', () => {
+        const selector = a.engine.getState().selectors[id];
+        if (!selector) return;
+        const properties = Object.fromEntries(
+          own
+            .map((i) => [
+              i.getAttribute('data-next-field')!.slice('properties.'.length),
+              (i as HTMLInputElement).value.trim(),
+            ])
+            .filter(([, v]) => v),
+        );
+        const withProperties = selector.cards.map((c) =>
+          c.id === optionId
+            ? {
+                ...c,
+                lines: c.lines.map(({ properties: _, ...l }) =>
+                  Object.keys(properties).length ? { ...l, properties } : l,
+                ),
+              }
+            : c,
+        );
+        void a.engine.selectors.register(id, withProperties, selector.mode);
+      });
+  });
   a.setScope(selectorEl, () => withCatalogPrice(a.engine, a.query.get(`selector.${id}`) as Model | undefined));
   onceVisible(selectorEl, () => a.engine.selectors.view(id));
   return [
