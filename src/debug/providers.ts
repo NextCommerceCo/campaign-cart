@@ -1,4 +1,5 @@
-import type { AnalyticsName, EventName } from '../engine/events';
+import type { AnalyticsName } from '../engine/events/analytics';
+import type { EventName } from '../engine/events/bus';
 
 export interface ProviderConfig {
   enabled: boolean;

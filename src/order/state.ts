@@ -1,7 +1,9 @@
 import { failureOf, orderError, orderFailure } from '../engine/api';
 import { apiLines, type CartActions, cartItems, publicCheckout } from '../engine/cart/cart';
 import type { Context } from '../engine/engine';
-import type { Checkout, ErrorCode, Failure, Upsell } from '../engine/events';
+import type { Checkout } from '../engine/events/checkout';
+import type { ErrorCode, Failure } from '../engine/events/sdk';
+import type { Upsell } from '../engine/events/upsells';
 import { appliedCodes, publicOrder, purchaseId, REPORTED, REPORTED_KEEP } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { bool, cents, money, type Value } from '../engine/format';

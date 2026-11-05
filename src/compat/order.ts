@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { pickedCard } from '../engine/cart/selectors';
-import type { Upsell } from '../engine/events';
+import type { Upsell } from '../engine/events/upsells';
 import { addLegacyEvents, legacyEvent, legacyFire, legacySelectorId } from './legacy';
 
 /** @deprecated `accept` / `decline`. Use `data-next-upsell-action="add"` / `"skip"`. */

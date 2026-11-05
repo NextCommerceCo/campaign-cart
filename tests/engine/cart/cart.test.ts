@@ -3,7 +3,8 @@ import { fakeApi } from '../../fixtures/api';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
 import { operations, publicCart } from '../../../src/engine/cart/cart';
 import { MemoryStorage } from '../../fixtures/storage';
-import type { EventMap, Selector } from '../../../src/engine/events';
+import type { EventMap } from '../../../src/engine/events/bus';
+import type { Selector } from '../../../src/engine/events/selectors';
 import { campaign } from '../../fixtures/campaign';
 
 const toggle = (id: number) => ({ lines: [{ packageId: id, quantity: 1 }], vouchers: [] });

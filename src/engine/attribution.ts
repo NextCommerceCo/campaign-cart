@@ -1,4 +1,4 @@
-import type { EventAttribution } from './events';
+import type { EventAttribution } from './events/context';
 
 declare const __VERSION__: string;
 

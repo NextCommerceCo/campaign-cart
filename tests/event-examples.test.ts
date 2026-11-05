@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../src/checkout/state/checkout';
 import { exitIntent } from '../src/compat/exit-intent';
 import type { Engine } from '../src/engine/engine';
-import type { EventName, InternalEventName } from '../src/engine/events';
+import type { EventName, InternalEventName } from '../src/engine/events/bus';
 import type { Campaign } from '../src/engine/types';
 import { createOrder } from '../src/order/state';
 import { fakeApi, json, type FakeApiOptions } from './fixtures/api';

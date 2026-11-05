@@ -1,4 +1,4 @@
-import type { Promotion } from '../engine/events';
+import type { Promotion } from '../engine/events/promotions';
 import type { BindContext, Render } from './context';
 import { onceVisible } from './dom';
 

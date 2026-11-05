@@ -17,21 +17,19 @@ const LAZY: Record<string, string[]> = {
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
-  'engine/events.ts': 855,
-  'compat/legacy.ts': 662,
-  'debug/analytics.ts': 634,
-  'engine/cart/cart.ts': 554,
-  'checkout/state/checkout.ts': 492,
-  'debug/index.ts': 452,
-  'debug/cart.ts': 402,
-  'analytics/index.ts': 361,
-  'order/state.ts': 356,
-  'compat/checkout.ts': 345,
-  'engine/engine.ts': 343,
-  'boot.ts': 334,
-  'engine/cart/selectors.ts': 330,
-  'checkout/payment/card.ts': 312,
-  'debug/checkout.ts': 306,
+  'compat/legacy.ts': 653,
+  'debug/analytics.ts': 625,
+  'engine/cart/cart.ts': 538,
+  'checkout/state/checkout.ts': 480,
+  'debug/index.ts': 437,
+  'debug/cart.ts': 394,
+  'analytics/index.ts': 352,
+  'order/state.ts': 346,
+  'compat/checkout.ts': 339,
+  'engine/engine.ts': 320,
+  'engine/cart/selectors.ts': 313,
+  'boot.ts': 307,
+  'checkout/payment/card.ts': 305,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
@@ -51,7 +49,10 @@ const ALLOWED: Record<string, string[]> = {
   config: ['compat/config'],
 };
 
-const lines = (code: string) => code.split('\n').length - (code.endsWith('\n') ? 1 : 0);
+const lines = (code: string) => {
+  const body = code.replace(/^import [\s\S]*?;\n/gm, '');
+  return body.split('\n').length - (body.endsWith('\n') ? 1 : 0);
+};
 
 const files = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((d) =>

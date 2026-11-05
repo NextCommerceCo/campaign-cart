@@ -1,6 +1,7 @@
 import type { Line } from '../engine/cart/types';
 import type { Context } from '../engine/engine';
-import type { AnalyticsTrace, EngineEvent, EventMap, EventName } from '../engine/events';
+import type { AnalyticsTrace } from '../engine/events/analytics';
+import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
 
 export type PageKind = 'product' | 'checkout' | 'upsell' | 'receipt' | 'page';
 

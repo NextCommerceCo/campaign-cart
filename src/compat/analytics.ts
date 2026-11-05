@@ -3,15 +3,10 @@ import { withoutQuery } from '../engine/attribution';
 import type { Engine } from '../engine/engine';
 import { newId } from '../engine/id';
 import { legacyRegistry } from './legacy';
-import type { EngineEvent } from '../engine/events';
-import type {
-  EventContext,
-  AnalyticsEvent,
-  AnalyticsName,
-  AnalyticsTrace,
-  EventMap,
-  EventName,
-} from '../engine/events';
+import type { EngineEvent } from '../engine/events/bus';
+import type { AnalyticsEvent, AnalyticsName, AnalyticsTrace } from '../engine/events/analytics';
+import type { EventMap, EventName } from '../engine/events/bus';
+import type { EventContext } from '../engine/events/context';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
 type Win = Window & {

@@ -22,7 +22,7 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    `order/state.ts`): no browser globals, and the only code that calls the API or storage.
    Three levels at most: `src/<feature>/<part>/<file>.ts`.
 3. **Split by domain, never by kind of code.** No `managers/`, `services/`, `utils/`,
-   `helpers/`. When a file passes 300 lines, split it by domain. `tests/architecture.test.ts`
+   `helpers/`. When a file passes 300 lines (imports not counted), split it by domain. `tests/architecture.test.ts`
    holds a budget for each file still over: it only shrinks, and goes when the file is split.
 4. **Imports go one way** (table below), enforced by `tests/architecture.test.ts`.
 5. **Named exports only.** `index.ts` only as a chunk entry, never a re-export barrel.
@@ -102,7 +102,9 @@ src/
   config.ts            loader      page setup from the script tag and URL
   boot.ts              boot        boot: Engine, bindings, window.next, ready
   engine/              boot        headless core every page needs
-    engine.ts types.ts events.ts log.ts         the Engine, shared types and State, events and their payloads, the one logger
+    engine.ts types.ts log.ts                   the Engine, shared types and State, the one logger
+    events/                                     one file per event group (carts.ts, checkout.ts, …): its objects and its events;
+                                                context.ts the envelope every event carries; bus.ts the EventMap and the bus
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
@@ -243,9 +245,9 @@ cannot drift silently.
 
 ## Recipes
 
-| Adding           | Where                                                                                                                                                                            |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                        |
-| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in `EventMap` (`events.ts`) with TSDoc and `@group`, public in `boot.ts`, an example in `tests/event-examples.test.ts` |
-| A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs`        |
-| A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                                   |
+| Adding           | Where                                                                                                                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An attribute     | `src/bindings/<family>.ts` (or the checkout / order folder), registered in its `index.ts`; a test beside the others; a row in `docs/guides/attributes.md`                                       |
+| An engine action | `src/engine/<domain>.ts`; test in `tests/engine/`; events in its group's file under `engine/events/` with TSDoc and `@group`, public in `boot.ts`, an example in `tests/event-examples.test.ts` |
+| A lazy feature   | `src/<feature>/index.ts`, or a file in the folder it belongs to; `import()` from boot; a `LAZY` entry in `tests/architecture.test.ts`; a budget row in `scripts/size.mjs`                       |
+| A deprecation    | the old name in `src/compat/<chunk>.ts` with `@deprecated Use …`; a row in `docs/guides/migrating-from-0.4.md`                                                                                  |

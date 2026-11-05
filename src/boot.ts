@@ -2,19 +2,14 @@ import { bindAll } from './bindings';
 import { pageEnvironment } from './bindings/environment';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
-import type { EngineEvent } from './engine/events';
+import type { EngineEvent } from './engine/events/bus';
 import type { Logger } from './engine/log';
 import { funnelFromPath, storageScope } from './engine/scope';
 import type { CartLine } from './engine/cart/types';
-import type {
-  AnalyticsEvent,
-  AnalyticsName,
-  EventContext,
-  EventMap,
-  EventName,
-  InternalEventName,
-  Snapshot,
-} from './engine/events';
+import type { AnalyticsEvent, AnalyticsName } from './engine/events/analytics';
+import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
+import type { EventContext } from './engine/events/context';
+import type { Snapshot } from './engine/events/sdk';
 import type { Campaign } from './engine/types';
 import {
   announceLegacyReady,

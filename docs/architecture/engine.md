@@ -175,7 +175,7 @@ queued across a redirect.
 
 ### 3.5 Domain events
 
-Each event's payload and when it fires is in `EventMap` (`src/engine/events.ts`), which the Event
+Each event's payload and when it fires is in `EventMap` (`src/engine/events/`, one file per event group), which the Event
 Reference is generated from; `docs/guides/events.md` explains the model. Names are
 `namespace.action` with one dot; 0.4.x names are made from them in `src/compat/` (`legacy.ts`, and
 `checkout.ts` / `order.ts` for their chunks' events).
@@ -247,7 +247,7 @@ skip → `order.skip(offer, page)` and navigate.
 ## 5. Files
 
 `src/engine/` (boot): `engine.ts`, `types.ts`, `api.ts` (with the order error mapping),
-`storage.ts`, `events.ts`, `log.ts`, `order.ts` (the public Order), `id.ts`, `session.ts`,
+`storage.ts`, `events/` (one file per event group), `log.ts`, `order.ts` (the public Order), `id.ts`, `session.ts`,
 `values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`, `format.ts`, `tokens.ts`,
 and `cart/` (`cart.ts`, `selectors.ts`, `toggles.ts`, `types.ts`). Loaded by their chunks:
 `checkout/state/` (`checkout.ts`, `order-body.ts`, `rules.ts`, `phone.ts`, `types.ts`) and

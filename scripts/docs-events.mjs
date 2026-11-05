@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Writes the Event Reference: one page per public event, from `EventMap` in `src/engine/events.ts`
+ * Writes the Event Reference: one page per public event, from `EventMap` in `src/engine/events/`
  * (its TSDoc and `@group`). The page's Data table lists the event's own fields; every object they
  * carry (`CartItem`, `Order`, …) gets its own table further down the same page, once, from the same
  * types' TSDoc. A field tagged `@priced` or `@campaign`, or optional, says so in the Present column.
@@ -9,13 +9,18 @@
  * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
  * Nothing here is committed.
  */
+import { readdirSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { slugifyHeading, slugifyPath } from '@clean-jsdoc-theme/utils';
 import { Application, OptionDefaults, ReflectionKind, TSConfigReader } from 'typedoc';
 
 const GROUP = 'Event Reference';
-const SOURCES = ['src/engine/events.ts', 'src/engine/cart/types.ts', 'src/engine/types.ts'];
+const SOURCES = [
+  ...readdirSync('src/engine/events').map((f) => `src/engine/events/${f}`),
+  'src/engine/cart/types.ts',
+  'src/engine/types.ts',
+];
 const MARKER = '<!-- event-index -->';
 const WHEN = ['@priced', '@campaign'];
 const PRESENT =
@@ -46,7 +51,7 @@ async function eventMap(root) {
   );
   const project = await app.convert();
   const map = project?.getReflectionsByKind(ReflectionKind.Interface).find((r) => r.name === 'EventMap');
-  if (!map) throw new Error('docs-events: EventMap not found in src/engine/events.ts');
+  if (!map) throw new Error('docs-events: EventMap not found in src/engine/events/');
   return map;
 }
 
@@ -193,7 +198,11 @@ function index(events) {
 export async function stageEventReference(root, out) {
   const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
   const examples = JSON.parse(await readFile(join(root, 'docs/event-examples.json'), 'utf8'));
-  const events = ((await eventMap(root)).children ?? [])
+  const map = await eventMap(root);
+  const groups = (map.extendedTypes ?? []).map((t) => t.toString());
+  const groupOf = (member) => groups.indexOf(member.inheritedFrom?.name.split('.')[0] ?? '');
+  const events = [...(map.children ?? [])]
+    .sort((a, b) => groupOf(a) - groupOf(b))
     .map((member) => ({
       name: member.name,
       group: text(member.comment?.getTag('@group')?.content),

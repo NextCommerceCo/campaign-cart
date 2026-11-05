@@ -2,7 +2,11 @@ import { failureOf } from '../api';
 import { addDollars, cents, dollars } from '../format';
 import type { Context } from '../engine';
 import type { State } from '../types';
-import type { Cart, CartChange, CartItem, Checkout, Discount, EventMap, Selector } from '../events';
+import type { EventMap } from '../events/bus';
+import type { Cart, CartChange, CartItem } from '../events/carts';
+import type { Checkout } from '../events/checkout';
+import type { Discount } from '../events/coupons';
+import type { Selector } from '../events/selectors';
 import type {
   Line,
   CartGroup,

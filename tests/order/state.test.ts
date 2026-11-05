@@ -4,7 +4,7 @@ import { upsellId } from '../../src/engine/order';
 import { createOrder, orderValue } from '../../src/order/state';
 import { format } from '../../src/engine/format';
 import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
-import type { EngineEvent } from '../../src/engine/events';
+import type { EngineEvent } from '../../src/engine/events/bus';
 import type { CheckoutState } from '../../src/checkout/state/types';
 import type { ApiOrderLine } from '../../src/engine/types';
 import { fakeApi, type FakeApiOptions, json } from '../fixtures/api';

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindCheckout } from '../../src/checkout';
-import type { Checkout } from '../../src/engine/events';
+import type { Checkout } from '../../src/engine/events/checkout';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';

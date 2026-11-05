@@ -2,7 +2,7 @@ import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/cart';
 import type { Line } from '../../engine/cart/types';
 import type { State } from '../../engine/types';
-import type { Address } from '../../engine/events';
+import type { Address } from '../../engine/events/checkout';
 import type { ApiAddress, CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';

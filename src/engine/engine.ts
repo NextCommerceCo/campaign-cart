@@ -3,15 +3,9 @@ import { type Attribution, buildAttribution, eventAttribution, type Visit } from
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import type { CheckoutActions } from '../checkout/state/checkout';
 import type { OrderActions } from '../order/state';
-import {
-  type Browser,
-  type EngineEvent,
-  type ErrorAction,
-  type EventCampaign,
-  type EventContext,
-  Events,
-  type Snapshot,
-} from './events';
+import { type EngineEvent, Events } from './events/bus';
+import type { Browser, EventCampaign, EventContext } from './events/context';
+import type { ErrorAction, Snapshot } from './events/sdk';
 import { type LogLevel, Logger } from './log';
 import { appliedCodes, publicOrder } from './order';
 import { keptParams, parseForcePackages } from './params';
@@ -19,7 +13,7 @@ import { createSelectors, type SelectorActions } from './cart/selectors';
 import { campaignSession, type Cookies } from './session';
 import { StorageAdapter } from './storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
-import type { EventMap, EventName } from './events';
+import type { EventMap, EventName } from './events/bus';
 import type { Campaign, Package, Send, State } from './types';
 
 /** The page and the browser now; supplied by the page, since the engine has no DOM. */

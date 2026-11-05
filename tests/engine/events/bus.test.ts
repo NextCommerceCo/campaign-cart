@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Engine } from '../../src/engine/engine';
-import type { AnalyticsEvent, EngineEvent, EventContext, EventName, Snapshot } from '../../src/engine/events';
-import { makeEngine } from '../fixtures/engine';
+import type { Engine } from '../../../src/engine/engine';
+import type { AnalyticsEvent } from '../../../src/engine/events/analytics';
+import type { EngineEvent, EventName } from '../../../src/engine/events/bus';
+import type { EventContext } from '../../../src/engine/events/context';
+import type { Snapshot } from '../../../src/engine/events/sdk';
+import { makeEngine } from '../../fixtures/engine';
 
 const READY: Snapshot = { cart: { lines: [], coupons: [] }, selectors: [] };
 const ANALYTICS: AnalyticsEvent = { name: 'page_view', id: 'a1', time: '', params: {}, context: {} as EventContext };

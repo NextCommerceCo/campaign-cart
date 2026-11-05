@@ -1,0 +1,135 @@
+import { newId } from '../id';
+import type { Logger } from '../log';
+import type { AnalyticsEvents } from './analytics';
+import type { CartEvents } from './carts';
+import type { CheckoutEvents } from './checkout';
+import type { CouponEvents } from './coupons';
+import type { OrderEvents } from './orders';
+import type { PaymentEvents } from './payments';
+import type { PromotionEvents } from './promotions';
+import type { SdkEvents } from './sdk';
+import type { SelectorEvents } from './selectors';
+import type { UpsellEvents } from './upsells';
+
+export interface EventMap
+  extends
+    SdkEvents,
+    SelectorEvents,
+    CartEvents,
+    CouponEvents,
+    CheckoutEvents,
+    PaymentEvents,
+    OrderEvents,
+    UpsellEvents,
+    PromotionEvents,
+    AnalyticsEvents {}
+
+export type EventName = keyof EventMap;
+
+export interface EngineEvent<K extends EventName = EventName> {
+  id: string;
+  name: K;
+  data: EventMap[K];
+  at: number;
+}
+
+type Listener = (event: EngineEvent) => void;
+
+const BUFFER_SIZE = 100;
+
+const INTERNAL_EVENTS = [
+  'analytics',
+  'campaign.loaded',
+  'selector.bound',
+  'shipping.settled',
+  'upsell.shown',
+  'upsell.declined',
+] as const satisfies readonly EventName[];
+
+/** The SDK's own events, which `next.on` does not take. */
+export type InternalEventName = (typeof INTERNAL_EVENTS)[number];
+
+const INTERNAL: ReadonlySet<EventName> = new Set<EventName>(INTERNAL_EVENTS);
+
+const STATE_SYNC: ReadonlySet<EventName> = new Set<EventName>([
+  'cart.updated',
+  'cart.calculating',
+  'cart.calculated',
+  'selector.calculating',
+  'selector.calculated',
+]);
+
+/** @internal */
+export class Events {
+  private listeners = new Map<string, Set<Listener>>();
+  private buffer: EngineEvent[] = [];
+  private queue: EngineEvent[] = [];
+  private emitting = false;
+
+  constructor(private log: Logger) {}
+
+  emit<K extends EventName>(name: K, data: EventMap[K]): void {
+    const event: EngineEvent = { id: newId(), name, data, at: Date.now() };
+    const drop =
+      this.buffer.length >= BUFFER_SIZE &&
+      (this.buffer.find((e) => STATE_SYNC.has(e.name)) ??
+        this.buffer.find((e) => INTERNAL.has(e.name)) ??
+        this.buffer.find((e) => e.name !== 'sdk.ready'));
+    this.buffer = [...this.buffer.filter((e) => e !== drop), event];
+    this.queue.push(event);
+    this.drain();
+  }
+
+  /** Sends the events `fn` emits as one block: listeners run after the last of them. */
+  batch(fn: () => void): void {
+    if (this.emitting) return fn();
+    this.emitting = true;
+    try {
+      fn();
+    } finally {
+      this.emitting = false;
+    }
+    this.drain();
+  }
+
+  on<K extends EventName>(
+    name: K | '*',
+    fn: (event: EngineEvent<K>) => void,
+    options: { replay?: boolean } = {},
+  ): () => void {
+    let set = this.listeners.get(name);
+    if (!set) this.listeners.set(name, (set = new Set()));
+    if (options.replay)
+      this.drain(
+        (e) => (name === '*' || e.name === name) && this.deliver(fn as Listener, e),
+        this.buffer.filter((e) => !this.queue.includes(e)),
+      );
+    set.add(fn as Listener);
+    return () => set.delete(fn as Listener);
+  }
+
+  private drain(late?: (event: EngineEvent) => unknown, past?: EngineEvent[]): void {
+    if (this.emitting) return past?.forEach(late!);
+    this.emitting = true;
+    try {
+      for (let next, old; (next = this.queue.shift()) || (old = past?.shift());) {
+        if (!next) late!(old!);
+        else {
+          for (const fn of [next.name, '*'].flatMap((key) => [...(this.listeners.get(key) ?? [])]))
+            this.deliver(fn, next);
+          past?.push(next);
+        }
+      }
+    } finally {
+      this.emitting = false;
+    }
+  }
+
+  private deliver(fn: Listener, event: EngineEvent): void {
+    try {
+      fn(event);
+    } catch (err) {
+      this.log.error(`subscriber failed on ${event.name}`, err);
+    }
+  }
+}

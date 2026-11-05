@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/engine';
-import type { Checkout, EventMap } from '../engine/events';
+import type { EventMap } from '../engine/events/bus';
+import type { Checkout } from '../engine/events/checkout';
 import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
 import type { AddressSuggestion } from '../checkout/state/types';

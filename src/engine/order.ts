@@ -1,4 +1,5 @@
-import type { Address, Order, OrderItem } from './events';
+import type { Address } from './events/checkout';
+import type { Order, OrderItem } from './events/orders';
 import type { ApiOrder, ApiOrderAddress, ApiOrderLine } from './types';
 
 const amount = (value?: string | number | null) => Math.round(Number(value ?? 0) * 100) / 100;

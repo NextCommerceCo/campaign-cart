@@ -1,6 +1,6 @@
 import { apiLines, type CartActions, cartItems, lineKey, mergeLines } from './cart';
 import type { Context } from '../engine';
-import type { Selector, SelectorOption } from '../events';
+import type { Selector, SelectorOption } from '../events/selectors';
 import { cents } from '../format';
 import { forcedBundle } from '../params';
 import { hash } from '../scope';

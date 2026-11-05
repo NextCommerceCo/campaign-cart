@@ -1,6 +1,6 @@
 import type { Attribution } from '../../engine/attribution';
 import type { Line } from '../../engine/cart/types';
-import type { Address, User } from '../../engine/events';
+import type { Address, User } from '../../engine/events/checkout';
 import type { CheckoutError, OpenCart } from '../../engine/types';
 
 export interface AddressSuggestion {

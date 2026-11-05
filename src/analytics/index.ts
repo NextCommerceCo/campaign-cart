@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Line, SummaryLine } from '../engine/cart/types';
-import type { AnalyticsName, AnalyticsTrace, EventMap, EventName } from '../engine/events';
+import type { AnalyticsName, AnalyticsTrace } from '../engine/events/analytics';
+import type { EventMap, EventName } from '../engine/events/bus';
 import type { ApiOrder, ApiOrderLine } from '../engine/types';
 import { startLegacyDataLayer } from '../compat/analytics';
 import { newId } from '../engine/id';

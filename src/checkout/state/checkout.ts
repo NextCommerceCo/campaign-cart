@@ -7,7 +7,7 @@ import { nextUrl } from '../../engine/params';
 import { orderBody, type OrderUrls, paymentCode, publicAddress, userOf } from './order-body';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey, phoneOf } from './phone';
 import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope, validEmail } from './rules';
-import type { Address, AddressType, Checkout, User } from '../../engine/events';
+import type { Address, AddressType, Checkout, User } from '../../engine/events/checkout';
 import type { ApiOrder, CheckoutError, OpenCart } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
 

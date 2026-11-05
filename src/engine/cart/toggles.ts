@@ -1,6 +1,6 @@
 import { mergeLines, publicToggle, toggleGroup } from './cart';
 import type { Context } from '../engine';
-import type { Selector } from '../events';
+import type { Selector } from '../events/selectors';
 
 export { toggleGroup };
 

@@ -5,7 +5,7 @@ import { resolve } from '../../../src/engine/values';
 import { fakeApi } from '../../fixtures/api';
 import { campaign } from '../../fixtures/campaign';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
-import type { Selector } from '../../../src/engine/events';
+import type { Selector } from '../../../src/engine/events/selectors';
 import { MemoryStorage } from '../../fixtures/storage';
 
 const CARDS: SelectorCard[] = [

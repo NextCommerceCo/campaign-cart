@@ -9,7 +9,7 @@ import { bindAll } from '../../src/bindings';
 import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
-import type { Selector } from '../../src/engine/events';
+import type { Selector } from '../../src/engine/events/selectors';
 import { FakeObserver, visible } from './observer';
 
 describe('order bump', () => {
