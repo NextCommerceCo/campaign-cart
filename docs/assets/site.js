@@ -10,12 +10,15 @@
  *      site root, and jumps to the *same page* in the version the reader picks.
  *   2. Shows a banner when the reader is on an older version than the current release,
  *      or on one of the unreleased folders (`main/`, `dev/`).
+ *   3. Splits the sidebar into sections (Guides, Attributes, Events, JavaScript API) with
+ *      a switcher above it, so the sidebar shows only the section the page is in.
  *
  * That is all it does.
  *
- * It does nothing at all when `versions.json` is absent — that is the normal state of an
+ * 1 and 2 do nothing when `versions.json` is absent — that is the normal state of an
  * unversioned local `npm run docs` build, and a warning-free no-op is the correct
- * behaviour there.
+ * behaviour there. 3 does nothing without clean-jsdoc-theme's sidebar nav, so the
+ * default theme (old version folders) keeps its full sidebar.
  */
 
 (() => {
@@ -298,9 +301,177 @@
   }
 
   /**
-   * Styles for the two elements above.
+   * Sidebar sections. `path` is the page the switcher opens, inside the version folder;
+   * `groups` the sidebar groups that belong to it whole (`docGroups` in typedoc.json);
+   * `icon` is the inner markup of a 24×24 Lucide icon.
+   */
+  const SECTIONS = [
+    {
+      id: 'guides',
+      name: 'Guides',
+      blurb: 'Start and build pages',
+      path: '',
+      groups: ['Start Here', 'Building Pages'],
+      icon: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    },
+    {
+      id: 'attributes',
+      name: 'Attributes',
+      blurb: 'Everything a page can use',
+      path: 'attributes',
+      groups: ['Attribute Reference'],
+      icon: '<path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>',
+    },
+    {
+      id: 'events',
+      name: 'Events',
+      blurb: 'What next.on receives',
+      path: 'events',
+      groups: ['Event Reference'],
+      icon: '<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>',
+    },
+    {
+      id: 'api',
+      name: 'JavaScript API',
+      blurb: 'window.next and its types',
+      path: 'javascript-api',
+      groups: [],
+      icon: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+    },
+  ];
+
+  /** The sidebar's nav: in the desktop island, and in the mobile drawer once it is opened. */
+  const SIDEBAR = 'nav[aria-label="Documentation navigation"]';
+
+  /** {@link versionRoot} as a folder: clean-jsdoc-theme's `basePath` has no trailing slash. */
+  const sectionRoot = new URL(versionRoot.pathname.replace(/\/*$/, '/'), versionRoot);
+
+  /** A sidebar link's page inside the version folder: `event-reference/carts/cart-added`. */
+  const pageOf = (href) =>
+    decodeURIComponent(new URL(href, window.location.href).pathname)
+      .slice(decodeURIComponent(sectionRoot.pathname).length)
+      .replace(/(\/index)?\.html$|\/+$/, '');
+
+  /**
+   * The section a sidebar link belongs to. The links outside every group, except Home,
+   * are the pages TypeDoc generates from the source (`NextApi`, `SdkEvent`, …).
+   */
+  function sectionOfLink(link, grouped) {
+    const page = pageOf(link.href);
+    if (page === 'attributes' || page.startsWith('attribute-reference/')) return 'attributes';
+    if (page === 'events' || page.startsWith('event-reference/')) return 'events';
+    if (page === 'javascript-api' || (!grouped && page !== '')) return 'api';
+    return 'guides';
+  }
+
+  /**
+   * Tags each top-level group of a sidebar, and each entry of a group, with the sections
+   * of the links inside it. CSS then hides what is not in the current section; a group
+   * such as Reference, which holds a page of three sections, keeps only its own entry.
+   */
+  function tagSidebar(nav) {
+    for (const group of nav.children) {
+      const heading = group.querySelector(':scope > button');
+      const named = SECTIONS.find((section) => section.groups.includes(heading?.textContent.trim()))?.id;
+      const sections = new Set();
+      for (const item of group.querySelectorAll(':scope > ul > li')) {
+        const own = new Set([...item.querySelectorAll('a[href]')].map((link) => sectionOfLink(link, !!heading)));
+        // A collapsed subgroup renders no links until it is opened.
+        if (!own.size && named) own.add(named);
+        item.dataset.ccSections = [...own].join(' ');
+        own.forEach((section) => sections.add(section));
+      }
+      if (!sections.size && named) sections.add(named);
+      group.dataset.ccSections = [...sections].join(' ');
+    }
+  }
+
+  /** The current page's section: the one its sidebar link was tagged with. */
+  function currentSection(nav) {
+    const here = pageOf(window.location.href);
+    for (const group of nav.children) {
+      const grouped = !!group.querySelector(':scope > button');
+      for (const link of group.querySelectorAll('a[href]')) {
+        if (pageOf(link.href) === here) return sectionOfLink(link, grouped);
+      }
+    }
+    return sectionOfLink({ href: window.location.href }, true);
+  }
+
+  const icon = (section, className) =>
+    `<span class="${className}" data-cc-section="${section.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${section.icon}</svg></span>`;
+
+  const labels = (section) =>
+    `<span class="cc-section-text"><span class="cc-section-name">${section.name}</span><span class="cc-section-blurb">${section.blurb}</span></span>`;
+
+  function renderSectionSwitcher(nav, active) {
+    const current = SECTIONS.find((section) => section.id === active);
+    const root = document.createElement('div');
+    root.className = 'cc-sections';
+    root.innerHTML = `<button type="button" class="cc-section-current" aria-haspopup="true" aria-expanded="false">
+  ${icon(current, 'cc-section-icon')}${labels(current)}
+  <svg class="cc-section-chevrons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+</button>
+<ul class="cc-section-menu" hidden>${SECTIONS.map(
+      (
+        section,
+      ) => `<li><a href="${new URL(section.path, sectionRoot).href}"${section.id === active ? ' aria-current="page"' : ''}>
+  ${icon(section, 'cc-section-icon')}${labels(section)}
+  ${section.id === active ? '<svg class="cc-section-check" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+</a></li>`,
+    ).join('')}</ul>`;
+
+    const button = root.querySelector('button');
+    const menu = root.querySelector('ul');
+    const open = (show) => {
+      menu.hidden = !show;
+      button.setAttribute('aria-expanded', String(show));
+    };
+    button.addEventListener('click', () => open(menu.hidden));
+    document.addEventListener('click', (event) => {
+      if (!root.contains(event.target)) open(false);
+    });
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || menu.hidden) return;
+      open(false);
+      button.focus();
+    });
+    // The desktop island re-renders its own children, so the switcher goes beside it.
+    (nav.closest('[data-island="sidebar"]') ?? nav).before(root);
+  }
+
+  /**
+   * Tags every sidebar nav and gives it a switcher, again whenever the page changes: the
+   * island re-renders, a subgroup opens, or the mobile drawer adds its own nav.
+   */
+  function startSections() {
+    const first = document.querySelector(SIDEBAR);
+    if (!first) return;
+    const active = currentSection(first);
+    document.documentElement.dataset.ccSection = active;
+    const withSwitcher = new WeakSet();
+    let queued = false;
+    const scan = () => {
+      queued = false;
+      for (const nav of document.querySelectorAll(SIDEBAR)) {
+        tagSidebar(nav);
+        if (withSwitcher.has(nav)) continue;
+        withSwitcher.add(nav);
+        renderSectionSwitcher(nav, active);
+      }
+    };
+    scan();
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(scan);
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  /**
+   * Styles for the elements above.
    *
-   * They live here rather than in `docs/assets/typedoc.css` so the switcher stays one
+   * They live here rather than in `docs/assets/typedoc.css` so the switchers stay one
    * self-contained unit: nothing to keep in sync, and no dead CSS in the stylesheet of an
    * unversioned build. TypeDoc's own custom properties are reused, so both themes work.
    */
@@ -334,6 +505,41 @@
   margin-inline: auto;
 }
 .cc-stale-banner a { color: inherit; font-weight: 700; }
+${SECTIONS.map(
+  ({ id }) => `html[data-cc-section='${id}'] ${SIDEBAR} > div[data-cc-sections]:not([data-cc-sections~='${id}']),
+html[data-cc-section='${id}'] ${SIDEBAR} > div > ul > li[data-cc-sections]:not([data-cc-sections~='${id}']) { display: none; }`,
+).join('\n')}
+.cc-sections { position: relative; margin: 0 0 1rem; }
+.cc-section-current, .cc-section-menu a {
+  display: flex; align-items: center; gap: 0.75rem; width: 100%;
+  padding: 0.5rem 0.625rem; border-radius: 0.75rem; text-align: left;
+  color: var(--clean-fg); text-decoration: none; font: inherit;
+}
+.cc-section-current {
+  border: 1px solid var(--clean-border); background: var(--clean-bg-muted); cursor: pointer;
+}
+.cc-section-current:hover, .cc-section-menu a:hover { background: var(--clean-bg-muted); }
+.cc-section-current:focus-visible, .cc-section-menu a:focus-visible { outline: 2px solid var(--clean-accent); outline-offset: 1px; }
+.cc-section-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.cc-section-name { font-size: 0.875rem; font-weight: 600; }
+.cc-section-blurb { font-size: 0.75rem; color: var(--clean-fg-muted); }
+.cc-section-chevrons, .cc-section-check { margin-left: auto; flex-shrink: 0; color: var(--clean-fg-muted); }
+.cc-section-check { color: var(--clean-accent); }
+.cc-section-icon {
+  display: grid; place-items: center; flex-shrink: 0; width: 2rem; height: 2rem; border-radius: 0.5rem;
+  color: var(--cc-hue); background: color-mix(in srgb, var(--cc-hue) 14%, transparent);
+}
+.cc-section-icon[data-cc-section='guides'] { --cc-hue: #2563eb; }
+.cc-section-icon[data-cc-section='attributes'] { --cc-hue: #ea580c; }
+.cc-section-icon[data-cc-section='events'] { --cc-hue: #db2777; }
+.cc-section-icon[data-cc-section='api'] { --cc-hue: #059669; }
+.cc-section-menu {
+  position: absolute; z-index: 30; top: calc(100% + 0.25rem); left: 0; right: 0;
+  margin: 0; padding: 0.25rem; list-style: none;
+  background: var(--clean-bg); border: 1px solid var(--clean-border); border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+.cc-section-menu[hidden] { display: none; }
 `;
 
   function injectStyles() {
@@ -343,10 +549,11 @@
   }
 
   async function start() {
+    injectStyles();
+    startSections();
     const versions = await loadVersions();
     if (!versions) return;
     const active = findCurrent(versions);
-    injectStyles();
     await renderSwitcher(versions, active);
     renderBanner(versions, active);
   }
