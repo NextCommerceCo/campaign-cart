@@ -134,8 +134,14 @@ src/
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
-  attributes/          attributes  attributes v2 (data-next-query, -action, -option, …), loaded when a page has one or a script calls a
-                                   new action; legacy pages never load it
+  attributes/          attributes  attributes v2, loaded when a page has one or a script calls a new action; legacy pages never load it
+    index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
+    context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
+    display.ts                     data-next-for, -query, -show / -hide, -each
+    condition.ts value.ts          the condition grammar (&&, ||, > <); a value written by its field's type or data-next-format
+    options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
+    actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
+    fields.ts                      data-next-field outside a checkout: variants.<code> pickers, a slot's properties
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
@@ -143,7 +149,8 @@ src/
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
-    payment/                       card.ts (payment radios and panels, payment.js), express.ts, logos.ts
+    payment/                       card.ts (payment radios and panels, payment.js), expiry.ts (month + year selects or
+                                   card.expiry), widget.ts ([data-next-payment]), express.ts, logos.ts
     form/                          fields.ts, labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
     review.ts                      [data-next-checkout-review]
   order/               order       loaded when the page has an upsell offer or order.* values
@@ -179,6 +186,7 @@ src/
                                    pages, where events are pushed, then this page's events; one opens in tsugi's dialog, a
                                    tab for its summary (why, what it reached, lines), the envelope and one for what each
                                    data layer or GA4 got
+    legacy.ts                      the attributes v2 name of each earlier attribute, shown in the Elements tab
     providers.ts                   which destinations are on, engine event → tracking event / dl_* wiring (checked against
                                    compat/analytics/), push checks
     styles.ts                      vendored tsugi first, then the panel, analytics and cart stylesheets on its tokens
