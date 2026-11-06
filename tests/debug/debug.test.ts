@@ -15,7 +15,7 @@ const menuItem = (label: string) =>
 const developer = async () => {
   while (view() !== 'menu') $('.fab').click();
   menuItem('Developer mode').click();
-  await vi.waitFor(() => expect(menuItem('Developer mode').textContent).toBe('Developer modeOn'));
+  await vi.waitFor(() => expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('true'));
 };
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
@@ -47,10 +47,11 @@ describe('debug tools', () => {
     expect(view()).toBe('menu');
     const menu = $('.menu').textContent!;
     expect(menu).toMatch(/Checkout1 item · \$[\d.]+ · cart only/);
-    expect(menu).toContain('CampaignOlympus · USD');
+    expect($('.mhead').textContent).toMatch(/^OlympusUSD · SDK v/);
     expect(menu).not.toContain('APIapi.test');
-    expect(menu).toContain('Developer modeOff · Elements, State, Logs');
-    expect(PANEL_CSS).toContain('.item>span:first-child{flex-shrink:0;white-space:nowrap}');
+    expect(menuItem('Developer mode').getAttribute('role')).toBe('switch');
+    expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
+    expect(PANEL_CSS).toContain('.label{display:inline-flex;flex-shrink:0;');
     expect(PANEL_CSS).toMatch(/\.value\{flex:1;min-width:0;/);
     await developer();
     expect($('.menu').textContent).toContain('APIapi.test');
@@ -259,14 +260,13 @@ describe('debug tools', () => {
     const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
     await developer();
     expect(menuItem('Journey').textContent).toBe('Journey1 page in this tab');
-    expect(menuItem('Reset saved data').textContent).toBe("Reset saved datathis funnel's cart, form and order");
+    expect($('.mfoot').textContent).toContain('Debug stays on in this tab until you turn it off.');
     menuItem('Reset saved data').click();
     expect(assign).not.toHaveBeenCalled();
     await vi.waitFor(() =>
-      expect(menuItem('Reset saved data').textContent).toBe(
-        "Reset saved dataclick again to clear this funnel's cart, form and order",
-      ),
+      expect($('.mfoot > p').textContent).toBe("Click again to clear this funnel's cart, form and order."),
     );
+    expect(menuItem('Reset saved data').dataset.variant).toBe('destructive');
     expect(view()).toBe('menu');
     menuItem('Reset saved data').click();
     expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\?reset=1$/));
@@ -365,9 +365,9 @@ describe('debug tools', () => {
   it('moves to the right side', async () => {
     await start();
     $('.fab').click();
-    menuItem('Position').click();
+    $('.mhead button').click();
     expect($('.root').classList.contains('right')).toBe(true);
-    expect(menuItem('Position').textContent).toBe('PositionRight');
+    expect($('.mhead button').getAttribute('aria-label')).toBe('Move to the left');
   });
 
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {

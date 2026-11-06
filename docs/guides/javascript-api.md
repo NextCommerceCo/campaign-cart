@@ -78,11 +78,11 @@ so it follows the shopper through the funnel, and the panel opens on each page a
 `?debug=0` or **Turn off debug** in the menu ends it. The button shows the number of issues on
 the page; click it for a menu with the cart, campaign, SDK version, API, funnel and storage
 scope, and a link into each panel tab. The panel is drawn with tsugi and follows the system
-light or dark theme; **Position** or the panel icon moves it to the other side.
+light or dark theme; the dock icon in the menu or panel moves it to the other side.
 
 The panel starts simple: Journey, Issues, Checkout and Analytics, without the codes a developer
 reads. **Developer mode** in the menu adds the Events, Elements, State and Logs tabs, **Pick an element**,
-the SDK version, API, funnel and storage scope, and the detail inside the tabs: package ids and SKUs,
+the API, funnel and storage scope, and the detail inside the tabs: package ids and SKUs,
 the selector a cart line came from, when the cart was priced, **Raw state**, the totals formula,
 and the storage scope of each page. The choice stays for the rest
 of the browser tab.

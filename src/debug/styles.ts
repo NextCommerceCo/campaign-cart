@@ -22,16 +22,37 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .pop{animation:pop .16s ease-out;transform-origin:bottom left}
 .right .pop{transform-origin:bottom right}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
-@media (prefers-reduced-motion:reduce){.pop{animation:none}.fab{transition:none}}
-.menu{width:272px;padding:6px}
-.item{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;padding:7px 10px;border-radius:8px;text-align:left}
-button.item:hover{background:var(--accent)}
-.item>span:first-child{flex-shrink:0;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}.fab,.mtrack,.mtrack::after{transition:none}}
+.menu{width:304px;overflow:hidden}
+.mhead{display:flex;align-items:flex-start;gap:8px;padding:12px 8px 10px 14px;border-bottom:1px solid var(--border)}
+.mhead>div{flex:1;min-width:0}
+.mhead b{display:-webkit-box;overflow:hidden;font-weight:600;line-height:1.35;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.mhead small{display:block;margin-top:2px;font-size:12px;color:var(--muted-foreground)}
+.mlist{padding:6px}
+.mlist+.mlist,.minfo+.mlist{border-top:1px solid var(--border)}
+.item{display:flex;align-items:center;gap:12px;width:100%;padding:7px 8px;border-radius:8px;text-align:left}
+.item:hover,.mswitch:hover{background:var(--accent)}
+.label{display:inline-flex;flex-shrink:0;align-items:center;gap:10px;white-space:nowrap}
+.label>.icon{width:15px;height:15px;color:var(--muted-foreground)}
 .value{flex:1;min-width:0;overflow:hidden;color:var(--muted-foreground);font-size:12px;text-align:right;white-space:nowrap;text-overflow:ellipsis}
-.value .icon{width:14px;height:14px}
+.go{display:inline-flex;margin-left:-6px;color:var(--muted-foreground);transform:rotate(-90deg)}
+.go>.icon{width:14px;height:14px}
+.minfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px}
+.minfo dt{color:var(--muted-foreground)}
+.minfo dd{overflow:hidden;font:11px/1.6 var(--font-mono);text-align:right;white-space:nowrap;text-overflow:ellipsis}
+.mswitch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;width:100%;padding:7px 8px;border-radius:8px;text-align:left}
+.mswitch>small{grid-row:2;font-size:12px;color:var(--muted-foreground)}
+.mtrack{grid-row:1/3;grid-column:2;position:relative;width:32px;height:18px;border-radius:999px;background:color-mix(in oklab,var(--muted-foreground) 40%,transparent);transition:background .15s}
+.mtrack::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+[aria-checked=true]>.mtrack{background:var(--primary)}
+[aria-checked=true]>.mtrack::after{transform:translateX(14px)}
+.mfoot{padding:10px 12px 12px;border-top:1px solid var(--border)}
+.mfoot>div{display:flex;gap:6px}
+.mfoot .btn{flex:1}
+.mfoot>p{margin-top:8px;font-size:12px;color:var(--muted-foreground)}
+.mfoot>p.red{color:var(--destructive)}
 .danger{color:var(--destructive)}
 hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
-.count{font-weight:600}
 .reach{display:inline-flex;gap:4px;margin-left:8px;vertical-align:-2px}.reach .icon,.dest .icon{width:14px;height:14px}
 .dest{display:inline-flex;align-items:center;gap:6px}
 .red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.dim,.time{color:var(--muted-foreground)}

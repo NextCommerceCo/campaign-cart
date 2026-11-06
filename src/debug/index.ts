@@ -1,7 +1,5 @@
 import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import { format, localeOf } from '../engine/format';
-import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
@@ -10,6 +8,7 @@ import { eventsView } from './events';
 import { type IconName, icon } from './icons';
 import { journeyView } from './journey';
 import { logsView } from './logs';
+import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
 import { createDebug, type PageKind, type PageVisit } from './state';
 import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
@@ -104,11 +103,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   tabpick.setAttribute('aria-label', 'Panel tab');
   const pickButton = button('pick', 'Pick an element', () => togglePick());
-  const dock = button('dockRight', 'Move to the right', () => {
+  const flip = () => {
     right = !right;
     debug.setPanel({ right });
     render();
-  });
+  };
+  const dock = button('dockRight', 'Move to the right', flip);
   const fab = h(
     'button',
     {
@@ -156,23 +156,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog);
   const logs = logsView(engine, open, idOf);
-  const cartText = () => {
-    const state = engine.getState();
-    const units = Number(resolve(engine, 'cart.quantity')?.value ?? 0);
-    const total = resolve(engine, 'cart.total');
-    if (!units) return 'Empty';
-    const price = total?.value === undefined ? '' : ` · ${format(total, state.campaign?.currency, localeOf(state))}`;
-    return `${plural(units, 'item')}${price}`;
-  };
-  const item = (label: string, value: Child, onclick?: () => void, className = '') => {
-    const content = [
-      h('span', {}, label),
-      h('span', { className: 'value', title: typeof value === 'string' ? value : '' }, value),
-    ];
-    return onclick
-      ? h('button', { type: 'button', className: `item ${className}`, onclick }, ...content)
-      : h('div', `item ${className}`, ...content);
-  };
 
   const findIssues = () => {
     const page = inspect(engine).filter((i) => i.bad);
@@ -286,56 +269,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     logs: () => logs.view(query()),
   };
 
-  const menuItems = (): Child[] => {
-    const { campaign } = engine.getState();
-    const { count, tone } = findIssues();
-    return [
-      item('Issues', h('span', `count ${count ? tone : 'green'}`, count ? String(count) : 'None'), () =>
-        show('issues'),
-      ),
-      item('Journey', `${plural(debug.state().pages.length, 'page')} in this tab`, () => show('journey')),
-      item('Checkout', `${cartText()} · ${checkout.summary()}`, () => show('checkout')),
-      dev && item('Elements', String(countElements()), () => show('elements')),
-      item('Analytics', flow.summary(), () => show('analytics')),
-      ...(dev
-        ? [
-            item('Events', String(events.count()), () => show('events')),
-            item('Logs', String(engine.log.entries().length), () => show('logs')),
-            h('hr'),
-            item('Pick an element', icon('pick'), () => togglePick()),
-          ]
-        : []),
-      h('hr'),
-      item('Campaign', campaign ? `${campaign.name} · ${campaign.currency}` : 'Loading…'),
-      ...(dev
-        ? [
-            item('SDK', `v${info.version}`),
-            item('API', info.apiBase.replace(/^https?:\/\//, '')),
-            item('Funnel', info.funnel || '—'),
-            item('Storage', info.scope),
-          ]
-        : []),
-      h('hr'),
-      item('Developer mode', dev ? 'On' : 'Off · Elements, State, Logs', () => {
-        dev = !dev;
-        debug.setPanel({ dev });
-        later();
-      }),
-      item('Position', right ? 'Right' : 'Left', () => {
-        right = !right;
-        debug.setPanel({ right });
-        render();
-      }),
-      item(
-        'Reset saved data',
-        resetting ? "click again to clear this funnel's cart, form and order" : "this funnel's cart, form and order",
-        () => (resetting ? info.reset() : ((resetting = true), later())),
-        'danger',
-      ),
-      item('Turn off debug', 'stays on in this tab until then', info.off, 'danger'),
-    ];
-  };
-
   const render = () => {
     const { count, tone } = findIssues();
     issues.textContent = count ? plural(count, 'Issue') : '';
@@ -348,7 +281,31 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     if (!dev && DEV.includes(tab)) goTo('journey');
     dock.title = right ? 'Move to the left' : 'Move to the right';
     dock.replaceChildren(icon(right ? 'dockLeft' : 'dockRight'));
-    if (view === 'menu') menu.replaceChildren(...nodes(menuItems()));
+    if (view === 'menu')
+      menu.replaceChildren(
+        ...nodes(
+          menuView(engine, {
+            info,
+            dev,
+            right,
+            resetting,
+            issues: { count, tone },
+            pages: debug.state().pages.length,
+            checkout: checkout.summary(),
+            analytics: flow.summary(),
+            counts: () => ({ elements: countElements(), events: events.count(), logs: engine.log.entries().length }),
+            show,
+            pick: togglePick,
+            flip,
+            toggleDev: () => {
+              dev = !dev;
+              debug.setPanel({ dev });
+              later();
+            },
+            reset: () => (resetting ? info.reset() : ((resetting = true), later())),
+          }),
+        ),
+      );
     if (view !== 'panel') return;
     tabs.forEach((el) => {
       el.hidden = !dev && DEV.includes(el.dataset.tab as Tab);
