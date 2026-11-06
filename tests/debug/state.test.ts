@@ -99,6 +99,24 @@ describe('debug journey', () => {
     });
   });
 
+  it('records what each page added to the order: its total at checkout, an upsell after it', () => {
+    const session = new MemoryStorage();
+    const order = (total: string) =>
+      publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: total, currency: 'USD' } as ApiOrder);
+    page(session, '/checkout/', { kind: 'checkout' }).engine.events.emit('order.created', order('49.00'));
+    const upsell = page(session, '/upsell/', { kind: 'upsell' });
+    upsell.engine.events.emit('order.loaded', order('49.00'));
+    upsell.engine.events.emit('order.updated', order('68.50'));
+    page(session, '/declined/', { kind: 'upsell' }).engine.events.emit('order.loaded', order('68.50'));
+    const { debug } = page(session, '/receipt/', { kind: 'receipt' });
+    expect(debug.state().pages.map((p) => [p.path, p.total, p.earned])).toEqual([
+      ['/checkout/', '49.00', 49],
+      ['/upsell/', '68.50', 19.5],
+      ['/declined/', '68.50', undefined],
+      ['/receipt/', undefined, undefined],
+    ]);
+  });
+
   it('marks a stopped submit, a refused order, a payment left unpaid at the gateway and a paid order on their page', () => {
     const { engine, debug } = page(new MemoryStorage(), '/checkout/', { kind: 'checkout' });
     const checkout = engine.cart.currentCheckout();

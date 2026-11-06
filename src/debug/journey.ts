@@ -81,16 +81,20 @@ export function journeyView(
 ) {
   let resized: ResizeObserver | undefined;
 
-  const money = (p: PageVisit) =>
-    p.total === undefined
+  const money = (p: PageVisit, value = p.total === undefined ? undefined : Number(p.total)) =>
+    value === undefined
       ? ''
       : format(
-          { type: 'money', value: Number(p.total) },
+          { type: 'money', value },
           p.currency ?? engine.getState().campaign?.currency,
           localeOf(engine.getState()),
         );
   const holding = (p: PageVisit) =>
-    p.order ? `Order ${p.order}` : p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty cart';
+    p.order
+      ? [`Order ${p.order}`, money(p)].filter(Boolean).join(' · ')
+      : p.units
+        ? `${plural(p.units, 'item')} · ${money(p)}`
+        : 'Empty cart';
   const link = (text: string, onclick: () => void) => h('button', { type: 'button', className: 'link', onclick }, text);
 
   const moment = (m: Mark) => {
@@ -207,47 +211,33 @@ export function journeyView(
   const page = (p: PageVisit, i: number, pages: PageVisit[]) => {
     const next = pages[i + 1];
     const issues = p.marks.filter(bad).length;
-    const name = [p.title || p.path];
-    const show = () => open(p, i, pages);
+    const earned = p.earned ? `+${money(p, p.earned)}` : '';
     const badges = [
+      p.upsell === 'accepted' && marked('check', 'success', ['Accepted', earned].filter(Boolean).join(' ')),
+      p.upsell === 'declined' && badge('Declined', 'outline'),
+      !p.upsell && earned && badge(earned, 'success'),
       !next && badge('Now', 'info'),
       p.reloads > 0 && marked('reset', 'outline', p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded'),
       issues > 0 &&
         marked('warn', p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning', plural(issues, 'issue')),
     ];
-    const note = next ? stayed(next.at - p.at) : '';
-    if (!p.upsell)
-      return step(
-        `Step ${i + 1}`,
-        KINDS[p.kind],
-        note,
-        badges,
-        h('li', {}, row(name, p.path, holding(p), clock(p.at), show)),
-      );
-    const outcome = (label: string, picked: boolean) => {
-      const el = h(
-        'button',
-        { type: 'button', onclick: show },
-        h('span', {}, label),
-        h('data', {}, picked ? holding(p) : ''),
-      );
-      el.setAttribute('aria-pressed', String(picked));
-      return el;
-    };
-    const el = h(
-      'li',
-      {},
-      h('span', {}, ...name),
-      h('small', {}, p.path),
-      h('div', {}, outcome('Declined', p.upsell === 'declined'), outcome('Accepted', p.upsell === 'accepted')),
+    return step(
+      `Step ${i + 1}`,
+      KINDS[p.kind],
+      next ? stayed(next.at - p.at) : '',
+      badges,
+      h(
+        'li',
+        {},
+        row([p.title || p.path], p.path, holding(p), clock(p.at), () => open(p, i, pages)),
+      ),
     );
-    el.dataset.outcomes = '';
-    return step(`Step ${i + 1}`, KINDS[p.kind], note, badges, el);
   };
 
   const summary = (pages: PageVisit[]) => {
     const now = pages.at(-1)!;
     const issues = ui.issues();
+    const upsold = pages.reduce((n, p) => n + (p.kind === 'upsell' ? (p.earned ?? 0) : 0), 0);
     return h(
       'div',
       'jsum',
@@ -259,7 +249,13 @@ export function journeyView(
           i < all.length - 1 && h('span', 'dim', ' → '),
         ]),
       ),
-      h('span', 'jstate', holding(now), now.order ? '' : ' · no order yet'),
+      h(
+        'span',
+        'jstate',
+        holding(now),
+        now.order ? '' : ' · no order yet',
+        upsold > 0 && h('span', 'dim', ` · upsells +${money(now, upsold)}`),
+      ),
       issues > 0 && link(`⚠ ${plural(issues, 'issue')}`, () => ui.show('issues')),
       pages.length > 1 &&
         link('Clear', () => {

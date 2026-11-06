@@ -3,6 +3,8 @@ import { journeyView } from '../../src/debug/journey';
 import { createDebug, type PageKind } from '../../src/debug/state';
 import { detailModal } from '../../src/debug/stream';
 import { nodes } from '../../src/debug/view';
+import { publicOrder } from '../../src/engine/order';
+import type { ApiOrder } from '../../src/engine/types';
 import { makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 
@@ -57,10 +59,7 @@ describe('journey tab', () => {
     );
     expect(root.querySelector<HTMLElement>('.journey')!.dataset.orientation).toBe('vertical');
     expect(steps()).toEqual([
-      [
-        'EntryDirect',
-        expect.stringMatching(/^direct \/ noneWhere this tab came fromDetails\d\d:\d\d:\d\d$/),
-      ],
+      ['EntryDirect', expect.stringMatching(/^direct \/ noneWhere this tab came fromDetails\d\d:\d\d:\d\d$/)],
       [
         expect.stringMatching(/^Step 1Landing\d+s$/),
         expect.stringMatching(/^\/landing\/\/landing\/1 item · \$49\.00\d\d:\d\d:\d\d$/),
@@ -115,24 +114,32 @@ describe('journey tab', () => {
     expect(detail.dialog.querySelector('.jpage h3')!.textContent).toBe('direct / none');
   });
 
-  it('shows an upsell with its outcomes, the one taken picked', async () => {
-    const { root } = await setup(async (session) => {
+  it('badges what each step added to the order, an upsell with its outcome, as a page like the others', async () => {
+    const order = (total: string) =>
+      publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: total, currency: 'USD' } as ApiOrder);
+    const { root, steps } = await setup(async (session) => {
       const upsell = visit(session, '/upsell/', 'upsell');
       await upsell.engine.start();
+      upsell.engine.events.emit('order.loaded', order('49.00'));
       upsell.engine.events.emit('upsell.accepted', {
         ref_id: 'R1',
         page: '/upsell/',
         lines: [{ package_id: 2, quantity: 1 }],
       });
+      upsell.engine.events.emit('order.updated', order('68.50'));
+      const declined = visit(session, '/declined/', 'upsell');
+      await declined.engine.start();
+      declined.engine.events.emit('upsell.skipped', { ref_id: 'R1', page: '/declined/', lines: [] });
     });
-    const outcomes = root.querySelector<HTMLElement>('.journey li[data-outcomes]')!;
-    expect(outcomes.closest('ol > li')!.querySelector('header')!.textContent).toMatch(/^Step 2Upsell/);
-    expect(
-      [...outcomes.querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
-    ).toEqual([
-      ['Declined', 'false'],
-      [expect.stringMatching(/^Accepted/), 'true'],
+    expect(steps().slice(2, 4)).toEqual([
+      [
+        expect.stringMatching(/^Step 2Upsell\d+sAccepted \+\$19\.50/),
+        expect.stringMatching(/^\/upsell\/\/upsell\/Order R1 · \$68\.50/),
+      ],
+      [expect.stringMatching(/^Step 3Upsell\d+sDeclined/), expect.stringMatching(/^\/declined\/\/declined\//)],
     ]);
+    expect(root.querySelector('.journey [data-outcomes]')).toBeNull();
+    expect(root.querySelector('.jsum')!.textContent).toContain(' · upsells +$19.50');
   });
 
   it('joins each page to the next with a line, as tsugi draws it', async () => {

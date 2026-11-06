@@ -24,6 +24,8 @@ export interface PageVisit {
   total?: string;
   currency?: string;
   order?: string;
+  /** What this page added to the order: the order's total at checkout, an upsell's amount after it. */
+  earned?: number;
   upsell?: 'accepted' | 'declined';
   sent: string[];
   marks: Mark[];
@@ -217,7 +219,13 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   );
   on('order.created', (e) =>
     change(
-      { order: e.data.ref_id, total: e.data.total.toFixed(2), currency: e.data.currency, units: 0 },
+      {
+        order: e.data.ref_id,
+        total: e.data.total.toFixed(2),
+        currency: e.data.currency,
+        units: 0,
+        earned: e.data.total,
+      },
       { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} placed` },
     ),
   );
@@ -227,6 +235,15 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       { at: e.at, text: `Order ${e.data.number ?? e.data.ref_id} loaded` },
     ),
   );
+  on('order.updated', (e) => {
+    const page = state.pages.at(-1)!;
+    const was = page.total ?? state.pages.at(-2)?.total;
+    change({
+      total: e.data.total.toFixed(2),
+      currency: e.data.currency,
+      ...(was !== undefined && { earned: (page.earned ?? 0) + e.data.total - Number(was) }),
+    });
+  });
   on('order.paid', (e) => change({}, { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} paid` }));
   on('upsell.accepted', (e) =>
     change(
