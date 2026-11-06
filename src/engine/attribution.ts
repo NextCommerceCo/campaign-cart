@@ -40,6 +40,8 @@ export interface Attribution {
   metadata: Record<string, string | number>;
 }
 
+const CLICK_IDS = ['fbclid', 'clickid', 'ttclid', 'msclkid', 'gbraid', 'wbraid'];
+
 export function buildAttribution(
   { params, landing: visit, geo }: { params: Record<string, string>; landing?: Visit; geo?: { ip: string | null } },
   funnel: string | undefined,
@@ -75,8 +77,7 @@ export function buildAttribution(
       sdk_version: __VERSION__,
       conversion_timestamp: now,
       ...(geo?.ip && { user_ip: geo.ip }),
-      ...(params.fbclid && { fbclid: params.fbclid }),
-      ...(params.clickid && { clickid: params.clickid }),
+      ...Object.fromEntries(CLICK_IDS.filter((k) => params[k]).map((k) => [k, params[k]!])),
       ...(evclid && { everflow_transaction_id: evclid }),
     },
   };

@@ -150,8 +150,8 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   `nextConfig.analytics.destinations` (or the 0.4.x `providers.*` key) turns it on. The SDK never
   loads a vendor's tag. Other vendors (TikTok, …) go through GTM or a `next.analytics.on`
   listener; `providers.custom` is not rebuilt, and enabling it in `nextConfig` prints a warning.
-- **Attribution:** UTM, gclid, fbclid, affiliate, sub1–5, clickid, evclid, `_fbp`/`_fbc`
-  and the funnel are kept for the tab session, with the first landing page. The same
+- **Attribution:** UTM, gclid, gbraid, wbraid, fbclid, ttclid, msclkid, affiliate, sub1–5, clickid,
+  evclid, `_fbp`/`_fbc` and the funnel are kept for the tab session, with the first landing page. The same
   object goes on every event and on the order.
 - **Links:** same-site links carry the session's params (this replaces `utmTransfer`).
 

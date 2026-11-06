@@ -38,7 +38,7 @@ describe('source of a tab', () => {
       ['utm_medium', 'landing', true, true],
       ['utm_campaign', 'landing', true, true],
       ['fbclid', 'landing', true, true],
-      ['ttclid', 'landing', false, false],
+      ['ttclid', 'landing', true, false],
       ['affid', 'landing', true, true],
       ['sub1', 'landing', true, true],
       ['_fbc', 'cookie', true, true],
@@ -51,7 +51,7 @@ describe('source of a tab', () => {
       ['Captured', '7 params on /bf/landing', 'done'],
       ['Kept', '7 params in this tab', 'done'],
       ['Carried', "On this page's URL", 'done'],
-      ['On the order', 'Not recorded: ttclid', 'warn'],
+      ['On the order', 'All recorded', 'done'],
     ]);
   });
 
@@ -92,9 +92,9 @@ describe('source of a tab', () => {
 
 describe('checking an ad link', () => {
   it('splits its params into recorded on the order, carried only, and not tracked', () => {
-    expect(checkLink('https://shop.test/?utm_source=google&gclid=g1&msclkid=m1&color=red')).toEqual({
-      order: ['utm_source', 'gclid'],
-      linksOnly: ['msclkid'],
+    expect(checkLink('https://shop.test/?utm_source=google&gclid=g1&msclkid=m1&currency=EUR&color=red')).toEqual({
+      order: ['utm_source', 'gclid', 'msclkid'],
+      linksOnly: ['currency'],
       other: ['color'],
     });
   });

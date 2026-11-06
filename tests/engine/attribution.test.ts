@@ -49,6 +49,11 @@ describe('attribution', () => {
     });
   });
 
+  it('records the TikTok, Microsoft and Google app click ids on the order', () => {
+    const params = { ttclid: 'T', msclkid: 'M', gbraid: 'G', wbraid: 'W' };
+    expect(buildAttribution({ params }, undefined, 0).metadata).toMatchObject(params);
+  });
+
   it('keeps the first landing page of the tab', async () => {
     const store = new MemoryStorage();
     const first = makeEngine({
