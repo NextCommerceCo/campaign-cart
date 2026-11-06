@@ -37,28 +37,77 @@ The SDK draws this markup and no styles:
 ```html
 <div data-next-address="shipping" data-next-address-state="ready">
   <div class="next-address-row">
-    <div class="form-group next-address-field" data-next-address-field="city" style="flex-grow: 2">
-      <input class="next-address-control" placeholder="City" />
-      <label class="next-address-label">City</label>
+    <div class="form-group next-address-field" data-next-address-field="address2">
+      <input class="next-address-control has-error" placeholder="Apartment, suite, etc. (optional)" />
+      <label class="next-address-label">Apartment, suite, etc. (optional)</label>
+      <div class="next-error-label">Address line 2 can’t contain emojis</div>
     </div>
   </div>
 </div>
 ```
 
-```css
-.next-address-row {
-  display: flex;
-  gap: 12px;
-}
-.next-address-field {
-  flex: 1;
-}
-[data-next-address-state='loading'] {
-  min-height: 240px; /* until the country's rules arrive */
-}
-```
+| Selector                    | Is                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `.next-address-row`         | A row. The city, state and postcode row gets an inline `display` when shown: never hide it `!important` |
+| `.next-address-field`       | A field and its label; a wider one has an inline `flex-grow`                                            |
+| `.next-address-control`     | The input or select; every input has a placeholder                                                      |
+| `.next-address-label`       | Its label, after the control                                                                            |
+| `.has-error`                | A control that failed. Fields the page writes get it too                                                |
+| `.next-error-label`         | The message, added to the field's `.form-group`                                                         |
+| `[data-next-address-state]` | `loading` until the country's rules arrive, then `ready`                                                |
 
 Style a field by its name, not its position, since the order changes with the country:
 `[data-next-address-field="postal"]`, with the 0.4.x names (`fname`, `address1`, `postal`,
-`province`, `phone`) and `billing-` before a billing field. The label comes after its control, for
-floating labels (`.next-address-control:not(:placeholder-shown) + .next-address-label`).
+`province`, `phone`) and `billing-` before a billing field.
+
+Bordered fields with floating labels:
+
+```css
+[data-next-address] .next-address-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+[data-next-address] .next-address-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+[data-next-address-state='loading'] {
+  min-height: 256px;
+}
+.next-address-control {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 18px 12px 4px;
+  border: 1px solid #c9ccd1;
+  border-radius: 8px;
+  font: inherit;
+}
+.next-address-control:placeholder-shown {
+  padding: 12px;
+}
+select.next-address-control {
+  appearance: none;
+}
+.next-address-label {
+  position: absolute;
+  top: 6px;
+  left: 13px;
+  color: #6b7280;
+  font-size: 11px;
+  pointer-events: none;
+}
+.next-address-control:placeholder-shown + .next-address-label {
+  display: none;
+}
+.has-error {
+  border-color: #dc2626;
+}
+.next-error-label {
+  margin-top: 4px;
+  color: #dc2626;
+  font-size: 12px;
+}
+```
