@@ -130,10 +130,7 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
     const next = pages[i + 1];
     const referrer = engine.getState().visit.landing?.referrer;
     const issues = problems(p);
-    const stat = (label: string, value: string, variant?: string) => {
-      const el = h('div', 'stat', h('span', {}, label), h('strong', {}, value));
-      return variant ? tsugi(el, { variant }) : el;
-    };
+    const stat = (label: string, value: string, bad = false) => [h('dt', {}, label), h('dd', bad ? 'red' : '', value)];
     const sent = Object.entries(
       p.sent.reduce<Record<string, number>>((n, name) => ({ ...n, [name]: (n[name] ?? 0) + 1 }), {}),
     );
@@ -149,12 +146,14 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
         h('p', 'jmeta', `${KINDS[p.kind]} · ${p.path}`, h('span', 'devonly', ` · storage ${p.scope}`)),
       ),
       h(
-        'div',
-        'stat-group',
-        stat('Cart', p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty'),
-        stat('Order', p.order ?? '—'),
-        stat('Analytics', `${p.sent.length} sent`),
-        stat('Problems', String(issues), issues ? 'destructive' : undefined),
+        'dl',
+        'jstats',
+        ...[
+          stat('Cart', p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty'),
+          stat('Order', p.order ?? '—'),
+          stat('Analytics', `${p.sent.length} sent`),
+          stat('Problems', String(issues), issues > 0),
+        ].map((pair) => h('div', {}, ...pair)),
       ),
       sent.length > 0 &&
         h('div', 'jsent', ...sent.map(([name, n]) => badge(n > 1 ? `${name} ×${n}` : name, 'outline'))),

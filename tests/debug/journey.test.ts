@@ -68,7 +68,7 @@ describe('journey tab', () => {
     root.querySelector<HTMLElement>('.journey button')!.click();
     expect(steps().map(([, pressed]) => pressed)).toEqual(['true', 'false']);
     const page = root.querySelector('.jpage')!;
-    expect([...page.querySelectorAll('.stat')].map((s) => s.textContent)).toEqual([
+    expect([...page.querySelectorAll('.jstats > div')].map((s) => s.textContent)).toEqual([
       'Cart1 item · $49.00',
       'Order—',
       'Analytics0 sent',

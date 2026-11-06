@@ -79,7 +79,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const host = document.createElement('next-debug');
   const box = highlighter();
   const body = h('div', 'body scrollbar-sm');
-  const menu = h('div', 'menu pop');
+  const menu = h('div', 'menu pop dropdown');
   const issues = h('span', 'issues');
   const filter = h('input', { type: 'search', className: 'input', placeholder: 'Filter…', oninput: () => render() });
   const search = h('div', 'search', filter);

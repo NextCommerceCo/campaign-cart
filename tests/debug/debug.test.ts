@@ -12,7 +12,11 @@ const view = () => $('.root').dataset.view;
 const body = () => $('.body').textContent!;
 const tab = (name: string) => $(`[data-tab="${name}"]`).click();
 const menuItem = (label: string) =>
-  [...shadow().querySelectorAll<HTMLElement>('.menu button')].find((b) => b.firstChild!.textContent === label)!;
+  [
+    ...shadow().querySelectorAll<HTMLElement>(
+      '.menu :is([role=menuitem], [role=menuitemcheckbox], [role=menuitemradio])',
+    ),
+  ].find((b) => b.querySelector(':scope > span:not(.icon):not(.mval)')?.firstChild?.textContent === label)!;
 const settings = () => {
   while (view() !== 'menu') $('.fab').click();
   if (!shadow().querySelector('.mtop')) $('.mhead [aria-label="Settings"]').click();
@@ -67,8 +71,9 @@ describe('debug tools', () => {
     expect(menu).not.toContain('Developer mode');
     expect(menu).not.toContain('Theme');
     expect(menu).not.toContain('APIapi.test');
-    expect(PANEL_CSS).toContain('.label{display:inline-flex;flex-shrink:0;');
-    expect(PANEL_CSS).toMatch(/\.value\{flex:1;min-width:0;/);
+    expect($('.menu').classList.contains('dropdown')).toBe(true);
+    expect(menuItem('Checkout').getAttribute('role')).toBe('menuitem');
+    expect(menuItem('Checkout').querySelector('.mval')!.textContent).toMatch(/^1 item · \$[\d.]+ · cart only$/);
     document.body.click();
     expect(view()).toBe('closed');
   });
@@ -78,9 +83,9 @@ describe('debug tools', () => {
     settings();
     expect($('.mtop').textContent).toBe('Settings');
     expect(shadow().querySelector('.mhead')).toBeNull();
-    expect(menuItem('Developer mode').getAttribute('role')).toBe('switch');
+    expect(menuItem('Developer mode').getAttribute('role')).toBe('menuitemcheckbox');
     expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
-    expect([...shadow().querySelectorAll('.mseg [role=group]')].map((g) => g.getAttribute('aria-label'))).toEqual([
+    expect([...shadow().querySelectorAll('.menu [role=group]')].map((g) => g.getAttribute('aria-label'))).toEqual([
       'Theme',
       'Position',
     ]);
@@ -329,11 +334,11 @@ describe('debug tools', () => {
     const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
     await developer();
     expect(menuItem('Journey').textContent).toBe('Journey1 page in this tab');
-    expect($('.mfoot').textContent).toContain('Debug stays on in this tab until you turn it off.');
+    expect($('.mnote').textContent).toBe('Debug stays on in this tab until you turn it off.');
     menuItem('Reset saved data').click();
     expect(assign).not.toHaveBeenCalled();
     await vi.waitFor(() =>
-      expect($('.mfoot > p').textContent).toBe("Click again to clear this funnel's cart, form and order."),
+      expect($('.mnote').textContent).toBe("Click again to clear this funnel's cart, form and order."),
     );
     expect(menuItem('Reset saved data').dataset.variant).toBe('destructive');
     expect(view()).toBe('menu');
@@ -435,16 +440,13 @@ describe('debug tools', () => {
     await start();
     expect($('.root').classList.contains('right')).toBe(true);
     settings();
-    const side = (label: string) =>
-      [...shadow().querySelectorAll<HTMLButtonElement>('[aria-label="Position"] button')].find(
-        (b) => b.textContent === label,
-      )!;
-    expect(side('Right').getAttribute('aria-pressed')).toBe('true');
+    const side = menuItem;
+    expect(side('Right').getAttribute('aria-checked')).toBe('true');
     side('Right').click();
     expect($('.root').classList.contains('right')).toBe(true);
     side('Left').click();
     expect($('.root').classList.contains('right')).toBe(false);
-    expect(side('Left').getAttribute('aria-pressed')).toBe('true');
+    expect(side('Left').getAttribute('aria-checked')).toBe('true');
     expect($('.head [aria-label="Move to the right"]')).not.toBeNull();
   });
 
@@ -514,16 +516,13 @@ describe('debug tools', () => {
     } as unknown as MediaQueryList);
     await start();
     const dark = () => shadow().host.classList.contains('dark');
-    const theme = (label: string) =>
-      [...shadow().querySelectorAll<HTMLButtonElement>('[aria-label="Theme"] button')].find(
-        (b) => b.textContent === label,
-      )!;
+    const theme = menuItem;
     settings();
-    expect(theme('Auto').getAttribute('aria-pressed')).toBe('true');
+    expect(theme('Auto').getAttribute('aria-checked')).toBe('true');
     expect(dark()).toBe(true);
     theme('Light').click();
     expect(dark()).toBe(false);
-    expect(theme('Light').getAttribute('aria-pressed')).toBe('true');
+    expect(theme('Light').getAttribute('aria-checked')).toBe('true');
     expect(Object.values(sessionStorage).some((v) => v.includes('"theme":"light"'))).toBe(true);
     theme('Dark').click();
     expect(dark()).toBe(true);

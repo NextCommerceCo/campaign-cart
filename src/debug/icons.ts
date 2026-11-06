@@ -16,7 +16,6 @@ export const ICONS = {
   cart: lucide(
     '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
   ),
-  card: lucide('<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>'),
   chevron: lucide('<path d="m6 9 6 6 6-6"/>'),
   plus: lucide('<path d="M5 12h14"/><path d="M12 5v14"/>'),
   fail: lucide('<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'),
@@ -50,6 +49,9 @@ export const ICONS = {
     '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
   ),
   back: lucide('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
+  tick: lucide('<path d="M20 6 9 17l-5-5"/>'),
+  reset: lucide('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+  power: lucide('<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>'),
   list: lucide(
     '<path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/>',
   ),

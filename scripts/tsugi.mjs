@@ -8,6 +8,7 @@ const COMPONENTS = [
   'button',
   'card',
   'dialog',
+  'dropdown',
   'empty',
   'input',
   'journey',
@@ -15,7 +16,6 @@ const COMPONENTS = [
   'native-select',
   'payment-icon',
   'scrollbar',
-  'stat',
   'tabs',
   'timeline',
 ];

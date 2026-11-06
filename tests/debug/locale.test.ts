@@ -9,7 +9,11 @@ const $ = <E extends HTMLElement = HTMLElement>(selector: string) => shadow().qu
 const view = () => $('.root').dataset.view;
 const body = () => $('.body').textContent!;
 const menuItem = (label: string) =>
-  [...shadow().querySelectorAll<HTMLElement>('.menu button')].find((b) => b.firstChild!.textContent === label)!;
+  [
+    ...shadow().querySelectorAll<HTMLElement>(
+      '.menu :is([role=menuitem], [role=menuitemcheckbox], [role=menuitemradio])',
+    ),
+  ].find((b) => b.querySelector(':scope > span:not(.icon):not(.mval)')?.firstChild?.textContent === label)!;
 const select = (label: string) => $<HTMLSelectElement>(`.lset select[aria-label="${label}"]`);
 const choose = (label: string, value: string) => {
   select(label).value = value;
@@ -275,7 +279,7 @@ describe('locale tab', () => {
   });
 
   it('sums up the country, currency and language in the menu, marked when they differ from geo', async () => {
-    const value = () => menuItem('Locale').querySelector('.value')!;
+    const value = () => menuItem('Locale').querySelector('.mval')!;
     const differs = geoAnswers(GEO);
     await start('', { fetch: differs.fetch });
     $('.fab').click();
