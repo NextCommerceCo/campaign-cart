@@ -238,30 +238,49 @@ describe('debug tools', () => {
     expect(details('campaign').open).toBe(false);
   });
 
-  it('lists the public events as next.on gets them, newest first, and filters them by name', async () => {
+  it('groups the public events into bursts, newest first, each in order with what it carried, and keeps them out of the logs', async () => {
     const next = await start();
     const got: unknown[] = [];
     next.on('cart.added', (_data, event) => got.push(event));
+    await new Promise((ready) => next.on('ready', ready));
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 5000);
     await next.actions.addItem(1);
+    vi.useRealTimers();
     await developer();
     menuItem('Events').click();
-    const rows = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
-    await vi.waitFor(() => expect(body()).toContain('cart.added'));
-    expect(body()).toMatch(/\d+ events on this page, newest first/);
-    expect(body()).toContain('sdk.ready');
+    const groups = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
+    const names = (group: HTMLDetailsElement) =>
+      [...group.querySelectorAll(':scope > details > summary')].map(
+        (s) => s.textContent!.match(/ ms([a-z]+\.[a-z]+)/)![1],
+      );
+    await vi.waitFor(() => expect(groups()).toHaveLength(2));
+    expect(body()).toMatch(/\d+ events in 2 bursts, newest first/);
     expect(body()).not.toContain('campaign.loaded');
-    const names = rows().map((d) => d.querySelector('summary')!.textContent!.match(/[a-z]+\.[a-z]+/)![0]);
-    expect(names.indexOf('cart.added')).toBeLessThan(names.indexOf('sdk.ready'));
-    const added = rows().find((d) => d.querySelector('summary')!.textContent!.includes('cart.added'))!;
+    const [newest, older] = groups() as [HTMLDetailsElement, HTMLDetailsElement];
+    expect([newest.open, older.open]).toEqual([true, false]);
+    expect(older.querySelector('summary')!.textContent).toContain('sdk.ready');
+    expect(names(newest).indexOf('cart.added')).toBeLessThan(names(newest).indexOf('cart.calculated'));
+    const added = [...newest.querySelectorAll<HTMLDetailsElement>(':scope > details')].find((d) =>
+      d.querySelector('summary')!.textContent!.includes('cart.added'),
+    )!;
+    expect(added.querySelector('summary')!.textContent).toMatch(/^\+\d+ mscart\.added .+ 0→1$/);
+    expect(body()).not.toContain('{event_id');
     added.open = true;
     const { event_id, session_id } = got[0] as { event_id: string; session_id: string };
     expect(added.textContent).toContain(event_id);
     expect(added.textContent).toContain(session_id);
     expect(added.textContent).toContain('object "cart"');
     const filter = $<HTMLInputElement>('input');
+    const lone = () => groups().map((d) => d.querySelector('summary')!.textContent!.match(/\d([a-z]+\.[a-z]+)/)![1]);
     filter.value = 'Cart.Add';
     filter.dispatchEvent(new Event('input'));
-    expect(rows().map((d) => d.querySelector('summary')!.textContent)).toEqual([expect.stringContaining('cart.added')]);
+    expect(lone()).toEqual(['cart.added']);
+    filter.value = '0→1';
+    filter.dispatchEvent(new Event('input'));
+    expect(lone()).toEqual(['cart.added']);
+    tab('logs');
+    expect(body()).not.toMatch(/event (sdk|cart)\./);
   });
 
   it('filters the logs', async () => {

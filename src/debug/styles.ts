@@ -79,6 +79,8 @@ summary:hover,.row:hover{background:var(--accent)}
 details details,details>.row{margin-left:14px}
 .key,.name{color:var(--purple)}.s,.note{color:var(--success)}.n{color:var(--info)}.b{color:var(--warning)}
 .time{margin-right:8px}
+.egroup>summary{display:flex;align-items:baseline;gap:6px}
+.eburst{margin-left:auto;font-size:11px}
 .ecard{margin-bottom:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer}
 .ecard:hover{border-color:var(--info)}
 .ecard.bad{border-left:3px solid var(--destructive)}

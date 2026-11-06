@@ -257,10 +257,7 @@ describe('locale tab', () => {
     openLocale();
     await answered();
     expect(notes()).toEqual([
-      [
-        "THB isn't one of this campaign's currencies, so a shopper from Thailand sees the campaign's default currency.",
-        'lwarn',
-      ],
+      ["THB isn't offered, so a shopper from Thailand sees the default currency.", 'lwarn'],
       ["Thailand isn't a shipping country, so the checkout opens on United States.", 'lwarn'],
       ['The browser asks for th-TH; texts are in English.', ''],
     ]);
@@ -272,7 +269,7 @@ describe('locale tab', () => {
     openLocale();
     await answered();
     expect(notes()).toEqual([
-      ["A shopper from Thailand sees the campaign's default currency; a link with ?currency=EUR shows EUR.", ''],
+      ['A shopper from Thailand sees the default currency; ?currency=EUR shows EUR.', ''],
       ['The checkout opens on Thailand.', ''],
       ['The browser asks for ja-JP, a language without texts here; texts are in English.', ''],
     ]);

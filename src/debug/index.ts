@@ -205,7 +205,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         return [
           empty(
             'No issues',
-            'Nothing on this page needs a look: every SDK attribute resolves, the journey, checkout and analytics found no problems, and no warnings were logged.',
+            'Every SDK attribute resolves, the journey, checkout and analytics found nothing, and no warnings were logged.',
             'check',
           ),
           before,
@@ -366,14 +366,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   });
   const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');
   document.addEventListener('click', outside, true);
-  engine.on(
-    '*',
-    (e) => {
-      flow.record(e);
-      engine.log.debug(`event ${e.name}`, e.data);
-    },
-    { replay: true },
-  );
+  engine.on('*', (e) => flow.record(e), { replay: true });
   engine.subscribe(later);
   engine.log.stream(
     (entry) => {
