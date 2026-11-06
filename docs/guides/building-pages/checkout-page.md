@@ -79,7 +79,9 @@ with an error `data-next-invalid`; its message reads as `checkout.errors.<field>
 [data-next-address](../attribute-reference/widgets/data-next-address.md) draws the address for the
 selected country: its fields, order, labels and postcode format. The country list is the
 campaign's shipping countries. The billing address hides while `billing_same_as_shipping` is
-ticked. The phone field gets the country's flag and mask.
+ticked. The phone field gets the country's flag and mask. Labels and messages come in the
+campaign's language, or the page's; see [Language](../attribute-reference/setup/language.md) for
+the page's own wording.
 
 As soon as the checkout has started and the shopper has a name and an email, the checkout saves
 them as a lead (`user.created`), the cart that `cart.abandoned` follows up. `data-next-lead` changes

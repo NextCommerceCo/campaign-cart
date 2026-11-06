@@ -10,13 +10,13 @@ Every attribute a page writes has one role, and each role has its twin in JavaSc
 from one object model: the objects `next.query()` returns and events carry, with the same
 snake_case field names.
 
-| Role                                      | Attributes                                                                               | In JavaScript                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------ |
-| [Objects](#objects): things with state    | `data-next-selector`, `data-next-option`, `data-next-checkout`, `data-next-promotion`    | `next.query('selector.main')`  |
-| [Display](#display): values into the page | `data-next-query`, `data-next-show`, `data-next-hide`, `data-next-each`, `data-next-for` | `next.query()`, `next.watch()` |
-| [Actions](#actions): buttons and forms    | `data-next-action`                                                                       | `next.actions.<name>()`        |
-| [Inputs](#inputs)                         | `data-next-field`                                                                        | `checkout.*` paths             |
-| [Widgets](#widgets): UI the SDK draws     | `data-next-address`, `data-next-payment`, `data-next-express`                            | —                              |
+| Role                                      | Attributes                                                                                                 | In JavaScript                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| [Objects](#objects): things with state    | `data-next-selector`, `data-next-option`, `data-next-checkout`, `data-next-promotion`                      | `next.query('selector.main')`  |
+| [Display](#display): values into the page | `data-next-query`, `data-next-show`, `data-next-hide`, `data-next-each`, `data-next-for`, `data-next-i18n` | `next.query()`, `next.watch()` |
+| [Actions](#actions): buttons and forms    | `data-next-action`                                                                                         | `next.actions.<name>()`        |
+| [Inputs](#inputs)                         | `data-next-field`                                                                                          | `checkout.*` paths             |
+| [Widgets](#widgets): UI the SDK draws     | `data-next-address`, `data-next-payment`, `data-next-express`                                              | —                              |
 
 Every other attribute is a parameter of one of these, named after a field of the model:
 `data-next-shipping-id="3"` is `shipping_id: 3`, on an option and on an `addItem` button alike.
@@ -39,6 +39,7 @@ Pages built with the earlier attributes keep working: see [Legacy attributes](at
 | [Loader script](attribute-reference/setup/loader-script.md)   | `data-campaign`, `data-funnel`: loading the SDK                       |
 | [URL parameters](attribute-reference/setup/url-parameters.md) | `forcePackageId`, `forceBundleId`, `reset`, `debug`, kept parameters  |
 | [Page state](attribute-reference/setup/page-state.md)         | What the SDK sets for CSS: `data-next-ready`, `data-next-selected`, … |
+| [Language](attribute-reference/setup/language.md)             | `nextConfig.locale`, `nextConfig.translations`: prices and texts      |
 
 ## Objects
 
@@ -61,6 +62,7 @@ Pages built with the earlier attributes keep working: see [Legacy attributes](at
 | [data-next-hide](attribute-reference/display/data-next-hide.md)   | Hides on a condition                                  |
 | [data-next-each](attribute-reference/display/data-next-each.md)   | One copy of a template per item of a list             |
 | [data-next-for](attribute-reference/display/data-next-for.md)     | The object children read short paths from             |
+| [data-next-i18n](attribute-reference/display/data-next-i18n.md)   | Text or an attribute in the page's language           |
 
 ## Actions
 
