@@ -22,6 +22,7 @@ import {
   removeLegacyPersonalData,
 } from './compat/legacy/globals';
 import { localeOf } from './engine/format';
+import { trackingIgnored } from './engine/params';
 import { textsIn } from './engine/texts';
 
 declare const __VERSION__: string;
@@ -135,7 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         arrived,
         reset: () => location.assign(`${location.pathname}?reset=1`),
         off: () => location.assign(`${location.pathname}?debug=0`),
-        analytics: readLegacyAnalytics,
+        analytics: () => ({ ...readLegacyAnalytics(), ignored: trackingIgnored(engine.getState().visit.params) }),
       }),
     );
   }
@@ -253,7 +254,9 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     announceLegacyReady(next);
     runReadyQueue(next, engine.log);
     const analytics = legacyAnalytics(engine.log);
-    if (analytics.enabled) {
+    const ignored = trackingIgnored(engine.getState().visit.params);
+    if (ignored) engine.log.info('analytics off for this tab: ?ignore=true (?ignore=false turns it back on)');
+    if (analytics.enabled && !ignored) {
       const start = () =>
         import('./analytics').then((m) =>
           m.startAnalytics(engine, {

@@ -211,6 +211,12 @@ describe('setup notes', () => {
     expect(texts(ON, true)).toEqual([]);
   });
 
+  it('says analytics is off for the tab on ?ignore=true, and how to turn it back on', () => {
+    expect(texts({ ...ON, ignored: true }, false)).toEqual([
+      [false, 'Analytics is off for this tab: ?ignore=true. Open a page with ?ignore=false to turn it back on.'],
+    ]);
+  });
+
   it('names the nextConfig key that turns a provider off, and providers that are not built in', () => {
     const config = { enabled: true, nextCampaign: false, dataLayer: false, unsupported: ['custom'] };
     expect(texts(config, false)).toEqual([

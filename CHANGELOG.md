@@ -56,6 +56,7 @@ The SDK is rebuilt around one engine that holds the campaign, cart, checkout and
 - **RudderStack is a built-in destination again**, off until `nextConfig.analytics.destinations.rudderstack` or the 0.4.x `providers.rudderstack.enabled: true` turns it on. It makes the calls 0.4.x made, with the same event names and properties (`page()` with a `<Page type> Page View` track, `identify()` at the lead and before each `Order Completed`, `Product Added`, `Checkout Started`, `Order Completed`, …), so RudderStack destinations and warehouse tables keep working. It loads a chunk of about 3 KB and waits for the snippet's `ready()`.
 - **A custom analytics endpoint is not built in.** `providers.custom` logs a warning; a listener sends each event: `next.analytics.on('*', (event) => fetch(url, { method: 'POST', keepalive: true, body: JSON.stringify(event) }))`.
 - **`providers.facebook.enabled: true` sends to the Meta pixel again**, as in 0.4.x: with `storeName`, an order's `Purchase` has `eventID: '<storeName>-<order number>'`, the id the store's server-side events use.
+- **`?ignore=true` turns tracking off for the rest of the tab, as in 0.4.x**: nothing reaches `next.analytics.on`, the `dataLayer` or any destination. New: `?ignore=false` turns it back on, and so does `?reset=1`.
 - **Each destination has a page in the Analytics Reference**: every vendor event it sends, its fields, a link to the vendor's docs and an example recorded from the SDK.
 
 ## [0.4.43] — 2026-10-20 — Shop Pay Support

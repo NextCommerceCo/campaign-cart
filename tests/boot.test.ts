@@ -458,6 +458,23 @@ describe('boot', () => {
     expect(all).toContain('page_viewed');
   });
 
+  it('sends no tracking for the rest of the tab after ?ignore=true, until ?ignore=false (0.4.x)', async () => {
+    const pages: string[][] = [];
+    const open = async (url: string) => {
+      history.replaceState(null, '', url);
+      document.documentElement.removeAttribute('data-next-ready');
+      const views: string[] = [];
+      boot(config, Promise.resolve(campaign)).analytics.on('*', (e) => views.push(e.event_type));
+      pages.push(views);
+      await vi.waitFor(() => expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true));
+    };
+    await open('/lp/?ignore=true');
+    await open('/lp/checkout/');
+    await open('/lp/checkout/?ignore=false');
+    await vi.waitFor(() => expect(pages[2]).toContain('page_viewed'));
+    expect(pages.slice(0, 2)).toEqual([[], []]);
+  });
+
   it('keeps the SDK’s internal events off next.on: tracking events come through next.analytics.on', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const next = boot(config, Promise.resolve(campaign));

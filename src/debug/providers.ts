@@ -6,6 +6,8 @@ export interface ProviderConfig {
   nextCampaign: boolean;
   dataLayer: boolean;
   unsupported: string[];
+  /** `?ignore=true` is on this tab. */
+  ignored?: boolean;
 }
 
 export interface Note {
@@ -188,6 +190,13 @@ export function setupNotes(config: ProviderConfig, started: boolean): Note[] {
   }));
   if (!config.enabled)
     return [{ warn: false, text: 'Analytics is off: nextConfig.analytics.enabled is false.' }, ...unsupported];
+  if (config.ignored)
+    return [
+      {
+        warn: false,
+        text: 'Analytics is off for this tab: ?ignore=true. Open a page with ?ignore=false to turn it back on.',
+      },
+    ];
   const gtm = Object.keys(win.google_tag_manager ?? {}).some((k) => k.startsWith('GTM-'));
   const script = document.querySelector(NEXT_SCRIPT) ? 'did not load' : 'is not on the page';
   const notes: Array<Note | false> = [

@@ -13,6 +13,9 @@ export const ONE_SHOT_PARAMS = [
 const ATTRIBUTION =
   /^(utm_\w+|gclid|gbraid|wbraid|fbclid|ttclid|msclkid|clickid|evclid|affid|aff|sub\d|subaffiliate\d|funnel|currency)$/;
 
+/** `?ignore=true`: no tracking for the rest of the tab, until `?ignore=false`. Kept params carry it. */
+export const trackingIgnored = (params: Record<string, string>): boolean => params.ignore === 'true';
+
 export function parseForcePackages(raw: string | undefined): Array<{ packageId: number; quantity: number }> {
   if (!raw) return [];
   return raw
