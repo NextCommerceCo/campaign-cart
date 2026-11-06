@@ -87,11 +87,11 @@ export interface SelectorEvents {
    * Pricing the options that have no price yet starts; a toggle's line while it is off.
    * @group Selectors
    */
-  'selector.calculating': Selector;
+  'selector.pricing': Selector;
   /**
    * Every option has a price. Prices are kept 10 minutes and checked again once a page, so a later
    * page may get this at once and again when fresh prices arrive. A toggle is priced while it is off.
    * @group Selectors
    */
-  'selector.calculated': Selector;
+  'selector.priced': Selector;
 }

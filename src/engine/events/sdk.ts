@@ -8,7 +8,7 @@ import type { Selector } from './selectors';
 export type ErrorAction =
   | 'campaign.load'
   | 'cart.calculate'
-  | 'selector.calculate'
+  | 'selector.price'
   | 'coupon.check'
   | 'user.save'
   | 'address.load_rules'

@@ -199,7 +199,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
         requests.filter((r) => known[r.key]).map((r) => [r.card.id, known[r.key]!.summary]),
       );
       set(id, { quotes, quoting: false });
-      ctx.emit('selector.calculated', publicSelector(id));
+      ctx.emit('selector.priced', publicSelector(id));
     };
     const unpriced = requests.filter((r) => !known[r.key]);
     const unchecked = requests.filter((r) => !known[r.key] || !fetched[r.key]);
@@ -211,7 +211,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     inFlight.set(id, controller);
     if (unpriced.length) {
       set(id, { quoting: true });
-      ctx.emit('selector.calculating', publicSelector(id));
+      ctx.emit('selector.pricing', publicSelector(id));
     }
     try {
       const summaries = await Promise.all(
@@ -230,7 +230,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     } catch (err) {
       if (inFlight.get(id) !== controller) return;
       set(id, { quoting: false });
-      ctx.fail('selector.calculate', err);
+      ctx.fail('selector.price', err);
     } finally {
       if (inFlight.get(id) === controller) inFlight.delete(id);
     }

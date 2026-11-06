@@ -40,8 +40,8 @@ back/forward cache reloads and starts again.
 
 - `next.on` and `next.analytics.on` give a listener added later the events of that name this page
   already sent (its last 100; `sdk.ready` is never dropped), oldest first, then the new ones.
-- Past 100, the oldest `cart.updated`, `cart.calculating`, `cart.calculated`, `selector.calculating`
-  or `selector.calculated` goes first, then the oldest internal event, then any other.
+- Past 100, the oldest `cart.updated`, `cart.calculating`, `cart.calculated`, `selector.pricing`
+  or `selector.priced` goes first, then the oldest internal event, then any other.
 - A 0.4.x name gets only the events after the call; `campaign:loaded`, `currency:fallback`,
   `sdk:url-parameters-processed`, `error:occurred` and `checkout:started` are replayed too.
 
@@ -69,7 +69,7 @@ back/forward cache reloads and starts again.
 | -------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------ |
 | `campaign.load`      | The campaign cannot load                                | Stops at `failed`, without `sdk.ready`, when there is no saved copy; otherwise stays `ready` on the copy                                           | `html[data-next-error="campaign"]` | `network`, `auth`, `server`, `rejected`    |
 | `cart.calculate`     | The cart cannot be priced                               | The cart is unpriced: the summary keeps its totals from before the change; the next change prices again                                            | none                               | `network`, `server`, `rejected`            |
-| `selector.calculate` | Options or a toggle cannot be priced                    | Each option keeps its last price, else shows its package price; the next change prices again                                                       | none                               | `network`, `server`                        |
+| `selector.price`     | Options or a toggle cannot be priced                    | Each option keeps its last price, else shows its package price; the next change prices again                                                       | none                               | `network`, `server`                        |
 | `coupon.check`       | A coupon cannot be checked                              | The code is not applied; `applyCoupon` resolves `false`                                                                                            | `coupon.denied` (`check_failed`)   | `network`, `server`                        |
 | `user.save`          | The Open Cart cannot be created                         | Tries again on the next field change                                                                                                               | none                               | `network`, `server`, `rejected`            |
 | `address.load_rules` | The country list or a country's rules cannot load       | Uses the campaign's countries and the built-in checks                                                                                              | none                               | `network`, `server`                        |

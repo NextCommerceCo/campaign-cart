@@ -206,7 +206,7 @@
     "quantity": 1,
     "in_cart": false
   },
-  "selector.calculating": {
+  "selector.pricing": {
     "selector_id": "main",
     "type": "bundle",
     "option_id": "one",
@@ -259,7 +259,7 @@
       }
     ]
   },
-  "selector.calculated": {
+  "selector.priced": {
     "selector_id": "main",
     "type": "bundle",
     "option_id": "two",

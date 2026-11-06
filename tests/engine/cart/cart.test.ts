@@ -716,7 +716,7 @@ describe('cart', () => {
     expect(engine.cart.lines()).toEqual([{ package_id: 9, quantity: 1 }]);
   });
 
-  it('prices a toggle’s line while it is off with selector.calculating and selector.calculated, and carries the price on selector.selected', async () => {
+  it('prices a toggle’s line while it is off with selector.pricing and selector.priced, and carries the price on selector.selected', async () => {
     const { engine } = makeEngine();
     await engine.start();
     const seen: unknown[] = [];
@@ -736,9 +736,9 @@ describe('cart', () => {
     };
     const line = expect.objectContaining({ package_id: 9, quantity: 2 });
     expect(seen).toEqual([
-      ['selector.calculating', { ...off, lines: [line], quantity: 2, in_cart: false }],
+      ['selector.pricing', { ...off, lines: [line], quantity: 2, in_cart: false }],
       [
-        'selector.calculated',
+        'selector.priced',
         {
           ...off,
           lines: [expect.objectContaining({ package_id: 9, quantity: 2, total: 18 })],
@@ -766,7 +766,7 @@ describe('cart', () => {
     ]);
   });
 
-  it('reports a toggle it cannot price as sdk.error after its selector.calculating', async () => {
+  it('reports a toggle it cannot price as sdk.error after its selector.pricing', async () => {
     const failing = (async () => new Response('{}', { status: 502 })) as typeof fetch;
     const { engine } = makeEngine({ fetch: failing, campaign: Promise.resolve(campaign) });
     vi.spyOn(engine.log, 'error').mockImplementation(() => {});
@@ -775,7 +775,7 @@ describe('cart', () => {
     engine.on('*', (e) => seen.push(e.name));
     engine.toggles.price(9, 1);
     await flush();
-    expect(seen).toEqual(['selector.calculating', 'sdk.error']);
+    expect(seen).toEqual(['selector.pricing', 'sdk.error']);
   });
 
   it('names the checkout, and its step from the second step of a multi-step checkout', () => {

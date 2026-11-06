@@ -162,7 +162,7 @@ describe('order bump lifecycle', () => {
     await flush();
     const bump = document.querySelector('#bump')!;
     visible(bump, 0.3);
-    expect(seen).toEqual(['selector.calculating toggle:9 9x2 ', 'selector.calculated toggle:9 9x2 18']);
+    expect(seen).toEqual(['selector.pricing toggle:9 9x2 ', 'selector.priced toggle:9 9x2 18']);
     visible(bump, 0.5);
     (bump as HTMLElement).click();
     await flush();

@@ -76,7 +76,7 @@ The Checkout has:
 - `next.on` first replays the events of that name this page already sent, then each new one.
 - The page keeps its last 100 events. Past that it drops, in order:
   1. the oldest price updates (`cart.updated`, `cart.calculating`, `cart.calculated`,
-     `selector.calculating`, `selector.calculated`)
+     `selector.pricing`, `selector.priced`)
   2. the SDK's internal events
   3. the rest
 - `sdk.ready` and the newest event always stay. `ready` is the same event as `sdk.ready`.

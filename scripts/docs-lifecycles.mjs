@@ -200,12 +200,12 @@ const LIFECYCLES = {
   },
   selectors: {
     title: 'Selector lifecycle',
-    desc: 'A selector is bound and picks its option: ?forceBundleId, the one in the cart, data-next-selected, else the first; selector.viewed comes once a page, when half of it is on screen. Options with no price from the last 10 minutes are calculated (selector.calculating), then priced (selector.calculated); when every price is from the last 10 minutes it is priced at once, and those prices are checked again once a page (selector.calculated again). Picking another option sends selector.selected. Changing the picked option’s quantity or a slot sends selector.updated and prices again; a coupon change prices again without selector.updated. Pricing that fails sends sdk.error and moves to unpriced: each option keeps its last price, else the package price; the next change prices again. A toggle follows the same lifecycle, its line priced while it is off.',
+    desc: 'A selector is bound and picks its option: ?forceBundleId, the one in the cart, data-next-selected, else the first; selector.viewed comes once a page, when half of it is on screen. Options with no price from the last 10 minutes are being priced (selector.pricing), then priced (selector.priced); when every price is from the last 10 minutes it is priced at once, and those prices are checked again once a page (selector.priced again). Picking another option sends selector.selected. Changing the picked option’s quantity or a slot sends selector.updated and prices again; a coupon change prices again without selector.updated. Pricing that fails sends sdk.error and moves to unpriced: each option keeps its last price, else the package price; the next change prices again. A toggle follows the same lifecycle, its line priced while it is off.',
     rows: 3,
     boxes: [
       { row: 0, title: 'picked', sub: [code('selector.viewed'), 'once half of it is on screen'] },
-      { row: 1, title: 'calculating', sub: [code('selector.calculating')], tone: 'active' },
-      { row: 2, title: 'priced', sub: [code('selector.calculated')], tone: 'success' },
+      { row: 1, title: 'pricing', sub: [code('selector.pricing')], tone: 'active' },
+      { row: 2, title: 'priced', sub: [code('selector.priced')], tone: 'success' },
       { col: 'side', row: 1, title: 'unpriced', sub: [code('sdk.error')], tone: 'failure' },
     ],
     parts: () => {

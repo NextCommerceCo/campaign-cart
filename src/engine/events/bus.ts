@@ -85,8 +85,8 @@ const PUBLIC_EVENTS: Record<Exclude<EventName, InternalEventName>, true> = {
   'selector.selected': true,
   'selector.updated': true,
   'selector.deselected': true,
-  'selector.calculating': true,
-  'selector.calculated': true,
+  'selector.pricing': true,
+  'selector.priced': true,
   'cart.updated': true,
   'cart.calculating': true,
   'cart.calculated': true,
@@ -129,8 +129,8 @@ const STATE_SYNC: ReadonlySet<EventName> = new Set<EventName>([
   'cart.updated',
   'cart.calculating',
   'cart.calculated',
-  'selector.calculating',
-  'selector.calculated',
+  'selector.pricing',
+  'selector.priced',
 ]);
 
 /** @internal */

@@ -116,7 +116,7 @@ describe('selectors', () => {
     await engine.selectors.register('gift', CARDS, 'select', 'two');
     await engine.selectors.register('plain', CARDS, 'select');
     await engine.selectors.register('main', CARDS, 'swap', 'one');
-    expect(seen.filter((s) => !s.startsWith('selector.calculat'))).toEqual([
+    expect(seen.filter((s) => !s.startsWith('selector.pric'))).toEqual([
       'selector.bound main:two',
       'selector.bound side:two',
       'selector.bound gift:two',
@@ -359,12 +359,12 @@ describe('selectors', () => {
       return seen;
     };
     const first = await page();
-    expect(first.map(([name]) => name)).toEqual(['selector.calculating', 'selector.calculated']);
+    expect(first.map(([name]) => name)).toEqual(['selector.pricing', 'selector.priced']);
     for (const [, data] of first) expect(data).toMatchObject({ selector_id: 'main', type: 'bundle', option_id: 'one' });
     expect(first[0]![1].lines[0]).not.toHaveProperty('price');
     expect(first[1]![1].lines).toMatchObject([{ package_id: 1, price: expect.any(Number), total: expect.any(Number) }]);
     const second = await page();
-    expect(second.map(([name]) => name)).toEqual(['selector.calculated', 'selector.calculated']);
+    expect(second.map(([name]) => name)).toEqual(['selector.priced', 'selector.priced']);
     expect(second[0]![1].lines[0]).toHaveProperty('price');
   });
 
@@ -378,7 +378,7 @@ describe('selectors', () => {
     await engine.selectors.register('main', CARDS, 'select', 'one');
     expect(price(engine, 'bundle.one.price')).toBe('$24.50');
     await flush();
-    expect(totals(seen)).toEqual(['selector.calculated 24.5', 'selector.calculated 49']);
+    expect(totals(seen)).toEqual(['selector.priced 24.5', 'selector.priced 49']);
     expect(price(engine, 'bundle.one.price')).toBe('$49.00');
   });
 
@@ -391,7 +391,7 @@ describe('selectors', () => {
     const seen = record(fresh);
     await fresh.selectors.register('main', CARDS, 'select', 'one');
     await flush();
-    expect(totals(seen)).toEqual(['selector.calculating', 'selector.calculated 49']);
+    expect(totals(seen)).toEqual(['selector.pricing', 'selector.priced 49']);
 
     const cached = new MemoryStorage();
     await landingWithOffer(cached);
@@ -402,7 +402,7 @@ describe('selectors', () => {
     after.splice(0);
     await later.start();
     await flush();
-    expect(after.map(([name]) => name)).toEqual(['selector.calculating', 'selector.calculated']);
+    expect(after.map(([name]) => name)).toEqual(['selector.pricing', 'selector.priced']);
   });
 
   it('keeps the saved prices of selectors priced at the same time', async () => {
@@ -415,7 +415,7 @@ describe('selectors', () => {
       void engine.selectors.register('main', CARDS, 'select');
       void engine.selectors.register('side', cases, 'select');
       await flush();
-      return seen.filter(([name]) => name === 'selector.calculating').map(([, s]) => s.selector_id);
+      return seen.filter(([name]) => name === 'selector.pricing').map(([, s]) => s.selector_id);
     };
     expect(await page()).toEqual(['main', 'side']);
     expect(await page()).toEqual([]);
@@ -458,7 +458,7 @@ describe('selectors', () => {
     const { engine } = makeEngine();
     await engine.start();
     const calculated: Selector[] = [];
-    engine.on('selector.calculated', (e) => calculated.push(e.data));
+    engine.on('selector.priced', (e) => calculated.push(e.data));
     await engine.selectors.register('main', CARDS, 'swap', 'two');
     await engine.selectors.register('offer', [CARDS[0]!], 'offer');
     await flush();
@@ -494,10 +494,10 @@ describe('selectors', () => {
       await flush();
       await engine.cart.addItem(3);
       await flush();
-      expect(seen.splice(0)).toEqual(['selector.calculating', 'selector.calculated']);
+      expect(seen.splice(0)).toEqual(['selector.pricing', 'selector.priced']);
       await engine.cart.removeCoupon('SAVE10');
       await flush();
-      expect(seen).toEqual(['selector.calculating', 'selector.calculated']);
+      expect(seen).toEqual(['selector.pricing', 'selector.priced']);
     },
   );
 
@@ -555,7 +555,7 @@ describe('selectors', () => {
     await engine.start();
     await engine.selectors.register('offer', CARDS, 'offer');
     await flush();
-    expect(errors).toEqual(['selector.calculate']);
+    expect(errors).toEqual(['selector.price']);
     expect(price(engine, 'bundle.one.price')).toBe('$49.00');
   });
 });
