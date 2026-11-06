@@ -25,6 +25,8 @@ export interface SourceStep {
 
 export interface Source {
   headline: string;
+  /** How the tab arrived: an ad click (a platform's click id), a link with UTMs, a referral or a direct visit. */
+  entry: 'Ad click' | 'Campaign link' | 'Referral' | 'Direct';
   platforms: string[];
   params: SourceParam[];
   unset: string[];
@@ -145,15 +147,17 @@ export function readSource({ params, landing, current, attribution, cookies }: S
   const source = attribution.utm_source || referrer || 'direct';
   const medium = attribution.utm_medium || (referrer ? 'referral' : 'none');
   const affiliate = attribution.affiliate && `Affiliate ${attribution.affiliate}`;
+  const platforms = [
+    ...new Set([
+      ...rows.flatMap((r) => PLATFORMS.filter(([test]) => test.test(r.key)).map(([, name]) => name)),
+      ...(affiliate ? [affiliate] : []),
+    ]),
+  ];
 
   return {
     headline: `${source} / ${medium}${attribution.utm_campaign ? ` · ${attribution.utm_campaign}` : ''}`,
-    platforms: [
-      ...new Set([
-        ...rows.flatMap((r) => PLATFORMS.filter(([test]) => test.test(r.key)).map(([, name]) => name)),
-        ...(affiliate ? [affiliate] : []),
-      ]),
-    ],
+    entry: platforms.length ? 'Ad click' : attribution.utm_source ? 'Campaign link' : referrer ? 'Referral' : 'Direct',
+    platforms,
     params: rows,
     unset: UTMS.filter((k) => !(k in params)),
     ignored: trackingIgnored(params),

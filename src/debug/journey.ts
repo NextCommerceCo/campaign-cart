@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { format, localeOf } from '../engine/format';
-import { icon } from './icons';
+import { type IconName, icon } from './icons';
 import { sourceOf, sourceView } from './source-card';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import type { DetailModal } from './stream';
@@ -104,9 +104,22 @@ export function journeyView(
     return el;
   };
 
-  /** A tsugi journey step: its pill, a name and one muted line, then its page. */
-  const step = (pill: string, name: string, note: string, row: HTMLElement) =>
-    h('li', {}, h('header', {}, h('span', {}, pill), h('strong', {}, name), h('small', {}, note)), h('ul', {}, row));
+  /** A tsugi journey step: its pill and name, a muted note and its status badges, then its page. */
+  const step = (pill: string, name: string, note: string, badges: Child[], row: HTMLElement) =>
+    h(
+      'li',
+      {},
+      h(
+        'header',
+        {},
+        h('span', {}, pill),
+        h('strong', {}, name),
+        note && h('small', {}, note),
+        h('div', 'jtags', ...badges),
+      ),
+      h('ul', {}, row),
+    );
+  const marked = (name: IconName, variant: string, text: string) => badge(icon(name), variant, text);
 
   /** A picked page row: name and badges, path, then what it held and when. */
   const row = (name: Child[], path: string, figure: string, when: string, onclick: () => void) => {
@@ -134,19 +147,13 @@ export function journeyView(
       });
     return step(
       'Entry',
-      s.platforms.length || !s.headline.startsWith('direct') ? 'Ad click' : 'Direct',
-      warn ? `⚠ ${warn.label}: ${warn.detail}` : (s.steps[0]?.detail ?? ''),
-      h(
-        'li',
-        {},
-        row(
-          [s.headline, ...s.platforms.map((name) => badge(name, 'outline'))],
-          'Where this tab came from',
-          'Details',
-          clock(first.at),
-          open,
-        ),
-      ),
+      s.entry,
+      s.steps[0]?.tone === 'done' ? s.steps[0].detail : '',
+      [
+        ...s.platforms.map((name) => badge(name, 'outline')),
+        warn && marked('warn', 'warning', `${warn.label}: ${warn.detail}`),
+      ],
+      h('li', {}, row([s.headline], 'Where this tab came from', 'Details', clock(first.at), open)),
     );
   };
 
@@ -200,20 +207,23 @@ export function journeyView(
   const page = (p: PageVisit, i: number, pages: PageVisit[]) => {
     const next = pages[i + 1];
     const issues = p.marks.filter(bad).length;
-    const name = [
-      p.title || p.path,
-      !next && badge('Now', 'outline'),
-      issues > 0 && badge(`⚠ ${plural(issues, 'issue')}`, 'secondary'),
-    ];
+    const name = [p.title || p.path];
     const show = () => open(p, i, pages);
-    const note = [
-      next ? stayed(next.at - p.at) : 'open now',
-      p.reloads > 0 && (p.reloads > 1 ? `reloaded ×${p.reloads}` : 'reloaded'),
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    const badges = [
+      !next && badge('Now', 'info'),
+      p.reloads > 0 && marked('reset', 'outline', p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded'),
+      issues > 0 &&
+        marked('warn', p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning', plural(issues, 'issue')),
+    ];
+    const note = next ? stayed(next.at - p.at) : '';
     if (!p.upsell)
-      return step(`Step ${i + 1}`, KINDS[p.kind], note, h('li', {}, row(name, p.path, holding(p), clock(p.at), show)));
+      return step(
+        `Step ${i + 1}`,
+        KINDS[p.kind],
+        note,
+        badges,
+        h('li', {}, row(name, p.path, holding(p), clock(p.at), show)),
+      );
     const outcome = (label: string, picked: boolean) => {
       const el = h(
         'button',
@@ -232,7 +242,7 @@ export function journeyView(
       h('div', {}, outcome('Declined', p.upsell === 'declined'), outcome('Accepted', p.upsell === 'accepted')),
     );
     el.dataset.outcomes = '';
-    return step(`Step ${i + 1}`, KINDS[p.kind], note, el);
+    return step(`Step ${i + 1}`, KINDS[p.kind], note, badges, el);
   };
 
   const summary = (pages: PageVisit[]) => {

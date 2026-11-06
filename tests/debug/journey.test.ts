@@ -6,7 +6,7 @@ import { nodes } from '../../src/debug/view';
 import { makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 
-const visit = (session: Storage, path: string, kind: PageKind, storagePrefix?: string) => {
+const visit = (session: Storage, path: string, kind: PageKind, storagePrefix?: string, reload = false) => {
   const { engine } = makeEngine({ session, debug: true, storagePrefix });
   const debug = engine.attach((ctx) =>
     createDebug(ctx, {
@@ -15,7 +15,7 @@ const visit = (session: Storage, path: string, kind: PageKind, storagePrefix?: s
       title: path,
       kind,
       scope: 's1',
-      reload: false,
+      reload,
       reset: false,
       lines: engine.cart.lines(),
     }),
@@ -58,14 +58,14 @@ describe('journey tab', () => {
     expect(root.querySelector<HTMLElement>('.journey')!.dataset.orientation).toBe('vertical');
     expect(steps()).toEqual([
       [
-        'EntryDirectNone on the landing URL',
+        'EntryDirect',
         expect.stringMatching(/^direct \/ noneWhere this tab came fromDetails\d\d:\d\d:\d\d$/),
       ],
       [
         expect.stringMatching(/^Step 1Landing\d+s$/),
         expect.stringMatching(/^\/landing\/\/landing\/1 item · \$49\.00\d\d:\d\d:\d\d$/),
       ],
-      ['Step 2Checkoutopen now', expect.stringMatching(/^\/checkout\/Now\/checkout\/1 item · \$49\.00\d\d:\d\d:\d\d$/)],
+      ['Step 2CheckoutNow', expect.stringMatching(/^\/checkout\/\/checkout\/1 item · \$49\.00\d\d:\d\d:\d\d$/)],
     ]);
     expect([row(0), row(1), row(2)].map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'true', 'true']);
   });
@@ -95,7 +95,17 @@ describe('journey tab', () => {
   it('clears the journey down to this page', async () => {
     const { root, steps } = await setup();
     [...root.querySelectorAll<HTMLButtonElement>('.jsum .link')].find((b) => b.textContent === 'Clear')!.click();
-    expect(steps().map(([header]) => header)).toEqual(['EntryDirectNone on the landing URL', 'Step 1Checkoutopen now']);
+    expect(steps().map(([header]) => header)).toEqual(['EntryDirect', 'Step 1CheckoutNow']);
+  });
+
+  it('badges a reloaded page in its step heading', async () => {
+    const { root } = await setup(async (session) => {
+      visit(session, '/landing/', 'product', undefined, true);
+      visit(session, '/landing/', 'product', undefined, true);
+    });
+    expect(root.querySelectorAll('.journey > ol > li header')[1]!.textContent).toMatch(
+      /^Step 1Landing\d+sReloaded ×2$/,
+    );
   });
 
   it('opens the entry with where its values go', async () => {
@@ -156,8 +166,11 @@ describe('journey tab', () => {
     const detail = detailModal(new Set());
     const view = journeyView(engine, debug, { render: () => {}, show, detail, issues: () => 1 });
     root.replaceChildren(...nodes(view.view()));
-    const now = root.querySelectorAll<HTMLButtonElement>('.journey > ol > li button')[2]!;
-    expect(now.querySelector('span')!.textContent).toBe('/checkout/Now⚠ 1 issue');
+    const step = root.querySelectorAll<HTMLElement>('.journey > ol > li')[2]!;
+    expect(step.querySelector('header')!.textContent).toBe('Step 2CheckoutNow1 issue');
+    expect(step.querySelector<HTMLElement>('header .badge:last-child')!.dataset.variant).toBe('destructive');
+    const now = step.querySelector<HTMLButtonElement>('button')!;
+    expect(now.querySelector('span')!.textContent).toBe('/checkout/');
     now.click();
     const carry = detail.dialog.querySelector<HTMLElement>('.jcarry')!;
     expect([carry.textContent, carry.dataset.tone]).toEqual([

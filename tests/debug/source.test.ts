@@ -77,6 +77,16 @@ describe('source of a tab', () => {
     const s = readSource({ ...input({}, { landingPage: 'https://shop.test/', fbc: '' }), landing: undefined });
     expect(s.headline).toBe('direct / none');
     expect(s.platforms).toEqual([]);
+    expect(s.entry).toBe('Direct');
+  });
+
+  it('tells an ad click from a campaign link and a referral', () => {
+    expect(readSource(input(landed)).entry).toBe('Ad click');
+    expect(readSource(input({ utm_source: 'newsletter', utm_medium: 'email' }, { fbc: '' })).entry).toBe(
+      'Campaign link',
+    );
+    const referral = readSource(input({}, { landingPage: 'https://shop.test/', fbc: '' }));
+    expect([referral.headline, referral.entry]).toEqual(['l.facebook.com / referral', 'Referral']);
   });
 });
 
