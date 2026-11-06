@@ -99,16 +99,18 @@ describe('debug journey', () => {
     });
   });
 
-  it('marks a refused order, a payment left unpaid at the gateway and a paid order on their page', () => {
+  it('marks a stopped submit, a refused order, a payment left unpaid at the gateway and a paid order on their page', () => {
     const { engine, debug } = page(new MemoryStorage(), '/checkout/', { kind: 'checkout' });
     const checkout = engine.cart.currentCheckout();
     const error = { code: 'declined' as const, message: 'Card declined' };
+    engine.events.emit('checkout.invalid', { ...checkout, errors: { email: error } });
     engine.events.emit('checkout.failed', { ...checkout, error });
     engine.events.emit('payment.redirected', { method: 'paypal', ref_id: 'R1', url: 'https://pay.test/' });
     engine.events.emit('payment.failed', { method: 'paypal', ref_id: 'R1', error: { code: 'payment_failed' } });
     engine.events.emit('coupon.denied', { code: 'SAVE10', reason: 'duplicate' });
     engine.events.emit('order.paid', publicOrder(ORDER));
     expect(debug.state().pages[0]!.marks.map((m) => [m.tone, m.text])).toEqual([
+      ['warn', 'Submit stopped: email'],
       ['warn', 'Order refused: Card declined'],
       [undefined, 'Left for the payment gateway to pay order R1'],
       ['warn', 'Payment for order R1 not completed at the gateway'],

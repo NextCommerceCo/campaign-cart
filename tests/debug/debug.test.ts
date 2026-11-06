@@ -201,7 +201,7 @@ describe('debug tools', () => {
     expect(view()).toBe('panel');
     expect($('[data-tab="checkout"]').getAttribute('aria-selected')).toBe('true');
     tab('journey');
-    expect(shadow().querySelectorAll('.journey > ol > li')).toHaveLength(3);
+    expect(shadow().querySelectorAll('.jline > .jpg')).toHaveLength(3);
     $('[aria-label="Close"]').click();
     $('.fab').click();
     expect(menuItem('Journey').textContent).toBe('Journey2 pages in this tab');

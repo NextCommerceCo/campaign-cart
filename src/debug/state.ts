@@ -183,7 +183,10 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   );
   on('checkout.submitted', (e) => change({}, { at: e.at, text: 'Order submitted' }));
   on('checkout.invalid', (e) =>
-    change({}, { at: e.at, text: `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}` }),
+    change(
+      {},
+      { at: e.at, tone: 'warn', text: `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}` },
+    ),
   );
   on('checkout.completed', (e) =>
     change({}, { at: e.at, tone: 'done', text: `Checkout completed: order ${e.data.ref_id}` }),

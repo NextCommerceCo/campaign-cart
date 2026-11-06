@@ -3,7 +3,8 @@ import { format, localeOf } from '../engine/format';
 import { icon } from './icons';
 import { sourceOf, sourceView } from './source-card';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
-import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
+import type { DetailModal } from './stream';
+import { badge, type Child, clock, empty, h, plural } from './view';
 
 const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
 
@@ -23,217 +24,193 @@ const KINDS: Record<PageKind, string> = {
   receipt: 'Receipt',
   page: 'Page',
 };
-const SVG = 'http://www.w3.org/2000/svg';
-const GUTTER = 12;
-const RADIUS = 6;
+const CARRY = /^The cart \(|^Storage scope changed/;
 
 const stayed = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
-const problems = (p: PageVisit) => p.marks.filter((m) => m.tone === 'warn' || m.tone === 'error').length;
+const bad = (m: Mark) => m.tone === 'warn' || m.tone === 'error';
 
-export function drawLines(journey: HTMLElement) {
-  const list = journey.querySelector<HTMLElement>(':scope > ol');
-  if (!list) return;
-  const box = list.getBoundingClientRect();
-  const svg = document.createElementNS(SVG, 'svg');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('width', String(list.offsetWidth));
-  svg.setAttribute('height', String(list.offsetHeight));
-  Object.assign(svg.style, { left: `${list.offsetLeft}px`, top: `${list.offsetTop}px` });
-  const rows = [...list.querySelectorAll(':scope > li button')].map((b) => b.getBoundingClientRect());
-  rows.slice(0, -1).forEach((a, i) => {
-    const b = rows[i + 1]!;
-    const [x1, x2] = [a.left - box.left, b.left - box.left];
-    const [y1, y2] = [a.top + a.height / 2 - box.top, b.top + b.height / 2 - box.top];
-    const gutter = x1 - GUTTER;
-    const path = document.createElementNS(SVG, 'path');
-    path.setAttribute(
-      'd',
-      `M ${x1} ${y1} H ${gutter + RADIUS} Q ${gutter} ${y1} ${gutter} ${y1 + RADIUS} V ${y2 - RADIUS} Q ${gutter} ${y2} ${gutter + RADIUS} ${y2} H ${x2}`,
+export function journeyView(
+  engine: Engine,
+  debug: DebugActions,
+  ui: {
+    render: () => void;
+    show: (tab: 'analytics' | 'issues') => void;
+    detail: DetailModal;
+    /** What the Issues tab counts: this page's and the earlier pages' issues. */
+    issues: () => number;
+  },
+) {
+  const toggled = new Map<string, boolean>();
+
+  const money = (p: PageVisit) =>
+    p.total === undefined
+      ? ''
+      : format(
+          { type: 'money', value: Number(p.total) },
+          p.currency ?? engine.getState().campaign?.currency,
+          localeOf(engine.getState()),
+        );
+  const holding = (p: PageVisit) =>
+    p.order ? `Order ${p.order}` : p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty cart';
+
+  const kind = (label: string, value: string) => {
+    const el = h('span', 'jkind', label);
+    el.dataset.kind = value;
+    return el;
+  };
+  const link = (text: string, onclick: () => void) => h('button', { type: 'button', className: 'link', onclick }, text);
+
+  const moment = (m: Mark) => {
+    const el = h(
+      'div',
+      'jmom',
+      h('span', 'time', clock(m.at)),
+      h('span', {}, m.tone === 'done' && icon('check'), m.text),
     );
-    svg.append(path);
-  });
-  journey.querySelector(':scope > svg')?.remove();
-  journey.append(svg);
-}
+    if (m.tone) el.dataset.tone = m.tone;
+    return el;
+  };
 
-export function journeyView(engine: Engine, debug: DebugActions, ui: { render: () => void }) {
-  let picked: number | 'source' | undefined;
-  let drawn: HTMLElement | undefined;
+  const block = (key: string, state: string, open: boolean, header: Child[], body: Child[]) => {
+    const el = h('details', 'jpg', h('summary', 'jhd', h('span', 'jdot'), ...header), ...body);
+    el.dataset.state = state;
+    el.open = toggled.get(key) ?? open;
+    el.addEventListener('toggle', () => toggled.set(key, el.open));
+    return el;
+  };
 
-  const money = (p: PageVisit) => {
-    const { campaign } = engine.getState();
-    if (p.total === undefined) return '—';
-    return format(
-      { type: 'money', value: Number(p.total) },
-      p.currency ?? campaign?.currency,
-      localeOf(engine.getState()),
+  const source = (first: PageVisit) => {
+    const s = sourceOf(engine);
+    const label = s.platforms.length || !s.headline.startsWith('direct') ? 'Ad click' : 'Direct';
+    const warn = s.steps.some((step) => step.tone === 'warn');
+    return block(
+      'source',
+      warn ? 'bad' : 'done',
+      warn,
+      [
+        h('span', 'jtitle', kind(label, 'source'), s.headline, ...s.platforms.map((name) => badge(name, 'outline'))),
+        h('span', 'jright', h('small', {}, clock(first.at))),
+      ],
+      [
+        h(
+          'p',
+          'jchecks',
+          ...s.steps.map((step) => {
+            const el = h(
+              'span',
+              {},
+              `${step.tone === 'done' ? '✓' : step.tone === 'warn' ? '⚠' : '–'} ${step.label}: ${step.detail}`,
+            );
+            el.dataset.tone = step.tone;
+            return el;
+          }),
+          link('Details', () =>
+            ui.detail.show({
+              title: 'Source',
+              subtitle: `${s.headline} · where this tab came from`,
+              sections: [['Parameters', [sourceView(engine)]]],
+              payloads: [],
+            }),
+          ),
+        ),
+      ],
     );
   };
 
-  const step = (p: PageVisit, i: number, pages: PageVisit[], selected: number) => {
+  const page = (p: PageVisit, i: number, pages: PageVisit[]) => {
     const next = pages[i + 1];
-    const issues = problems(p);
-    const row = h(
-      'button',
-      {
-        type: 'button',
-        onclick: () => {
-          picked = i;
-          ui.render();
-        },
-      },
+    const issues = p.marks.filter(bad).length;
+    const moments = p.marks.filter((m) => !CARRY.test(m.text));
+    return block(
+      `p${p.at}`,
+      !next ? 'now' : issues ? 'bad' : 'done',
+      !next || issues > 0 || pages.length <= 3,
+      [
+        h(
+          'span',
+          'jtitle',
+          kind(KINDS[p.kind], p.kind),
+          h('span', 'jname', p.title || p.path),
+          !next && badge('Now', 'outline'),
+          p.reloads > 0 && badge(p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded', 'secondary'),
+          p.upsell &&
+            badge(p.upsell === 'accepted' ? 'Accepted' : 'Declined', p.upsell === 'accepted' ? 'success' : 'outline'),
+          issues > 0 && badge(plural(issues, 'issue'), 'destructive'),
+        ),
+        h(
+          'span',
+          'jright',
+          h('b', {}, holding(p)),
+          h('small', {}, `${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'now'}`),
+        ),
+      ],
+      [
+        h('p', 'jpath', p.path, h('span', 'devonly', ` · storage ${p.scope}`)),
+        h(
+          'div',
+          'jmoms',
+          ...(moments.length ? moments.map(moment) : [h('p', 'jnote', 'Nothing happened to the cart here.')]),
+        ),
+        h(
+          'p',
+          'jnote',
+          `${plural(p.sent.length, 'tracking event')} sent`,
+          !next && p.sent.length > 0 && link('See Analytics', () => ui.show('analytics')),
+        ),
+      ],
+    );
+  };
+
+  const carry = (before: PageVisit, p: PageVisit): Child => {
+    const lost = p.marks.find((m) => CARRY.test(m.text));
+    const text =
+      lost?.text ?? (before.order ? `Order ${before.order} carried over` : before.units ? 'Cart carried over' : '');
+    if (!text) return null;
+    const el = h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`);
+    el.dataset.tone = lost?.tone ?? 'done';
+    return el;
+  };
+
+  const summary = (pages: PageVisit[]) => {
+    const now = pages.at(-1)!;
+    const issues = ui.issues();
+    return h(
+      'div',
+      'jsum',
       h(
         'span',
-        {},
-        p.title || p.path,
-        !next && badge('Now', 'outline'),
-        p.reloads > 0 && badge(p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded', 'secondary'),
-        p.upsell &&
-          badge(p.upsell === 'accepted' ? 'Accepted' : 'Declined', p.upsell === 'accepted' ? 'success' : 'outline'),
-        issues > 0 && badge(plural(issues, 'problem'), 'destructive'),
+        'jchain',
+        ...[sourceOf(engine).headline, ...pages.map((p) => KINDS[p.kind])].flatMap((name, i, all) => [
+          i === all.length - 1 ? h('b', {}, name) : name,
+          i < all.length - 1 && h('span', 'dim', ' → '),
+        ]),
       ),
-      h('small', {}, p.path),
-      h('data', {}, p.order || p.units ? money(p) : 'Empty cart'),
-      h('data', {}, p.order ? `order ${p.order}` : plural(p.units, 'item')),
-    );
-    row.setAttribute('aria-pressed', String(i === selected));
-    return h(
-      'li',
-      {},
-      h(
-        'header',
-        {},
-        h('span', {}, `Step ${i + 1}`),
-        h('strong', {}, KINDS[p.kind]),
-        h('small', {}, `${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'now'}`),
-      ),
-      h('ul', {}, h('li', {}, row)),
-    );
-  };
-
-  const mark = (m: Mark) => {
-    const item = h(
-      'li',
-      m.tone === 'done' ? 'jdone' : m.tone === 'warn' ? 'jwarn' : '',
-      m.text,
-      h('time', {}, clock(m.at)),
-    );
-    if (m.tone === 'done') item.prepend(icon('check'));
-    if (m.tone === 'error') item.dataset.variant = 'destructive';
-    return item;
-  };
-
-  const details = (p: PageVisit, i: number, pages: PageVisit[]) => {
-    const before = pages[i - 1];
-    const next = pages[i + 1];
-    const referrer = engine.getState().visit.landing?.referrer;
-    const issues = problems(p);
-    const stat = (label: string, value: string, bad = false) => [h('dt', {}, label), h('dd', bad ? 'red' : '', value)];
-    const sent = Object.entries(
-      p.sent.reduce<Record<string, number>>((n, name) => ({ ...n, [name]: (n[name] ?? 0) + 1 }), {}),
-    );
-    const arrived = before
-      ? `Arrived from ${before.path}`
-      : `Arrived from ${referrer ? new URL(referrer).hostname : 'a direct visit'}`;
-    return tsugiCard(
-      'jpage',
-      h(
-        'div',
-        {},
-        h('h3', {}, p.title || p.path),
-        h('p', 'jmeta', `${KINDS[p.kind]} · ${p.path}`, h('span', 'devonly', ` · storage ${p.scope}`)),
-      ),
-      h(
-        'dl',
-        'jstats',
-        ...[
-          stat('Cart', p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty'),
-          stat('Order', p.order ?? '—'),
-          stat('Analytics', `${p.sent.length} sent`),
-          stat('Problems', String(issues), issues > 0),
-        ].map((pair) => h('div', {}, ...pair)),
-      ),
-      sent.length > 0 &&
-        h('div', 'jsent', ...sent.map(([name, n]) => badge(n > 1 ? `${name} ×${n}` : name, 'outline'))),
-      h(
-        'ol',
-        'timeline',
-        h('li', {}, arrived, h('time', {}, clock(p.at))),
-        ...p.marks.map(mark),
-        next
-          ? h('li', {}, `Left for ${next.path}`, h('time', {}, clock(next.at)))
-          : tsugi(h('li', {}, 'Still on this page'), { variant: 'pending' }),
-      ),
-    );
-  };
-
-  const origin = (first: PageVisit) => {
-    const s = sourceOf(engine);
-    const checks = s.steps.filter((step) => step.tone === 'warn').length;
-    const row = h(
-      'button',
-      {
-        type: 'button',
-        onclick: () => {
-          picked = 'source';
+      h('span', 'jstate', holding(now), now.order ? '' : ' · no order yet'),
+      issues > 0 && link(`⚠ ${plural(issues, 'issue')}`, () => ui.show('issues')),
+      pages.length > 1 &&
+        link('Clear', () => {
+          debug.clear();
           ui.render();
-        },
-      },
-      h('span', {}, s.headline, ...s.platforms.map((name) => badge(name, 'outline'))),
-      h('small', {}, 'Where this tab came from'),
-      h('data', {}, plural(s.params.filter((p) => p.group !== 'visit').length, 'param')),
-      h('data', {}, checks ? `${plural(checks, 'check')} to look at` : 'All recorded'),
-    );
-    row.setAttribute('aria-pressed', String(picked === 'source'));
-    return h(
-      'li',
-      {},
-      h('header', {}, h('span', {}, 'Start'), h('strong', {}, 'Source'), h('small', {}, clock(first.at))),
-      h('ul', {}, h('li', {}, row)),
+        }),
     );
   };
 
   const view = (): Child[] => {
     const { pages } = debug.state();
-    drawn = undefined;
     if (!pages.length) return [empty('No pages yet', '', 'route')];
-    const source = picked === 'source';
-    const selected = typeof picked === 'number' ? Math.min(picked, pages.length - 1) : source ? -1 : pages.length - 1;
-    const journey = h(
-      'div',
-      'journey',
-      h('ol', {}, origin(pages[0]!), ...pages.map((p, i) => step(p, i, pages, selected))),
-    );
-    tsugi(journey, { orientation: 'vertical' });
-    journey.setAttribute('aria-label', 'Pages in this tab');
-    drawn = journey;
     return [
+      summary(pages),
       h(
         'div',
-        'jhead',
-        h('span', {}, h('b', {}, plural(pages.length, 'page')), ' in this tab'),
-        pages.length > 1 &&
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'link',
-              onclick: () => {
-                picked = undefined;
-                debug.clear();
-                ui.render();
-              },
-            },
-            'Clear',
-          ),
+        'jline',
+        source(pages[0]!),
+        ...pages.flatMap((p, i) => [i > 0 && carry(pages[i - 1]!, p), page(p, i, pages)]),
       ),
-      journey,
-      source ? sourceView(engine) : details(pages[selected]!, selected, pages),
     ];
   };
 
-  return { view, draw: () => drawn?.isConnected && drawLines(drawn) };
+  return { view };
 }

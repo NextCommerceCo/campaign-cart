@@ -247,28 +247,20 @@ export const CART_CSS = `.ctable{font-size:14px}
 .phint{display:inline-flex;align-items:center;gap:4px;font-size:12px}
 @media (max-width:560px){.prow{grid-template-columns:36px minmax(0,1fr) auto;grid-template-areas:'thumb info qty' 'thumb price qty';gap:2px 12px}.pprice{flex-direction:row;align-items:baseline;gap:6px}.pfoot{flex-basis:100%}.phint{display:none}}`;
 
-export const JOURNEY_CSS = `.jhead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:2px 0 12px;font:13px var(--font-sans);color:var(--muted-foreground)}
-.jhead b{color:var(--foreground)}
-.jhead+.journey{margin-bottom:12px;font-family:var(--font-sans)}
-.jpage{font-family:var(--font-sans)}
-.jpage section{display:flex;flex-direction:column;gap:12px}
-.jpage h3{font-size:15px;font-weight:600}
-.jmeta{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
-.jstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px 16px;padding:10px 12px;border:1px solid var(--border);border-radius:8px}
-.jstats dt{font-size:12px;color:var(--muted-foreground)}
-.jstats dd{font-weight:500}
-.jsent{display:flex;flex-wrap:wrap;gap:4px}
-.jdone>.icon{color:var(--success)}
-.jwarn{color:var(--warning)}
-.jstats dd>.icon{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
-.jparams{width:100%;border-collapse:collapse;font-size:12px}
-.jparams th{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-weight:500;text-align:left;color:var(--muted-foreground)}
-.jparams td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:top}
-.jparams td:nth-child(2){overflow-wrap:anywhere}.jparams td small{display:block;font-size:11px}
-.jparams td .badge{margin:0 4px 2px 0}
-.jgroup th{padding-top:12px;font-size:11px;color:var(--foreground)}
-.jacts{display:flex;flex-wrap:wrap;gap:6px}
-.jlink>div:first-child{display:flex;gap:6px}.jlinkres{font-size:12px}`;
+export const JOURNEY_CSS = `.jsum{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:2px 0 14px;padding:8px 12px;border-radius:var(--radius-md);background:var(--muted);font:12px var(--font-sans)}.jsum .link{margin:0}.jchain{flex:1;min-width:0}.jstate{font-weight:600}
+.jline{position:relative;font-family:var(--font-sans)}.jline::before{content:'';position:absolute;left:5px;top:10px;bottom:10px;width:2px;background:var(--border)}
+.jpg{position:relative;margin-bottom:8px}.jhd{display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:start;gap:0 12px;padding:4px 6px 4px 0;border-radius:6px}.jhd::before{display:none}.jhd:hover{background:var(--accent)}
+.jdot{position:relative;z-index:1;width:12px;height:12px;margin-top:3px;border:2px solid var(--muted-foreground);border-radius:50%;background:var(--background)}.jpg[data-state=done] .jdot{border-color:var(--success);background:var(--success)}.jpg[data-state=now] .jdot{border-color:var(--info);background:var(--info)}.jpg[data-state=bad] .jdot{border-color:var(--destructive);background:var(--destructive)}
+.jtitle{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;font-weight:600}.jname{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.jright{text-align:right;font-size:12px;white-space:nowrap}.jright b{font-weight:600}.jright small{display:block;color:var(--muted-foreground)}
+.jkind{padding:0 8px;border-radius:999px;background:var(--muted);color:var(--muted-foreground);font-size:11px;font-weight:500;line-height:18px}.jkind[data-kind=source]{color:var(--info)}.jkind[data-kind=product]{color:var(--purple)}.jkind[data-kind=checkout]{color:var(--success)}.jkind:is([data-kind=upsell],[data-kind=receipt]){color:var(--orange)}
+.jpath,.jmoms,.jnote,.jchecks{margin-left:24px}.jpath{font:12px var(--font-mono);color:var(--muted-foreground);overflow-wrap:anywhere}.jmoms{display:flex;flex-direction:column;gap:1px;margin-top:6px}.jnote{margin-top:4px;font-size:12px;color:var(--muted-foreground)}.jnote .link{margin-left:8px}
+.jmom{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;padding:3px 8px;border-radius:6px;font-size:12px}.jmom .time{margin:0}.jmom .icon{width:13px;height:13px;margin-right:6px;vertical-align:-2px;color:var(--success)}.jmom[data-tone=warn]{box-shadow:inset 3px 0 var(--warning);background:color-mix(in oklab,var(--warning) 9%,transparent)}.jmom[data-tone=error]{box-shadow:inset 3px 0 var(--destructive);background:color-mix(in oklab,var(--destructive) 9%,transparent)}
+.jchecks{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:12px;color:var(--muted-foreground)}.jchecks [data-tone=done]{color:var(--success)}.jchecks [data-tone=warn]{color:var(--warning)}.jchecks .link{margin:0}
+.jcarry{margin:-2px 0 8px 24px;font-size:11px;color:var(--success)}.jcarry[data-tone=warn]{color:var(--warning)}.jcarry[data-tone=error]{color:var(--destructive)}
+.jpage{font-family:var(--font-sans)}.jpage section{display:flex;flex-direction:column;gap:12px}.jpage h3{font-size:15px;font-weight:600}.jmeta{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.jstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px 16px;padding:10px 12px;border:1px solid var(--border);border-radius:8px}.jstats dt{font-size:12px;color:var(--muted-foreground)}.jstats dd{font-weight:500}.jstats dd>.icon{width:14px;height:14px;margin-right:4px;vertical-align:-2px}.jsent{display:flex;flex-wrap:wrap;gap:4px}
+.jparams{width:100%;border-collapse:collapse;font-size:12px}.jparams th{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-weight:500;text-align:left;color:var(--muted-foreground)}.jparams td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:top}.jparams td:nth-child(2){overflow-wrap:anywhere}.jparams td small{display:block;font-size:11px}.jparams td .badge{margin:0 4px 2px 0}
+.jgroup th{padding-top:12px;font-size:11px;color:var(--foreground)}.jacts{display:flex;flex-wrap:wrap;gap:6px}.jlink>div:first-child{display:flex;gap:6px}.jlinkres{font-size:12px}`;
 
 export const CHECKOUT_CSS = `.ksteps>.kstep+.kstep{border-top:1px solid var(--border)}
 .kstep{display:grid;grid-template-columns:20px minmax(0,1fr);gap:2px 10px;padding:10px 16px}

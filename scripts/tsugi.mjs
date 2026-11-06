@@ -11,14 +11,12 @@ const COMPONENTS = [
   'dropdown',
   'empty',
   'input',
-  'journey',
   'kbd',
   'native-select',
   'payment-icon',
   'scrollbar',
   'switch',
   'tabs',
-  'timeline',
 ];
 const PAYMENT_ICONS = [
   'american-express',

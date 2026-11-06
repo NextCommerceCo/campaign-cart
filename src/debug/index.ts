@@ -165,7 +165,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const pageConfig = configModal(engine, debug, info, () => render());
   const flow = analyticsFlow({ config: info.analytics, detail, render: () => render() });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
-  const journey = journeyView(engine, debug, { render: () => render() });
+  const journey = journeyView(engine, debug, {
+    render: () => render(),
+    show: (t) => show(t),
+    detail,
+    issues: () => findIssues().count + findIssues().earlier,
+  });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog, pageConfig.dialog, detail.dialog);
   const bench = benchmarkView(engine);
@@ -248,7 +253,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     tabpick.querySelector('[value="issues"]')!.textContent = count ? `${TABS.issues} · ${count}` : TABS.issues;
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));
-    if (tab === 'journey') journey.draw();
   };
   const setView = (next: typeof view) => {
     view = next;
