@@ -22,8 +22,8 @@ Prices and the checkout's texts are in `nextConfig.locale`, else the campaign's 
 ```
 
 A text comes from the page's `translations` (`fr-FR`, then `fr`), then the address service, then
-English. The keys are the address service's: every key is in
-`https://i18n-rules.nextcommerce.com/v1/locales/fr`.
+English. Every key, its default in each language and how to override it:
+[Languages](https://i18n-rules-docs.next-commerce.workers.dev/languages/index/).
 
 | Text                     | Key                                                                                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
