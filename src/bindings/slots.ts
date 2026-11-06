@@ -15,12 +15,9 @@ const fill = (html: string, values: Record<string, string>) =>
     key in values ? escape(values[key]!) : raw,
   );
 
-function itemValues(
-  engine: Engine,
-  pkg: Package | undefined,
-  index: number,
-  line?: SummaryLine,
-): Record<string, string> {
+type Values = Record<string, string>;
+
+function priceValues(engine: Engine, pkg: Package | undefined, line?: SummaryLine): Values {
   const money = (c: number) => formatCents(c, engine.getState());
   const unit = line ? cents(line.package_price) : cents(pkg?.price);
   const retail = line ? cents(line.original_package_price) : cents(pkg?.price_retail ?? pkg?.price);
@@ -29,6 +26,18 @@ function itemValues(
   const saved = Math.max(0, retailTotal - total);
   const off = line ? Math.max(0, cents(line.total_discount)) : saved;
   const base = line ? cents(line.subtotal) : retailTotal;
+  return {
+    'item.price': money(total),
+    'item.originalPrice': money(retailTotal),
+    'item.unitPrice': money(unit),
+    'item.originalUnitPrice': money(retail),
+    'item.discountAmount': money(saved),
+    'item.discountPercentage': base ? `${Math.round((off / base) * 100)}%` : '0%',
+    'item.hasDiscount': off > 0 ? 'show' : 'hide',
+  };
+}
+
+function itemValues(engine: Engine, pkg: Package | undefined, index: number): Values {
   return {
     'slot.index': String(index),
     'slot.unitIndex': String(index),
@@ -40,13 +49,6 @@ function itemValues(
     'item.variantName': pkg?.product_variant_name ?? '',
     'item.productName': pkg?.product_name ?? '',
     'item.sku': pkg?.product_sku ?? '',
-    'item.price': money(total),
-    'item.originalPrice': money(retailTotal),
-    'item.unitPrice': money(unit),
-    'item.originalUnitPrice': money(retail),
-    'item.discountAmount': money(saved),
-    'item.discountPercentage': base ? `${Math.round((off / base) * 100)}%` : '0%',
-    'item.hasDiscount': off > 0 ? 'show' : 'hide',
     'item.currency': engine.getState().campaign?.currency ?? '',
   };
 }
@@ -100,17 +102,20 @@ function renderStage(
   const rendered: Array<{
     el: HTMLElement;
     slot: Slot;
-    values: Record<string, string>;
+    values: Values;
+    prices: Values;
     boxes: Array<{ box: HTMLElement; tpl: string }>;
   }> = [];
 
-  const valuesOf = (selector: SelectorState, card: SelectorCard, slot: Slot, index: number) =>
-    itemValues(
-      engine,
-      engine.getPackage(slot.packageId),
-      index,
-      cardQuote(selector, card)?.lines.find((l) => l.package_id === slot.packageId),
-    );
+  const valuesOf = (selector: SelectorState, card: SelectorCard, slot: Slot, index: number, held?: Values) => {
+    const pkg = engine.getPackage(slot.packageId);
+    const fresh = cardQuote(selector, card);
+    const pending = !fresh && !!selector.quoting;
+    const quote = fresh ?? (pending ? selector.quotes?.[card.id] : undefined);
+    const line = quote?.lines.find((l) => l.package_id === slot.packageId);
+    const prices = !line && pending && held ? held : priceValues(engine, pkg, line);
+    return { prices, values: { ...itemValues(engine, pkg, index), ...prices } };
+  };
 
   const apply = (card: SelectorCard, index: number, patch: Partial<Slot>) =>
     engine.selectors.setSlot(selectorId, card.id, index, patch);
@@ -144,7 +149,7 @@ function renderStage(
     card: SelectorCard,
     slot: Slot,
     index: number,
-    values: Record<string, string>,
+    { values, prices }: ReturnType<typeof valuesOf>,
   ): (typeof rendered)[number] => {
     const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
     Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
@@ -168,7 +173,7 @@ function renderStage(
       input.value = slot.properties?.[name] ?? '';
       input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
     }
-    const entry = { el, slot, values, boxes };
+    const entry = { el, slot, values, prices, boxes };
     refresh(entry);
     return entry;
   };
@@ -199,8 +204,8 @@ function renderStage(
     slots.forEach((slot, i) => {
       const old = rendered[i];
       if (!old) return;
-      const values = valuesOf(selector, card, slot, i);
-      if (old.slot.packageId === slot.packageId && JSON.stringify(old.values) === JSON.stringify(values)) {
+      const next = valuesOf(selector, card, slot, i, old.prices);
+      if (old.slot.packageId === slot.packageId && JSON.stringify(old.values) === JSON.stringify(next.values)) {
         old.slot = slot;
         return refresh(old);
       }
@@ -208,10 +213,10 @@ function renderStage(
         (document.activeElement as HTMLElement | null)?.closest('.next-bundle-slot') === old.el
           ? (document.activeElement as HTMLElement).getAttribute('data-next-variant-code')
           : null;
-      const next = renderSlot(card, slot, i, values);
-      old.el.replaceWith(next.el);
-      rendered[i] = next;
-      if (code) next.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();
+      const entry = renderSlot(card, slot, i, next);
+      old.el.replaceWith(entry.el);
+      rendered[i] = entry;
+      if (code) entry.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();
     });
   };
 }
