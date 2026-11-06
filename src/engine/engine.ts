@@ -207,12 +207,7 @@ export class Engine {
 
   attribution(): Attribution {
     const { visit, campaign } = this.state;
-    return buildAttribution(
-      visit.params,
-      visit.landing,
-      this.options.funnel || campaign?.name,
-      (this.options.now ?? Date.now)(),
-    );
+    return buildAttribution(visit, this.options.funnel || campaign?.name, (this.options.now ?? Date.now)());
   }
 
   private restore(): void {

@@ -300,12 +300,12 @@ export function createCheckout(
       set({ countries });
       const listed = (code?: string) => countries.find((c) => c.code === code?.toUpperCase())?.code;
       let country = listed(state().fields.country) ?? listed(ctx.getState().visit.params.country);
+      const located = rulesApi.geo(!country).catch(() => undefined);
+      void located.then((geo) => geo?.ip && ctx.update('visit', { ip: geo.ip }));
       if (!country) {
-        try {
-          const geo = await rulesApi.geo();
-          country = listed(geo.country?.code);
-          if (country && geo.rules) set({ rules: { ...state().rules, [country]: geo.rules } });
-        } catch {}
+        const geo = await located;
+        country = listed(geo?.country?.code);
+        if (country && geo?.rules) set({ rules: { ...state().rules, [country]: geo.rules } });
       }
       country = state().fields.country || (country ?? listed('US') ?? countries[0]?.code);
       if (country && country !== state().fields.country) set({ fields: { ...state().fields, country } });

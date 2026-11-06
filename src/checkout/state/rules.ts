@@ -28,9 +28,9 @@ export class RulesApi {
     return withPageTexts(await this.get(`/v1/countries/${code}?include=states&lang=${this.lang}`), this.page);
   }
 
-  async geo(): Promise<{ country: CountryOption | null; rules?: CountryRules }> {
-    const geo = await this.get<{ country: CountryOption | null; rules?: CountryRules }>(
-      `/v1/geo?include=rules,states&lang=${this.lang}`,
+  async geo(withRules = true): Promise<{ ip?: string | null; country: CountryOption | null; rules?: CountryRules }> {
+    const geo = await this.get<{ ip?: string | null; country: CountryOption | null; rules?: CountryRules }>(
+      `/v1/geo?${withRules ? 'include=rules,states&' : ''}lang=${this.lang}`,
     );
     return geo.rules ? { ...geo, rules: withPageTexts(geo.rules, this.page) } : geo;
   }

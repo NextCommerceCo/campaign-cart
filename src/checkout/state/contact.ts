@@ -43,11 +43,15 @@ export function createContact(ctx: Context, cart: CartActions, lead: Lead, isOpe
     };
   };
   const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);
-  const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => ({
-    language: stored?.language || ctx.getState().campaign?.language || '',
-    ...(stored?.ip && { ip: stored.ip }),
-    user_agent: stored?.user_agent || ctx.getState().visit.landing?.device || '',
-  });
+  const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => {
+    const { campaign, visit } = ctx.getState();
+    const ip = stored?.ip || visit.ip;
+    return {
+      language: stored?.language || campaign?.language || '',
+      ...(ip && { ip }),
+      user_agent: stored?.user_agent || visit.landing?.device || '',
+    };
+  };
   let contact = state().prospectSaved ? contactKey(contactOf()) : undefined;
 
   return async (): Promise<void> => {

@@ -17,7 +17,7 @@ export interface User {
   accepts_marketing: boolean;
   /** The language the store keeps for the shopper, such as `en`. */
   language: string;
-  /** The shopper's IP address, as the store recorded it with the Open Cart. */
+  /** The shopper's IP address, as the store recorded it with the Open Cart, else as the address service saw it; none when neither knows it. */
   ip?: string;
   /** As the store recorded it with the Open Cart, else the browser's. */
   user_agent: string;

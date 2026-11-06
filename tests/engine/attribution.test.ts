@@ -17,8 +17,11 @@ describe('attribution', () => {
     };
     expect(
       buildAttribution(
-        { aff: 'A1', sub2: 'x'.repeat(300), utm_source: 'fb', fbclid: 'F', evclid: 'E', other: 'y' },
-        visit,
+        {
+          params: { aff: 'A1', sub2: 'x'.repeat(300), utm_source: 'fb', fbclid: 'F', evclid: 'E', other: 'y' },
+          landing: visit,
+          ip: '203.0.113.7',
+        },
         'Olympus',
         1000,
       ),
@@ -39,6 +42,7 @@ describe('attribution', () => {
         fb_pixel_id: '123456',
         sdk_version: expect.any(String),
         conversion_timestamp: 1000,
+        user_ip: '203.0.113.7',
         fbclid: 'F',
         everflow_transaction_id: 'E',
       },

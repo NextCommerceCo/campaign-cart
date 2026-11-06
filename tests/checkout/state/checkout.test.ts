@@ -28,6 +28,7 @@ async function setup(
   opts: MakeEngine & {
     api?: FakeApiOptions;
     geo?: string;
+    ip?: string;
     rulesDown?: boolean;
     geoDelay?: number;
     lead?: Lead;
@@ -36,7 +37,7 @@ async function setup(
   const api = fakeApi(opts.api);
   const made = makeEngine({ ...opts, fetch: api.fetch });
   await made.engine.start();
-  const rules = fakeRules({ geo: opts.geo, down: opts.rulesDown, geoDelay: opts.geoDelay });
+  const rules = fakeRules({ geo: opts.geo, ip: opts.ip, down: opts.rulesDown, geoDelay: opts.geoDelay });
   const checkout = made.engine.attach((ctx) => createCheckout(ctx, made.engine.cart, rules.api, { lead: opts.lead }));
   const fill = (fields: Record<string, string>) => Object.entries(fields).forEach(([k, v]) => checkout.setField(k, v));
   const posts = (path: string) => api.calls.filter((c) => c.url.endsWith(path));
@@ -190,7 +191,7 @@ describe('checkout', () => {
     const linked = await setup({ campaign, params: { country: 'us' } });
     await linked.checkout.loadCountries();
     expect(linked.engine.getState().checkout!.fields.country).toBe('US');
-    expect(linked.rules.calls.some((c) => c.includes('/v1/geo'))).toBe(false);
+    expect(linked.rules.calls.filter((c) => c.includes('/v1/geo'))).toEqual(['GET /v1/geo?lang=en']);
 
     const down = await setup({ campaign, rulesDown: true });
     await down.checkout.loadCountries(['GB']);
@@ -269,6 +270,41 @@ describe('checkout', () => {
     await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
     expect(updated).toHaveBeenCalledExactlyOnceWith({ ...user, email: 'jane@example.org' });
+  });
+
+  it('sends the IP the geo saw with the Open Cart and the order, and none when it saw none', async () => {
+    const placed = async (ip?: string) => {
+      const noStoredIp = ({ user: { ip: _, ...user }, ...cart }: typeof OPEN_CART) => ({ ...cart, user });
+      const { engine, checkout, fill, posts } = await setup({ ip, api: { openCart: noStoredIp } });
+      const users: unknown[] = [];
+      engine.on('user.created', (e) => users.push(e.data));
+      await checkout.loadCountries();
+      await engine.cart.addItem(1);
+      checkout.begin();
+      fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
+      await checkout.leave('last_name');
+      const order = orderBody(engine.getState(), {
+        method: 'card_token',
+        token: 'tok_1',
+        lines: engine.cart.lines(),
+        vouchers: [],
+        attribution: engine.attribution(),
+        urls: URLS,
+      });
+      return {
+        cart: posts('/carts/')[0]!.body.attribution.metadata,
+        order: order.attribution.metadata,
+        user: users[0],
+      };
+    };
+    const seen = await placed('203.0.113.9');
+    expect(seen.cart).toMatchObject({ user_ip: '203.0.113.9' });
+    expect(seen.order).toMatchObject({ user_ip: '203.0.113.9' });
+    expect(seen.user).toMatchObject({ ip: '203.0.113.9' });
+    const unseen = await placed();
+    expect(unseen.cart).not.toHaveProperty('user_ip');
+    expect(unseen.order).not.toHaveProperty('user_ip');
+    expect(unseen.user).not.toHaveProperty('ip');
   });
 
   it('saves the lead on the email, the phone, both, the first field or never, as data-next-lead says', async () => {

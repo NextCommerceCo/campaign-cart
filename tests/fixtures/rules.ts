@@ -169,7 +169,7 @@ const COUNTRIES = [
 ];
 
 export function fakeRules(
-  options: { geo?: string; down?: boolean; geoDelay?: number; locales?: Record<string, unknown> } = {},
+  options: { geo?: string; ip?: string; down?: boolean; geoDelay?: number; locales?: Record<string, unknown> } = {},
 ) {
   const calls: string[] = [];
   const send = async (url: string, init: RequestInit) => {
@@ -192,7 +192,7 @@ export function fakeRules(
     if (path.startsWith('/v1/geo')) {
       if (options.geoDelay) await new Promise((r) => setTimeout(r, options.geoDelay));
       const code = options.geo ?? 'GB';
-      return json({ country: { code, name: code }, rules: code === 'GB' ? GB : US });
+      return json({ ip: options.ip ?? null, country: { code, name: code }, rules: code === 'GB' ? GB : US });
     }
     const { country, fields } = JSON.parse(String(init.body));
     if (fields.phone_number) return json({ fields: { phone_number: readPhone(country, fields.phone_number) } });

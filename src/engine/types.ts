@@ -52,6 +52,8 @@ export interface Campaign {
 export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
+  /** As the address service's geo saw it. */
+  ip?: string;
   exitIntentShown: number;
   timers: Record<string, number>;
 }

@@ -16,6 +16,7 @@ export interface FakeApiOptions {
   getOrder?: (ref: string) => Response;
   upsell?: (ref: string, body: any) => Response;
   offers?: Record<number, number>;
+  openCart?: (cart: typeof OPEN_CART) => unknown;
 }
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -70,7 +71,7 @@ export function fakeApi(options: FakeApiOptions = {}) {
     if (url.endsWith('/orders/')) {
       return options.order?.(body) ?? json({ ref_id: 'R1', order_status_url: 'https://shop.test/status/R1' });
     }
-    if (url.endsWith('/carts/')) return json(OPEN_CART);
+    if (url.endsWith('/carts/')) return json(options.openCart?.(OPEN_CART) ?? OPEN_CART);
     if (url.includes('/addresses/autocomplete/')) {
       const query = new URL(url).searchParams.get('query_text') ?? '';
       return json({ results: ADDRESSES.filter((a) => a.label.toLowerCase().includes(query.toLowerCase())) });

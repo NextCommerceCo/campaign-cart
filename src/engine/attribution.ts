@@ -41,8 +41,7 @@ export interface Attribution {
 }
 
 export function buildAttribution(
-  params: Record<string, string>,
-  visit: Visit | undefined,
+  { params, landing: visit, ip }: { params: Record<string, string>; landing?: Visit; ip?: string },
   funnel: string | undefined,
   now: number,
 ): Attribution {
@@ -75,6 +74,7 @@ export function buildAttribution(
       fb_pixel_id: visit?.pixelId ?? '',
       sdk_version: __VERSION__,
       conversion_timestamp: now,
+      ...(ip && { user_ip: ip }),
       ...(params.fbclid && { fbclid: params.fbclid }),
       ...(params.clickid && { clickid: params.clickid }),
       ...(evclid && { everflow_transaction_id: evclid }),
