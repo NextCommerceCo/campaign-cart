@@ -22,9 +22,9 @@ const choose = (label: string, value: string) => {
 };
 const options = (label: string) => [...select(label).options].map((o) => [o.value, o.text]);
 const notes = () =>
-  [...shadow().querySelectorAll<HTMLElement>('.lnotes li')].map((li) => [li.textContent, li.className]);
-const sources = () => [...shadow().querySelectorAll('.lset > div > small')].map((s) => s.textContent);
-const visitor = () => $('.lgrid > .block').textContent!;
+  [...shadow().querySelectorAll<HTMLElement>('.lset > small')].map((n) => [n.textContent, n.className]);
+const sources = () => notes().map(([text]) => text);
+const visitor = () => $('.lwhere').textContent!;
 
 const page: Campaign = {
   ...campaign,
@@ -87,7 +87,7 @@ const openLocale = () => {
   expect([view(), $('.geo').hidden]).toEqual(['panel', false]);
 };
 
-const answered = () => vi.waitFor(() => expect(visitor()).not.toContain('Detecting…'));
+const answered = () => vi.waitFor(() => expect(visitor()).not.toContain('Asking'));
 
 afterEach(async () => {
   await new Promise((r) => setTimeout(r, 30));
@@ -106,22 +106,21 @@ describe('locale tab', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(geo.asked).toEqual([]);
     openLocale();
-    expect(visitor()).toContain('Detecting…');
+    expect(visitor()).toBe('Asking where the visitor is…');
     await answered();
     expect(geo.asked).toEqual(['https://i18n-rules.nextcommerce.com/v1/geo?lang=en']);
-    expect($('.lplace h4').textContent).toBe('Thailand · Loei 42000');
-    expect($('.lplace p').textContent).toBe('Asia · South-eastern Asia');
-    const flag = $<HTMLImageElement>('.lflag');
+    expect(visitor()).toMatch(/^ThailandLoei · \d\d:\d\d there$/);
+    const flag = $<HTMLImageElement>('.lwhere .lflag');
     expect(flag.getAttribute('src')).toBe('https://i18n-rules.nextcommerce.com/v1/flags/th.svg');
     expect(flag.alt).toBe('');
+    expect($<HTMLDetailsElement>('.lmore').open).toBe(false);
     const rows = Object.fromEntries(
       [...shadow().querySelectorAll('.lrows dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]),
     );
     expect(rows).toEqual({
+      Region: 'Loei · South-eastern Asia',
+      Postcode: '42000',
       'Time zone': expect.stringMatching(/^Asia\/Bangkok · \d\d:\d\d there$/),
-      State: 'Loei (42)',
-      Currency: 'THB',
-      'Browser language': 'th-TH',
       Coordinates: '17.49, 101.72',
       IP: '203.0.113.7',
       Source: 'Cloudflare edge',
@@ -131,14 +130,11 @@ describe('locale tab', () => {
     expect(map.target).toBe('_blank');
     expect(map.rel).toBe('noreferrer');
     expect(select('Country').value).toBe('TH');
-    expect(sources()[0]).toBe('geo');
+    expect(sources()[0]).toBe('Matches the visitor · geo');
     expect([...shadow().querySelectorAll('.lset > span')].map((s) => s.textContent)).toEqual([
       'Country',
-      'Thailand',
       'Currency',
-      'THB',
       'Language',
-      'th-TH',
     ]);
   });
 
@@ -177,15 +173,19 @@ describe('locale tab', () => {
   it('names where the currency and language in use come from', async () => {
     await start('', { lang: 'de' });
     openLocale();
-    expect(sources()).toEqual(['not chosen yet', 'campaign default', 'nextConfig.locale']);
+    expect(sources()).toEqual([
+      'not chosen yet',
+      'campaign default · changing reloads',
+      'nextConfig.locale · changing reloads',
+    ]);
     history.replaceState(null, '', '/?currency=EUR&lang=de');
     await start('', { lang: 'de' });
     openLocale();
-    expect(sources()).toEqual(['not chosen yet', '?currency=', '?lang=']);
+    expect(sources()).toEqual(['not chosen yet', '?currency= · changing reloads', '?lang= · changing reloads']);
     history.replaceState(null, '', '/');
     await start();
     openLocale();
-    expect(sources()).toEqual(['not chosen yet', 'campaign default', 'campaign']);
+    expect(sources()).toEqual(['not chosen yet', 'campaign default · changing reloads', 'campaign · changing reloads']);
   });
 
   it('sets the country of the checkout form on a checkout page', async () => {
@@ -210,7 +210,7 @@ describe('locale tab', () => {
     expect(sources()[0]).toBe('checkout form');
   });
 
-  it('says when the request has no geo, still showing the IP and browser language', async () => {
+  it('says when the request has no geo, still showing the IP and comparing the browser language', async () => {
     const geo = geoAnswers({
       ...GEO,
       country: null,
@@ -228,16 +228,14 @@ describe('locale tab', () => {
     await start('', { fetch: geo.fetch });
     openLocale();
     await answered();
-    expect($('.lplace h4').textContent).toBe('No geo on this request');
-    expect([...shadow().querySelectorAll('.lrows dt')].map((dt) => dt.textContent)).toEqual([
-      'Browser language',
-      'IP',
-      'Source',
-    ]);
-    expect($('.lrows').textContent).toContain('a local request or a Tor exit');
+    expect(visitor()).toBe('The edge resolved no country: a local request or a Tor exit');
+    expect([...shadow().querySelectorAll('.lrows dt')].map((dt) => dt.textContent)).toEqual(['IP', 'Source']);
     expect(shadow().querySelector('.lflag')).toBeNull();
-    expect(notes()).toEqual([]);
-    expect(sources()[0]).toBe('not chosen yet');
+    expect(notes()).toEqual([
+      ['not chosen yet', ''],
+      ['campaign default · changing reloads', ''],
+      ['Matches the browser (en-US) · changing reloads', ''],
+    ]);
   });
 
   it("says when the address service didn't answer", async () => {
@@ -245,11 +243,12 @@ describe('locale tab', () => {
     await start('', { fetch: geo.fetch });
     openLocale();
     await answered();
-    expect(visitor()).toContain("The address service didn't answer");
-    expect(notes()).toEqual([]);
+    expect(visitor()).toBe("The address service didn't answer; reload to ask again");
+    expect(shadow().querySelector('.lmore')).toBeNull();
+    expect(notes().filter(([, tone]) => tone)).toEqual([]);
   });
 
-  it('notes what a shopper from there gets: no currency or shipping for them, browser language ignored', async () => {
+  it('notes on each setting how it compares with the visitor: no currency or shipping for them, another language', async () => {
     const geo = geoAnswers(GEO);
     await start('', {
       fetch: geo.fetch,
@@ -258,24 +257,21 @@ describe('locale tab', () => {
     openLocale();
     await answered();
     expect(notes()).toEqual([
-      [
-        "THB isn't one of this campaign's currencies, so a shopper from Thailand sees the campaign's default currency.",
-        'lwarn',
-      ],
-      ["Thailand isn't a shipping country, so the checkout opens on United States.", 'lwarn'],
-      ['The browser asks for th-TH; texts are in English.', ''],
+      ["Thailand isn't a shipping country: the checkout opens on United States", 'lwarn'],
+      ["Visitor's is THB, not one this campaign sells in · changing reloads", 'lwarn'],
+      ['Browser asks th-TH · changing reloads', 'lwarn'],
     ]);
   });
 
-  it('notes what a shopper from there gets: an offered currency, a shipping country, a language without texts', async () => {
+  it('notes on each setting how it compares with the visitor: an offered currency, a language without texts', async () => {
     const geo = geoAnswers({ ...GEO, currency: 'EUR', language: 'ja-JP' });
     await start('', { fetch: geo.fetch });
     openLocale();
     await answered();
     expect(notes()).toEqual([
-      ["A shopper from Thailand sees the campaign's default currency; a link with ?currency=EUR shows EUR.", ''],
-      ['The checkout opens on Thailand.', ''],
-      ['The browser asks for ja-JP, a language without texts here; texts are in English.', ''],
+      ['Matches the visitor · geo', ''],
+      ["Visitor's is EUR: a link with ?currency=EUR · changing reloads", 'lwarn'],
+      ['Browser asks ja-JP, no texts in it · changing reloads', ''],
     ]);
   });
 
@@ -298,7 +294,8 @@ describe('locale tab', () => {
     await vi.waitFor(() => expect(value().textContent).toBe('US · USD · en'));
     expect(value().querySelector('.mdot')).toBeNull();
     menuItem('Locale').click();
-    expect(popover()).toContain('Locale · US · USD · en');
+    expect(popover()).toContain('United States');
+    expect(globe().textContent).toBe('US');
     expect(globe().dataset.differs).toBe('false');
   });
 
@@ -314,6 +311,10 @@ describe('locale tab', () => {
     await answered();
     await vi.waitFor(() => expect(globe().dataset.differs).toBe('true'));
     expect(globe().title).toBe('Locale · TH · USD · en');
+    expect(globe().textContent).toBe('TH');
+    expect(globe().querySelector('img')!.getAttribute('src')).toBe(
+      'https://i18n-rules.nextcommerce.com/v1/flags/th.svg',
+    );
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect([view(), $('.geo').hidden]).toEqual(['panel', true]);
     globe().click();

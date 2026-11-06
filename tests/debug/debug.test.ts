@@ -34,10 +34,10 @@ const settings = () => {
 };
 const back = () => $('.mtop [aria-label="Back"]').click();
 const developer = async () => {
-  settings();
+  while (view() !== 'menu') $('.fab').click();
+  if (shadow().querySelector('.mtop')) back();
   menuItem('Developer mode').click();
   await vi.waitFor(() => expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('true'));
-  back();
 };
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
@@ -79,7 +79,9 @@ describe('debug tools', () => {
     expect(menu).toMatch(/Checkout1 item · \$[\d.]+ · cart only/);
     expect($('.mhead').textContent).toMatch(/^OlympusUSD · SDK v/);
     expect($('.mhead button').getAttribute('aria-label')).toBe('Settings');
-    expect(menu).not.toContain('Developer mode');
+    expect(menuItem('Developer mode').getAttribute('role')).toBe('menuitemcheckbox');
+    expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
+    expect(menu).not.toContain('Elements');
     expect(menu).not.toContain('Theme');
     expect(menu).not.toContain('APIapi.test');
     expect($('.menu').classList.contains('dropdown')).toBe(true);
@@ -89,25 +91,20 @@ describe('debug tools', () => {
     expect(view()).toBe('closed');
   });
 
-  it('keeps settings behind the gear, with the setup only in developer mode, and Back returns to the menu', async () => {
+  it('keeps settings behind the gear, and Back returns to the menu', async () => {
     await start();
     settings();
     expect($('.mtop').textContent).toBe('Settings');
     expect(shadow().querySelector('.mhead')).toBeNull();
-    expect(menuItem('Developer mode').getAttribute('role')).toBe('menuitemcheckbox');
-    expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
+    expect(menuItem('Developer mode')).toBeUndefined();
+    expect(menuItem('Page config')).toBeDefined();
     expect([...shadow().querySelectorAll('.menu [role=group]')].map((g) => g.getAttribute('aria-label'))).toEqual([
       'Theme',
       'Position',
     ]);
-    expect($('.menu').textContent).not.toContain('APIapi.test');
-    menuItem('Developer mode').click();
-    await vi.waitFor(() => expect($('.menu').textContent).toContain('APIapi.test'));
-    expect($('.menu').textContent).toContain('Funnelf1');
     back();
     expect(view()).toBe('menu');
     expect($('.mhead').textContent).toMatch(/^Olympus/);
-    expect(menuItem('Logs')).toBeDefined();
   });
 
   it('opens the menu on its main view after closing it from settings', async () => {
@@ -134,42 +131,45 @@ describe('debug tools', () => {
     expect(PANEL_CSS).toMatch(/\.head \.tabs\{[^}]*overflow-x:auto/);
   });
 
-  it('starts simple, with the developer tabs and setup behind Developer mode, remembered on the next page', async () => {
+  it('starts simple, with the developer tabs and setup under one Developer tab, remembered on the next page', async () => {
     await start('<span data-next-display="campaign.name"></span>');
     $('.fab').click();
     menuItem('Checkout').click();
     const shown = () =>
-      [...shadow().querySelectorAll<HTMLElement>('[role=tab][data-tab]')]
+      [...shadow().querySelectorAll<HTMLElement>('.head [role=tab]')]
         .filter((t) => !t.hidden)
         .map((t) => t.dataset.tab);
     const pickable = () =>
       [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
     expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
     expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
-    expect($('[aria-label="Pick an element"]').hidden).toBe(true);
+    expect($('.dbar').hidden).toBe(true);
     expect($('.root').classList.contains('dev')).toBe(false);
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
     await developer();
     menuItem('Logs').click();
-    expect(shown()).toEqual([
-      'journey',
-      'issues',
-      'checkout',
-      'analytics',
-      'events',
-      'elements',
-      'state',
-      'logs',
-      'benchmark',
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events', 'developer']);
+    expect($('[data-tab="developer"]').getAttribute('aria-selected')).toBe('true');
+    expect($('.dbar').hidden).toBe(false);
+    expect([...shadow().querySelectorAll<HTMLElement>('.dbar [role=tab]')].map((t) => t.textContent)).toEqual([
+      'Elements',
+      'State',
+      'Logs',
+      'Performance',
     ]);
-    expect($('[aria-label="Pick an element"]').hidden).toBe(false);
+    expect($('.dbar [data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    expect($('.dinfo').textContent).toMatch(/^api\.test · funnel f1 · storage /);
+    expect($('.dbar .btn').textContent).toBe('Pick');
+    expect([...$<HTMLSelectElement>('select.tabpick').options].at(-1)!.textContent).toBe('Developer · Performance');
+    tab('journey');
+    tab('developer');
+    expect($('.dbar [data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
     await start('', {});
     expect($('.root').classList.contains('dev')).toBe(true);
     expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
-    settings();
+    while (view() !== 'menu') $('.fab').click();
     menuItem('Developer mode').click();
     await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
-    back();
     menuItem('Journey').click();
     expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
   });
@@ -507,7 +507,8 @@ describe('debug tools', () => {
     await start('<button data-next-package-id="1">Buy</button>');
     await developer();
     menuItem('Elements').click();
-    $('[aria-label="Pick an element"]').click();
+    $('.dbar .btn').click();
+    expect($('.root').classList.contains('picking')).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect($('.root').classList.contains('picking')).toBe(false);
     expect(view()).toBe('panel');

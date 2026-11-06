@@ -4,7 +4,7 @@ import { askGeo, type VisitorGeo, visitorGeo } from '../engine/geo';
 import { baseLang, I18N_RULES } from '../engine/texts';
 import type { Send } from '../engine/types';
 import type { DebugActions } from './state';
-import { type Child, empty, h } from './view';
+import { type Child, h } from './view';
 
 export const LANGUAGES: Record<string, string> = {
   da: 'Dansk',
@@ -66,14 +66,6 @@ const mapLink = (lat: number, lon: number) =>
   );
 
 const joined = (parts: Array<string | null | undefined>, by = ' · ') => parts.filter(Boolean).join(by);
-
-const card = (title: string, detail: Child, body: Child[] = [], lead: Child = null) =>
-  h(
-    'div',
-    'block',
-    h('div', 'bhead', h('div', 'lplace', lead, h('div', {}, h('h4', {}, title), h('p', {}, detail)))),
-    ...body,
-  );
 
 export interface LocaleSummary {
   /** `US · EUR · en`: the country, currency and language in use. */
@@ -147,115 +139,109 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
     };
   };
 
-  const visitor = (): Child => {
-    if (!answered) return card('Visitor', 'Detecting…');
-    if (!geo)
+  const flag = (code: string, className: string) =>
+    h('img', { className, alt: '', src: `${I18N_RULES}/v1/flags/${code.toLowerCase()}.svg` });
+
+  const where = (): Child => {
+    if (!answered) return h('div', 'lwhere', h('span', 'dim', 'Asking where the visitor is…'));
+    if (!geo?.country)
       return h(
         'div',
-        'block',
-        empty("The address service didn't answer", 'Geo comes from i18n-rules /v1/geo; reload to ask again.', 'warn'),
+        'lwhere',
+        h(
+          'span',
+          geo ? 'dim' : 'lwarn',
+          geo
+            ? 'The edge resolved no country: a local request or a Tor exit'
+            : "The address service didn't answer; reload to ask again",
+        ),
       );
     const g = geo;
+    return h(
+      'div',
+      'lwhere',
+      flag(g.country!.code, 'lflag'),
+      h('b', {}, g.country!.name),
+      h('span', 'dim', joined([g.city, g.timezone && localTime(g.timezone).split(' · ')[1]])),
+    );
+  };
+
+  const details = (): Child => {
+    if (!geo) return null;
+    const g = geo;
     const rows: Array<[string, Child]> = [
+      ['Region', joined([g.state?.name, g.region?.subregion?.name ?? g.region?.name])],
+      ['Postcode', g.postcode],
       ['Time zone', g.timezone && localTime(g.timezone)],
-      ['State', g.state && joined([g.state.name, g.state.code && `(${g.state.code})`], ' ')],
-      ['Currency', g.currency],
-      ['Browser language', g.language],
       [
         'Coordinates',
         typeof g.latitude === 'number' && typeof g.longitude === 'number' && mapLink(g.latitude, g.longitude),
       ],
       ['IP', g.ip],
-      ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country resolved: a local request or a Tor exit'],
+      ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country resolved'],
     ];
-    const list = h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
-    if (!g.country) return card('No geo on this request', 'The edge resolved no country for this visitor.', [list]);
-    const flag = h('img', {
-      className: 'lflag',
-      alt: '',
-      src: `${I18N_RULES}/v1/flags/${g.country.code.toLowerCase()}.svg`,
-    });
-    return card(
-      joined([g.country.name, joined([g.city, g.postcode], ' ')]),
-      joined([g.region?.name, g.region?.subregion?.name]) || g.country.code,
-      [list],
-      flag,
+    return h(
+      'details',
+      'lmore',
+      h('summary', {}, 'Visitor details'),
+      h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
     );
   };
 
-  const notes = (now: ReturnType<typeof inUse>): Note[] => {
-    if (!geo?.country) return [];
-    const { name, code } = geo.country;
-    const { campaign } = now.state;
-    const out: Note[] = [];
-    if (geo.currency) {
-      const offered = (campaign?.available_currencies ?? []).some((c) => c.code === geo!.currency);
-      out.push(
-        geo.currency === campaign?.currency && !now.state.visit.params.currency
-          ? [`A shopper from ${name} sees ${geo.currency}, the campaign's default currency.`]
-          : offered
-            ? [
-                `A shopper from ${name} sees the campaign's default currency; a link with ?currency=${geo.currency} shows ${geo.currency}.`,
-              ]
-            : [
-                `${geo.currency} isn't one of this campaign's currencies, so a shopper from ${name} sees the campaign's default currency.`,
-                true,
-              ],
-      );
-    }
+  /** One line under a setting: how it compares with the visitor, and where the value in use comes from. */
+  const notes = (now: ReturnType<typeof inUse>): Record<'country' | 'currency' | 'language', Note> => {
+    const country = geo?.country;
+    const offered = (now.state.campaign?.available_currencies ?? []).some((c) => c.code === geo?.currency);
+    const asks = geo?.language ? baseLang(geo.language) : undefined;
     const opens = now.shipping.find(([c]) => c === 'US') ?? now.shipping[0];
-    out.push(
-      now.shipping.length && !now.shipping.some(([c]) => c === code)
-        ? [`${name} isn't a shipping country, so the checkout opens on ${opens![1]}.`, true]
-        : [`The checkout opens on ${name}.`],
-    );
-    if (geo.language) {
-      const asks = baseLang(geo.language);
-      const texts = LANGUAGES[now.language] ?? now.language;
-      out.push(
-        !LANGUAGES[asks]
-          ? [`The browser asks for ${geo.language}, a language without texts here; texts are in ${texts}.`]
-          : asks !== now.language
-            ? [`The browser asks for ${geo.language}; texts are in ${texts}.`]
-            : [`Texts are in ${texts}, as the browser asks (${geo.language}).`],
-      );
-    }
-    return out;
+    return {
+      country: !country
+        ? [now.countryFrom]
+        : now.shipping.length && !now.shipping.some(([c]) => c === country.code)
+          ? [`${country.name} isn't a shipping country: the checkout opens on ${opens?.[1]}`, true]
+          : country.code === now.country
+            ? [`Matches the visitor · ${now.countryFrom}`]
+            : [`Visitor is in ${country.name} · ${now.countryFrom}`, true],
+      currency: !geo?.currency
+        ? [`${now.currencyFrom} · changing reloads`]
+        : geo.currency === now.currency
+          ? [`Matches the visitor · ${now.currencyFrom} · changing reloads`]
+          : offered
+            ? [`Visitor's is ${geo.currency}: a link with ?currency=${geo.currency} · changing reloads`, true]
+            : [`Visitor's is ${geo.currency}, not one this campaign sells in · changing reloads`, true],
+      language: !asks
+        ? [`${now.languageFrom} · changing reloads`]
+        : asks === now.language
+          ? [`Matches the browser (${geo!.language}) · changing reloads`]
+          : [
+              `Browser asks ${geo!.language}${LANGUAGES[asks] ? '' : ', no texts in it'} · changing reloads`,
+              !!LANGUAGES[asks],
+            ],
+    };
   };
 
   const settings = (): Child => {
     const now = inUse();
-    const unknown = answered ? '—' : '…';
+    const said = notes(now);
     const currencies = (now.state.campaign?.available_currencies ?? []).map((c): Option => [c.code, c.label]);
-    const rows: Array<[string, string | null | undefined, HTMLSelectElement, string]> = [
-      ['Country', geo?.country?.name, picker('Country', now.shipping, now.country, setCountry), now.countryFrom],
-      [
-        'Currency',
-        geo?.currency,
-        picker('Currency', currencies, now.currency, (c) => reload('currency', c)),
-        now.currencyFrom,
-      ],
+    const rows: Array<[string, HTMLSelectElement, Note]> = [
+      ['Country', picker('Country', now.shipping, now.country, setCountry), said.country],
+      ['Currency', picker('Currency', currencies, now.currency, (c) => reload('currency', c)), said.currency],
       [
         'Language',
-        geo?.language,
         picker('Language', Object.entries(LANGUAGES), now.language, (c) => reload('lang', c)),
-        now.languageFrom,
+        said.language,
       ],
     ];
-    const said = notes(now);
-    return card('In use', 'What this page runs with, next to what geo found.', [
-      h(
-        'div',
-        'lset',
-        ...['Setting', 'Geo', 'In use'].map((t) => h('small', {}, t)),
-        ...rows.flatMap(([label, found, select, from]) => [
-          h('span', {}, label),
-          h('span', {}, found || unknown),
-          h('div', {}, select, h('small', {}, from)),
-        ]),
-      ),
-      said.length > 0 && h('ul', 'lnotes', ...said.map(([text, warn]) => h('li', warn ? 'lwarn' : '', text))),
-    ]);
+    return h(
+      'div',
+      'lset',
+      ...rows.flatMap(([label, select, [text, warn]]) => [
+        h('span', {}, label),
+        select,
+        h('small', warn ? 'lwarn' : '', text),
+      ]),
+    );
   };
 
   const summary = (): LocaleSummary => {
@@ -270,18 +256,18 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
   };
 
   return {
-    view: () => {
-      const { text } = summary();
-      return [
-        h('div', 'vhead', h('span', {}, h('b', {}, 'Locale'), text && ` · ${text}`)),
-        h('div', 'lgrid', visitor(), settings()),
-      ];
-    },
+    view: () => [where(), settings(), details()],
     summary,
-    mark: (globe) => {
+    mark: (button) => {
       const { text, differs } = summary();
-      globe.title = text ? `Locale · ${text}` : 'Locale';
-      globe.dataset.differs = String(differs);
+      button.title = text ? `Locale · ${text}` : 'Locale';
+      button.dataset.differs = String(differs);
+      const code = geo?.country?.code;
+      button.classList.toggle('lbtn', !!code);
+      if (code && button.dataset.flag !== code) {
+        button.dataset.flag = code;
+        button.replaceChildren(flag(code, 'lflagsm'), code);
+      }
     },
   };
 }

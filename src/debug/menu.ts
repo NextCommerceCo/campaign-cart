@@ -7,7 +7,8 @@ import type { LocaleSummary } from './locale';
 import type { Theme } from './theme';
 import { badge, type Child, h, iconButton, plural } from './view';
 
-export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'elements' | 'events' | 'logs';
+export type MenuTab =
+  'issues' | 'journey' | 'checkout' | 'analytics' | 'events' | 'elements' | 'state' | 'logs' | 'benchmark';
 
 export interface MenuInput {
   info: { version: string; apiBase: string; funnel: string; scope: string; off: () => void };
@@ -113,12 +114,24 @@ const localeValue = ({ text, differs }: LocaleSummary) => {
   return h('span', {}, text, dot);
 };
 
+const devSwitch = (on: boolean, onclick: () => void) => {
+  const el = h(
+    'button',
+    {
+      type: 'button',
+      onclick,
+      title: 'Adds the Developer tab: Elements, State, Logs, Performance, and ids in the others',
+    },
+    icon('flask'),
+    h('span', {}, 'Developer mode'),
+    h('span', 'mval', h('span', 'mswitch')),
+  );
+  el.setAttribute('role', 'menuitemcheckbox');
+  el.setAttribute('aria-checked', String(on));
+  return el;
+};
+
 const settingsView = (m: MenuInput): Child[] => {
-  const setup: Array<[string, string]> = [
-    ['API', m.info.apiBase.replace(/^https?:\/\//, '')],
-    ['Funnel', m.info.funnel || '—'],
-    ['Storage', m.info.scope],
-  ];
   return [
     h(
       'div',
@@ -128,8 +141,6 @@ const settingsView = (m: MenuInput): Child[] => {
     ),
     menu(
       entry('settings', 'Page config', m.pageConfig.trying() && 'Trying', () => m.pageConfig.open()),
-      separator(),
-      choice('menuitemcheckbox', 'code', 'Developer mode', m.dev, m.toggleDev),
       separator(),
       group(
         'Theme',
@@ -144,7 +155,6 @@ const settingsView = (m: MenuInput): Child[] => {
         choice('menuitemradio', 'dockRight', 'Right', m.right, () => !m.right && m.flip()),
       ),
     ),
-    m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),
   ];
 };
 
@@ -185,11 +195,14 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
       entry('send', 'Analytics', m.analytics, () => m.show('analytics')),
       entry('globe', 'Locale', localeValue(m.locale), m.geo),
       entry('bolt', 'Events', String(m.events), () => m.show('events')),
+      separator(),
+      devSwitch(m.dev, m.toggleDev),
       ...(counts
         ? [
-            separator(),
             entry('code', 'Elements', String(counts.elements), () => m.show('elements')),
+            entry('braces', 'State', '', () => m.show('state')),
             entry('list', 'Logs', String(counts.logs), () => m.show('logs')),
+            entry('gauge', 'Performance', '', () => m.show('benchmark')),
             entry('pick', 'Pick an element', '', m.pick),
           ]
         : []),

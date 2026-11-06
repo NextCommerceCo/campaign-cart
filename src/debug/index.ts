@@ -31,22 +31,10 @@ import {
   PANEL_CSS,
   TSUGI_CSS,
 } from './styles';
-import { badge, type Child, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
+import { DEV, type Tab, TABS, tabBar } from './tabs';
+import { type Child, h, iconButton, nodes, plural, tree } from './view';
 
-const TABS = {
-  journey: 'Journey',
-  issues: 'Issues',
-  checkout: 'Checkout',
-  analytics: 'Analytics',
-  events: 'Events',
-  elements: 'Elements',
-  state: 'State',
-  logs: 'Logs',
-  benchmark: 'Benchmark',
-};
-type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'events', 'logs'];
-const DEV: Tab[] = ['elements', 'state', 'logs', 'benchmark'];
 export interface DebugInfo {
   version: string;
   apiBase: string;
@@ -98,20 +86,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const filter = h('input', { type: 'search', className: 'input', placeholder: 'Filter…', oninput: () => render() });
   const search = h('div', 'search', filter);
   const button = (name: IconName, label: string, onclick: () => void) => iconButton(name, label, onclick, 'icon-sm');
-  const tabs = (Object.keys(TABS) as Tab[]).map((t) => {
-    const el = tabButton(false, () => show(t), TABS[t]);
-    el.dataset.tab = t;
-    return el;
-  });
-  const strip = tablist({ size: 'sm' });
-  strip.append(...tabs);
-  const tabpick = h(
-    'select',
-    { className: 'select tabpick', onchange: () => show(tabpick.value as Tab) },
-    ...(Object.keys(TABS) as Tab[]).map((t) => h('option', { value: t }, TABS[t])),
+  const bar = tabBar(
+    (t) => show(t),
+    () => togglePick(),
   );
-  tabpick.setAttribute('aria-label', 'Panel tab');
-  const pickButton = button('pick', 'Pick an element', () => togglePick());
   const flip = () => {
     right = !right;
     debug.setPanel({ right });
@@ -137,13 +115,13 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     h(
       'div',
       'head',
-      h('div', 'tabs', strip),
-      tabpick,
+      h('div', 'tabs', bar.strip),
+      bar.select,
       globe,
-      pickButton,
       dock,
       button('close', 'Close', () => setView('closed')),
     ),
+    bar.devBar,
     search,
     body,
     geo,
@@ -208,7 +186,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     root.classList.toggle('picking', !!stopPicking);
     root.classList.toggle('right', right);
     root.classList.toggle('dev', dev);
-    pickButton.hidden = !dev;
     if (!dev && DEV.includes(tab)) goTo('journey');
     dock.title = right ? 'Move to the left' : 'Move to the right';
     dock.setAttribute('aria-label', dock.title);
@@ -247,18 +224,13 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     globe.setAttribute('aria-expanded', String(geoOpen));
     geo.hidden = !geoOpen;
     if (geoOpen) geo.replaceChildren(...nodes(locale.view()));
-    tabs.forEach((el) => {
-      el.hidden = !dev && DEV.includes(el.dataset.tab as Tab);
-      el.setAttribute('aria-selected', String(el.dataset.tab === tab));
-      if (el.dataset.tab === 'issues')
-        el.replaceChildren(
-          TABS.issues,
-          ...nodes([count > 0 && badge(String(count), tone === 'red' ? 'destructive' : 'warning')]),
-        );
+    bar.paint({
+      tab,
+      dev,
+      issues: count,
+      tone,
+      setup: `${info.apiBase.replace(/^https?:\/\//, '')} · funnel ${info.funnel || '—'} · storage ${info.scope}`,
     });
-    for (const o of tabpick.options) o.hidden = o.disabled = !dev && DEV.includes(o.value as Tab);
-    tabpick.value = tab;
-    tabpick.querySelector('[value="issues"]')!.textContent = count ? `${TABS.issues} · ${count}` : TABS.issues;
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));
   };
