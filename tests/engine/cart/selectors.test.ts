@@ -276,7 +276,7 @@ describe('selectors', () => {
     expect(engine.cart.lines()).toEqual([]);
   });
 
-  it('quotes offers once the campaign arrives, and keeps only the latest quote', async () => {
+  it('quotes offers once the campaign arrives, keeps only the latest quote, and reuses a request still in flight', async () => {
     const api = fakeApi({ delays: [30, 0, 0], ignoreAbort: true });
     const { engine } = makeEngine({ fetch: api.fetch });
     void engine.selectors.register('offer', CARDS, 'offer');
@@ -284,7 +284,7 @@ describe('selectors', () => {
     await engine.start();
     void engine.selectors.register('offer', [CARDS[1]!], 'offer');
     await wait(40);
-    expect(api.calls).toHaveLength(3);
+    expect(api.calls).toHaveLength(2);
     expect(engine.getState().selectors.offer?.quotes).toEqual({ two: expect.anything() });
     expect(engine.getState().selectors.offer?.quoting).toBe(false);
   });

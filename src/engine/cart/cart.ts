@@ -3,6 +3,7 @@ import { dollars } from '../format';
 import { mergeLines, normalizeCode, quantities, toggleOn } from './lines';
 import { publicCart, publicCheckout, publicToggle, shippingMethodOf } from './public';
 import { createCoupons } from './coupons';
+import { createQuotes } from './quotes';
 import type { Context } from '../engine';
 import type { Cart, CartChange } from '../events/carts';
 import type { CartGroup, CartLine, CartOperation, CartState, CartSummary, ReportedLine, SummaryLine } from './types';
@@ -15,6 +16,7 @@ export function emptyCart(): CartState {
 }
 
 export function createCart(ctx: Context) {
+  const quotes = createQuotes(ctx);
   const pricing = latestWins();
   let pending: Promise<void> | undefined;
   let running: Promise<void> | undefined;
@@ -34,7 +36,7 @@ export function createCart(ctx: Context) {
   const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
 
   const price = (codes: string[], signal?: AbortSignal) =>
-    ctx.api.calculate(
+    quotes.calculate(
       {
         lines: lines(),
         vouchers: codes,
@@ -220,6 +222,7 @@ export function createCart(ctx: Context) {
   };
 
   return {
+    quotes,
     lines,
     vouchers,
     current: () => cartOf(settledSummary()),

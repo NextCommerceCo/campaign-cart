@@ -5,25 +5,10 @@ import type { Context } from '../engine';
 import type { Selector, SelectorOption } from '../events/selectors';
 import { cents } from '../format';
 import { forcedBundle } from '../params';
-import { hash } from '../scope';
-import type {
-  CartGroup,
-  CartLine,
-  CartSummary,
-  SelectorState,
-  SelectorCard,
-  SelectorMode,
-  Slot,
-  SummaryLine,
-} from './types';
-import type { Campaign, State } from '../types';
+import type { CartGroup, CartLine, SelectorState, SelectorCard, SelectorMode, Slot, SummaryLine } from './types';
+import type { State } from '../types';
 
 export const bundleGroup = (selectorId: string) => `bundle:${selectorId}`;
-
-const QUOTES = 'quotes';
-const QUOTE_MAX_AGE = 10 * 60 * 1000;
-const QUOTE_LIMIT = 24;
-type SavedQuotes = Record<string, { at: number; summary: CartSummary }>;
 
 const typeOf = (selector: SelectorState): 'bundle' | 'offer' => (selector.mode === 'offer' ? 'offer' : 'bundle');
 
@@ -97,12 +82,11 @@ function publicOption(state: State, selector: SelectorState, card: SelectorCard)
 }
 
 export function createSelectors(ctx: Context, cart: CartActions) {
+  const { quotes } = cart;
   const inFlight = new Map<string, AbortController>();
   const bound = new Set<string>();
   const viewed = new Set<string>();
-  const fetched: SavedQuotes = {};
   const quotedOn = new Map<string, string>();
-  let version: { campaign: Campaign; hash: string } | undefined;
 
   const get = (id: string): SelectorState | undefined => ctx.getState().selectors[id];
   const set = (id: string, patch: Partial<SelectorState>) =>
@@ -161,14 +145,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     return selector.mode === 'swap' ? addToCart(id) : Promise.resolve();
   };
 
-  const campaignVersion = (campaign: Campaign) => {
-    if (version?.campaign !== campaign) version = { campaign, hash: hash(JSON.stringify(campaign)) };
-    return version.hash;
-  };
-  const basis = () => {
-    const { cart, campaign } = ctx.getState();
-    return [[...cart.coupons].sort().join(), campaign && campaignVersion(campaign)].join('|');
-  };
+  const basis = () => [[...ctx.getState().cart.coupons].sort().join(), quotes.campaignVersion()].join('|');
 
   const quote = async (id: string): Promise<void> => {
     const selector = get(id);
@@ -179,53 +156,39 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     const own = new Set(selector.cards.flatMap((c) => c.vouchers));
     const extra = ctx.getState().cart.coupons.filter((c) => !own.has(c));
     const upsell = selector.mode === 'offer';
-    const requests = selector.cards.map((card) => {
-      const lines = mergeLines({ [card.id]: { ...card, lines: cardLines(selector, card) } });
-      const vouchers = [...new Set([...card.vouchers, ...extra])];
-      return {
-        card,
-        body: { lines, vouchers, currency },
-        key: JSON.stringify([lines, [...vouchers].sort(), currency, upsell, campaignVersion(campaign)]),
-      };
-    });
-    const now = Date.now();
-    const known: SavedQuotes = Object.fromEntries(
-      Object.entries({ ...ctx.local.get<SavedQuotes>(QUOTES), ...fetched }).filter(
-        ([, q]) => now - q.at < QUOTE_MAX_AGE,
-      ),
-    );
+    const requests = selector.cards.map((card) => ({
+      card,
+      body: {
+        lines: mergeLines({ [card.id]: { ...card, lines: cardLines(selector, card) } }),
+        vouchers: [...new Set([...card.vouchers, ...extra])],
+        currency,
+      },
+    }));
     const settle = () => {
-      const quotes = Object.fromEntries(
-        requests.filter((r) => known[r.key]).map((r) => [r.card.id, known[r.key]!.summary]),
-      );
-      set(id, { quotes, quoting: false });
+      const priced = requests.flatMap((r) => {
+        const summary = quotes.stored(r.body, upsell);
+        return summary ? [[r.card.id, summary] as const] : [];
+      });
+      set(id, { quotes: Object.fromEntries(priced), quoting: false });
       ctx.emit('selector.priced', publicSelector(id));
     };
-    const unpriced = requests.filter((r) => !known[r.key]);
-    const unchecked = requests.filter((r) => !known[r.key] || !fetched[r.key]);
-    inFlight.get(id)?.abort();
+    const unpriced = requests.filter((r) => !quotes.stored(r.body, upsell));
+    const unchecked = requests.filter((r) => !quotes.fresh(r.body, upsell));
+    const previous = inFlight.get(id);
     inFlight.delete(id);
     if (!unpriced.length) settle();
-    if (!unchecked.length) return;
+    if (!unchecked.length) return previous?.abort();
     const controller = new AbortController();
     inFlight.set(id, controller);
+    const pricing = Promise.all(unchecked.map((r) => quotes.calculate(r.body, { signal: controller.signal, upsell })));
+    previous?.abort();
     if (unpriced.length) {
       set(id, { quoting: true });
       ctx.emit('selector.pricing', publicSelector(id));
     }
     try {
-      const summaries = await Promise.all(
-        unchecked.map((r) => ctx.api.calculate(r.body, { signal: controller.signal, upsell })),
-      );
+      await pricing;
       if (inFlight.get(id) !== controller) return;
-      const at = Date.now();
-      const priced = Object.fromEntries(unchecked.map((r, i) => [r.key, { at, summary: summaries[i]! }]));
-      Object.assign(fetched, priced);
-      Object.assign(known, priced);
-      const newest = Object.entries({ ...ctx.local.get<SavedQuotes>(QUOTES), ...priced })
-        .filter(([, q]) => at - q.at < QUOTE_MAX_AGE)
-        .sort(([, a], [, b]) => b.at - a.at);
-      ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
       settle();
     } catch (err) {
       if (inFlight.get(id) !== controller) return;

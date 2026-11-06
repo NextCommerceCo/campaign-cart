@@ -136,7 +136,7 @@ export class Engine {
     };
     this.cart = createCart(this.context);
     this.selectors = createSelectors(this.context, this.cart);
-    this.toggles = createToggles(this.context);
+    this.toggles = createToggles(this.context, this.cart.quotes);
     this.visit = createVisit(this.context, () => (this.options.now ?? Date.now)());
 
     if (options.reset) for (const store of [this.session, this.local]) store.clear();

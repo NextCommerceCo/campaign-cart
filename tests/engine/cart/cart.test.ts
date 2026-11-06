@@ -839,7 +839,7 @@ describe('cart', () => {
     expect(engine.cart.lines()).toEqual([]);
   });
 
-  it('gives no totals after a failed price, for new lines or a new coupon', async () => {
+  it('gives no totals after a failed price for new lines, and totals a new coupon from its check', async () => {
     const api = fakeApi();
     let failing = false;
     const fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
@@ -863,9 +863,8 @@ describe('cart', () => {
     await engine.cart.removeItem(2);
     engine.on('coupon.applied', () => (failing = true));
     expect(await engine.cart.applyCoupon('save10')).toBe(true);
-    expect(engine.snapshot().cart).toMatchObject({ coupons: ['SAVE10'] });
-    expect(engine.snapshot().cart).not.toHaveProperty('total');
-    expect(engine.snapshot().cart.lines[0]).not.toHaveProperty('price');
+    await engine.cart.settled();
+    expect(engine.snapshot().cart).toMatchObject({ coupons: ['SAVE10'], total: 39 });
   });
 
   it('prices lines and totals only from a price of exactly these lines', async () => {
@@ -952,10 +951,10 @@ describe('cart', () => {
     await engine.cart.removeCoupon('nope');
     await flush();
     expect(held).toBe(false);
-    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(await engine.cart.applyCoupon('nope1')).toBe(false);
     engine.cart.freeze(false);
     failCheck = true;
-    expect(await engine.cart.applyCoupon('nope')).toBe(false);
+    expect(await engine.cart.applyCoupon('nope2')).toBe(false);
     expect(seen).toEqual([]);
   });
 
