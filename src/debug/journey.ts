@@ -31,6 +31,42 @@ const stayed = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
 const bad = (m: Mark) => m.tone === 'warn' || m.tone === 'error';
+const SVG = 'http://www.w3.org/2000/svg';
+// tsugi's journey.js, vertical: out of a picked page's start edge, down 12px before it, into the next one's.
+const GUTTER = 12;
+const RADIUS = 6;
+
+const lines = (root: HTMLElement, svg: SVGSVGElement) => {
+  const list = root.querySelector<HTMLElement>(':scope > ol');
+  if (!list) return;
+  const box = list.getBoundingClientRect();
+  svg.style.left = `${list.offsetLeft}px`;
+  svg.style.top = `${list.offsetTop}px`;
+  svg.setAttribute('width', String(list.offsetWidth));
+  svg.setAttribute('height', String(list.offsetHeight));
+  const end = (b: Element) => {
+    const own = b.getBoundingClientRect();
+    return {
+      x: (b.closest('[data-outcomes]') ?? b).getBoundingClientRect().left - box.left,
+      y: own.top + own.height / 2 - box.top,
+    };
+  };
+  const picked = [...list.children].flatMap((step) =>
+    [...step.querySelectorAll('button[aria-pressed="true"]')].slice(0, 1),
+  );
+  svg.replaceChildren(
+    ...picked.slice(1).map((to, i) => {
+      const [a, b] = [end(picked[i]!), end(to)];
+      const g = a.x - GUTTER;
+      const path = document.createElementNS(SVG, 'path');
+      path.setAttribute(
+        'd',
+        `M ${a.x} ${a.y} H ${g + RADIUS} Q ${g} ${a.y} ${g} ${a.y + RADIUS} V ${b.y - RADIUS} Q ${g} ${b.y} ${g + RADIUS} ${b.y} H ${b.x}`,
+      );
+      return path;
+    }),
+  );
+};
 
 export function journeyView(
   engine: Engine,
@@ -43,7 +79,7 @@ export function journeyView(
     issues: () => number;
   },
 ) {
-  const toggled = new Map<string, boolean>();
+  let resized: ResizeObserver | undefined;
 
   const money = (p: PageVisit) =>
     p.total === undefined
@@ -55,12 +91,6 @@ export function journeyView(
         );
   const holding = (p: PageVisit) =>
     p.order ? `Order ${p.order}` : p.units ? `${plural(p.units, 'item')} · ${money(p)}` : 'Empty cart';
-
-  const kind = (label: string, value: string) => {
-    const el = h('span', 'jkind', label);
-    el.dataset.kind = value;
-    return el;
-  };
   const link = (text: string, onclick: () => void) => h('button', { type: 'button', className: 'link', onclick }, text);
 
   const moment = (m: Mark) => {
@@ -74,104 +104,135 @@ export function journeyView(
     return el;
   };
 
-  const block = (key: string, state: string, open: boolean, header: Child[], body: Child[]) => {
-    const el = h('details', 'jpg', h('summary', 'jhd', h('span', 'jdot'), ...header), ...body);
-    el.dataset.state = state;
-    el.open = toggled.get(key) ?? open;
-    el.addEventListener('toggle', () => toggled.set(key, el.open));
+  /** A tsugi journey step: its pill, a name and one muted line, then its page. */
+  const step = (pill: string, name: string, note: string, row: HTMLElement) =>
+    h('li', {}, h('header', {}, h('span', {}, pill), h('strong', {}, name), h('small', {}, note)), h('ul', {}, row));
+
+  /** A picked page row: name and badges, path, then what it held and when. */
+  const row = (name: Child[], path: string, figure: string, when: string, onclick: () => void) => {
+    const el = h(
+      'button',
+      { type: 'button', onclick },
+      h('span', {}, ...name),
+      h('small', {}, path),
+      h('data', {}, figure),
+      h('data', {}, when),
+    );
+    el.setAttribute('aria-pressed', 'true');
     return el;
   };
 
   const source = (first: PageVisit) => {
     const s = sourceOf(engine);
-    const label = s.platforms.length || !s.headline.startsWith('direct') ? 'Ad click' : 'Direct';
-    const warn = s.steps.some((step) => step.tone === 'warn');
-    return block(
-      'source',
-      warn ? 'bad' : 'done',
-      warn,
-      [
-        h('span', 'jtitle', kind(label, 'source'), s.headline, ...s.platforms.map((name) => badge(name, 'outline'))),
-        h('span', 'jright', h('small', {}, clock(first.at))),
-      ],
-      [
-        h(
-          'p',
-          'jchecks',
-          ...s.steps.map((step) => {
-            const el = h(
-              'span',
-              {},
-              `${step.tone === 'done' ? '✓' : step.tone === 'warn' ? '⚠' : '–'} ${step.label}: ${step.detail}`,
-            );
-            el.dataset.tone = step.tone;
-            return el;
-          }),
-          link('Details', () =>
-            ui.detail.show({
-              title: 'Source',
-              subtitle: `${s.headline} · where this tab came from`,
-              sections: [['Parameters', [sourceView(engine)]]],
-              payloads: [],
-            }),
-          ),
+    const warn = s.steps.find((st) => st.tone === 'warn');
+    const open = () =>
+      ui.detail.show({
+        title: 'Source',
+        subtitle: `${s.headline} · where this tab came from`,
+        sections: [['Parameters', [sourceView(engine)]]],
+        payloads: [],
+      });
+    return step(
+      'Entry',
+      s.platforms.length || !s.headline.startsWith('direct') ? 'Ad click' : 'Direct',
+      warn ? `⚠ ${warn.label}: ${warn.detail}` : (s.steps[0]?.detail ?? ''),
+      h(
+        'li',
+        {},
+        row(
+          [s.headline, ...s.platforms.map((name) => badge(name, 'outline'))],
+          'Where this tab came from',
+          'Details',
+          clock(first.at),
+          open,
         ),
-      ],
+      ),
     );
+  };
+
+  const carry = (before: PageVisit | undefined, p: PageVisit): Child => {
+    const lost = p.marks.find((m) => CARRY.test(m.text));
+    const text =
+      lost?.text ?? (before?.order ? `Order ${before.order} carried over` : before?.units ? 'Cart carried over' : '');
+    if (!before || !text) return null;
+    const el = h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`);
+    el.dataset.tone = lost?.tone ?? 'done';
+    return el;
+  };
+
+  const open = (p: PageVisit, i: number, pages: PageVisit[]) => {
+    const next = pages[i + 1];
+    const issues = p.marks.filter(bad).length;
+    const moments = p.marks.filter((m) => !CARRY.test(m.text));
+    ui.detail.show({
+      title: p.title || p.path,
+      badge: issues ? [plural(issues, 'issue'), 'destructive'] : next ? undefined : ['Now', 'outline'],
+      subtitle: `Step ${i + 1} · ${KINDS[p.kind]} · ${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'open now'}`,
+      sections: [
+        ['Page', [h('p', 'jmeta', p.path, h('span', 'devonly', ` · storage ${p.scope}`)), carry(pages[i - 1], p)]],
+        [
+          'What happened',
+          moments.length
+            ? [h('div', 'jmoms', ...moments.map(moment))]
+            : [h('p', 'jnote', 'Nothing happened to the cart here.')],
+        ],
+        [
+          'Tracking',
+          [
+            h(
+              'p',
+              'jnote',
+              `${plural(p.sent.length, 'tracking event')} sent`,
+              !next &&
+                p.sent.length > 0 &&
+                link('See Analytics', () => {
+                  ui.detail.dialog.close();
+                  ui.show('analytics');
+                }),
+            ),
+          ],
+        ],
+      ],
+      payloads: [],
+    });
   };
 
   const page = (p: PageVisit, i: number, pages: PageVisit[]) => {
     const next = pages[i + 1];
     const issues = p.marks.filter(bad).length;
-    const moments = p.marks.filter((m) => !CARRY.test(m.text));
-    return block(
-      `p${p.at}`,
-      !next ? 'now' : issues ? 'bad' : 'done',
-      !next || issues > 0 || pages.length <= 3,
-      [
-        h(
-          'span',
-          'jtitle',
-          kind(KINDS[p.kind], p.kind),
-          h('span', 'jname', p.title || p.path),
-          !next && badge('Now', 'outline'),
-          p.reloads > 0 && badge(p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded', 'secondary'),
-          p.upsell &&
-            badge(p.upsell === 'accepted' ? 'Accepted' : 'Declined', p.upsell === 'accepted' ? 'success' : 'outline'),
-          issues > 0 && badge(plural(issues, 'issue'), 'destructive'),
-        ),
-        h(
-          'span',
-          'jright',
-          h('b', {}, holding(p)),
-          h('small', {}, `${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'now'}`),
-        ),
-      ],
-      [
-        h('p', 'jpath', p.path, h('span', 'devonly', ` · storage ${p.scope}`)),
-        h(
-          'div',
-          'jmoms',
-          ...(moments.length ? moments.map(moment) : [h('p', 'jnote', 'Nothing happened to the cart here.')]),
-        ),
-        h(
-          'p',
-          'jnote',
-          `${plural(p.sent.length, 'tracking event')} sent`,
-          !next && p.sent.length > 0 && link('See Analytics', () => ui.show('analytics')),
-        ),
-      ],
+    const name = [
+      p.title || p.path,
+      !next && badge('Now', 'outline'),
+      issues > 0 && badge(`⚠ ${plural(issues, 'issue')}`, 'secondary'),
+    ];
+    const show = () => open(p, i, pages);
+    const note = [
+      next ? stayed(next.at - p.at) : 'open now',
+      p.reloads > 0 && (p.reloads > 1 ? `reloaded ×${p.reloads}` : 'reloaded'),
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    if (!p.upsell)
+      return step(`Step ${i + 1}`, KINDS[p.kind], note, h('li', {}, row(name, p.path, holding(p), clock(p.at), show)));
+    const outcome = (label: string, picked: boolean) => {
+      const el = h(
+        'button',
+        { type: 'button', onclick: show },
+        h('span', {}, label),
+        h('data', {}, picked ? holding(p) : ''),
+      );
+      el.setAttribute('aria-pressed', String(picked));
+      return el;
+    };
+    const el = h(
+      'li',
+      {},
+      h('span', {}, ...name),
+      h('small', {}, p.path),
+      h('div', {}, outcome('Declined', p.upsell === 'declined'), outcome('Accepted', p.upsell === 'accepted')),
     );
-  };
-
-  const carry = (before: PageVisit, p: PageVisit): Child => {
-    const lost = p.marks.find((m) => CARRY.test(m.text));
-    const text =
-      lost?.text ?? (before.order ? `Order ${before.order} carried over` : before.units ? 'Cart carried over' : '');
-    if (!text) return null;
-    const el = h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`);
-    el.dataset.tone = lost?.tone ?? 'done';
-    return el;
+    el.dataset.outcomes = '';
+    return step(`Step ${i + 1}`, KINDS[p.kind], note, el);
   };
 
   const summary = (pages: PageVisit[]) => {
@@ -201,15 +262,18 @@ export function journeyView(
   const view = (): Child[] => {
     const { pages } = debug.state();
     if (!pages.length) return [empty('No pages yet', '', 'route')];
-    return [
-      summary(pages),
-      h(
-        'div',
-        'jline',
-        source(pages[0]!),
-        ...pages.flatMap((p, i) => [i > 0 && carry(pages[i - 1]!, p), page(p, i, pages)]),
-      ),
-    ];
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('aria-hidden', 'true');
+    const map = h('div', 'journey', h('ol', {}, source(pages[0]!), ...pages.map((p, i) => page(p, i, pages))));
+    map.dataset.orientation = 'vertical';
+    map.setAttribute('aria-label', 'This visit');
+    map.append(svg);
+    resized?.disconnect();
+    if (typeof ResizeObserver === 'function') {
+      resized = new ResizeObserver(() => lines(map, svg));
+      resized.observe(map);
+    }
+    return [summary(pages), h('div', 'jmap', map)];
   };
 
   return { view };

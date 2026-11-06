@@ -23,12 +23,13 @@ const visit = (session: Storage, path: string, kind: PageKind, storagePrefix?: s
   return { engine, debug };
 };
 
-async function setup() {
+async function setup(extra?: (session: Storage) => Promise<void>) {
   vi.spyOn(console, 'debug').mockImplementation(() => {});
   const session = new MemoryStorage();
   const landing = visit(session, '/landing/', 'product');
   await landing.engine.start();
   await landing.engine.cart.addItem(1);
+  await extra?.(session);
   const { engine, debug } = visit(session, '/checkout/', 'checkout');
   await engine.start();
   await engine.cart.settled();
@@ -39,65 +40,107 @@ async function setup() {
   const view = journeyView(engine, debug, { render: () => paint(), show, detail, issues: () => 0 });
   const paint = () => root.replaceChildren(...nodes(view.view()));
   paint();
-  const blocks = () =>
-    [...root.querySelectorAll<HTMLDetailsElement>('.jline > .jpg')].map((b) => [
-      b.querySelector('.jkind')!.textContent,
-      b.dataset.state,
-      b.open,
+  const steps = () =>
+    [...root.querySelectorAll<HTMLElement>('.journey > ol > li')].map((li) => [
+      li.querySelector('header')!.textContent,
+      li.querySelector('ul > li')!.textContent,
     ]);
-  const block = (nth: number) => root.querySelectorAll<HTMLDetailsElement>('.jline > .jpg')[nth]!;
-  return { engine, root, show, detail, blocks, block };
+  const row = (nth: number) => root.querySelectorAll<HTMLButtonElement>('.journey > ol > li button')[nth]!;
+  return { engine, root, show, detail, steps, row };
 }
 
 describe('journey tab', () => {
-  it('sums up the visit and draws one timeline: the source, then each page with what it held', async () => {
-    const { root, blocks, block } = await setup();
+  it('sums up the visit and draws it as a tsugi journey: the entry, then each page with what it held', async () => {
+    const { root, steps, row } = await setup();
     expect(root.querySelector('.jsum')!.textContent).toBe(
       'direct / none → Landing → Checkout1 item · $49.00 · no order yetClear',
     );
-    expect(blocks()).toEqual([
-      ['Direct', 'done', false],
-      ['Landing', 'done', true],
-      ['Checkout', 'now', true],
+    expect(root.querySelector<HTMLElement>('.journey')!.dataset.orientation).toBe('vertical');
+    expect(steps()).toEqual([
+      [
+        'EntryDirectNone on the landing URL',
+        expect.stringMatching(/^direct \/ noneWhere this tab came fromDetails\d\d:\d\d:\d\d$/),
+      ],
+      [
+        expect.stringMatching(/^Step 1Landing\d+s$/),
+        expect.stringMatching(/^\/landing\/\/landing\/1 item · \$49\.00\d\d:\d\d:\d\d$/),
+      ],
+      ['Step 2Checkoutopen now', expect.stringMatching(/^\/checkout\/Now\/checkout\/1 item · \$49\.00\d\d:\d\d:\d\d$/)],
     ]);
-    const now = block(2);
-    expect(now.querySelector('.jtitle')!.textContent).toBe('Checkout/checkout/Now');
-    expect(now.querySelector('.jright')!.textContent).toMatch(/^1 item · \$49\.00\d\d:\d\d:\d\d · now$/);
-    expect(now.querySelector('.jpath')!.textContent).toBe('/checkout/ · storage s1');
-    expect(root.querySelector('.jcarry')!.textContent).toBe('↓ Cart carried over');
+    expect([row(0), row(1), row(2)].map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'true', 'true']);
   });
 
-  it('lists what happened on each page as one line each, and counts its tracking events', async () => {
-    const { block, show } = await setup();
-    const landing = block(1);
+  it('opens a page with what happened there, what carried over and its tracking events', async () => {
+    const { row, detail, show } = await setup();
+    row(1).click();
+    expect(detail.dialog.open).toBe(true);
+    expect(detail.dialog.querySelector('h2')!.textContent).toBe('/landing/');
+    expect(detail.dialog.querySelector('header p')!.textContent).toMatch(/^Step 1 · Landing · \d\d:\d\d:\d\d · \d+s$/);
     expect(
-      [...landing.querySelectorAll('.jmom')].map((m) => [m.children[1]!.textContent, m.getAttribute('data-tone')]),
+      [...detail.dialog.querySelectorAll('.jmom')].map((m) => [
+        m.children[1]!.textContent,
+        m.getAttribute('data-tone'),
+      ]),
     ).toEqual([['Added Earbuds ×1 ×1', null]]);
-    expect(landing.querySelector('.jnote:last-child')!.textContent).toBe('0 tracking events sent');
-    expect(block(2).querySelector('.jmoms')!.textContent).toBe('Nothing happened to the cart here.');
+    expect(detail.dialog.querySelector('.jnote')!.textContent).toBe('0 tracking events sent');
+    row(2).click();
+    expect(detail.dialog.querySelector('.jcarry')!.textContent).toBe('↓ Cart carried over');
+    expect([...detail.dialog.querySelectorAll('.jnote')].map((n) => n.textContent)).toEqual([
+      'Nothing happened to the cart here.',
+      '0 tracking events sent',
+    ]);
     expect(show).not.toHaveBeenCalled();
   });
 
   it('clears the journey down to this page', async () => {
-    const { root, blocks } = await setup();
+    const { root, steps } = await setup();
     [...root.querySelectorAll<HTMLButtonElement>('.jsum .link')].find((b) => b.textContent === 'Clear')!.click();
-    expect(blocks().map(([k]) => k)).toEqual(['Direct', 'Checkout']);
+    expect(steps().map(([header]) => header)).toEqual(['EntryDirectNone on the landing URL', 'Step 1Checkoutopen now']);
   });
 
-  it('starts at the source with its checks, and opens where its values go', async () => {
-    const { block, detail } = await setup();
-    const source = block(0);
-    expect(source.querySelector('.jtitle')!.textContent).toBe('Directdirect / none');
-    expect([...source.querySelectorAll('.jchecks > span')].map((c) => c.textContent)).toEqual([
-      '– Captured: None on the landing URL',
-      '– Kept: Nothing to keep',
-      '– Carried: Nothing to carry',
-      '✓ On the order: All recorded',
-    ]);
-    source.querySelector<HTMLButtonElement>('.jchecks .link')!.click();
-    expect(detail.dialog.open).toBe(true);
+  it('opens the entry with where its values go', async () => {
+    const { row, detail } = await setup();
+    row(0).click();
     expect(detail.dialog.querySelector('h2')!.textContent).toBe('Source');
     expect(detail.dialog.querySelector('.jpage h3')!.textContent).toBe('direct / none');
+  });
+
+  it('shows an upsell with its outcomes, the one taken picked', async () => {
+    const { root } = await setup(async (session) => {
+      const upsell = visit(session, '/upsell/', 'upsell');
+      await upsell.engine.start();
+      upsell.engine.events.emit('upsell.accepted', {
+        ref_id: 'R1',
+        page: '/upsell/',
+        lines: [{ package_id: 2, quantity: 1 }],
+      });
+    });
+    const outcomes = root.querySelector<HTMLElement>('.journey li[data-outcomes]')!;
+    expect(outcomes.closest('ol > li')!.querySelector('header')!.textContent).toMatch(/^Step 2Upsell/);
+    expect(
+      [...outcomes.querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
+    ).toEqual([
+      ['Declined', 'false'],
+      [expect.stringMatching(/^Accepted/), 'true'],
+    ]);
+  });
+
+  it('joins each page to the next with a line, as tsugi draws it', async () => {
+    const observed: Array<() => void> = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private fn: () => void) {}
+        observe() {
+          observed.push(this.fn);
+        }
+        disconnect() {}
+      },
+    );
+    const { root } = await setup();
+    observed.at(-1)!();
+    expect(root.querySelectorAll('.journey > svg path')).toHaveLength(2);
+    vi.unstubAllGlobals();
   });
 
   it('marks a cart that did not carry over between the pages, and links the issues', async () => {
@@ -110,19 +153,17 @@ describe('journey tab', () => {
     await engine.start();
     const root = document.createElement('div');
     const show = vi.fn();
-    const view = journeyView(engine, debug, {
-      render: () => {},
-      show,
-      detail: detailModal(new Set()),
-      issues: () => 1,
-    });
+    const detail = detailModal(new Set());
+    const view = journeyView(engine, debug, { render: () => {}, show, detail, issues: () => 1 });
     root.replaceChildren(...nodes(view.view()));
-    const carry = root.querySelector<HTMLElement>('.jcarry')!;
+    const now = root.querySelectorAll<HTMLButtonElement>('.journey > ol > li button')[2]!;
+    expect(now.querySelector('span')!.textContent).toBe('/checkout/Now⚠ 1 issue');
+    now.click();
+    const carry = detail.dialog.querySelector<HTMLElement>('.jcarry')!;
     expect([carry.textContent, carry.dataset.tone]).toEqual([
       '⚠ The cart (1 item) did not carry over from /landing/',
       'error',
     ]);
-    expect(root.querySelectorAll<HTMLElement>('.jline > .jpg')[2]!.dataset.state).toBe('now');
     const issuesLink = [...root.querySelectorAll<HTMLButtonElement>('.jsum .link')].find((b) =>
       b.textContent!.startsWith('⚠'),
     )!;

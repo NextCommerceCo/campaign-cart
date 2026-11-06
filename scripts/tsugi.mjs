@@ -11,6 +11,7 @@ const COMPONENTS = [
   'dropdown',
   'empty',
   'input',
+  'journey',
   'kbd',
   'native-select',
   'payment-icon',
