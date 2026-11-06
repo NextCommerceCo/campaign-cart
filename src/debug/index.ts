@@ -7,14 +7,14 @@ import { cartView } from './cart';
 import { checkoutView } from './checkout';
 import { eventsView } from './events';
 import { type IconName, icon } from './icons';
-import { journeyView } from './journey';
-import { localeMenu } from './locale';
+import { journeyView, pageKind } from './journey';
+import { localeTab } from './locale';
 import { logsView } from './logs';
 import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
 import { followTheme } from './theme';
-import { createDebug, type PageKind, type PageVisit } from './state';
-import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
+import { createDebug, type PageVisit } from './state';
+import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
 
 const TABS = {
@@ -22,6 +22,7 @@ const TABS = {
   issues: 'Issues',
   checkout: 'Checkout',
   analytics: 'Analytics',
+  locale: 'Locale',
   events: 'Events',
   elements: 'Elements',
   state: 'State',
@@ -42,17 +43,6 @@ export interface DebugInfo {
   analytics: () => ProviderConfig;
   send: Send;
 }
-
-const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
-
-const pageKind = (): PageKind => {
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="next-page-type"]')?.content as PageKind;
-  if (PAGE_KINDS.includes(meta)) return meta;
-  if (document.querySelector('form[data-next-checkout]')) return 'checkout';
-  if (document.querySelector('[data-next-upsell]')) return 'upsell';
-  if (document.querySelector('[data-next-display^="order."]')) return 'receipt';
-  return 'page';
-};
 
 export function startDebug(engine: Engine, info: DebugInfo): void {
   const open = new Set(['cart']);
@@ -83,6 +73,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let dev = saved.dev === true;
   let queued = false;
   let resetting = false;
+  let settings = false;
   const queries: Partial<Record<Tab, string>> = {};
 
   const host = document.createElement('next-debug');
@@ -141,7 +132,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS);
+  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS);
   let paymentIcons: Promise<void> | undefined;
   const loadPaymentIcons = () =>
     (paymentIcons ??= import('../../vendor/tsugi/payment-icons.css?raw').then((m) => style.append(m.default)));
@@ -157,7 +148,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog);
   const logs = logsView(engine, open, idOf);
-  const locale = localeMenu(engine, debug, info.send, () => later());
+  const locale = localeTab(engine, debug, info.send, () => later());
 
   const findIssues = () => {
     const page = inspect(engine).filter((i) => i.bad);
@@ -267,6 +258,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       ];
     },
     analytics: () => flow.view(query()),
+    locale: () => locale.view(),
     events: () => events.view(query()),
     logs: () => logs.view(query()),
   };
@@ -296,7 +288,9 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
             pages: debug.state().pages.length,
             checkout: checkout.summary(),
             analytics: flow.summary(),
-            locale,
+            locale: locale.summary(),
+            settings,
+            setSettings: (on) => ((settings = on), render()),
             counts: () => ({ elements: countElements(), events: events.count(), logs: engine.log.entries().length }),
             show,
             pick: togglePick,
@@ -327,7 +321,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
   const setView = (next: typeof view) => {
     view = next;
-    if (next !== 'menu') resetting = false;
+    if (next !== 'menu') resetting = settings = false;
     if (next !== 'menu') debug.setPanel({ open: next === 'panel', tab });
     render();
   };
@@ -370,9 +364,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open) setView('closed');
   });
-  document.addEventListener('click', (e) => {
-    if (view === 'menu' && !e.composedPath().includes(host)) setView('closed');
-  });
+  const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');
+  document.addEventListener('click', outside, true);
   engine.on(
     '*',
     (e) => {

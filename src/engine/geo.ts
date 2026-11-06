@@ -1,37 +1,30 @@
 import { I18N_RULES } from './texts';
 import type { Send } from './types';
 
-/** What i18n-rules' `/v1/geo` says about the visitor, without the address and coordinates. */
+/** i18n-rules' `/v1/geo`: where the visitor is, as the edge resolved it. */
 export interface VisitorGeo {
+  ip: string | null;
   country: { code: string; name: string } | null;
-  currency: string | null;
+  state: { code: string | null; name: string } | null;
+  city: string | null;
+  postcode: string | null;
+  timezone: string | null;
+  latitude: number | null;
+  longitude: number | null;
   /** The browser's first `Accept-Language`, `th-TH`. */
   language: string | null;
-  region: string | null;
-  timezone: string | null;
+  currency: string | null;
+  region: { code: string; name: string; subregion?: { code: string; name: string } | null } | null;
   /** `default` when the edge resolved no country: a local request, or a Tor exit. */
   source: 'cf' | 'default';
 }
 
-type GeoAnswer = Omit<VisitorGeo, 'region'> & { region: { name: string } | null };
-
 let asked: Promise<VisitorGeo | undefined> | undefined;
 
-/** The visitor's geo, asked once per page; `undefined` when i18n-rules cannot answer. */
+/** The visitor's geo, asked once per page and kept in memory only; `undefined` when i18n-rules cannot answer. */
 export function visitorGeo(send: Send, lang = 'en', base = I18N_RULES): Promise<VisitorGeo | undefined> {
   asked ??= send(`${base}/v1/geo?lang=${encodeURIComponent(lang)}`, { method: 'GET' })
-    .then(async (res) => {
-      if (!res.ok) return undefined;
-      const geo = (await res.json()) as GeoAnswer;
-      return {
-        country: geo.country,
-        currency: geo.currency,
-        language: geo.language,
-        region: geo.region?.name ?? null,
-        timezone: geo.timezone,
-        source: geo.source,
-      };
-    })
+    .then(async (res) => (res.ok ? ((await res.json()) as VisitorGeo) : undefined))
     .catch(() => undefined);
   return asked;
 }

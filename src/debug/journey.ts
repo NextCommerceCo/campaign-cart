@@ -4,6 +4,17 @@ import { icon } from './icons';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
 
+const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
+
+export const pageKind = (): PageKind => {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="next-page-type"]')?.content as PageKind;
+  if (PAGE_KINDS.includes(meta)) return meta;
+  if (document.querySelector('form[data-next-checkout]')) return 'checkout';
+  if (document.querySelector('[data-next-upsell]')) return 'upsell';
+  if (document.querySelector('[data-next-display^="order."]')) return 'receipt';
+  return 'page';
+};
+
 const KINDS: Record<PageKind, string> = {
   product: 'Landing',
   checkout: 'Checkout',

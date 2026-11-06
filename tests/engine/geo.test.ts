@@ -17,20 +17,13 @@ const answer = {
 };
 
 describe('visitorGeo', () => {
-  it('asks i18n-rules once per page, in the page language, and keeps the country, currency, language, region and time zone', async () => {
+  it('asks i18n-rules once per page, in the page language', async () => {
     const send = vi.fn(async () => new Response(JSON.stringify(answer)));
     const geo = await visitorGeo(send, 'fr', 'https://rules.test');
     await visitorGeo(send, 'fr', 'https://rules.test');
     expect(send).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledWith('https://rules.test/v1/geo?lang=fr', { method: 'GET' });
-    expect(geo).toEqual({
-      country: { code: 'TH', name: 'Thailand' },
-      currency: 'THB',
-      language: 'th-TH',
-      region: 'Asia',
-      timezone: 'Asia/Bangkok',
-      source: 'cf',
-    });
+    expect(geo).toEqual(answer);
   });
 
   it('answers undefined when i18n-rules cannot answer', async () => {

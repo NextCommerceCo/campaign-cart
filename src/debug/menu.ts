@@ -2,10 +2,11 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf } from '../engine/format';
 import { resolve } from '../engine/values';
 import { type IconName, icon } from './icons';
+import type { LocaleSummary } from './locale';
 import type { Theme } from './theme';
 import { badge, button, type Child, h, iconButton, plural } from './view';
 
-export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'elements' | 'events' | 'logs';
+export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'locale' | 'elements' | 'events' | 'logs';
 
 export interface MenuInput {
   info: { version: string; apiBase: string; funnel: string; scope: string; off: () => void };
@@ -16,7 +17,9 @@ export interface MenuInput {
   pages: number;
   checkout: string;
   analytics: string;
-  locale: () => Child;
+  locale: LocaleSummary;
+  settings: boolean;
+  setSettings: (on: boolean) => void;
   counts: () => Record<'elements' | 'events' | 'logs', number>;
   show: (tab: MenuTab) => void;
   pick: () => void;
@@ -58,28 +61,67 @@ const toggle = (label: string, detail: string, on: boolean, onclick: () => void)
   return el;
 };
 
+const segmented = (label: string, options: Array<[IconName, string, boolean, () => void]>) => {
+  const group = h(
+    'div',
+    {},
+    ...options.map(([glyph, text, pressed, onclick]) => {
+      const el = h('button', { type: 'button', onclick }, icon(glyph), text);
+      el.setAttribute('aria-pressed', String(pressed));
+      return el;
+    }),
+  );
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', label);
+  return h('div', 'mseg', h('span', {}, label), group);
+};
+
 const THEMES: Array<[IconName, string, Theme | undefined]> = [
   ['monitor', 'Auto', undefined],
   ['sun', 'Light', 'light'],
   ['moon', 'Dark', 'dark'],
 ];
 
-const themePicker = (current: Theme | undefined, pick: (theme: Theme | undefined) => void) => {
-  const group = h(
-    'div',
-    {},
-    ...THEMES.map(([glyph, label, theme]) => {
-      const el = h('button', { type: 'button', onclick: () => pick(theme) }, icon(glyph), label);
-      el.setAttribute('aria-pressed', String(current === theme));
-      return el;
-    }),
-  );
-  group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'Theme');
-  return h('div', 'mtheme', h('span', {}, 'Theme'), group);
+const localeValue = ({ text, differs }: LocaleSummary) => {
+  if (!differs) return text;
+  const dot = h('span', { className: 'mdot', title: "Differs from the visitor's geo" });
+  dot.setAttribute('role', 'img');
+  dot.setAttribute('aria-label', dot.title);
+  return h('span', {}, text, dot);
+};
+
+const settingsView = (m: MenuInput): Child[] => {
+  const setup: Array<[string, string]> = [
+    ['API', m.info.apiBase.replace(/^https?:\/\//, '')],
+    ['Funnel', m.info.funnel || '—'],
+    ['Storage', m.info.scope],
+  ];
+  return [
+    h(
+      'div',
+      'mtop',
+      iconButton('back', 'Back', () => m.setSettings(false), 'icon-sm'),
+      h('b', {}, 'Settings'),
+    ),
+    h(
+      'div',
+      'mlist',
+      toggle('Developer mode', 'Events, Elements, State and Logs', m.dev, m.toggleDev),
+      segmented(
+        'Theme',
+        THEMES.map(([glyph, label, theme]) => [glyph, label, m.theme === theme, () => m.setTheme(theme)]),
+      ),
+      segmented('Position', [
+        ['dockLeft', 'Left', !m.right, () => m.right && m.flip()],
+        ['dockRight', 'Right', m.right, () => !m.right && m.flip()],
+      ]),
+    ),
+    m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),
+  ];
 };
 
 export function menuView(engine: Engine, m: MenuInput): Child[] {
+  if (m.settings) return settingsView(m);
   const { campaign } = engine.getState();
   const { count, tone } = m.issues;
   const reset = button(
@@ -90,11 +132,6 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
   );
   if (!m.resetting) reset.classList.add('danger');
   const counts = m.dev ? m.counts() : undefined;
-  const setup: Array<[string, string]> = [
-    ['API', m.info.apiBase.replace(/^https?:\/\//, '')],
-    ['Funnel', m.info.funnel || '—'],
-    ['Storage', m.info.scope],
-  ];
   return [
     h(
       'div',
@@ -105,12 +142,7 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
         h('b', { title: campaign?.name ?? '' }, campaign?.name ?? 'Loading campaign…'),
         h('small', {}, [campaign?.currency, `SDK v${m.info.version}`].filter(Boolean).join(' · ')),
       ),
-      iconButton(
-        m.right ? 'dockLeft' : 'dockRight',
-        m.right ? 'Move to the left' : 'Move to the right',
-        m.flip,
-        'icon-sm',
-      ),
+      iconButton('settings', 'Settings', () => m.setSettings(true), 'icon-sm'),
     ),
     h(
       'div',
@@ -124,6 +156,7 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
       item('route', 'Journey', `${plural(m.pages, 'page')} in this tab`, () => m.show('journey')),
       item('cart', 'Checkout', `${cartText(engine)} · ${m.checkout}`, () => m.show('checkout')),
       item('send', 'Analytics', m.analytics, () => m.show('analytics')),
+      item('globe', 'Locale', localeValue(m.locale), () => m.show('locale')),
       ...(counts
         ? [
             h('hr'),
@@ -133,14 +166,6 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
             item('pick', 'Pick an element', '', m.pick, false),
           ]
         : []),
-    ),
-    m.locale(),
-    m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),
-    h(
-      'div',
-      'mlist',
-      toggle('Developer mode', 'Events, Elements, State and Logs', m.dev, m.toggleDev),
-      themePicker(m.theme, m.setTheme),
     ),
     h(
       'div',

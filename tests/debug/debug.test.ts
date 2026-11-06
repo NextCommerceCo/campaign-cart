@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
+import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
 import type { Campaign } from '../../src/engine/types';
-import { fakeApi, json } from '../fixtures/api';
+import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
 const shadow = () => document.querySelector('next-debug')!.shadowRoot!;
@@ -13,10 +13,16 @@ const body = () => $('.body').textContent!;
 const tab = (name: string) => $(`[data-tab="${name}"]`).click();
 const menuItem = (label: string) =>
   [...shadow().querySelectorAll<HTMLElement>('.menu button')].find((b) => b.firstChild!.textContent === label)!;
-const developer = async () => {
+const settings = () => {
   while (view() !== 'menu') $('.fab').click();
+  if (!shadow().querySelector('.mtop')) $('.mhead [aria-label="Settings"]').click();
+};
+const back = () => $('.mtop [aria-label="Back"]').click();
+const developer = async () => {
+  settings();
   menuItem('Developer mode').click();
   await vi.waitFor(() => expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('true'));
+  back();
 };
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
@@ -49,7 +55,7 @@ afterEach(() => {
 });
 
 describe('debug tools', () => {
-  it('opens a menu from the floating button with the cart, campaign and setup, and closes on an outside click', async () => {
+  it('opens a menu from the floating button with the cart and campaign, and closes on an outside click', async () => {
     const next = await start();
     await next.actions.addItem(1);
     $('.fab').click();
@@ -57,16 +63,59 @@ describe('debug tools', () => {
     const menu = $('.menu').textContent!;
     expect(menu).toMatch(/Checkout1 item · \$[\d.]+ · cart only/);
     expect($('.mhead').textContent).toMatch(/^OlympusUSD · SDK v/);
+    expect($('.mhead button').getAttribute('aria-label')).toBe('Settings');
+    expect(menu).not.toContain('Developer mode');
+    expect(menu).not.toContain('Theme');
     expect(menu).not.toContain('APIapi.test');
-    expect(menuItem('Developer mode').getAttribute('role')).toBe('switch');
-    expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
     expect(PANEL_CSS).toContain('.label{display:inline-flex;flex-shrink:0;');
     expect(PANEL_CSS).toMatch(/\.value\{flex:1;min-width:0;/);
-    await developer();
-    expect($('.menu').textContent).toContain('APIapi.test');
-    expect($('.menu').textContent).toContain('Funnelf1');
     document.body.click();
     expect(view()).toBe('closed');
+  });
+
+  it('keeps settings behind the gear, with the setup only in developer mode, and Back returns to the menu', async () => {
+    await start();
+    settings();
+    expect($('.mtop').textContent).toBe('Settings');
+    expect(shadow().querySelector('.mhead')).toBeNull();
+    expect(menuItem('Developer mode').getAttribute('role')).toBe('switch');
+    expect(menuItem('Developer mode').getAttribute('aria-checked')).toBe('false');
+    expect([...shadow().querySelectorAll('.mseg [role=group]')].map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Theme',
+      'Position',
+    ]);
+    expect($('.menu').textContent).not.toContain('APIapi.test');
+    menuItem('Developer mode').click();
+    await vi.waitFor(() => expect($('.menu').textContent).toContain('APIapi.test'));
+    expect($('.menu').textContent).toContain('Funnelf1');
+    back();
+    expect(view()).toBe('menu');
+    expect($('.mhead').textContent).toMatch(/^Olympus/);
+    expect(menuItem('Logs')).toBeDefined();
+  });
+
+  it('opens the menu on its main view after closing it from settings', async () => {
+    await start();
+    settings();
+    document.body.click();
+    expect(view()).toBe('closed');
+    $('.fab').click();
+    expect(shadow().querySelector('.mtop')).toBeNull();
+    expect($('.mhead [aria-label="Settings"]')).not.toBeNull();
+  });
+
+  it('shows the locale in use and opens the Locale tab from the menu', async () => {
+    await start();
+    $('.fab').click();
+    expect(menuItem('Locale').textContent).toMatch(/^LocaleUSD · en$|^Locale\w\w · USD · en$/);
+    menuItem('Locale').click();
+    expect(view()).toBe('panel');
+    expect($('[data-tab="locale"]').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('keeps the menu inside the viewport and the tab strip from running under the panel icons', () => {
+    expect(PANEL_CSS).toMatch(/\.menu\{[^}]*max-height:calc\(100vh - 92px\)[^}]*overflow:hidden auto/);
+    expect(PANEL_CSS).toMatch(/\.head \.tabs\{[^}]*overflow-x:auto/);
   });
 
   it('starts simple, with the developer tabs and setup behind Developer mode, remembered on the next page', async () => {
@@ -79,23 +128,34 @@ describe('debug tools', () => {
         .map((t) => t.dataset.tab);
     const pickable = () =>
       [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
-    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
+    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
     expect($('[aria-label="Pick an element"]').hidden).toBe(true);
     expect($('.root').classList.contains('dev')).toBe(false);
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
     await developer();
     menuItem('Logs').click();
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events', 'elements', 'state', 'logs']);
+    expect(shown()).toEqual([
+      'journey',
+      'issues',
+      'checkout',
+      'analytics',
+      'locale',
+      'events',
+      'elements',
+      'state',
+      'logs',
+    ]);
     expect($('[aria-label="Pick an element"]').hidden).toBe(false);
     await start('', {});
     expect($('.root').classList.contains('dev')).toBe(true);
     expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
-    while (view() !== 'menu') $('.fab').click();
+    settings();
     menuItem('Developer mode').click();
     await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
+    back();
     menuItem('Journey').click();
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
   });
 
   it('opens each panel tab from the menu, and closes on Esc', async () => {
@@ -371,176 +431,41 @@ describe('debug tools', () => {
     expect(clicked).toHaveBeenCalledOnce();
   });
 
-  it('starts on the right side and moves to the left', async () => {
+  it('starts on the right side and moves to the left from settings', async () => {
     await start();
     expect($('.root').classList.contains('right')).toBe(true);
-    $('.fab').click();
-    expect($('.mhead button').getAttribute('aria-label')).toBe('Move to the left');
-    $('.mhead button').click();
+    settings();
+    const side = (label: string) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('[aria-label="Position"] button')].find(
+        (b) => b.textContent === label,
+      )!;
+    expect(side('Right').getAttribute('aria-pressed')).toBe('true');
+    side('Right').click();
+    expect($('.root').classList.contains('right')).toBe(true);
+    side('Left').click();
     expect($('.root').classList.contains('right')).toBe(false);
-    expect($('.mhead button').getAttribute('aria-label')).toBe('Move to the right');
+    expect(side('Left').getAttribute('aria-pressed')).toBe('true');
     expect($('.head [aria-label="Move to the right"]')).not.toBeNull();
-  });
-
-  describe('locale', () => {
-    const page: Campaign = {
-      ...campaign,
-      available_shipping_countries: [
-        { code: 'US', label: 'United States' },
-        { code: 'GB', label: 'United Kingdom' },
-        { code: 'TH', label: 'Thailand' },
-      ],
-      available_currencies: [
-        { code: 'USD', label: '$ USD' },
-        { code: 'EUR', label: '€ EUR' },
-      ],
-    };
-    const FORM =
-      '<meta name="next-success-url" content="/thanks"><form data-next-checkout="form"><input data-next-checkout-field="email"></form>';
-    const GEO = {
-      country: { code: 'TH', name: 'Thailand' },
-      currency: 'THB',
-      language: 'th-TH',
-      region: { name: 'Bangkok' },
-      timezone: 'Asia/Bangkok',
-      source: 'cf',
-    };
-    const select = (label: string) => $<HTMLSelectElement>(`.mloc select[aria-label="${label}"]`);
-    const choose = (label: string, value: string) => {
-      select(label).value = value;
-      select(label).dispatchEvent(new Event('change'));
-    };
-    const options = (label: string) => [...select(label).options].map((o) => [o.value, o.text]);
-    const geoAnswers = (answer: unknown) => {
-      const api = fakeApi();
-      const asked: string[] = [];
-      const fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
-        if (!String(url).includes('/v1/geo')) return api.fetch(url, init);
-        asked.push(String(url));
-        return answer ? json(answer) : json({}, 503);
-      }) as typeof globalThis.fetch;
-      return { fetch, asked };
-    };
-    afterEach(() => localStorage.clear());
-    const freshBoot = async () => {
-      vi.resetModules();
-      return (await import('../../src/boot')).boot;
-    };
-
-    it('lists the campaign currencies and the i18n-rules languages, and reloads with ?currency= or ?lang=', async () => {
-      await start('', { debug: true }, { page });
-      const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
-      $('.fab').click();
-      expect($('.mloc h3').textContent).toBe('Locale');
-      expect(options('Currency')).toEqual([
-        ['USD', '$ USD'],
-        ['EUR', '€ EUR'],
-      ]);
-      expect(select('Currency').value).toBe('USD');
-      expect(options('Language').map(([code]) => code)).toEqual([
-        'da',
-        'de',
-        'en',
-        'es',
-        'fi',
-        'fr',
-        'it',
-        'nl',
-        'no',
-        'pt',
-        'sv',
-        'th',
-      ]);
-      expect(options('Language')).toContainEqual(['th', 'ไทย']);
-      expect(select('Language').value).toBe('en');
-      expect(options('Country').map(([code]) => code)).toEqual(['US', 'GB', 'TH']);
-      choose('Currency', 'EUR');
-      expect(new URL(assign.mock.calls[0]![0] as string).searchParams.get('currency')).toBe('EUR');
-      choose('Language', 'da');
-      expect(new URL(assign.mock.calls[1]![0] as string).searchParams.get('lang')).toBe('da');
-    });
-
-    it('shows only the campaign currency when it offers no others', async () => {
-      await start();
-      $('.fab').click();
-      expect(options('Currency')).toEqual([['USD', 'USD']]);
-      expect(select('Currency').disabled).toBe(true);
-    });
-
-    it('sets the country of the checkout form on a checkout page', async () => {
-      const next = await start(FORM, { debug: true }, { page });
-      await vi.waitFor(() => expect(next.getState().checkout?.countries.length).toBe(3));
-      $('.fab').click();
-      choose('Country', 'GB');
-      expect(next.getState().checkout!.fields.country).toBe('GB');
-      await vi.waitFor(() => expect(select('Country').value).toBe('GB'));
-    });
-
-    it('keeps a country chosen off checkout and sets it on the checkout page', async () => {
-      await start('', { debug: true }, { page });
-      $('.fab').click();
-      choose('Country', 'GB');
-      await vi.waitFor(() => expect($('.mloc').textContent).toContain('applies at checkout'));
-      expect(select('Country').value).toBe('GB');
-      const next = await start(FORM, {}, { page });
-      await vi.waitFor(() => expect(next.getState().checkout?.fields.country).toBe('GB'));
-      while (view() !== 'menu') $('.fab').click();
-      expect($('.mloc').textContent).not.toContain('applies at checkout');
-    });
-
-    it('asks the geo once the menu opens, and shows what it detected next to what is in use', async () => {
-      const geo = geoAnswers(GEO);
-      await start('', { debug: true }, { page, fetch: geo.fetch, boot: await freshBoot() });
-      await new Promise((r) => setTimeout(r, 20));
-      expect(geo.asked).toEqual([]);
-      $('.fab').click();
-      expect($('.mloc header').textContent).toBe('LocaleDetecting…');
-      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleAsia/Bangkok'));
-      expect(geo.asked).toEqual(['https://i18n-rules.nextcommerce.com/v1/geo?lang=en']);
-      expect($('.mloc').textContent).toContain('Geo: Thailand');
-      expect($('.mloc').textContent).toContain('Geo: THB');
-      expect($('.mloc').textContent).toContain('Browser: th-TH');
-      expect(select('Country').value).toBe('TH');
-      expect(select('Currency').value).toBe('USD');
-    });
-
-    it('says when a local request has no geo', async () => {
-      const geo = geoAnswers({
-        ...GEO,
-        country: null,
-        currency: null,
-        language: 'en-US',
-        region: null,
-        source: 'default',
-      });
-      await start('', { debug: true }, { fetch: geo.fetch, boot: await freshBoot() });
-      $('.fab').click();
-      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleNo geo on a local request'));
-      expect($('.mloc').textContent).not.toContain('Geo:');
-      expect($('.mloc').textContent).toContain('Browser: en-US');
-    });
-
-    it('says when the geo does not answer', async () => {
-      await start('', { debug: true }, { fetch: geoAnswers(undefined).fetch, boot: await freshBoot() });
-      $('.fab').click();
-      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleGeo unavailable'));
-    });
   });
 
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
     expect(shadow().querySelector('style')!.textContent).toBe(
-      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS,
+      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
     const cart = classes(CART_CSS);
     const journey = classes(JOURNEY_CSS);
     const checkout = classes(CHECKOUT_CSS);
+    const locale = classes(LOCALE_CSS);
     expect([...cart].filter((name) => panel.has(name))).toEqual([]);
     expect([...journey].filter((name) => panel.has(name) || cart.has(name))).toEqual([]);
     expect([...checkout].filter((name) => panel.has(name) || cart.has(name) || journey.has(name))).toEqual([]);
-    const rules = [...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm)];
+    expect([...locale].filter((name) => [panel, cart, journey, checkout].some((s) => s.has(name)))).toEqual([]);
+    const rules = [
+      ...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm),
+    ];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
     const code = readdirSync('src/debug')
@@ -549,14 +474,16 @@ describe('debug tools', () => {
       .join('\n');
     const unused = (names: Set<string | undefined>) =>
       [...names].filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(code));
-    expect([panel, cart, journey, checkout].flatMap(unused)).toEqual([]);
+    expect([panel, cart, journey, checkout, locale].flatMap(unused)).toEqual([]);
     const vendored = readFileSync('scripts/tsugi.mjs', 'utf8').match(/const COMPONENTS = \[([^\]]*)\]/)![1]!;
     const CLASSES: Record<string, string> = { button: 'btn', 'native-select': 'select', scrollbar: 'scrollbar-sm' };
     expect(unused(new Set([...vendored.matchAll(/'([\w-]+)'/g)].map(([, name]) => CLASSES[name!] ?? name)))).toEqual(
       [],
     );
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
-    expect([...panel, ...cart, ...journey, ...checkout].filter((name) => components.includes(name!))).toEqual([]);
+    expect(
+      [...panel, ...cart, ...journey, ...checkout, ...locale].filter((name) => components.includes(name!)),
+    ).toEqual([]);
   });
 
   it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
@@ -572,10 +499,10 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS;
+    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });
@@ -588,8 +515,10 @@ describe('debug tools', () => {
     await start();
     const dark = () => shadow().host.classList.contains('dark');
     const theme = (label: string) =>
-      [...shadow().querySelectorAll<HTMLButtonElement>('.mtheme button')].find((b) => b.textContent === label)!;
-    $('.fab').click();
+      [...shadow().querySelectorAll<HTMLButtonElement>('[aria-label="Theme"] button')].find(
+        (b) => b.textContent === label,
+      )!;
+    settings();
     expect(theme('Auto').getAttribute('aria-pressed')).toBe('true');
     expect(dark()).toBe(true);
     theme('Light').click();
