@@ -239,6 +239,7 @@ src/
 | legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 56 KB         |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
+| geo          | shared by checkout and debug (`engine/geo.ts`)                                              | 1 KB          |
 
 ## Imports
 
