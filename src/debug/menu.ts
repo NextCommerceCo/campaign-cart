@@ -58,8 +58,20 @@ const separator = () => {
   return el;
 };
 
-const choice = (role: 'menuitemcheckbox' | 'menuitemradio', label: string, on: boolean, onclick: () => void) => {
-  const el = h('button', { type: 'button', onclick }, h('span', {}, label), h('span', 'mval', icon('tick')));
+const choice = (
+  role: 'menuitemcheckbox' | 'menuitemradio',
+  glyph: IconName,
+  label: string,
+  on: boolean,
+  onclick: () => void,
+) => {
+  const el = h(
+    'button',
+    { type: 'button', onclick },
+    icon(glyph),
+    h('span', {}, label),
+    h('span', 'mval', icon('tick')),
+  );
   el.setAttribute('role', role);
   el.setAttribute('aria-checked', String(on));
   el.lastElementChild!.setAttribute('data-indicator', '');
@@ -82,10 +94,10 @@ const menu = (...items: Child[]) => {
   return el;
 };
 
-const THEMES: Array<[string, Theme | undefined]> = [
-  ['Auto', undefined],
-  ['Light', 'light'],
-  ['Dark', 'dark'],
+const THEMES: Array<[IconName, string, Theme | undefined]> = [
+  ['monitor', 'Auto', undefined],
+  ['sun', 'Light', 'light'],
+  ['moon', 'Dark', 'dark'],
 ];
 
 const localeValue = ({ text, differs }: LocaleSummary) => {
@@ -110,17 +122,19 @@ const settingsView = (m: MenuInput): Child[] => {
       h('b', {}, 'Settings'),
     ),
     menu(
-      choice('menuitemcheckbox', 'Developer mode', m.dev, m.toggleDev),
+      choice('menuitemcheckbox', 'code', 'Developer mode', m.dev, m.toggleDev),
       separator(),
       group(
         'Theme',
-        ...THEMES.map(([label, theme]) => choice('menuitemradio', label, m.theme === theme, () => m.setTheme(theme))),
+        ...THEMES.map(([glyph, label, theme]) =>
+          choice('menuitemradio', glyph, label, m.theme === theme, () => m.setTheme(theme)),
+        ),
       ),
       separator(),
       group(
         'Position',
-        choice('menuitemradio', 'Left', !m.right, () => m.right && m.flip()),
-        choice('menuitemradio', 'Right', m.right, () => !m.right && m.flip()),
+        choice('menuitemradio', 'dockLeft', 'Left', !m.right, () => m.right && m.flip()),
+        choice('menuitemradio', 'dockRight', 'Right', m.right, () => !m.right && m.flip()),
       ),
     ),
     m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),

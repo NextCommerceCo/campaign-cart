@@ -141,7 +141,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const theme = followTheme(host, () => debug.state().panel.theme);
 
   const query = () => filter.value.trim().toLowerCase();
-  const events = eventsView(engine, open);
+  const events = eventsView(engine, open, () => render());
   const flow = analyticsFlow({ open, config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
@@ -205,7 +205,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         return [
           empty(
             'No issues',
-            'Every SDK attribute resolves, the journey, checkout and analytics found nothing, and no warnings were logged.',
+            'Nothing on this page needs a look: every SDK attribute resolves, the journey, checkout and analytics found no problems, and no warnings were logged.',
             'check',
           ),
           before,

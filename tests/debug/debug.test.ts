@@ -255,7 +255,7 @@ describe('debug tools', () => {
         (s) => s.textContent!.match(/ ms([a-z]+\.[a-z]+)/)![1],
       );
     await vi.waitFor(() => expect(groups()).toHaveLength(2));
-    expect(body()).toMatch(/\d+ events in 2 bursts, newest first/);
+    expect(body()).toMatch(/\d+ events on this page in 2 bursts, newest first/);
     expect(body()).not.toContain('campaign.loaded');
     const [newest, older] = groups() as [HTMLDetailsElement, HTMLDetailsElement];
     expect([newest.open, older.open]).toEqual([true, false]);
@@ -279,6 +279,19 @@ describe('debug tools', () => {
     filter.value = '0→1';
     filter.dispatchEvent(new Event('input'));
     expect(lone()).toEqual(['cart.added']);
+    filter.value = '';
+    filter.dispatchEvent(new Event('input'));
+    const chip = (label: string) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('.echips button')].find((b) =>
+        b.textContent!.startsWith(label),
+      )!;
+    expect(chip('All').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('cart').querySelector('.edot')!.getAttribute('data-kind')).toBe('cart');
+    chip('sdk').click();
+    expect(lone()).toEqual(['sdk.ready']);
+    expect(chip('sdk').getAttribute('aria-pressed')).toBe('true');
+    chip('All').click();
+    expect(groups()).toHaveLength(2);
     tab('logs');
     expect(body()).not.toMatch(/event (sdk|cart)\./);
   });

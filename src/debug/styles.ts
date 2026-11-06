@@ -47,6 +47,8 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}
 .head .tabs{flex:1;min-width:0;margin-right:6px;overflow-x:auto;scrollbar-width:none}
 .head [role=tab]{padding-inline:6px}
+.dev [data-tab=events]{position:relative;margin-inline-start:9px}
+.dev [data-tab=events]::before{content:'';position:absolute;inset-block:5px;left:-6px;width:1px;background:var(--border)}
 .tabpick{display:none;flex:1;min-width:0;margin-right:6px}
 @container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}
 .head [role=tab] .badge{margin-left:2px}
@@ -79,6 +81,13 @@ summary:hover,.row:hover{background:var(--accent)}
 details details,details>.row{margin-left:14px}
 .key,.name{color:var(--purple)}.s,.note{color:var(--success)}.n{color:var(--info)}.b{color:var(--warning)}
 .time{margin-right:8px}
+.echips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 10px;font-family:var(--font-sans)}
+.edot{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--muted-foreground);vertical-align:1px}
+.edot[data-kind=cart]{background:var(--info)}
+.edot[data-kind=selector]{background:var(--purple)}
+.edot:is([data-kind=checkout],[data-kind=payment],[data-kind=address],[data-kind=user]){background:var(--success)}
+.edot:is([data-kind=order],[data-kind=upsell]){background:var(--orange)}
+.edot:is([data-kind=coupon],[data-kind=shipping],[data-kind=promotion]){background:var(--warning)}
 .egroup>summary{display:flex;align-items:baseline;gap:6px}
 .eburst{margin-left:auto;font-size:11px}
 .ecard{margin-bottom:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer}

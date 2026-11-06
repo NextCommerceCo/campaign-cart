@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
-import { type Child, empty, expandable, h, plural, stamp, tree } from './view';
+import { button, type Child, empty, expandable, h, plural, stamp, tree } from './view';
 
 const KEEP = 300;
 const BURST_GAP = 1000;
@@ -31,8 +31,9 @@ const bursts = (events: SdkEvent[]) =>
     return all;
   }, []);
 
-export function eventsView(engine: Engine, open: Set<string>) {
+export function eventsView(engine: Engine, open: Set<string>, render: () => void) {
   const seen: SdkEvent[] = [];
+  const kinds = new Set<string>();
   let newest = '';
   let total = 0;
 
@@ -66,11 +67,36 @@ export function eventsView(engine: Engine, open: Set<string>) {
       .join(' · ');
   };
 
+  const dot = (kind: string) => {
+    const el = h('span', 'edot');
+    el.dataset.kind = kind;
+    return el;
+  };
+
+  const chip = (label: string, n: number, on: boolean, pick: () => void, kind = '') => {
+    const el = button(`${label} ${n}`, () => (pick(), render()), { variant: 'outline', size: 'xs' });
+    if (kind) el.prepend(dot(kind));
+    el.setAttribute('aria-pressed', String(on));
+    return el;
+  };
+
+  const chips = () => {
+    const counts = seen.reduce<Record<string, number>>((n, e) => ({ ...n, [e.object]: (n[e.object] ?? 0) + 1 }), {});
+    return h(
+      'div',
+      'echips',
+      chip('All', seen.length, !kinds.size, () => kinds.clear()),
+      ...Object.entries(counts).map(([kind, n]) =>
+        chip(kind, n, kinds.has(kind), () => (kinds.has(kind) ? kinds.delete(kind) : kinds.add(kind)), kind),
+      ),
+    );
+  };
+
   const row = (e: SdkEvent, start: number) =>
     expandable(
       [
         start < 0 ? stamp(at(e)) : h('span', 'time', `+${at(e) - start} ms`),
-        h('b', {}, e.event_type),
+        h('b', {}, dot(e.object), e.event_type),
         ' ',
         h('span', 'dim', summary(e)),
       ],
@@ -91,7 +117,7 @@ export function eventsView(engine: Engine, open: Set<string>) {
     return expandable(
       [
         stamp(at(first)),
-        h('b', {}, first.event_type),
+        h('b', {}, dot(first.object), first.event_type),
         h('span', 'dim', ` → ${last.event_type}`),
         h('span', 'dim eburst', `${plural(events.length, 'event')} · ${at(last) - at(first)} ms`),
       ],
@@ -104,14 +130,19 @@ export function eventsView(engine: Engine, open: Set<string>) {
 
   const view = (query: string): Child[] => {
     if (!seen.length) return [empty('No events yet', 'Each SDK event shows here as next.on gets it.')];
-    const shown = seen.filter((e) => e.event_type.includes(query) || summary(e).toLowerCase().includes(query));
-    if (!shown.length) return [empty('Nothing matches', 'No event fits the filter.')];
+    const shown = seen.filter(
+      (e) =>
+        (!kinds.size || kinds.has(e.object)) &&
+        (e.event_type.includes(query) || summary(e).toLowerCase().includes(query)),
+    );
+    if (!shown.length) return [chips(), empty('Nothing matches', 'No event fits the filter.')];
     const groups = bursts(shown).reverse();
     return [
+      chips(),
       h(
         'div',
         'summary',
-        `${plural(total, 'event')} in ${plural(groups.length, 'burst')}, newest first`,
+        `${plural(total, 'event')} on this page in ${plural(groups.length, 'burst')}, newest first`,
         total > seen.length && ` · the last ${KEEP} kept`,
       ),
       ...groups.map((events, i) => group(events, i === 0)),

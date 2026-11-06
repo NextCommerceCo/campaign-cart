@@ -145,7 +145,12 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
 
   const visitor = (): Child => {
     if (!answered) return card('Visitor', 'Detecting…');
-    if (!geo) return h('div', 'block', empty("The address service didn't answer", 'Reload to ask again.', 'warn'));
+    if (!geo)
+      return h(
+        'div',
+        'block',
+        empty("The address service didn't answer", 'Geo comes from i18n-rules /v1/geo; reload to ask again.', 'warn'),
+      );
     const g = geo;
     const rows: Array<[string, Child]> = [
       ['Time zone', g.timezone && localTime(g.timezone)],
@@ -157,10 +162,10 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
         typeof g.latitude === 'number' && typeof g.longitude === 'number' && mapLink(g.latitude, g.longitude),
       ],
       ['IP', g.ip],
-      ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country: a local request or a Tor exit'],
+      ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country resolved: a local request or a Tor exit'],
     ];
     const list = h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
-    if (!g.country) return card('No geo on this request', 'The edge resolved no country.', [list]);
+    if (!g.country) return card('No geo on this request', 'The edge resolved no country for this visitor.', [list]);
     const flag = h('img', {
       className: 'lflag',
       alt: '',
@@ -185,8 +190,13 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
         geo.currency === campaign?.currency && !now.state.visit.params.currency
           ? [`A shopper from ${name} sees ${geo.currency}, the campaign's default currency.`]
           : offered
-            ? [`A shopper from ${name} sees the default currency; ?currency=${geo.currency} shows ${geo.currency}.`]
-            : [`${geo.currency} isn't offered, so a shopper from ${name} sees the default currency.`, true],
+            ? [
+                `A shopper from ${name} sees the campaign's default currency; a link with ?currency=${geo.currency} shows ${geo.currency}.`,
+              ]
+            : [
+                `${geo.currency} isn't one of this campaign's currencies, so a shopper from ${name} sees the campaign's default currency.`,
+                true,
+              ],
       );
     }
     const opens = now.shipping.find(([c]) => c === 'US') ?? now.shipping[0];
@@ -229,7 +239,7 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
       ],
     ];
     const said = notes(now);
-    return card('In use', 'Next to what geo found.', [
+    return card('In use', 'What this page runs with, next to what geo found.', [
       h(
         'div',
         'lset',

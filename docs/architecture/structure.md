@@ -234,7 +234,7 @@ src/
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
 | i18n         | `[data-next-i18n]`                                                                          | 1 KB          |
 | legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
-| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 48 KB         |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
 
 ## Imports
