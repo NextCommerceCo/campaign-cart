@@ -1,7 +1,7 @@
 ---
 title: 'data-next-each'
 group: 'Attribute Reference/Display'
-order: 303
+order: 304
 ---
 
 # data-next-each

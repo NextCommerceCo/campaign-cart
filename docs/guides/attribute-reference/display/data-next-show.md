@@ -1,16 +1,15 @@
 ---
-title: 'data-next-show / data-next-hide'
+title: 'data-next-show'
 group: 'Attribute Reference/Display'
 order: 302
 ---
 
-# data-next-show / data-next-hide
+# data-next-show
 
-Shows the element while the condition holds (`data-next-show`), or hides it (`data-next-hide`).
+Shows the element while the condition holds. [data-next-hide](data-next-hide.md) is the opposite.
 
 ```html
 <p data-next-show="cart.total >= 75">Free shipping</p>
-<p data-next-hide="cart.lines">Your cart is empty</p>
 <s data-next-show="total_discount > 0" data-next-query="subtotal"></s>
 ```
 
