@@ -255,7 +255,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(navigate).toHaveBeenCalledWith(`${location.origin}/olympus/upsell-bundle-stepper/?ref_id=R1`);
   });
 
-  it('shows a decline in the card error box and lets the shopper retry', async () => {
+  it('shows a decline in the card error box, never in the gateway’s words, and lets the shopper retry', async () => {
     const answers = [json({ payment_response_code: '51', payment_details: 'Insufficient funds' }, 400)];
     const { fill, card, submit, $, orders } = await mount('olympus/checkout.html', {
       order: () => answers.shift() ?? json({ ref_id: 'R2' }),
@@ -266,7 +266,9 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await flush();
     const box = $('[data-next-component="credit-error"]');
     expect(box.style.display).toBe('flex');
-    expect($('[data-next-component="credit-error-text"]').textContent).toBe('Insufficient funds');
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe(
+      'Your card couldn’t be processed. Try again.',
+    );
     expect($('button[type="submit"]').getAttribute('aria-busy')).toBe('false');
     await submit();
     await flush();
@@ -1251,7 +1253,7 @@ describe('attributes v2 checkout (data-next-field, data-next-address, data-next-
     pick('paypal');
     await submit();
     await flush();
-    expect(query.get('checkout.errors.payment')).toBe('Insufficient funds');
+    expect(query.get('checkout.errors.payment')).toBe('Your card couldn’t be processed. Try again.');
     expect(query.get('checkout.errors.email')).toBeUndefined();
   });
 });

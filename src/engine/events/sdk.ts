@@ -37,7 +37,11 @@ export interface Failure {
   message?: string;
   /** The HTTP status, when the API answered. */
   status?: number;
-  /** The gateway's decline code, for a declined card. */
+  /**
+   * The store's `payment_response_code` for a decline (`3005`). The shopper's sentence for it is
+   * `payment.errors.<code>` in the address service's texts:
+   * [Payment errors](https://i18n-rules-docs.next-commerce.workers.dev/reference/payment-errors/).
+   */
   decline_code?: string;
 }
 

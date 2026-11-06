@@ -99,10 +99,7 @@ export function fieldText(name: string, error: CheckoutError, rules?: CountryRul
 }
 
 const declineText = (error: CheckoutError) =>
-  (error.decline && (page[`payment.errors.${error.decline}`] ?? service?.[`payment.errors.${error.decline}`])) ||
-  page['payment.errors.generic'] ||
-  error.message ||
-  textOf('payment.errors.generic', FORM.declined!);
+  textOf(error.decline && `payment.errors.${error.decline}`, textOf('payment.errors.generic', FORM.declined!));
 
 export function formText(error: CheckoutError, fill: Record<string, string> = {}): string {
   const text =

@@ -57,6 +57,9 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - **`expressCheckout.methodOrder`**: only the campaign's express methods in the list show, in
   its order.
 - **`data-next-include-shipping`** is ignored. 0.4.x never sent it to the API either.
+- **A declined card** shows `payment.errors.<code>`, or `payment.errors.generic` for a code with no
+  sentence of its own ([Language](attribute-reference/setup/language.md)). 0.4.43 showed the
+  gateway's English wording (`payment_details`) for such a code; it is no longer shown.
 
 ### Events
 

@@ -57,6 +57,10 @@ too; a card paid at once stays in the checkout lifecycle.
 
 - A decline is `payment_response_code` or `payment_details` in the store's answer; `error` carries
   them as `decline_code` and `message`, plus the HTTP `status`. Other refusals: `checkout.failed`.
+- The checkout shows the shopper `payment.errors.<decline_code>` from the address service, in the
+  page's [language](../../attribute-reference/setup/language.md), or `payment.errors.generic` for a
+  code with no sentence of its own; never `message`, the gateway's English. A page that writes its
+  own reads the same keys: [Payment errors](https://i18n-rules-docs.next-commerce.workers.dev/reference/payment-errors/).
 - On the checkout, no order was created, so no `ref_id`; the checkout goes back to `idle` with the
   error on the form, and the cart unfreezes.
 - On an upsell page, `method` is the order's `payment_method`; the order stays as it was, and the
