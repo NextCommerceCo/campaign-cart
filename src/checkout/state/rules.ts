@@ -1,5 +1,5 @@
 import { asciiDigits, plausiblePhone } from './phone';
-import { fill, rulesSend, type Texts } from '../../engine/texts';
+import { fill, type Texts } from '../../engine/texts';
 import type { Send } from '../../engine/types';
 import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, FieldRule } from './types';
 
@@ -13,16 +13,12 @@ export interface RemoteCheck {
 }
 
 export class RulesApi {
-  private send: Send;
-
   constructor(
-    send: Send,
+    private send: Send,
     private base: string,
     private lang: string,
     private page: Texts = {},
-  ) {
-    this.send = rulesSend(send);
-  }
+  ) {}
 
   countries(): Promise<CountryOption[]> {
     return this.get(`/v1/countries?lang=${this.lang}`);

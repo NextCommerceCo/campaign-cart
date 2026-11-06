@@ -7,7 +7,7 @@ import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import type { Query } from '../engine/query';
 import { localeOf } from '../engine/format';
-import { I18N_RULES, serviceTexts, textsIn, type Texts } from '../engine/texts';
+import { I18N_RULES, rulesSend, serviceTexts, textsIn, type Texts } from '../engine/texts';
 import { bindAddress } from './address/country';
 import { bindAddressForms } from './address/block';
 import { bindAutocomplete } from './address/autocomplete';
@@ -111,7 +111,7 @@ export function bindCheckout(
 ): CheckoutActions {
   const lang = localeOf(engine.getState()) || 'en';
   const own = textsIn(translations, lang);
-  const send = window.fetch.bind(window);
+  const send = rulesSend(window.fetch.bind(window), () => engine.getState().campaign);
   useTexts(own, serviceTexts(send, lang));
   const rules = new RulesApi(send, I18N_RULES, lang, own);
   const lead = leadOf(engine, form);

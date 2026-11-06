@@ -23,7 +23,7 @@ import {
 } from './compat/legacy/globals';
 import { localeOf } from './engine/format';
 import { trackingIgnored } from './engine/params';
-import { textsIn } from './engine/texts';
+import { rulesSend, textsIn } from './engine/texts';
 
 declare const __VERSION__: string;
 
@@ -136,7 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         arrived,
         reset: () => location.assign(`${location.pathname}?reset=1`),
         off: () => location.assign(`${location.pathname}?debug=0`),
-        send,
+        send: rulesSend(send, () => engine.getState().campaign),
         analytics: () => ({ ...readLegacyAnalytics(), ignored: trackingIgnored(engine.getState().visit.params) }),
       }),
     );
@@ -285,7 +285,12 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       slotsChunk?.then((m) => m.bindSlots(engine)),
       i18nChunk?.then((m) => {
         const lang = localeOf(engine.getState()) || 'en';
-        void m.bindI18n(document, { send, lang, page: textsIn(i18n.translations, lang), log: engine.log });
+        void m.bindI18n(document, {
+          send: rulesSend(send, () => engine.getState().campaign),
+          lang,
+          page: textsIn(i18n.translations, lang),
+          log: engine.log,
+        });
       }),
       v2Page && bindV2(),
       bindings.ready,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fill, flattenTexts, loadedTexts, serviceTexts, textsIn } from '../../src/engine/texts';
+import { fill, flattenTexts, loadedTexts, rulesSend, serviceTexts, textsIn } from '../../src/engine/texts';
 
 const served = (texts: unknown, lang: string) =>
   Promise.resolve(new Response(JSON.stringify(texts), { headers: { 'content-language': lang } }));
@@ -44,5 +44,22 @@ describe('texts', () => {
       .mockReturnValueOnce(served({ a: 'b' }, 'sv'));
     expect(await serviceTexts(send, 'sv')).toBeUndefined();
     expect(await serviceTexts(send, 'sv')).toEqual({ a: 'b' });
+  });
+
+  it('names the SDK version, and the campaign once it has loaded, on each request to i18n-rules', async () => {
+    const send = vi.fn(async (_url: string, _init: RequestInit) => new Response('{}'));
+    let campaign: { id: number; name: string } | undefined;
+    const ask = rulesSend(send, () => campaign);
+    await ask('https://rules.test/v1/geo', { method: 'GET' });
+    campaign = { id: 42, name: 'Olympus ไทย' };
+    await ask('https://rules.test/v1/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    expect(send.mock.calls[0]![1].headers).toEqual({ 'X-Next-SDK-Version': expect.any(String) });
+    expect(send.mock.calls[1]![1].headers).toEqual({
+      'X-Next-SDK-Version': expect.any(String),
+      'X-Next-Campaign-Id': '42',
+      'X-Next-Campaign-Name': 'Olympus%20%E0%B9%84%E0%B8%97%E0%B8%A2',
+      'Content-Type': 'application/json',
+    });
+    expect(() => new Headers(send.mock.calls[1]![1].headers)).not.toThrow();
   });
 });

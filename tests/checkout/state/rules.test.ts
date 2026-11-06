@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   fieldError,
   formatPostcode,
   formErrors,
   requiredFields,
-  RulesApi,
   validEmail,
   withPageTexts,
 } from '../../../src/checkout/state/rules';
@@ -141,17 +140,5 @@ describe('withPageTexts (0.4.x nextConfig.translations)', () => {
     expect(out.fields.state!.errors).toEqual({ blank: 'Bundesstaat wählen', not_selected: 'Bundesstaat wählen' });
     expect(out.fields.city).toMatchObject(US.fields.city!);
     expect(withPageTexts(US, {})).toBe(US);
-  });
-});
-
-describe('RulesApi', () => {
-  it('names the SDK version on every request to i18n-rules', async () => {
-    const send = vi.fn(async (_url: string, _init: RequestInit) => Response.json({ fields: {} }));
-    const api = new RulesApi(send, 'https://rules.test', 'en');
-    await api.countries();
-    await api.validate('US', { postcode: '10001' });
-    for (const [, init] of send.mock.calls)
-      expect(init.headers).toMatchObject({ 'X-Next-SDK-Version': expect.any(String) });
-    expect(send.mock.calls[1]![1]).toMatchObject({ headers: { 'Content-Type': 'application/json' } });
   });
 });

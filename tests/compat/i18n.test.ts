@@ -39,10 +39,7 @@ describe('data-next-i18n (0.4.x)', () => {
     expect($('pay').textContent).toBe('ชำระเงิน');
     expect($('title').textContent).toBe('Contact');
     await loaded;
-    expect(send).toHaveBeenCalledWith('https://i18n-rules.nextcommerce.com/v1/locales/th-TH', {
-      method: 'GET',
-      headers: { 'X-Next-SDK-Version': expect.any(String) },
-    });
+    expect(send).toHaveBeenCalledWith('https://i18n-rules.nextcommerce.com/v1/locales/th-TH', { method: 'GET' });
     expect($('title').textContent).toBe('ติดต่อ');
     expect($('email').getAttribute('placeholder')).toBe('อีเมล');
     expect($('pay').getAttribute('aria-label')).toBe('Pay now');
