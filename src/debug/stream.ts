@@ -180,6 +180,7 @@ export function detailModal(open: Set<string>) {
     ),
     { size: 'lg' },
   );
+  dialog.tabIndex = -1;
   dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
 
   const payloads = (sources: Detail['payloads']) => {
@@ -220,11 +221,11 @@ export function detailModal(open: Set<string>) {
         fields.length > 0 && h('h3', 'shead', 'Details'),
         fields.length > 0 &&
           h('dl', 'sfields', ...fields.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, String(v))])),
-        d.payloads.length > 0 && shown,
-        d.payloads.length > 0 && reveal,
+        d.payloads.length > 0 && h('div', 'spay', shown, reveal),
       ]),
     );
     if (!dialog.open) dialog.showModal();
+    dialog.focus();
   };
 
   return { dialog, show };

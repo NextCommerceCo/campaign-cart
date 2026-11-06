@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carried } from '../../src/debug/stream';
+import { carried, detailModal } from '../../src/debug/stream';
 import { nodes } from '../../src/debug/view';
 
 const money = (v: number) => `$${v.toFixed(2)}`;
@@ -74,5 +74,21 @@ describe('what an event carried', () => {
     root.append(...nodes(carried({ shipping_method: { code: 'standard', price: 0 }, total: 49 }, money)));
     expect(root.querySelector('.sitems')).toBeNull();
     expect(root.querySelector('.stotals')!.textContent).toBe('Shippingstandard · FreeTotal$49.00');
+  });
+
+  it('keeps the payloads in a footer of their own, under the details', () => {
+    const detail = detailModal(new Set());
+    document.body.append(detail.dialog);
+    detail.show({
+      title: 'selector.priced',
+      subtitle: '',
+      fields: { Type: 'toggle' },
+      payloads: [['Event', { a: 1 }]],
+    });
+    const body = detail.dialog.querySelector('.smbody')!;
+    expect([...body.children].map((c) => c.className)).toEqual(['shead', 'sfields', 'spay']);
+    expect(body.querySelector('.spay > .btn')!.textContent).toBe('Show payload');
+    expect(detail.dialog.tabIndex).toBe(-1);
+    detail.dialog.remove();
   });
 });

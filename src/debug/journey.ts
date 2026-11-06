@@ -243,18 +243,20 @@ export function journeyView(
       'jsum',
       h(
         'span',
-        'jchain',
-        ...[sourceOf(engine).headline, ...pages.map((p) => KINDS[p.kind])].flatMap((name, i, all) => [
-          i === all.length - 1 ? h('b', {}, name) : name,
-          i < all.length - 1 && h('span', 'dim', ' → '),
-        ]),
-      ),
-      h(
-        'span',
         'jstate',
-        holding(now),
-        now.order ? '' : ' · no order yet',
-        upsold > 0 && h('span', 'dim', ` · upsells +${money(now, upsold)}`),
+        h('b', {}, holding(now)),
+        h(
+          'span',
+          'dim',
+          [
+            now.order ? '' : 'no order yet',
+            upsold > 0 && `upsells +${money(now, upsold)}`,
+            plural(pages.length, 'page'),
+          ]
+            .filter(Boolean)
+            .map((part) => ` · ${part}`)
+            .join(''),
+        ),
       ),
       issues > 0 && link(`⚠ ${plural(issues, 'issue')}`, () => ui.show('issues')),
       pages.length > 1 &&

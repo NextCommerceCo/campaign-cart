@@ -54,9 +54,7 @@ async function setup(extra?: (session: Storage) => Promise<void>) {
 describe('journey tab', () => {
   it('sums up the visit and draws it as a tsugi journey: the entry, then each page with what it held', async () => {
     const { root, steps, row } = await setup();
-    expect(root.querySelector('.jsum')!.textContent).toBe(
-      'direct / none → Landing → Checkout1 item · $49.00 · no order yetClear',
-    );
+    expect(root.querySelector('.jsum')!.textContent).toBe('1 item · $49.00 · no order yet · 2 pagesClear');
     expect(root.querySelector<HTMLElement>('.journey')!.dataset.orientation).toBe('vertical');
     expect(steps()).toEqual([
       ['EntryDirect', expect.stringMatching(/^direct \/ noneWhere this tab came fromDetails\d\d:\d\d:\d\d$/)],
