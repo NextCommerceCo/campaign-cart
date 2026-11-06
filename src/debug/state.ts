@@ -128,7 +128,11 @@ export function createDebug(ctx: Context, arrival: Arrival) {
             units,
             order,
             reloads: before.reloads + 1,
-            marks: [...before.marks, { at, text: 'Reloaded' }, ...warnings].slice(-MARKS),
+            marks: [
+              ...before.marks,
+              { at, text: 'Reloaded' },
+              ...warnings.filter((w) => !before.marks.some((m) => m.text === w.text)),
+            ].slice(-MARKS),
           },
         ]
       : [...state.pages, { ...visit, units, order, reloads: 0, sent: [], marks: warnings }].slice(-PAGES);

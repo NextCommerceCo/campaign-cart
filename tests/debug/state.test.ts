@@ -131,6 +131,18 @@ describe('debug journey', () => {
     expect(page(session, '/checkout/').debug.state().pages).toHaveLength(2);
   });
 
+  it('keeps one warning for a problem a reload finds again', () => {
+    const session = new MemoryStorage();
+    page(session, '/upsell/', { kind: 'upsell' });
+    page(session, '/upsell/', { kind: 'upsell', reload: true });
+    const { debug } = page(session, '/upsell/', { kind: 'upsell', reload: true });
+    expect(debug.state().pages[0]!.marks.map((m) => m.text)).toEqual([
+      'No order here: an upsell page shows the order placed at checkout',
+      'Reloaded',
+      'Reloaded',
+    ]);
+  });
+
   it('keeps the panel as it was left, clears the journey to this page, and keeps the last 25 pages', () => {
     const session = new MemoryStorage();
     page(session, '/a/').debug.setPanel({ open: true, tab: 'cart' });
