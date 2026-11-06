@@ -3,6 +3,7 @@ import type { OrderState } from '../order/state';
 import type { DebugState } from '../debug/state';
 import type { Visit } from './attribution';
 import type { CartState, SelectorState, Toggle } from './cart/types';
+import type { VisitorGeo } from './geo';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -52,8 +53,7 @@ export interface Campaign {
 export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
-  /** As the address service's geo saw it. */
-  ip?: string;
+  geo?: VisitorGeo;
   exitIntentShown: number;
   timers: Record<string, number>;
 }

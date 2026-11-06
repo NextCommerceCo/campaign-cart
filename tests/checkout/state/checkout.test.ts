@@ -186,7 +186,7 @@ describe('checkout', () => {
     await located.checkout.loadCountries();
     expect(located.engine.getState().checkout!.countries.map((c) => c.code)).toEqual(['US', 'GB']);
     expect(located.engine.getState().checkout!.fields.country).toBe('GB');
-    expect(located.rules.calls.filter((c) => c.includes('/countries/GB'))).toEqual([]);
+    expect(located.rules.calls.filter((c) => c.includes('/countries/GB'))).toHaveLength(1);
 
     const linked = await setup({ campaign, params: { country: 'us' } });
     await linked.checkout.loadCountries();
@@ -270,6 +270,17 @@ describe('checkout', () => {
     await next.checkout.leave('email');
     expect(next.posts('/carts/')).toHaveLength(0);
     expect(updated).toHaveBeenCalledExactlyOnceWith({ ...user, email: 'jane@example.org' });
+  });
+
+  it('asks the geo once per tab: the next checkout page reuses it', async () => {
+    const session = new MemoryStorage();
+    const first = await setup({ session, ip: '203.0.113.9' });
+    await first.checkout.loadCountries();
+    const next = await setup({ session, ip: '198.51.100.1' });
+    await next.checkout.loadCountries();
+    const asked = [...first.rules.calls, ...next.rules.calls].filter((c) => c.includes('/v1/geo'));
+    expect(asked).toEqual(['GET /v1/geo?lang=en']);
+    expect(next.engine.attribution().metadata.user_ip).toBe('203.0.113.9');
   });
 
   it('sends the IP the geo saw with the Open Cart and the order, and none when it saw none', async () => {

@@ -20,7 +20,7 @@ describe('attribution', () => {
         {
           params: { aff: 'A1', sub2: 'x'.repeat(300), utm_source: 'fb', fbclid: 'F', evclid: 'E', other: 'y' },
           landing: visit,
-          ip: '203.0.113.7',
+          geo: { ip: '203.0.113.7' },
         },
         'Olympus',
         1000,

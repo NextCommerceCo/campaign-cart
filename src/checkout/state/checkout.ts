@@ -1,5 +1,6 @@
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
+import { visitorGeo } from '../../engine/geo';
 import { newId } from '../../engine/id';
 import { createContact, type Lead } from './contact';
 import { paymentCode, publicAddress } from './order-body';
@@ -300,13 +301,8 @@ export function createCheckout(
       set({ countries });
       const listed = (code?: string) => countries.find((c) => c.code === code?.toUpperCase())?.code;
       let country = listed(state().fields.country) ?? listed(ctx.getState().visit.params.country);
-      const located = rulesApi.geo(!country).catch(() => undefined);
-      void located.then((geo) => geo?.ip && ctx.update('visit', { ip: geo.ip }));
-      if (!country) {
-        const geo = await located;
-        country = listed(geo?.country?.code);
-        if (country && geo?.rules) set({ rules: { ...state().rules, [country]: geo.rules } });
-      }
+      const located = visitorGeo(ctx, () => rulesApi.geo());
+      if (!country) country = listed((await located)?.country?.code);
       country = state().fields.country || (country ?? listed('US') ?? countries[0]?.code);
       if (country && country !== state().fields.country) set({ fields: { ...state().fields, country } });
       await Promise.all([country && loadCountry(country), loadCountry(state().fields.billing_country ?? '')]);

@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { localeOf } from '../engine/format';
-import { type VisitorGeo, visitorGeo } from '../engine/geo';
+import { askGeo, type VisitorGeo, visitorGeo } from '../engine/geo';
 import { baseLang, I18N_RULES } from '../engine/texts';
 import type { Send } from '../engine/types';
 import type { DebugActions } from './state';
@@ -105,11 +105,13 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
   const ask = () => {
     if (asked) return;
     asked = true;
-    void visitorGeo(send, language()).then((found) => {
-      geo = found;
-      answered = true;
-      render();
-    });
+    void engine
+      .attach((ctx) => visitorGeo(ctx, () => askGeo(send, language())))
+      .then((found) => {
+        geo = found;
+        answered = true;
+        render();
+      });
   };
 
   const setCountry = (code: string) => {

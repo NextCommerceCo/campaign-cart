@@ -216,10 +216,9 @@ export class Engine {
     const campaign = this.local.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
     this.state = { ...this.state, cart: { ...this.state.cart, ...cart }, ...(campaign && { campaign }) };
     this.update('visit', {
+      ...visit,
       params: { ...visit?.params, ...this.state.visit.params },
       landing: visit?.landing ?? this.state.visit.landing,
-      exitIntentShown: visit?.exitIntentShown ?? 0,
-      timers: visit?.timers ?? {},
     });
     if (campaign) this.events.emit('campaign.loaded', { campaign, fromCache: true });
   }

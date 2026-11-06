@@ -45,7 +45,7 @@ export function createContact(ctx: Context, cart: CartActions, lead: Lead, isOpe
   const contactKey = (entered?: Entered) => JSON.stringify(entered ?? null);
   const recorded = (stored?: OpenCart['user']): Pick<User, 'language' | 'ip' | 'user_agent'> => {
     const { campaign, visit } = ctx.getState();
-    const ip = stored?.ip || visit.ip;
+    const ip = stored?.ip || visit.geo?.ip;
     return {
       language: stored?.language || campaign?.language || '',
       ...(ip && { ip }),
