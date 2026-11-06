@@ -2,7 +2,8 @@ import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
 import type { DebugActions } from './state';
-import { chips, type DetailModal, items, line } from './stream';
+import { eventDetail } from './event-detail';
+import { chips, type DetailModal, line } from './stream';
 import { button, type Child, empty, expandable, h, plural, stamp, time } from './view';
 
 const KEEP = 300;
@@ -74,34 +75,18 @@ export function eventsView(
       .join(' · ');
   };
 
-  const money = (e: SdkEvent, v: unknown) =>
-    typeof v === 'number' ? format({ type: 'money', value: v }, (e.data as Data).currency) : '';
-
   const show = (e: SdkEvent) => {
-    const d = e.data as Data;
-    const lines = d.lines ?? [];
+    const d = e.data as Data & { cart?: { currency?: string } };
+    const currency = d.currency ?? d.cart?.currency;
     detail.show({
       title: e.event_type,
-      subtitle: `${time(at(e))} · ${e.object}`,
-      sections: lines.length
-        ? [
-            [
-              'What it carried',
-              items(
-                lines.map((l) => [
-                  l.product_title ?? `#${l.package_id}`,
-                  String(l.quantity),
-                  money(e, l.total ?? l.price),
-                ]),
-                [
-                  ['Total', money(e, d.total)],
-                  ['Currency', d.currency ?? ''],
-                ].filter(([, v]) => v) as Array<[string, string]>,
-              ),
-            ],
-          ]
-        : [],
-      fields: d,
+      subtitle: [time(at(e)), e.object, currency].filter(Boolean).join(' · '),
+      ...eventDetail(
+        e.event_type,
+        d,
+        (value) => format({ type: 'money', value }, currency),
+        (id) => title(d, id),
+      ),
       payloads: [['Event', e]],
     });
   };

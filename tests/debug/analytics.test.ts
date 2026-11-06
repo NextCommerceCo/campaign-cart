@@ -347,9 +347,10 @@ describe('analytics tab', () => {
       'Meta | AddToCart | received | ok',
       'RudderStack |  | no rudderanalytics on the page | warn',
     ]);
-    expect(event.items()).toEqual(['Item | Qty | Price', 'Earbuds | 1 | $49.00']);
+    expect(event.items()).toEqual(['Item | Qty | Each | Total', 'Earbuds | 1 | $49.00 | $49.00']);
     expect(event.note()).toBeUndefined();
-    expect(event.totals()).toBe('Total$49.00CurrencyUSD');
+    expect(event.totals()).toBe('Total$49.00');
+    expect(detail.dialog.querySelector('header p')!.textContent).toMatch(/ · USD$/);
     expect(event.payloads()).toEqual(['next.analytics.on', 'GTM', 'GA4', 'Meta']);
     expect(event.payload('next.analytics.on')).toContain('event_id "cu"');
     expect(event.payload('next.analytics.on')).toContain('session_id "s1"');

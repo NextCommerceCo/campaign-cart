@@ -17,7 +17,7 @@ import {
   WIRING,
 } from './providers';
 import { type IconName, icon } from './icons';
-import { chips, type DetailModal, items, line, pill } from './stream';
+import { carried as carriedView, chips, type DetailModal, line, pill, type Priced } from './stream';
 import { type Child, empty, h, plural, time } from './view';
 
 type Run = AnalyticsTrace & { at: number };
@@ -155,7 +155,9 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     ui.detail.show({
       title: run.name,
       badge: run.sent ? ['Sent', 'success'] : ['Not sent', 'secondary'],
-      subtitle: `${time(run.at)} · ${location.pathname} · ${run.reason}`,
+      subtitle: [time(run.at), location.pathname, run.reason, priced.currency as string | undefined]
+        .filter(Boolean)
+        .join(' · '),
       sections: [
         ...(problems.length
           ? [['Problems', [h('ul', 'aprobs', ...problems.map((p) => h('li', {}, p)))]] as [string, Child[]]]
@@ -174,19 +176,14 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
         ],
         [
           'What it carried',
-          items(
-            linesOf(run.name, event?.data).map((l) => [
-              String(l.product_title ?? `#${l.package_id}`),
-              String(l.quantity ?? ''),
-              money(run, l.total ?? l.price),
-            ]),
-            (
-              [
-                ['Order', priced.number ? `#${priced.number}` : ''],
-                ['Total', money(run, priced.total ?? priced.price)],
-                ['Currency', (priced.currency as string) ?? ''],
-              ] as Array<[string, string]>
-            ).filter(([, v]) => v),
+          carriedView(
+            {
+              ...(priced as Priced),
+              lines: linesOf(run.name, event?.data) as Priced['lines'],
+              total: (priced.total ?? priced.price) as number | undefined,
+            },
+            (v) => money(run, v),
+            priced.number ? [['Order', `#${priced.number}`]] : [],
           ),
         ],
       ],

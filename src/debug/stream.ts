@@ -83,14 +83,81 @@ export interface Detail {
 
 const scalar = (v: unknown) => v === null || ['string', 'number', 'boolean'].includes(typeof v);
 
-export function items(lines: Array<[item: string, quantity: string, price: string]>, totals: Array<[string, string]>) {
+/** A cart, order or tracking event's money, as the modals show it. */
+export interface Priced {
+  lines?: Array<{
+    package_id?: number;
+    product_title?: string;
+    variant_title?: string;
+    quantity?: number;
+    price?: number;
+    original_price?: number;
+    total?: number;
+  }>;
+  subtotal?: number;
+  total_discount?: number;
+  discount_percentage?: number;
+  coupons?: string[];
+  shipping_method?: { name?: string; code?: string; price?: number };
+  tax?: number;
+  total?: number;
+}
+
+/** The variant without the product's name it repeats: `Extended Warranty - 1 Year` → `1 Year`. */
+const variant = (title = '', name = '') =>
+  title && name.startsWith(title) ? name.slice(title.length).replace(/^[\s\-–—/:|·]+/, '') : name;
+
+/** Its lines, then totals that add up: `total = subtotal − discount + shipping + tax`. */
+export function carried(p: Priced, money: (value: number) => string, lead: Array<[string, string]> = []): Child[] {
+  const m = (v: unknown) => (typeof v === 'number' ? money(v) : '');
+  const lines = p.lines ?? [];
+  const ship = p.shipping_method;
+  const totals = (
+    [
+      ...lead,
+      ['Subtotal', m(p.subtotal)],
+      [
+        'Discount',
+        p.total_discount ? `−${m(p.total_discount)}${p.discount_percentage ? ` (${p.discount_percentage}%)` : ''}` : '',
+      ],
+      ['Coupons', p.coupons?.join(', ') ?? ''],
+      [
+        'Shipping',
+        ship ? [ship.name ?? ship.code, ship.price === 0 ? 'Free' : m(ship.price)].filter(Boolean).join(' · ') : '',
+      ],
+      ['Tax', p.tax ? m(p.tax) : ''],
+      ['Total', m(p.total)],
+    ] as Array<[string, string]>
+  ).filter(([, v]) => v);
   return [
     lines.length > 0 &&
       h(
         'table',
         'sitems',
-        h('tr', {}, h('th', {}, 'Item'), h('th', {}, 'Qty'), h('th', {}, 'Price')),
-        ...lines.map((cells) => h('tr', {}, ...cells.map((c) => h('td', {}, c)))),
+        h('tr', {}, ...['Item', 'Qty', 'Each', 'Total'].map((t) => h('th', {}, t))),
+        ...lines.map((l) =>
+          h(
+            'tr',
+            {},
+            h(
+              'td',
+              {},
+              l.product_title ?? `#${l.package_id}`,
+              variant(l.product_title, l.variant_title) && h('small', {}, variant(l.product_title, l.variant_title)),
+            ),
+            h('td', {}, String(l.quantity ?? '')),
+            h(
+              'td',
+              {},
+              typeof l.original_price === 'number' &&
+                typeof l.price === 'number' &&
+                l.original_price > l.price &&
+                h('s', {}, m(l.original_price)),
+              m(l.price),
+            ),
+            h('td', {}, m(l.total ?? (typeof l.price === 'number' && l.quantity ? l.price * l.quantity : undefined))),
+          ),
+        ),
       ),
     totals.length > 0 && h('dl', 'stotals', ...totals.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
   ];
