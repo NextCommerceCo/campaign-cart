@@ -92,11 +92,10 @@ analytics off or one destination on or off, and nothing for a destination that i
 
 ## Debugging
 
-`?debug=1` opens the debug panel. Its Analytics tab shows which destinations are on and what reached
-each, the funnel steps the tab has sent, and each tracking event this page sent, newest first, with
-what it carried, the logo of each place it reached and any problem on its row; open one for what
-`next.analytics.on`, each data layer, GA4, Meta and RudderStack got. **Config** opens Page config,
-which tries another `nextConfig.analytics` on the tab and copies the block for the page.
+`?debug=1` opens the debug panel. Its Analytics tab lists each tracking event this page sent, newest
+first, with what it carried and ⚠ when something is off; click one for where it went (GTM, GA4,
+Meta, RudderStack: received, off, or missing its tag), the items and total it carried, and each
+payload. **Page config** in the panel's settings tries another `nextConfig.analytics` on the tab.
 
 Every event, and every one the SDK chose not to send, is also a debug log line with its reason:
 

@@ -433,25 +433,22 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
     $('.fab').click();
     menuItem('Analytics').click();
-    const rows = [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
-    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/^\S+ ([a-z_]+)/)![1];
+    const rows = [...shadow().querySelectorAll<HTMLButtonElement>('.body > button.aev')];
+    const name = (r: HTMLElement) => r.querySelector('.aname')!.textContent;
     expect(new Set(rows.map(name))).toEqual(
       new Set(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']),
     );
     expect(name(rows.at(-1)!)).toBe('page_viewed');
-    const added = rows.find((d) => name(d) === 'product_added_to_cart')!;
-    expect(added.querySelector('summary')!.textContent).toMatch(
-      /^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart Earbuds ×1 ×1 · \$49\.00$/,
-    );
-    expect([...added.querySelectorAll<HTMLElement>(':scope > summary .amarks .icon')].map((i) => i.title)).toContain(
-      'NextDataLayer',
-    );
-    added.open = true;
-    const event = [...added.querySelectorAll<HTMLDetailsElement>(':scope > details')][0]!;
-    expect(event.querySelector('summary')!.textContent).toMatch(/^next\.analytics\.on/);
-    event.open = true;
-    expect(event.textContent).toContain(got[0]!.event_id);
-    expect(event.textContent).toContain('event_type "product_added_to_cart"');
+    const added = rows.find((r) => name(r) === 'product_added_to_cart')!;
+    expect(added.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3}product_added_to_cartEarbuds ×1 ×1 · \$49\.00$/);
+    added.click();
+    const modal = $<HTMLDialogElement>('dialog.amodal');
+    expect(modal.open).toBe(true);
+    expect(modal.querySelector('.aplaces > li')!.textContent).toBe('GTMdl_add_to_cartreceived · no GTM container on the page');
+    [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payloads')!.click();
+    const pane = modal.querySelector('.apane')!.textContent!;
+    expect(pane).toContain(got[0]!.event_id);
+    expect(pane).toContain('event_type "product_added_to_cart"');
   });
 
   it('lists every SDK element with what it resolves to', async () => {

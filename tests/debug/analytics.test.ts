@@ -11,7 +11,6 @@ import {
   unsupportedNotes,
   WIRING,
 } from '../../src/debug/providers';
-import type { PageVisit } from '../../src/debug/state';
 import { nodes } from '../../src/debug/view';
 import { GA4 } from '../../src/destinations/ga4';
 import {
@@ -69,30 +68,13 @@ type Win = Window & {
 };
 const win = window as Win;
 
-const page = (path: string, sent: string[], kind: PageVisit['kind'] = 'page'): PageVisit => ({
-  at: 0,
-  path,
-  title: path,
-  kind,
-  scope: 's',
-  reloads: 0,
-  units: 0,
-  sent,
-  marks: [],
-});
-
-function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
+function setup(config: ProviderConfig = ON) {
   const { engine } = makeEngine();
   const root = document.createElement('div');
-  const pageConfig = { dialog: document.createElement('dialog'), open: vi.fn(), trying: () => false, reset: vi.fn() };
   let query = '';
   const paint = (q = query) => root.replaceChildren(...nodes(flow.view((query = q))));
-  const flow = analyticsFlow({
-    open: new Set(),
-    config: () => config,
-    pageConfig,
-    pages: () => pages,
-  });
+  const flow = analyticsFlow({ open: new Set(), config: () => config });
+  document.body.append(flow.dialog);
   engine.on('*', flow.record);
   engine.log.stream(flow.note, { replay: true });
   const decide = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
@@ -121,72 +103,51 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
         layer.push({ event: DL[name], event_id: id });
     decide(trigger, name, true, `reason for ${name}`, id);
   };
-  const lines = () => [...root.querySelectorAll<HTMLElement>(':scope > details.aev > summary, :scope > div.aev')];
+  const lines = () => [...root.querySelectorAll<HTMLButtonElement>(':scope > button.aev')];
   const rows = () =>
     lines().map((r) =>
-      [r.querySelector('.aname'), r.querySelector('.asum'), r.querySelector('.aprob')]
-        .map((el) => el?.textContent)
+      [r.querySelector('.aname')!.textContent, r.querySelector('.asum')!.textContent, r.title && `⚠ ${r.title}`]
         .filter(Boolean)
         .join(' | '),
     );
   const notes = () => [...root.querySelectorAll(':scope > .anote')].map((n) => n.textContent);
   const header = () => root.querySelector(':scope > .summary')?.textContent;
-  const PLACE: Record<string, string> = {
-    NextDataLayer: 'NextDataLayer',
-    'GTM dataLayer': 'dataLayer',
-    GA4: 'ga4',
-    Meta: 'meta',
-    RudderStack: 'rudderstack',
-  };
-  const offs = () => root.querySelector<HTMLElement>('.adests > .aoff');
-  const dests = () => ({
-    ...Object.fromEntries(
-      [...root.querySelectorAll<HTMLElement>('.adests > .aplace')].map((b) => [
-        b.dataset.place,
-        b.querySelector('b')!.textContent,
-      ]),
-    ),
-    ...Object.fromEntries(
-      (offs()?.textContent!.replace('Off: ', '').split(', ') ?? []).map((label) => [PLACE[label], 'off']),
-    ),
-  });
-  const titleOf = (place: string) => root.querySelector<HTMLElement>(`.adests > [data-place=${place}]`)!.title;
-  const steps = () =>
-    [...root.querySelectorAll<HTMLElement>('.afunnel > .astep')].map((b) => [b.textContent, b.dataset.done, b.title]);
-  const row = (nth: number) => root.querySelectorAll<HTMLDetailsElement>(':scope > details')[nth]!;
-  const logos = (nth: number) =>
-    [...row(nth).querySelectorAll<HTMLElement>(':scope > summary .amarks .icon')].map((i) => i.title);
   const open = (nth: number) => {
-    row(nth).open = true;
-    const parts = [...row(nth).querySelectorAll<HTMLDetailsElement>(':scope > details')];
-    const label = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.replace(/ [{[].*$/, '');
+    lines()[nth]!.click();
+    const modal = flow.dialog;
+    const show = () =>
+      [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payloads');
+    const tabs = () => [...modal.querySelectorAll<HTMLButtonElement>('[role=tab]')];
     return {
-      sections: parts.map(label),
-      section: (start: string) => {
-        const part = parts.find((p) => label(p).startsWith(start))!;
-        part.open = true;
-        return part.textContent!;
+      title: modal.querySelector('h2')!.textContent,
+      places: () =>
+        [...modal.querySelectorAll<HTMLElement>('.aplaces > li')].map((li) =>
+          [
+            li.querySelector('b')!.textContent,
+            li.querySelector('code')?.textContent ?? '',
+            li.querySelector('.astate')!.textContent,
+            li.dataset.tone,
+          ].join(' | '),
+        ),
+      items: () =>
+        [...modal.querySelectorAll('.aitems tr')].map((tr) => [...tr.children].map((c) => c.textContent).join(' | ')),
+      totals: () => modal.querySelector('.atotals')?.textContent,
+      problems: () => [...modal.querySelectorAll('.aprobs li')].map((li) => li.textContent),
+      note: () => modal.querySelector('.anoted')?.textContent,
+      payloads: () => {
+        show()?.click();
+        return tabs().map((t) => t.textContent);
+      },
+      payload: (label: string) => {
+        show()?.click();
+        tabs()
+          .find((t) => t.textContent === label)!
+          .click();
+        return modal.querySelector('.apane')!.textContent!;
       },
     };
   };
-  return {
-    engine,
-    root,
-    flow,
-    pageConfig,
-    paint,
-    decide,
-    send,
-    rows,
-    notes,
-    header,
-    dests,
-    offs,
-    titleOf,
-    steps,
-    logos,
-    open,
-  };
+  return { engine, root, flow, paint, decide, send, rows, notes, header, open };
 }
 
 afterEach(() => {
@@ -352,7 +313,7 @@ describe('analytics tab', () => {
 
   it('lists the events sent on this page, newest first, each with what it carried and where it went', () => {
     win.nextConfig = { analytics: { destinations: { rudderstack: { enabled: true } } } };
-    const { engine, paint, send, decide, rows, header, dests, titleOf, logos, open } = setup();
+    const { engine, flow, paint, send, decide, rows, header, open } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
     decide('sdk.ready', 'product_viewed', false, 'No package on the page');
@@ -373,34 +334,25 @@ describe('analytics tab', () => {
       payload: { params: { value: 49 }, eventID: 'cu' },
     });
     paint();
-    expect(header()).toBe('2 events sent on this page, newest first');
+    expect(header()).toBe('2 events sent on this page, newest first · click one for where it went');
     expect(rows()).toEqual(['cart_updated | Earbuds ×1 · $49.00', 'page_viewed']);
-    expect(dests()).toEqual({
-      NextDataLayer: '2',
-      dataLayer: '2',
-      ga4: '1',
-      meta: '1',
-      rudderstack: 'no rudderanalytics',
-    });
-    expect(titleOf('ga4')).toBe('1 event reached GA4 on this page.');
-    expect(titleOf('rudderstack')).toBe(
-      '0 events reached RudderStack on this page. RudderStack is on, but this page has no rudderanalytics.',
-    );
-    expect(logos(0)).toEqual(['NextDataLayer', 'GTM dataLayer', 'GA4', 'Meta']);
-    expect(logos(1)).toEqual(['NextDataLayer', 'GTM dataLayer']);
-    const row = open(0);
-    expect(row.sections).toEqual([
-      'next.analytics.on',
-      'NextDataLayerdl_cart_updated',
-      'GTM dataLayerdl_cart_updated',
-      'GA4update_cart',
-      'MetaAddToCart',
+    const event = open(0);
+    expect(flow.dialog.open).toBe(true);
+    expect(event.title).toBe('cart_updatedSent');
+    expect(event.places()).toEqual([
+      'GTM | dl_cart_updated | received | ok',
+      'GA4 | update_cart | received | ok',
+      'Meta | AddToCart | received | ok',
+      'RudderStack |  | no rudderanalytics on the page | warn',
     ]);
-    const event = row.section('next.analytics.on');
-    expect(event).toContain('event_id "cu"');
-    expect(event).toContain('session_id "s1"');
-    expect(row.section('GA4')).toContain('value 49');
-    expect(row.section('Meta')).toContain('eventID "cu"');
+    expect(event.items()).toEqual(['Item | Qty | Price', 'Earbuds | 1 | $49.00']);
+    expect(event.note()).toBeUndefined();
+    expect(event.totals()).toBe('Total$49.00CurrencyUSD');
+    expect(event.payloads()).toEqual(['next.analytics.on', 'GTM', 'GA4', 'Meta']);
+    expect(event.payload('next.analytics.on')).toContain('event_id "cu"');
+    expect(event.payload('next.analytics.on')).toContain('session_id "s1"');
+    expect(event.payload('GA4')).toContain('value 49');
+    expect(event.payload('Meta')).toContain('eventID "cu"');
   });
 
   it('sums up each event in one line: products with quantity, the price, and the order number', () => {
@@ -423,7 +375,7 @@ describe('analytics tab', () => {
   });
 
   it('shows an incomplete object and a push that did not arrive on its row, and in Issues', () => {
-    const { engine, flow, paint, send, rows } = setup();
+    const { engine, flow, paint, send, rows, open } = setup();
     const order = { ...publicOrder(ORDER), lines: [], currency: undefined, number: undefined };
     engine.events.emit('order.paid', order);
     send('order.paid', 'checkout_completed', order, 'p1', { layers: false });
@@ -432,6 +384,8 @@ describe('analytics tab', () => {
     paint();
     const problems = 'lines is empty · no currency · checkout_completed has no order number · not in dataLayer';
     expect(rows()).toEqual([`checkout_completed | $106.11 | ⚠ ${problems}`]);
+    expect(open(0).problems()).toEqual(problems.split(' · '));
+    expect(open(0).places()[0]).toBe('GTM |  | not pushed | bad');
     expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
     expect(flow.summary()).toBe('1 sent · ⚠ 1');
   });
@@ -464,14 +418,15 @@ describe('analytics tab', () => {
     decide('promotion.viewed', 'dl_exit_intent_shown', true, 'Data layer only: there is no analytics event', 'x1');
     paint();
     expect(rows()).toEqual(['dl_exit_intent_shown']);
-    const row = open(0);
-    expect(row.sections).toEqual(['NextDataLayerdl_exit_intent_shown', 'GTM dataLayerdl_exit_intent_shown']);
-    expect(row.section('NextDataLayer')).toContain('event_id "x1"');
+    const event = open(0);
+    expect(event.places()[0]).toBe('GTM | dl_exit_intent_shown | received | ok');
+    expect(event.payloads()).toEqual(['GTM']);
+    expect(event.payload('GTM')).toContain('event_id "x1"');
   });
 
   it('marks a destination turned off, notes a provider that is not built in, and puts only the warnings in Issues', () => {
     delete win.google_tag_manager;
-    const { engine, flow, paint, send, notes, dests, offs } = setup({
+    const { engine, flow, paint, send, notes, open } = setup({
       ...ON,
       dataLayer: false,
       unsupported: ['custom'],
@@ -483,44 +438,15 @@ describe('analytics tab', () => {
     const custom =
       "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).";
     expect(notes()).toEqual([custom]);
-    expect(dests()).toMatchObject({ NextDataLayer: '1', dataLayer: 'off' });
-    expect(offs()!.title).toContain(
+    const gtm = flow.dialog && open(0).places()[0];
+    expect(gtm).toBe('GTM |  | off | off');
+    expect(open(0).note()).toBe(
+      'No platform got it: only next.analytics.on listeners and the page’s own forwarder (NextDataLayer).',
+    );
+    expect(flow.dialog.querySelector<HTMLElement>('.aplaces > li')!.title).toBe(
       'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
     );
     expect(flow.notes()).toEqual([custom]);
-  });
-
-  it('opens Page config at its analytics section from the Config button', () => {
-    const { root, paint, pageConfig } = setup();
-    paint();
-    const config = [...root.querySelectorAll<HTMLButtonElement>('.adests > .btn')].find(
-      (b) => b.textContent === 'Config',
-    )!;
-    config.click();
-    expect(pageConfig.open).toHaveBeenCalledWith('analytics');
-  });
-
-  it('marks each funnel step sent on any page of the tab, and the upsell steps once the tab saw an upsell', () => {
-    const pages = [
-      page('/', ['page_viewed', 'product_viewed']),
-      page('/checkout', ['page_viewed', 'checkout_started']),
-    ];
-    const { paint, steps, root } = setup(ON, pages);
-    paint();
-    expect(root.querySelector('.afunnel > .asub')!.textContent).toBe('Funnel 3/9');
-    expect(steps().slice(0, 4)).toEqual([
-      ['Page', 'true', 'page_viewed: sent on /, /checkout'],
-      ['Product', 'true', 'product_viewed: sent on /'],
-      ['Cart', 'false', 'product_added_to_cart: not sent on any page of this tab yet'],
-      ['Checkout', 'true', 'checkout_started: sent on /checkout'],
-    ]);
-    pages.push(page('/upsell', ['upsell_viewed'], 'upsell'));
-    paint();
-    expect(
-      steps()
-        .map(([name]) => name)
-        .slice(-3),
-    ).toEqual(['Purchase', 'Upsell', 'Upsell paid']);
   });
 
   it('filters events by name or what they carried', () => {
@@ -546,7 +472,6 @@ describe('analytics tab', () => {
     const off = setup({ ...ON, enabled: false });
     off.paint();
     expect(off.notes()).toEqual(['Analytics is off: nextConfig.analytics.enabled is false.']);
-    expect(Object.values(off.dests())).toEqual(Array(5).fill('off'));
     expect(off.flow.notes()).toEqual([]);
   });
 });

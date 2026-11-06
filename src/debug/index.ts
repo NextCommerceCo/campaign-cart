@@ -169,16 +169,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const query = () => filter.value.trim().toLowerCase();
   const events = eventsView(engine, debug, open, () => render());
   const pageConfig = configModal(engine, debug, info, () => render());
-  const flow = analyticsFlow({
-    open,
-    config: info.analytics,
-    pageConfig,
-    pages: () => debug.state().pages,
-  });
+  const flow = analyticsFlow({ open, config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
-  root.append(cart.dialog, pageConfig.dialog);
+  root.append(cart.dialog, pageConfig.dialog, flow.dialog);
   const logs = logsView(engine, open, idOf, () => render());
   const locale = localeTab(engine, debug, info.send, () => later());
 
@@ -302,7 +297,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open && !pageConfig.dialog.open) setView('closed');
+    if (e.key === 'Escape' && view !== 'closed' && ![cart, pageConfig, flow].some((d) => d.dialog.open))
+      setView('closed');
   });
   const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');
   document.addEventListener('click', outside, true);
