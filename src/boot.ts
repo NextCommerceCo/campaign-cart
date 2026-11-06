@@ -259,6 +259,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       bindings.render();
     } finally {
       html.setAttribute('data-next-ready', '');
+      performance.mark?.('next:ready');
     }
     announceLegacyReady(next);
     runReadyQueue(next, engine.log);

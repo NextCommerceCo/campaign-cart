@@ -5,6 +5,7 @@ import type { Send } from '../engine/types';
 import { countElements, elementsView, explain, highlighter, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
+import { benchmarkView } from './benchmark';
 import { checkoutView } from './checkout';
 import { configModal } from './config';
 import { eventsView } from './events';
@@ -19,6 +20,7 @@ import { followTheme } from './theme';
 import { createDebug } from './state';
 import {
   ANALYTICS_CSS,
+  BENCH_CSS,
   CART_CSS,
   CHECKOUT_CSS,
   CONFIG_CSS,
@@ -39,10 +41,11 @@ const TABS = {
   elements: 'Elements',
   state: 'State',
   logs: 'Logs',
+  benchmark: 'Benchmark',
 };
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'events', 'logs'];
-const DEV: Tab[] = ['elements', 'state', 'logs'];
+const DEV: Tab[] = ['elements', 'state', 'logs', 'benchmark'];
 export interface DebugInfo {
   version: string;
   apiBase: string;
@@ -150,14 +153,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const style = h(
     'style',
     {},
-    TSUGI_CSS,
-    PANEL_CSS,
-    CART_CSS,
-    CHECKOUT_CSS,
-    JOURNEY_CSS,
-    LOCALE_CSS,
-    CONFIG_CSS,
-    ANALYTICS_CSS,
+    ...[TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS],
+    ...[CONFIG_CSS, ANALYTICS_CSS, BENCH_CSS],
   );
   let paymentIcons: Promise<void> | undefined;
   const loadPaymentIcons = () =>
@@ -174,6 +171,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog, pageConfig.dialog, flow.dialog);
+  const bench = benchmarkView(engine);
   const logs = logsView(engine, open, idOf, () => render());
   const locale = localeTab(engine, debug, info.send, () => later());
 
@@ -194,6 +192,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     locale: () => locale.view(),
     events: () => events.view(query()),
     logs: () => logs.view(query()),
+    benchmark: () => bench.view(),
   };
 
   const render = () => {

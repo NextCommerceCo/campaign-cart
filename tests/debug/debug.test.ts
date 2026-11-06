@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
 import {
   ANALYTICS_CSS,
+  BENCH_CSS,
   CART_CSS,
   CHECKOUT_CSS,
   CONFIG_CSS,
@@ -159,6 +160,7 @@ describe('debug tools', () => {
       'elements',
       'state',
       'logs',
+      'benchmark',
     ]);
     expect($('[aria-label="Pick an element"]').hidden).toBe(false);
     await start('', {});
@@ -444,7 +446,9 @@ describe('debug tools', () => {
     added.click();
     const modal = $<HTMLDialogElement>('dialog.amodal');
     expect(modal.open).toBe(true);
-    expect(modal.querySelector('.aplaces > li')!.textContent).toBe('GTMdl_add_to_cartreceived · no GTM container on the page');
+    expect(modal.querySelector('.aplaces > li')!.textContent).toBe(
+      'GTMdl_add_to_cartreceived · no GTM container on the page',
+    );
     [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payloads')!.click();
     const pane = modal.querySelector('.apane')!.textContent!;
     expect(pane).toContain(got[0]!.event_id);
@@ -517,7 +521,15 @@ describe('debug tools', () => {
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
     expect(shadow().querySelector('style')!.textContent).toBe(
-      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS,
+      TSUGI_CSS +
+        PANEL_CSS +
+        CART_CSS +
+        CHECKOUT_CSS +
+        JOURNEY_CSS +
+        LOCALE_CSS +
+        CONFIG_CSS +
+        ANALYTICS_CSS +
+        BENCH_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
@@ -527,14 +539,22 @@ describe('debug tools', () => {
     const locale = classes(LOCALE_CSS);
     const config = classes(CONFIG_CSS);
     const analytics = classes(ANALYTICS_CSS);
-    const sheets = [panel, cart, journey, checkout, locale, config, analytics];
+    const bench = classes(BENCH_CSS);
+    const sheets = [panel, cart, journey, checkout, locale, config, analytics, bench];
     expect(
       sheets.flatMap((sheet, i) => [...sheet].filter((name) => sheets.slice(0, i).some((s) => s.has(name)))),
     ).toEqual([]);
     const rules = [
-      ...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS).matchAll(
-        /^\.([a-z][\w-]*)\{/gm,
-      ),
+      ...(
+        PANEL_CSS +
+        CART_CSS +
+        CHECKOUT_CSS +
+        JOURNEY_CSS +
+        LOCALE_CSS +
+        CONFIG_CSS +
+        ANALYTICS_CSS +
+        BENCH_CSS
+      ).matchAll(/^\.([a-z][\w-]*)\{/gm),
     ];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
@@ -567,10 +587,11 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS;
+    const ours =
+      PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS).not.toMatch(
+    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS).not.toMatch(
       /#[\da-f]{3,8}\b|rgba?\(|oklch\(/i,
     );
     expect(shadow().host.classList.contains('dark')).toBe(true);

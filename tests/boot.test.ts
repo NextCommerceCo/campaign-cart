@@ -131,6 +131,7 @@ describe('boot', () => {
     boot(config, Promise.resolve({ ...campaign, language: 'de' }));
     await vi.waitFor(() => expect(document.querySelector('h2')!.textContent).toBe('Kontakt'));
     expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true);
+    expect(performance.getEntriesByName('next:ready', 'mark')).not.toHaveLength(0);
   });
 
   it('starts a forced cart and announces itself the old and new ways', async () => {
