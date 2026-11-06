@@ -13,17 +13,17 @@ Prices and the checkout's texts are in `nextConfig.locale`, else the campaign's 
 ```html
 <script>
   window.nextConfig = {
-    locale: 'th-TH',
+    locale: 'fr-FR',
     translations: {
-      th: { 'fields.state.errors.blank': 'กรุณาเลือกจังหวัด' },
+      fr: { 'fields.postcode.errors.blank': 'Il nous faut votre code postal' },
     },
   };
 </script>
 ```
 
-A text comes from the page's `translations` (`th-TH`, then `th`), then the address service, then
+A text comes from the page's `translations` (`fr-FR`, then `fr`), then the address service, then
 English. The keys are the address service's: every key is in
-`https://i18n-rules.nextcommerce.com/v1/locales/th`.
+`https://i18n-rules.nextcommerce.com/v1/locales/fr`.
 
 | Text                     | Key                                                                                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
