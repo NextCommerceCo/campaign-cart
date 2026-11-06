@@ -4,17 +4,6 @@ import { join, resolve } from 'node:path';
 
 export const LIVE_API = 'https://campaigns.apps.29next.com';
 const CAMPAIGNS = resolve(process.env.DEV_CAMPAIGNS ?? join(import.meta.dirname, 'campaigns'));
-const RULES_REPO = resolve(process.env.I18N_RULES ?? join(import.meta.dirname, '../../i18n-rules'));
-
-type Rules = { fetch(req: Request, env: object): Promise<Response> };
-let rules: Promise<Rules | undefined> | undefined;
-const rulesApp = () =>
-  (rules ??= import(join(RULES_REPO, 'src/index.ts'))
-    .then((m) => m.default as Rules)
-    .catch(() => {
-      console.warn(`[dev] no i18n-rules at ${RULES_REPO}; checkout uses the campaign's country list without rules`);
-      return undefined;
-    }));
 
 interface Package {
   ref_id: number;
@@ -216,8 +205,6 @@ const GATEWAY = (q: URLSearchParams, req: IncomingMessage) => {
 <p><a href="/__dev/gateway/approve?${escape(q.toString())}">Approve</a> · <a href="${escape(failure)}">Fail the payment</a></p></body>`;
 };
 
-export const hasLocalRules = () => existsSync(join(RULES_REPO, 'src/index.ts'));
-
 export function apiTarget(api: string): string | undefined {
   if (api === 'full') return LIVE_API;
   return /^https?:\/\//.test(api) ? api.replace(/\/$/, '') : undefined;
@@ -243,30 +230,6 @@ export function mockApi(api: string) {
       success.searchParams.set('ref_id', ref);
       res.writeHead(302, { location: success.href });
       return res.end();
-    }
-
-    const flag = url.pathname.match(/^\/__rules\/v1\/flags\/([a-z-]+\.svg)$/)?.[1];
-    if (flag) {
-      const file = join(RULES_REPO, 'public/v1/flags', flag);
-      if (!existsSync(file)) return send(res, 404, { error: 'no such flag' });
-      res.writeHead(200, { 'content-type': 'image/svg+xml' });
-      return res.end(readFileSync(file));
-    }
-
-    if (url.pathname.startsWith('/__rules/')) {
-      const app = await rulesApp();
-      if (!app) return send(res, 503, { error: 'no local i18n-rules' });
-      const body = req.method === 'POST' ? await bodyOf(req) : undefined;
-      const answer = await app.fetch(
-        new Request(`http://rules${url.pathname.slice('/__rules'.length)}${url.search}`, {
-          method: req.method,
-          headers: { 'content-type': 'application/json' },
-          body,
-        }),
-        {},
-      );
-      res.writeHead(answer.status, { 'content-type': 'application/json' });
-      return res.end(await answer.text());
     }
 
     if (!url.pathname.startsWith('/__api/')) return next();

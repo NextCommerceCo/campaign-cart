@@ -53,8 +53,8 @@ In MOCK and LIVE:
 - payment.js is a fake card form: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` declines;
   express and redirect methods go to a local gateway page with Approve / Fail.
 
-In every mode i18n-rules runs in-process from `../i18n-rules` (or `I18N_RULES=…`) when it is
-there, the NextCampaign analytics script is a stub, and page scripts (GTM, page JS) run as they
+In every mode i18n-rules is the live service, so geo resolves as it does for a shopper, the
+NextCampaign analytics script is a stub, and page scripts (GTM, page JS) run as they
 are. MOCK needs each campaign's JSON once in `dev/campaigns/` (not committed): `bun dev --api
 live` saves it, or run the `curl` command the terminal prints.
 

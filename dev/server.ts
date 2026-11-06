@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
-import { apiTarget, hasLocalRules, mockApi } from './mock';
+import { apiTarget, mockApi } from './mock';
 
 const STARTER = join(import.meta.dirname, '../.campaigns');
 const STARTER_REPO = 'https://github.com/NextCommerceCo/campaign-cart-starter-templates.git';
@@ -123,9 +123,9 @@ function cookie(req: IncomingMessage, name: string): string | undefined {
     .find(([k]) => k === name)?.[1];
 }
 
-function withLocalSdk(html: string, options: DevOptions, rules: boolean): string {
+function withLocalSdk(html: string, options: DevOptions): string {
   const { label } = describe(options.api ?? 'mock');
-  const dev = { mode: label, stubPayments: label === 'MOCK' || label === 'LIVE', rules };
+  const dev = { mode: label, stubPayments: label === 'MOCK' || label === 'LIVE' };
   const src = options.dist ? '/__sdk/loader.js' : '/src/loader.ts';
   const swapped = html.replace(LOADER, (tag) => {
     let local = tag
@@ -164,7 +164,6 @@ function passcode(token: string | undefined) {
 
 function sitePages(server: () => ViteDevServer, options: DevOptions): Plugin {
   const api = options.api ?? 'mock';
-  const rules = hasLocalRules();
   const sendFile = (res: ServerResponse, file: string) => {
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
     res.end(readFileSync(file));
@@ -194,7 +193,7 @@ function sitePages(server: () => ViteDevServer, options: DevOptions): Plugin {
     const file = pageFile(pathname);
     if (!file) return next();
     if (extname(file) !== '.html') return sendFile(res, file);
-    const page = withLocalSdk(readFileSync(file, 'utf8'), options, rules);
+    const page = withLocalSdk(readFileSync(file, 'utf8'), options);
     const html = options.dist ? page : await server().transformIndexHtml(pathname, page);
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end(html);

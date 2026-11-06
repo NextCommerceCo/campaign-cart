@@ -1,16 +1,13 @@
 interface DevPage {
   mode: string;
   stubPayments: boolean;
-  rules: boolean;
 }
 
 const dev = (window as unknown as { __NEXT_DEV__?: DevPage }).__NEXT_DEV__ ?? {
   mode: 'MOCK',
   stubPayments: true,
-  rules: true,
 };
 const API = 'https://campaigns.apps.29next.com';
-const RULES = 'https://i18n-rules.nextcommerce.com';
 const STUBS: Record<string, string> = {
   [`${API}/js/v1/campaign/`]: '/__dev/stub/next-campaign.js',
   ...(dev.stubPayments && { 'https://payments.29next.com/js/v1/payment.js': '/__dev/stub/payment.js' }),
@@ -21,11 +18,7 @@ const PRECONNECT = /^https:\/\/(payments\.29next\.com|core\.spreedly\.com)/;
 const real = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const url = input instanceof Request ? input.url : String(input);
-  const local = url.startsWith(API)
-    ? url.replace(API, '/__api')
-    : dev.rules && url.startsWith(RULES)
-      ? url.replace(RULES, '/__rules')
-      : undefined;
+  const local = url.startsWith(API) ? url.replace(API, '/__api') : undefined;
   if (!local) return real(input, init);
   return input instanceof Request ? real(new Request(local, input), init) : real(local, init);
 };
@@ -36,16 +29,6 @@ if (dev.stubPayments) {
     ...href,
     set(this: HTMLLinkElement, value: string) {
       href.set!.call(this, PRECONNECT.test(value) ? location.origin : value);
-    },
-  });
-}
-
-if (dev.rules) {
-  const image = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')!;
-  Object.defineProperty(HTMLImageElement.prototype, 'src', {
-    ...image,
-    set(this: HTMLImageElement, value: string) {
-      image.set!.call(this, value.startsWith(RULES) ? value.replace(RULES, '/__rules') : value);
     },
   });
 }
