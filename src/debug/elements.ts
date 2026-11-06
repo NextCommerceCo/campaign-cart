@@ -3,7 +3,7 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf, truthy } from '../engine/format';
 import { resolve } from '../engine/values';
 import { replacementFor } from './legacy';
-import { h } from './view';
+import { empty, h } from './view';
 
 const PREFIX = 'data-next-';
 
@@ -173,4 +173,29 @@ export function pick(host: Element, box: Box, done: (el?: Element) => void): () 
   document.addEventListener('click', click, true);
   document.addEventListener('keydown', key, true);
   return () => finish();
+}
+
+const LIMIT = 200;
+
+/** The Elements tab: every element with a data-next-* attribute, or the picked one and its SDK parents. */
+export function elementsView(engine: Engine, box: Box, picked: Element | undefined, query: string, unpick: () => void) {
+  const found = inspect(engine, picked).filter((i) => matches(i, query));
+  const bad = found.filter((i) => i.bad).length;
+  if (!found.length)
+    return [
+      query
+        ? empty('Nothing matches', 'No element with a data-next-* attribute fits the filter.')
+        : empty('No SDK elements', 'No element on this page has a data-next-* attribute.'),
+    ];
+  return [
+    h(
+      'div',
+      'summary',
+      picked ? 'Picked element and its SDK parents' : `${found.length} elements`,
+      bad > 0 && h('span', 'red', ` · ${bad} with problems`),
+      picked && h('button', { type: 'button', className: 'link', onclick: unpick }, 'Show all'),
+    ),
+    ...found.slice(0, LIMIT).map((i) => card(i, box)),
+    found.length > LIMIT && h('div', 'summary', `Showing ${LIMIT} of ${found.length}. Filter to narrow.`),
+  ];
 }

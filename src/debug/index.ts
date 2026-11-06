@@ -1,21 +1,33 @@
 import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
+import type { PageConfig } from '../engine/debug-config';
 import type { Send } from '../engine/types';
-import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
+import { countElements, elementsView, explain, highlighter, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
 import { checkoutView } from './checkout';
+import { configModal } from './config';
 import { eventsView } from './events';
 import { type IconName, icon } from './icons';
 import { journeyView, pageKind } from './journey';
 import { localeTab } from './locale';
+import { issuesView } from './issues';
 import { logsView } from './logs';
 import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
 import { followTheme } from './theme';
-import { createDebug, type PageVisit } from './state';
-import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
-import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
+import { createDebug } from './state';
+import {
+  ANALYTICS_CSS,
+  CART_CSS,
+  CHECKOUT_CSS,
+  CONFIG_CSS,
+  JOURNEY_CSS,
+  LOCALE_CSS,
+  PANEL_CSS,
+  TSUGI_CSS,
+} from './styles';
+import { badge, type Child, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
 
 const TABS = {
   journey: 'Journey',
@@ -30,8 +42,7 @@ const TABS = {
 };
 type Tab = keyof typeof TABS;
 const FILTERED: Tab[] = ['elements', 'analytics', 'events', 'logs'];
-const DEV: Tab[] = ['events', 'elements', 'state', 'logs'];
-const LIMIT = 200;
+const DEV: Tab[] = ['elements', 'state', 'logs'];
 export interface DebugInfo {
   version: string;
   apiBase: string;
@@ -42,6 +53,10 @@ export interface DebugInfo {
   off: () => void;
   analytics: () => ProviderConfig;
   send: Send;
+  /** The page's own nextConfig, before Page config tried one over it. */
+  page: PageConfig;
+  /** This page runs with the nextConfig Page config tries. */
+  tried: boolean;
 }
 
 export function startDebug(engine: Engine, info: DebugInfo): void {
@@ -132,7 +147,18 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
-  const style = h('style', {}, TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS);
+  const style = h(
+    'style',
+    {},
+    TSUGI_CSS,
+    PANEL_CSS,
+    CART_CSS,
+    CHECKOUT_CSS,
+    JOURNEY_CSS,
+    LOCALE_CSS,
+    CONFIG_CSS,
+    ANALYTICS_CSS,
+  );
   let paymentIcons: Promise<void> | undefined;
   const loadPaymentIcons = () =>
     (paymentIcons ??= import('../../vendor/tsugi/payment-icons.css?raw').then((m) => style.append(m.default)));
@@ -142,121 +168,34 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
 
   const query = () => filter.value.trim().toLowerCase();
   const events = eventsView(engine, debug, open, () => render());
-  const flow = analyticsFlow({ open, config: info.analytics });
+  const pageConfig = configModal(engine, debug, info, () => render());
+  const flow = analyticsFlow({
+    open,
+    config: info.analytics,
+    pageConfig,
+    pages: () => debug.state().pages,
+    render: () => render(),
+  });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
-  root.append(cart.dialog);
+  root.append(cart.dialog, pageConfig.dialog);
   const logs = logsView(engine, open, idOf);
   const locale = localeTab(engine, debug, info.send, () => later());
 
-  const findIssues = () => {
-    const page = inspect(engine).filter((i) => i.bad);
-    const shownOnPage = page.flatMap((i) => i.notes.filter((n) => n.bad).map((n) => `"${n.value}"`));
-    const logged = engine.log
-      .entries()
-      .filter((e) => (e.level === 'warn' || e.level === 'error') && !shownOnPage.some((v) => e.message.includes(v)))
-      .reverse();
-    const pages = debug.state().pages;
-    const marks = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
-    const found: Array<{ from: Tab; text: string; error: boolean }> = [
-      ...marks(pages.at(-1)).map((m) => ({ from: 'journey' as Tab, text: m.text, error: m.tone === 'error' })),
-      ...checkout.problems().map((p) => ({ from: 'checkout' as Tab, ...p })),
-      ...flow.problems().map((p) => ({ from: 'analytics' as Tab, ...p })),
-    ];
-    const earlier = pages.slice(0, -1).reduce((n, p) => n + marks(p).length, 0);
-    const tone = logged.some((e) => e.level === 'error') || found.some((f) => f.error) ? 'red' : 'amber';
-    return {
-      page,
-      logged,
-      found,
-      earlier,
-      notes: flow.notes(),
-      count: page.length + logged.length + found.length,
-      tone,
-    };
-  };
+  const issueTab = issuesView(engine, debug, { checkout, flow, logs, box, show: (t) => show(t) });
+  const findIssues = issueTab.find;
 
   const views: Record<Tab, () => Child[]> = {
     journey: () => journey.view(),
-    issues: () => {
-      const { page, logged, found, earlier, notes } = findIssues();
-      const before =
-        earlier > 0 &&
-        h(
-          'p',
-          'summary',
-          `Earlier pages in this tab had ${plural(earlier, 'problem')}. `,
-          h('button', { type: 'button', className: 'link', onclick: () => show('journey') }, 'Open Journey'),
-        );
-      const setup = [
-        notes.length > 0 && h('h3', {}, `Setup notes · ${notes.length}`),
-        ...notes.map((text) =>
-          h(
-            'div',
-            { className: 'ecard', onclick: () => show('analytics') },
-            badge(TABS.analytics, 'outline'),
-            ' ',
-            text,
-          ),
-        ),
-      ];
-      if (!page.length && !logged.length && !found.length)
-        return [
-          empty(
-            'No issues',
-            'Nothing on this page needs a look: every SDK attribute resolves, the journey, checkout and analytics found no problems, and no warnings were logged.',
-            'check',
-          ),
-          before,
-          ...setup,
-        ];
-      return [
-        found.length > 0 && h('h3', {}, `Problems · ${found.length}`),
-        ...found.map((f) =>
-          h(
-            'div',
-            { className: `ecard${f.error ? ' bad' : ''}`, onclick: () => show(f.from) },
-            badge(TABS[f.from], 'outline'),
-            ' ',
-            f.text,
-          ),
-        ),
-        page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
-        ...page.map((i) => card(i, box)),
-        logged.length > 0 && h('h3', {}, `Warnings and errors · ${logged.length}`),
-        ...logged.map(logs.row),
-        before,
-        ...setup,
-      ];
-    },
+    issues: () => issueTab.view(),
     checkout: () => checkout.view(),
     state: () => Object.entries(engine.getState()).map(([k, v]) => tree(h('span', 'key', k), v, k, open)),
-    elements: () => {
-      const found = inspect(engine, picked).filter((i) => matches(i, query()));
-      const bad = found.filter((i) => i.bad).length;
-      if (!found.length)
-        return [
-          query()
-            ? empty('Nothing matches', 'No element with a data-next-* attribute fits the filter.')
-            : empty('No SDK elements', 'No element on this page has a data-next-* attribute.'),
-        ];
-      const unpick = () => {
+    elements: () =>
+      elementsView(engine, box, picked, query(), () => {
         picked = undefined;
         render();
-      };
-      return [
-        h(
-          'div',
-          'summary',
-          picked ? 'Picked element and its SDK parents' : `${found.length} elements`,
-          bad > 0 && h('span', 'red', ` · ${bad} with problems`),
-          picked && h('button', { type: 'button', className: 'link', onclick: unpick }, 'Show all'),
-        ),
-        ...found.slice(0, LIMIT).map((i) => card(i, box)),
-        found.length > LIMIT && h('div', 'summary', `Showing ${LIMIT} of ${found.length}. Filter to narrow.`),
-      ];
-    },
+      }),
     analytics: () => flow.view(query()),
     locale: () => locale.view(),
     events: () => events.view(query()),
@@ -289,9 +228,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
             checkout: checkout.summary(),
             analytics: flow.summary(),
             locale: locale.summary(),
+            events: events.count(),
+            pageConfig,
             settings,
             setSettings: (on) => ((settings = on), render()),
-            counts: () => ({ elements: countElements(), events: events.count(), logs: engine.log.entries().length }),
+            counts: () => ({ elements: countElements(), logs: engine.log.entries().length }),
             show,
             pick: togglePick,
             flip,
@@ -362,7 +303,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open) setView('closed');
+    if (e.key === 'Escape' && view !== 'closed' && !cart.dialog.open && !pageConfig.dialog.open) setView('closed');
   });
   const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');
   document.addEventListener('click', outside, true);

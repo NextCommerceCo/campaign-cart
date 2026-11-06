@@ -1,4 +1,5 @@
 import type { Line } from '../engine/cart/types';
+import type { PageConfig } from '../engine/debug-config';
 import type { Context } from '../engine/engine';
 import type { AnalyticsTrace } from '../engine/events/analytics';
 import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
@@ -43,6 +44,8 @@ export interface Panel {
 export interface DebugState {
   pages: PageVisit[];
   panel: Panel;
+  /** The nextConfig Page config tries on this tab; boot reads it (src/engine/debug-config.ts). */
+  config?: PageConfig;
 }
 
 export interface Arrival {
@@ -77,6 +80,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   let state: DebugState = {
     pages: saved?.pages ?? [],
     panel: saved?.panel ?? { open: false, tab: 'journey', right: true },
+    ...(saved?.config && { config: saved.config }),
   };
   const save = () => ctx.update('debug', state, { silent: true });
 
@@ -247,6 +251,10 @@ export function createDebug(ctx: Context, arrival: Arrival) {
     state: () => state,
     setPanel(patch: Partial<Panel>) {
       state = { ...state, panel: { ...state.panel, ...patch } };
+      save();
+    },
+    setConfig(config: PageConfig | undefined) {
+      state = { ...state, config };
       save();
     },
     clear() {

@@ -21,6 +21,7 @@ import {
   readLegacyI18n,
   removeLegacyPersonalData,
 } from './compat/legacy/globals';
+import { type PageConfig, triedConfig, withTried } from './engine/debug-config';
 import { localeOf } from './engine/format';
 import { trackingIgnored } from './engine/params';
 import { rulesSend, textsIn } from './engine/texts';
@@ -89,6 +90,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const params = new URLSearchParams(location.search);
   const funnel = config.funnel || funnelFromPath(location.pathname);
   const scope = storageScope(config.apiKey, funnel);
+  const win = window as unknown as { nextConfig?: PageConfig };
+  const page = win.nextConfig ?? {};
+  const tried = triedConfig(browserStorage(() => sessionStorage), config.debug);
+  if (tried) win.nextConfig = withTried(page, tried);
   const i18n = readLegacyI18n();
   const send = window.fetch.bind(window);
   const rules = rulesSend(send, config.apiKey);
@@ -138,6 +143,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         reset: () => location.assign(`${location.pathname}?reset=1`),
         off: () => location.assign(`${location.pathname}?debug=0`),
         send: rules,
+        page,
+        tried: !!tried,
         analytics: () => ({ ...readLegacyAnalytics(), ignored: trackingIgnored(engine.getState().visit.params) }),
       }),
     );

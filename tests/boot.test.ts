@@ -75,6 +75,36 @@ describe('boot', () => {
     }
   });
 
+  it('runs with the nextConfig the debug panel tries on this tab, before anything reads it, only in debug mode', async () => {
+    const page = { locale: 'en-US', apiKey: 'pk_page' };
+    const tried = JSON.stringify({
+      v: 1,
+      t: 0,
+      d: {
+        panel: { open: false, tab: 'journey', right: true },
+        pages: [],
+        config: { locale: 'fr', apiKey: 'pk_other' },
+      },
+    });
+    const price = () => document.getElementById('price')!.textContent;
+    try {
+      (window as { nextConfig?: unknown }).nextConfig = { ...page };
+      sessionStorage.setItem('next:debug', tried);
+      document.body.innerHTML = `<span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>`;
+      boot({ ...config, debug: true }, Promise.resolve({ ...campaign, currency: 'EUR' }));
+      await vi.waitFor(() => expect(price()).toMatch(/^\d+,\d\d\s€$/));
+      expect((window as { nextConfig?: unknown }).nextConfig).toEqual({ locale: 'fr', apiKey: 'pk_page' });
+
+      (window as { nextConfig?: unknown }).nextConfig = { ...page };
+      document.body.innerHTML = `<span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>`;
+      boot({ ...config, debug: false }, Promise.resolve({ ...campaign, currency: 'EUR' }));
+      await vi.waitFor(() => expect(price()).toMatch(/^€\d+\.\d\d$/));
+      expect((window as { nextConfig?: unknown }).nextConfig).toEqual(page);
+    } finally {
+      delete (window as { nextConfig?: unknown }).nextConfig;
+    }
+  });
+
   it('writes prices in ?lang= over nextConfig.locale', async () => {
     (window as { nextConfig?: unknown }).nextConfig = { locale: 'en-US' };
     document.body.innerHTML = `<span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>`;

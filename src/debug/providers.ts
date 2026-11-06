@@ -1,4 +1,4 @@
-import type { TrackingName } from '../engine/events/analytics';
+import type { DestinationTrace, TrackingName } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
 
 export interface ProviderConfig {
@@ -6,23 +6,38 @@ export interface ProviderConfig {
   nextCampaign: boolean;
   dataLayer: boolean;
   unsupported: string[];
+  /** 0.4.x `analytics.providers.facebook`; `analytics.destinations.meta` wins over it. */
+  meta?: boolean;
+  /** 0.4.x `analytics.providers.rudderstack`; `analytics.destinations.rudderstack` wins over it. */
+  rudderstack?: boolean;
   /** `?ignore=true` is on this tab. */
   ignored?: boolean;
 }
 
-export interface Note {
-  warn: boolean;
-  text: string;
+export type Place = Layer | DestinationTrace['destination'];
+
+export interface Destination {
+  place: Place;
+  on: boolean;
+  /** On, but what it sends through is not on this page. */
+  missing?: string;
+  /** Why it is off or missing, or a note on it. */
+  title?: string;
 }
 
 type EngineName = Exclude<EventName, 'analytics'>;
 export type Line = Record<string, unknown>;
 export type Layer = 'NextDataLayer' | 'dataLayer';
+type Switch = { enabled?: boolean } | undefined;
 export type Win = Window &
   Partial<Record<Layer, unknown[]>> & {
     google_tag_manager?: Record<string, unknown>;
     nextCampaign?: { event?: unknown };
     NextDataLayerTransformFn?: unknown;
+    nextConfig?: { analytics?: { destinations?: Partial<Record<'gtm' | 'ga4' | 'meta' | 'rudderstack', Switch>> } };
+    gtag?: unknown;
+    fbq?: unknown;
+    rudderanalytics?: unknown;
   };
 
 export interface Wire {
@@ -153,6 +168,13 @@ const NEEDS_LINES: ReadonlySet<string> = new Set<TrackingName>([
 const PRICED: ReadonlySet<string> = new Set(['cart', 'checkout', 'order', 'upsell']);
 const ORDERS: ReadonlySet<string> = new Set<TrackingName>(['checkout_completed', 'upsell_completed']);
 const UNSUPPORTED: Record<string, string> = { custom: 'Custom endpoint' };
+const TAGS: Record<Place, string> = {
+  NextDataLayer: 'NEXT script',
+  dataLayer: 'GTM container',
+  ga4: 'gtag',
+  meta: 'fbq',
+  rudderstack: 'rudderanalytics',
+};
 const NEXT_SCRIPT = 'script[src^="https://campaigns.apps.29next.com/js/v1/campaign/"]';
 
 const wireOf = (name: string) => WIRING.find((w) => w.tracking === name);
@@ -182,38 +204,78 @@ export function checks(name: string, data: unknown): string[] {
   ].filter((p): p is string => !!p);
 }
 
-export function setupNotes(config: ProviderConfig, started: boolean): Note[] {
+export const analyticsOff = (config: ProviderConfig): string | undefined =>
+  !config.enabled
+    ? 'Analytics is off: nextConfig.analytics.enabled is false.'
+    : config.ignored
+      ? 'Analytics is off for this tab: ?ignore=true. Open a page with ?ignore=false to turn it back on.'
+      : undefined;
+
+export const unsupportedNotes = (config: ProviderConfig) =>
+  config.unsupported.map(
+    (id) =>
+      `${UNSUPPORTED[id] ?? id} is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).`,
+  );
+
+/** Each place a tracking event can go, on or off as the analytics chunk decides (`readDestinations`). */
+export function destinations(config: ProviderConfig, started: boolean): Destination[] {
   const win = window as Win;
-  const unsupported = config.unsupported.map((id) => ({
-    warn: true,
-    text: `${UNSUPPORTED[id] ?? id} is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).`,
-  }));
-  if (!config.enabled)
-    return [{ warn: false, text: 'Analytics is off: nextConfig.analytics.enabled is false.' }, ...unsupported];
-  if (config.ignored)
-    return [
-      {
-        warn: false,
-        text: 'Analytics is off for this tab: ?ignore=true. Open a page with ?ignore=false to turn it back on.',
-      },
-    ];
+  const set = win.nextConfig?.analytics?.destinations ?? {};
+  const off = analyticsOff(config);
   const gtm = Object.keys(win.google_tag_manager ?? {}).some((k) => k.startsWith('GTM-'));
   const script = document.querySelector(NEXT_SCRIPT) ? 'did not load' : 'is not on the page';
-  const notes: Array<Note | false> = [
-    !started && { warn: false, text: 'Analytics starts once the page is idle.' },
-    !config.dataLayer
-      ? {
-          warn: false,
-          text: 'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
-        }
-      : !gtm && { warn: true, text: 'GTM dataLayer is on, but this page has no GTM container.' },
-    !config.nextCampaign
-      ? { warn: false, text: 'NEXT analytics is off: analytics.providers.nextCampaign.enabled is false in nextConfig.' }
-      : started &&
-        typeof win.nextCampaign?.event !== 'function' && {
-          warn: true,
-          text: `NEXT analytics is on, but its script ${script}.`,
-        },
+  const turnOn = (name: string, legacy?: string) =>
+    `${name} is off: turn it on with analytics.destinations.${name.toLowerCase()}.enabled${legacy ? ` (0.4.x: analytics.providers.${legacy}.enabled)` : ''} in nextConfig.`;
+  const place = (place: Place, on: boolean, tag: boolean, why: string): Destination =>
+    off
+      ? { place, on: false, title: off }
+      : !on
+        ? { place, on, title: why }
+        : tag
+          ? { place, on }
+          : { place, on, missing: TAGS[place], title: why };
+  const gtmOn = set.gtm?.enabled ?? config.dataLayer;
+  const ga4On = set.ga4?.enabled === true;
+  const metaOn = set.meta?.enabled ?? config.meta === true;
+  const rudderOn = set.rudderstack?.enabled ?? config.rudderstack === true;
+  return [
+    {
+      ...place(
+        'NextDataLayer',
+        true,
+        !config.nextCampaign || !started || typeof win.nextCampaign?.event === 'function',
+        `NEXT analytics is on, but its script ${script}.`,
+      ),
+      ...(!off &&
+        !config.nextCampaign && {
+          title: 'NEXT analytics is off: analytics.providers.nextCampaign.enabled is false in nextConfig.',
+        }),
+    },
+    place(
+      'dataLayer',
+      gtmOn,
+      gtm,
+      gtmOn
+        ? 'GTM dataLayer is on, but this page has no GTM container.'
+        : `GTM tags get none of these events: analytics.${set.gtm?.enabled === false ? 'destinations' : 'providers'}.gtm.enabled is false in nextConfig.`,
+    ),
+    place(
+      'ga4',
+      ga4On,
+      typeof win.gtag === 'function',
+      ga4On ? 'GA4 is on, but this page has no Google tag (gtag).' : turnOn('GA4'),
+    ),
+    place(
+      'meta',
+      metaOn,
+      typeof win.fbq === 'function',
+      metaOn ? 'Meta is on, but this page has no Meta Pixel (fbq).' : turnOn('Meta', 'facebook'),
+    ),
+    place(
+      'rudderstack',
+      rudderOn,
+      !!win.rudderanalytics,
+      rudderOn ? 'RudderStack is on, but this page has no rudderanalytics.' : turnOn('RudderStack', 'rudderstack'),
+    ),
   ];
-  return [...notes.filter((n): n is Note => !!n), ...unsupported];
 }

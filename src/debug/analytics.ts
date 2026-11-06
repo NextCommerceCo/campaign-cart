@@ -1,21 +1,52 @@
 import type { AnalyticsTrace, DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { EngineEvent } from '../engine/events/bus';
+import { format } from '../engine/format';
 import type { LogEntry } from '../engine/log';
-import { checks, type Layer, type ProviderConfig, setupNotes, type Win } from './providers';
+import {
+  analyticsOff,
+  checks,
+  type Destination,
+  destinations,
+  type Layer,
+  linesOf,
+  type Place,
+  pricedOf,
+  type ProviderConfig,
+  unsupportedNotes,
+  type Win,
+  WIRING,
+} from './providers';
+import type { PageConfigModal } from './config';
+import type { PageVisit } from './state';
 import { type IconName, icon } from './icons';
-import { type Child, empty, expandable, h, plural, stamp, tree } from './view';
+import { badge, button, type Child, empty, expandable, h, plural, stamp, tree } from './view';
 
 type Run = AnalyticsTrace & { at: number };
+type Reach = { place: Place; name: string; payload: unknown };
 
 const BURST: ReadonlySet<string> = new Set<TrackingName>(['product_added_to_cart', 'product_removed_from_cart']);
 const LAYERS: Layer[] = ['NextDataLayer', 'dataLayer'];
-const PLACES: Record<Layer | DestinationTrace['destination'], [string, IconName]> = {
+const PLACES: Record<Place, [string, IconName]> = {
   NextDataLayer: ['NextDataLayer', 'logo'],
   dataLayer: ['GTM dataLayer', 'gtm'],
   ga4: ['GA4', 'ga4'],
   meta: ['Meta', 'meta'],
   rudderstack: ['RudderStack', 'send'],
 };
+const FUNNEL: TrackingName[] = [
+  'page_viewed',
+  'product_viewed',
+  'product_added_to_cart',
+  'checkout_started',
+  'checkout_contact_info_submitted',
+  'checkout_shipping_address_submitted',
+  'checkout_shipping_method_submitted',
+  'checkout_payment_info_submitted',
+  'checkout_completed',
+];
+const UPSELL: TrackingName[] = ['upsell_viewed', 'upsell_completed'];
+const KINDS = ['page', 'product', 'cart', 'checkout', 'order', 'upsell', 'promotion'];
+const KIND_OF: Record<string, string> = { products: 'product', cart_line: 'cart' };
 const KEEP = 300;
 
 const traceOf = (data: unknown) => (data as { trace?: string } | undefined)?.trace;
@@ -23,10 +54,29 @@ const traceOf = (data: unknown) => (data as { trace?: string } | undefined)?.tra
 const pushedTo = (layer: Layer, ids: string[]) =>
   (window as Win)[layer]?.find((p) => ids.includes((p as { event_id?: string } | null)?.event_id ?? ''));
 
-export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderConfig }) {
+const kindOf = (name: string) => {
+  const wire = WIRING.find((w) => (w.tracking ?? w.dl) === name);
+  return wire ? (KIND_OF[wire.object!] ?? wire.object ?? wire.from[0]!.split('.')[0]!) : 'page';
+};
+
+const dot = (data: Record<string, string>) => {
+  const el = h('span', 'adot');
+  Object.assign(el.dataset, data);
+  return el;
+};
+
+export function analyticsFlow(ui: {
+  open: Set<string>;
+  config: () => ProviderConfig;
+  pageConfig: PageConfigModal;
+  /** Every page of this tab, each with the tracking events it sent. */
+  pages: () => PageVisit[];
+  render: () => void;
+}) {
   const events = new Map<string, TrackingEvent>();
   const runs: Run[] = [];
   const sentTo = new Map<string, DestinationTrace[]>();
+  const kinds = new Set<string>();
 
   const record = (e: EngineEvent) => {
     if (e.name !== 'analytics') return;
@@ -56,17 +106,19 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
       .map((e) => e.event_id);
   };
 
-  const issues = (run: Run, config = ui.config()) => {
+  const layersOn = (dests = destinations(ui.config(), started())) =>
+    dests.filter((d) => d.on && LAYERS.includes(d.place as Layer)).map((d) => d.place as Layer);
+
+  const issues = (run: Run, layers: Layer[]) => {
     if (!run.sent) return [];
     const event = run.id ? events.get(run.id) : undefined;
-    const enabled = (layer: Layer) => (layer === 'dataLayer' ? config.dataLayer : config.enabled);
     return [
       ...(event ? checks(event.event_type, event.data) : []),
-      ...LAYERS.filter((l) => enabled(l) && !pushedTo(l, burst(run))).map((l) => `not in ${l}`),
+      ...layers.filter((l) => !pushedTo(l, burst(run))).map((l) => `not in ${l}`),
     ];
   };
 
-  const reached = (run: Run) => [
+  const reached = (run: Run): Reach[] => [
     ...LAYERS.flatMap((layer) => {
       const push = pushedTo(layer, burst(run)) as { event?: string } | undefined;
       return push ? [{ place: layer, name: push.event ?? '', payload: push as unknown }] : [];
@@ -74,68 +126,184 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
     ...(sentTo.get(run.id ?? '') ?? []).map((t) => ({ place: t.destination, name: t.name, payload: t.payload })),
   ];
 
-  const logo = (place: keyof typeof PLACES) => {
+  const logo = (place: Place) => {
     const el = icon(PLACES[place][1]);
     el.title = PLACES[place][0];
     return el;
   };
 
-  const row = (run: Run, config: ProviderConfig) => {
+  const carried = (run: Run) => {
     const event = run.id ? events.get(run.id) : undefined;
-    const problems = issues(run, config);
-    const got = reached(run);
-    const summary = [
+    if (!event) return '';
+    const priced = pricedOf(run.name, event.data);
+    const money = (v: unknown) =>
+      typeof v === 'number' &&
+      format({ type: 'money', value: v }, (priced.currency as string) ?? event.context.campaign?.currency);
+    const items = linesOf(run.name, event.data).map((l) => `${l.product_title ?? `#${l.package_id}`} ×${l.quantity}`);
+    return [
+      priced.number && `#${priced.number}`,
+      kindOf(run.name) === 'promotion' && priced.id,
+      items.length > 0 && `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}`,
+      money(priced.total ?? priced.price),
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  };
+
+  const row = (run: Run, got: Reach[], layers: Layer[]) => {
+    const event = run.id ? events.get(run.id) : undefined;
+    const problems = issues(run, layers);
+    const line = [
       stamp(run.at),
       ' ',
-      run.name,
-      got.length > 0 && h('span', 'reach', ...[...new Set(got.map((g) => g.place))].map(logo)),
-      problems.length > 0 && h('span', 'red', ` ⚠ ${problems.join(' · ')}`),
+      h('b', 'aname', dot({ kind: kindOf(run.name) }), run.name),
+      ' ',
+      h('span', 'asum dim', carried(run)),
+      h('span', 'amarks', ...[...new Set(got.map((g) => g.place))].map(logo)),
+      problems.length > 0 && h('span', 'aprob red', `⚠ ${problems.join(' · ')}`),
     ];
-    if (!event && !got.length) return h('div', 'row', ...summary);
+    if (!event && !got.length) return h('div', 'row aev', ...line);
     const path = `a${run.id}`;
-    return expandable(summary, path, ui.open, () => [
-      event && tree(h('span', 'key', 'next.analytics.on'), event, `${path}.event`, ui.open),
-      ...got.map((g, i) =>
-        tree(
-          h('span', 'dest', logo(g.place), PLACES[g.place][0], h('b', {}, g.name)),
-          g.payload,
-          `${path}.${i}`,
-          ui.open,
+    return expandable(
+      line,
+      path,
+      ui.open,
+      () => [
+        event && tree(h('span', 'key', 'next.analytics.on'), event, `${path}.event`, ui.open),
+        ...got.map((g, i) =>
+          tree(
+            h('span', 'adest', logo(g.place), PLACES[g.place][0], h('b', {}, g.name)),
+            g.payload,
+            `${path}.${i}`,
+            ui.open,
+          ),
         ),
+      ],
+      'aev',
+    );
+  };
+
+  const strip = (dests: Destination[], got: Reach[][]) => {
+    const n = (place: Place) => got.filter((g) => g.some((r) => r.place === place)).length;
+    const place = (d: Destination) => {
+      const count = n(d.place);
+      const on = d.on || count > 0;
+      const label = PLACES[d.place][0];
+      const el = badge(
+        dot({ tone: !on ? 'off' : d.missing ? 'warn' : 'on' }),
+        'outline',
+        label,
+        h('span', 'dim', !on ? 'off' : d.missing ? `${count || 'on'} · no ${d.missing}` : String(count)),
+      );
+      el.dataset.place = d.place;
+      el.title = on
+        ? [`${plural(count, 'event')} reached ${label} on this page.`, d.on && d.title].filter(Boolean).join(' ')
+        : d.title!;
+      return el;
+    };
+    const edit = button(icon('settings'), () => ui.pageConfig.open('analytics'), { variant: 'outline', size: 'xs' });
+    edit.append('Config');
+    edit.title = 'Turn destinations on or off for this tab';
+    return h('div', 'adests', ...dests.map(place), edit);
+  };
+
+  const funnel = () => {
+    const pages = ui.pages();
+    const upsell = pages.some((p) => p.kind === 'upsell' || p.sent.some((s) => s.startsWith('upsell_')));
+    const steps = upsell ? [...FUNNEL, ...UPSELL] : FUNNEL;
+    const where = (name: string) => [...new Set(pages.filter((p) => p.sent.includes(name)).map((p) => p.path))];
+    const done = steps.filter((s) => where(s).length).length;
+    return h(
+      'div',
+      'afunnel',
+      h('span', 'asub', `Funnel ${done}/${steps.length}`),
+      ...steps.map((name) => {
+        const on = where(name);
+        const el = badge(on.length > 0 && icon('tick'), on.length ? 'success' : 'secondary', name);
+        el.title = on.length ? `Sent on ${on.join(', ')}` : 'Not sent on any page of this tab yet';
+        return el;
+      }),
+    );
+  };
+
+  const chips = (sent: Run[]) => {
+    const counts = sent.reduce<Record<string, number>>(
+      (n, r) => ({ ...n, [kindOf(r.name)]: (n[kindOf(r.name)] ?? 0) + 1 }),
+      {},
+    );
+    const chip = (label: string, n: number, on: boolean, pick: () => void, kind = '') => {
+      const el = button(`${label} ${n}`, () => (pick(), ui.render?.()), { variant: 'outline', size: 'xs' });
+      if (kind) el.prepend(dot({ kind }));
+      el.setAttribute('aria-pressed', String(on));
+      return el;
+    };
+    return h(
+      'div',
+      'echips',
+      chip('All', sent.length, !kinds.size, () => kinds.clear()),
+      ...KINDS.filter((k) => counts[k]).map((k) =>
+        chip(k, counts[k]!, kinds.has(k), () => (kinds.has(k) ? kinds.delete(k) : kinds.add(k)), k),
       ),
-    ]);
+    );
+  };
+
+  const notice = (text: string, warn = false) => {
+    const el = h('div', 'anote', icon(warn ? 'warn' : 'power'), text);
+    if (warn) el.dataset.tone = 'warn';
+    return el;
   };
 
   const view = (query: string): Child[] => {
     const config = ui.config();
-    const notes = setupNotes(config, started()).map((n) => n.text);
-    const sent = runs.filter((r) => r.sent && r.name.includes(query)).reverse();
+    const off = analyticsOff(config) ?? (!started() && 'Analytics starts once the page is idle.');
+    const dests = destinations(config, started());
+    const layers = layersOn(dests);
+    const sent = runs.filter((r) => r.sent);
+    const got = sent.map(reached);
+    const shown = sent
+      .map((run, i) => ({ run, got: got[i]! }))
+      .filter(
+        ({ run }) =>
+          (!kinds.size || kinds.has(kindOf(run.name))) &&
+          (run.name.includes(query) || carried(run).toLowerCase().includes(query)),
+      )
+      .reverse();
     return [
-      ...notes.map((text) => h('div', 'summary', text)),
-      sent.length
-        ? h('div', 'summary', `${plural(sent.length, 'event')} sent on this page, newest first`)
-        : query
-          ? empty('Nothing matches', 'No event name fits the filter.')
-          : empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.'),
-      ...sent.map((run) => row(run, config)),
+      off && notice(off),
+      ...unsupportedNotes(config).map((text) => notice(text, true)),
+      strip(dests, got),
+      funnel(),
+      sent.length > 0 && chips(sent),
+      !sent.length
+        ? empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.')
+        : !shown.length
+          ? empty('Nothing matches', 'No event fits the filter.')
+          : h('div', 'summary', `${plural(sent.length, 'event')} sent on this page, newest first`),
+      ...shown.map(({ run, got }) => row(run, got, layers)),
     ];
   };
 
   const problems = () => {
+    const layers = layersOn();
     const byName = new Map<string, Run[]>();
-    for (const run of runs) if (issues(run).length) byName.set(run.name, [...(byName.get(run.name) ?? []), run]);
+    for (const run of runs)
+      if (issues(run, layers).length) byName.set(run.name, [...(byName.get(run.name) ?? []), run]);
     return [...byName].map(([name, list]) => ({
-      text: `${name}: ${issues(list.at(-1)!).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
+      text: `${name}: ${issues(list.at(-1)!, layers).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
       error: true,
     }));
   };
 
-  const notes = () =>
-    started()
-      ? setupNotes(ui.config(), true)
-          .filter((n) => n.warn)
-          .map((n) => n.text)
-      : [];
+  const notes = () => {
+    if (!started()) return [];
+    const config = ui.config();
+    return [
+      ...destinations(config, true)
+        .filter((d) => d.missing && LAYERS.includes(d.place as Layer))
+        .map((d) => d.title!),
+      ...unsupportedNotes(config),
+    ];
+  };
 
   const summary = () => {
     const ga = runs.filter((r) => r.sent && !r.name.startsWith('dl_')).length;

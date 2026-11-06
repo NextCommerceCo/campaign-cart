@@ -1,7 +1,16 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
-import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
+import {
+  ANALYTICS_CSS,
+  CART_CSS,
+  CHECKOUT_CSS,
+  CONFIG_CSS,
+  JOURNEY_CSS,
+  LOCALE_CSS,
+  PANEL_CSS,
+  TSUGI_CSS,
+} from '../../src/debug/styles';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
@@ -133,8 +142,8 @@ describe('debug tools', () => {
         .map((t) => t.dataset.tab);
     const pickable = () =>
       [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
-    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
+    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
     expect($('[aria-label="Pick an element"]').hidden).toBe(true);
     expect($('.root').classList.contains('dev')).toBe(false);
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
@@ -160,7 +169,7 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
     back();
     menuItem('Journey').click();
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
   });
 
   it('opens each panel tab from the menu, and closes on Esc', async () => {
@@ -412,8 +421,10 @@ describe('debug tools', () => {
     );
     expect(name(rows.at(-1)!)).toBe('page_viewed');
     const added = rows.find((d) => name(d) === 'product_added_to_cart')!;
-    expect(added.querySelector('summary')!.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart$/);
-    expect([...added.querySelectorAll<HTMLElement>(':scope > summary .reach .icon')].map((i) => i.title)).toContain(
+    expect(added.querySelector('summary')!.textContent).toMatch(
+      /^\d\d:\d\d:\d\d\.\d{3} product_added_to_cart Earbuds ×1 ×1 · \$49\.00$/,
+    );
+    expect([...added.querySelectorAll<HTMLElement>(':scope > summary .amarks .icon')].map((i) => i.title)).toContain(
       'NextDataLayer',
     );
     added.open = true;
@@ -490,7 +501,7 @@ describe('debug tools', () => {
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {
     await start();
     expect(shadow().querySelector('style')!.textContent).toBe(
-      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS,
+      TSUGI_CSS + PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
@@ -498,12 +509,16 @@ describe('debug tools', () => {
     const journey = classes(JOURNEY_CSS);
     const checkout = classes(CHECKOUT_CSS);
     const locale = classes(LOCALE_CSS);
-    expect([...cart].filter((name) => panel.has(name))).toEqual([]);
-    expect([...journey].filter((name) => panel.has(name) || cart.has(name))).toEqual([]);
-    expect([...checkout].filter((name) => panel.has(name) || cart.has(name) || journey.has(name))).toEqual([]);
-    expect([...locale].filter((name) => [panel, cart, journey, checkout].some((s) => s.has(name)))).toEqual([]);
+    const config = classes(CONFIG_CSS);
+    const analytics = classes(ANALYTICS_CSS);
+    const sheets = [panel, cart, journey, checkout, locale, config, analytics];
+    expect(
+      sheets.flatMap((sheet, i) => [...sheet].filter((name) => sheets.slice(0, i).some((s) => s.has(name)))),
+    ).toEqual([]);
     const rules = [
-      ...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS).matchAll(/^\.([a-z][\w-]*)\{/gm),
+      ...(PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS).matchAll(
+        /^\.([a-z][\w-]*)\{/gm,
+      ),
     ];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
@@ -513,16 +528,14 @@ describe('debug tools', () => {
       .join('\n');
     const unused = (names: Set<string | undefined>) =>
       [...names].filter((name) => !new RegExp(`(?<![\\w-])${name}(?![\\w-])`).test(code));
-    expect([panel, cart, journey, checkout, locale].flatMap(unused)).toEqual([]);
+    expect(sheets.flatMap(unused)).toEqual([]);
     const vendored = readFileSync('scripts/tsugi.mjs', 'utf8').match(/const COMPONENTS = \[([^\]]*)\]/)![1]!;
     const CLASSES: Record<string, string> = { button: 'btn', 'native-select': 'select', scrollbar: 'scrollbar-sm' };
     expect(unused(new Set([...vendored.matchAll(/'([\w-]+)'/g)].map(([, name]) => CLASSES[name!] ?? name)))).toEqual(
       [],
     );
     const components = ['badge', 'btn', 'card', 'empty', 'input', 'journey', 'select', 'stat', 'tabs', 'timeline'];
-    expect(
-      [...panel, ...cart, ...journey, ...checkout, ...locale].filter((name) => components.includes(name!)),
-    ).toEqual([]);
+    expect(sheets.flatMap((sheet) => [...sheet]).filter((name) => components.includes(name!))).toEqual([]);
   });
 
   it('draws with the vendored tsugi tokens, light or dark like the system', async () => {
@@ -538,10 +551,12 @@ describe('debug tools', () => {
     expect(TSUGI_CSS).not.toContain('@property');
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
-    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS;
+    const ours = PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
+    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS).not.toMatch(
+      /#[\da-f]{3,8}\b|rgba?\(|oklch\(/i,
+    );
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });

@@ -16,6 +16,7 @@ const COMPONENTS = [
   'native-select',
   'payment-icon',
   'scrollbar',
+  'switch',
   'tabs',
   'timeline',
 ];
