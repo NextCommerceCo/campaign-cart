@@ -4,6 +4,7 @@ import { askGeo, type VisitorGeo, visitorGeo } from '../engine/geo';
 import { baseLang, I18N_RULES } from '../engine/texts';
 import type { Send } from '../engine/types';
 import type { DebugActions } from './state';
+import { type IconName, icon } from './icons';
 import { type Child, h } from './view';
 
 export const LANGUAGES: Record<string, string> = {
@@ -30,19 +31,36 @@ const reload = (param: string, value: string) => {
   location.assign(url.href);
 };
 
-const picker = (label: string, options: Option[], value: string | undefined, onchange: (code: string) => void) => {
+/** A pill over the panel: an icon and the code in use, with the native select laid over it. */
+const pill = (
+  glyph: IconName,
+  label: string,
+  options: Option[],
+  value: string | undefined,
+  [note, warn]: Note,
+  onchange: (code: string) => void,
+) => {
   const known = !value || options.some(([code]) => code === value);
   const list: Option[] = [...(known ? [] : [[value, value] as Option]), ...options];
   if (!list.length) list.push(['', '—']);
   const select = h(
     'select',
-    { className: 'select', disabled: list.length < 2, onchange: () => onchange(select.value) },
+    { disabled: list.length < 2, onchange: () => onchange(select.value) },
     ...list.map(([code, name]) => h('option', { value: code }, name)),
   );
-  select.dataset.size = 'sm';
-  select.setAttribute('aria-label', label);
+  select.setAttribute('aria-label', `${label}: ${note}`);
   select.value = value ?? '';
-  return select;
+  const el = h(
+    'label',
+    { className: 'lpill', title: `${label} · ${note}` },
+    icon(glyph),
+    h('span', {}, value ? value.toUpperCase() : '—'),
+    warn && h('span', 'mdot'),
+    icon('chevron'),
+    select,
+  );
+  if (warn) el.dataset.warn = '';
+  return el;
 };
 
 const localTime = (timeZone: string) => {
@@ -75,10 +93,11 @@ export interface LocaleSummary {
 }
 
 export interface LocaleTab {
+  /** The globe's popover: where the visitor is, from geo. */
   view(): Child[];
   summary(): LocaleSummary;
-  /** Titles the panel's globe with the locale in use, and marks it when that differs from geo. */
-  mark(globe: HTMLElement): void;
+  /** Country, currency and language in use, a switch each, marked when they differ from geo. */
+  switchers(): Child[];
 }
 
 export function localeTab(engine: Engine, debug: DebugActions, send: Send, render: () => void): LocaleTab {
@@ -177,15 +196,12 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
         'Coordinates',
         typeof g.latitude === 'number' && typeof g.longitude === 'number' && mapLink(g.latitude, g.longitude),
       ],
+      ['Currency', g.currency],
+      ['Browser language', g.language],
       ['IP', g.ip],
       ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country resolved'],
     ];
-    return h(
-      'details',
-      'lmore',
-      h('summary', {}, 'Visitor details'),
-      h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
-    );
+    return h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
   };
 
   /** One line under a setting: how it compares with the visitor, and where the value in use comes from. */
@@ -220,28 +236,16 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
     };
   };
 
-  const settings = (): Child => {
+  const switchers = (): Child[] => {
+    ask();
     const now = inUse();
     const said = notes(now);
     const currencies = (now.state.campaign?.available_currencies ?? []).map((c): Option => [c.code, c.label]);
-    const rows: Array<[string, HTMLSelectElement, Note]> = [
-      ['Country', picker('Country', now.shipping, now.country, setCountry), said.country],
-      ['Currency', picker('Currency', currencies, now.currency, (c) => reload('currency', c)), said.currency],
-      [
-        'Language',
-        picker('Language', Object.entries(LANGUAGES), now.language, (c) => reload('lang', c)),
-        said.language,
-      ],
+    return [
+      pill('mapPin', 'Country', now.shipping, now.country, said.country, setCountry),
+      pill('banknote', 'Currency', currencies, now.currency, said.currency, (c) => reload('currency', c)),
+      pill('languages', 'Language', Object.entries(LANGUAGES), now.language, said.language, (c) => reload('lang', c)),
     ];
-    return h(
-      'div',
-      'lset',
-      ...rows.flatMap(([label, select, [text, warn]]) => [
-        h('span', {}, label),
-        select,
-        h('small', warn ? 'lwarn' : '', text),
-      ]),
-    );
   };
 
   const summary = (): LocaleSummary => {
@@ -255,19 +259,5 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
     return { text: joined([now.country, now.currency, now.language]), differs };
   };
 
-  return {
-    view: () => [where(), settings(), details()],
-    summary,
-    mark: (button) => {
-      const { text, differs } = summary();
-      button.title = text ? `Locale · ${text}` : 'Locale';
-      button.dataset.differs = String(differs);
-      const code = geo?.country?.code;
-      button.classList.toggle('lbtn', !!code);
-      if (code && button.dataset.flag !== code) {
-        button.dataset.flag = code;
-        button.replaceChildren(flag(code, 'lflagsm'), code);
-      }
-    },
-  };
+  return { view: () => [where(), details()], summary, switchers };
 }

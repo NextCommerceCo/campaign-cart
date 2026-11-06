@@ -96,7 +96,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     render();
   };
   const dock = button('dockRight', 'Move to the right', flip);
-  const globe = button('globe', 'Locale', () => ((geoOpen = !geoOpen), render()));
+  const globe = button('globe', 'Visitor geo', () => ((geoOpen = !geoOpen), render()));
+  const switches = h('div', 'lswitch');
   const geo = h('div', 'geo pop scrollbar-sm');
   const fab = h(
     'button',
@@ -121,7 +122,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       dock,
       button('close', 'Close', () => setView('closed')),
     ),
-    bar.devBar,
+    switches,
+    bar.menu,
     search,
     body,
     geo,
@@ -220,7 +222,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         ),
       );
     if (view !== 'panel') return;
-    locale.mark(globe);
+    switches.replaceChildren(...nodes(locale.switchers()));
     globe.setAttribute('aria-expanded', String(geoOpen));
     geo.hidden = !geoOpen;
     if (geoOpen) geo.replaceChildren(...nodes(locale.view()));
@@ -279,6 +281,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || view === 'closed' || [cart, pageConfig, detail].some((d) => d.dialog.open)) return;
+    if (bar.isOpen()) return bar.close();
     if (geoOpen) return ((geoOpen = false), render());
     setView('closed');
   });
@@ -286,6 +289,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     const path = e.composedPath();
     if (view === 'menu' && !path.includes(host)) setView('closed');
     if (geoOpen && !path.includes(geo) && !path.includes(globe)) ((geoOpen = false), later());
+    if (bar.outside(path)) bar.close();
   };
   document.addEventListener('click', outside, true);
   engine.on('*', (e) => flow.record(e), { replay: true });

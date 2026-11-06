@@ -8,21 +8,24 @@ const shadow = () => document.querySelector('next-debug')!.shadowRoot!;
 const $ = <E extends HTMLElement = HTMLElement>(selector: string) => shadow().querySelector<E>(selector)!;
 const view = () => $('.root').dataset.view;
 const popover = () => $('.geo').textContent!;
-const globe = () => $<HTMLButtonElement>('.head [aria-label="Locale"]');
+const globe = () => $<HTMLButtonElement>('.head [aria-label="Visitor geo"]');
 const menuItem = (label: string) =>
   [
     ...shadow().querySelectorAll<HTMLElement>(
       '.menu :is([role=menuitem], [role=menuitemcheckbox], [role=menuitemradio])',
     ),
   ].find((b) => b.querySelector(':scope > span:not(.icon):not(.mval)')?.firstChild?.textContent === label)!;
-const select = (label: string) => $<HTMLSelectElement>(`.lset select[aria-label="${label}"]`);
+const select = (label: string) => $<HTMLSelectElement>(`.lpill select[aria-label^="${label}:"]`);
 const choose = (label: string, value: string) => {
   select(label).value = value;
   select(label).dispatchEvent(new Event('change'));
 };
 const options = (label: string) => [...select(label).options].map((o) => [o.value, o.text]);
 const notes = () =>
-  [...shadow().querySelectorAll<HTMLElement>('.lset > small')].map((n) => [n.textContent, n.className]);
+  [...shadow().querySelectorAll<HTMLElement>('.lpill')].map((p) => [
+    p.title.slice(p.title.indexOf(' · ') + 3),
+    p.hasAttribute('data-warn') ? 'lwarn' : '',
+  ]);
 const sources = () => notes().map(([text]) => text);
 const visitor = () => $('.lwhere').textContent!;
 
@@ -113,7 +116,6 @@ describe('locale tab', () => {
     const flag = $<HTMLImageElement>('.lwhere .lflag');
     expect(flag.getAttribute('src')).toBe('https://i18n-rules.nextcommerce.com/v1/flags/th.svg');
     expect(flag.alt).toBe('');
-    expect($<HTMLDetailsElement>('.lmore').open).toBe(false);
     const rows = Object.fromEntries(
       [...shadow().querySelectorAll('.lrows dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]),
     );
@@ -122,6 +124,8 @@ describe('locale tab', () => {
       Postcode: '42000',
       'Time zone': expect.stringMatching(/^Asia\/Bangkok · \d\d:\d\d there$/),
       Coordinates: '17.49, 101.72',
+      Currency: 'THB',
+      'Browser language': 'th-TH',
       IP: '203.0.113.7',
       Source: 'Cloudflare edge',
     });
@@ -131,11 +135,12 @@ describe('locale tab', () => {
     expect(map.rel).toBe('noreferrer');
     expect(select('Country').value).toBe('TH');
     expect(sources()[0]).toBe('Matches the visitor · geo');
-    expect([...shadow().querySelectorAll('.lset > span')].map((s) => s.textContent)).toEqual([
-      'Country',
-      'Currency',
-      'Language',
+    expect([...shadow().querySelectorAll('.lpill > span:not(.icon):not(.mdot)')].map((s) => s.textContent)).toEqual([
+      'TH',
+      'USD',
+      'EN',
     ]);
+    expect($('.lswitch').parentElement!.classList.contains('panel')).toBe(true);
   });
 
   it('lists the campaign currencies and the 12 languages, and reloads with ?currency= or ?lang=', async () => {
@@ -229,7 +234,11 @@ describe('locale tab', () => {
     openLocale();
     await answered();
     expect(visitor()).toBe('The edge resolved no country: a local request or a Tor exit');
-    expect([...shadow().querySelectorAll('.lrows dt')].map((dt) => dt.textContent)).toEqual(['IP', 'Source']);
+    expect([...shadow().querySelectorAll('.lrows dt')].map((dt) => dt.textContent)).toEqual([
+      'Browser language',
+      'IP',
+      'Source',
+    ]);
     expect(shadow().querySelector('.lflag')).toBeNull();
     expect(notes()).toEqual([
       ['not chosen yet', ''],
@@ -244,7 +253,7 @@ describe('locale tab', () => {
     openLocale();
     await answered();
     expect(visitor()).toBe("The address service didn't answer; reload to ask again");
-    expect(shadow().querySelector('.lmore')).toBeNull();
+    expect(shadow().querySelector('.lrows')).toBeNull();
     expect(notes().filter(([, tone]) => tone)).toEqual([]);
   });
 
@@ -295,26 +304,22 @@ describe('locale tab', () => {
     expect(value().querySelector('.mdot')).toBeNull();
     menuItem('Locale').click();
     expect(popover()).toContain('United States');
-    expect(globe().textContent).toBe('US');
-    expect(globe().dataset.differs).toBe('false');
+    expect(shadow().querySelector('.lpill[data-warn]')).toBeNull();
   });
 
-  it('opens from the globe in the panel header, marked when the locale differs from geo, and closes on Esc or a click outside', async () => {
+  it('opens geo details from the globe in the panel header, and closes them on Esc or a click outside', async () => {
     const differs = geoAnswers(GEO);
     await start('', { fetch: differs.fetch });
     while (view() !== 'menu') $('.fab').click();
     menuItem('Journey').click();
     expect([$('.geo').hidden, globe().getAttribute('aria-expanded')]).toEqual([true, 'false']);
     expect(shadow().querySelector('[data-tab="locale"]')).toBeNull();
+    await vi.waitFor(() => expect(shadow().querySelectorAll('.lpill[data-warn]')).toHaveLength(2));
+    expect(globe().querySelector('img')).toBeNull();
     globe().click();
     expect([$('.geo').hidden, globe().getAttribute('aria-expanded')]).toEqual([false, 'true']);
     await answered();
-    await vi.waitFor(() => expect(globe().dataset.differs).toBe('true'));
-    expect(globe().title).toBe('Locale · TH · USD · en');
-    expect(globe().textContent).toBe('TH');
-    expect(globe().querySelector('img')!.getAttribute('src')).toBe(
-      'https://i18n-rules.nextcommerce.com/v1/flags/th.svg',
-    );
+    expect(shadow().querySelector('.geo select')).toBeNull();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect([view(), $('.geo').hidden]).toEqual(['panel', true]);
     globe().click();

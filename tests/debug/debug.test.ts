@@ -143,30 +143,42 @@ describe('debug tools', () => {
       [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
     expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
     expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
-    expect($('.dbar').hidden).toBe(true);
+    expect($('.dmenu').hidden).toBe(true);
     expect($('.root').classList.contains('dev')).toBe(false);
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
     await developer();
     menuItem('Logs').click();
+    const developerTab = $('[data-tab="developer"]');
     expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events', 'developer']);
-    expect($('[data-tab="developer"]').getAttribute('aria-selected')).toBe('true');
-    expect($('.dbar').hidden).toBe(false);
-    expect([...shadow().querySelectorAll<HTMLElement>('.dbar [role=tab]')].map((t) => t.textContent)).toEqual([
+    expect([developerTab.textContent, developerTab.getAttribute('aria-selected')]).toEqual(['Logs', 'true']);
+    expect($('.dmenu').hidden).toBe(true);
+    developerTab.click();
+    expect([$('.dmenu').hidden, developerTab.getAttribute('aria-expanded')]).toEqual([false, 'true']);
+    expect([...shadow().querySelectorAll<HTMLElement>('.dmenu [role=menuitem]')].map((t) => t.textContent)).toEqual([
       'Elements',
       'State',
       'Logs',
       'Performance',
+      'Pick an element',
     ]);
-    expect($('.dbar [data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    expect($('.dmenu [data-tab="logs"]').getAttribute('aria-current')).toBe('true');
     expect($('.dinfo').textContent).toMatch(/^api\.test · funnel f1 · storage /);
-    expect($('.dbar .btn').textContent).toBe('Pick');
     expect([...$<HTMLSelectElement>('select.tabpick').options].at(-1)!.textContent).toBe('Developer · Performance');
+    $<HTMLButtonElement>('.dmenu [data-tab="state"]').click();
+    expect([$('.dmenu').hidden, developerTab.textContent]).toEqual([true, 'State']);
     tab('journey');
+    expect([developerTab.textContent, developerTab.getAttribute('aria-selected')]).toEqual(['Developer', 'false']);
+    developerTab.click();
+    document.body.click();
+    expect($('.dmenu').hidden).toBe(true);
+    developerTab.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect([$('.dmenu').hidden, view()]).toEqual([true, 'panel']);
     tab('developer');
-    expect($('.dbar [data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    $<HTMLButtonElement>('.dmenu [data-tab="logs"]').click();
     await start('', {});
     expect($('.root').classList.contains('dev')).toBe(true);
-    expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    expect($('[data-tab="developer"]').textContent).toBe('Logs');
     while (view() !== 'menu') $('.fab').click();
     menuItem('Developer mode').click();
     await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
@@ -222,7 +234,7 @@ describe('debug tools', () => {
     expect([pick.value, pick.options[1]!.text]).toEqual(['checkout', 'Issues · 1']);
     pick.value = 'logs';
     pick.dispatchEvent(new Event('change'));
-    expect($('[data-tab="logs"]').getAttribute('aria-selected')).toBe('true');
+    expect($('[data-tab="developer"]').textContent).toBe('Logs');
     expect(PANEL_CSS).toContain('@container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}');
   });
 
@@ -492,7 +504,7 @@ describe('debug tools', () => {
     expect(clicked).not.toHaveBeenCalled();
     expect($('.root').classList.contains('picking')).toBe(false);
     expect(view()).toBe('panel');
-    expect($('[data-tab="elements"]').getAttribute('aria-selected')).toBe('true');
+    expect($('[data-tab="developer"]').textContent).toBe('Elements');
     expect(body()).toContain('Picked element and its SDK parents');
     expect(body()).toContain('data-next-package-id="1" → Earbuds ×1 · 49.00');
     expect(body()).toContain('data-next-bundle-selector');
@@ -507,7 +519,8 @@ describe('debug tools', () => {
     await start('<button data-next-package-id="1">Buy</button>');
     await developer();
     menuItem('Elements').click();
-    $('.dbar .btn').click();
+    tab('developer');
+    $<HTMLButtonElement>('.dmenu [role=menuitem]:last-of-type').click();
     expect($('.root').classList.contains('picking')).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect($('.root').classList.contains('picking')).toBe(false);

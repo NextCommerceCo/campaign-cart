@@ -1,5 +1,5 @@
-import { icon } from './icons';
-import { badge, button, h, tab as tabButton, tablist } from './view';
+import { type IconName, icon } from './icons';
+import { badge, h, tab as tabButton, tablist } from './view';
 
 export const TABS = {
   journey: 'Journey',
@@ -13,35 +13,63 @@ export const TABS = {
   benchmark: 'Performance',
 };
 export type Tab = keyof typeof TABS;
-/** Developer mode's tabs, under one Developer tab. */
+/** Developer mode's tabs, in the Developer tab's dropdown. */
 export const DEV: Tab[] = ['elements', 'state', 'logs', 'benchmark'];
+const ICONS: Record<string, IconName> = { elements: 'code', state: 'braces', logs: 'list', benchmark: 'gauge' };
 const ALL = Object.keys(TABS) as Tab[];
 
-/** The panel's tabs: the main row, Developer's own row under it, and one select for a narrow panel. */
+const item = (glyph: IconName, label: string, onclick: () => void) => {
+  const el = h('button', { type: 'button', onclick }, icon(glyph), h('span', {}, label));
+  el.setAttribute('role', 'menuitem');
+  return el;
+};
+
+/** The panel's tabs: one row, Developer's tools in a dropdown on its last tab, and one select for a narrow panel. */
 export function tabBar(show: (tab: Tab) => void, pick: () => void) {
-  let lastDev: Tab = 'elements';
-  const make = (t: Tab) => {
+  let open = false;
+  const main = ALL.filter((t) => !DEV.includes(t)).map((t) => {
     const el = tabButton(false, () => show(t), TABS[t]);
     el.dataset.tab = t;
     return el;
-  };
-  const main = ALL.filter((t) => !DEV.includes(t)).map(make);
-  const developer = tabButton(false, () => show(lastDev), 'Developer');
+  });
+  const developer = tabButton(false, () => toggle());
   developer.dataset.tab = 'developer';
+  developer.setAttribute('aria-haspopup', 'menu');
   const strip = tablist({ size: 'sm' });
   strip.append(...main, developer);
-  const subs = DEV.map(make);
-  const sub = tablist({ size: 'sm' }, 'Developer');
-  sub.append(...subs);
-  const picker = button(
-    icon('pick'),
-    pick,
-    { variant: 'ghost', size: 'xs' },
-    'Click an element on the page to inspect it',
+
+  const info = h('p', 'dinfo');
+  const tools = DEV.map((t) => {
+    const el = item(ICONS[t]!, TABS[t], () => (close(), show(t)));
+    el.dataset.tab = t;
+    return el;
+  });
+  const list = h(
+    'div',
+    'mlist',
+    ...tools,
+    h('div', { role: 'separator' }),
+    item('pick', 'Pick an element', () => (close(), pick())),
   );
-  picker.append('Pick');
-  const info = h('small', 'dinfo');
-  const devBar = h('div', 'dbar', h('div', 'tabs', sub), info, picker);
+  list.setAttribute('role', 'menu');
+  list.setAttribute('aria-label', 'Developer');
+  const menu = h('div', 'dmenu dropdown pop', list, info);
+  menu.hidden = true;
+
+  const close = () => {
+    open = false;
+    menu.hidden = true;
+    developer.setAttribute('aria-expanded', 'false');
+  };
+  const toggle = () => {
+    if (open) return close();
+    open = true;
+    menu.hidden = false;
+    developer.setAttribute('aria-expanded', 'true');
+    const box = (menu.offsetParent ?? document.body).getBoundingClientRect();
+    menu.style.left = `${Math.max(8, developer.getBoundingClientRect().left - box.left)}px`;
+  };
+
   const select = h(
     'select',
     { className: 'select tabpick', onchange: () => show(select.value as Tab) },
@@ -50,14 +78,14 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
   select.setAttribute('aria-label', 'Panel tab');
 
   const paint = (now: { tab: Tab; dev: boolean; issues: number; tone: string; setup: string }) => {
-    if (DEV.includes(now.tab)) lastDev = now.tab;
     const inDev = now.dev && DEV.includes(now.tab);
-    for (const el of [...main, ...subs]) el.setAttribute('aria-selected', String(el.dataset.tab === now.tab));
+    for (const el of main) el.setAttribute('aria-selected', String(el.dataset.tab === now.tab));
+    for (const el of tools) el.setAttribute('aria-current', String(el.dataset.tab === now.tab));
     developer.hidden = !now.dev;
     developer.setAttribute('aria-selected', String(inDev));
-    devBar.hidden = !inDev;
+    developer.replaceChildren(inDev ? TABS[now.tab] : 'Developer', icon('chevron'));
+    if (!now.dev) close();
     info.textContent = now.setup;
-    info.title = now.setup;
     main
       .find((el) => el.dataset.tab === 'issues')!
       .replaceChildren(
@@ -69,5 +97,14 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
     select.querySelector('[value="issues"]')!.textContent = now.issues ? `${TABS.issues} · ${now.issues}` : TABS.issues;
   };
 
-  return { strip, devBar, select, paint };
+  return {
+    strip,
+    menu,
+    select,
+    paint,
+    close,
+    /** The dropdown is open and the click landed outside it and its tab. */
+    outside: (path: EventTarget[]) => open && !path.includes(menu) && !path.includes(developer),
+    isOpen: () => open,
+  };
 }
