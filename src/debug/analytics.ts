@@ -30,7 +30,7 @@ const PLACES: Record<Place, [string, IconName]> = {
   dataLayer: ['GTM', 'gtm'],
   ga4: ['GA4', 'ga4'],
   meta: ['Meta', 'meta'],
-  rudderstack: ['RudderStack', 'send'],
+  rudderstack: ['RudderStack', 'rudderstack'],
 };
 const KIND_OF: Record<string, string> = { products: 'product', cart_line: 'cart' };
 const KEEP = 300;
