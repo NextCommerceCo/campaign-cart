@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { format, localeOf } from '../engine/format';
 import { icon } from './icons';
+import { sourceOf, sourceView } from './source-card';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
 
@@ -59,7 +60,7 @@ export function drawLines(journey: HTMLElement) {
 }
 
 export function journeyView(engine: Engine, debug: DebugActions, ui: { render: () => void }) {
-  let picked: number | undefined;
+  let picked: number | 'source' | undefined;
   let drawn: HTMLElement | undefined;
 
   const money = (p: PageVisit) => {
@@ -169,19 +170,43 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
     );
   };
 
-  const attribution = () => {
-    const kept = Object.entries(engine.attribution()).filter(
-      ([key, value]) => value && key !== 'funnel' && typeof value === 'string',
+  const origin = (first: PageVisit) => {
+    const s = sourceOf(engine);
+    const checks = s.steps.filter((step) => step.tone === 'warn').length;
+    const row = h(
+      'button',
+      {
+        type: 'button',
+        onclick: () => {
+          picked = 'source';
+          ui.render();
+        },
+      },
+      h('span', {}, s.headline, ...s.platforms.map((name) => badge(name, 'outline'))),
+      h('small', {}, 'Where this tab came from'),
+      h('data', {}, plural(s.params.filter((p) => p.group !== 'visit').length, 'param')),
+      h('data', {}, checks ? `${plural(checks, 'check')} to look at` : 'All recorded'),
     );
-    return kept.length ? kept.map(([key, value]) => `${key} ${value}`).join(' · ') : 'none: no utm or affiliate params';
+    row.setAttribute('aria-pressed', String(picked === 'source'));
+    return h(
+      'li',
+      {},
+      h('header', {}, h('span', {}, 'Start'), h('strong', {}, 'Source'), h('small', {}, clock(first.at))),
+      h('ul', {}, h('li', {}, row)),
+    );
   };
 
   const view = (): Child[] => {
     const { pages } = debug.state();
     drawn = undefined;
     if (!pages.length) return [empty('No pages yet', '', 'route')];
-    const selected = Math.min(picked ?? pages.length - 1, pages.length - 1);
-    const journey = h('div', 'journey', h('ol', {}, ...pages.map((p, i) => step(p, i, pages, selected))));
+    const source = picked === 'source';
+    const selected = typeof picked === 'number' ? Math.min(picked, pages.length - 1) : source ? -1 : pages.length - 1;
+    const journey = h(
+      'div',
+      'journey',
+      h('ol', {}, origin(pages[0]!), ...pages.map((p, i) => step(p, i, pages, selected))),
+    );
     tsugi(journey, { orientation: 'vertical' });
     journey.setAttribute('aria-label', 'Pages in this tab');
     drawn = journey;
@@ -189,7 +214,7 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
       h(
         'div',
         'jhead',
-        h('span', {}, h('b', {}, plural(pages.length, 'page')), ' in this tab · attribution ', attribution()),
+        h('span', {}, h('b', {}, plural(pages.length, 'page')), ' in this tab'),
         pages.length > 1 &&
           h(
             'button',
@@ -206,7 +231,7 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
           ),
       ),
       journey,
-      details(pages[selected]!, selected, pages),
+      source ? sourceView(engine) : details(pages[selected]!, selected, pages),
     ];
   };
 

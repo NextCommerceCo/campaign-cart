@@ -47,6 +47,7 @@ describe('journey tab', () => {
   it('draws each page of the tab as a step, this page picked', async () => {
     const { root, steps } = await setup();
     expect(steps()).toEqual([
+      [expect.stringMatching(/^StartSource\d\d:\d\d:\d\d$/), 'false'],
       [expect.stringMatching(/^Step 1Landing\d\d:\d\d:\d\d · \d+s$/), 'false'],
       [expect.stringMatching(/^Step 2Checkout\d\d:\d\d:\d\d · now$/), 'true'],
     ]);
@@ -58,15 +59,13 @@ describe('journey tab', () => {
       '$49.00',
       '1 item',
     ]);
-    expect(root.querySelector('.jhead > span')!.textContent).toBe(
-      '2 pages in this tab · attribution none: no utm or affiliate params',
-    );
+    expect(root.querySelector('.jhead > span')!.textContent).toBe('2 pages in this tab');
   });
 
   it('shows what happened on a picked page, from arriving to leaving', async () => {
     const { root, steps } = await setup();
-    root.querySelector<HTMLElement>('.journey button')!.click();
-    expect(steps().map(([, pressed]) => pressed)).toEqual(['true', 'false']);
+    root.querySelectorAll<HTMLElement>('.journey button')[1]!.click();
+    expect(steps().map(([, pressed]) => pressed)).toEqual(['false', 'true', 'false']);
     const page = root.querySelector('.jpage')!;
     expect([...page.querySelectorAll('.jstats > div')].map((s) => s.textContent)).toEqual([
       'Cart1 item · $49.00',
@@ -84,6 +83,30 @@ describe('journey tab', () => {
   it('clears the journey down to this page', async () => {
     const { root, steps } = await setup();
     root.querySelector<HTMLElement>('.jhead .link')!.click();
-    expect(steps()).toEqual([[expect.stringContaining('Checkout'), 'true']]);
+    expect(steps()).toEqual([
+      [expect.stringContaining('Source'), 'false'],
+      [expect.stringContaining('Checkout'), 'true'],
+    ]);
+  });
+
+  it('starts the journey at the source, and shows where its values go when picked', async () => {
+    const { root, steps } = await setup();
+    const start = root.querySelector<HTMLElement>('.journey button')!;
+    expect([...start.querySelectorAll('span, small, data')].map((e) => e.textContent)).toEqual([
+      'direct / none',
+      'Where this tab came from',
+      '0 params',
+      'All recorded',
+    ]);
+    start.click();
+    expect(steps().map(([, pressed]) => pressed)).toEqual(['true', 'false', 'false']);
+    const card = root.querySelector('.jpage')!;
+    expect(card.querySelector('h3')!.textContent).toBe('direct / none');
+    expect([...card.querySelectorAll('.jstats > div')].map((s) => s.textContent)).toEqual([
+      'CapturedNone on the landing URL',
+      'KeptNothing to keep',
+      'CarriedNothing to carry',
+      'On the orderAll recorded',
+    ]);
   });
 });

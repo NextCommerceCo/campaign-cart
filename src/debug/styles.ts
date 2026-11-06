@@ -259,7 +259,16 @@ export const JOURNEY_CSS = `.jhead{display:flex;flex-wrap:wrap;align-items:basel
 .jstats dd{font-weight:500}
 .jsent{display:flex;flex-wrap:wrap;gap:4px}
 .jdone>.icon{color:var(--success)}
-.jwarn{color:var(--warning)}`;
+.jwarn{color:var(--warning)}
+.jstats dd>.icon{width:14px;height:14px;margin-right:4px;vertical-align:-2px}
+.jparams{width:100%;border-collapse:collapse;font-size:12px}
+.jparams th{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-weight:500;text-align:left;color:var(--muted-foreground)}
+.jparams td{padding:6px 8px 6px 0;border-bottom:1px solid var(--border);vertical-align:top}
+.jparams td:nth-child(2){overflow-wrap:anywhere}.jparams td small{display:block;font-size:11px}
+.jparams td .badge{margin:0 4px 2px 0}
+.jgroup th{padding-top:12px;font-size:11px;color:var(--foreground)}
+.jacts{display:flex;flex-wrap:wrap;gap:6px}
+.jlink>div:first-child{display:flex;gap:6px}.jlinkres{font-size:12px}`;
 
 export const CHECKOUT_CSS = `.ksteps>.kstep+.kstep{border-top:1px solid var(--border)}
 .kstep{display:grid;grid-template-columns:20px minmax(0,1fr);gap:2px 10px;padding:10px 16px}

@@ -179,6 +179,9 @@ src/
     events.ts                      the Events tab: each public event in the envelope next.on gets
     logs.ts                        the Logs tab: every log line, also the Issues tab's warnings and errors
     journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
+    source.ts                      where the tab came from: each utm, click id, affiliate and Meta cookie, where it was read
+                                   and whether it reaches the order and tracking events; checkLink for a pasted ad link
+    source-card.ts                 the Journey's Source step and card
     icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
     elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
     cart.ts                        the cart part of Checkout, as campaign-client draws it: lines with their variant,
