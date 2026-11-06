@@ -174,7 +174,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     config: info.analytics,
     pageConfig,
     pages: () => debug.state().pages,
-    render: () => render(),
   });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });

@@ -81,7 +81,7 @@ describe('page config', () => {
       'Loader keys',
       'Other keys',
     ]);
-    expect(from('Google Analytics 4')).toBe('destinations.ga4');
+    expect(from('Google Analytics 4')).toBe('');
     expect(control<HTMLInputElement>('Google Analytics 4').checked).toBe(true);
     expect(from('Meta pixel')).toBe('0.4.xproviders.facebook');
     expect(row('Meta pixel').querySelector('.badge')!.getAttribute('data-variant')).toBe('warning');
@@ -89,10 +89,10 @@ describe('page config', () => {
     expect(control<HTMLInputElement>('Meta store name').value).toBe('Olympus');
     expect(from('Google Tag Manager')).toBe('0.4.xproviders.gtm');
     expect(control<HTMLInputElement>('Google Tag Manager').checked).toBe(false);
-    expect(from('RudderStack')).toBe('default');
+    expect(from('RudderStack')).toBe('');
     expect(control<HTMLInputElement>('RudderStack').getAttribute('role')).toBe('switch');
-    expect(from('NEXT analytics')).toBe('providers.nextCampaign');
-    expect(from('Language')).toBe('page');
+    expect(from('NEXT analytics')).toBe('');
+    expect(from('Language')).toBe('');
     expect(control<HTMLSelectElement>('Language').value).toBe('fr');
     expect([...control<HTMLSelectElement>('Language').options].slice(0, 2).map((o) => o.text)).toEqual([
       'Campaign default',
@@ -214,8 +214,8 @@ describe('page config', () => {
     openFromMenu();
     expect(menuItem('Page config').textContent).toContain('Trying');
     expect(modal().querySelector('h2')!.textContent).toBe('Page configTrying');
-    expect(from('RudderStack')).toBe('destinations.rudderstack · tried');
-    expect(from('Language')).toBe('default');
+    expect(from('RudderStack')).toBe('tried');
+    expect(from('Language')).toBe('');
     expect(modal().querySelector('.cedit > .cnote')).toBeNull();
 
     footer('Reset to page config').click();
@@ -235,6 +235,19 @@ describe('page config', () => {
     await start(custom(true));
     openFromMenu();
     expect(warned()).toBe(true);
+  });
+
+  it('shows the settings, and the code only on the Code tab', async () => {
+    await start();
+    openFromMenu();
+    const tab = (label: string) =>
+      [...modal().querySelectorAll<HTMLButtonElement>('[role=tab]')].find((t) => t.textContent === label)!;
+    expect(modal().querySelector<HTMLElement>('.cedit')!.hidden).toBe(false);
+    expect(modal().querySelector<HTMLElement>('.csnip')!.hidden).toBe(true);
+    tab('Code').click();
+    expect(modal().querySelector<HTMLElement>('.csnip')!.hidden).toBe(false);
+    expect(tab('Code').getAttribute('aria-selected')).toBe('true');
+    expect(snippet()).toMatch(/^window\.nextConfig = \{/);
   });
 
   it('keeps the panel open when Esc closes Page config', async () => {

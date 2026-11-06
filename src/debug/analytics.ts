@@ -33,19 +33,21 @@ const PLACES: Record<Place, [string, IconName]> = {
   meta: ['Meta', 'meta'],
   rudderstack: ['RudderStack', 'send'],
 };
-const FUNNEL: TrackingName[] = [
-  'page_viewed',
-  'product_viewed',
-  'product_added_to_cart',
-  'checkout_started',
-  'checkout_contact_info_submitted',
-  'checkout_shipping_address_submitted',
-  'checkout_shipping_method_submitted',
-  'checkout_payment_info_submitted',
-  'checkout_completed',
+const FUNNEL: Array<[TrackingName, string]> = [
+  ['page_viewed', 'Page'],
+  ['product_viewed', 'Product'],
+  ['product_added_to_cart', 'Cart'],
+  ['checkout_started', 'Checkout'],
+  ['checkout_contact_info_submitted', 'Contact'],
+  ['checkout_shipping_address_submitted', 'Address'],
+  ['checkout_shipping_method_submitted', 'Shipping'],
+  ['checkout_payment_info_submitted', 'Payment'],
+  ['checkout_completed', 'Purchase'],
 ];
-const UPSELL: TrackingName[] = ['upsell_viewed', 'upsell_completed'];
-const KINDS = ['page', 'product', 'cart', 'checkout', 'order', 'upsell', 'promotion'];
+const UPSELL: Array<[TrackingName, string]> = [
+  ['upsell_viewed', 'Upsell'],
+  ['upsell_completed', 'Upsell paid'],
+];
 const KIND_OF: Record<string, string> = { products: 'product', cart_line: 'cart' };
 const KEEP = 300;
 
@@ -71,12 +73,10 @@ export function analyticsFlow(ui: {
   pageConfig: PageConfigModal;
   /** Every page of this tab, each with the tracking events it sent. */
   pages: () => PageVisit[];
-  render: () => void;
 }) {
   const events = new Map<string, TrackingEvent>();
   const runs: Run[] = [];
   const sentTo = new Map<string, DestinationTrace[]>();
-  const kinds = new Set<string>();
 
   const record = (e: EngineEvent) => {
     if (e.name !== 'analytics') return;
@@ -185,26 +185,33 @@ export function analyticsFlow(ui: {
 
   const strip = (dests: Destination[], got: Reach[][]) => {
     const n = (place: Place) => got.filter((g) => g.some((r) => r.place === place)).length;
+    const live = dests.filter((d) => d.on || n(d.place) > 0);
+    const off = dests.filter((d) => !live.includes(d));
     const place = (d: Destination) => {
       const count = n(d.place);
-      const on = d.on || count > 0;
       const label = PLACES[d.place][0];
-      const el = badge(
-        dot({ tone: !on ? 'off' : d.missing ? 'warn' : 'on' }),
-        'outline',
+      const el = h(
+        'span',
+        'aplace',
+        dot({ tone: d.missing ? 'warn' : 'on' }),
         label,
-        h('span', 'dim', !on ? 'off' : d.missing ? `${count || 'on'} · no ${d.missing}` : String(count)),
+        h('b', {}, d.missing ? `no ${d.missing}` : String(count)),
       );
       el.dataset.place = d.place;
-      el.title = on
-        ? [`${plural(count, 'event')} reached ${label} on this page.`, d.on && d.title].filter(Boolean).join(' ')
-        : d.title!;
+      el.title = [`${plural(count, 'event')} reached ${label} on this page.`, d.on && d.title]
+        .filter(Boolean)
+        .join(' ');
       return el;
     };
-    const edit = button(icon('settings'), () => ui.pageConfig.open('analytics'), { variant: 'outline', size: 'xs' });
+    const edit = button(icon('settings'), () => ui.pageConfig.open('analytics'), { variant: 'ghost', size: 'xs' });
     edit.append('Config');
     edit.title = 'Turn destinations on or off for this tab';
-    return h('div', 'adests', ...dests.map(place), edit);
+    const offs = h('span', 'aoff', `Off: ${off.map((d) => PLACES[d.place][0]).join(', ')}`);
+    offs.title = off
+      .map((d) => d.title)
+      .filter(Boolean)
+      .join(' ');
+    return h('div', 'adests', h('span', 'asub', 'Sent to'), ...live.map(place), off.length > 0 && offs, edit);
   };
 
   const funnel = () => {
@@ -212,38 +219,18 @@ export function analyticsFlow(ui: {
     const upsell = pages.some((p) => p.kind === 'upsell' || p.sent.some((s) => s.startsWith('upsell_')));
     const steps = upsell ? [...FUNNEL, ...UPSELL] : FUNNEL;
     const where = (name: string) => [...new Set(pages.filter((p) => p.sent.includes(name)).map((p) => p.path))];
-    const done = steps.filter((s) => where(s).length).length;
+    const done = steps.filter(([name]) => where(name).length).length;
     return h(
       'div',
       'afunnel',
       h('span', 'asub', `Funnel ${done}/${steps.length}`),
-      ...steps.map((name) => {
+      ...steps.map(([name, label]) => {
         const on = where(name);
-        const el = badge(on.length > 0 && icon('tick'), on.length ? 'success' : 'secondary', name);
-        el.title = on.length ? `Sent on ${on.join(', ')}` : 'Not sent on any page of this tab yet';
+        const el = h('span', 'astep', label);
+        el.dataset.done = String(on.length > 0);
+        el.title = `${name}: ${on.length ? `sent on ${on.join(', ')}` : 'not sent on any page of this tab yet'}`;
         return el;
       }),
-    );
-  };
-
-  const chips = (sent: Run[]) => {
-    const counts = sent.reduce<Record<string, number>>(
-      (n, r) => ({ ...n, [kindOf(r.name)]: (n[kindOf(r.name)] ?? 0) + 1 }),
-      {},
-    );
-    const chip = (label: string, n: number, on: boolean, pick: () => void, kind = '') => {
-      const el = button(`${label} ${n}`, () => (pick(), ui.render?.()), { variant: 'outline', size: 'xs' });
-      if (kind) el.prepend(dot({ kind }));
-      el.setAttribute('aria-pressed', String(on));
-      return el;
-    };
-    return h(
-      'div',
-      'echips',
-      chip('All', sent.length, !kinds.size, () => kinds.clear()),
-      ...KINDS.filter((k) => counts[k]).map((k) =>
-        chip(k, counts[k]!, kinds.has(k), () => (kinds.has(k) ? kinds.delete(k) : kinds.add(k)), k),
-      ),
     );
   };
 
@@ -262,18 +249,13 @@ export function analyticsFlow(ui: {
     const got = sent.map(reached);
     const shown = sent
       .map((run, i) => ({ run, got: got[i]! }))
-      .filter(
-        ({ run }) =>
-          (!kinds.size || kinds.has(kindOf(run.name))) &&
-          (run.name.includes(query) || carried(run).toLowerCase().includes(query)),
-      )
+      .filter(({ run }) => run.name.includes(query) || carried(run).toLowerCase().includes(query))
       .reverse();
     return [
       off && notice(off),
       ...unsupportedNotes(config).map((text) => notice(text, true)),
       strip(dests, got),
       funnel(),
-      sent.length > 0 && chips(sent),
       !sent.length
         ? empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.')
         : !shown.length

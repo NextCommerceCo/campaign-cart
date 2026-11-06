@@ -92,7 +92,6 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     config: () => config,
     pageConfig,
     pages: () => pages,
-    render: () => paint(),
   });
   engine.on('*', flow.record);
   engine.log.stream(flow.note, { replay: true });
@@ -132,22 +131,28 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     );
   const notes = () => [...root.querySelectorAll(':scope > .anote')].map((n) => n.textContent);
   const header = () => root.querySelector(':scope > .summary')?.textContent;
-  const dests = () =>
-    Object.fromEntries(
-      [...root.querySelectorAll<HTMLElement>('.adests > .badge')].map((b) => [
+  const PLACE: Record<string, string> = {
+    NextDataLayer: 'NextDataLayer',
+    'GTM dataLayer': 'dataLayer',
+    GA4: 'ga4',
+    Meta: 'meta',
+    RudderStack: 'rudderstack',
+  };
+  const offs = () => root.querySelector<HTMLElement>('.adests > .aoff');
+  const dests = () => ({
+    ...Object.fromEntries(
+      [...root.querySelectorAll<HTMLElement>('.adests > .aplace')].map((b) => [
         b.dataset.place,
-        b.querySelector('.dim')!.textContent,
+        b.querySelector('b')!.textContent,
       ]),
-    );
+    ),
+    ...Object.fromEntries(
+      (offs()?.textContent!.replace('Off: ', '').split(', ') ?? []).map((label) => [PLACE[label], 'off']),
+    ),
+  });
   const titleOf = (place: string) => root.querySelector<HTMLElement>(`.adests > [data-place=${place}]`)!.title;
   const steps = () =>
-    [...root.querySelectorAll<HTMLElement>('.afunnel > .badge')].map((b) => [
-      b.textContent,
-      b.dataset.variant,
-      b.title,
-    ]);
-  const chip = (label: string) =>
-    [...root.querySelectorAll<HTMLButtonElement>('.echips > .btn')].find((b) => b.textContent!.startsWith(label))!;
+    [...root.querySelectorAll<HTMLElement>('.afunnel > .astep')].map((b) => [b.textContent, b.dataset.done, b.title]);
   const row = (nth: number) => root.querySelectorAll<HTMLDetailsElement>(':scope > details')[nth]!;
   const logos = (nth: number) =>
     [...row(nth).querySelectorAll<HTMLElement>(':scope > summary .amarks .icon')].map((i) => i.title);
@@ -176,9 +181,9 @@ function setup(config: ProviderConfig = ON, pages: PageVisit[] = []) {
     notes,
     header,
     dests,
+    offs,
     titleOf,
     steps,
-    chip,
     logos,
     open,
   };
@@ -375,7 +380,7 @@ describe('analytics tab', () => {
       dataLayer: '2',
       ga4: '1',
       meta: '1',
-      rudderstack: 'on · no rudderanalytics',
+      rudderstack: 'no rudderanalytics',
     });
     expect(titleOf('ga4')).toBe('1 event reached GA4 on this page.');
     expect(titleOf('rudderstack')).toBe(
@@ -466,7 +471,7 @@ describe('analytics tab', () => {
 
   it('marks a destination turned off, notes a provider that is not built in, and puts only the warnings in Issues', () => {
     delete win.google_tag_manager;
-    const { engine, flow, paint, send, notes, dests, titleOf } = setup({
+    const { engine, flow, paint, send, notes, dests, offs } = setup({
       ...ON,
       dataLayer: false,
       unsupported: ['custom'],
@@ -479,7 +484,7 @@ describe('analytics tab', () => {
       "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).";
     expect(notes()).toEqual([custom]);
     expect(dests()).toMatchObject({ NextDataLayer: '1', dataLayer: 'off' });
-    expect(titleOf('dataLayer')).toBe(
+    expect(offs()!.title).toContain(
       'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
     );
     expect(flow.notes()).toEqual([custom]);
@@ -504,10 +509,10 @@ describe('analytics tab', () => {
     paint();
     expect(root.querySelector('.afunnel > .asub')!.textContent).toBe('Funnel 3/9');
     expect(steps().slice(0, 4)).toEqual([
-      ['page_viewed', 'success', 'Sent on /, /checkout'],
-      ['product_viewed', 'success', 'Sent on /'],
-      ['product_added_to_cart', 'secondary', 'Not sent on any page of this tab yet'],
-      ['checkout_started', 'success', 'Sent on /checkout'],
+      ['Page', 'true', 'page_viewed: sent on /, /checkout'],
+      ['Product', 'true', 'product_viewed: sent on /'],
+      ['Cart', 'false', 'product_added_to_cart: not sent on any page of this tab yet'],
+      ['Checkout', 'true', 'checkout_started: sent on /checkout'],
     ]);
     pages.push(page('/upsell', ['upsell_viewed'], 'upsell'));
     paint();
@@ -515,31 +520,18 @@ describe('analytics tab', () => {
       steps()
         .map(([name]) => name)
         .slice(-3),
-    ).toEqual(['checkout_completed', 'upsell_viewed', 'upsell_completed']);
+    ).toEqual(['Purchase', 'Upsell', 'Upsell paid']);
   });
 
-  it('filters events by kind, several at once, and by name or what they carried', () => {
-    const { engine, root, paint, send, rows, chip } = setup();
+  it('filters events by name or what they carried', () => {
+    const { engine, root, paint, send, rows } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
     send('cart.calculated', 'product_added_to_cart', { ...EARBUDS, first_in_session: true }, 'a1');
     send('cart.calculated', 'cart_updated', CART, 'cu');
     send('checkout.started', 'checkout_started', CHECKOUT, 'cs');
-    paint();
-    expect([...root.querySelectorAll('.echips > .btn')].map((b) => b.textContent)).toEqual([
-      'All 4',
-      'page 1',
-      'cart 2',
-      'checkout 1',
-    ]);
-    chip('cart').click();
-    expect(chip('cart').getAttribute('aria-pressed')).toBe('true');
-    expect(rows().map((r) => r.split(' | ')[0])).toEqual(['cart_updated', 'product_added_to_cart']);
-    chip('page').click();
-    expect(rows().map((r) => r.split(' | ')[0])).toEqual(['cart_updated', 'product_added_to_cart', 'page_viewed']);
     paint('earbuds');
-    expect(rows().map((r) => r.split(' | ')[0])).toEqual(['cart_updated', 'product_added_to_cart']);
-    chip('All').click();
+    expect(rows().map((r) => r.split(' | ')[0])).toEqual(['checkout_started', 'cart_updated', 'product_added_to_cart']);
     paint('checkout');
     expect(rows().map((r) => r.split(' | ')[0])).toEqual(['checkout_started']);
     paint('nope');

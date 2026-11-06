@@ -4,7 +4,6 @@ import { type IconName, icon } from './icons';
 import { LANGUAGES } from './locale';
 import type { DebugActions } from './state';
 import {
-  bare,
   clone,
   type Field,
   get,
@@ -19,7 +18,7 @@ import {
   snippetOf,
   withoutLoader,
 } from './draft';
-import { badge, type Child, h, iconButton, nodes, tsugi } from './view';
+import { badge, type Child, h, iconButton, nodes, tab, tablist, tsugi } from './view';
 
 export type ConfigSection = 'analytics' | 'language' | 'checkout' | 'page';
 
@@ -59,11 +58,10 @@ export function configModal(
     const was = get(start.draft, f.path);
     if ((now ?? f.fallback) !== (was ?? f.fallback)) return [h('b', {}, 'edited')];
     if (start.legacy[f.path]) return [badge('0.4.x', 'warning'), start.legacy[f.path]];
-    if (now === undefined) return ['default'];
     const top = f.path.split('.')[0]!;
-    const tried = info.tried && JSON.stringify(effective[top]) !== JSON.stringify(info.page[top]);
-    const where = f.path.startsWith('analytics.') ? bare(f.path) : tried ? 'tried' : 'page';
-    return [tried && where !== 'tried' ? `${where} · tried` : where];
+    return now !== undefined && info.tried && JSON.stringify(effective[top]) !== JSON.stringify(info.page[top])
+      ? ['tried']
+      : [];
   };
 
   const change = (path: string, value: unknown) => {
@@ -212,6 +210,26 @@ export function configModal(
   const copyButton = action('copy', '', copy, 'outline');
   copyButton.append(copied);
 
+  const snip = h(
+    'aside',
+    'csnip',
+    h('small', {}, 'window.nextConfig for the page, defaults left out'),
+    code,
+    note(
+      `Try on this tab applies it to every page of this tab while debug mode is on.${loaders.length ? ` ${loaders.join(' and ')} ${loaders.length > 1 ? 'stay' : 'stays'} on the script tag.` : ''}`,
+    ),
+  );
+  const views = tablist({ size: 'sm' }, 'Page config view');
+  const show = (code: boolean) => {
+    editor.hidden = code;
+    snip.hidden = !code;
+    views.replaceChildren(
+      tab(!code, () => show(false), 'Settings'),
+      tab(code, () => show(true), 'Code'),
+    );
+  };
+  show(false);
+
   const dialog = tsugi(
     h(
       'dialog',
@@ -231,20 +249,7 @@ export function configModal(
               : 'window.nextConfig on this page. Edit it, copy it, or try it on this tab.',
           ),
         ),
-        h(
-          'section',
-          'cbody',
-          editor,
-          h(
-            'aside',
-            'csnip',
-            h('div', 'csnhead', h('b', {}, 'Snippet'), h('small', {}, 'Defaults are left out')),
-            code,
-            note(
-              `Try on this tab applies it to every page of this tab while debug mode is on.${loaders.length ? ` ${loaders.join(' and ')} ${loaders.length > 1 ? 'stay' : 'stays'} on the script tag.` : ''}`,
-            ),
-          ),
-        ),
+        h('section', 'cbody', h('div', 'ctabs tabs', views), editor, snip),
         h(
           'footer',
           {},
@@ -265,6 +270,7 @@ export function configModal(
     dialog,
     open(section) {
       if (!dialog.open) dialog.showModal();
+      show(false);
       fill();
       const target = section && editor.querySelector<HTMLElement>(`[data-section="${section}"]`);
       if (!target) return;
