@@ -14,6 +14,7 @@ import { journeyView, pageKind } from './journey';
 import { localeTab } from './locale';
 import { issuesView } from './issues';
 import { logsView } from './logs';
+import { detailModal } from './stream';
 import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
 import { followTheme } from './theme';
@@ -21,6 +22,7 @@ import { createDebug } from './state';
 import {
   ANALYTICS_CSS,
   BENCH_CSS,
+  STREAM_CSS,
   CART_CSS,
   CHECKOUT_CSS,
   CONFIG_CSS,
@@ -64,12 +66,6 @@ export interface DebugInfo {
 
 export function startDebug(engine: Engine, info: DebugInfo): void {
   const open = new Set(['cart']);
-  const ids = new WeakMap<object, number>();
-  let seq = 0;
-  const idOf = (o: object) => {
-    if (!ids.has(o)) ids.set(o, ++seq);
-    return ids.get(o)!;
-  };
   const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   const debug = engine.attach((ctx) =>
     createDebug(ctx, {
@@ -154,7 +150,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     'style',
     {},
     ...[TSUGI_CSS, PANEL_CSS, CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, LOCALE_CSS],
-    ...[CONFIG_CSS, ANALYTICS_CSS, BENCH_CSS],
+    ...[CONFIG_CSS, ANALYTICS_CSS, BENCH_CSS, STREAM_CSS],
   );
   let paymentIcons: Promise<void> | undefined;
   const loadPaymentIcons = () =>
@@ -164,15 +160,16 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const theme = followTheme(host, () => debug.state().panel.theme);
 
   const query = () => filter.value.trim().toLowerCase();
-  const events = eventsView(engine, debug, open, () => render());
+  const detail = detailModal(open);
+  const events = eventsView(engine, debug, { open, detail, render: () => render() });
   const pageConfig = configModal(engine, debug, info, () => render());
-  const flow = analyticsFlow({ open, config: info.analytics });
+  const flow = analyticsFlow({ config: info.analytics, detail, render: () => render() });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
-  root.append(cart.dialog, pageConfig.dialog, flow.dialog);
+  root.append(cart.dialog, pageConfig.dialog, detail.dialog);
   const bench = benchmarkView(engine);
-  const logs = logsView(engine, open, idOf, () => render());
+  const logs = logsView(engine, detail, () => render());
   const locale = localeTab(engine, debug, info.send, () => later());
 
   const issueTab = issuesView(engine, debug, { checkout, flow, logs, box, show: (t) => show(t) });
@@ -296,7 +293,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && ![cart, pageConfig, flow].some((d) => d.dialog.open))
+    if (e.key === 'Escape' && view !== 'closed' && ![cart, pageConfig, detail].some((d) => d.dialog.open))
       setView('closed');
   });
   const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');

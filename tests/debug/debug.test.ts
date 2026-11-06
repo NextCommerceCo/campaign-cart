@@ -11,6 +11,7 @@ import {
   LOCALE_CSS,
   PANEL_CSS,
   TSUGI_CSS,
+  STREAM_CSS,
 } from '../../src/debug/styles';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from '../fixtures/api';
@@ -181,7 +182,7 @@ describe('debug tools', () => {
     menuItem('Analytics').click();
     expect(view()).toBe('panel');
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
-    expect(body()).toMatch(/\d+ events? sent on this page, newest first/);
+    expect(shadow().querySelectorAll('.body > .srow').length).toBeGreaterThan(0);
     tab('logs');
     expect(body()).toContain('storage scope');
     expect(body()).toMatch(/apiPOST \/api\/v1\/carts\/calculate\/200\d+ ms/);
@@ -260,21 +261,27 @@ describe('debug tools', () => {
     vi.useRealTimers();
     await developer();
     menuItem('Events').click();
-    const rows = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
-    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/\d([a-z]+\.[a-z]+)/)![1];
+    const rows = () => [...shadow().querySelectorAll<HTMLElement>('.body > .srow, .body > .sgroup')];
+    const name = (r: HTMLElement) => r.querySelector('.sname')!.textContent!;
     await vi.waitFor(() => expect(rows().map(name)).toContain('cart.added'));
-    expect(body()).toMatch(/\d+ events on this page, newest first/);
     expect(body()).not.toContain('campaign.loaded');
-    expect(shadow().querySelector('.egroup')).toBeNull();
+    expect(shadow().querySelector('.sgroup')).toBeNull();
     expect(rows().map(name).indexOf('cart.calculated')).toBeLessThan(rows().map(name).indexOf('sdk.ready'));
-    const added = rows().find((d) => name(d) === 'cart.added')!;
-    expect(added.querySelector('summary')!.textContent).toMatch(/^[\d:.]+cart\.added .+ 0→1$/);
+    const added = rows().find((r) => name(r) === 'cart.added')!;
+    expect(added.querySelector('.stag')!.textContent).toBe('cart');
+    expect(added.querySelector('.sdesc')!.textContent).toMatch(/^cart\.added.+ 0→1$/);
     expect(body()).not.toContain('{event_id');
-    added.open = true;
+    added.click();
+    const modal = $<HTMLDialogElement>('dialog.smodal');
+    expect(modal.open).toBe(true);
+    expect(modal.querySelector('h2')!.textContent).toBe('cart.added');
+    [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payload')!.click();
     const { event_id, session_id } = got[0] as { event_id: string; session_id: string };
-    expect(added.textContent).toContain(event_id);
-    expect(added.textContent).toContain(session_id);
-    expect(added.textContent).toContain('object "cart"');
+    const pane = modal.querySelector('.spane')!.textContent!;
+    expect(pane).toContain(event_id);
+    expect(pane).toContain(session_id);
+    expect(pane).toContain('object "cart"');
+    modal.close();
     const filter = $<HTMLInputElement>('input');
     filter.value = 'Cart.Add';
     filter.dispatchEvent(new Event('input'));
@@ -285,11 +292,11 @@ describe('debug tools', () => {
     filter.value = '';
     filter.dispatchEvent(new Event('input'));
     const chip = (label: string) =>
-      [...shadow().querySelectorAll<HTMLButtonElement>('.echips button')].find((b) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('.schips button')].find((b) =>
         b.textContent!.startsWith(label),
       )!;
     expect(chip('All').getAttribute('aria-pressed')).toBe('true');
-    expect(chip('cart').querySelector('.edot')!.getAttribute('data-kind')).toBe('cart');
+    expect(chip('cart').querySelector('.sdot')!.getAttribute('data-tag')).toBe('cart');
     chip('sdk').click();
     expect(rows().map(name)).toEqual(['sdk.ready']);
     expect(chip('sdk').getAttribute('aria-pressed')).toBe('true');
@@ -299,15 +306,18 @@ describe('debug tools', () => {
     chip('Group by action').click();
     expect(chip('Group by action').getAttribute('aria-pressed')).toBe('true');
     expect(Object.values(sessionStorage).some((v) => v.includes('"grouped":true'))).toBe(true);
-    expect(body()).toMatch(/\d+ events on this page in 2 groups, newest first/);
-    const [newest, older] = rows() as [HTMLDetailsElement, HTMLDetailsElement];
+    const [newest, older] = rows() as [HTMLElement, HTMLElement];
     expect(rows()).toHaveLength(2);
-    expect([newest.classList.contains('egroup'), newest.open, older.open]).toEqual([true, true, false]);
-    expect(older.querySelector('summary')!.textContent).toContain('sdk.ready');
-    const inside = [...newest.querySelectorAll(':scope > details > summary')].map(
-      (s) => s.textContent!.match(/ ms([a-z]+\.[a-z]+)/)![1],
+    expect([newest.matches('details.sgroup[open]'), older.matches('.srow')]).toEqual([true, true]);
+    expect(name(older)).toBe('sdk.ready');
+    const inside = [...newest.querySelectorAll(':scope > .srow')].map((r) => [
+      r.querySelector('.time')!.textContent,
+      name(r as HTMLElement),
+    ]);
+    expect(inside[0]![0]).toBe('+0 ms');
+    expect(inside.map(([, n]) => n).indexOf('cart.added')).toBeLessThan(
+      inside.map(([, n]) => n).indexOf('cart.calculated'),
     );
-    expect(inside.indexOf('cart.added')).toBeLessThan(inside.indexOf('cart.calculated'));
     tab('logs');
     expect(body()).not.toMatch(/event (sdk|cart)\./);
   });
@@ -318,34 +328,33 @@ describe('debug tools', () => {
     await developer();
     menuItem('Logs').click();
     const filter = $<HTMLInputElement>('input');
-    const rows = () => [...shadow().querySelectorAll<HTMLElement>('.body > .lrow')];
-    const cells = (r: HTMLElement) =>
-      [...(r.matches('details') ? r.querySelector('summary')! : r).children].map((c) => c.textContent).slice(1);
-    const api = rows().find((r) => r.querySelector('.lsrc')!.textContent === 'api')!;
+    const rows = () => [...shadow().querySelectorAll<HTMLElement>('.body > .srow')];
+    const cells = (r: HTMLElement) => [...r.children].slice(1, 4).map((c) => c.textContent);
+    const api = rows().find((r) => r.querySelector('.stag')!.textContent === 'api')!;
     expect(cells(api)).toEqual(['api', 'POST /api/v1/carts/calculate/', expect.stringMatching(/^200\d+ ms$/)]);
-    expect(api.querySelector<HTMLElement>('.lpill')!.dataset.tone).toBe('ok');
-    const sent = rows().find((r) => r.querySelector('.lbody code')?.textContent === 'cart_updated')!;
+    expect(api.querySelector<HTMLElement>('.spill')!.dataset.tone).toBe('ok');
+    const sent = rows().find((r) => r.querySelector('.sname')?.textContent === 'cart_updated')!;
     expect(cells(sent).slice(0, 2)).toEqual(['analytics', 'cart_updatedsentAfter every price update']);
     expect(body()).not.toContain('{');
     filter.value = 'unknown display';
     filter.dispatchEvent(new Event('input'));
-    expect(rows().map((r) => [r.dataset.level, r.querySelector('.lsrc')!.textContent, r.title])).toEqual([
+    expect(rows().map((r) => [r.dataset.level, r.querySelector('.stag')!.textContent, r.title])).toEqual([
       ['warn', 'sdk', 'unknown display path "cart.nope"'],
     ]);
     filter.value = '';
     filter.dispatchEvent(new Event('input'));
     const chip = (label: string) =>
-      [...shadow().querySelectorAll<HTMLButtonElement>('.echips button')].find((b) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('.schips button')].find((b) =>
         b.textContent!.startsWith(label),
       )!;
-    chip('Warnings').click();
-    expect(chip('Warnings').getAttribute('aria-pressed')).toBe('true');
+    chip('warnings').click();
+    expect(chip('warnings').getAttribute('aria-pressed')).toBe('true');
     expect(new Set(rows().map((r) => r.dataset.level))).toEqual(new Set(['warn']));
-    chip('Warnings').click();
+    chip('warnings').click();
     chip('api').click();
-    expect(new Set(rows().map((r) => r.querySelector('.lsrc')!.textContent))).toEqual(new Set(['api']));
+    expect(new Set(rows().map((r) => r.querySelector('.stag')!.textContent))).toEqual(new Set(['api']));
     chip('All').click();
-    expect(new Set(rows().map((r) => r.querySelector('.lsrc')!.textContent))).toContain('analytics');
+    expect(new Set(rows().map((r) => r.querySelector('.stag')!.textContent))).toContain('analytics');
   });
 
   it('counts issues on the button and lists each once, with the element behind it', async () => {
@@ -440,22 +449,22 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect(layer().map((e) => e.event)).toContain('dl_add_to_cart'));
     $('.fab').click();
     menuItem('Analytics').click();
-    const rows = [...shadow().querySelectorAll<HTMLButtonElement>('.body > button.aev')];
-    const name = (r: HTMLElement) => r.querySelector('.aname')!.textContent;
+    const rows = [...shadow().querySelectorAll<HTMLButtonElement>('.body > .srow')];
+    const name = (r: HTMLElement) => r.querySelector('.sname')!.textContent;
     expect(new Set(rows.map(name))).toEqual(
       new Set(['cart_updated', 'page_viewed', 'product_added_to_cart', 'product_viewed']),
     );
     expect(name(rows.at(-1)!)).toBe('page_viewed');
     const added = rows.find((r) => name(r) === 'product_added_to_cart')!;
-    expect(added.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3}product_added_to_cartEarbuds ×1 ×1 · \$49\.00$/);
+    expect(added.textContent).toMatch(/^\d\d:\d\d:\d\d\.\d{3}cartproduct_added_to_cartEarbuds ×1 ×1 · \$49\.00$/);
     added.click();
-    const modal = $<HTMLDialogElement>('dialog.amodal');
+    const modal = $<HTMLDialogElement>('dialog.smodal');
     expect(modal.open).toBe(true);
     expect(modal.querySelector('.aplaces > li')!.textContent).toBe(
       'GTMdl_add_to_cartreceived · no GTM container on the page',
     );
     [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payloads')!.click();
-    const pane = modal.querySelector('.apane')!.textContent!;
+    const pane = modal.querySelector('.spane')!.textContent!;
     expect(pane).toContain(got[0]!.event_id);
     expect(pane).toContain('event_type "product_added_to_cart"');
   });
@@ -534,7 +543,8 @@ describe('debug tools', () => {
         LOCALE_CSS +
         CONFIG_CSS +
         ANALYTICS_CSS +
-        BENCH_CSS,
+        BENCH_CSS +
+        STREAM_CSS,
     );
     const classes = (css: string) => new Set([...css.matchAll(/(?:^|[},])\s*\.([a-z][\w-]*)/gm)].map((m) => m[1]));
     const panel = classes(PANEL_CSS);
@@ -545,7 +555,8 @@ describe('debug tools', () => {
     const config = classes(CONFIG_CSS);
     const analytics = classes(ANALYTICS_CSS);
     const bench = classes(BENCH_CSS);
-    const sheets = [panel, cart, journey, checkout, locale, config, analytics, bench];
+    const stream = classes(STREAM_CSS);
+    const sheets = [panel, cart, journey, checkout, locale, config, analytics, bench, stream];
     expect(
       sheets.flatMap((sheet, i) => [...sheet].filter((name) => sheets.slice(0, i).some((s) => s.has(name)))),
     ).toEqual([]);
@@ -593,12 +604,20 @@ describe('debug tools', () => {
     const defined = (css: string) => new Set([...css.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
     const tokens = defined(TSUGI_CSS);
     const ours =
-      PANEL_CSS + CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS;
+      PANEL_CSS +
+      CART_CSS +
+      CHECKOUT_CSS +
+      JOURNEY_CSS +
+      LOCALE_CSS +
+      CONFIG_CSS +
+      ANALYTICS_CSS +
+      BENCH_CSS +
+      STREAM_CSS;
     expect([...defined(ours)].filter((name) => tokens.has(name))).toEqual([]);
     expect(PANEL_CSS).toMatch(/\.link\{[^}]*\}\s*\.link\.danger\{color:var\(--destructive\)\}/);
-    expect(CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS).not.toMatch(
-      /#[\da-f]{3,8}\b|rgba?\(|oklch\(/i,
-    );
+    expect(
+      CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS + STREAM_CSS,
+    ).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
     dark.mockRestore();
   });

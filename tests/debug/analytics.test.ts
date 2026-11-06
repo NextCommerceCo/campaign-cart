@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
 import { createCheckout } from '../../src/checkout/state/checkout';
+import { detailModal } from '../../src/debug/stream';
 import { analyticsFlow } from '../../src/debug/analytics';
 import {
   analyticsOff,
@@ -73,8 +74,9 @@ function setup(config: ProviderConfig = ON) {
   const root = document.createElement('div');
   let query = '';
   const paint = (q = query) => root.replaceChildren(...nodes(flow.view((query = q))));
-  const flow = analyticsFlow({ open: new Set(), config: () => config });
-  document.body.append(flow.dialog);
+  const detail = detailModal(new Set());
+  const flow = analyticsFlow({ config: () => config, detail, render: () => paint() });
+  document.body.append(detail.dialog);
   engine.on('*', flow.record);
   engine.log.stream(flow.note, { replay: true });
   const decide = (trigger: EventName, name: string, sent: boolean, reason: string, id?: string) => {
@@ -103,20 +105,20 @@ function setup(config: ProviderConfig = ON) {
         layer.push({ event: DL[name], event_id: id });
     decide(trigger, name, true, `reason for ${name}`, id);
   };
-  const lines = () => [...root.querySelectorAll<HTMLButtonElement>(':scope > button.aev')];
+  const lines = () => [...root.querySelectorAll<HTMLButtonElement>(':scope > .srow')];
   const rows = () =>
     lines().map((r) =>
-      [r.querySelector('.aname')!.textContent, r.querySelector('.asum')!.textContent, r.title && `⚠ ${r.title}`]
+      [r.querySelector('.sname')!.textContent, r.querySelector('.sdesc > .dim')!.textContent, r.title && `⚠ ${r.title}`]
         .filter(Boolean)
         .join(' | '),
     );
   const notes = () => [...root.querySelectorAll(':scope > .anote')].map((n) => n.textContent);
-  const header = () => root.querySelector(':scope > .summary')?.textContent;
+  const chipLabels = () => [...root.querySelectorAll('.schips button')].map((b) => b.textContent);
   const open = (nth: number) => {
     lines()[nth]!.click();
-    const modal = flow.dialog;
+    const modal = detail.dialog;
     const show = () =>
-      [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent === 'Show payloads');
+      [...modal.querySelectorAll<HTMLButtonElement>('.btn')].find((b) => b.textContent!.startsWith('Show payload'));
     const tabs = () => [...modal.querySelectorAll<HTMLButtonElement>('[role=tab]')];
     return {
       title: modal.querySelector('h2')!.textContent,
@@ -130,8 +132,8 @@ function setup(config: ProviderConfig = ON) {
           ].join(' | '),
         ),
       items: () =>
-        [...modal.querySelectorAll('.aitems tr')].map((tr) => [...tr.children].map((c) => c.textContent).join(' | ')),
-      totals: () => modal.querySelector('.atotals')?.textContent,
+        [...modal.querySelectorAll('.sitems tr')].map((tr) => [...tr.children].map((c) => c.textContent).join(' | ')),
+      totals: () => modal.querySelector('.stotals')?.textContent,
       problems: () => [...modal.querySelectorAll('.aprobs li')].map((li) => li.textContent),
       note: () => modal.querySelector('.anoted')?.textContent,
       payloads: () => {
@@ -143,11 +145,11 @@ function setup(config: ProviderConfig = ON) {
         tabs()
           .find((t) => t.textContent === label)!
           .click();
-        return modal.querySelector('.apane')!.textContent!;
+        return modal.querySelector('.spane')!.textContent!;
       },
     };
   };
-  return { engine, root, flow, paint, decide, send, rows, notes, header, open };
+  return { engine, root, flow, detail, paint, decide, send, rows, notes, chipLabels, open };
 }
 
 afterEach(() => {
@@ -313,7 +315,7 @@ describe('analytics tab', () => {
 
   it('lists the events sent on this page, newest first, each with what it carried and where it went', () => {
     win.nextConfig = { analytics: { destinations: { rudderstack: { enabled: true } } } };
-    const { engine, flow, paint, send, decide, rows, header, open } = setup();
+    const { engine, detail, paint, send, decide, rows, chipLabels, open } = setup();
     engine.events.emit('sdk.ready', engine.snapshot());
     send('sdk.ready', 'page_viewed', {}, 'pv');
     decide('sdk.ready', 'product_viewed', false, 'No package on the page');
@@ -334,10 +336,10 @@ describe('analytics tab', () => {
       payload: { params: { value: 49 }, eventID: 'cu' },
     });
     paint();
-    expect(header()).toBe('2 events sent on this page, newest first · click one for where it went');
+    expect(chipLabels()).toEqual(['All 2', 'page 1', 'cart 1']);
     expect(rows()).toEqual(['cart_updated | Earbuds ×1 · $49.00', 'page_viewed']);
     const event = open(0);
-    expect(flow.dialog.open).toBe(true);
+    expect(detail.dialog.open).toBe(true);
     expect(event.title).toBe('cart_updatedSent');
     expect(event.places()).toEqual([
       'GTM | dl_cart_updated | received | ok',
@@ -426,7 +428,7 @@ describe('analytics tab', () => {
 
   it('marks a destination turned off, notes a provider that is not built in, and puts only the warnings in Issues', () => {
     delete win.google_tag_manager;
-    const { engine, flow, paint, send, notes, open } = setup({
+    const { engine, flow, detail, paint, send, notes, open } = setup({
       ...ON,
       dataLayer: false,
       unsupported: ['custom'],
@@ -438,12 +440,12 @@ describe('analytics tab', () => {
     const custom =
       "Custom endpoint is on in nextConfig, but it is not built in: send events from next.analytics.on('*', fn).";
     expect(notes()).toEqual([custom]);
-    const gtm = flow.dialog && open(0).places()[0];
+    const gtm = open(0).places()[0];
     expect(gtm).toBe('GTM |  | off | off');
     expect(open(0).note()).toBe(
       'No platform got it: only next.analytics.on listeners and the page’s own forwarder (NextDataLayer).',
     );
-    expect(flow.dialog.querySelector<HTMLElement>('.aplaces > li')!.title).toBe(
+    expect(detail.dialog.querySelector<HTMLElement>('.aplaces > li')!.title).toBe(
       'GTM tags get none of these events: analytics.providers.gtm.enabled is false in nextConfig.',
     );
     expect(flow.notes()).toEqual([custom]);

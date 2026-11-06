@@ -17,8 +17,8 @@ import {
   WIRING,
 } from './providers';
 import { type IconName, icon } from './icons';
-import { eventModal } from './event-modal';
-import { type Child, empty, h, plural, stamp } from './view';
+import { chips, type DetailModal, items, line, pill } from './stream';
+import { type Child, empty, h, plural, time } from './view';
 
 type Run = AnalyticsTrace & { at: number };
 type Reach = { place: Place; name: string; payload: unknown };
@@ -45,14 +45,9 @@ const kindOf = (name: string) => {
   return wire ? (KIND_OF[wire.object!] ?? wire.object ?? wire.from[0]!.split('.')[0]!) : 'page';
 };
 
-const dot = (data: Record<string, string>) => {
-  const el = h('span', 'adot');
-  Object.assign(el.dataset, data);
-  return el;
-};
-
-export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderConfig }) {
+export function analyticsFlow(ui: { config: () => ProviderConfig; detail: DetailModal; render: () => void }) {
   const events = new Map<string, TrackingEvent>();
+  const kinds = new Set<string>();
   const runs: Run[] = [];
   const sentTo = new Map<string, DestinationTrace[]>();
 
@@ -136,41 +131,65 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
     return layers.includes(d.place as Layer) ? ['bad', 'not pushed'] : ['off', 'nothing for this event'];
   };
 
-  const modal = eventModal(ui.open);
-
   const open = (run: Run, got: Reach[], layers: Layer[]) => {
     const event = run.id ? events.get(run.id) : undefined;
     const priced = pricedOf(run.name, event?.data);
+    const problems = issues(run, layers);
     const places = destinations(ui.config(), started())
       .filter((d) => d.place !== 'NextDataLayer')
       .map((d) => {
         const [tone, text] = status(d, got, layers);
-        const [label, glyph] = PLACES[d.place];
-        return { label, icon: glyph, vendor: got.find((g) => g.place === d.place)?.name, tone, text, title: d.title };
+        const el = h(
+          'li',
+          {},
+          icon(PLACES[d.place][1]),
+          h('b', {}, PLACES[d.place][0]),
+          got.find((g) => g.place === d.place) && h('code', {}, got.find((g) => g.place === d.place)!.name),
+          h('span', 'astate', text),
+        );
+        el.dataset.tone = tone;
+        if (d.title) el.title = d.title;
+        return el;
       });
-    modal.show({
-      note:
-        run.sent && !places.some((p) => p.text.startsWith('received'))
-          ? 'No platform got it: only next.analytics.on listeners and the page’s own forwarder (NextDataLayer).'
-          : undefined,
-      name: run.name,
-      sent: run.sent,
-      at: run.at,
-      reason: run.reason,
-      problems: issues(run, layers),
-      places,
-      lines: linesOf(run.name, event?.data).map((l) => [
-        String(l.product_title ?? `#${l.package_id}`),
-        String(l.quantity ?? ''),
-        money(run, l.total ?? l.price),
-      ]),
-      totals: (
+    const nowhere = run.sent && !places.some((p) => p.dataset.tone === 'ok' || p.textContent!.includes('received'));
+    ui.detail.show({
+      title: run.name,
+      badge: run.sent ? ['Sent', 'success'] : ['Not sent', 'secondary'],
+      subtitle: `${time(run.at)} · ${location.pathname} · ${run.reason}`,
+      sections: [
+        ...(problems.length
+          ? [['Problems', [h('ul', 'aprobs', ...problems.map((p) => h('li', {}, p)))]] as [string, Child[]]]
+          : []),
         [
-          ['Order', priced.number ? `#${priced.number}` : ''],
-          ['Total', money(run, priced.total ?? priced.price)],
-          ['Currency', (priced.currency as string) ?? ''],
-        ] as Array<[string, string]>
-      ).filter(([, v]) => v),
+          'Sent to',
+          [
+            nowhere &&
+              h(
+                'p',
+                'anoted',
+                'No platform got it: only next.analytics.on listeners and the page’s own forwarder (NextDataLayer).',
+              ),
+            h('ul', 'aplaces', ...places),
+          ],
+        ],
+        [
+          'What it carried',
+          items(
+            linesOf(run.name, event?.data).map((l) => [
+              String(l.product_title ?? `#${l.package_id}`),
+              String(l.quantity ?? ''),
+              money(run, l.total ?? l.price),
+            ]),
+            (
+              [
+                ['Order', priced.number ? `#${priced.number}` : ''],
+                ['Total', money(run, priced.total ?? priced.price)],
+                ['Currency', (priced.currency as string) ?? ''],
+              ] as Array<[string, string]>
+            ).filter(([, v]) => v),
+          ),
+        ],
+      ],
       payloads: [
         ...(event ? [['next.analytics.on', event] as [string, unknown]] : []),
         ...got
@@ -182,16 +201,16 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
 
   const row = (run: Run, got: Reach[], layers: Layer[]) => {
     const problems = issues(run, layers);
-    const el = h(
-      'button',
-      { type: 'button', className: 'row aev', onclick: () => open(run, got, layers) },
-      stamp(run.at),
-      h('b', 'aname', dot({ kind: kindOf(run.name) }), run.name),
-      h('span', 'asum dim', carried(run)),
-      problems.length > 0 && h('span', 'red', `⚠ ${plural(problems.length, 'problem')}`),
-    );
-    if (problems.length) el.title = problems.join(' · ');
-    return el;
+    return line({
+      at: run.at,
+      tag: kindOf(run.name),
+      name: run.name,
+      detail: [h('span', 'dim', carried(run))],
+      meta: problems.length ? [pill(`⚠ ${plural(problems.length, 'problem')}`, 'bad')] : [],
+      level: problems.length ? 'error' : undefined,
+      title: problems.join(' · ') || undefined,
+      open: () => open(run, got, layers),
+    });
   };
 
   const notice = (text: string, warn = false) => {
@@ -204,23 +223,27 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
     const config = ui.config();
     const off = analyticsOff(config) ?? (!started() && 'Analytics starts once the page is idle.');
     const layers = layersOn();
-    const shown = runs
-      .filter((r) => r.sent && (r.name.includes(query) || carried(r).toLowerCase().includes(query)))
+    const sent = runs.filter((r) => r.sent);
+    const counts = sent.reduce<Record<string, number>>(
+      (n, r) => ({ ...n, [kindOf(r.name)]: (n[kindOf(r.name)] ?? 0) + 1 }),
+      {},
+    );
+    const shown = sent
+      .filter(
+        (r) =>
+          (!kinds.size || kinds.has(kindOf(r.name))) &&
+          (r.name.includes(query) || carried(r).toLowerCase().includes(query)),
+      )
       .reverse();
-    const sent = runs.filter((r) => r.sent).length;
     return [
       off && notice(off),
       ...unsupportedNotes(config).map((text) => notice(text, true)),
-      !sent
-        ? empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.')
+      sent.length > 0 && chips(Object.entries(counts), kinds, ui.render),
+      ...(!sent.length
+        ? [empty('Nothing sent yet', 'Each tracking event shows here as next.analytics.on gets it.')]
         : !shown.length
-          ? empty('Nothing matches', 'No event fits the filter.')
-          : h(
-              'div',
-              'summary',
-              `${plural(sent, 'event')} sent on this page, newest first · click one for where it went`,
-            ),
-      ...shown.map((run) => row(run, reached(run), layers)),
+          ? [empty('Nothing matches', 'No event fits the filter.')]
+          : shown.map((run) => row(run, reached(run), layers))),
     ];
   };
 
@@ -252,5 +275,5 @@ export function analyticsFlow(ui: { open: Set<string>; config: () => ProviderCon
     return `${ga} sent${n ? ` · ⚠ ${n}` : ''}`;
   };
 
-  return { record, note, view, summary, problems, notes, dialog: modal.dialog };
+  return { record, note, view, summary, problems, notes };
 }
