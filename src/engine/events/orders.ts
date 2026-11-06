@@ -23,6 +23,8 @@ export interface OrderItem {
   original_price: number;
   /** What the line cost; `price` is `total / quantity`, rounded to the cent. */
   total: number;
+  /** The tax in `total`; the line before tax is `total − tax`. */
+  tax: number;
   /** `true` for a line an upsell added. */
   upsell: boolean;
 }
@@ -44,9 +46,9 @@ export interface Order {
   coupons: string[];
   /** The discounts on the order. */
   total_discount: number;
-  /** The shipping method's name and price. */
-  shipping_method?: Pick<ShippingMethod, 'name' | 'price'>;
-  /** The tax in the order. */
+  /** The shipping method's name, its price, and the tax in that price. */
+  shipping_method?: Pick<ShippingMethod, 'name' | 'price'> & { tax?: number };
+  /** The tax in the order: its lines' and shipping's. */
   tax: number;
   /** What the shopper paid. */
   total: number;

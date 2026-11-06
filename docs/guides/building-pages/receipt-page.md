@@ -33,7 +33,14 @@ from it.
 ```
 
 Each line has `product_title`, `variant_title`, `sku`, `image`, `quantity`, `price` and
-`original_price` (one unit), `total` (the line) and `upsell`.
+`original_price` (one unit), `total` (the line), `tax` (the tax in `total`) and `upsell`.
+
+Every price is what the shopper paid, tax included; `tax` sits beside it on each line, on
+`order.shipping_method` and on the order. To show a line before tax, define the field:
+
+```js
+next.define('OrderItem', 'total_before_tax', (line) => line.total - line.tax, { format: 'currency' });
+```
 
 ## Totals and details
 

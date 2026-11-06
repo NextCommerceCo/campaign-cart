@@ -954,6 +954,7 @@
         "price": 48.06,
         "original_price": 99,
         "total": 96.12,
+        "tax": 7.12,
         "upsell": false
       }
     ],
@@ -961,7 +962,8 @@
     "total_discount": 0,
     "shipping_method": {
       "name": "Express",
-      "price": 9.99
+      "price": 9.99,
+      "tax": 0
     },
     "tax": 7.12,
     "total": 106.11,
@@ -1006,6 +1008,7 @@
         "price": 48.06,
         "original_price": 99,
         "total": 96.12,
+        "tax": 7.12,
         "upsell": false
       }
     ],
@@ -1013,7 +1016,8 @@
     "total_discount": 0,
     "shipping_method": {
       "name": "Express",
-      "price": 9.99
+      "price": 9.99,
+      "tax": 0
     },
     "tax": 7.12,
     "total": 106.11,
@@ -1058,6 +1062,7 @@
         "price": 48.06,
         "original_price": 99,
         "total": 96.12,
+        "tax": 7.12,
         "upsell": false
       },
       {
@@ -1067,6 +1072,7 @@
         "price": 20,
         "original_price": 20,
         "total": 20,
+        "tax": 0,
         "upsell": true
       }
     ],
@@ -1074,7 +1080,8 @@
     "total_discount": 0,
     "shipping_method": {
       "name": "Express",
-      "price": 9.99
+      "price": 9.99,
+      "tax": 0
     },
     "tax": 7.12,
     "total": 106.11,

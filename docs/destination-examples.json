@@ -182,13 +182,13 @@
       ],
       "params": {
         "currency": "USD",
-        "value": 96.12,
+        "value": 89,
         "items": [
           {
             "item_id": "EB-2",
             "item_name": "Earbuds",
-            "price": 48.06,
-            "discount": 50.94,
+            "price": 44.5,
+            "discount": 47.17,
             "quantity": 2,
             "index": 0
           }
@@ -359,12 +359,12 @@
           {
             "id": "EB-2",
             "quantity": 2,
-            "item_price": 48.06
+            "item_price": 44.5
           }
         ],
         "content_type": "product",
         "content_name": "Earbuds",
-        "value": 96.12,
+        "value": 89,
         "currency": "USD"
       },
       "storeName_event_id": "shop-1001"

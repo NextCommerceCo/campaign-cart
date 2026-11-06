@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publicOrder } from '../../src/engine/order';
+import { publicOrder, untaxed } from '../../src/engine/order';
 import { ORDER, withUpsell } from '../fixtures/order';
 
 describe('publicOrder', () => {
@@ -20,12 +20,13 @@ describe('publicOrder', () => {
           price: 48.06,
           original_price: 99,
           total: 96.12,
+          tax: 7.12,
           upsell: false,
         },
       ],
       coupons: ['SAVE10'],
       total_discount: 0,
-      shipping_method: { name: 'Express', price: 9.99 },
+      shipping_method: { name: 'Express', price: 9.99, tax: 0 },
       tax: 7.12,
       total: 106.11,
       user: { email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' },
@@ -64,5 +65,23 @@ describe('publicOrder', () => {
     const order = publicOrder({ ...withUpsell(ORDER, 99, 1), is_test: true, payment_method: { code: 'paypal' } });
     expect(order.lines.map((l) => l.upsell)).toEqual([false, true]);
     expect(order).toMatchObject({ test: true, payment_method: 'paypal', coupons: [] });
+  });
+
+  it('gives each line and the shipping the tax inside its price', () => {
+    const order = publicOrder({ ...ORDER, shipping_excl_tax: '8.33', shipping_incl_tax: '9.99' });
+    expect(order.lines[0]).toMatchObject({ total: 96.12, tax: 7.12 });
+    expect(order.shipping_method).toEqual({ name: 'Express', price: 9.99, tax: 1.66 });
+  });
+});
+
+describe('untaxed', () => {
+  it('takes the tax out of a line’s unit prices', () => {
+    const [line] = publicOrder({ ...ORDER, lines: [{ ...ORDER.lines![0]!, price_excl_tax: '80.10' }] }).lines;
+    expect(untaxed(line!)).toMatchObject({ price: 40.05, original_price: 82.5, total: 96.12, tax: 16.02 });
+  });
+
+  it('leaves a line without tax as it is', () => {
+    const line = { price: 10, original_price: 12, total: 20 };
+    expect(untaxed(line)).toBe(line);
   });
 });

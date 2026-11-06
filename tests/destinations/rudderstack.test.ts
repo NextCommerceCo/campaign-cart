@@ -6,6 +6,8 @@ import { RUDDERSTACK, rudderStackCalls } from '../../src/destinations/rudderstac
 import type { Engine } from '../../src/engine/engine';
 import { OBJECTS, type TrackingEvent, type TrackingName } from '../../src/engine/events/analytics';
 import type { EventContext } from '../../src/engine/events/context';
+import { publicOrder } from '../../src/engine/order';
+import type { ApiOrder } from '../../src/engine/types';
 import { createOrder } from '../../src/order/state';
 import { fakeApi, json } from '../fixtures/api';
 import { makeEngine } from '../fixtures/engine';
@@ -406,16 +408,49 @@ describe('rudderStackCalls', () => {
     });
   });
 
-  it('prices an order with its own line prices when the API order is not loaded', async () => {
+  it('prices an order before tax from its own lines when the API order is not loaded', async () => {
     const { engine: bare } = makeEngine();
     await bare.start();
-    const [, track] = rudderStackCalls(event('checkout_completed'), bare, OPTIONS);
+    const [, track] = rudderStackCalls(event('checkout_completed', publicOrder(ORDER)), bare, OPTIONS);
     expect(track).toMatchObject({ name: 'Order Completed' });
     expect(track && 'properties' in track && track.properties).toMatchObject({
-      subtotal: 96.12,
+      subtotal: 89,
       shipping: 9.99,
       tax: 7.12,
-      total: 113.23,
+      total: 106.11,
+    });
+  });
+
+  it('prices an order before tax even when its line matches a package listed with tax', async () => {
+    const vat: ApiOrder = {
+      ...ORDER,
+      lines: [
+        {
+          id: 21,
+          package: 1,
+          product_title: 'Earbuds',
+          quantity: 1,
+          price_incl_tax: '49.00',
+          price_excl_tax: '40.83',
+          price_incl_tax_excl_discounts: '49.00',
+          price_excl_tax_excl_discounts: '40.83',
+        },
+      ],
+      total_tax: '9.17',
+      shipping_incl_tax: '6.00',
+      shipping_excl_tax: '5.00',
+    };
+    const { engine: listed } = makeEngine({ fetch: fakeApi({ getOrder: () => json(vat) }).fetch });
+    await listed.start();
+    listed.order = listed.attach((ctx) => createOrder(ctx, listed.cart));
+    await listed.order.load('R1');
+    const [, track] = rudderStackCalls(event('checkout_completed', publicOrder(vat)), listed, OPTIONS);
+    expect(track && 'properties' in track && track.properties).toMatchObject({
+      subtotal: 40.83,
+      shipping: 5,
+      tax: 9.17,
+      total: 55,
+      products: [expect.objectContaining({ price: 40.83 })],
     });
   });
 

@@ -56,14 +56,22 @@ describe('metaEvent', () => {
       name: 'Purchase',
       params: {
         content_ids: ['EB-2'],
-        contents: [{ id: 'EB-2', quantity: 2, item_price: 48.06 }],
+        contents: [{ id: 'EB-2', quantity: 2, item_price: 44.5 }],
         content_type: 'product',
         content_name: 'Earbuds',
-        value: 96.12,
+        value: 89,
         currency: 'USD',
       },
       event_id: '1001',
     });
+  });
+
+  it('sends an order line before tax', () => {
+    const order = EXAMPLES.checkout_completed.data as { lines: object[] };
+    const params = metaEvent(
+      event('checkout_completed', { ...order, lines: [{ ...order.lines[0], tax: 6.12 }] }),
+    )?.params;
+    expect(params).toMatchObject({ contents: [{ id: 'EB-2', quantity: 2, item_price: 45 }], value: 90 });
   });
 
   it('ids the order Purchase as the store does when a store name is set', () => {

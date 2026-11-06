@@ -3,6 +3,7 @@ import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/ev
 import type { CartItem } from '../engine/events/carts';
 import type { OrderItem } from '../engine/events/orders';
 import { addDollars } from '../engine/format';
+import { untaxed } from '../engine/order';
 
 /** One product of a Meta event's `contents`. */
 export interface MetaContent {
@@ -111,9 +112,9 @@ const linesOf = (e: TrackingEvent): Line[] => {
     case 'checkout_payment_info_submitted':
       return e.data.cart.lines;
     case 'checkout_completed':
-      return e.data.lines.filter((l) => !l.upsell);
+      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
     case 'upsell_completed':
-      return [e.data.upsell.line];
+      return [untaxed(e.data.upsell.line)];
     default:
       return [];
   }

@@ -88,12 +88,23 @@ describe('ga4Event', () => {
       name: 'purchase',
       params: {
         currency: 'USD',
-        value: 96.12,
-        items: [{ item_id: 'EB-2', item_name: 'Earbuds', price: 48.06, discount: 50.94, quantity: 2, index: 0 }],
+        value: 89,
+        items: [{ item_id: 'EB-2', item_name: 'Earbuds', price: 44.5, discount: 47.17, quantity: 2, index: 0 }],
         transaction_id: '1001',
         shipping: 9.99,
         tax: 7.12,
       },
+    });
+  });
+
+  it('sends an order line and shipping before tax', () => {
+    const order = EXAMPLES.checkout_completed.data as { lines: object[] };
+    const taxed = { ...order.lines[0], tax: 6.12 };
+    const data = { ...order, lines: [taxed], shipping_method: { name: 'Express', price: 9.99, tax: 0.99 } };
+    expect(ga4Event(event('checkout_completed', data))?.params).toMatchObject({
+      value: 90,
+      items: [{ item_id: 'EB-2', price: 45, discount: 47.7, quantity: 2 }],
+      shipping: 9,
     });
   });
 

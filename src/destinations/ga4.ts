@@ -3,6 +3,7 @@ import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/ev
 import type { CartItem } from '../engine/events/carts';
 import type { OrderItem } from '../engine/events/orders';
 import { addDollars } from '../engine/format';
+import { untaxed } from '../engine/order';
 
 /**
  * One product of a GA4 event's `items`.
@@ -163,9 +164,9 @@ const linesOf = (e: TrackingEvent): Line[] => {
     case 'checkout_payment_info_submitted':
       return e.data.cart.lines;
     case 'checkout_completed':
-      return e.data.lines.filter((l) => !l.upsell);
+      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
     case 'upsell_completed':
-      return [e.data.upsell.line];
+      return [untaxed(e.data.upsell.line)];
     default:
       return [];
   }
@@ -228,12 +229,13 @@ export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
     }
     case 'checkout_completed': {
       const base = ecommerce(e);
+      const method = e.data.shipping_method;
       const params = defined({
         ...base,
         transaction_id: e.event_id,
         value: base.value ?? 0,
         currency: base.currency ?? 'USD',
-        shipping: e.data.shipping_method?.price,
+        shipping: method?.price === undefined ? undefined : addDollars([method.price, -(method.tax ?? 0)]),
         tax: e.data.tax,
       });
       return { name: 'purchase', params };

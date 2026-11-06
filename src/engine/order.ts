@@ -35,7 +35,21 @@ function item(raw: ApiOrderLine): OrderItem {
     price: amount(total / units),
     original_price: amount(before / units),
     total,
+    tax: amount(total - amount(raw.price_excl_tax)),
     upsell: !!raw.is_upsell,
+  };
+}
+
+type Priced = { price?: number; original_price?: number; total?: number; tax?: number };
+
+/** A line's unit prices before tax, for analytics: each `× (total − tax) ÷ total`. A cart line has no tax. */
+export function untaxed<L extends Priced>(line: L): L {
+  if (!line.tax || !line.total) return line;
+  const net = (line.total - line.tax) / line.total;
+  return {
+    ...line,
+    ...(line.price !== undefined && { price: amount(line.price * net) }),
+    ...(line.original_price !== undefined && { original_price: amount(line.original_price * net) }),
   };
 }
 
@@ -77,6 +91,10 @@ export function publicOrder(raw: ApiOrder, coupons: string[] = []): Order {
       shipping_method: {
         ...(raw.shipping_method && { name: raw.shipping_method }),
         ...(raw.shipping_incl_tax !== undefined && { price: amount(raw.shipping_incl_tax) }),
+        ...(raw.shipping_incl_tax !== undefined &&
+          raw.shipping_excl_tax !== undefined && {
+            tax: amount(amount(raw.shipping_incl_tax) - amount(raw.shipping_excl_tax)),
+          }),
       },
     }),
     tax: amount(raw.total_tax),

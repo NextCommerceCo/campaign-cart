@@ -518,7 +518,7 @@ describe('analytics', () => {
     expect(await run()).toEqual(['dl_user_data']);
   });
 
-  it('prices a VAT-inclusive order the way its packages are listed', async () => {
+  it('prices a VAT-inclusive order before tax, even when its line matches a package listed with tax', async () => {
     const vat = {
       ...ORDER,
       lines: [
@@ -542,7 +542,7 @@ describe('analytics', () => {
     await engine.order.load('R9');
     startAnalytics(engine, options);
     const purchase = win.NextDataLayer!.find((e) => e.event === 'dl_purchase')!;
-    expect(purchase.ecommerce).toMatchObject({ value: 49, shipping: 6, items: [{ price: 49 }] });
+    expect(purchase.ecommerce).toMatchObject({ value: 40.83, shipping: 5, items: [{ price: 40.83 }] });
   });
 
   it('keeps addresses out of events, even in the landing page and referrer', async () => {
