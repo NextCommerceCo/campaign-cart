@@ -3,13 +3,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { bindAll } from '../../src/bindings';
 import { bindSlots } from '../../src/bindings/slots';
 import { fakeApi, heldApi, json } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
+import type { Package } from '../../src/engine/types';
 
-async function mount(fetch?: typeof globalThis.fetch) {
+async function mount(fetch?: typeof globalThis.fetch, packages?: Package[]) {
   const file = 'tests/fixtures/pages/olympus-multi-variant/checkout.html';
   const doc = new DOMParser().parseFromString(readFileSync(file, 'utf8'), 'text/html');
   document.body.innerHTML = doc.body.innerHTML;
-  const { engine } = makeEngine({ fetch });
+  const { engine } = makeEngine({ fetch, ...(packages && { campaign: Promise.resolve({ ...campaign, packages }) }) });
   await engine.start();
   bindAll(document, engine, () => {});
   bindSlots(engine);
@@ -135,6 +137,38 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     await flush();
     expect(price(1)).toContain('20.00');
     expect(price(1)).toContain('Save 70% OFF');
+  });
+
+  it('redraws only the variant field whose available options changed, so page dropdowns built from it follow', async () => {
+    const sized = (size: string) => (p: Package) => ({
+      ...p,
+      product_variant_attribute_values: [
+        { code: 'size', name: 'Size', value: size },
+        ...(p.product_variant_attribute_values ?? []),
+      ],
+    });
+    const black = { ...campaign.packages.find((p) => p.ref_id === 1)!, ref_id: 3 };
+    const packages = [
+      ...campaign.packages
+        .filter((p) => p.ref_id !== 3)
+        .map((p) => (p.ref_id === 1 || p.ref_id === 2 ? sized('S')(p) : p)),
+      sized('M')(black),
+    ];
+    const { slots, change } = await mount(undefined, packages);
+    const field = (code: string) =>
+      slots()[0]!.querySelector<HTMLElement>(`.next-slot-variant-field[data-next-variant-code="${code}"]`)!;
+    const medium = () => [...field('size').querySelector('select')!.options].find((o) => o.value === 'M')!;
+    expect(medium().disabled).toBe(false);
+    const sizeField = field('size');
+    const colorField = field('color');
+    colorField.querySelector('select')!.focus();
+    await change(colorField.querySelector('select')!, 'White');
+    expect(document.activeElement).toBe(colorField.querySelector('select'));
+    expect(medium().disabled).toBe(true);
+    expect(field('size')).not.toBe(sizeField);
+    expect(field('color')).toBe(colorField);
+    await change(colorField.querySelector('select')!, 'Black');
+    expect(medium().disabled).toBe(false);
   });
 
   it('updates a unit in place when its variant changes, keeping its image, selects and focus', async () => {

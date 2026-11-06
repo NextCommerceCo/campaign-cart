@@ -63,7 +63,12 @@ function discounts(engine: Engine, packageId: number, kind: string, pending: boo
   return (line?.discounts ?? []).filter((d) => pool.has(d.offer_id));
 }
 
-/** Draws a unit's variant selects, or only moves their picks when the same choices are already drawn. */
+const drawnOptions = new WeakMap<Element, string>();
+
+/**
+ * Draws a unit's variant selects. A field whose options and availability are unchanged is kept and only
+ * moves its pick; any other field is drawn anew, so page scripts that wrap a select draw theirs again.
+ */
 function variantSelects(
   engine: Engine,
   host: Element,
@@ -71,47 +76,41 @@ function variantSelects(
   choose: (code: string, value: string) => void,
 ): void {
   const choices = variantChoices(engine.getState().campaign?.packages ?? [], slot.packageId);
-  const drawn = [...host.querySelectorAll<HTMLSelectElement>('select[data-next-variant-code]')];
-  const same =
-    drawn.length === choices.length &&
-    choices.every(
-      (c, i) =>
-        drawn[i]!.dataset.nextVariantCode === c.code &&
-        drawn[i]!.options.length === c.options.length &&
-        c.options.every((o, j) => drawn[i]!.options[j]!.value === o.value),
-    );
-  if (same) {
-    choices.forEach((c, i) => {
-      c.options.forEach((o, j) => {
-        const option = drawn[i]!.options[j]!;
-        option.disabled = !o.packageId;
-        if (option.selected !== (o.value === c.value)) option.selected = o.value === c.value;
-      });
-    });
-    return;
-  }
   if (!choices.length) return;
-  const fields = choices.map(({ code, name, value, options }) => {
+  const drawn = [...host.querySelectorAll<HTMLElement>(':scope > [data-next-variant-code]')];
+  if (!drawn.length) host.replaceChildren();
+  for (const { code, name, value, options } of choices) {
+    const key = JSON.stringify(options.map((o) => [o.value, !!o.packageId]));
+    const kept = drawn.find((f) => f.dataset.nextVariantCode === code && drawnOptions.get(f) === key);
+    const select = kept?.querySelector('select');
+    if (kept && select) {
+      for (const option of select.options)
+        if (option.selected !== (option.value === value)) option.selected = option.value === value;
+      continue;
+    }
     const field = Object.assign(document.createElement('div'), { className: 'next-slot-variant-field' });
     Object.assign(field.dataset, { nextVariantCode: code, nextVariantName: name });
+    drawnOptions.set(field, key);
     const label = Object.assign(document.createElement('label'), {
       className: 'next-slot-variant-label',
       textContent: `Select ${name}:`,
     });
-    const select = Object.assign(document.createElement('select'), { className: 'next-slot-variant-select' });
-    select.dataset.nextVariantCode = code;
+    const created = Object.assign(document.createElement('select'), { className: 'next-slot-variant-select' });
+    created.dataset.nextVariantCode = code;
     for (const option of options) {
       const el = Object.assign(document.createElement('option'), { value: option.value, textContent: option.value });
       el.selected = option.value === value;
       el.disabled = !option.packageId;
-      select.append(el);
+      created.append(el);
     }
-    select.addEventListener('change', () => choose(code, select.value));
+    created.addEventListener('change', () => choose(code, created.value));
     if (!host.hasAttribute('next-render-no-label')) field.append(label);
-    field.append(select);
-    return field;
-  });
-  host.replaceChildren(...fields);
+    field.append(created);
+    const old = drawn.find((f) => f.dataset.nextVariantCode === code);
+    if (old) old.replaceWith(field);
+    else host.append(field);
+  }
+  for (const f of drawn) if (!choices.some((c) => c.code === f.dataset.nextVariantCode)) f.remove();
 }
 
 function renderStage(
