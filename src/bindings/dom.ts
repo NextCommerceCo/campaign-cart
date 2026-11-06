@@ -144,3 +144,40 @@ export function stamp<T>(
   container.classList.toggle('next-discounts-empty', !items.length);
   container.classList.toggle('next-discounts-has-items', items.length > 0);
 }
+
+const SLOT_TOKEN = /\{((?:slot|item)\.\w+)\}/g;
+
+/** Binds every `{slot.*}` / `{item.*}` token in `root` once; the returned patch rewrites only what changed. */
+export function bindTokens(root: ParentNode): (values: Tokens) => void {
+  const writes: Array<(values: Tokens) => void> = [];
+  const filled = (raw: string, values: Tokens) => raw.replace(SLOT_TOKEN, (t, key: string) => values[key] ?? t);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node as Text;
+      const raw = text.data;
+      if (raw.match(SLOT_TOKEN))
+        writes.push((v) => {
+          const next = filled(raw, v);
+          if (text.data !== next) text.data = next;
+        });
+      continue;
+    }
+    const el = node as Element;
+    for (const { name, value: raw } of [...el.attributes]) {
+      if (raw.match(SLOT_TOKEN))
+        writes.push((v) => {
+          const next = filled(raw, v);
+          if (el.getAttribute(name) !== next) el.setAttribute(name, next);
+        });
+    }
+  }
+  const toggles = (['data-next-show', 'data-next-hide'] as const).flatMap((attr) =>
+    [...root.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)].map((node) => {
+      const key = node.getAttribute(attr)!;
+      node.removeAttribute(attr);
+      return (v: Tokens) => setVisible(node, (v[key] === 'show') === (attr === 'data-next-show'));
+    }),
+  );
+  return (values) => [...writes, ...toggles].forEach((write) => write(values));
+}

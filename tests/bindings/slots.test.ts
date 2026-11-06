@@ -137,16 +137,22 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     expect(price(1)).toContain('Save 70% OFF');
   });
 
-  it('keeps focus on the variant select the shopper is using', async () => {
+  it('updates a unit in place when its variant changes, keeping its image, selects and focus', async () => {
     const { $, slots, change } = await mount();
     $('[data-next-bundle-id="buy2"]').click();
     await flush();
-    const select = slots()[1]!.querySelector<HTMLSelectElement>('select[data-next-variant-code="color"]')!;
+    const slot = slots()[1]!;
+    const img = slot.querySelector('img')!;
+    const select = slot.querySelector<HTMLSelectElement>('select[data-next-variant-code="color"]')!;
     select.focus();
     await change(select, 'White');
-    const now = document.activeElement as HTMLSelectElement;
-    expect(now).not.toBe(select);
-    expect(now.getAttribute('data-next-variant-code')).toBe('color');
-    expect(now.closest('.next-bundle-slot')).toBe(slots()[1]);
+    expect(slots()[1]).toBe(slot);
+    expect(slot.querySelector('img')).toBe(img);
+    expect(img.getAttribute('src')).toBe('https://cdn.test/2.png');
+    expect(slot.querySelector('select[data-next-variant-code="color"]')).toBe(select);
+    expect(select.value).toBe('White');
+    expect(document.activeElement).toBe(select);
+    await change(select, 'Black');
+    expect(img.getAttribute('src')).toBe('https://cdn.test/1.png');
   });
 });

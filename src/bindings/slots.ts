@@ -5,7 +5,7 @@ import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } 
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf } from '../engine/format';
 import { cardQuote } from '../engine/values';
-import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './dom';
+import { applyValues, bindTokens, ownProperties, pageProperties, selectorIdOf } from './dom';
 
 const escape = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -63,8 +63,33 @@ function discounts(engine: Engine, packageId: number, kind: string, pending: boo
   return (line?.discounts ?? []).filter((d) => pool.has(d.offer_id));
 }
 
-function variantSelects(engine: Engine, host: Element, slot: Slot, choose: (packageId: number) => void): void {
+/** Draws a unit's variant selects, or only moves their picks when the same choices are already drawn. */
+function variantSelects(
+  engine: Engine,
+  host: Element,
+  slot: Slot,
+  choose: (code: string, value: string) => void,
+): void {
   const choices = variantChoices(engine.getState().campaign?.packages ?? [], slot.packageId);
+  const drawn = [...host.querySelectorAll<HTMLSelectElement>('select[data-next-variant-code]')];
+  const same =
+    drawn.length === choices.length &&
+    choices.every(
+      (c, i) =>
+        drawn[i]!.dataset.nextVariantCode === c.code &&
+        drawn[i]!.options.length === c.options.length &&
+        c.options.every((o, j) => drawn[i]!.options[j]!.value === o.value),
+    );
+  if (same) {
+    choices.forEach((c, i) => {
+      c.options.forEach((o, j) => {
+        const option = drawn[i]!.options[j]!;
+        option.disabled = !o.packageId;
+        if (option.selected !== (o.value === c.value)) option.selected = o.value === c.value;
+      });
+    });
+    return;
+  }
   if (!choices.length) return;
   const fields = choices.map(({ code, name, value, options }) => {
     const field = Object.assign(document.createElement('div'), { className: 'next-slot-variant-field' });
@@ -81,10 +106,7 @@ function variantSelects(engine: Engine, host: Element, slot: Slot, choose: (pack
       el.disabled = !option.packageId;
       select.append(el);
     }
-    select.addEventListener('change', () => {
-      const packageId = options.find((o) => o.value === select.value)?.packageId;
-      if (packageId) choose(packageId);
-    });
+    select.addEventListener('change', () => choose(code, select.value));
     if (!host.hasAttribute('next-render-no-label')) field.append(label);
     field.append(select);
     return field;
@@ -105,6 +127,8 @@ function renderStage(
     slot: Slot;
     values: Values;
     prices: Values;
+    patch: (values: Values) => void;
+    variants: () => void;
     boxes: Array<{ box: HTMLElement; tpl: string; html: string }>;
   }> = [];
 
@@ -156,32 +180,37 @@ function renderStage(
     slot: Slot,
     index: number,
     { values, prices }: ReturnType<typeof valuesOf>,
-    old?: (typeof rendered)[number],
   ): (typeof rendered)[number] => {
     const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
     Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
-    el.innerHTML = fill(template, values);
-    for (const attr of ['data-next-show', 'data-next-hide'] as const) {
-      for (const node of el.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)) {
-        const on = values[node.getAttribute(attr)!] === 'show';
-        setVisible(node, attr === 'data-next-show' ? on : !on);
-        node.removeAttribute(attr);
-      }
-    }
-    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box, i) => ({
+    const inert = document.createElement('template');
+    inert.innerHTML = template;
+    const patch = bindTokens(inert.content);
+    patch(values);
+    el.append(inert.content);
+    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box) => ({
       box,
       tpl: box.querySelector('template')?.innerHTML ?? '',
-      html: old?.boxes[i]?.html ?? '',
+      html: '',
     }));
-    for (const host of el.querySelectorAll('[data-next-variant-selectors]')) {
-      variantSelects(engine, host, slot, (packageId) => void apply(card, index, { packageId }));
-    }
+    const entry = { el, slot, values, prices, patch, boxes, variants: () => {} };
+    const choose = (code: string, value: string) => {
+      const choice = variantChoices(engine.getState().campaign?.packages ?? [], entry.slot.packageId).find(
+        (c) => c.code === code,
+      );
+      const packageId = choice?.options.find((o) => o.value === value)?.packageId;
+      if (packageId) void apply(card, index, { packageId });
+    };
+    entry.variants = () => {
+      for (const host of el.querySelectorAll('[data-next-variant-selectors]'))
+        variantSelects(engine, host, entry.slot, choose);
+    };
+    entry.variants();
     for (const input of el.querySelectorAll<HTMLInputElement>('[data-next-property]')) {
       const name = input.getAttribute('data-next-property')!;
       input.value = slot.properties?.[name] ?? '';
       input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
     }
-    const entry = { el, slot, values, prices, boxes };
     refresh(entry);
     return entry;
   };
@@ -210,21 +239,17 @@ function renderStage(
       return;
     }
     slots.forEach((slot, i) => {
-      const old = rendered[i];
-      if (!old) return;
-      const next = valuesOf(selector, card, slot, i, old.prices);
-      if (old.slot.packageId === slot.packageId && JSON.stringify(old.values) === JSON.stringify(next.values)) {
-        old.slot = slot;
-        return refresh(old);
+      const entry = rendered[i];
+      if (!entry) return;
+      const { values, prices } = valuesOf(selector, card, slot, i, entry.prices);
+      const moved = entry.slot.packageId !== slot.packageId;
+      Object.assign(entry, { slot, prices });
+      if (JSON.stringify(entry.values) !== JSON.stringify(values)) {
+        entry.values = values;
+        entry.patch(values);
       }
-      const code =
-        (document.activeElement as HTMLElement | null)?.closest('.next-bundle-slot') === old.el
-          ? (document.activeElement as HTMLElement).getAttribute('data-next-variant-code')
-          : null;
-      const entry = renderSlot(card, slot, i, next, old);
-      old.el.replaceWith(entry.el);
-      rendered[i] = entry;
-      if (code) entry.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();
+      if (moved) entry.variants();
+      refresh(entry);
     });
   };
 }
