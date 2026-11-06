@@ -12,6 +12,7 @@ const LAZY: Record<string, string[]> = {
   'bindings/cart-summary': [],
   'compat/exit-intent': [],
   'compat/widgets': [],
+  'compat/i18n': [],
   'compat/legacy/index': [],
   'compat/legacy/events': ['compat/legacy/index'],
   'compat/legacy/payloads': ['compat/legacy/index', 'compat/legacy/events'],

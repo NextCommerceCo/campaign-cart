@@ -202,6 +202,7 @@ src/
                                    nextReady; globals.ts: nextConfig.analytics, the old SDK's stored personal data
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
     widgets.ts         widgets     deprecated page widgets 0.4.x pages rely on: accordion, tooltip, scroll hint, countdown
+    i18n.ts            i18n        data-next-i18n: a key's text from nextConfig.translations, then i18n-rules' /v1/locales
     checkout.ts        checkout    page field names, os-* names, old config (express checks), step guard,
                                    the 0.4.x Open Cart DOM event, the checkout's 0.4.x event names
     order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
@@ -228,6 +229,7 @@ src/
 | query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
+| i18n         | `[data-next-i18n]`                                                                          | 1.5 KB        |
 | legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
@@ -251,7 +253,7 @@ src/
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
-`compat/exit-intent.ts`, `compat/widgets.ts`, `compat/legacy/index.ts` (with the `events.ts` and
+`compat/exit-intent.ts`, `compat/widgets.ts`, `compat/i18n.ts`, `compat/legacy/index.ts` (with the `events.ts` and
 `payloads.ts` beside it), plus `compat/checkout.ts`, `compat/order.ts` and `compat/analytics/`,
 which only their own chunk may import statically.
 

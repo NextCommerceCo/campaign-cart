@@ -230,6 +230,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         events: legacy.widgets,
       }),
     );
+  const i18nChunk = document.querySelector('[data-next-i18n]') ? import('./compat/i18n') : undefined;
   const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
   const slotsChunk = slotsPage ? import('./bindings/slots') : undefined;
 
@@ -267,6 +268,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
+      i18nChunk?.then((m) => {
+        const language = engine.getState().campaign?.language;
+        void m.bindI18n(document, { send: window.fetch.bind(window), language, log: engine.log });
+      }),
       v2Page && bindV2(),
       bindings.ready,
     ].filter(Boolean);

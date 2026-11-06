@@ -52,6 +52,23 @@ describe('readConfig', () => {
 });
 
 describe('boot', () => {
+  it('translates data-next-i18n into the campaign’s language once the campaign loads (0.4.x)', async () => {
+    document.body.innerHTML = `<h2 data-next-i18n="checkout.contact.title">Contact</h2>`;
+    const api = fakeApi().fetch;
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) =>
+      String(url).endsWith('/v1/locales/de')
+        ? Promise.resolve(
+            new Response(JSON.stringify({ checkout: { contact: { title: 'Kontakt' } } }), {
+              headers: { 'content-language': 'de' },
+            }),
+          )
+        : api(url, init),
+    );
+    boot(config, Promise.resolve({ ...campaign, language: 'de' }));
+    await vi.waitFor(() => expect(document.querySelector('h2')!.textContent).toBe('Kontakt'));
+    expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true);
+  });
+
   it('starts a forced cart and announces itself the old and new ways', async () => {
     history.replaceState(null, '', '/lp/checkout?forcePackageId=2:1');
     document.body.innerHTML = `<span id="total" data-next-display="cart.total"></span>`;

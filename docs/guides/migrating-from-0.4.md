@@ -33,7 +33,6 @@ Every 0.4.43 attribute, method, event and config key is listed in
 | `next.addUpsell`, `canAddUpsells`, `getCompletedUpsells`, `isUpsellAlreadyAdded`                                      | Use the offer attributes (`data-next-upsell`, `data-next-upsell-action`)                                                                           |
 | Duplicate-upsell modal ("Already Added!")                                                                             | Nothing: an offer already accepted on that page moves on without charging again                                                                    |
 | `nextConfig.googleMaps` (Google address autocomplete)                                                                 | Nothing: no campaign had an API key set                                                                                                            |
-| `data-next-i18n`                                                                                                      | Nothing: pages keep their own words                                                                                                                |
 | Events `cart:package-swapped`, `order:redirect-missing`, `address:messages-loaded` (`next.on` warns)                  | Remove the listener                                                                                                                                |
 | Event `upsell:accepted`                                                                                               | Listen for `upsell:added`                                                                                                                          |
 | `dl_package_swapped`                                                                                                  | A bundle change now sends `dl_remove_from_cart` + `dl_add_to_cart`                                                                                 |
@@ -104,6 +103,12 @@ Still works. Use the right column on new pages.
 | `nextConfig.analytics.providers.rudderstack.enabled`                                               | `nextConfig.analytics.destinations.rudderstack.enabled` ([RudderStack](analytics-reference/destinations/rudderstack.md)): the same calls, event names and properties as 0.4.x. The 0.4.x key still turns it on                                                            |
 | `nextConfig.analytics.providers.custom`                                                            | A listener: `next.analytics.on('*', (event) => fetch(url, { method: 'POST', keepalive: true, body: JSON.stringify(event) }))` ([By hand](analytics-reference/destinations/overview.md#by-hand))                                                                           |
 | `data-next-timer`, `data-next-accordion`, `data-next-tooltip`, `data-next-component="scroll-hint"` | Your own script or CSS: `<details>` for an accordion, `title` or CSS for a tooltip                                                                                                                                                                                        |
+
+`data-next-i18n` still translates the text, `[placeholder]`, `[aria-label]`, `[title]` and `[alt]` by key, from
+`nextConfig.translations` and then the address service's texts, in a small chunk that loads only on pages that use it.
+The language is `nextConfig.locale`, else the campaign's language (0.4.x read English without `locale`).
+`nextConfig.locale` and `translations` reach only `data-next-i18n`: checkout messages come in the campaign's language,
+and prices are written in it.
 
 The page widgets (timer, accordion, tooltip, scroll hint) load in a small chunk only on pages that
 use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordion:*`,
