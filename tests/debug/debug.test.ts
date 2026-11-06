@@ -184,7 +184,7 @@ describe('debug tools', () => {
     expect(body()).toMatch(/\d+ events? sent on this page, newest first/);
     tab('logs');
     expect(body()).toContain('storage scope');
-    expect(body()).toMatch(/api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
+    expect(body()).toMatch(/apiPOST \/api\/v1\/carts\/calculate\/200\d+ ms/);
     tab('state');
     expect(details('cart').open).toBe(true);
     expect(details('cart').textContent).toContain('groups');
@@ -318,12 +318,20 @@ describe('debug tools', () => {
     await developer();
     menuItem('Logs').click();
     const filter = $<HTMLInputElement>('input');
+    const rows = () => [...shadow().querySelectorAll<HTMLElement>('.body > .lrow')];
+    const cells = (r: HTMLElement) =>
+      [...(r.matches('details') ? r.querySelector('summary')! : r).children].map((c) => c.textContent).slice(1);
+    const api = rows().find((r) => r.querySelector('.lsrc')!.textContent === 'api')!;
+    expect(cells(api)).toEqual(['api', 'POST /api/v1/carts/calculate/', expect.stringMatching(/^200\d+ ms$/)]);
+    expect(api.querySelector<HTMLElement>('.lpill')!.dataset.tone).toBe('ok');
+    const sent = rows().find((r) => r.querySelector('.lbody code')?.textContent === 'cart_updated')!;
+    expect(cells(sent).slice(0, 2)).toEqual(['analytics', 'cart_updatedsentAfter every price update']);
+    expect(body()).not.toContain('{');
     filter.value = 'unknown display';
     filter.dispatchEvent(new Event('input'));
-    expect(body()).toContain('unknown display path "cart.nope"');
-    expect(body()).not.toContain('api POST');
-    expect($('.body .row .ldot, .body summary .ldot').dataset.level).toBe('warn');
-    expect(body()).not.toContain('{');
+    expect(rows().map((r) => [r.dataset.level, r.querySelector('.lsrc')!.textContent, r.title])).toEqual([
+      ['warn', 'sdk', 'unknown display path "cart.nope"'],
+    ]);
     filter.value = '';
     filter.dispatchEvent(new Event('input'));
     const chip = (label: string) =>
@@ -332,15 +340,12 @@ describe('debug tools', () => {
       )!;
     chip('Warnings').click();
     expect(chip('Warnings').getAttribute('aria-pressed')).toBe('true');
-    expect(
-      new Set(
-        [...shadow().querySelectorAll<HTMLElement>('.body > .row .ldot, .body > details > summary .ldot')].map(
-          (d) => d.dataset.level,
-        ),
-      ),
-    ).toEqual(new Set(['warn']));
+    expect(new Set(rows().map((r) => r.dataset.level))).toEqual(new Set(['warn']));
+    chip('Warnings').click();
+    chip('api').click();
+    expect(new Set(rows().map((r) => r.querySelector('.lsrc')!.textContent))).toEqual(new Set(['api']));
     chip('All').click();
-    expect(body()).toContain('api POST');
+    expect(new Set(rows().map((r) => r.querySelector('.lsrc')!.textContent))).toContain('analytics');
   });
 
   it('counts issues on the button and lists each once, with the element behind it', async () => {

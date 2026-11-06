@@ -2,71 +2,125 @@ import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
 import { button, type Child, empty, expandable, h, plural, stamp, tree } from './view';
 
-type Level = LogEntry['level'];
-
-const LEVELS: Array<[Level, string]> = [
-  ['error', 'Errors'],
-  ['warn', 'Warnings'],
-  ['info', 'Info'],
-  ['debug', 'Debug'],
-];
 const KEEP = 150;
+const API = /^api (\S+) (\S+) (?:→ (\d+) in (\d+) ms|(failed))$/;
+const ANALYTICS = /^analytics (\S+) (sent|not sent): (.*)$/s;
+const DESTINATION = /^destination (ga4|meta|rudderstack) (.+) sent$/;
+const PLATFORM: Record<string, string> = { ga4: 'GA4', meta: 'Meta', rudderstack: 'RudderStack' };
+const WARN = 'Warnings';
 
-const dot = (level: Level) => {
-  const el = h('span', { className: 'ldot', title: level });
-  el.dataset.level = level;
-  el.setAttribute('role', 'img');
-  el.setAttribute('aria-label', level);
+type Line = { source: string; body: Child[]; meta: Child[] };
+
+const pill = (text: string, tone: string) => {
+  const el = h('span', 'lpill', text);
+  el.dataset.tone = tone;
   return el;
 };
 
+/** A log line in columns: where it comes from, what it says, and its outcome. */
+const parse = (e: LogEntry): Line => {
+  const api = API.exec(e.message);
+  if (api) {
+    const [, method, path, status, ms, failed] = api;
+    return {
+      source: 'api',
+      body: [h('code', {}, `${method} ${path}`)],
+      meta: failed
+        ? [pill('failed', 'bad')]
+        : [pill(status!, Number(status) < 400 ? 'ok' : 'bad'), h('span', 'lms', `${ms} ms`)],
+    };
+  }
+  const analytics = ANALYTICS.exec(e.message);
+  if (analytics) {
+    const [, name, sent, reason] = analytics;
+    return {
+      source: 'analytics',
+      body: [h('code', {}, name), pill(sent!, sent === 'sent' ? 'ok' : 'off'), h('span', 'dim', reason)],
+      meta: [],
+    };
+  }
+  const destination = DESTINATION.exec(e.message);
+  if (destination)
+    return { source: PLATFORM[destination[1]!]!, body: [h('code', {}, destination[2]), pill('sent', 'ok')], meta: [] };
+  return { source: 'sdk', body: [h('span', {}, e.message)], meta: [] };
+};
+
 export function logsView(engine: Engine, open: Set<string>, idOf: (o: object) => number, render: () => void) {
-  const levels = new Set<Level>();
+  const picked = new Set<string>();
 
   const row = (e: LogEntry) => {
-    const label = [stamp(e.at), dot(e.level), h('span', e.level === 'debug' ? 'dim' : '', e.message)];
-    if (e.data === undefined) return h('div', 'row lrow', ...label);
+    const line = parse(e);
+    const tag = h('span', 'lsrc', line.source);
+    tag.dataset.source = line.source;
+    const cells = [stamp(e.at), tag, h('span', 'lbody', ...line.body), h('span', 'lmeta', ...line.meta)];
     const path = `l${idOf(e)}`;
-    return expandable(
-      label,
-      path,
-      open,
-      () =>
-        e.data && typeof e.data === 'object' && !Array.isArray(e.data)
-          ? Object.entries(e.data).map(([k, v]) => tree(h('span', 'key', k), v, `${path}.${k}`, open))
-          : [tree(h('span', 'key', 'data'), e.data, `${path}.data`, open)],
-      'lrow',
-    );
+    const el =
+      e.data === undefined
+        ? h('div', 'lrow', ...cells)
+        : expandable(
+            cells,
+            path,
+            open,
+            () => [
+              h('p', 'lfull', e.message),
+              ...(e.data && typeof e.data === 'object' && !Array.isArray(e.data)
+                ? Object.entries(e.data).map(([k, v]) => tree(h('span', 'key', k), v, `${path}.${k}`, open))
+                : [tree(h('span', 'key', 'data'), e.data, `${path}.data`, open)]),
+            ],
+            'lrow',
+          );
+    el.dataset.level = e.level;
+    el.title = e.message;
+    return el;
   };
 
-  const chip = (label: string, n: number, on: boolean, pick: () => void, level?: Level) => {
-    const el = button(`${label} ${n}`, () => (pick(), render()), { variant: 'outline', size: 'xs' });
-    if (level) el.prepend(dot(level));
-    el.setAttribute('aria-pressed', String(on));
+  const chip = (label: string, n: number, source?: string) => {
+    const el = button(
+      `${label} ${n}`,
+      () => {
+        if (label === 'All') picked.clear();
+        else if (!picked.delete(label)) picked.add(label);
+        render();
+      },
+      { variant: 'outline', size: 'xs' },
+    );
+    if (source) {
+      const dot = h('span', 'ldot');
+      dot.dataset.source = source;
+      el.prepend(dot);
+    }
+    el.setAttribute('aria-pressed', String(label === 'All' ? !picked.size : picked.has(label)));
     return el;
   };
 
   const view = (query: string): Child[] => {
     const entries = engine.log.entries();
     if (!entries.length) return [empty('Nothing logged yet', 'Each SDK log line shows here as it is written.')];
-    const count = (level: Level) => entries.filter((e) => e.level === level).length;
-    const shown = entries
-      .filter((e) => (!levels.size || levels.has(e.level)) && e.message.toLowerCase().includes(query))
+    const lines = entries.map((e) => ({ e, source: parse(e).source, warn: e.level === 'warn' || e.level === 'error' }));
+    const counts = lines.reduce<Record<string, number>>(
+      (n, { source }) => ({ ...n, [source]: (n[source] ?? 0) + 1 }),
+      {},
+    );
+    const warnings = lines.filter((l) => l.warn).length;
+    const shown = lines
+      .filter(
+        ({ e, source, warn }) =>
+          (!picked.size || picked.has(source) || (warn && picked.has(WARN))) && e.message.toLowerCase().includes(query),
+      )
       .slice(-KEEP)
       .reverse();
     return [
       h(
         'div',
         'echips',
-        chip('All', entries.length, !levels.size, () => levels.clear()),
-        ...LEVELS.filter(([level]) => count(level)).map(([level, label]) =>
-          chip(label, count(level), levels.has(level), () => void (levels.delete(level) || levels.add(level)), level),
-        ),
+        chip('All', entries.length),
+        ...Object.entries(counts).map(([source, n]) => chip(source, n, source)),
+        warnings > 0 && chip(WARN, warnings, 'warn'),
       ),
       shown.length
         ? h('div', 'summary', `${plural(entries.length, 'line')} logged on this page, newest first`)
         : empty('Nothing matches', 'No log line fits the filter.'),
-      ...shown.map(row),
+      ...shown.map(({ e }) => row(e)),
     ];
   };
 
