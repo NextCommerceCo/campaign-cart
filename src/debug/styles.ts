@@ -34,8 +34,6 @@ export const PANEL_CSS = `:host{all:initial;color-scheme:light;--purple:oklch(54
 .mtry .link{margin-left:10px}
 .mdot{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:var(--warning);vertical-align:1px}
 .geo{position:absolute;top:52px;right:8px;z-index:2;width:min(360px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:hidden auto;padding:12px;background:var(--background);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.22);transform-origin:top right}
-
-
 .mnote{padding:8px 12px 10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted-foreground)}
 .mnote.red{color:var(--destructive)}
 .danger{color:var(--destructive)}
@@ -43,13 +41,11 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .red{color:var(--destructive)}.amber{color:var(--warning)}.green{color:var(--success)}.dim,.time{color:var(--muted-foreground)}
 .panel{flex-direction:column;width:min(640px,calc(100vw - 40px));height:min(640px,calc(100vh - 140px));container:panel/inline-size}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}
-.dmenu{position:absolute;top:44px;display:flex;flex-direction:column;max-width:280px;z-index:3;min-width:220px;border:1px solid var(--border);border-radius:10px;background:var(--background);box-shadow:0 12px 32px rgba(0,0,0,.24);transform-origin:top left}.dmenu[hidden]{display:none}.dmenu [aria-current=true]{background:var(--accent)}.dinfo{padding:8px 12px 10px;border-top:1px solid var(--border);font:11px/1.6 var(--font-mono);color:var(--muted-foreground);overflow-wrap:anywhere}
+.dmenu{position:absolute;top:44px;display:flex;flex-direction:column;max-width:280px;z-index:3;min-width:220px;border:1px solid var(--border);border-radius:10px;background:var(--background);box-shadow:0 12px 32px rgba(0,0,0,.24);transform-origin:top left}.dmenu[hidden]{display:none}.dmenu [aria-current=true]{background:var(--accent)}.dinfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:8px 12px 10px;border-top:1px solid var(--border);font-size:12px}.dinfo dt{color:var(--muted-foreground)}.dinfo dd{overflow:hidden;font:11px/1.6 var(--font-mono);text-align:right;white-space:nowrap;text-overflow:ellipsis}
 .lswitch{position:absolute;bottom:100%;right:0;display:flex;gap:6px;margin-bottom:8px}.root:not(.right) .lswitch{right:auto;left:0}
 .lpill{position:relative;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--background);box-shadow:0 6px 18px rgba(0,0,0,.2);font:600 12px var(--font-sans);color:var(--foreground);cursor:pointer}.lpill:hover{background:var(--accent)}.lpill[data-warn]{border-color:var(--warning)}.lpill>.icon{width:14px;height:14px;color:var(--muted-foreground)}.lpill>.icon:last-of-type{width:12px;height:12px}.lpill .mdot{margin:0}.lpill>select{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.lpill option{background:var(--background);color:var(--foreground)}.lpill:has(select:disabled){cursor:default;opacity:.7}
 .head .tabs{flex:1;min-width:0;margin-right:6px;overflow-x:auto;scrollbar-width:none}
 .head [role=tab]{padding-inline:6px}
-.dev [data-tab=elements]{position:relative;margin-inline-start:9px}
-.dev [data-tab=elements]::before{content:'';position:absolute;inset-block:5px;left:-6px;width:1px;background:var(--border)}
 .tabpick{display:none;flex:1;min-width:0;margin-right:6px}
 @container panel (max-width:560px){.head .tabs{display:none}.tabpick{display:block}}
 .head [role=tab] .badge{margin-left:2px}

@@ -231,7 +231,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       dev,
       issues: count,
       tone,
-      setup: `${info.apiBase.replace(/^https?:\/\//, '')} · funnel ${info.funnel || '—'} · storage ${info.scope}`,
+      setup: [
+        ['API', info.apiBase.replace(/^https?:\/\//, '')],
+        ['Funnel', info.funnel || '—'],
+        ['Storage', info.scope],
+      ],
     });
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));

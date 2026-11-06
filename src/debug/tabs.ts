@@ -38,7 +38,7 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
   const strip = tablist({ size: 'sm' });
   strip.append(...main, developer);
 
-  const info = h('p', 'dinfo');
+  const info = h('dl', 'dinfo');
   const tools = DEV.map((t) => {
     const el = item(ICONS[t]!, TABS[t], () => (close(), show(t)));
     el.dataset.tab = t;
@@ -77,7 +77,7 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
   );
   select.setAttribute('aria-label', 'Panel tab');
 
-  const paint = (now: { tab: Tab; dev: boolean; issues: number; tone: string; setup: string }) => {
+  const paint = (now: { tab: Tab; dev: boolean; issues: number; tone: string; setup: Array<[string, string]> }) => {
     const inDev = now.dev && DEV.includes(now.tab);
     for (const el of main) el.setAttribute('aria-selected', String(el.dataset.tab === now.tab));
     for (const el of tools) el.setAttribute('aria-current', String(el.dataset.tab === now.tab));
@@ -85,7 +85,7 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
     developer.setAttribute('aria-selected', String(inDev));
     developer.replaceChildren(inDev ? TABS[now.tab] : 'Developer', icon('chevron'));
     if (!now.dev) close();
-    info.textContent = now.setup;
+    info.replaceChildren(...now.setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)]));
     main
       .find((el) => el.dataset.tab === 'issues')!
       .replaceChildren(

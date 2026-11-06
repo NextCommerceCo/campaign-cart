@@ -162,7 +162,14 @@ describe('debug tools', () => {
       'Pick an element',
     ]);
     expect($('.dmenu [data-tab="logs"]').getAttribute('aria-current')).toBe('true');
-    expect($('.dinfo').textContent).toMatch(/^api\.test · funnel f1 · storage /);
+    expect(PANEL_CSS).not.toMatch(/\[data-tab=elements\]/);
+    expect(
+      [...shadow().querySelectorAll('.dinfo dt')].map((dt) => [dt.textContent, dt.nextElementSibling!.textContent]),
+    ).toEqual([
+      ['API', 'api.test'],
+      ['Funnel', 'f1'],
+      ['Storage', expect.any(String)],
+    ]);
     expect([...$<HTMLSelectElement>('select.tabpick').options].at(-1)!.textContent).toBe('Developer · Performance');
     $<HTMLButtonElement>('.dmenu [data-tab="state"]').click();
     expect([$('.dmenu').hidden, developerTab.textContent]).toEqual([true, 'State']);
