@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { fieldError, formatPostcode, formErrors, requiredFields, validEmail } from '../../../src/checkout/state/rules';
+import {
+  fieldError,
+  formatPostcode,
+  formErrors,
+  requiredFields,
+  validEmail,
+  withPageTexts,
+} from '../../../src/checkout/state/rules';
 import type { CheckoutState } from '../../../src/checkout/state/types';
 import { CA, GB, HK, SG, US } from '../../fixtures/rules';
 
@@ -116,5 +123,22 @@ describe('country rules', () => {
     expect(formatPostcode('๙๐๒๑๐', us)).toBe('90210');
     expect(formatPostcode('sw1a 1aa')).toBe('SW1A 1AA');
     expect(fieldError('postcode', '๙๐๒๑๐', true, US)).toBeUndefined();
+  });
+});
+
+describe('withPageTexts (0.4.x nextConfig.translations)', () => {
+  it('lays the page’s texts over a country’s rules, by label_id before the field’s name, filling {{example}}', () => {
+    const postcode = { ...US.fields.postcode!, label_id: 'fields.postcode.zip_code' };
+    const rules = { ...US, fields: { ...US.fields, postcode } };
+    const out = withPageTexts(rules, {
+      'fields.postcode.label': 'Postleitzahl',
+      'fields.postcode.zip_code.label': 'ZIP-Code',
+      'fields.postcode.errors.invalid': 'Ungültig, z. B. {{example}}',
+      'fields.state.errors.blank': 'Bundesstaat wählen',
+    });
+    expect(out.fields.postcode).toMatchObject({ label: 'ZIP-Code', errors: { invalid: 'Ungültig, z. B. 90210' } });
+    expect(out.fields.state!.errors).toEqual({ blank: 'Bundesstaat wählen', not_selected: 'Bundesstaat wählen' });
+    expect(out.fields.city).toMatchObject(US.fields.city!);
+    expect(withPageTexts(US, {})).toBe(US);
   });
 });

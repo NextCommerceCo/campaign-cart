@@ -6,6 +6,8 @@ import { redirectFor } from './state/place-order';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import type { Query } from '../engine/query';
+import { localeOf } from '../engine/format';
+import { I18N_RULES, serviceTexts, textsIn, type Texts } from '../engine/texts';
 import { bindAddress } from './address/country';
 import { bindAddressForms } from './address/block';
 import { bindAutocomplete } from './address/autocomplete';
@@ -34,9 +36,8 @@ import { errorBox, showBox, shown } from './form/errors';
 import { bindCard, bindPayment } from './payment/card';
 import { bindPhones } from './address/phone';
 import { bindReview } from './review';
-import { errorTexts, expressText, formText, label } from './form/texts';
+import { errorTexts, expressText, formText, label, useTexts } from './form/texts';
 
-const RULES = 'https://i18n-rules.nextcommerce.com';
 const SUBMIT = ['button[type="submit"]', 'input[type="submit"]', ...SUBMIT_ATTRS.map((a) => `[${a}]`)].join(', ');
 
 const meta = (...names: string[]) =>
@@ -99,14 +100,20 @@ interface BindOptions {
   legacyCheckoutStarted?: LegacyCheckoutStarted;
   /** Where `checkout.errors` gets the texts the page shows. */
   query?: Query;
+  /** The page's own texts by language (0.4.x `nextConfig.translations`), read before i18n-rules' and the English. */
+  translations?: Readonly<Record<string, Texts>>;
 }
 
 export function bindCheckout(
   engine: Engine,
   form: HTMLFormElement,
-  { navigate = (url) => location.assign(url), legacyCheckoutStarted, query }: BindOptions = {},
+  { navigate = (url) => location.assign(url), legacyCheckoutStarted, query, translations = {} }: BindOptions = {},
 ): CheckoutActions {
-  const rules = new RulesApi(window.fetch.bind(window), RULES, engine.getState().campaign?.language || 'en');
+  const lang = localeOf(engine.getState()) || 'en';
+  const own = textsIn(translations, lang);
+  const send = window.fetch.bind(window);
+  useTexts(own, serviceTexts(send, lang));
+  const rules = new RulesApi(send, I18N_RULES, lang, own);
   const lead = leadOf(engine, form);
   const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
   const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
@@ -129,7 +136,7 @@ export function bindCheckout(
   const labels = bindLabels(form);
   autocomplete();
   const card = bindCard(engine, checkout, form);
-  const phones = bindPhones(engine, checkout, form, fields, RULES);
+  const phones = bindPhones(engine, checkout, form, fields, I18N_RULES);
   const address = bindAddress(engine, form, fields);
   const stepUrl = (middleStep && go) || stepUrlOf(form);
   const page = location.pathname;

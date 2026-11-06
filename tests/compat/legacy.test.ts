@@ -820,6 +820,23 @@ describe('coupons (0.4.x)', () => {
     );
     expect(next.getState().cart.coupons).toEqual([]);
   });
+
+  it('words the refusal with the page’s translations in nextConfig.locale', async () => {
+    (window as { nextConfig?: unknown }).nextConfig = {
+      locale: 'th',
+      translations: { th: { coupon: { errors: { invalid: 'คูปอง {{code}} ใช้กับคำสั่งซื้อนี้ไม่ได้' } } } },
+    };
+    try {
+      const next = boot(config, Promise.resolve(campaign));
+      await flush();
+      await next.addItem({ packageId: 1 });
+      const failed = heard(next, 'coupon:validation-failed');
+      await next.applyCoupon('nope');
+      expect(failed).toEqual([{ code: 'NOPE', message: 'คูปอง NOPE ใช้กับคำสั่งซื้อนี้ไม่ได้' }]);
+    } finally {
+      delete (window as { nextConfig?: unknown }).nextConfig;
+    }
+  });
 });
 
 describe('exitIntent', () => {

@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { format } from '../engine/format';
+import { format, localeOf } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { badge, button, h, iconButton, plural, tab, tablist, tsugi } from './view';
@@ -75,7 +75,7 @@ export function productPicker(engine: Engine) {
   };
   const money = (amount: number | string | undefined) => {
     const { campaign } = engine.getState();
-    return format({ type: 'money', value: Number(amount) }, campaign?.currency, campaign?.language);
+    return format({ type: 'money', value: Number(amount) }, campaign?.currency, localeOf(engine.getState()));
   };
   const shown = () => {
     const inCart = quantities();

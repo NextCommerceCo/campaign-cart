@@ -1,6 +1,6 @@
 import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import { format } from '../engine/format';
+import { format, localeOf } from '../engine/format';
 import { resolve } from '../engine/values';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
@@ -157,11 +157,11 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   root.append(cart.dialog);
   const logs = logsView(engine, open, idOf);
   const cartText = () => {
-    const { campaign } = engine.getState();
+    const state = engine.getState();
     const units = Number(resolve(engine, 'cart.quantity')?.value ?? 0);
     const total = resolve(engine, 'cart.total');
     if (!units) return 'Empty';
-    const price = total?.value === undefined ? '' : ` · ${format(total, campaign?.currency, campaign?.language)}`;
+    const price = total?.value === undefined ? '' : ` · ${format(total, state.campaign?.currency, localeOf(state))}`;
     return `${plural(units, 'item')}${price}`;
   };
   const item = (label: string, value: Child, onclick?: () => void, className = '') => {

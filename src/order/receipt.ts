@@ -50,7 +50,7 @@ export function bindReceipt(engine: Engine): Array<() => void> {
     let shown = '';
     return () => {
       const { order: state, campaign } = engine.getState();
-      const money = (c: number) => formatCents(c, campaign);
+      const money = (c: number) => formatCents(c, engine.getState());
       const lines = state?.order?.lines ?? [];
       const status =
         state?.status === 'loading'

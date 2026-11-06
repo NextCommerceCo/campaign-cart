@@ -1,3 +1,4 @@
+import { localeOf } from '../engine/format';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
@@ -130,7 +131,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
               : kind === 'voucher'
                 ? quote.voucher_discounts
                 : [...quote.offer_discounts, ...quote.voucher_discounts];
-          stamp(box, list, (d) => discountTokens(d, quote?.currency, campaign?.language));
+          stamp(box, list, (d) => discountTokens(d, quote?.currency, localeOf(b.engine.getState())));
         }
       });
     });

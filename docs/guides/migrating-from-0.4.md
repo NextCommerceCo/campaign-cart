@@ -104,11 +104,21 @@ Still works. Use the right column on new pages.
 | `nextConfig.analytics.providers.custom`                                                            | A listener: `next.analytics.on('*', (event) => fetch(url, { method: 'POST', keepalive: true, body: JSON.stringify(event) }))` ([By hand](analytics-reference/destinations/overview.md#by-hand))                                                                           |
 | `data-next-timer`, `data-next-accordion`, `data-next-tooltip`, `data-next-component="scroll-hint"` | Your own script or CSS: `<details>` for an accordion, `title` or CSS for a tooltip                                                                                                                                                                                        |
 
-`data-next-i18n` still translates the text, `[placeholder]`, `[aria-label]`, `[title]` and `[alt]` by key, from
-`nextConfig.translations` and then the address service's texts, in a small chunk that loads only on pages that use it.
-The language is `nextConfig.locale`, else the campaign's language (0.4.x read English without `locale`).
-`nextConfig.locale` and `translations` reach only `data-next-i18n`: checkout messages come in the campaign's language,
-and prices are written in it.
+`data-next-i18n` still translates the text, `[placeholder]`, `[aria-label]`, `[title]` and `[alt]` by key, in a small
+chunk that loads only on pages that use it.
+
+`nextConfig.locale` and `nextConfig.translations` still work as in 0.4.x. `locale` is the language prices are written
+in and the checkout asks the address service for; without it, the campaign's language (0.4.x: the browser's for
+prices, English for the checkout). Each text the SDK writes comes from the page's `translations` in that language
+(`th-TH`, then `th`), then the address service's, then English, by the service's keys:
+
+| Text                                   | Keys                                                                                                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A field's label and errors             | `fields.<field>.label`, `label_optional`, `errors.<error>` (`errors.blank` also covers a dropdown's `not_selected`); a country's own wording by the field's `label_id` |
+| Card fields                            | `payment.card.number.*`, `payment.card.cvv.*`, `payment.card.expiry_month.errors.*`, `payment.card.expiry_year.errors.*`, `payment.card.errors.session_expired`        |
+| A declined payment                     | `payment.errors.<code>`, then the page's `payment.errors.generic`, then the gateway's words                                                                            |
+| `coupon:validation-failed`'s `message` | `coupon.errors.invalid`, `already_applied`, `network`                                                                                                                  |
+| `data-next-i18n`                       | any key                                                                                                                                                                |
 
 The page widgets (timer, accordion, tooltip, scroll hint) load in a small chunk only on pages that
 use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordion:*`,

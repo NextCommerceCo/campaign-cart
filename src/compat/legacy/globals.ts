@@ -1,4 +1,5 @@
 import type { Logger } from '../../engine/log';
+import { flattenTexts, type Texts } from '../../engine/texts';
 
 interface LegacyAnalyticsConfig {
   enabled?: boolean;
@@ -43,6 +44,16 @@ export function legacyAnalytics(log: Logger): LegacyAnalytics {
       `analytics provider "${name}" is not built in: send events to your endpoint from next.analytics.on("*", fn)`,
     );
   return analytics;
+}
+
+/** @deprecated `nextConfig.locale` and `nextConfig.translations`: the page's language, and its own texts by language. */
+export function readLegacyI18n(): { locale?: string; translations: Record<string, Texts> } {
+  const next = (window as unknown as { nextConfig?: { locale?: unknown; translations?: unknown } }).nextConfig;
+  const translations: Record<string, Texts> = {};
+  for (const [lang, texts] of Object.entries(next?.translations ?? {}))
+    translations[lang.toLowerCase()] = flattenTexts(texts);
+  const locale = typeof next?.locale === 'string' ? next.locale.trim() : '';
+  return { ...(locale && { locale }), translations };
 }
 
 /** @deprecated Removes the old SDK's plain-text personal-data cookie and stored profile. */

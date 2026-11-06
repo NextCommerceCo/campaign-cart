@@ -15,7 +15,14 @@ import type { NextActions } from './engine/actions';
 import type { ModelType, Query } from './engine/query';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
 import { legacyEvents } from './compat/legacy/registry';
-import { legacyAnalytics, readLegacyAnalytics, removeLegacyPersonalData } from './compat/legacy/globals';
+import {
+  legacyAnalytics,
+  readLegacyAnalytics,
+  readLegacyI18n,
+  removeLegacyPersonalData,
+} from './compat/legacy/globals';
+import { localeOf } from './engine/format';
+import { textsIn } from './engine/texts';
 
 declare const __VERSION__: string;
 
@@ -81,12 +88,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const params = new URLSearchParams(location.search);
   const funnel = config.funnel || funnelFromPath(location.pathname);
   const scope = storageScope(config.apiKey, funnel);
+  const i18n = readLegacyI18n();
+  const send = window.fetch.bind(window);
 
   const engine = new Engine({
     environment: pageEnvironment,
     apiKey: config.apiKey,
     apiBase: config.apiBase,
-    send: window.fetch.bind(window),
+    send,
     campaign,
     storagePrefix: `next:${scope}`,
     storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
@@ -97,6 +106,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       },
     },
     currency: config.currency,
+    locale: i18n.locale,
     params: Object.fromEntries(params),
     visit: {
       landingPage: location.href,
@@ -264,13 +274,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
           m.bindCheckout(engine, checkoutForm, {
             legacyCheckoutStarted: legacy.checkoutStarted,
             query: q || undefined,
+            translations: i18n.translations,
           }),
         ),
       orderChunk?.then((m) => m.bindOrder(engine)),
       slotsChunk?.then((m) => m.bindSlots(engine)),
       i18nChunk?.then((m) => {
-        const language = engine.getState().campaign?.language;
-        void m.bindI18n(document, { send: window.fetch.bind(window), language, log: engine.log });
+        const lang = localeOf(engine.getState()) || 'en';
+        void m.bindI18n(document, { send, lang, page: textsIn(i18n.translations, lang), log: engine.log });
       }),
       v2Page && bindV2(),
       bindings.ready,

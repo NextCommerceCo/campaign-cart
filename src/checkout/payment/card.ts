@@ -3,7 +3,7 @@ import { paymentCode } from '../state/order-body';
 import type { Engine } from '../../engine/engine';
 import { showField } from '../form/errors';
 import { fieldControl, FIELDS, rawName } from '../form/fields';
-import { cardText, label } from '../form/texts';
+import { cardText, formText, label, textOf } from '../form/texts';
 import { bindExpiry } from './expiry';
 
 declare const __VERSION__: string;
@@ -123,9 +123,18 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
       numberEl: 'spreedly-number',
       cvvEl: 'spreedly-cvv',
       numberFormat: 'prettyFormat',
-      labels: { number: 'Card Number', cvv: 'Security Code' },
-      placeholder: { number: 'Card Number', cvv: 'CVV *' },
-      titles: { number: 'Enter your card number', cvv: 'Enter your Security Code' },
+      labels: {
+        number: textOf('payment.card.number.label', 'Card Number'),
+        cvv: textOf('payment.card.cvv.label', 'Security Code'),
+      },
+      placeholder: {
+        number: textOf('payment.card.number.placeholder', 'Card Number'),
+        cvv: textOf('payment.card.cvv.placeholder', 'CVV *'),
+      },
+      titles: {
+        number: textOf('payment.card.number.title', 'Enter your card number'),
+        cvv: textOf('payment.card.cvv.title', 'Enter your Security Code'),
+      },
       styling: { number: FIELD_STYLE, cvv: FIELD_STYLE },
     });
     instance.onReady = () => form.classList.remove('next-loading-spreedly');
@@ -193,7 +202,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
       if (errors.size) return Promise.reject(new Error([...errors.values()].join('. ')));
       if (!instance || stale()) {
         void load(true).catch(() => {});
-        return Promise.reject(new Error('Your card details timed out. Enter them again.'));
+        return Promise.reject(new Error(formText({ code: 'card_expired' })));
       }
       const { fields } = engine.getState().checkout!;
       const names = { first_name: fields.first_name ?? '', last_name: fields.last_name ?? '' };

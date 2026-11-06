@@ -35,6 +35,8 @@ export interface FieldFormat {
 
 export interface FieldRule {
   required: boolean;
+  /** Where its texts are in i18n-rules' `/v1/locales`: `fields.postcode.zip_code`. */
+  label_id?: string;
   label?: string;
   label_optional?: string;
   autocomplete?: string;

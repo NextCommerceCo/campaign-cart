@@ -1,3 +1,4 @@
+import { localeOf } from '../engine/format';
 import { cartTokens, lineTokens } from '../engine/cart/tokens';
 import { discountTokens } from '../engine/tokens';
 import type { BindContext, Render } from './context';
@@ -16,7 +17,7 @@ function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): voi
         : kind === 'voucher'
           ? s.voucher_discounts
           : [...s.offer_discounts, ...s.voucher_discounts];
-    stamp(el, list, (d) => discountTokens(d, s?.currency, campaign?.language));
+    stamp(el, list, (d) => discountTokens(d, s?.currency, localeOf(b.engine.getState())));
   });
 }
 

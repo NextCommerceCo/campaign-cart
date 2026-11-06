@@ -15,7 +15,7 @@ import { StorageAdapter } from './storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
 import { createVisit, type VisitActions } from './visit';
 import type { EventMap, EventName } from './events/bus';
-import type { Campaign, Package, Send, State } from './types';
+import type { Campaign, Package, Send, Slice, State } from './types';
 
 /** The page and the browser now; supplied by the page, since the engine has no DOM. */
 export interface Environment {
@@ -34,6 +34,7 @@ export interface EngineOptions {
   storagePrefix: string;
   storage: { local: Storage | null; session: Storage | null };
   currency?: string;
+  locale?: string;
   params?: Record<string, string>;
   visit?: Visit;
   funnel?: string;
@@ -46,7 +47,7 @@ export interface EngineOptions {
 
 export interface Context {
   getState(): State;
-  update<K extends keyof State>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
+  update<K extends Slice>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
   emit<K extends EventName>(name: K, data: EventMap[K]): void;
   batch(fn: () => void): void;
   on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
@@ -109,6 +110,7 @@ export class Engine {
     this.debug = this.debugStore.get<boolean>('debugging') === true;
     if (this.debug) this.log.level = 'debug';
     this.state = {
+      locale: options.locale,
       cart: emptyCart(),
       selectors: {},
       toggles: {},
@@ -137,10 +139,7 @@ export class Engine {
     this.toggles = createToggles(this.context);
     this.visit = createVisit(this.context, () => (this.options.now ?? Date.now)());
 
-    if (options.reset) {
-      this.session.clear();
-      this.local.clear();
-    }
+    if (options.reset) for (const store of [this.session, this.local]) store.clear();
     this.restore();
     const forced = parseForcePackages(options.params?.forcePackageId);
     if (forced.length) {
@@ -255,7 +254,7 @@ export class Engine {
     this.events.emit('sdk.ready', this.snapshot());
   }
 
-  private update<K extends keyof State>(
+  private update<K extends Slice>(
     slice: K,
     patch: Partial<NonNullable<State[K]>>,
     { silent = false }: { silent?: boolean } = {},
@@ -270,7 +269,7 @@ export class Engine {
     });
   }
 
-  private save(slice: keyof State): void {
+  private save(slice: Slice): void {
     const { cart, visit, campaign, checkout, order, debug } = this.state;
     if (slice === 'cart') {
       const { groups, coupons, held, dismissed, shippingId, reported, added } = cart;

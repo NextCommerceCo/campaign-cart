@@ -172,8 +172,13 @@ export interface ApiOrder {
   is_test?: boolean;
 }
 
+/** The parts of State an action changes with `update()`. */
+export type Slice = Exclude<keyof State, 'locale'>;
+
 export interface State {
   campaign?: Campaign;
+  /** The page's language (0.4.x `nextConfig.locale`), over the campaign's. */
+  locale?: string;
   cart: CartState;
   selectors: Record<string, SelectorState>;
   toggles: Record<number, Toggle>;

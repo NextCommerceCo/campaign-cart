@@ -3,7 +3,7 @@ import { cardSlots, pickedCard } from '../engine/cart/selectors';
 import { variantChoices } from '../engine/cart/variants';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
-import { cents, discountPercent, dollars, format, formatCents } from '../engine/format';
+import { cents, discountPercent, dollars, format, formatCents, localeOf } from '../engine/format';
 import { cardQuote } from '../engine/values';
 import { applyValues, ownProperties, pageProperties, selectorIdOf, setVisible } from './dom';
 
@@ -21,8 +21,7 @@ function itemValues(
   index: number,
   line?: SummaryLine,
 ): Record<string, string> {
-  const { campaign } = engine.getState();
-  const money = (c: number) => formatCents(c, campaign);
+  const money = (c: number) => formatCents(c, engine.getState());
   const unit = line ? cents(line.package_price) : cents(pkg?.price);
   const retail = line ? cents(line.original_package_price) : cents(pkg?.price_retail ?? pkg?.price);
   const total = line ? unit : cents(pkg?.price_total);
@@ -48,7 +47,7 @@ function itemValues(
     'item.discountAmount': money(saved),
     'item.discountPercentage': base ? `${Math.round((off / base) * 100)}%` : '0%',
     'item.hasDiscount': off > 0 ? 'show' : 'hide',
-    'item.currency': campaign?.currency ?? '',
+    'item.currency': engine.getState().campaign?.currency ?? '',
   };
 }
 
@@ -127,12 +126,12 @@ function renderStage(
       box.innerHTML = found
         .map((d) =>
           fill(tpl, {
-            'discount.percentage': discountPercent(d.percentage, engine.getState().campaign?.language),
+            'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
             'discount.name': d.name ?? '',
             'discount.amount': format(
               { type: 'money', value: dollars(d.amount) },
               engine.getState().campaign?.currency,
-              engine.getState().campaign?.language,
+              localeOf(engine.getState()),
             ),
           }),
         )

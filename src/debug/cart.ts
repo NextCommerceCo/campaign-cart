@@ -2,7 +2,7 @@ import { bundleGroup, cardSlots, pickedCard } from '../engine/cart/selectors';
 import { variantChoices } from '../engine/cart/variants';
 import type { CartSummary, SummaryDiscount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import { format } from '../engine/format';
+import { format, localeOf } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { productPicker, thumb } from './picker';
@@ -57,7 +57,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
   const money = (amount: string | number | undefined) => {
     const { campaign, cart } = engine.getState();
     const value = amount === undefined ? undefined : Number(amount);
-    return format({ type: 'money', value }, cart.summary?.currency ?? campaign?.currency, campaign?.language);
+    return format({ type: 'money', value }, cart.summary?.currency ?? campaign?.currency, localeOf(engine.getState()));
   };
 
   const act = (work: Promise<unknown>, done?: (result: unknown) => void) => {

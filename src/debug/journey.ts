@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { format } from '../engine/format';
+import { format, localeOf } from '../engine/format';
 import { icon } from './icons';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import { badge, type Child, clock, empty, h, plural, tsugi, tsugiCard } from './view';
@@ -54,7 +54,11 @@ export function journeyView(engine: Engine, debug: DebugActions, ui: { render: (
   const money = (p: PageVisit) => {
     const { campaign } = engine.getState();
     if (p.total === undefined) return '—';
-    return format({ type: 'money', value: Number(p.total) }, p.currency ?? campaign?.currency, campaign?.language);
+    return format(
+      { type: 'money', value: Number(p.total) },
+      p.currency ?? campaign?.currency,
+      localeOf(engine.getState()),
+    );
   };
 
   const step = (p: PageVisit, i: number, pages: PageVisit[], selected: number) => {

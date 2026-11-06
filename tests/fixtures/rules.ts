@@ -168,12 +168,19 @@ const COUNTRIES = [
   { code: 'SG', name: 'Singapore' },
 ];
 
-export function fakeRules(options: { geo?: string; down?: boolean; geoDelay?: number } = {}) {
+export function fakeRules(
+  options: { geo?: string; down?: boolean; geoDelay?: number; locales?: Record<string, unknown> } = {},
+) {
   const calls: string[] = [];
   const send = async (url: string, init: RequestInit) => {
     const path = url.replace(/^https:\/\/[^/]+/, '');
     calls.push(`${init.method} ${path}`);
     if (options.down) return json({}, 503);
+    if (path.startsWith('/v1/locales/')) {
+      const lang = path.slice('/v1/locales/'.length).split('-')[0]!;
+      const texts = options.locales?.[lang];
+      return texts ? new Response(JSON.stringify(texts), { headers: { 'content-language': lang } }) : json({}, 404);
+    }
     if (path.startsWith('/v1/countries?')) return json(COUNTRIES);
     if (path.startsWith('/v1/countries/US')) return json(US);
     if (path.startsWith('/v1/countries/GB')) return json(GB);

@@ -1,6 +1,6 @@
 import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
-import { format, truthy, type Value } from '../engine/format';
+import { format, localeOf, truthy, type Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
 import { resolve } from '../engine/values';
 import { legacySelectorId } from '../compat/legacy/registry';
@@ -73,7 +73,7 @@ export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
     if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
     return;
   }
-  setText(el, format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format')));
+  setText(el, format(v, campaign?.currency, localeOf(engine.getState()), el.getAttribute('data-next-format')));
 }
 
 export const tokenValue =

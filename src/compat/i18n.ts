@@ -1,7 +1,6 @@
 import type { Logger } from '../engine/log';
+import { serviceTexts, type Texts } from '../engine/texts';
 import type { Send } from '../engine/types';
-
-type Texts = Readonly<Record<string, string>>;
 
 /** One translation: `attribute` is `null` for the element's text. */
 export interface I18nTarget {
@@ -9,12 +8,6 @@ export interface I18nTarget {
   key: string;
 }
 
-interface LegacyI18nConfig {
-  locale?: unknown;
-  translations?: unknown;
-}
-
-const RULES = 'https://i18n-rules.nextcommerce.com';
 const ATTRIBUTES = new Set(['placeholder', 'aria-label', 'title', 'alt']);
 const ATTRIBUTE_TARGET = /^\[([^\]]*)\](.*)$/;
 
@@ -31,39 +24,6 @@ export function parseI18n(value: string): { targets: I18nTarget[]; refused: stri
     else refused.push(attribute);
   }
   return { targets, refused };
-}
-
-/** `{ fields: { email: { label: 'Email' } } }` → `{ 'fields.email.label': 'Email' }`. */
-export function flattenTexts(value: unknown, prefix = ''): Record<string, string> {
-  const texts: Record<string, string> = {};
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return texts;
-  for (const [key, entry] of Object.entries(value)) {
-    const path = prefix ? `${prefix}.${key}` : key;
-    if (typeof entry === 'string') texts[path] = entry;
-    else Object.assign(texts, flattenTexts(entry, path));
-  }
-  return texts;
-}
-
-/** `th-TH` → `th`. */
-export const baseLang = (lang: string) => lang.toLowerCase().split(/[-_]/)[0]!;
-
-/** `translations[lang]`: `th-TH`, else `th`. */
-export function pageTexts(translations: unknown, lang: string): Texts {
-  if (!translations || typeof translations !== 'object') return {};
-  const byLang = Object.fromEntries(Object.entries(translations).map(([l, t]) => [l.toLowerCase(), t]));
-  return flattenTexts(byLang[lang.toLowerCase()] ?? byLang[baseLang(lang)]);
-}
-
-/** i18n-rules' texts in `lang`; `undefined` when it cannot answer, or answers in another language. */
-export async function serviceTexts(send: Send, lang: string, base = RULES): Promise<Texts | undefined> {
-  try {
-    const res = await send(`${base}/v1/locales/${encodeURIComponent(lang)}`, { method: 'GET' });
-    if (!res.ok || baseLang(res.headers.get('content-language') ?? lang) !== baseLang(lang)) return undefined;
-    return flattenTexts(await res.json());
-  } catch {
-    return undefined;
-  }
 }
 
 function bindElement(el: Element, log: Logger): (translate: (key: string) => string | undefined) => void {
@@ -94,16 +54,13 @@ function bindElement(el: Element, log: Logger): (translate: (key: string) => str
 }
 
 /**
- * @deprecated 0.4.x `data-next-i18n`, `nextConfig.locale` and `nextConfig.translations`: a key's text in the page's
- * language, from the page's translations, then i18n-rules'; the page's own text when neither has it.
+ * @deprecated 0.4.x `data-next-i18n`: a key's text in `lang`, from the page's `translations` (`page`), then
+ * i18n-rules'; the page's own text when neither has it.
  */
 export function bindI18n(
   root: ParentNode,
-  { send, language, log }: { send: Send; language?: string; log: Logger },
+  { send, lang, page, log }: { send: Send; lang: string; page: Texts; log: Logger },
 ): Promise<void> {
-  const config = (window as unknown as { nextConfig?: LegacyI18nConfig }).nextConfig ?? {};
-  const lang = (typeof config.locale === 'string' && config.locale.trim()) || language || 'en';
-  const page = pageTexts(config.translations, lang);
   const paints = [...root.querySelectorAll('[data-next-i18n]')].map((el) => bindElement(el, log));
   const paint = (service?: Texts) => paints.forEach((p) => p((key) => page[key] ?? service?.[key]));
   paint();

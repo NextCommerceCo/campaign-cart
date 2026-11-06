@@ -1,6 +1,6 @@
 import { conditionMet, parseCondition } from '../engine/condition';
 import type { Engine } from '../engine/engine';
-import { format, truthy } from '../engine/format';
+import { format, localeOf, truthy } from '../engine/format';
 import { resolve } from '../engine/values';
 import { replacementFor } from './legacy';
 import { h } from './view';
@@ -63,7 +63,9 @@ function noteFor(engine: Engine, el: Element, attr: string, value: string): Omit
   }
   if (v.type === 'bool') return { note: truthy(v) ? 'shown' : 'hidden' };
   return {
-    note: JSON.stringify(format(v, campaign?.currency, campaign?.language, el.getAttribute('data-next-format'))),
+    note: JSON.stringify(
+      format(v, campaign?.currency, localeOf(engine.getState()), el.getAttribute('data-next-format')),
+    ),
   };
 }
 

@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { format, type Value, type ValueType } from '../engine/format';
+import { format, localeOf, type Value, type ValueType } from '../engine/format';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 
@@ -50,7 +50,7 @@ export function display(field: string, value: unknown, engine: Engine, override?
   if (typeof value === 'object') return '';
   const campaign = engine.getState().campaign;
   const currency = campaign?.currency;
-  const locale = campaign?.language;
+  const locale = localeOf(engine.getState());
   const n = Number(value);
   switch (override) {
     case 'currency_code':

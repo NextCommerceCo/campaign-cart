@@ -52,6 +52,22 @@ describe('readConfig', () => {
 });
 
 describe('boot', () => {
+  it('writes prices and data-next-i18n in nextConfig.locale over the campaign’s language (0.4.x)', async () => {
+    (window as { nextConfig?: unknown }).nextConfig = {
+      locale: 'de-DE',
+      translations: { de: { checkout: { contact: { title: 'Kontakt' } } } },
+    };
+    document.body.innerHTML = `<h2 data-next-i18n="checkout.contact.title">Contact</h2>
+      <span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>`;
+    try {
+      boot(config, Promise.resolve({ ...campaign, currency: 'EUR' }));
+      await vi.waitFor(() => expect(document.querySelector('h2')!.textContent).toBe('Kontakt'));
+      expect(document.getElementById('price')!.textContent).toMatch(/^\d+,\d\d\s€$/);
+    } finally {
+      delete (window as { nextConfig?: unknown }).nextConfig;
+    }
+  });
+
   it('translates data-next-i18n into the campaign’s language once the campaign loads (0.4.x)', async () => {
     document.body.innerHTML = `<h2 data-next-i18n="checkout.contact.title">Contact</h2>`;
     const api = fakeApi().fetch;

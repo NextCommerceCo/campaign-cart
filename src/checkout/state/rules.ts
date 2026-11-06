@@ -1,6 +1,7 @@
 import { asciiDigits, plausiblePhone } from './phone';
+import { fill, type Texts } from '../../engine/texts';
 import type { Send } from '../../engine/types';
-import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat } from './types';
+import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, FieldRule } from './types';
 
 export interface RemoteCheck {
   valid: boolean | null;
@@ -16,18 +17,22 @@ export class RulesApi {
     private send: Send,
     private base: string,
     private lang: string,
+    private page: Texts = {},
   ) {}
 
   countries(): Promise<CountryOption[]> {
     return this.get(`/v1/countries?lang=${this.lang}`);
   }
 
-  country(code: string): Promise<CountryRules> {
-    return this.get(`/v1/countries/${code}?include=states&lang=${this.lang}`);
+  async country(code: string): Promise<CountryRules> {
+    return withPageTexts(await this.get(`/v1/countries/${code}?include=states&lang=${this.lang}`), this.page);
   }
 
-  geo(): Promise<{ country: CountryOption | null; rules?: CountryRules }> {
-    return this.get(`/v1/geo?include=rules,states&lang=${this.lang}`);
+  async geo(): Promise<{ country: CountryOption | null; rules?: CountryRules }> {
+    const geo = await this.get<{ country: CountryOption | null; rules?: CountryRules }>(
+      `/v1/geo?include=rules,states&lang=${this.lang}`,
+    );
+    return geo.rules ? { ...geo, rules: withPageTexts(geo.rules, this.page) } : geo;
   }
 
   async validate(
@@ -56,6 +61,32 @@ export class RulesApi {
     if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
     return (await res.json()) as T;
   }
+}
+
+const EMPTY: FieldError[] = ['blank', 'not_selected'];
+
+function withPageText(name: string, rule: FieldRule, page: Texts): FieldRule {
+  const own: Record<string, string> = {};
+  for (const prefix of [`fields.${name}.`, rule.label_id && `${rule.label_id}.`].filter(Boolean) as string[])
+    for (const [key, text] of Object.entries(page)) if (key.startsWith(prefix)) own[key.slice(prefix.length)] = text;
+  const vars = { example: rule.format?.example, max: rule.input?.max_length };
+  const errors = { ...rule.errors };
+  for (const [part, text] of Object.entries(own)) {
+    const code = /^errors\.(\w+)$/.exec(part)?.[1] as FieldError | undefined;
+    if (code) errors[code] = fill(text, vars);
+  }
+  const empty = EMPTY.map((code) => own[`errors.${code}`]).find(Boolean);
+  for (const code of EMPTY) if (empty && !own[`errors.${code}`]) errors[code] = fill(empty, vars);
+  return { ...rule, label: own.label ?? rule.label, label_optional: own.label_optional ?? rule.label_optional, errors };
+}
+
+/** The page's `translations` over a country's rules: by the field's `label_id` (`fields.postcode.zip_code.label`), else its name. */
+export function withPageTexts(rules: CountryRules, page: Texts): CountryRules {
+  if (!Object.keys(page).length) return rules;
+  const fields = Object.fromEntries(
+    Object.entries(rules.fields).map(([name, rule]) => [name, rule && withPageText(name, rule, page)]),
+  );
+  return { ...rules, fields };
 }
 
 export type Scope = 'shipping' | 'all' | string[];

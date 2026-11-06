@@ -3,7 +3,10 @@ import { cardQuantity, pickedCard } from '../../engine/cart/selectors';
 import type { EngineEvent, EventMap } from '../../engine/events/bus';
 import type { CartChange } from '../../engine/events/carts';
 import type { Selector } from '../../engine/events/selectors';
+import { localeOf } from '../../engine/format';
+import { fill, loadedTexts, textsIn } from '../../engine/texts';
 import type { State } from '../../engine/types';
+import { readLegacyI18n } from './globals';
 import { legacyCart, shippingOption } from './payloads';
 import { firstPackage, type From, lastClick, legacyEvent, type LegacyEvent, type LegacyState } from './registry';
 
@@ -63,11 +66,18 @@ const shipping = alias({
   data: (e, state) => ({ methodId: e.data.id, method: shippingOption(state, e.data.id) }),
 });
 
-const COUPON_TEXTS: Record<EventMap['coupon.denied']['reason'], string> = {
-  no_discount: "Coupon {code} isn't valid for this order.",
-  duplicate: 'Coupon {code} is already applied.',
-  check_failed: "Couldn't check the coupon. Try again.",
+const COUPON_TEXTS: Record<EventMap['coupon.denied']['reason'], [key: string, english: string]> = {
+  no_discount: ['coupon.errors.invalid', "Coupon {{code}} isn't valid for this order."],
+  duplicate: ['coupon.errors.already_applied', 'Coupon {{code}} is already applied.'],
+  check_failed: ['coupon.errors.network', "Couldn't check the coupon. Try again."],
 };
+
+/** The page's `translations`, then i18n-rules' texts if the page loaded them, then English. */
+function couponText(reason: EventMap['coupon.denied']['reason'], code: string, state: State): string {
+  const [key, english] = COUPON_TEXTS[reason];
+  const lang = localeOf(state) || 'en';
+  return fill(textsIn(readLegacyI18n().translations, lang)[key] ?? loadedTexts(lang)?.[key] ?? english, { code });
+}
 
 /** Each click's first `cart.added`: 0.4.43 sent one `action:success` per button, whatever its change set off. */
 const firstAdded = new WeakMap<Event, EngineEvent>();
@@ -129,7 +139,7 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
   }),
   'coupon:validation-failed': alias({
     from: ['coupon.denied'],
-    data: ({ data }) => ({ code: data.code, message: COUPON_TEXTS[data.reason].replace('{code}', data.code) }),
+    data: ({ data }, state) => ({ code: data.code, message: couponText(data.reason, data.code, state) }),
   }),
   'bundle:selection-changed': selector([...SELECTIONS], items),
   'bundle:selected': selector(['selector.selected'], items),

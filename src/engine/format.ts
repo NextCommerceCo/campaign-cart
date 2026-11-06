@@ -1,3 +1,5 @@
+import type { State } from './types';
+
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 
 export interface Value {
@@ -54,8 +56,11 @@ export function format(v: Value, currency: string | undefined, locale?: string, 
   }
 }
 
-export const formatCents = (c: number, campaign?: { currency?: string; language?: string }): string =>
-  format(money(c), campaign?.currency, campaign?.language);
+/** The language prices and texts are written in: the page's, else the campaign's. */
+export const localeOf = (state: Pick<State, 'locale' | 'campaign'>) => state.locale || state.campaign?.language;
+
+export const formatCents = (c: number, state: Pick<State, 'locale' | 'campaign'>): string =>
+  format(money(c), state.campaign?.currency, localeOf(state));
 
 export function discountPercent(value: string | undefined, locale?: string): string {
   const n = Number(value);

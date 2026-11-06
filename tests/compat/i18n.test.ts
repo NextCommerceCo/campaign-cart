@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bindI18n, parseI18n, serviceTexts } from '../../src/compat/i18n';
+import { bindI18n, parseI18n } from '../../src/compat/i18n';
 import { Logger } from '../../src/engine/log';
-
-const THAI = { checkout: { contact: { title: 'ติดต่อ' } }, fields: { email: { label: 'อีเมล' } } };
 
 const locales =
   (trees: Record<string, unknown>) =>
@@ -12,10 +10,7 @@ const locales =
     return new Response(JSON.stringify(trees[served] ?? {}), { headers: { 'content-language': served } });
   };
 
-const setConfig = (config?: object) => ((window as { nextConfig?: object }).nextConfig = config);
-
 afterEach(() => {
-  setConfig(undefined);
   document.body.innerHTML = '';
 });
 
@@ -31,13 +26,14 @@ describe('data-next-i18n (0.4.x)', () => {
   });
 
   it('writes the page’s translations at once, then i18n-rules’ texts, and keeps the page’s words for a missing key', async () => {
-    setConfig({ locale: 'th-TH', translations: { TH: { checkout: { pay: 'ชำระเงิน' } } } });
     document.body.innerHTML = `
       <h2 id="title" data-next-i18n="checkout.contact.title">Contact</h2>
       <input id="email" placeholder="Email" data-next-i18n="[placeholder]fields.email.label">
       <button id="pay" aria-label="Pay now" data-next-i18n="checkout.pay;[aria-label]checkout.pay.aria">Pay</button>`;
-    const send = vi.fn(locales({ th: THAI }));
-    const loaded = bindI18n(document, { send, language: 'en', log: new Logger() });
+    const send = vi.fn(
+      locales({ th: { checkout: { contact: { title: 'ติดต่อ' } }, fields: { email: { label: 'อีเมล' } } } }),
+    );
+    const loaded = bindI18n(document, { send, lang: 'th-TH', page: { 'checkout.pay': 'ชำระเงิน' }, log: new Logger() });
     const $ = (id: string) => document.getElementById(id)!;
 
     expect($('pay').textContent).toBe('ชำระเงิน');
@@ -49,27 +45,18 @@ describe('data-next-i18n (0.4.x)', () => {
     expect($('pay').getAttribute('aria-label')).toBe('Pay now');
   });
 
-  it('reads the campaign’s language when the page sets no locale, and English without either', async () => {
-    document.body.innerHTML = `<h2 data-next-i18n="checkout.contact.title">Contact</h2>`;
-    const send = vi.fn(locales({ th: THAI }));
-    await bindI18n(document, { send, language: 'th', log: new Logger() });
-    expect(document.querySelector('h2')!.textContent).toBe('ติดต่อ');
-    await bindI18n(document, { send, log: new Logger() });
-    expect(send).toHaveBeenLastCalledWith(expect.stringMatching(/\/locales\/en$/), { method: 'GET' });
-  });
-
   it('keeps the page’s words when i18n-rules has no file for the language and answers in English', async () => {
-    const send = locales({ en: { checkout: { contact: { title: 'Contact' } } } });
-    expect(await serviceTexts(send, 'ja')).toBeUndefined();
-    expect(await serviceTexts(() => Promise.reject(new Error('offline')), 'th')).toBeUndefined();
+    document.body.innerHTML = `<h2 data-next-i18n="checkout.contact.title">Contact</h2>`;
+    const send = locales({ en: { checkout: { contact: { title: 'Contact details' } } } });
+    await bindI18n(document, { send, lang: 'ja', page: {}, log: new Logger() });
+    expect(document.querySelector('h2')!.textContent).toBe('Contact');
   });
 
   it('warns about a refused attribute and leaves the text of an element with child elements alone', async () => {
-    setConfig({ locale: 'th', translations: { th: { 'checkout.pay': 'ชำระเงิน' } } });
     document.body.innerHTML = `<button data-next-i18n="checkout.pay;[href]page.link"><svg></svg>Pay</button>`;
     const log = new Logger();
     const warn = vi.spyOn(log, 'warn');
-    await bindI18n(document, { send: locales({}), log });
+    await bindI18n(document, { send: locales({}), lang: 'fi', page: { 'checkout.pay': 'Maksa' }, log });
     expect(document.querySelector('button')!.innerHTML).toBe('<svg></svg>Pay');
     expect(warn.mock.calls.map(([m]) => m)).toEqual([
       expect.stringContaining('cannot translate [href]'),

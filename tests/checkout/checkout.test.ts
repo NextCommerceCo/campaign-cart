@@ -73,6 +73,9 @@ async function mount(
     legacyCheckoutStarted?: (checkout: Checkout) => void;
     html?: string;
     campaign?: Partial<Campaign>;
+    locale?: string;
+    translations?: Record<string, Record<string, string>>;
+    locales?: Record<string, unknown>;
   } = {},
 ) {
   const source = options.html ?? readFileSync(`tests/fixtures/pages/${file}`, 'utf8');
@@ -80,7 +83,8 @@ async function mount(
   document.head.innerHTML = doc.head.innerHTML;
   document.body.innerHTML = doc.body.innerHTML;
   options.markup?.(document.body);
-  vi.stubGlobal('fetch', fakeRules({ geo: 'US', down: options.rulesDown }).send);
+  const rules = fakeRules({ geo: 'US', down: options.rulesDown, locales: options.locales });
+  vi.stubGlobal('fetch', rules.send);
   (window as unknown as { NextPayment: unknown }).NextPayment = FakeNextPayment;
   const api = fakeApi({ order: options.order });
   const campaign = {
@@ -88,7 +92,12 @@ async function mount(
     ...(options.countries && { available_shipping_countries: options.countries }),
     ...options.campaign,
   };
-  const { engine } = makeEngine({ fetch: api.fetch, campaign: Promise.resolve(campaign), session: sessionStorage });
+  const { engine } = makeEngine({
+    fetch: api.fetch,
+    campaign: Promise.resolve(campaign),
+    session: sessionStorage,
+    locale: options.locale,
+  });
   await engine.start();
   if (!options.empty) await engine.cart.addItem(2);
   const navigate = vi.fn();
@@ -98,6 +107,7 @@ async function mount(
     navigate,
     legacyCheckoutStarted: options.legacyCheckoutStarted,
     query,
+    translations: options.translations,
   });
   await flush();
   await flush();
@@ -120,7 +130,7 @@ async function mount(
     $<HTMLSelectElement>('[data-next-checkout-field="exp-month"]').value = '12';
     $<HTMLSelectElement>('[data-next-checkout-field="exp-year"]').value = String(new Date().getFullYear() + 2);
   };
-  return { engine, checkout, form, navigate, api, query, $, field, type, fill, submit, orders, card };
+  return { engine, checkout, form, navigate, api, rules, query, $, field, type, fill, submit, orders, card };
 }
 
 beforeEach(() => {
@@ -261,6 +271,35 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await submit();
     await flush();
     expect(orders()).toHaveLength(2);
+  });
+
+  it('writes the checkout in nextConfig.locale, the page’s translations over i18n-rules’ texts (0.4.x)', async () => {
+    const answers = [json({ payment_response_code: '3005', payment_details: 'Invalid Card Number' }, 400)];
+    const { fill, card, submit, $, rules } = await mount('olympus/checkout.html', {
+      locale: 'th-TH',
+      translations: {
+        th: {
+          'fields.first_name.errors.blank': 'กรุณากรอกชื่อ',
+          'fields.state.errors.blank': 'กรุณาเลือกรัฐ',
+          'payment.card.expiry_month.errors.blank': 'เลือกเดือนหมดอายุ',
+        },
+      },
+      locales: { th: { payment: { errors: { 3005: 'ตรวจสอบหมายเลขบัตรแล้วลองอีกครั้ง' } } } },
+      order: () => answers.shift() ?? json({ ref_id: 'R2' }),
+    });
+    expect(rules.calls).toContain('GET /v1/countries?lang=th-TH');
+    await submit();
+    const error = (name: string) => $(`.next-error-label[data-next-error-for="${name}"]`).textContent;
+    expect([error('first_name'), error('state'), error('month')]).toEqual([
+      'กรุณากรอกชื่อ',
+      'กรุณาเลือกรัฐ',
+      'เลือกเดือนหมดอายุ',
+    ]);
+    fill(SHIPPING);
+    card();
+    await submit();
+    await flush();
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe('ตรวจสอบหมายเลขบัตรแล้วลองอีกครั้ง');
   });
 
   it('checks the expiry before the card, and shows what payment.js refused', async () => {

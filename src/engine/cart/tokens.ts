@@ -1,5 +1,5 @@
 import type { Engine } from '../engine';
-import { cents, format, money, pct } from '../format';
+import { cents, format, localeOf, money, pct } from '../format';
 import type { Tokens } from '../tokens';
 import type { SummaryLine } from './types';
 
@@ -7,7 +7,7 @@ export function cartTokens(engine: Engine): Tokens {
   const { cart, campaign } = engine.getState();
   const s = cart.summary;
   const currency = s?.currency ?? campaign?.currency;
-  const locale = campaign?.language;
+  const locale = localeOf(engine.getState());
   const m = (amount: string | undefined) => (s ? format(money(cents(amount)), currency, locale) : '');
   const shipping = s?.shipping_method;
   const free = !shipping || cents(shipping.price) === 0;
@@ -43,7 +43,7 @@ function frequency(interval: string | null | undefined, count: number | null | u
 
 export function lineTokens(engine: Engine, line: SummaryLine, currency: string | undefined): Tokens {
   const pkg = engine.getPackage(line.package_id);
-  const locale = engine.getState().campaign?.language;
+  const locale = localeOf(engine.getState());
   const m = (amount: string) => format(money(cents(amount)), currency, locale);
   const unit = cents(line.unit_price);
   const original = cents(line.original_unit_price);

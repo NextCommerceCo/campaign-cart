@@ -24,6 +24,7 @@ export interface MakeEngine {
   reset?: boolean;
   debug?: boolean;
   storagePrefix?: string;
+  locale?: string;
 }
 
 export function makeEngine(opts: MakeEngine = {}) {
@@ -43,6 +44,7 @@ export function makeEngine(opts: MakeEngine = {}) {
     now: opts.now,
     reset: opts.reset,
     debug: opts.debug,
+    locale: opts.locale,
   });
   return { engine, api, local, session };
 }

@@ -113,7 +113,9 @@ src/
     events/                                     one file per event group (carts.ts, checkout.ts, …): its objects and its events;
                                                 context.ts the envelope every event carries; bus.ts the EventMap and the bus
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
-    values.ts format.ts tokens.ts condition.ts  display paths, value formatting, template tokens, conditions
+    values.ts format.ts tokens.ts condition.ts  display paths, value formatting (localeOf: the page's language over the campaign's),
+                                                template tokens, conditions
+    texts.ts                                    texts by key: i18n-rules' /v1/locales (once per language), the page's translations
     flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
     query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines;
                                                 a chunk of its own, loaded by the first next.query, attributes v2 or a v2 checkout
@@ -202,7 +204,8 @@ src/
                                    nextReady; globals.ts: nextConfig.analytics, the old SDK's stored personal data
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
     widgets.ts         widgets     deprecated page widgets 0.4.x pages rely on: accordion, tooltip, scroll hint, countdown
-    i18n.ts            i18n        data-next-i18n: a key's text from nextConfig.translations, then i18n-rules' /v1/locales
+    i18n.ts            i18n        data-next-i18n: a key's text from nextConfig.translations, then i18n-rules' /v1/locales;
+                                   legacy/globals.ts reads nextConfig.locale and translations
     checkout.ts        checkout    page field names, os-* names, old config (express checks), step guard,
                                    the 0.4.x Open Cart DOM event, the checkout's 0.4.x event names
     order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
@@ -229,7 +232,7 @@ src/
 | query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
 | cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
-| i18n         | `[data-next-i18n]`                                                                          | 1.5 KB        |
+| i18n         | `[data-next-i18n]`                                                                          | 1 KB          |
 | legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 40 KB         |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
