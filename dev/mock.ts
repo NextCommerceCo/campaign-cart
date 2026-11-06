@@ -37,6 +37,16 @@ const bodyOf = (req: IncomingMessage) =>
     req.on('end', () => done(data));
   });
 
+const clientIp = (req: IncomingMessage) => {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '')
+    .split(',')[0]
+    ?.trim();
+  return forwarded || req.socket.remoteAddress || null;
+};
+
+const asRecorded = (req: IncomingMessage, user?: Record<string, unknown>) =>
+  user && { ...user, ip: clientIp(req), user_agent: String(req.headers['user-agent'] ?? '') };
+
 const campaignFile = (key: string) => join(CAMPAIGNS, `${key.replace(/[^\w-]/g, '')}.json`);
 
 function savedCampaign(key: string): Campaign | undefined {
@@ -269,13 +279,17 @@ export function mockApi(api: string) {
       return send(res, 200, { results: suggestAddresses(url.searchParams) });
     if (path === '/api/v1/carts/') {
       console.log(`[dev] prospect cart for ${body?.user?.email}`);
-      return send(res, 201, { id: Date.now(), checkout_url: `${url.origin}/__dev/cart` });
+      return send(res, 201, {
+        id: Date.now(),
+        checkout_url: `${url.origin}/__dev/cart`,
+        user: asRecorded(req, body?.user),
+      });
     }
     if (path === '/api/v1/orders/') {
       if (!body?.payment_detail?.payment_method || !body.success_url) {
         return send(res, 400, { detail: 'dev mock: order needs payment_detail and success_url' });
       }
-      const order = placeOrder(savedCampaign(key), body);
+      const order = placeOrder(savedCampaign(key), { ...body, user: asRecorded(req, body.user) });
       return send(res, order.status, order.body);
     }
     const ref = path.match(/^\/api\/v1\/orders\/([^/]+)\/(upsells\/)?$/);
