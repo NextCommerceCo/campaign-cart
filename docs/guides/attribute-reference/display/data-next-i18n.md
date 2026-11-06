@@ -25,7 +25,7 @@ alone, with a warning.
 The address service has the checkout's headings and field labels in every language it serves:
 `checkout.contact.title`, `checkout.shipping.title`, `checkout.billing.title`,
 `checkout.billing.same_as_shipping`, `fields.<field>.label`. Any other key comes from the page's
-[`translations`](../setup/language.md#nextconfigtranslations).
+[`translations`](../setup/language.md).
 
 ## Rules
 
