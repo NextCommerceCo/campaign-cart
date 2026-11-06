@@ -6,6 +6,7 @@ import { redirectFor } from './state/place-order';
 import type { Engine } from '../engine/engine';
 import { nextUrl } from '../engine/params';
 import type { Query } from '../engine/query';
+import type { Send } from '../engine/types';
 import { localeOf } from '../engine/format';
 import { I18N_RULES, rulesSend, serviceTexts, textsIn, type Texts } from '../engine/texts';
 import { bindAddress } from './address/country';
@@ -97,6 +98,8 @@ function leadOf(engine: Engine, form: HTMLFormElement): Lead {
 
 interface BindOptions {
   navigate?: (url: string) => void;
+  /** How it asks i18n-rules: boot's names the campaign's key. */
+  rules?: Send;
   legacyCheckoutStarted?: LegacyCheckoutStarted;
   /** Where `checkout.errors` gets the texts the page shows. */
   query?: Query;
@@ -107,11 +110,16 @@ interface BindOptions {
 export function bindCheckout(
   engine: Engine,
   form: HTMLFormElement,
-  { navigate = (url) => location.assign(url), legacyCheckoutStarted, query, translations = {} }: BindOptions = {},
+  {
+    navigate = (url) => location.assign(url),
+    rules: send = rulesSend(window.fetch.bind(window)),
+    legacyCheckoutStarted,
+    query,
+    translations = {},
+  }: BindOptions = {},
 ): CheckoutActions {
   const lang = localeOf(engine.getState()) || 'en';
   const own = textsIn(translations, lang);
-  const send = rulesSend(window.fetch.bind(window), () => engine.getState().campaign);
   useTexts(own, serviceTexts(send, lang));
   const rules = new RulesApi(send, I18N_RULES, lang, own);
   const lead = leadOf(engine, form);

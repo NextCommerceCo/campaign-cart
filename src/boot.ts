@@ -91,6 +91,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   const scope = storageScope(config.apiKey, funnel);
   const i18n = readLegacyI18n();
   const send = window.fetch.bind(window);
+  const rules = rulesSend(send, config.apiKey);
 
   const engine = new Engine({
     environment: pageEnvironment,
@@ -136,7 +137,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         arrived,
         reset: () => location.assign(`${location.pathname}?reset=1`),
         off: () => location.assign(`${location.pathname}?debug=0`),
-        send: rulesSend(send, () => engine.getState().campaign),
+        send: rules,
         analytics: () => ({ ...readLegacyAnalytics(), ignored: trackingIgnored(engine.getState().visit.params) }),
       }),
     );
@@ -276,6 +277,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       checkoutForm &&
         Promise.all([checkoutChunk!, v2Page && queried()]).then(([m, q]) =>
           m.bindCheckout(engine, checkoutForm, {
+            rules,
             legacyCheckoutStarted: legacy.checkoutStarted,
             query: q || undefined,
             translations: i18n.translations,
@@ -286,7 +288,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       i18nChunk?.then((m) => {
         const lang = localeOf(engine.getState()) || 'en';
         void m.bindI18n(document, {
-          send: rulesSend(send, () => engine.getState().campaign),
+          send: rules,
           lang,
           page: textsIn(i18n.translations, lang),
           log: engine.log,

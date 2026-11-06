@@ -1,4 +1,4 @@
-import type { Campaign, Send } from './types';
+import type { Send } from './types';
 
 declare const __VERSION__: string;
 
@@ -7,17 +7,18 @@ export type Texts = Readonly<Record<string, string>>;
 
 export const I18N_RULES = 'https://i18n-rules.nextcommerce.com';
 
-/** `send` naming the SDK version and, once loaded, the campaign, for i18n-rules' analytics. The name is URI-encoded: headers are Latin-1. */
+/** `send` naming the SDK version and the campaign's key, for i18n-rules' analytics. */
 export const rulesSend =
-  (send: Send, campaign: () => Pick<Campaign, 'id' | 'name'> | undefined = () => undefined): Send =>
-  (url, init) => {
-    const c = campaign();
-    const about = {
-      'X-Next-SDK-Version': __VERSION__,
-      ...(c && { 'X-Next-Campaign-Id': String(c.id), 'X-Next-Campaign-Name': encodeURIComponent(c.name) }),
-    };
-    return send(url, { ...init, headers: { ...about, ...init.headers } });
-  };
+  (send: Send, campaignKey?: string): Send =>
+  (url, init) =>
+    send(url, {
+      ...init,
+      headers: {
+        'X-Next-SDK-Version': __VERSION__,
+        ...(campaignKey && { 'X-Next-Campaign-Key': campaignKey }),
+        ...init.headers,
+      },
+    });
 
 /** `th-TH` → `th`. */
 export const baseLang = (lang: string) => lang.toLowerCase().split(/[-_]/)[0]!;
