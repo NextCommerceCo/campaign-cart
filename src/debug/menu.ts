@@ -2,6 +2,7 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf } from '../engine/format';
 import { resolve } from '../engine/values';
 import { type IconName, icon } from './icons';
+import type { Theme } from './theme';
 import { badge, button, type Child, h, iconButton, plural } from './view';
 
 export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'elements' | 'events' | 'logs';
@@ -20,6 +21,8 @@ export interface MenuInput {
   show: (tab: MenuTab) => void;
   pick: () => void;
   flip: () => void;
+  theme: Theme | undefined;
+  setTheme: (theme: Theme | undefined) => void;
   toggleDev: () => void;
   reset: () => void;
 }
@@ -53,6 +56,27 @@ const toggle = (label: string, detail: string, on: boolean, onclick: () => void)
   el.setAttribute('role', 'switch');
   el.setAttribute('aria-checked', String(on));
   return el;
+};
+
+const THEMES: Array<[IconName, string, Theme | undefined]> = [
+  ['monitor', 'Auto', undefined],
+  ['sun', 'Light', 'light'],
+  ['moon', 'Dark', 'dark'],
+];
+
+const themePicker = (current: Theme | undefined, pick: (theme: Theme | undefined) => void) => {
+  const group = h(
+    'div',
+    {},
+    ...THEMES.map(([glyph, label, theme]) => {
+      const el = h('button', { type: 'button', onclick: () => pick(theme) }, icon(glyph), label);
+      el.setAttribute('aria-pressed', String(current === theme));
+      return el;
+    }),
+  );
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', 'Theme');
+  return h('div', 'mtheme', h('span', {}, 'Theme'), group);
 };
 
 export function menuView(engine: Engine, m: MenuInput): Child[] {
@@ -112,7 +136,12 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
     ),
     m.locale(),
     m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),
-    h('div', 'mlist', toggle('Developer mode', 'Events, Elements, State and Logs', m.dev, m.toggleDev)),
+    h(
+      'div',
+      'mlist',
+      toggle('Developer mode', 'Events, Elements, State and Logs', m.dev, m.toggleDev),
+      themePicker(m.theme, m.setTheme),
+    ),
     h(
       'div',
       'mfoot',

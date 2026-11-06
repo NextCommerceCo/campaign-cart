@@ -580,6 +580,30 @@ describe('debug tools', () => {
     dark.mockRestore();
   });
 
+  it('draws light or dark as picked in the menu, over the system, for the rest of the tab', async () => {
+    const system = vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: () => {},
+    } as unknown as MediaQueryList);
+    await start();
+    const dark = () => shadow().host.classList.contains('dark');
+    const theme = (label: string) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('.mtheme button')].find((b) => b.textContent === label)!;
+    $('.fab').click();
+    expect(theme('Auto').getAttribute('aria-pressed')).toBe('true');
+    expect(dark()).toBe(true);
+    theme('Light').click();
+    expect(dark()).toBe(false);
+    expect(theme('Light').getAttribute('aria-pressed')).toBe('true');
+    expect(Object.values(sessionStorage).some((v) => v.includes('"theme":"light"'))).toBe(true);
+    theme('Dark').click();
+    expect(dark()).toBe(true);
+    system.mockReturnValue({ matches: false, addEventListener: () => {} } as unknown as MediaQueryList);
+    theme('Auto').click();
+    expect(dark()).toBe(true);
+    system.mockRestore();
+  });
+
   it('explains an element from the console', async () => {
     await start('<span data-next-display="campaign.name"></span>');
     const { nextDebug } = window as unknown as { nextDebug: { explain(el: Element): Record<string, string> } };

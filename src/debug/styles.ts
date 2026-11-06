@@ -44,6 +44,12 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .mloc>div{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mloc .select{width:100%}
 .mloc small{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.mtheme{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 8px}
+.mtheme>div{display:inline-flex;gap:2px;padding:2px;border-radius:8px;background:var(--muted)}
+.mtheme button{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:12px;color:var(--muted-foreground)}
+.mtheme button:hover{color:var(--foreground)}
+.mtheme .icon{width:13px;height:13px}
+.mtheme [aria-pressed=true]{background:var(--background);color:var(--foreground);box-shadow:0 1px 2px rgba(0,0,0,.15)}
 .minfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px}
 .minfo dt{color:var(--muted-foreground)}
 .minfo dd{overflow:hidden;font:11px/1.6 var(--font-mono);text-align:right;white-space:nowrap;text-overflow:ellipsis}

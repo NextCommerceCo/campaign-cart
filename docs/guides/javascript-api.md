@@ -77,8 +77,9 @@ button in the bottom-right corner. Debug mode then stays on for every page of th
 so it follows the shopper through the funnel, and the panel opens on each page as it was left.
 `?debug=0` or **Turn off debug** in the menu ends it. The button shows the number of issues on
 the page; click it for a menu with the campaign, SDK version, cart and a link into each panel
-tab. The panel is drawn with tsugi and follows the system light or dark theme; the dock icon in
-the menu or panel moves it to the other side.
+tab. The panel is drawn with tsugi and follows the system light or dark theme, unless **Theme** in
+the menu picks one for the rest of the tab; the dock icon in the menu or panel moves it to the
+other side.
 
 The menu also shows the visitor's country, currency and language as the address service detects
 them, next to the ones in use, and switches each for testing: currency and language reload the

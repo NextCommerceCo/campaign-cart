@@ -12,6 +12,7 @@ import { localeMenu } from './locale';
 import { logsView } from './logs';
 import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
+import { followTheme } from './theme';
 import { createDebug, type PageKind, type PageVisit } from './state';
 import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from './styles';
 import { badge, type Child, empty, h, iconButton, nodes, plural, tab as tabButton, tablist, tree } from './view';
@@ -146,10 +147,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     (paymentIcons ??= import('../../vendor/tsugi/payment-icons.css?raw').then((m) => style.append(m.default)));
   host.attachShadow({ mode: 'open' }).append(style, box.el, root);
   document.body.append(host);
-  const scheme = matchMedia('(prefers-color-scheme: dark)');
-  const theme = () => host.classList.toggle('dark', scheme.matches);
-  scheme.addEventListener('change', theme);
-  theme();
+  const theme = followTheme(host, () => debug.state().panel.theme);
 
   const query = () => filter.value.trim().toLowerCase();
   const events = eventsView(engine, open);
@@ -303,6 +301,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
             show,
             pick: togglePick,
             flip,
+            theme: debug.state().panel.theme,
+            setTheme: (picked) => (debug.setPanel({ theme: picked }), theme(), render()),
             toggleDev: () => (debug.setPanel({ dev: (dev = !dev) }), later()),
             reset: () => (resetting ? info.reset() : ((resetting = true), later())),
           }),

@@ -2,6 +2,7 @@ import type { Line } from '../engine/cart/types';
 import type { Context } from '../engine/engine';
 import type { AnalyticsTrace } from '../engine/events/analytics';
 import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
+import type { Theme } from './theme';
 
 export type PageKind = 'product' | 'checkout' | 'upsell' | 'receipt' | 'page';
 
@@ -33,6 +34,8 @@ export interface Panel {
   right: boolean;
   dev?: boolean;
   country?: string;
+  /** Light or dark over the system's; none follows the system. */
+  theme?: Theme;
 }
 
 export interface DebugState {
