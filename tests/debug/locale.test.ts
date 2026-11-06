@@ -7,7 +7,8 @@ import { campaign } from '../fixtures/campaign';
 const shadow = () => document.querySelector('next-debug')!.shadowRoot!;
 const $ = <E extends HTMLElement = HTMLElement>(selector: string) => shadow().querySelector<E>(selector)!;
 const view = () => $('.root').dataset.view;
-const body = () => $('.body').textContent!;
+const popover = () => $('.geo').textContent!;
+const globe = () => $<HTMLButtonElement>('.head [aria-label="Locale"]');
 const menuItem = (label: string) =>
   [
     ...shadow().querySelectorAll<HTMLElement>(
@@ -83,7 +84,7 @@ async function start(markup = '', { page: shown = page, fetch = fakeApi().fetch,
 const openLocale = () => {
   while (view() !== 'menu') $('.fab').click();
   menuItem('Locale').click();
-  expect($('[data-tab="locale"]').getAttribute('aria-selected')).toBe('true');
+  expect([view(), $('.geo').hidden]).toEqual(['panel', false]);
 };
 
 const answered = () => vi.waitFor(() => expect(visitor()).not.toContain('Detecting…'));
@@ -297,6 +298,27 @@ describe('locale tab', () => {
     await vi.waitFor(() => expect(value().textContent).toBe('US · USD · en'));
     expect(value().querySelector('.mdot')).toBeNull();
     menuItem('Locale').click();
-    expect(body()).toContain('Locale · US · USD · en');
+    expect(popover()).toContain('Locale · US · USD · en');
+    expect(globe().dataset.differs).toBe('false');
+  });
+
+  it('opens from the globe in the panel header, marked when the locale differs from geo, and closes on Esc or a click outside', async () => {
+    const differs = geoAnswers(GEO);
+    await start('', { fetch: differs.fetch });
+    while (view() !== 'menu') $('.fab').click();
+    menuItem('Journey').click();
+    expect([$('.geo').hidden, globe().getAttribute('aria-expanded')]).toEqual([true, 'false']);
+    expect(shadow().querySelector('[data-tab="locale"]')).toBeNull();
+    globe().click();
+    expect([$('.geo').hidden, globe().getAttribute('aria-expanded')]).toEqual([false, 'true']);
+    await answered();
+    await vi.waitFor(() => expect(globe().dataset.differs).toBe('true'));
+    expect(globe().title).toBe('Locale · TH · USD · en');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect([view(), $('.geo').hidden]).toEqual(['panel', true]);
+    globe().click();
+    $('.body').click();
+    await vi.waitFor(() => expect($('.geo').hidden).toBe(true));
+    expect(view()).toBe('panel');
   });
 });

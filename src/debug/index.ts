@@ -38,7 +38,6 @@ const TABS = {
   issues: 'Issues',
   checkout: 'Checkout',
   analytics: 'Analytics',
-  locale: 'Locale',
   events: 'Events',
   elements: 'Elements',
   state: 'State',
@@ -88,6 +87,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   let queued = false;
   let resetting = false;
   let settings = false;
+  let geoOpen = false;
   const queries: Partial<Record<Tab, string>> = {};
 
   const host = document.createElement('next-debug');
@@ -118,6 +118,8 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     render();
   };
   const dock = button('dockRight', 'Move to the right', flip);
+  const globe = button('globe', 'Locale', () => ((geoOpen = !geoOpen), render()));
+  const geo = h('div', 'geo pop scrollbar-sm');
   const fab = h(
     'button',
     {
@@ -137,12 +139,14 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
       'head',
       h('div', 'tabs', strip),
       tabpick,
+      globe,
       pickButton,
       dock,
       button('close', 'Close', () => setView('closed')),
     ),
     search,
     body,
+    geo,
   );
   const hint = h('div', 'hint', 'Click an element to inspect it', h('span', 'dim', ' · Esc to cancel'));
   const root = h('div', 'root', panel, menu, fab, hint);
@@ -191,7 +195,6 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         render();
       }),
     analytics: () => flow.view(query()),
-    locale: () => locale.view(),
     events: () => events.view(query()),
     logs: () => logs.view(query()),
     benchmark: () => bench.view(),
@@ -229,6 +232,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
             setSettings: (on) => ((settings = on), render()),
             counts: () => ({ elements: countElements(), logs: engine.log.entries().length }),
             show,
+            geo: () => ((geoOpen = true), show(tab)),
             pick: togglePick,
             flip,
             theme: debug.state().panel.theme,
@@ -239,6 +243,10 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
         ),
       );
     if (view !== 'panel') return;
+    locale.mark(globe);
+    globe.setAttribute('aria-expanded', String(geoOpen));
+    geo.hidden = !geoOpen;
+    if (geoOpen) geo.replaceChildren(...nodes(locale.view()));
     tabs.forEach((el) => {
       el.hidden = !dev && DEV.includes(el.dataset.tab as Tab);
       el.setAttribute('aria-selected', String(el.dataset.tab === tab));
@@ -257,6 +265,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const setView = (next: typeof view) => {
     view = next;
     if (next !== 'menu') resetting = settings = false;
+    if (next === 'closed') geoOpen = false;
     if (next !== 'menu') debug.setPanel({ open: next === 'panel', tab });
     render();
   };
@@ -297,10 +306,15 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && view !== 'closed' && ![cart, pageConfig, detail].some((d) => d.dialog.open))
-      setView('closed');
+    if (e.key !== 'Escape' || view === 'closed' || [cart, pageConfig, detail].some((d) => d.dialog.open)) return;
+    if (geoOpen) return ((geoOpen = false), render());
+    setView('closed');
   });
-  const outside = (e: Event) => view === 'menu' && !e.composedPath().includes(host) && setView('closed');
+  const outside = (e: Event) => {
+    const path = e.composedPath();
+    if (view === 'menu' && !path.includes(host)) setView('closed');
+    if (geoOpen && !path.includes(geo) && !path.includes(globe)) ((geoOpen = false), later());
+  };
   document.addEventListener('click', outside, true);
   engine.on('*', (e) => flow.record(e), { replay: true });
   engine.subscribe(later);

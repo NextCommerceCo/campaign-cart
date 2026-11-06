@@ -33,6 +33,8 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .mtry{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 0;padding:8px 14px;border-bottom:1px solid var(--border);background:color-mix(in oklab,var(--warning) 12%,transparent);font-size:12px}
 .mtry .link{margin-left:10px}
 .mdot{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:var(--warning);vertical-align:1px}
+.geo{position:absolute;top:52px;right:8px;z-index:2;width:min(440px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:hidden auto;padding:12px;background:var(--background);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.22);transform-origin:top right}
+.head [data-differs=true]{position:relative}.head [data-differs=true]::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--warning)}
 .minfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px}
 .minfo dt{color:var(--muted-foreground)}.minfo dd{overflow:hidden;font:11px/1.6 var(--font-mono);text-align:right;white-space:nowrap;text-overflow:ellipsis}
 .mnote{padding:8px 12px 10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted-foreground)}
@@ -91,7 +93,7 @@ details details,details>.row{margin-left:14px}
 .box{position:fixed;z-index:2147483645;display:none;pointer-events:none;border:2px solid #3b82f6;border-radius:3px;background:rgba(59,130,246,.12)}
 .box span{position:absolute;left:-2px;top:-24px;padding:2px 6px;border-radius:4px;background:#0a0a0a;color:#fff;white-space:nowrap;font:11px var(--font-mono)}`;
 
-export const LOCALE_CSS = `.lgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start;gap:12px}
+export const LOCALE_CSS = `.lgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .lgrid>.block{margin:0}
 .lplace{display:flex;align-items:center;gap:12px;min-width:0}
 .lflag{flex-shrink:0;width:32px;height:24px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px var(--border)}
@@ -107,8 +109,7 @@ export const LOCALE_CSS = `.lgrid{display:grid;grid-template-columns:minmax(0,1f
 .lset small{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
 .lnotes{display:flex;flex-direction:column;gap:6px;padding:12px 16px 14px;border-top:1px solid var(--border);font-size:13px;color:var(--muted-foreground)}
 .lnotes>li{padding-left:10px;border-left:2px solid var(--border)}
-.lnotes>.lwarn{border-color:var(--warning);color:var(--warning)}
-@container panel (max-width:560px){.lgrid{grid-template-columns:minmax(0,1fr)}}`;
+.lnotes>.lwarn{border-color:var(--warning);color:var(--warning)}`;
 
 export const CONFIG_CSS = `.cmodal{font-family:var(--font-sans)}
 .cmodal>div{max-width:min(560px,100% - 2rem);height:min(44rem,calc(100vh - 2rem));padding:0;gap:0}

@@ -7,7 +7,7 @@ import type { LocaleSummary } from './locale';
 import type { Theme } from './theme';
 import { badge, type Child, h, iconButton, plural } from './view';
 
-export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'locale' | 'elements' | 'events' | 'logs';
+export type MenuTab = 'issues' | 'journey' | 'checkout' | 'analytics' | 'elements' | 'events' | 'logs';
 
 export interface MenuInput {
   info: { version: string; apiBase: string; funnel: string; scope: string; off: () => void };
@@ -25,6 +25,8 @@ export interface MenuInput {
   setSettings: (on: boolean) => void;
   counts: () => Record<'elements' | 'logs', number>;
   show: (tab: MenuTab) => void;
+  /** Opens the panel with the globe's Locale popover. */
+  geo: () => void;
   pick: () => void;
   flip: () => void;
   theme: Theme | undefined;
@@ -181,7 +183,7 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
       entry('route', 'Journey', `${plural(m.pages, 'page')} in this tab`, () => m.show('journey')),
       entry('cart', 'Checkout', `${cartText(engine)} · ${m.checkout}`, () => m.show('checkout')),
       entry('send', 'Analytics', m.analytics, () => m.show('analytics')),
-      entry('globe', 'Locale', localeValue(m.locale), () => m.show('locale')),
+      entry('globe', 'Locale', localeValue(m.locale), m.geo),
       entry('bolt', 'Events', String(m.events), () => m.show('events')),
       ...(counts
         ? [

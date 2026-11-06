@@ -85,6 +85,8 @@ export interface LocaleSummary {
 export interface LocaleTab {
   view(): Child[];
   summary(): LocaleSummary;
+  /** Titles the panel's globe with the locale in use, and marks it when that differs from geo. */
+  mark(globe: HTMLElement): void;
 }
 
 export function localeTab(engine: Engine, debug: DebugActions, send: Send, render: () => void): LocaleTab {
@@ -276,5 +278,10 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
       ];
     },
     summary,
+    mark: (globe) => {
+      const { text, differs } = summary();
+      globe.title = text ? `Locale · ${text}` : 'Locale';
+      globe.dataset.differs = String(differs);
+    },
   };
 }

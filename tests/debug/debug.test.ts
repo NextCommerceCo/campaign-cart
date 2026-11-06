@@ -120,13 +120,13 @@ describe('debug tools', () => {
     expect($('.mhead [aria-label="Settings"]')).not.toBeNull();
   });
 
-  it('shows the locale in use and opens the Locale tab from the menu', async () => {
+  it('shows the locale in use and opens the Locale popover from the menu', async () => {
     await start();
     $('.fab').click();
     expect(menuItem('Locale').textContent).toMatch(/^LocaleUSD · en$|^Locale\w\w · USD · en$/);
     menuItem('Locale').click();
     expect(view()).toBe('panel');
-    expect($('[data-tab="locale"]').getAttribute('aria-selected')).toBe('true');
+    expect($('.geo').hidden).toBe(false);
   });
 
   it('keeps the menu inside the viewport and the tab strip from running under the panel icons', () => {
@@ -144,8 +144,8 @@ describe('debug tools', () => {
         .map((t) => t.dataset.tab);
     const pickable = () =>
       [...$<HTMLSelectElement>('select.tabpick').options].filter((o) => !o.disabled).map((o) => o.value);
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
-    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
+    expect(pickable()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
     expect($('[aria-label="Pick an element"]').hidden).toBe(true);
     expect($('.root').classList.contains('dev')).toBe(false);
     expect(PANEL_CSS).toContain('.root:not(.dev) .devonly{display:none}');
@@ -156,7 +156,6 @@ describe('debug tools', () => {
       'issues',
       'checkout',
       'analytics',
-      'locale',
       'events',
       'elements',
       'state',
@@ -172,7 +171,7 @@ describe('debug tools', () => {
     await vi.waitFor(() => expect($('.root').classList.contains('dev')).toBe(false));
     back();
     menuItem('Journey').click();
-    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'locale', 'events']);
+    expect(shown()).toEqual(['journey', 'issues', 'checkout', 'analytics', 'events']);
   });
 
   it('opens each panel tab from the menu, and closes on Esc', async () => {
