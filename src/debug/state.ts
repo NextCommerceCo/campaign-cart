@@ -32,6 +32,7 @@ export interface Panel {
   tab: string;
   right: boolean;
   dev?: boolean;
+  country?: string;
 }
 
 export interface DebugState {
@@ -70,7 +71,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
   const saved = ctx.saved<DebugState>('debug');
   let state: DebugState = {
     pages: saved?.pages ?? [],
-    panel: saved?.panel ?? { open: false, tab: 'journey', right: false },
+    panel: saved?.panel ?? { open: false, tab: 'journey', right: true },
   };
   const save = () => ctx.update('debug', state, { silent: true });
 

@@ -15,6 +15,7 @@ export interface MenuInput {
   pages: number;
   checkout: string;
   analytics: string;
+  locale: () => Child;
   counts: () => Record<'elements' | 'events' | 'logs', number>;
   show: (tab: MenuTab) => void;
   pick: () => void;
@@ -109,6 +110,7 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
           ]
         : []),
     ),
+    m.locale(),
     m.dev && h('dl', 'minfo', ...setup.flatMap(([k, v]) => [h('dt', {}, k), h('dd', { title: v }, v)])),
     h('div', 'mlist', toggle('Developer mode', 'Events, Elements, State and Logs', m.dev, m.toggleDev)),
     h(

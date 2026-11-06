@@ -107,7 +107,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       },
     },
     currency: config.currency,
-    locale: i18n.locale,
+    locale: config.lang || i18n.locale,
     params: Object.fromEntries(params),
     visit: {
       landingPage: location.href,
@@ -136,6 +136,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
         arrived,
         reset: () => location.assign(`${location.pathname}?reset=1`),
         off: () => location.assign(`${location.pathname}?debug=0`),
+        send,
         analytics: () => ({ ...readLegacyAnalytics(), ignored: trackingIgnored(engine.getState().visit.params) }),
       }),
     );

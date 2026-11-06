@@ -44,6 +44,7 @@ export interface Campaign {
   shipping_methods: ShippingOption[];
   payment_env_key?: string;
   available_shipping_countries?: Array<{ code: string; label: string }>;
+  available_currencies?: Array<{ code: string; label: string }>;
   available_payment_methods?: Array<{ code: string; label: string }>;
   available_express_payment_methods?: Array<{ code: string; label: string }>;
 }

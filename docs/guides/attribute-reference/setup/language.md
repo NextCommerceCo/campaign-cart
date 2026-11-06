@@ -6,7 +6,8 @@ order: 104
 
 # Language
 
-Prices and the checkout's texts are in `nextConfig.locale`, else the campaign's language.
+Prices and the checkout's texts are in `?lang=` ([URL parameters](url-parameters.md)), else
+`nextConfig.locale`, else the campaign's language.
 `nextConfig.translations` replaces any text by its key. Set both before the
 [loader script](loader-script.md).
 

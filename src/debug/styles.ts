@@ -29,7 +29,7 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .mhead b{display:-webkit-box;overflow:hidden;font-weight:600;line-height:1.35;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .mhead small{display:block;margin-top:2px;font-size:12px;color:var(--muted-foreground)}
 .mlist{padding:6px}
-.mlist+.mlist,.minfo+.mlist{border-top:1px solid var(--border)}
+.mlist+.mlist,.minfo+.mlist,.mloc+.mlist{border-top:1px solid var(--border)}
 .item{display:flex;align-items:center;gap:12px;width:100%;padding:7px 8px;border-radius:8px;text-align:left}
 .item:hover,.mswitch:hover{background:var(--accent)}
 .label{display:inline-flex;flex-shrink:0;align-items:center;gap:10px;white-space:nowrap}
@@ -37,6 +37,13 @@ export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);-
 .value{flex:1;min-width:0;overflow:hidden;color:var(--muted-foreground);font-size:12px;text-align:right;white-space:nowrap;text-overflow:ellipsis}
 .go{display:inline-flex;margin-left:-6px;color:var(--muted-foreground);transform:rotate(-90deg)}
 .go>.icon{width:14px;height:14px}
+.mloc{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:8px 12px;padding:10px 14px 12px;border-top:1px solid var(--border)}
+.mloc>header{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 8px}
+.mloc h3{font:600 11px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+.mloc>span{line-height:28px}
+.mloc>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mloc .select{width:100%}
+.mloc small{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
 .minfo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px}
 .minfo dt{color:var(--muted-foreground)}
 .minfo dd{overflow:hidden;font:11px/1.6 var(--font-mono);text-align:right;white-space:nowrap;text-overflow:ellipsis}

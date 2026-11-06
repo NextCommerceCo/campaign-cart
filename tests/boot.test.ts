@@ -43,6 +43,13 @@ describe('readConfig', () => {
     ]);
   });
 
+  it('reads the currency and the language from ?currency= and ?lang=', () => {
+    history.replaceState(null, '', '/lp/?currency=EUR&lang=fr');
+    expect(readConfig(document, window)).toMatchObject({ currency: 'EUR', lang: 'fr' });
+    history.replaceState(null, '', '/lp/');
+    expect(readConfig(document, window)).toMatchObject({ currency: undefined, lang: undefined });
+  });
+
   it('reads the script tag first, then the deprecated config', () => {
     document.head.innerHTML = `<script data-campaign="pk_live_1"></script><script data-funnel="helloweenA"></script>`;
     expect(readConfig(document, window)).toMatchObject({ apiKey: 'pk_live_1', funnel: 'helloweenA' });
@@ -63,6 +70,17 @@ describe('boot', () => {
       boot(config, Promise.resolve({ ...campaign, currency: 'EUR' }));
       await vi.waitFor(() => expect(document.querySelector('h2')!.textContent).toBe('Kontakt'));
       expect(document.getElementById('price')!.textContent).toMatch(/^\d+,\d\d\s€$/);
+    } finally {
+      delete (window as { nextConfig?: unknown }).nextConfig;
+    }
+  });
+
+  it('writes prices in ?lang= over nextConfig.locale', async () => {
+    (window as { nextConfig?: unknown }).nextConfig = { locale: 'en-US' };
+    document.body.innerHTML = `<span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>`;
+    try {
+      boot({ ...config, lang: 'fr' }, Promise.resolve({ ...campaign, currency: 'EUR' }));
+      await vi.waitFor(() => expect(document.getElementById('price')!.textContent).toMatch(/^\d+,\d\d\s€$/));
     } finally {
       delete (window as { nextConfig?: unknown }).nextConfig;
     }

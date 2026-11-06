@@ -1,5 +1,6 @@
 import type { Line } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
+import type { Send } from '../engine/types';
 import { card, countElements, explain, highlighter, inspect, matches, pick } from './elements';
 import { analyticsFlow } from './analytics';
 import { cartView } from './cart';
@@ -7,6 +8,7 @@ import { checkoutView } from './checkout';
 import { eventsView } from './events';
 import { type IconName, icon } from './icons';
 import { journeyView } from './journey';
+import { localeMenu } from './locale';
 import { logsView } from './logs';
 import { menuView } from './menu';
 import type { ProviderConfig } from './providers';
@@ -37,6 +39,7 @@ export interface DebugInfo {
   reset: () => void;
   off: () => void;
   analytics: () => ProviderConfig;
+  send: Send;
 }
 
 const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
@@ -156,6 +159,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog);
   const logs = logsView(engine, open, idOf);
+  const locale = localeMenu(engine, debug, info.send, () => later());
 
   const findIssues = () => {
     const page = inspect(engine).filter((i) => i.bad);
@@ -280,6 +284,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     pickButton.hidden = !dev;
     if (!dev && DEV.includes(tab)) goTo('journey');
     dock.title = right ? 'Move to the left' : 'Move to the right';
+    dock.setAttribute('aria-label', dock.title);
     dock.replaceChildren(icon(right ? 'dockLeft' : 'dockRight'));
     if (view === 'menu')
       menu.replaceChildren(
@@ -293,15 +298,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
             pages: debug.state().pages.length,
             checkout: checkout.summary(),
             analytics: flow.summary(),
+            locale,
             counts: () => ({ elements: countElements(), events: events.count(), logs: engine.log.entries().length }),
             show,
             pick: togglePick,
             flip,
-            toggleDev: () => {
-              dev = !dev;
-              debug.setPanel({ dev });
-              later();
-            },
+            toggleDev: () => (debug.setPanel({ dev: (dev = !dev) }), later()),
             reset: () => (resetting ? info.reset() : ((resetting = true), later())),
           }),
         ),

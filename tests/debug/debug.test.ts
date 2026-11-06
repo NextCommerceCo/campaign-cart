@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
 import { CART_CSS, CHECKOUT_CSS, JOURNEY_CSS, PANEL_CSS, TSUGI_CSS } from '../../src/debug/styles';
-import { fakeApi } from '../fixtures/api';
+import type { Campaign } from '../../src/engine/types';
+import { fakeApi, json } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 
 const shadow = () => document.querySelector('next-debug')!.shadowRoot!;
@@ -20,13 +21,21 @@ const developer = async () => {
 const details = (key: string) =>
   [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')].find((d) => d.textContent!.startsWith(key))!;
 
-async function start(markup = '', config: { debug?: boolean } = { debug: true }) {
+async function start(
+  markup = '',
+  config: { debug?: boolean } = { debug: true },
+  {
+    page = campaign,
+    fetch = fakeApi().fetch,
+    boot: run = boot,
+  }: { page?: Campaign; fetch?: typeof globalThis.fetch; boot?: typeof boot } = {},
+) {
   document.body.innerHTML = markup;
-  vi.stubGlobal('fetch', fakeApi().fetch);
+  vi.stubGlobal('fetch', fetch);
   for (const level of ['debug', 'info', 'warn'] as const) vi.spyOn(console, level).mockImplementation(() => {});
-  const next = boot(
+  const next = run(
     { apiKey: 'pk_test', apiBase: 'https://api.test', funnel: 'f1', reset: false, ...config },
-    Promise.resolve(campaign),
+    Promise.resolve(page),
   );
   await vi.waitFor(() => expect(document.querySelector('next-debug')).not.toBeNull());
   return next;
@@ -362,12 +371,160 @@ describe('debug tools', () => {
     expect(clicked).toHaveBeenCalledOnce();
   });
 
-  it('moves to the right side', async () => {
+  it('starts on the right side and moves to the left', async () => {
     await start();
-    $('.fab').click();
-    $('.mhead button').click();
     expect($('.root').classList.contains('right')).toBe(true);
+    $('.fab').click();
     expect($('.mhead button').getAttribute('aria-label')).toBe('Move to the left');
+    $('.mhead button').click();
+    expect($('.root').classList.contains('right')).toBe(false);
+    expect($('.mhead button').getAttribute('aria-label')).toBe('Move to the right');
+    expect($('.head [aria-label="Move to the right"]')).not.toBeNull();
+  });
+
+  describe('locale', () => {
+    const page: Campaign = {
+      ...campaign,
+      available_shipping_countries: [
+        { code: 'US', label: 'United States' },
+        { code: 'GB', label: 'United Kingdom' },
+        { code: 'TH', label: 'Thailand' },
+      ],
+      available_currencies: [
+        { code: 'USD', label: '$ USD' },
+        { code: 'EUR', label: '€ EUR' },
+      ],
+    };
+    const FORM =
+      '<meta name="next-success-url" content="/thanks"><form data-next-checkout="form"><input data-next-checkout-field="email"></form>';
+    const GEO = {
+      country: { code: 'TH', name: 'Thailand' },
+      currency: 'THB',
+      language: 'th-TH',
+      region: { name: 'Bangkok' },
+      timezone: 'Asia/Bangkok',
+      source: 'cf',
+    };
+    const select = (label: string) => $<HTMLSelectElement>(`.mloc select[aria-label="${label}"]`);
+    const choose = (label: string, value: string) => {
+      select(label).value = value;
+      select(label).dispatchEvent(new Event('change'));
+    };
+    const options = (label: string) => [...select(label).options].map((o) => [o.value, o.text]);
+    const geoAnswers = (answer: unknown) => {
+      const api = fakeApi();
+      const asked: string[] = [];
+      const fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (!String(url).includes('/v1/geo')) return api.fetch(url, init);
+        asked.push(String(url));
+        return answer ? json(answer) : json({}, 503);
+      }) as typeof globalThis.fetch;
+      return { fetch, asked };
+    };
+    afterEach(() => localStorage.clear());
+    const freshBoot = async () => {
+      vi.resetModules();
+      return (await import('../../src/boot')).boot;
+    };
+
+    it('lists the campaign currencies and the i18n-rules languages, and reloads with ?currency= or ?lang=', async () => {
+      await start('', { debug: true }, { page });
+      const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+      $('.fab').click();
+      expect($('.mloc h3').textContent).toBe('Locale');
+      expect(options('Currency')).toEqual([
+        ['USD', '$ USD'],
+        ['EUR', '€ EUR'],
+      ]);
+      expect(select('Currency').value).toBe('USD');
+      expect(options('Language').map(([code]) => code)).toEqual([
+        'da',
+        'de',
+        'en',
+        'es',
+        'fi',
+        'fr',
+        'it',
+        'nl',
+        'no',
+        'pt',
+        'sv',
+        'th',
+      ]);
+      expect(options('Language')).toContainEqual(['th', 'ไทย']);
+      expect(select('Language').value).toBe('en');
+      expect(options('Country').map(([code]) => code)).toEqual(['US', 'GB', 'TH']);
+      choose('Currency', 'EUR');
+      expect(new URL(assign.mock.calls[0]![0] as string).searchParams.get('currency')).toBe('EUR');
+      choose('Language', 'da');
+      expect(new URL(assign.mock.calls[1]![0] as string).searchParams.get('lang')).toBe('da');
+    });
+
+    it('shows only the campaign currency when it offers no others', async () => {
+      await start();
+      $('.fab').click();
+      expect(options('Currency')).toEqual([['USD', 'USD']]);
+      expect(select('Currency').disabled).toBe(true);
+    });
+
+    it('sets the country of the checkout form on a checkout page', async () => {
+      const next = await start(FORM, { debug: true }, { page });
+      await vi.waitFor(() => expect(next.getState().checkout?.countries.length).toBe(3));
+      $('.fab').click();
+      choose('Country', 'GB');
+      expect(next.getState().checkout!.fields.country).toBe('GB');
+      await vi.waitFor(() => expect(select('Country').value).toBe('GB'));
+    });
+
+    it('keeps a country chosen off checkout and sets it on the checkout page', async () => {
+      await start('', { debug: true }, { page });
+      $('.fab').click();
+      choose('Country', 'GB');
+      await vi.waitFor(() => expect($('.mloc').textContent).toContain('applies at checkout'));
+      expect(select('Country').value).toBe('GB');
+      const next = await start(FORM, {}, { page });
+      await vi.waitFor(() => expect(next.getState().checkout?.fields.country).toBe('GB'));
+      while (view() !== 'menu') $('.fab').click();
+      expect($('.mloc').textContent).not.toContain('applies at checkout');
+    });
+
+    it('asks the geo once the menu opens, and shows what it detected next to what is in use', async () => {
+      const geo = geoAnswers(GEO);
+      await start('', { debug: true }, { page, fetch: geo.fetch, boot: await freshBoot() });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(geo.asked).toEqual([]);
+      $('.fab').click();
+      expect($('.mloc header').textContent).toBe('LocaleDetecting…');
+      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleAsia/Bangkok'));
+      expect(geo.asked).toEqual(['https://i18n-rules.nextcommerce.com/v1/geo?lang=en']);
+      expect($('.mloc').textContent).toContain('Geo: Thailand');
+      expect($('.mloc').textContent).toContain('Geo: THB');
+      expect($('.mloc').textContent).toContain('Browser: th-TH');
+      expect(select('Country').value).toBe('TH');
+      expect(select('Currency').value).toBe('USD');
+    });
+
+    it('says when a local request has no geo', async () => {
+      const geo = geoAnswers({
+        ...GEO,
+        country: null,
+        currency: null,
+        language: 'en-US',
+        region: null,
+        source: 'default',
+      });
+      await start('', { debug: true }, { fetch: geo.fetch, boot: await freshBoot() });
+      $('.fab').click();
+      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleNo geo on a local request'));
+      expect($('.mloc').textContent).not.toContain('Geo:');
+      expect($('.mloc').textContent).toContain('Browser: en-US');
+    });
+
+    it('says when the geo does not answer', async () => {
+      await start('', { debug: true }, { fetch: geoAnswers(undefined).fetch, boot: await freshBoot() });
+      $('.fab').click();
+      await vi.waitFor(() => expect($('.mloc header').textContent).toBe('LocaleGeo unavailable'));
+    });
   });
 
   it('styles the panel and each view with separate class names, never restyling a tsugi component', async () => {

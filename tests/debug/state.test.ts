@@ -133,7 +133,7 @@ describe('debug journey', () => {
     const session = new MemoryStorage();
     page(session, '/a/').debug.setPanel({ open: true, tab: 'cart' });
     const next = page(session, '/b/').debug;
-    expect(next.state().panel).toEqual({ open: true, tab: 'cart', right: false });
+    expect(next.state().panel).toEqual({ open: true, tab: 'cart', right: true });
     next.clear();
     expect(next.state().pages.map((p) => p.path)).toEqual(['/b/']);
     for (let i = 0; i < 30; i++) page(session, `/p${i}/`);

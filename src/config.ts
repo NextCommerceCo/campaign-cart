@@ -7,6 +7,7 @@ export interface BootConfig {
   apiBase: string;
   funnel: string;
   currency?: string;
+  lang?: string;
   debug?: boolean;
   reset: boolean;
 }
@@ -22,6 +23,7 @@ export function readConfig(doc: Document, win: Window): BootConfig {
     apiBase: API_BASE,
     funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
     currency: params.get('currency') || undefined,
+    lang: params.get('lang') || undefined,
     debug: debug === '1' || legacy.debug ? true : debug === '0' ? false : undefined,
     reset: params.get('reset') === '1' || legacy.reset,
   };
