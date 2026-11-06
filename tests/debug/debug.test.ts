@@ -632,6 +632,8 @@ describe('debug tools', () => {
       CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS + STREAM_CSS,
     ).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
+    expect(PANEL_CSS).toMatch(/:host\{[^}]*color-scheme:light/);
+    expect(PANEL_CSS).toMatch(/:host\(\.dark\)\{[^}]*color-scheme:dark/);
     dark.mockRestore();
   });
 

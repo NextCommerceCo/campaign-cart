@@ -2,8 +2,8 @@ import tsugi from '../../vendor/tsugi/tsugi.css?raw';
 
 export const TSUGI_CSS = tsugi;
 
-export const PANEL_CSS = `:host{all:initial;--purple:oklch(54.1% .281 293.009);--orange:oklch(64.6% .222 41.116)}
-:host(.dark){--purple:#c27cf8;--orange:#ff8a3d}
+export const PANEL_CSS = `:host{all:initial;color-scheme:light;--purple:oklch(54.1% .281 293.009);--orange:oklch(64.6% .222 41.116)}
+:host(.dark){color-scheme:dark;--purple:#c27cf8;--orange:#ff8a3d}
 .root{font:13px/1.5 var(--font-sans);color:var(--foreground);-webkit-font-smoothing:antialiased}
 @layer base{button{cursor:pointer}.icon{display:inline-flex;flex-shrink:0;width:16px;height:16px}.icon svg{width:100%;height:100%}}
 .fab,.menu,.panel,.hint{position:fixed;z-index:2147483646}
@@ -45,7 +45,7 @@ hr{margin:6px 4px;border:0;border-top:1px solid var(--border)}
 .head{display:flex;align-items:center;gap:2px;padding:8px;border-bottom:1px solid var(--border)}
 .dmenu{position:absolute;top:44px;display:flex;flex-direction:column;max-width:280px;z-index:3;min-width:220px;border:1px solid var(--border);border-radius:10px;background:var(--background);box-shadow:0 12px 32px rgba(0,0,0,.24);transform-origin:top left}.dmenu[hidden]{display:none}.dmenu [aria-current=true]{background:var(--accent)}.dinfo{padding:8px 12px 10px;border-top:1px solid var(--border);font:11px/1.6 var(--font-mono);color:var(--muted-foreground);overflow-wrap:anywhere}
 .lswitch{position:absolute;bottom:100%;right:0;display:flex;gap:6px;margin-bottom:8px}.root:not(.right) .lswitch{right:auto;left:0}
-.lpill{position:relative;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--background);box-shadow:0 6px 18px rgba(0,0,0,.2);font:600 12px var(--font-sans);color:var(--foreground);cursor:pointer}.lpill:hover{background:var(--accent)}.lpill[data-warn]{border-color:var(--warning)}.lpill>.icon{width:14px;height:14px;color:var(--muted-foreground)}.lpill>.icon:last-of-type{width:12px;height:12px}.lpill .mdot{margin:0}.lpill>select{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.lpill:has(select:disabled){cursor:default;opacity:.7}
+.lpill{position:relative;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--background);box-shadow:0 6px 18px rgba(0,0,0,.2);font:600 12px var(--font-sans);color:var(--foreground);cursor:pointer}.lpill:hover{background:var(--accent)}.lpill[data-warn]{border-color:var(--warning)}.lpill>.icon{width:14px;height:14px;color:var(--muted-foreground)}.lpill>.icon:last-of-type{width:12px;height:12px}.lpill .mdot{margin:0}.lpill>select{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.lpill option{background:var(--background);color:var(--foreground)}.lpill:has(select:disabled){cursor:default;opacity:.7}
 .head .tabs{flex:1;min-width:0;margin-right:6px;overflow-x:auto;scrollbar-width:none}
 .head [role=tab]{padding-inline:6px}
 .dev [data-tab=elements]{position:relative;margin-inline-start:9px}
