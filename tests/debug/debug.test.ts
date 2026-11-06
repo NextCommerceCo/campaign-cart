@@ -181,8 +181,8 @@ describe('debug tools', () => {
     expect($('[data-tab="analytics"]').getAttribute('aria-selected')).toBe('true');
     expect(body()).toMatch(/\d+ events? sent on this page, newest first/);
     tab('logs');
-    expect(body()).toContain('info storage scope');
-    expect(body()).toMatch(/debug api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
+    expect(body()).toContain('storage scope');
+    expect(body()).toMatch(/api POST \/api\/v1\/carts\/calculate\/ → 200 in \d+ ms/);
     tab('state');
     expect(details('cart').open).toBe(true);
     expect(details('cart').textContent).toContain('groups');
@@ -318,8 +318,27 @@ describe('debug tools', () => {
     const filter = $<HTMLInputElement>('input');
     filter.value = 'unknown display';
     filter.dispatchEvent(new Event('input'));
-    expect(body()).toContain('warn unknown display path "cart.nope"');
+    expect(body()).toContain('unknown display path "cart.nope"');
     expect(body()).not.toContain('api POST');
+    expect($('.body .row .ldot, .body summary .ldot').dataset.level).toBe('warn');
+    expect(body()).not.toContain('{');
+    filter.value = '';
+    filter.dispatchEvent(new Event('input'));
+    const chip = (label: string) =>
+      [...shadow().querySelectorAll<HTMLButtonElement>('.echips button')].find((b) =>
+        b.textContent!.startsWith(label),
+      )!;
+    chip('Warnings').click();
+    expect(chip('Warnings').getAttribute('aria-pressed')).toBe('true');
+    expect(
+      new Set(
+        [...shadow().querySelectorAll<HTMLElement>('.body > .row .ldot, .body > details > summary .ldot')].map(
+          (d) => d.dataset.level,
+        ),
+      ),
+    ).toEqual(new Set(['warn']));
+    chip('All').click();
+    expect(body()).toContain('api POST');
   });
 
   it('counts issues on the button and lists each once, with the element behind it', async () => {

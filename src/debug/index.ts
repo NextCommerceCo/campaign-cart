@@ -179,7 +179,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const journey = journeyView(engine, debug, { render: () => render() });
   const checkout = checkoutView(engine, cart, { render: () => render(), paymentIcons: () => void loadPaymentIcons() });
   root.append(cart.dialog, pageConfig.dialog);
-  const logs = logsView(engine, open, idOf);
+  const logs = logsView(engine, open, idOf, () => render());
   const locale = localeTab(engine, debug, info.send, () => later());
 
   const issueTab = issuesView(engine, debug, { checkout, flow, logs, box, show: (t) => show(t) });
