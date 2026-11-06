@@ -141,7 +141,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const theme = followTheme(host, () => debug.state().panel.theme);
 
   const query = () => filter.value.trim().toLowerCase();
-  const events = eventsView(engine, open, () => render());
+  const events = eventsView(engine, debug, open, () => render());
   const flow = analyticsFlow({ open, config: info.analytics });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, { render: () => render() });

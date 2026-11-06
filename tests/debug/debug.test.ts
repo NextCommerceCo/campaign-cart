@@ -238,7 +238,7 @@ describe('debug tools', () => {
     expect(details('campaign').open).toBe(false);
   });
 
-  it('groups the public events into bursts, newest first, each in order with what it carried, and keeps them out of the logs', async () => {
+  it('lists the public events newest first with what each carried, groups them into bursts on request, and keeps them out of the logs', async () => {
     const next = await start();
     const got: unknown[] = [];
     next.on('cart.added', (_data, event) => got.push(event));
@@ -249,22 +249,15 @@ describe('debug tools', () => {
     vi.useRealTimers();
     await developer();
     menuItem('Events').click();
-    const groups = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
-    const names = (group: HTMLDetailsElement) =>
-      [...group.querySelectorAll(':scope > details > summary')].map(
-        (s) => s.textContent!.match(/ ms([a-z]+\.[a-z]+)/)![1],
-      );
-    await vi.waitFor(() => expect(groups()).toHaveLength(2));
-    expect(body()).toMatch(/\d+ events on this page in 2 bursts, newest first/);
+    const rows = () => [...shadow().querySelectorAll<HTMLDetailsElement>('.body > details')];
+    const name = (d: HTMLDetailsElement) => d.querySelector('summary')!.textContent!.match(/\d([a-z]+\.[a-z]+)/)![1];
+    await vi.waitFor(() => expect(rows().map(name)).toContain('cart.added'));
+    expect(body()).toMatch(/\d+ events on this page, newest first/);
     expect(body()).not.toContain('campaign.loaded');
-    const [newest, older] = groups() as [HTMLDetailsElement, HTMLDetailsElement];
-    expect([newest.open, older.open]).toEqual([true, false]);
-    expect(older.querySelector('summary')!.textContent).toContain('sdk.ready');
-    expect(names(newest).indexOf('cart.added')).toBeLessThan(names(newest).indexOf('cart.calculated'));
-    const added = [...newest.querySelectorAll<HTMLDetailsElement>(':scope > details')].find((d) =>
-      d.querySelector('summary')!.textContent!.includes('cart.added'),
-    )!;
-    expect(added.querySelector('summary')!.textContent).toMatch(/^\+\d+ mscart\.added .+ 0→1$/);
+    expect(shadow().querySelector('.egroup')).toBeNull();
+    expect(rows().map(name).indexOf('cart.calculated')).toBeLessThan(rows().map(name).indexOf('sdk.ready'));
+    const added = rows().find((d) => name(d) === 'cart.added')!;
+    expect(added.querySelector('summary')!.textContent).toMatch(/^[\d:.]+cart\.added .+ 0→1$/);
     expect(body()).not.toContain('{event_id');
     added.open = true;
     const { event_id, session_id } = got[0] as { event_id: string; session_id: string };
@@ -272,13 +265,12 @@ describe('debug tools', () => {
     expect(added.textContent).toContain(session_id);
     expect(added.textContent).toContain('object "cart"');
     const filter = $<HTMLInputElement>('input');
-    const lone = () => groups().map((d) => d.querySelector('summary')!.textContent!.match(/\d([a-z]+\.[a-z]+)/)![1]);
     filter.value = 'Cart.Add';
     filter.dispatchEvent(new Event('input'));
-    expect(lone()).toEqual(['cart.added']);
+    expect(rows().map(name)).toEqual(['cart.added']);
     filter.value = '0→1';
     filter.dispatchEvent(new Event('input'));
-    expect(lone()).toEqual(['cart.added']);
+    expect(rows().map(name)).toEqual(['cart.added']);
     filter.value = '';
     filter.dispatchEvent(new Event('input'));
     const chip = (label: string) =>
@@ -288,10 +280,23 @@ describe('debug tools', () => {
     expect(chip('All').getAttribute('aria-pressed')).toBe('true');
     expect(chip('cart').querySelector('.edot')!.getAttribute('data-kind')).toBe('cart');
     chip('sdk').click();
-    expect(lone()).toEqual(['sdk.ready']);
+    expect(rows().map(name)).toEqual(['sdk.ready']);
     expect(chip('sdk').getAttribute('aria-pressed')).toBe('true');
     chip('All').click();
-    expect(groups()).toHaveLength(2);
+
+    expect(chip('Group bursts').getAttribute('aria-pressed')).toBe('false');
+    chip('Group bursts').click();
+    expect(chip('Group bursts').getAttribute('aria-pressed')).toBe('true');
+    expect(Object.values(sessionStorage).some((v) => v.includes('"grouped":true'))).toBe(true);
+    expect(body()).toMatch(/\d+ events on this page in 2 bursts, newest first/);
+    const [newest, older] = rows() as [HTMLDetailsElement, HTMLDetailsElement];
+    expect(rows()).toHaveLength(2);
+    expect([newest.classList.contains('egroup'), newest.open, older.open]).toEqual([true, true, false]);
+    expect(older.querySelector('summary')!.textContent).toContain('sdk.ready');
+    const inside = [...newest.querySelectorAll(':scope > details > summary')].map(
+      (s) => s.textContent!.match(/ ms([a-z]+\.[a-z]+)/)![1],
+    );
+    expect(inside.indexOf('cart.added')).toBeLessThan(inside.indexOf('cart.calculated'));
     tab('logs');
     expect(body()).not.toMatch(/event (sdk|cart)\./);
   });

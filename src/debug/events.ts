@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { format } from '../engine/format';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
+import type { DebugActions } from './state';
 import { button, type Child, empty, expandable, h, plural, stamp, tree } from './view';
 
 const KEEP = 300;
@@ -31,7 +32,7 @@ const bursts = (events: SdkEvent[]) =>
     return all;
   }, []);
 
-export function eventsView(engine: Engine, open: Set<string>, render: () => void) {
+export function eventsView(engine: Engine, debug: DebugActions, open: Set<string>, render: () => void) {
   const seen: SdkEvent[] = [];
   const kinds = new Set<string>();
   let newest = '';
@@ -89,6 +90,7 @@ export function eventsView(engine: Engine, open: Set<string>, render: () => void
       ...Object.entries(counts).map(([kind, n]) =>
         chip(kind, n, kinds.has(kind), () => (kinds.has(kind) ? kinds.delete(kind) : kinds.add(kind)), kind),
       ),
+      grouping(),
     );
   };
 
@@ -128,6 +130,19 @@ export function eventsView(engine: Engine, open: Set<string>, render: () => void
     );
   };
 
+  const grouped = () => debug.state().panel.grouped === true;
+
+  const grouping = () => {
+    const el = button('Group bursts', () => (debug.setPanel({ grouped: !grouped() }), render()), {
+      variant: 'outline',
+      size: 'xs',
+    });
+    el.classList.add('egroups');
+    el.title = 'Group the events one action set off, a second or less apart';
+    el.setAttribute('aria-pressed', String(grouped()));
+    return el;
+  };
+
   const view = (query: string): Child[] => {
     if (!seen.length) return [empty('No events yet', 'Each SDK event shows here as next.on gets it.')];
     const shown = seen.filter(
@@ -136,16 +151,18 @@ export function eventsView(engine: Engine, open: Set<string>, render: () => void
         (e.event_type.includes(query) || summary(e).toLowerCase().includes(query)),
     );
     if (!shown.length) return [chips(), empty('Nothing matches', 'No event fits the filter.')];
-    const groups = bursts(shown).reverse();
+    const groups = grouped() ? bursts(shown).reverse() : [];
     return [
       chips(),
       h(
         'div',
         'summary',
-        `${plural(total, 'event')} on this page in ${plural(groups.length, 'burst')}, newest first`,
+        `${plural(total, 'event')} on this page`,
+        grouped() && ` in ${plural(groups.length, 'burst')}`,
+        ', newest first',
         total > seen.length && ` · the last ${KEEP} kept`,
       ),
-      ...groups.map((events, i) => group(events, i === 0)),
+      ...(grouped() ? groups.map((events, i) => group(events, i === 0)) : shown.reverse().map((e) => row(e, -1))),
     ];
   };
 
