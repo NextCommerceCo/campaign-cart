@@ -1,4 +1,4 @@
-import { I18N_RULES } from './texts';
+import { I18N_RULES, rulesSend } from './texts';
 import type { Send } from './types';
 
 /** i18n-rules' `/v1/geo`: where the visitor is, as the edge resolved it. */
@@ -23,7 +23,7 @@ let asked: Promise<VisitorGeo | undefined> | undefined;
 
 /** The visitor's geo, asked once per page and kept in memory only; `undefined` when i18n-rules cannot answer. */
 export function visitorGeo(send: Send, lang = 'en', base = I18N_RULES): Promise<VisitorGeo | undefined> {
-  asked ??= send(`${base}/v1/geo?lang=${encodeURIComponent(lang)}`, { method: 'GET' })
+  asked ??= rulesSend(send)(`${base}/v1/geo?lang=${encodeURIComponent(lang)}`, { method: 'GET' })
     .then(async (res) => (res.ok ? ((await res.json()) as VisitorGeo) : undefined))
     .catch(() => undefined);
   return asked;

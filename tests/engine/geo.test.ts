@@ -22,7 +22,10 @@ describe('visitorGeo', () => {
     const geo = await visitorGeo(send, 'fr', 'https://rules.test');
     await visitorGeo(send, 'fr', 'https://rules.test');
     expect(send).toHaveBeenCalledOnce();
-    expect(send).toHaveBeenCalledWith('https://rules.test/v1/geo?lang=fr', { method: 'GET' });
+    expect(send).toHaveBeenCalledWith('https://rules.test/v1/geo?lang=fr', {
+      method: 'GET',
+      headers: { 'X-Next-SDK-Version': expect.any(String) },
+    });
     expect(geo).toEqual(answer);
   });
 

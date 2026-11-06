@@ -1,9 +1,17 @@
 import type { Send } from './types';
 
+declare const __VERSION__: string;
+
 /** Texts by dotted key, as i18n-rules' `/v1/locales/:lang` and the page's `translations` give them. */
 export type Texts = Readonly<Record<string, string>>;
 
 export const I18N_RULES = 'https://i18n-rules.nextcommerce.com';
+
+/** `send` with `X-Next-SDK-Version` on every request, for i18n-rules' analytics by SDK version. */
+export const rulesSend =
+  (send: Send): Send =>
+  (url, init) =>
+    send(url, { ...init, headers: { 'X-Next-SDK-Version': __VERSION__, ...init.headers } });
 
 /** `th-TH` → `th`. */
 export const baseLang = (lang: string) => lang.toLowerCase().split(/[-_]/)[0]!;
@@ -36,7 +44,7 @@ export function serviceTexts(send: Send, lang: string, base = I18N_RULES): Promi
   const key = baseLang(lang);
   let answer = asked.get(key);
   if (!answer) {
-    answer = send(`${base}/v1/locales/${encodeURIComponent(lang)}`, { method: 'GET' })
+    answer = rulesSend(send)(`${base}/v1/locales/${encodeURIComponent(lang)}`, { method: 'GET' })
       .then(async (res) =>
         res.ok && baseLang(res.headers.get('content-language') ?? lang) === key
           ? flattenTexts(await res.json())
