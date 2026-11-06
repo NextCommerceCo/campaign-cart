@@ -36,7 +36,7 @@ export interface Panel {
   country?: string;
   /** Light or dark over the system's; none follows the system. */
   theme?: Theme;
-  /** The Events tab groups events into bursts. */
+  /** The Events tab groups the events one action set off. */
   grouped?: boolean;
 }
 

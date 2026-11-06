@@ -90,7 +90,7 @@ details details,details>.row{margin-left:14px}
 .edot:is([data-kind=coupon],[data-kind=shipping],[data-kind=promotion]){background:var(--warning)}
 .egroups{margin-inline-start:auto}
 .egroup>summary{display:flex;align-items:baseline;gap:6px}
-.eburst{margin-left:auto;font-size:11px}
+.ecount{margin-left:auto;font-size:11px}
 .ecard{margin-bottom:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer}
 .ecard:hover{border-color:var(--info)}
 .ecard.bad{border-left:3px solid var(--destructive)}

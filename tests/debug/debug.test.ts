@@ -238,7 +238,7 @@ describe('debug tools', () => {
     expect(details('campaign').open).toBe(false);
   });
 
-  it('lists the public events newest first with what each carried, groups them into bursts on request, and keeps them out of the logs', async () => {
+  it('lists the public events newest first with what each carried, groups them by action on request, and keeps them out of the logs', async () => {
     const next = await start();
     const got: unknown[] = [];
     next.on('cart.added', (_data, event) => got.push(event));
@@ -284,11 +284,11 @@ describe('debug tools', () => {
     expect(chip('sdk').getAttribute('aria-pressed')).toBe('true');
     chip('All').click();
 
-    expect(chip('Group bursts').getAttribute('aria-pressed')).toBe('false');
-    chip('Group bursts').click();
-    expect(chip('Group bursts').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('Group by action').getAttribute('aria-pressed')).toBe('false');
+    chip('Group by action').click();
+    expect(chip('Group by action').getAttribute('aria-pressed')).toBe('true');
     expect(Object.values(sessionStorage).some((v) => v.includes('"grouped":true'))).toBe(true);
-    expect(body()).toMatch(/\d+ events on this page in 2 bursts, newest first/);
+    expect(body()).toMatch(/\d+ events on this page in 2 groups, newest first/);
     const [newest, older] = rows() as [HTMLDetailsElement, HTMLDetailsElement];
     expect(rows()).toHaveLength(2);
     expect([newest.classList.contains('egroup'), newest.open, older.open]).toEqual([true, true, false]);

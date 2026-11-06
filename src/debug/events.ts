@@ -5,7 +5,7 @@ import type { DebugActions } from './state';
 import { button, type Child, empty, expandable, h, plural, stamp, tree } from './view';
 
 const KEEP = 300;
-const BURST_GAP = 1000;
+const ACTION_GAP = 1000;
 
 type Line = { package_id: number; quantity: number; product_title?: string };
 type Data = {
@@ -24,10 +24,10 @@ type Data = {
 
 const at = (e: SdkEvent) => Date.parse(e.created_at);
 
-const bursts = (events: SdkEvent[]) =>
+const byAction = (events: SdkEvent[]) =>
   events.reduce<SdkEvent[][]>((all, e) => {
     const last = all.at(-1);
-    if (last && at(e) - at(last.at(-1)!) < BURST_GAP) last.push(e);
+    if (last && at(e) - at(last.at(-1)!) < ACTION_GAP) last.push(e);
     else all.push([e]);
     return all;
   }, []);
@@ -121,7 +121,7 @@ export function eventsView(engine: Engine, debug: DebugActions, open: Set<string
         stamp(at(first)),
         h('b', {}, dot(first.object), first.event_type),
         h('span', 'dim', ` → ${last.event_type}`),
-        h('span', 'dim eburst', `${plural(events.length, 'event')} · ${at(last) - at(first)} ms`),
+        h('span', 'dim ecount', `${plural(events.length, 'event')} · ${at(last) - at(first)} ms`),
       ],
       path,
       open,
@@ -133,7 +133,7 @@ export function eventsView(engine: Engine, debug: DebugActions, open: Set<string
   const grouped = () => debug.state().panel.grouped === true;
 
   const grouping = () => {
-    const el = button('Group bursts', () => (debug.setPanel({ grouped: !grouped() }), render()), {
+    const el = button('Group by action', () => (debug.setPanel({ grouped: !grouped() }), render()), {
       variant: 'outline',
       size: 'xs',
     });
@@ -151,14 +151,14 @@ export function eventsView(engine: Engine, debug: DebugActions, open: Set<string
         (e.event_type.includes(query) || summary(e).toLowerCase().includes(query)),
     );
     if (!shown.length) return [chips(), empty('Nothing matches', 'No event fits the filter.')];
-    const groups = grouped() ? bursts(shown).reverse() : [];
+    const groups = grouped() ? byAction(shown).reverse() : [];
     return [
       chips(),
       h(
         'div',
         'summary',
         `${plural(total, 'event')} on this page`,
-        grouped() && ` in ${plural(groups.length, 'burst')}`,
+        grouped() && ` in ${plural(groups.length, 'group')}`,
         ', newest first',
         total > seen.length && ` · the last ${KEEP} kept`,
       ),
