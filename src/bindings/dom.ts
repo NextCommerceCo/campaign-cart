@@ -67,6 +67,7 @@ export const isFormControl = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('a, input, select, textarea, label');
 
 export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
+  if (v.held) return;
   const campaign = engine.getState().campaign;
   if (v.type === 'bool') return setVisible(el, truthy(v));
   if (v.type === 'url' && el instanceof HTMLImageElement) {
@@ -100,7 +101,7 @@ export function applyValues(
     for (const el of root.querySelectorAll<HTMLElement>(`[${attr}]`)) {
       const condition = parseCondition(el.getAttribute(attr)!);
       const v = condition && (local(condition.path) ?? resolve(engine, condition.path));
-      if (!condition || !v) continue;
+      if (!condition || !v || v.held) continue;
       const met = conditionMet(condition, v);
       setVisible(el, attr === 'data-next-show' ? met : !met);
     }

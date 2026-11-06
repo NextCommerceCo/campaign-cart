@@ -5,7 +5,7 @@ afterEach(() => {
   document.body.innerHTML = '';
   vi.restoreAllMocks();
 });
-import { fakeApi } from '../fixtures/api';
+import { fakeApi, heldApi } from '../fixtures/api';
 import { flush } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 import { FakeObserver, visible } from './observer';
@@ -25,6 +25,34 @@ describe('bundle selector', () => {
     expect($('#total').textContent).toBe('$89.00');
     expect($('#pick').textContent).toBe('$89.00');
     expect($('#by-card').textContent).toBe('$49.00');
+  });
+
+  it('keeps a card’s price, badge and discounts while a quantity change is being priced', async () => {
+    const api = heldApi({ offers: { 2: 0.5 } });
+    const html = SELECTOR.replace(
+      'data-next-selected="true"',
+      'data-next-selected="true" data-next-max-quantity="5"',
+    ).replace(
+      '<div id="two-badge"',
+      '<span id="two-price" data-next-bundle-display="price"></span><span id="two-qty" data-next-bundle-display="quantity"></span>' +
+        '<div id="two-vouchers" data-next-discounts="voucher"><template>{discount.name}</template></div><div id="two-badge"',
+    );
+    const { engine, $ } = await mount(html, { fetch: api.fetch });
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    const shown = () => [$('#two-price').textContent, $('#two-badge').textContent, $('#two-vouchers').textContent];
+    const before = shown();
+    expect(before[2]).toBe('SAVE10');
+    api.hold();
+    void engine.selectors.setQuantity('main', 2);
+    await flush();
+    expect(engine.getState().selectors.main?.quoting).toBe(true);
+    expect(shown()).toEqual(before);
+    expect($('#two-qty').textContent).toBe('4');
+    api.release();
+    await flush();
+    await flush();
+    expect(shown()[0]).not.toBe(before[0]);
   });
 
   it('swaps the bundle without touching the order bump', async () => {

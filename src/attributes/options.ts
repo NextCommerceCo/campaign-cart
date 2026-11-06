@@ -31,6 +31,23 @@ export function withCatalogPrice<T extends Model>(engine: Engine, object: T | un
   return { ...object, total, ...optionPrice(total, total, unitsOf(lines)) };
 }
 
+const PRICE_FIELDS = ['total', 'price', 'original_price', 'subtotal', 'total_discount', 'discount_percentage'];
+
+/** Keeps each model's last server price on screen while its next one is on the way. */
+function priceHolder(engine: Engine, selectorId: string) {
+  const last = new Map<string, Model>();
+  return (key: string, model: Model | undefined, offer: boolean): Model | undefined => {
+    if (!model) return model;
+    if (model.total !== undefined) {
+      last.set(key, model);
+      return model;
+    }
+    const held = engine.getState().selectors[selectorId]?.quoting && last.get(key);
+    if (held) return { ...model, ...Object.fromEntries(PRICE_FIELDS.map((f) => [f, held[f]])) };
+    return offer ? model : withCatalogPrice(engine, model);
+  };
+}
+
 /** Option state as attributes, and the 0.4.x classes page CSS already selects. */
 function showState(el: Element, selected: boolean, inCart: boolean, loading: boolean): void {
   el.toggleAttribute('data-next-selected', selected);
@@ -80,6 +97,7 @@ function slotsOf(a: AttributeContext, selectorId: string, optionId: string): Mod
 
 function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
   const id = selectorEl.getAttribute('data-next-selector') || 'default';
+  const priced = priceHolder(a.engine, id);
   const els = new Map<string, HTMLElement>();
   const cards: SelectorCard[] = [];
   selectorEl.querySelectorAll<HTMLElement>('[data-next-option]').forEach((el, i) => {
@@ -92,8 +110,8 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
     a.setScope(el, () => {
       const option = a.query.get(`selector.${id}.options.${optionId}`) as Model | undefined;
       const selector = a.query.get(`selector.${id}`) as Model | undefined;
-      const priced = selector?.type === 'offer' ? option : withCatalogPrice(a.engine, option);
-      return priced && { ...priced, selector_id: id, slots: slotsOf(a, id, optionId) };
+      const shown = priced(optionId, option, selector?.type === 'offer');
+      return shown && { ...shown, selector_id: id, slots: slotsOf(a, id, optionId) };
     });
     el.addEventListener('click', (e) => {
       if (!isFormControl(e.target)) void a.engine.selectors.pick(id, optionId);
@@ -132,7 +150,10 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
         void a.engine.selectors.register(id, withProperties, selector.mode);
       });
   });
-  a.setScope(selectorEl, () => withCatalogPrice(a.engine, a.query.get(`selector.${id}`) as Model | undefined));
+  a.setScope(selectorEl, () => {
+    const selector = a.query.get(`selector.${id}`) as Model | undefined;
+    return priced('', selector, selector?.type === 'offer');
+  });
   onceVisible(selectorEl, () => a.engine.selectors.view(id));
   return [
     ...(mode === 'offer' ? [announceOffer(selectorEl, id, a)] : []),

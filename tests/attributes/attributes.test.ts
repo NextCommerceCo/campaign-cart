@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAttributes } from '../../src/attributes';
 import { Query } from '../../src/engine/query';
+import { heldApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 
 afterEach(() => {
@@ -8,9 +9,9 @@ afterEach(() => {
   history.replaceState(null, '', '/');
 });
 
-async function mount(html: string, params?: Record<string, string>) {
+async function mount(html: string, params?: Record<string, string>, fetch?: typeof globalThis.fetch) {
   document.body.innerHTML = html;
-  const { engine } = makeEngine({ params });
+  const { engine } = makeEngine({ params, fetch });
   await engine.start();
   const query = new Query(engine);
   const navigate = vi.fn();
@@ -174,6 +175,21 @@ describe('attributes v2: options', () => {
     expect($('#one .price').textContent).toBe('$49.00');
     expect($('#two .price').textContent).toBe('$89.00');
     expect($('#two .was').hidden).toBe(true);
+  });
+
+  it('keeps an option’s price while its new quantity is being priced', async () => {
+    const api = heldApi({ offers: { 2: 0.5 } });
+    const { engine, $ } = await mount(SELECTOR, undefined, api.fetch);
+    await settle(engine);
+    const before = $('#two .price').textContent;
+    api.hold();
+    $('#plus').click();
+    await flush();
+    expect(engine.getState().selectors.main?.quoting).toBe(true);
+    expect($('#two .price').textContent).toBe(before);
+    api.release();
+    await settle(engine);
+    expect($('#two .price').textContent).not.toBe(before);
   });
 
   it('steps the picked option’s quantity within its limits, and disables a step that cannot move', async () => {

@@ -233,6 +233,11 @@ export function cardQuote(selector: SelectorState, card: SelectorCard): CartSumm
   return quoted && quantitiesKey(quoted.lines) === quantitiesKey(current) ? quoted : undefined;
 }
 
+const UNPRICED = new Set(['name', 'image', 'quantity', 'isSelected']);
+
+export const repricing = (selector: SelectorState, card: SelectorCard): boolean =>
+  !!selector.quoting && !!selector.quotes?.[card.id] && !cardQuote(selector, card);
+
 export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value | undefined {
   const selector = engine.getState().selectors[ref.selectorId];
   const card = selector?.cards.find((c) => c.id === ref.cardId);
@@ -240,6 +245,7 @@ export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value |
   const lines = cardLines(selector, card);
   const quote = cardQuote(selector, card);
   const v = linesValue(engine, lines, prop, selector.picked === card.id, quote?.lines);
+  if (v && !UNPRICED.has(prop) && repricing(selector, card)) return { type: v.type, value: undefined, held: true };
   return selector.mode === 'offer' && !quote && selector.quoting ? notLoaded(v) : v;
 }
 
@@ -290,7 +296,7 @@ export function resolveToggle(engine: Engine, packageId: number, prop: string, q
   const { cart, toggles } = engine.getState();
   const inCart = cart.groups[toggleGroup(packageId)]?.lines[0];
   const qty = inCart?.quantity ?? toggles[packageId]?.quantity ?? quantity;
-  const quoted = inCart ? cart.summary?.lines.find((l) => l.package_id === packageId) : toggles[packageId]?.line;
-  const line = quoted?.quantity === qty ? quoted : undefined;
+  const fromCart = inCart ? cart.summary?.lines.find((l) => l.package_id === packageId) : undefined;
+  const line = [fromCart, toggles[packageId]?.line].find((l) => l?.quantity === qty);
   return linesValue(engine, [{ packageId, quantity: qty }], prop, !!inCart, line && [line]);
 }

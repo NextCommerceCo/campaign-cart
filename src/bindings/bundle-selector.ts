@@ -4,7 +4,7 @@ import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/ty
 import { type BindContext, type Render } from './context';
 import { isFormControl, onceVisible, selectorIdOf, setState, stamp } from './dom';
 import { discountTokens } from '../engine/tokens';
-import { cardQuote } from '../engine/values';
+import { cardQuote, repricing } from '../engine/values';
 
 function parseList(raw: string | null): unknown[] {
   if (!raw) return [];
@@ -122,6 +122,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
         el.classList.toggle('next-loading', !!selector?.quoting);
         const card = selector?.cards.find((c) => c.id === id);
         const quote = selector && card && cardQuote(selector, card);
+        if (selector && card && repricing(selector, card)) return;
         for (const box of el.querySelectorAll('[data-next-discounts]')) {
           const kind = box.getAttribute('data-next-discounts');
           const list = !quote

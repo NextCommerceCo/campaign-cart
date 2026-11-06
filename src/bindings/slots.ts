@@ -53,12 +53,13 @@ function itemValues(engine: Engine, pkg: Package | undefined, index: number): Va
   };
 }
 
-function discounts(engine: Engine, packageId: number, kind: string): SummaryDiscount[] {
+function discounts(engine: Engine, packageId: number, kind: string, pending: boolean): SummaryDiscount[] | undefined {
   const summary = engine.getState().cart.summary;
   const pool = new Set(
     (kind === 'voucher' ? summary?.voucher_discounts : summary?.offer_discounts)?.map((d) => d.offer_id),
   );
   const line = summary?.lines.find((l) => l.package_id === packageId);
+  if (!line && pending) return undefined;
   return (line?.discounts ?? []).filter((d) => pool.has(d.offer_id));
 }
 
@@ -104,7 +105,7 @@ function renderStage(
     slot: Slot;
     values: Values;
     prices: Values;
-    boxes: Array<{ box: HTMLElement; tpl: string }>;
+    boxes: Array<{ box: HTMLElement; tpl: string; html: string }>;
   }> = [];
 
   const valuesOf = (selector: SelectorState, card: SelectorCard, slot: Slot, index: number, held?: Values) => {
@@ -126,21 +127,26 @@ function renderStage(
   });
 
   const refresh = ({ el, slot, boxes }: (typeof rendered)[number]) => {
-    for (const { box, tpl } of boxes) {
-      const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer');
-      box.innerHTML = found
-        .map((d) =>
-          fill(tpl, {
-            'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
-            'discount.name': d.name ?? '',
-            'discount.amount': format(
-              { type: 'money', value: dollars(d.amount) },
-              engine.getState().campaign?.currency,
-              localeOf(engine.getState()),
-            ),
-          }),
-        )
-        .join('');
+    const { cart, selectors } = engine.getState();
+    const pending = cart.calculating || !!selectors[selectorId]?.quoting;
+    for (const entry of boxes) {
+      const { box, tpl } = entry;
+      const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer', pending);
+      if (found)
+        entry.html = found
+          .map((d) =>
+            fill(tpl, {
+              'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
+              'discount.name': d.name ?? '',
+              'discount.amount': format(
+                { type: 'money', value: dollars(d.amount) },
+                engine.getState().campaign?.currency,
+                localeOf(engine.getState()),
+              ),
+            }),
+          )
+          .join('');
+      if (box.innerHTML !== entry.html) box.innerHTML = entry.html;
     }
     applyValues(el, engine);
   };
@@ -150,6 +156,7 @@ function renderStage(
     slot: Slot,
     index: number,
     { values, prices }: ReturnType<typeof valuesOf>,
+    old?: (typeof rendered)[number],
   ): (typeof rendered)[number] => {
     const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
     Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
@@ -161,9 +168,10 @@ function renderStage(
         node.removeAttribute(attr);
       }
     }
-    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box) => ({
+    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box, i) => ({
       box,
       tpl: box.querySelector('template')?.innerHTML ?? '',
+      html: old?.boxes[i]?.html ?? '',
     }));
     for (const host of el.querySelectorAll('[data-next-variant-selectors]')) {
       variantSelects(engine, host, slot, (packageId) => void apply(card, index, { packageId }));
@@ -213,7 +221,7 @@ function renderStage(
         (document.activeElement as HTMLElement | null)?.closest('.next-bundle-slot') === old.el
           ? (document.activeElement as HTMLElement).getAttribute('data-next-variant-code')
           : null;
-      const entry = renderSlot(card, slot, i, next);
+      const entry = renderSlot(card, slot, i, next, old);
       old.el.replaceWith(entry.el);
       rendered[i] = entry;
       if (code) entry.el.querySelector<HTMLElement>(`select[data-next-variant-code="${code}"]`)?.focus();

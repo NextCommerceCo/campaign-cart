@@ -5,6 +5,8 @@ export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 export interface Value {
   type: ValueType;
   value: string | number | boolean | undefined;
+  /** Being re-priced: keep what is on screen. */
+  held?: boolean;
 }
 
 export const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);

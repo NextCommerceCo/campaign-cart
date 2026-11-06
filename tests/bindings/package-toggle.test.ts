@@ -6,7 +6,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 import { bindAll } from '../../src/bindings';
-import { fakeApi } from '../fixtures/api';
+import { fakeApi, heldApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { MemoryStorage } from '../fixtures/storage';
 import type { Selector } from '../../src/engine/events/selectors';
@@ -48,6 +48,22 @@ describe('order bump', () => {
     await flush();
     const requoted = api.calls.filter((c) => c.body.lines.some((l: { package_id: number }) => l.package_id === 9));
     expect(requoted.at(-1)?.body).toMatchObject({ vouchers: ['SAVE10'] });
+  });
+
+  it('keeps the bump’s quoted price while the cart is priced with it', async () => {
+    const api = heldApi({ offers: { 9: 0.5 } });
+    const { engine, $ } = await mount(SELECTOR, { fetch: api.fetch });
+    await flush();
+    expect($('#bump-price').textContent).toBe('$4.50');
+    api.hold();
+    $('#bump').click();
+    await flush();
+    expect(engine.getState().cart.calculating).toBe(true);
+    expect($('#bump-price').textContent).toBe('$4.50');
+    api.release();
+    await flush();
+    await flush();
+    expect($('#bump-price').textContent).toBe('$4.50');
   });
 
   it('ignores clicks in form fields inside the card', async () => {

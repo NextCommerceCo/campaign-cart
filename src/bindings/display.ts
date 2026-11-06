@@ -57,6 +57,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
       renders.push(() => {
         const v = resolve(b.engine, condition.path, ctx);
         if (!v) return b.warn(`unknown path "${condition.path}" in ${attr}`);
+        if (v.held) return;
         const met = conditionMet(condition, v);
         setVisible(el, attr === 'data-next-show' ? met : !met);
       });

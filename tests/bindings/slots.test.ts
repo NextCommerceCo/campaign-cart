@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bindAll } from '../../src/bindings';
 import { bindSlots } from '../../src/bindings/slots';
-import { fakeApi, json } from '../fixtures/api';
+import { fakeApi, heldApi, json } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 
 async function mount(fetch?: typeof globalThis.fetch) {
@@ -102,18 +102,17 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     expect(offer.slots()[0]!.querySelector<HTMLElement>('[data-next-discounts="offer"]')!.style.display).toBe('');
   });
 
-  it('keeps the quoted unit price while a variant change is being priced', async () => {
-    let release = () => {};
-    let held: Promise<void> | undefined;
-    const api = fakeApi();
+  it('keeps the quoted unit price and offer row while a variant change is being priced', async () => {
+    const api = heldApi();
+    const offer = { offer_id: 7, name: 'Bundle', description: 'Bundle', amount: '1.00', percentage: '70.00' };
     const fetch = (async (input, init) => {
       const res = await api.fetch(input, init);
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       if (!body?.lines || !body.vouchers) return res;
-      await held;
       const summary = await res.json();
+      summary.offer_discounts = [offer];
       for (const line of summary.lines)
-        Object.assign(line, { package_price: '20.00', original_package_price: '99.00' });
+        Object.assign(line, { package_price: '20.00', original_package_price: '99.00', discounts: [offer] });
       return json(summary);
     }) as typeof globalThis.fetch;
     const { $, slots, change } = await mount(fetch);
@@ -121,18 +120,21 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     await flush();
     const price = (i: number) => slots()[i]!.querySelector('.os-card__pricing')!.textContent!;
     expect(price(1)).toContain('20.00');
-    held = new Promise((r) => (release = r));
+    expect(price(1)).toContain('Save 70% OFF');
+    api.hold();
     await change(slots()[1]!.querySelector<HTMLSelectElement>('select[data-next-variant-code="color"]')!, 'White');
     expect(slots()[1]!.querySelector('img')!.getAttribute('src')).toBe('https://cdn.test/2.png');
     for (const i of [0, 1]) {
       expect(price(i)).toContain('20.00');
       expect(price(i)).toContain('99.00');
+      expect(price(i)).toContain('Save 70% OFF');
       expect(price(i)).not.toMatch(/49\.00|89\.00|198\.00/);
     }
-    release();
+    api.release();
     await flush();
     await flush();
     expect(price(1)).toContain('20.00');
+    expect(price(1)).toContain('Save 70% OFF');
   });
 
   it('keeps focus on the variant select the shopper is using', async () => {

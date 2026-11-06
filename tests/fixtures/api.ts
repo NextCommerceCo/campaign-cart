@@ -55,6 +55,22 @@ export const ADDRESSES = [
   },
 ];
 
+/** `fakeApi` whose price requests wait, after `hold()`, until `release()`. */
+export function heldApi(options: FakeApiOptions = {}) {
+  const api = fakeApi(options);
+  let held: Promise<void> | undefined;
+  let release = () => {};
+  const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (body?.lines && body.vouchers) await held;
+    return api.fetch(input, init);
+  }) as typeof globalThis.fetch;
+  const hold = () => {
+    held = new Promise((r) => (release = () => ((held = undefined), r())));
+  };
+  return { ...api, fetch, hold, release: () => release() };
+}
+
 export function fakeApi(options: FakeApiOptions = {}) {
   const calls: Call[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
