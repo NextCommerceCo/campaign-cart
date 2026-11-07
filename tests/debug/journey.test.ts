@@ -115,7 +115,7 @@ describe('journey tab', () => {
   it('badges what each step added to the order, an upsell with its outcome, as a page like the others', async () => {
     const order = (total: string) =>
       publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: total, currency: 'USD' } as ApiOrder);
-    const { root, steps } = await setup(async (session) => {
+    const { root, steps, detail } = await setup(async (session) => {
       const upsell = visit(session, '/upsell/', 'upsell');
       await upsell.engine.start();
       upsell.engine.events.emit('order.loaded', order('49.00'));
@@ -138,6 +138,8 @@ describe('journey tab', () => {
     ]);
     expect(root.querySelector('.journey [data-outcomes]')).toBeNull();
     expect(root.querySelector('.jsum')!.textContent).toContain(' · upsells +$19.50');
+    root.querySelectorAll<HTMLButtonElement>('.journey > ol > li button')[2]!.click();
+    expect(detail.dialog.querySelector<HTMLElement>('h2 .badge')!.dataset.variant).toBe('warning');
   });
 
   it('joins each page to the next with a line, as tsugi draws it', async () => {

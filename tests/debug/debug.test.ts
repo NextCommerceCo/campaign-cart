@@ -368,7 +368,6 @@ describe('debug tools', () => {
     chip('warnings').click();
     expect(chip('warnings').getAttribute('aria-pressed')).toBe('true');
     expect(new Set(rows().map((r) => r.dataset.level))).toEqual(new Set(['warn']));
-    expect(new Set(rows().map((r) => r.querySelector('.sdesc > .badge')?.textContent))).toEqual(new Set(['Warning']));
     chip('warnings').click();
     chip('api').click();
     expect(new Set(rows().map((r) => r.querySelector('.stag')!.textContent))).toEqual(new Set(['api']));
@@ -645,6 +644,19 @@ describe('debug tools', () => {
       CART_CSS + CHECKOUT_CSS + JOURNEY_CSS + LOCALE_CSS + CONFIG_CSS + ANALYTICS_CSS + BENCH_CSS + STREAM_CSS,
     ).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|oklch\(/i);
     expect(shadow().host.classList.contains('dark')).toBe(true);
+    const sheets = [
+      PANEL_CSS,
+      CART_CSS,
+      CHECKOUT_CSS,
+      JOURNEY_CSS,
+      LOCALE_CSS,
+      CONFIG_CSS,
+      ANALYTICS_CSS,
+      BENCH_CSS,
+      STREAM_CSS,
+    ];
+    expect(sheets.join('')).not.toMatch(/inset \d+px 0|border-left:\d/);
+    expect(JOURNEY_CSS).toMatch(/\.jmom:is\([^)]*\)::before\{[^}]*border-radius:999px/);
     expect(PANEL_CSS).toMatch(/:host\{[^}]*color-scheme:light/);
     expect(PANEL_CSS).toMatch(/:host\(\.dark\)\{[^}]*color-scheme:dark/);
     dark.mockRestore();

@@ -177,7 +177,11 @@ export function journeyView(
     const moments = p.marks.filter((m) => !CARRY.test(m.text));
     ui.detail.show({
       title: p.title || p.path,
-      badge: issues ? [plural(issues, 'issue'), 'destructive'] : next ? undefined : ['Now', 'outline'],
+      badge: issues
+        ? [plural(issues, 'issue'), p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning']
+        : next
+          ? undefined
+          : ['Now', 'outline'],
       subtitle: `Step ${i + 1} · ${KINDS[p.kind]} · ${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'open now'}`,
       sections: [
         ['Page', [h('p', 'jmeta', p.path, h('span', 'devonly', ` · storage ${p.scope}`)), carry(pages[i - 1], p)]],

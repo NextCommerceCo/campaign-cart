@@ -12,8 +12,6 @@ export interface Line {
   /** The outcome on the right: a status, a time, a warning. */
   meta?: Child[];
   level?: string;
-  /** A tag in front of the line: `[text, badge variant]`; a warn or error level has its own. */
-  flag?: [string, string];
   title?: string;
   open?: () => void;
 }
@@ -31,13 +29,10 @@ export const pill = (text: string, tone: 'ok' | 'bad' | 'off' | 'warn') => {
 };
 
 export function line(l: Line): HTMLElement {
-  const flag =
-    l.flag ??
-    (l.level === 'error' ? ['Error', 'destructive'] : l.level === 'warn' ? ['Warning', 'warning'] : undefined);
   const cells = [
     typeof l.at === 'number' ? stamp(l.at) : h('span', 'time', l.at),
     tagged('stag', l.tag, l.tag),
-    h('span', 'sdesc', flag && badge(...flag), l.name && h('code', 'sname', l.name), ...(l.detail ?? [])),
+    h('span', 'sdesc', l.name && h('code', 'sname', l.name), ...(l.detail ?? [])),
     h('span', 'smeta', ...(l.meta ?? [])),
     h('span', 'sgo', l.open && icon('chevron')),
   ];

@@ -387,7 +387,7 @@ describe('analytics tab', () => {
     paint();
     const problems = 'lines is empty · no currency · checkout_completed has no order number · not in dataLayer';
     expect(rows()).toEqual([`checkout_completed | $106.11 | ⚠ ${problems}`]);
-    expect(lines()[0]!.querySelector('.sdesc > .badge')!.textContent).toBe('4 problems');
+    expect(lines()[0]!.querySelector('.smeta')!.textContent).toBe('⚠ 4 problems');
     expect(open(0).problems()).toEqual(problems.split(' · '));
     expect(open(0).places()[0]).toBe('GTM |  | not pushed | bad');
     expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
