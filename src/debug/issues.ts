@@ -7,7 +7,8 @@ import { type Child, empty, h, plural } from './view';
 export type IssueTab = 'journey' | 'checkout' | 'analytics';
 const LABELS: Record<IssueTab, string> = { journey: 'Journey', checkout: 'Checkout', analytics: 'Analytics' };
 
-type Problem = { text: string; error: boolean };
+/** A problem another tab found, and how to open where it is: a modal, or a part of that tab (`focus`). */
+type Problem = { text: string; error: boolean; open?: () => void; focus?: string };
 type Tone = 'error' | 'warn' | 'note';
 
 /** One problem: its tone, what happened (the text before `: `), and the rest with where it was found. */
@@ -48,9 +49,13 @@ export function issuesView(
     logs: { row(entry: ReturnType<Engine['log']['entries']>[number]): Child };
     box: ReturnType<typeof highlighter>;
     show(tab: IssueTab): void;
+    /** Shows a tab scrolled to its `[data-focus]` part, flashed. */
+    focus(tab: IssueTab, part: string): void;
+    /** Opens this page's Journey detail. */
+    journey(): void;
   },
 ) {
-  const { checkout, flow, logs, box, show } = ui;
+  const { checkout, flow, logs, box, show, focus } = ui;
   const find = () => {
     const page = inspect(engine).filter((i) => i.bad);
     const shownOnPage = page.flatMap((i) => i.notes.filter((n) => n.bad).map((n) => `"${n.value}"`));
@@ -60,8 +65,13 @@ export function issuesView(
       .reverse();
     const pages = debug.state().pages;
     const marks = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
-    const found = grouped([
-      ...marks(pages.at(-1)).map((m) => ({ from: 'journey' as IssueTab, text: m.text, error: m.tone === 'error' })),
+    const found = grouped<Problem & { from: IssueTab }>([
+      ...marks(pages.at(-1)).map((m) => ({
+        from: 'journey' as IssueTab,
+        text: m.text,
+        error: m.tone === 'error',
+        open: ui.journey,
+      })),
       ...checkout.problems().map((p) => ({ from: 'checkout' as IssueTab, ...p })),
       ...flow.problems().map((p) => ({ from: 'analytics' as IssueTab, ...p })),
     ]);
@@ -109,7 +119,15 @@ export function issuesView(
         h(
           'div',
           'ilist',
-          ...found.map((f) => row(f.text, LABELS[f.from], f.error ? 'error' : 'warn', () => show(f.from), f.times)),
+          ...found.map((f) =>
+            row(
+              f.text,
+              LABELS[f.from],
+              f.error ? 'error' : 'warn',
+              f.open ?? (() => (f.focus ? focus(f.from, f.focus) : show(f.from))),
+              f.times,
+            ),
+          ),
         ),
       page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
       ...page.map((i) => card(i, box)),

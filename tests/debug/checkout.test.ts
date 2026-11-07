@@ -66,6 +66,10 @@ describe('checkout tab', () => {
       ['Payment', 'Card · no cc-number and cvv fields on the page', 'bad'],
       ['Order', 'Not placed yet', 'todo'],
     ]);
+    expect(view.problems()).toEqual([
+      { text: 'Payment: no cc-number and cvv fields on the page', error: true, focus: 'payment' },
+    ]);
+    expect(root.querySelector('[data-focus="payment"] b')!.textContent).toBe('Payment');
     expect([...root.querySelectorAll('.kstep.bad .payment-icon')].map((i) => i.className.split('-').pop())).toEqual([
       'visa',
       'mastercard',

@@ -253,6 +253,7 @@ export const CHECKOUT_CSS = `.ksteps>.kstep+.kstep{border-top:1px solid var(--bo
 .kstep.bad>.icon,.kstep.bad>small{color:var(--destructive)}
 .kstep.warn>.icon,.kstep.warn>small{color:var(--warning)}
 .kstep.todo>.icon{color:var(--muted-foreground)}
+.kstep.flash{animation:kflash 1.6s ease-out}@keyframes kflash{from{background:color-mix(in oklab,var(--info) 22%,transparent)}to{background:transparent}}
 .kicons{display:inline-flex;gap:3px}
 .kicons .payment-icon{height:18px}
 .krows{display:grid;grid-template-columns:minmax(116px,30%) minmax(0,1fr)}

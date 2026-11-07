@@ -235,7 +235,6 @@ export function checkoutView(
         ...cart.view(),
         h('p', 'knote', 'Customer, address and payment show on the page with form[data-next-checkout].'),
       ];
-    const phone = state.phones.phone_number;
     const all = steps(state);
     return [
       h(
@@ -251,9 +250,11 @@ export function checkoutView(
         h(
           'div',
           'ksteps',
-          ...all.map((s) =>
-            h('div', `kstep ${s.tone}`, icon(MARKS[s.tone]), h('b', {}, s.title), h('small', {}, s.detail)),
-          ),
+          ...all.map((s) => {
+            const el = h('div', `kstep ${s.tone}`, icon(MARKS[s.tone]), h('b', {}, s.title), h('small', {}, s.detail));
+            el.dataset.focus = s.title.toLowerCase();
+            return el;
+          }),
         ),
       ),
       ...cart.view(),
@@ -262,7 +263,7 @@ export function checkoutView(
         'Who orders and where it goes, written as the country writes an address.',
         rows([
           ['Email', state.fields.email, state.errors.email],
-          ['Phone', phone?.international ?? state.fields.phone_number, state.errors.phone_number],
+          ['Phone', state.phones.phone_number?.international ?? state.fields.phone_number, state.errors.phone_number],
           ['Marketing', state.fields.accepts_marketing === 'false' ? 'Declined' : 'Accepted'],
           [
             'Open cart',
@@ -285,17 +286,17 @@ export function checkoutView(
 
   return {
     view,
-    problems: (): Array<{ text: string; error: boolean }> => {
+    problems: (): Array<{ text: string; error: boolean; focus: string }> => {
       const state = engine.getState().checkout;
       if (!state || !engine.checkout) return [];
       const broken = state.paymentMethod === 'card_token' && cardSetup();
       const form = state.errors.form;
       return [
-        ...(broken ? [{ text: `Payment: ${broken}`, error: true }] : []),
+        ...(broken ? [{ text: `Payment: ${broken}`, error: true, focus: 'payment' }] : []),
         ...(state.rulesDown
-          ? [{ text: 'Address rules: service down, fields fall back to basic checks', error: false }]
+          ? [{ text: 'Address rules: service down, fields fall back to basic checks', error: false, focus: 'details' }]
           : []),
-        ...(form ? [{ text: `Order refused: ${refusal(form)}`, error: false }] : []),
+        ...(form ? [{ text: `Order refused: ${refusal(form)}`, error: false, focus: 'order' }] : []),
       ];
     },
     summary: () => {

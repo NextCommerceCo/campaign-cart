@@ -288,5 +288,11 @@ export function journeyView(
     return [summary(pages), h('div', 'jmap', map)];
   };
 
-  return { view };
+  /** Opens this page's detail: what happened here, its problems marked. */
+  const openNow = () => {
+    const { pages } = debug.state();
+    if (pages.length) open(pages.at(-1)!, pages.length - 1, pages);
+  };
+
+  return { view, openNow };
 }

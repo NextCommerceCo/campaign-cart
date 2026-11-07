@@ -161,7 +161,20 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const logs = logsView(engine, detail, () => render());
   const locale = localeTab(engine, debug, info.send, () => later());
 
-  const issueTab = issuesView(engine, debug, { checkout, flow, logs, box, show: (t) => show(t) });
+  let flash: { part: string; until: number } | undefined;
+  const issueTab = issuesView(engine, debug, {
+    checkout,
+    flow,
+    logs,
+    box,
+    show: (t) => show(t),
+    focus: (t, part) => {
+      flash = { part, until: Date.now() + 1600 };
+      show(t);
+      body.querySelector(`[data-focus="${part}"]`)?.scrollIntoView({ block: 'center' });
+    },
+    journey: () => journey.openNow(),
+  });
   const findIssues = issueTab.find;
 
   const views: Record<Tab, () => Child[]> = {
@@ -239,6 +252,7 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
     });
     search.hidden = !FILTERED.includes(tab);
     body.replaceChildren(...nodes(views[tab]()));
+    if (flash && Date.now() < flash.until) body.querySelector(`[data-focus="${flash.part}"]`)?.classList.add('flash');
   };
   const setView = (next: typeof view) => {
     view = next;

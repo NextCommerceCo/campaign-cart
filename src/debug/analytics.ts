@@ -252,6 +252,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     return [...byName].map(([name, list]) => ({
       text: `${name}: ${issues(list.at(-1)!, layers).join(' · ')}${list.length > 1 ? ` (${list.length} events)` : ''}`,
       error: true,
+      open: () => open(list.at(-1)!, reached(list.at(-1)!), layers),
     }));
   };
 

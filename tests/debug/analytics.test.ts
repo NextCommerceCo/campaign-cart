@@ -378,7 +378,7 @@ describe('analytics tab', () => {
   });
 
   it('shows an incomplete object and a push that did not arrive on its row, and in Issues', () => {
-    const { engine, flow, paint, send, lines, rows, open } = setup();
+    const { engine, flow, detail, paint, send, lines, rows, open } = setup();
     const order = { ...publicOrder(ORDER), lines: [], currency: undefined, number: undefined };
     engine.events.emit('order.paid', order);
     send('order.paid', 'checkout_completed', order, 'p1', { layers: false });
@@ -390,7 +390,11 @@ describe('analytics tab', () => {
     expect(lines()[0]!.querySelector('.smeta')!.textContent).toBe('⚠ 4 problems');
     expect(open(0).problems()).toEqual(problems.split(' · '));
     expect(open(0).places()[0]).toBe('GTM |  | not pushed | bad');
-    expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
+    expect(flow.problems()).toEqual([
+      { text: `checkout_completed: ${problems}`, error: true, open: expect.any(Function) },
+    ]);
+    flow.problems()[0]!.open();
+    expect(detail.dialog.querySelector('h2')!.textContent).toMatch(/^checkout_completed/);
     expect(flow.summary()).toBe('1 sent · ⚠ 1');
   });
 

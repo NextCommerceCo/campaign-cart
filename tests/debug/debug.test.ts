@@ -410,7 +410,10 @@ describe('debug tools', () => {
       'warn',
     ]);
     row.click();
-    expect($('[data-tab="journey"]').getAttribute('aria-selected')).toBe('true');
+    const modal = $<HTMLDialogElement>('dialog.smodal');
+    expect([modal.open, view()]).toEqual([true, 'panel']);
+    expect([...modal.querySelectorAll('.jmom')].some((m) => m.textContent!.includes('Coupon NOPE refused'))).toBe(true);
+    modal.close();
     await start('<span data-next-display="campaign.name"></span>', {});
     tab('issues');
     expect(body()).toContain('No issues');
