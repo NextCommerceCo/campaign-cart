@@ -17,7 +17,7 @@ import {
   WIRING,
 } from './providers';
 import { type IconName, icon } from './icons';
-import { carried as carriedView, chips, type DetailModal, line, pill, type Priced } from './stream';
+import { carried as carriedView, chips, type DetailModal, line, type Priced } from './stream';
 import { type Child, empty, h, plural, time } from './view';
 
 type Run = AnalyticsTrace & { at: number };
@@ -203,7 +203,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
       tag: kindOf(run.name),
       name: run.name,
       detail: [h('span', 'dim', carried(run))],
-      meta: problems.length ? [pill(`⚠ ${plural(problems.length, 'problem')}`, 'bad')] : [],
+      flag: problems.length ? [plural(problems.length, 'problem'), 'destructive'] : undefined,
       level: problems.length ? 'error' : undefined,
       title: problems.join(' · ') || undefined,
       open: () => open(run, got, layers),

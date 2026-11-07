@@ -368,6 +368,7 @@ describe('debug tools', () => {
     chip('warnings').click();
     expect(chip('warnings').getAttribute('aria-pressed')).toBe('true');
     expect(new Set(rows().map((r) => r.dataset.level))).toEqual(new Set(['warn']));
+    expect(new Set(rows().map((r) => r.querySelector('.sdesc > .badge')?.textContent))).toEqual(new Set(['Warning']));
     chip('warnings').click();
     chip('api').click();
     expect(new Set(rows().map((r) => r.querySelector('.stag')!.textContent))).toEqual(new Set(['api']));

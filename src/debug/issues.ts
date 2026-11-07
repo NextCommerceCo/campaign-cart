@@ -2,13 +2,18 @@ import type { Engine } from '../engine/engine';
 import { card, type highlighter, inspect } from './elements';
 import type { DebugActions, PageVisit } from './state';
 import { icon } from './icons';
-import { type Child, empty, h, plural } from './view';
+import { badge, type Child, empty, h, plural } from './view';
 
 export type IssueTab = 'journey' | 'checkout' | 'analytics';
 const LABELS: Record<IssueTab, string> = { journey: 'Journey', checkout: 'Checkout', analytics: 'Analytics' };
 
 type Problem = { text: string; error: boolean };
 type Tone = 'error' | 'warn' | 'note';
+const TAGS: Record<Tone, [string, string]> = {
+  error: ['Error', 'destructive'],
+  warn: ['Warning', 'warning'],
+  note: ['Note', 'secondary'],
+};
 
 /** One problem: its tone, what happened (the text before `: `), and the rest with where it was found. */
 const row = (text: string, from: string, tone: Tone, onclick: () => void, times = 1) => {
@@ -17,7 +22,7 @@ const row = (text: string, from: string, tone: Tone, onclick: () => void, times 
   const el = h(
     'button',
     { type: 'button', className: 'irow', onclick },
-    h('span', 'iic', icon(tone === 'error' ? 'fail' : 'warn')),
+    badge(...TAGS[tone]),
     h(
       'span',
       'itext',

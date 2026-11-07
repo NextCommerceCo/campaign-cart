@@ -149,7 +149,7 @@ function setup(config: ProviderConfig = ON) {
       },
     };
   };
-  return { engine, root, flow, detail, paint, decide, send, rows, notes, chipLabels, open };
+  return { engine, root, flow, detail, paint, decide, send, lines, rows, notes, chipLabels, open };
 }
 
 afterEach(() => {
@@ -378,7 +378,7 @@ describe('analytics tab', () => {
   });
 
   it('shows an incomplete object and a push that did not arrive on its row, and in Issues', () => {
-    const { engine, flow, paint, send, rows, open } = setup();
+    const { engine, flow, paint, send, lines, rows, open } = setup();
     const order = { ...publicOrder(ORDER), lines: [], currency: undefined, number: undefined };
     engine.events.emit('order.paid', order);
     send('order.paid', 'checkout_completed', order, 'p1', { layers: false });
@@ -387,6 +387,7 @@ describe('analytics tab', () => {
     paint();
     const problems = 'lines is empty · no currency · checkout_completed has no order number · not in dataLayer';
     expect(rows()).toEqual([`checkout_completed | $106.11 | ⚠ ${problems}`]);
+    expect(lines()[0]!.querySelector('.sdesc > .badge')!.textContent).toBe('4 problems');
     expect(open(0).problems()).toEqual(problems.split(' · '));
     expect(open(0).places()[0]).toBe('GTM |  | not pushed | bad');
     expect(flow.problems()).toEqual([{ text: `checkout_completed: ${problems}`, error: true }]);
