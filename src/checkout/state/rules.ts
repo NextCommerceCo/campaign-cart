@@ -193,3 +193,13 @@ export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired 
   }
   return errors;
 }
+
+const postcodeBasis = (fields: CheckoutState['fields']) =>
+  [fields.country, fields.state, fields.postcode?.trim()].join('|');
+
+export function postcodeChecked(checkout: CheckoutState, asked: CheckoutState['fields'], result?: RemoteCheck) {
+  const { postcode: shown, ...errors } = checkout.errors;
+  if (!result || postcodeBasis(checkout.fields) !== postcodeBasis(asked) || (shown && !shown.warning)) return;
+  if (result.error) return { ...errors, postcode: { ...result.error, warning: true } };
+  return shown && errors;
+}

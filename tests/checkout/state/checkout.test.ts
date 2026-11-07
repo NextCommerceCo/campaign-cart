@@ -218,6 +218,23 @@ describe('checkout', () => {
     });
   });
 
+  it('checks the postcode against the state an address autofill picks after it', async () => {
+    const { engine, checkout, fill } = await setup();
+    await checkout.loadCountries();
+    fill({ country: 'US', state: 'CA', postcode: '10001' });
+    await checkout.leave('postcode');
+    expect(engine.getState().checkout!.errors.postcode).toMatchObject({ code: 'not_in_state' });
+    fill({ state: 'NY' });
+    await checkout.leave('state');
+    expect(engine.getState().checkout!.errors).toEqual({});
+
+    fill({ state: 'CA' });
+    const againstCalifornia = checkout.leave('postcode');
+    fill({ state: 'NY' });
+    await Promise.all([againstCalifornia, checkout.leave('state')]);
+    expect(engine.getState().checkout!.errors).toEqual({});
+  });
+
   it('forgets the state when the country changes', async () => {
     const { engine, fill } = await setup();
     fill({ country: 'US', state: 'CA' });

@@ -6,7 +6,15 @@ import { createContact, type Lead } from './contact';
 import { paymentCode, publicAddress } from './order-body';
 import { createPlaceOrder } from './place-order';
 import { asciiDigits, PHONES, phoneFieldOf, phoneKey } from './phone';
-import { addressValid, fieldError, formErrors, type RemoteCheck, type RulesApi, type Scope } from './rules';
+import {
+  addressValid,
+  fieldError,
+  formErrors,
+  postcodeChecked,
+  type RemoteCheck,
+  type RulesApi,
+  type Scope,
+} from './rules';
 import type { Address, AddressType, Checkout } from '../../engine/events/checkout';
 import type { CheckoutError } from '../../engine/types';
 import type { AddressSuggestion, CheckoutState, CountryOption, FieldError } from './types';
@@ -84,8 +92,8 @@ export function createCheckout(
     try {
       const sent = { postcode: value, ...(fields.state && { state: fields.state }) };
       const result = (await rulesApi.validate(fields.country, sent)).postcode;
-      if (state().fields.postcode?.trim() !== value || !result?.error || state().errors.postcode) return;
-      set({ errors: { ...state().errors, postcode: { ...result.error, warning: true } } });
+      const errors = postcodeChecked(state(), fields, result);
+      if (errors) set({ errors });
     } catch {}
   };
 
