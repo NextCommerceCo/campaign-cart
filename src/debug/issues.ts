@@ -1,12 +1,44 @@
 import type { Engine } from '../engine/engine';
 import { card, type highlighter, inspect } from './elements';
 import type { DebugActions, PageVisit } from './state';
-import { badge, type Child, empty, h, plural } from './view';
+import { icon } from './icons';
+import { type Child, empty, h, plural } from './view';
 
 export type IssueTab = 'journey' | 'checkout' | 'analytics';
 const LABELS: Record<IssueTab, string> = { journey: 'Journey', checkout: 'Checkout', analytics: 'Analytics' };
 
 type Problem = { text: string; error: boolean };
+type Tone = 'error' | 'warn' | 'note';
+
+/** One problem: its tone, what happened (the text before `: `), and the rest with where it was found. */
+const row = (text: string, from: string, tone: Tone, onclick: () => void, times = 1) => {
+  const cut = text.indexOf(': ');
+  const [title, detail] = cut > 0 ? [text.slice(0, cut), text.slice(cut + 2)] : [text, ''];
+  const el = h(
+    'button',
+    { type: 'button', className: 'irow', onclick },
+    h('span', 'iic', icon(tone === 'error' ? 'fail' : 'warn')),
+    h(
+      'span',
+      'itext',
+      h('b', {}, title),
+      h('small', {}, [detail, from, times > 1 && `×${times}`].filter(Boolean).join(' · ')),
+    ),
+    icon('chevron'),
+  );
+  el.dataset.tone = tone;
+  return el;
+};
+
+/** Problems with the same text and tab, once each with how many times. */
+const grouped = <T extends { text: string; from: IssueTab }>(list: T[]) => {
+  const seen = new Map<string, T & { times: number }>();
+  for (const item of list) {
+    const key = `${item.from} ${item.text}`;
+    seen.set(key, { ...item, times: (seen.get(key)?.times ?? 0) + 1 });
+  }
+  return [...seen.values()];
+};
 
 export function issuesView(
   engine: Engine,
@@ -29,12 +61,12 @@ export function issuesView(
       .reverse();
     const pages = debug.state().pages;
     const marks = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
-    const found: Array<{ from: IssueTab; text: string; error: boolean }> = [
+    const found = grouped([
       ...marks(pages.at(-1)).map((m) => ({ from: 'journey' as IssueTab, text: m.text, error: m.tone === 'error' })),
       ...checkout.problems().map((p) => ({ from: 'checkout' as IssueTab, ...p })),
       ...flow.problems().map((p) => ({ from: 'analytics' as IssueTab, ...p })),
-    ];
-    const earlier = pages.slice(0, -1).reduce((n, p) => n + marks(p).length, 0);
+    ]);
+    const earlier = pages.slice(0, -1).reduce((n, p) => n + new Set(marks(p).map((m) => m.text)).size, 0);
     const tone = logged.some((e) => e.level === 'error') || found.some((f) => f.error) ? 'red' : 'amber';
     return {
       page,
@@ -59,15 +91,8 @@ export function issuesView(
       );
     const setup = [
       notes.length > 0 && h('h3', {}, `Setup notes · ${notes.length}`),
-      ...notes.map((text) =>
-        h(
-          'div',
-          { className: 'ecard', onclick: () => show('analytics') },
-          badge(LABELS.analytics, 'outline'),
-          ' ',
-          text,
-        ),
-      ),
+      notes.length > 0 &&
+        h('div', 'ilist', ...notes.map((text) => row(text, LABELS.analytics, 'note', () => show('analytics')))),
     ];
     if (!page.length && !logged.length && !found.length)
       return [
@@ -81,15 +106,12 @@ export function issuesView(
       ];
     return [
       found.length > 0 && h('h3', {}, `Problems · ${found.length}`),
-      ...found.map((f) =>
+      found.length > 0 &&
         h(
           'div',
-          { className: `ecard${f.error ? ' bad' : ''}`, onclick: () => show(f.from) },
-          badge(LABELS[f.from], 'outline'),
-          ' ',
-          f.text,
+          'ilist',
+          ...found.map((f) => row(f.text, LABELS[f.from], f.error ? 'error' : 'warn', () => show(f.from), f.times)),
         ),
-      ),
       page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
       ...page.map((i) => card(i, box)),
       logged.length > 0 && h('h3', {}, `Warnings and errors · ${logged.length}`),

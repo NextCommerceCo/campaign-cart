@@ -395,15 +395,20 @@ describe('debug tools', () => {
     const next = await start('<span data-next-display="campaign.name"></span>');
     await next.actions.addItem(1);
     await next.actions.applyCoupon('NOPE');
+    await next.actions.applyCoupon('NOPE');
     await vi.waitFor(() => expect($('.issues').textContent).toBe('1 Issue'));
     $('.fab').click();
     expect(menuItem('Issues').textContent).toBe('Issues1');
     menuItem('Issues').click();
     expect(body()).toContain('Problems · 1');
-    const row = [...shadow().querySelectorAll<HTMLElement>('.body .ecard')].find((c) =>
+    const row = [...shadow().querySelectorAll<HTMLElement>('.body .irow')].find((c) =>
       c.textContent!.includes('refused'),
     )!;
-    expect(row.textContent).toBe('Journey Coupon NOPE refused by the server');
+    expect([row.querySelector('b')!.textContent, row.querySelector('small')!.textContent, row.dataset.tone]).toEqual([
+      'Coupon NOPE refused by the server',
+      'Journey · ×2',
+      'warn',
+    ]);
     row.click();
     expect($('[data-tab="journey"]').getAttribute('aria-selected')).toBe('true');
     await start('<span data-next-display="campaign.name"></span>', {});
