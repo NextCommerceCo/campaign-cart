@@ -2,7 +2,7 @@ import { localeOf } from '../engine/format';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, onceVisible, selectorIdOf, setState, stamp } from './dom';
+import { registerSelector, selectorIdOf, setState, stamp } from './dom';
 import { discountsOfKind, discountTokens } from '../engine/tokens';
 import { cardQuote, repricing } from '../engine/values';
 
@@ -102,15 +102,18 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
       });
       els.set(id, el);
       b.cards.set(el, { selectorId, cardId: id });
-      el.addEventListener('click', (e) => {
-        if (!isFormControl(e.target)) void b.engine.selectors.pick(selectorId, id);
-      });
     });
     if (!cards.length) return;
 
-    const preferred = [...els].find(([, el]) => el.getAttribute('data-next-selected') === 'true')?.[0];
-    void b.engine.selectors.register(selectorId, cards, modeOf(selectorEl, upsellPage), preferred);
-    onceVisible(selectorEl, () => b.engine.selectors.view(selectorId));
+    registerSelector(
+      b.engine,
+      selectorEl,
+      selectorId,
+      cards,
+      els,
+      modeOf(selectorEl, upsellPage),
+      (el) => el.getAttribute('data-next-selected') === 'true',
+    );
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {

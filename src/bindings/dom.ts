@@ -1,4 +1,6 @@
 import { conditionMet, parseCondition } from '../engine/condition';
+import type { SelectorCard, SelectorMode } from '../engine/cart/types';
+import { toggleGroup } from '../engine/cart/toggles';
 import type { Engine } from '../engine/engine';
 import { format, localeOf, truthy, type Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
@@ -84,6 +86,65 @@ export function setState(el: Element, on: boolean): void {
 
 export const isFormControl = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('a, input, select, textarea, label');
+
+/** A click on a card picks it, the first `selected` card is the page's pick, `view` once half of `el` is on screen. */
+export function registerSelector(
+  engine: Engine,
+  el: Element,
+  id: string,
+  cards: SelectorCard[],
+  els: Map<string, Element>,
+  mode: SelectorMode,
+  selected: (card: Element) => boolean,
+): void {
+  els.forEach((card, cardId) =>
+    card.addEventListener('click', (e) => {
+      if (!isFormControl(e.target)) void engine.selectors.pick(id, cardId);
+    }),
+  );
+  const preferred = [...els].find(([, card]) => selected(card))?.[0];
+  void engine.selectors.register(id, cards, mode, preferred);
+  onceVisible(el, () => engine.selectors.view(id));
+}
+
+/**
+ * A package `el` switches on and off as its own cart group: added when `selected` and not
+ * dismissed, viewed once on screen, added again when an input changes while in the cart.
+ * Returns a resync for a quantity that follows the cart: the preselect retried, a changed quantity added.
+ */
+export function bindToggle(
+  engine: Engine,
+  el: Element,
+  packageId: number,
+  quantity: () => number,
+  add: () => unknown,
+  inputs: Element[],
+  on: () => boolean,
+  selected: boolean,
+): () => void {
+  const group = toggleGroup(packageId);
+  let preselected = selected && !engine.getState().cart.dismissed.includes(group);
+  const addPreselected = () => {
+    if (!preselected || on() || quantity() <= 0) return;
+    preselected = false;
+    void add();
+  };
+  addPreselected();
+  onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1));
+  for (const input of inputs)
+    input.addEventListener('change', () => engine.getState().cart.groups[group] && void add());
+  el.addEventListener('click', (e) => {
+    if (isFormControl(e.target)) return;
+    if (!on()) void add();
+    else if (engine.getState().cart.groups[group]) void engine.cart.setGroup(group, null, { dismiss: true });
+    else void engine.cart.removeItem(packageId);
+  });
+  return () => {
+    addPreselected();
+    const current = engine.getState().cart.groups[group]?.lines[0]?.quantity;
+    if (current !== undefined && current !== quantity()) void add();
+  };
+}
 
 export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
   if (v.held) return;

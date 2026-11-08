@@ -44,8 +44,9 @@ export function keptParams(params: Record<string, string>): Record<string, strin
   return Object.fromEntries(Object.entries(params).filter(([key]) => !ONE_SHOT_PARAMS.includes(key)));
 }
 
-export function nextUrl(target: string, current: URL, params: Record<string, string>): string {
+export function nextUrl(target: string, current: URL, params: Record<string, string>, refId?: string): string {
   const url = new URL(target, current);
+  if (refId && !url.searchParams.has('ref_id')) url.searchParams.set('ref_id', refId);
   const sameSite = url.origin === current.origin;
   for (const [key, value] of Object.entries(keptParams(params))) {
     if ((sameSite || ATTRIBUTION.test(key)) && !url.searchParams.has(key)) url.searchParams.set(key, value);

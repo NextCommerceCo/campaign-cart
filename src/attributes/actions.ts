@@ -1,5 +1,5 @@
 import type { ActionArgs, ActionName, ActionResult } from '../engine/actions';
-import { nextQuantity } from '../engine/actions';
+import { ready } from '../engine/actions';
 import { nextUrl } from '../engine/params';
 import type { Render } from '../bindings/context';
 import { matching } from '../bindings/dom';
@@ -70,40 +70,6 @@ function scopeArgs(scope: unknown): ActionArgs {
   return args;
 }
 
-/** Whether a quantity step can move: false at a limit, so the button is disabled. */
-function canStep(a: AttributeContext, args: ActionArgs): boolean {
-  const state = a.engine.getState();
-  const selectorId = args.selector_id && String(args.selector_id);
-  if (selectorId) {
-    const selector = state.selectors[selectorId];
-    const card = selector?.cards.find((c) => c.id === selector.picked);
-    if (!selector || !card) return false;
-    const current = selector.quantities?.[card.id] ?? card.quantity ?? 1;
-    const next = nextQuantity(args.quantity, current);
-    return next !== undefined && next !== current && next >= (card.min ?? 1) && next <= (card.max ?? 999);
-  }
-  const packageId = Number(args.package_id);
-  const current = a.engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0;
-  const next = nextQuantity(args.quantity, current);
-  const min = Number(args.min_quantity ?? (current > 0 ? 1 : 0));
-  const max = Number(args.max_quantity ?? Infinity);
-  return !!packageId && next !== undefined && next !== current && next >= min && next <= max;
-}
-
-function ready(a: AttributeContext, name: ActionName, args: ActionArgs): boolean {
-  switch (name) {
-    case 'addItem':
-    case 'acceptUpsell':
-      return !args.selector_id || !!a.engine.getState().selectors[String(args.selector_id)]?.picked;
-    case 'setQuantity':
-      return canStep(a, args);
-    case 'select':
-      return !!args.selector_id && !!args.option_id;
-    default:
-      return true;
-  }
-}
-
 /** `data-next-action="<name>"`: runs `next.actions.<name>` on click, or on submit for a form. */
 export function bindActions(root: ParentNode, a: AttributeContext): Render[] {
   const renders: Render[] = [];
@@ -122,10 +88,8 @@ export function bindActions(root: ParentNode, a: AttributeContext): Render[] {
       el.toggleAttribute('data-next-invalid', !result.ok);
       const go = el.getAttribute('data-next-go');
       if (!result.ok || !go) return false;
-      const url = new URL(go, location.href);
-      const refId = a.engine.getState().order?.refId;
-      if (refId && !url.searchParams.has('ref_id')) url.searchParams.set('ref_id', refId);
-      a.navigate(nextUrl(url.href, new URL(location.href), a.engine.getState().visit.params));
+      const { order, visit } = a.engine.getState();
+      a.navigate(nextUrl(go, new URL(location.href), visit.params, order?.refId));
       return true;
     };
     const run = async (e: Event) => {
@@ -148,7 +112,7 @@ export function bindActions(root: ParentNode, a: AttributeContext): Render[] {
     };
     el.addEventListener(el instanceof HTMLFormElement ? 'submit' : 'click', (e) => void run(e));
     renders.push(() => {
-      const off = !running && !ready(a, name, argsOf());
+      const off = !running && !ready(a.engine, name, argsOf());
       el.toggleAttribute('data-next-disabled', off);
       if ('disabled' in el && !(el instanceof HTMLFormElement)) (el as HTMLButtonElement).disabled = off;
     });

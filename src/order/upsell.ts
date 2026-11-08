@@ -11,10 +11,8 @@ function targetUrl(button: Element, accept: boolean, engine: Engine): string | u
   const own = NEXT_URL_ATTRS.map((a) => button.getAttribute(a)).find(Boolean);
   const target = own ?? metaContent(accept ? 'next-upsell-accept-url' : 'next-upsell-decline-url');
   if (!target) return undefined;
-  const url = new URL(target, location.href);
-  const refId = engine.getState().order?.refId;
-  if (refId && !url.searchParams.has('ref_id')) url.searchParams.set('ref_id', refId);
-  return nextUrl(url.href, new URL(location.href), engine.getState().visit.params);
+  const { order, visit } = engine.getState();
+  return nextUrl(target, new URL(location.href), visit.params, order?.refId);
 }
 
 export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url: string) => void): Array<() => void> {

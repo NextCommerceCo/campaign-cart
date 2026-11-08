@@ -37,3 +37,15 @@ export function variantChoices(packages: Package[], packageId: number): VariantC
     })),
   }));
 }
+
+/** The package `packageId` moves to when its `code` attribute is set to `value`, if one can be bought. */
+export function variantPackage(
+  packages: Package[],
+  packageId: number,
+  code: string,
+  value: string,
+): number | undefined {
+  return variantChoices(packages, packageId)
+    .find((c) => c.code === code)
+    ?.options.find((o) => o.value === value)?.packageId;
+}

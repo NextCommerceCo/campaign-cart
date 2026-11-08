@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { toggleGroup } from '../engine/cart/toggles';
 import type { Package } from '../engine/types';
 import { type BindContext, type Render } from './context';
-import { isFormControl, onceVisible, ownProperties, pageProperties, setState } from './dom';
+import { bindToggle, ownProperties, pageProperties, setState } from './dom';
 
 const ids = (el: Element, attr: string) => (el.getAttribute(attr) ?? '').split(',').map(Number).filter(Boolean);
 
@@ -47,6 +47,7 @@ function bindToggleCard(b: BindContext, el: HTMLElement): Render | undefined {
   const quantity = (): number =>
     sync.length || products.length ? syncedQuantity(engine, group, sync, products) : baseQty;
   const isUpsell = el.getAttribute('data-next-is-upsell') === 'true';
+  const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
   const add = () => {
     const properties = { ...pageProperties(el), ...ownProperties(el) };
     return engine.cart.setGroup(group, {
@@ -61,39 +62,18 @@ function bindToggleCard(b: BindContext, el: HTMLElement): Render | undefined {
       vouchers: [],
     });
   };
-  const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
+  const resync = bindToggle(
+    engine,
+    el,
+    packageId,
+    quantity,
+    add,
+    [...el.querySelectorAll('[data-next-property]'), ...document.querySelectorAll('[data-next-default-property]')],
+    isOn,
+    el.getAttribute('data-next-selected') === 'true',
+  );
 
-  let preselected =
-    el.getAttribute('data-next-selected') === 'true' && !engine.getState().cart.dismissed.includes(group);
-  const addPreselected = () => {
-    if (!preselected || isOn() || quantity() <= 0) return;
-    preselected = false;
-    void add();
-  };
-  addPreselected();
-  onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1));
-
-  const inputs = [
-    ...el.querySelectorAll('[data-next-property]'),
-    ...document.querySelectorAll('[data-next-default-property]'),
-  ];
-  for (const input of inputs)
-    input.addEventListener('change', () => engine.getState().cart.groups[group] && void add());
-
-  el.addEventListener('click', (e) => {
-    if (isFormControl(e.target)) return;
-    if (!isOn()) void add();
-    else if (engine.getState().cart.groups[group]) void engine.cart.setGroup(group, null, { dismiss: true });
-    else void engine.cart.removeItem(packageId);
-  });
-
-  if (sync.length || products.length) {
-    engine.on('cart.updated', () => {
-      addPreselected();
-      const current = engine.getState().cart.groups[group]?.lines[0]?.quantity;
-      if (current !== undefined && current !== quantity()) void add();
-    });
-  }
+  if (sync.length || products.length) engine.on('cart.updated', resync);
 
   const image = el.querySelector<HTMLImageElement>('img[data-next-toggle-image]');
   return () => {

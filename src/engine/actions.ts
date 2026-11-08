@@ -1,6 +1,6 @@
 import type { CartLine } from './cart/types';
-import { cardSlots } from './cart/selectors';
-import { variantChoices } from './cart/variants';
+import { cardSlots, pickedCard } from './cart/selectors';
+import { variantPackage } from './cart/variants';
 import type { Engine } from './engine';
 
 /** What every action resolves to: it never throws. */
@@ -40,6 +40,59 @@ export function nextQuantity(raw: unknown, current: number): number | undefined 
   return /^[+-]/.test(value) ? current + n : n;
 }
 
+const selectorOf = (args: ActionArgs) => text(args.selector_id);
+
+/** The selector `args` names, when it has no picked option to act on. */
+const unpicked = (engine: Engine, args: ActionArgs) => {
+  const id = selectorOf(args);
+  return id && !engine.getState().selectors[id]?.picked ? id : undefined;
+};
+
+interface QuantityStep {
+  selectorId?: string;
+  packageId?: number;
+  current: number;
+  next: number;
+  min: number;
+  max: number;
+}
+
+/** The quantity `setQuantity` moves from and to, and the limits it keeps to. */
+function quantityStep(engine: Engine, args: ActionArgs): QuantityStep | ActionResult {
+  const selectorId = selectorOf(args);
+  const selector = selectorId ? engine.getState().selectors[selectorId] : undefined;
+  const card = pickedCard(selector);
+  const packageId = num(args.package_id);
+  if (selectorId && !card) return fail('selector_id', `selector "${selectorId}" has no picked option`);
+  if (!selectorId && !packageId) return fail('package_id', 'setQuantity needs package_id or selector_id');
+  const current = card
+    ? (selector!.quantities?.[card.id] ?? card.quantity ?? 1)
+    : (engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0);
+  const next = nextQuantity(args.quantity, current);
+  if (next === undefined) return fail('quantity', 'quantity must be a number, +n or -n');
+  const [min, max] = card
+    ? [card.min ?? 1, card.max ?? 999]
+    : [num(args.min_quantity) ?? (current > 0 ? 1 : 0), num(args.max_quantity) ?? Infinity];
+  return { selectorId, packageId, current, next, min, max };
+}
+
+/** Whether `name` can run with `args` now: `data-next-action` disables its element when not. */
+export function ready(engine: Engine, name: ActionName, args: ActionArgs): boolean {
+  switch (name) {
+    case 'addItem':
+    case 'acceptUpsell':
+      return !unpicked(engine, args);
+    case 'setQuantity': {
+      const step = quantityStep(engine, args);
+      return !('ok' in step) && step.next !== step.current && step.next >= step.min && step.next <= step.max;
+    }
+    case 'select':
+      return !!selectorOf(args) && !!text(args.option_id);
+    default:
+      return true;
+  }
+}
+
 /**
  * Every action a page or a script can ask for, under the names `next.actions` and
  * `data-next-action` share. Each takes one object of the model's field names and resolves to
@@ -49,8 +102,6 @@ export function createActions(
   engine: Engine,
   host: { page: () => string; navigate: (url: string) => void; url: (target: string) => string },
 ) {
-  const selectorOf = (args: ActionArgs) => text(args.selector_id);
-
   const addItem: Action = async (args = {}) => {
     const selectorId = selectorOf(args);
     const lines = text(args.items)
@@ -59,8 +110,7 @@ export function createActions(
         ? [{ packageId: num(args.package_id)!, quantity: num(args.quantity) ?? 1 }]
         : [];
     if (!selectorId && !lines.length) return fail('items', 'nothing to add: items, package_id or selector_id');
-    if (selectorId && !engine.getState().selectors[selectorId]?.picked)
-      return fail('selector_id', `selector "${selectorId}" has no picked option`);
+    if (unpicked(engine, args)) return fail('selector_id', `selector "${selectorId}" has no picked option`);
     if (args.replace === true || args.replace === 'true' || args.replace === '') await engine.cart.clear();
     if (selectorId) await engine.selectors.addToCart(selectorId);
     else for (const line of lines) await engine.cart.addItem(line.packageId, line.quantity);
@@ -68,25 +118,10 @@ export function createActions(
   };
 
   const setQuantity: Action = async (args = {}) => {
-    const selectorId = selectorOf(args);
-    if (selectorId) {
-      const selector = engine.getState().selectors[selectorId];
-      const card = selector?.cards.find((c) => c.id === selector.picked);
-      if (!selector || !card) return fail('selector_id', `selector "${selectorId}" has no picked option`);
-      const current = selector.quantities?.[card.id] ?? card.quantity ?? 1;
-      const next = nextQuantity(args.quantity, current);
-      if (next === undefined) return fail('quantity', 'quantity must be a number, +n or -n');
-      await engine.selectors.setQuantity(selectorId, next);
-      return OK;
-    }
-    const packageId = num(args.package_id);
-    if (!packageId) return fail('package_id', 'setQuantity needs package_id or selector_id');
-    const current = engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0;
-    const next = nextQuantity(args.quantity, current);
-    if (next === undefined) return fail('quantity', 'quantity must be a number, +n or -n');
-    const min = num(args.min_quantity) ?? (current > 0 ? 1 : 0);
-    const max = num(args.max_quantity) ?? Infinity;
-    await engine.cart.setQuantity(packageId, Math.min(max, Math.max(min, next)));
+    const step = quantityStep(engine, args);
+    if ('ok' in step) return step;
+    if (step.selectorId) await engine.selectors.setQuantity(step.selectorId, step.next);
+    else await engine.cart.setQuantity(step.packageId!, Math.min(step.max, Math.max(step.min, step.next)));
     return OK;
   };
 
@@ -153,10 +188,7 @@ export function createActions(
       if (!code || value === undefined) return fail('value', 'selectVariant needs code and value');
       const state = engine.getState();
       const packages = state.campaign?.packages ?? [];
-      const packageFor = (current: number) =>
-        variantChoices(packages, current)
-          .find((c) => c.code === code)
-          ?.options.find((o) => o.value === value)?.packageId;
+      const packageFor = (current: number) => variantPackage(packages, current, code, value);
       const selectorId = selectorOf(args);
       const optionId = text(args.option_id);
       const selector = selectorId ? state.selectors[selectorId] : undefined;

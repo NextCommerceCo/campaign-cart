@@ -6,7 +6,7 @@ import type { SelectorCard, SelectorMode } from '../engine/cart/types';
 import { cents } from '../engine/format';
 import type { Engine } from '../engine/engine';
 import type { Render } from '../bindings/context';
-import { isFormControl, matching, onceVisible } from '../bindings/dom';
+import { bindToggle, matching, onceVisible, registerSelector } from '../bindings/dom';
 import type { AttributeContext } from './context';
 
 type Model = Record<string, unknown>;
@@ -113,14 +113,9 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
       const shown = priced(optionId, option, selector?.type === 'offer');
       return shown && { ...shown, selector_id: id, slots: slotsOf(a, id, optionId) };
     });
-    el.addEventListener('click', (e) => {
-      if (!isFormControl(e.target)) void a.engine.selectors.pick(id, optionId);
-    });
   });
   if (!cards.length) return [];
   const mode: SelectorMode = orderPage() ? 'offer' : selectorEl.hasAttribute('data-next-defer') ? 'select' : 'swap';
-  const preferred = [...els].find(([, el]) => preselected(el))?.[0];
-  void a.engine.selectors.register(id, cards, mode, preferred);
   els.forEach((el, optionId) => {
     const own = [...el.querySelectorAll('[data-next-field^="properties."]')].filter(
       (i) => !i.closest('[data-next-each]'),
@@ -154,7 +149,7 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
     const selector = a.query.get(`selector.${id}`) as Model | undefined;
     return priced('', selector, selector?.type === 'offer');
   });
-  onceVisible(selectorEl, () => a.engine.selectors.view(id));
+  registerSelector(a.engine, selectorEl, id, cards, els, mode, preselected);
   return [
     ...(mode === 'offer' ? [announceOffer(selectorEl, id, a)] : []),
     () => {
@@ -188,6 +183,7 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
   }
   const { engine } = a;
   const group = toggleGroup(line.packageId);
+  const on = () => !!engine.getState().cart.groups[group];
   const current = () =>
     publicToggle(engine.getState(), group, engine.getState().cart.groups[group] ?? { lines: [line], vouchers: [] });
   if (optionId) a.query.register(`selector.${optionId}`, current);
@@ -202,15 +198,16 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
       vouchers: [],
     });
   };
-  const on = () => !!engine.getState().cart.groups[group];
-  if (preselected(el) && !engine.getState().cart.dismissed.includes(group) && !on()) void add();
-  el.addEventListener('click', (e) => {
-    if (isFormControl(e.target)) return;
-    void (on() ? engine.cart.setGroup(group, null, { dismiss: true }) : add());
-  });
-  for (const input of el.querySelectorAll('[data-next-field^="properties."]'))
-    input.addEventListener('change', () => on() && void add());
-  onceVisible(el, () => engine.toggles.view(line.packageId, line.quantity));
+  bindToggle(
+    engine,
+    el,
+    line.packageId,
+    () => line.quantity,
+    add,
+    [...el.querySelectorAll('[data-next-field^="properties."]')],
+    on,
+    preselected(el),
+  );
   return [
     () => {
       engine.toggles.price(line.packageId, line.quantity);

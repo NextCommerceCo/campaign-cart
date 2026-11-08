@@ -203,6 +203,14 @@ describe('attributes v2: options', () => {
     expect(engine.getState().cart.groups['bundle:main']!.lines).toEqual([{ packageId: 2, quantity: 2 }]);
   });
 
+  it('enables a package step whose limit attribute is empty, as the step itself has no limit then', async () => {
+    const { $ } = await mount(
+      `<button id="up" data-next-action="setQuantity" data-next-package-id="1" data-next-quantity="+1"
+               data-next-max-quantity="">+</button>`,
+    );
+    expect(($('#up') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('adds a deferred selector’s pick with a button, then opens the next page with the visit’s parameters', async () => {
     const { engine, navigate, $ } = await mount(
       `<div data-next-selector="main" data-next-defer>

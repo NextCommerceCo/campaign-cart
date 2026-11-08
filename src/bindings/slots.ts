@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { cardSlots, pickedCard } from '../engine/cart/selectors';
-import { variantChoices } from '../engine/cart/variants';
+import { variantChoices, variantPackage } from '../engine/cart/variants';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/format';
@@ -225,10 +225,7 @@ function renderStage(
     const { el, patch } = slotElement(card.id, index, template, values);
     const entry: RenderedSlot = { el, slot, values, prices, patch, boxes: discountBoxes(el), variants: () => {} };
     const choose = (code: string, value: string) => {
-      const choice = variantChoices(engine.getState().campaign?.packages ?? [], entry.slot.packageId).find(
-        (c) => c.code === code,
-      );
-      const packageId = choice?.options.find((o) => o.value === value)?.packageId;
+      const packageId = variantPackage(engine.getState().campaign?.packages ?? [], entry.slot.packageId, code, value);
       if (packageId) void apply(card, index, { packageId });
     };
     entry.variants = () => {
