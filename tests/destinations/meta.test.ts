@@ -107,6 +107,22 @@ describe('metaEvent', () => {
     expect(params).not.toHaveProperty('content_name');
   });
 
+  it('counts a cart line of a multi-unit package in units, keeping the value exact', () => {
+    const data = EXAMPLES.checkout_started.data as { cart: { lines: object[] } };
+    const lines = [{ package_id: 2, sku: 'EB-2', quantity: 2, product_title: 'Earbuds ×2', price: 10 }];
+    const packages = { getPackage: (id: number) => (id === 2 ? ({ qty: 3 } as never) : undefined) };
+    const params = metaEvent(
+      event('checkout_started', { ...data, cart: { ...data.cart, lines } }),
+      {},
+      packages,
+    )?.params;
+    expect(params).toMatchObject({
+      contents: [{ id: 'EB-2', quantity: 6, item_price: 3.33 }],
+      value: 20,
+      num_items: 6,
+    });
+  });
+
   it('leaves out what an unpriced line does not have', () => {
     const params = metaEvent(event('product_viewed', { package_id: 7, quantity: 1 }))?.params;
     expect(params).toEqual({

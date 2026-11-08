@@ -5,7 +5,8 @@ import type { EventContext } from './context';
 import type { Order, OrderItem } from './orders';
 import type { Promotion, PromotionEvents } from './promotions';
 import type { Upsell } from './upsells';
-import { addDollars } from '../format';
+import type { Engine } from '../engine';
+import { addDollars, dollars } from '../format';
 import { untaxed } from '../order';
 
 /**
@@ -207,6 +208,25 @@ export function trackingLines(e: TrackingEvent): TrackingLine[] {
       return [];
   }
 }
+
+/** Where a destination looks up a cart line's package. */
+export type Packages = Pick<Engine, 'getPackage'>;
+
+/**
+ * Lines counted in units of product, as order lines already are: a cart line of a package of `qty` units is
+ * `quantity × qty` units at `price ÷ qty`.
+ */
+export const perUnit = (lines: TrackingLine[], packages?: Packages): TrackingLine[] =>
+  lines.map((l) => {
+    const units = ('package_id' in l && packages?.getPackage(l.package_id)?.qty) || 1;
+    if (units === 1) return l;
+    return {
+      ...l,
+      quantity: l.quantity * units,
+      ...(l.price !== undefined && { price: dollars(l.price / units) }),
+      ...(l.original_price !== undefined && { original_price: dollars(l.original_price / units) }),
+    };
+  });
 
 /** `Σ price × quantity` of the priced lines; none when no line is priced. */
 export const trackingValue = (lines: TrackingLine[]): number | undefined => {

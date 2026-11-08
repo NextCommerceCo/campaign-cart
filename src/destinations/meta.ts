@@ -6,6 +6,8 @@ import {
   trackingLines,
   trackingValue,
   type DestinationTrace,
+  type Packages,
+  perUnit,
   type TrackingEvent,
   type TrackingLine,
   type TrackingName,
@@ -107,35 +109,40 @@ export interface MetaOptions {
 
 type Win = Window & { fbq?: (...args: unknown[]) => void };
 
-const contents = (e: TrackingEvent, lines: TrackingLine[]): MetaContents =>
+const contents = (e: TrackingEvent, lines: TrackingLine[], units: TrackingLine[]): MetaContents =>
   defined({
     content_ids: lines.map(trackingLineId),
-    contents: lines.map((l) => defined({ id: trackingLineId(l), quantity: l.quantity, item_price: l.price })),
+    contents: units.map((l) => defined({ id: trackingLineId(l), quantity: l.quantity, item_price: l.price })),
     content_type: 'product' as const,
     content_name: lines.length === 1 ? lines[0]!.product_title : undefined,
     value: trackingValue(lines),
     currency: trackingCurrency(e),
   });
 
-/** The Meta call a tracking event becomes, if any. */
-export function metaEvent(e: TrackingEvent, options: MetaOptions = {}): MetaEvent | undefined {
+/** The Meta call a tracking event becomes, if any; `contents` count units of product, looked up in `packages`. */
+export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?: Packages): MetaEvent | undefined {
   const name = META[e.event_type];
   if (!name) return undefined;
   const lines = trackingLines(e);
+  const units = perUnit(lines, packages);
   const event_id = e.event_id;
   if (name === 'Lead')
     return { name, params: defined({ value: trackingValue(lines), currency: trackingCurrency(e) }), event_id };
   if (name === 'InitiateCheckout') {
-    const num_items = lines.reduce((n, l) => n + l.quantity, 0);
-    return { name, params: { ...contents(e, lines), num_items }, event_id };
+    const num_items = units.reduce((n, l) => n + l.quantity, 0);
+    return { name, params: { ...contents(e, lines, units), num_items }, event_id };
   }
   if (e.event_type === 'checkout_completed' || e.event_type === 'upsell_completed') {
     const order = e.event_type === 'checkout_completed';
-    const params = { ...contents(e, lines), value: trackingValue(lines) ?? 0, currency: trackingCurrency(e) ?? 'USD' };
+    const params = {
+      ...contents(e, lines, units),
+      value: trackingValue(lines) ?? 0,
+      currency: trackingCurrency(e) ?? 'USD',
+    };
     const id = order && options.storeName ? `${options.storeName}-${e.data.number ?? e.data.ref_id}` : event_id;
     return { name: 'Purchase', params, event_id: id };
   }
-  return { name: name as 'ViewContent' | 'AddToCart' | 'AddPaymentInfo', params: contents(e, lines), event_id };
+  return { name: name as 'ViewContent' | 'AddToCart' | 'AddPaymentInfo', params: contents(e, lines, units), event_id };
 }
 
 /** Sends every tracking event of this page, and each later one, to the page's `fbq`. */
@@ -144,7 +151,7 @@ export function startMeta(engine: Engine, options: MetaOptions = {}): void {
   engine.on(
     'analytics',
     ({ data: e }) => {
-      const meta = metaEvent(e, options);
+      const meta = metaEvent(e, options, engine);
       if (!meta) return;
       const fbq = (window as Win).fbq;
       if (typeof fbq !== 'function') {

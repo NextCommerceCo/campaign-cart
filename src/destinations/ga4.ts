@@ -6,6 +6,8 @@ import {
   trackingLines,
   trackingValue,
   type DestinationTrace,
+  type Packages,
+  perUnit,
   type TrackingEvent,
   type TrackingLine,
   type TrackingName,
@@ -164,18 +166,18 @@ const item = (l: TrackingLine, index: number): Ga4Item => {
   });
 };
 
-const ecommerce = (e: TrackingEvent, lines = trackingLines(e)): Ga4Ecommerce => {
+const ecommerce = (e: TrackingEvent, packages?: Packages, lines = trackingLines(e)): Ga4Ecommerce => {
   const data = e.data as { coupons?: string[]; cart?: { coupons?: string[] } };
   return defined({
     currency: trackingCurrency(e),
     value: trackingValue(lines),
     coupon: (data.coupons ?? data.cart?.coupons)?.[0],
-    items: lines.map(item),
+    items: perUnit(lines, packages).map(item),
   });
 };
 
-/** The `gtag` call a tracking event becomes, if any. */
-export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
+/** The `gtag` call a tracking event becomes, if any; `items` count units of product, looked up in `packages`. */
+export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | undefined {
   switch (e.event_type) {
     case 'checkout_contact_info_submitted':
       return {
@@ -190,15 +192,15 @@ export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
     case 'checkout_shipping_method_submitted':
       return {
         name: 'add_shipping_info',
-        params: defined({ ...ecommerce(e), shipping_tier: e.data.cart.shipping_method?.name }),
+        params: defined({ ...ecommerce(e, packages), shipping_tier: e.data.cart.shipping_method?.name }),
       };
     case 'checkout_payment_info_submitted': {
       const method = e.data.payment_method;
       const payment_type = method === 'card_token' ? 'Credit Card' : method;
-      return { name: 'add_payment_info', params: defined({ ...ecommerce(e), payment_type }) };
+      return { name: 'add_payment_info', params: defined({ ...ecommerce(e, packages), payment_type }) };
     }
     case 'checkout_completed': {
-      const base = ecommerce(e);
+      const base = ecommerce(e, packages);
       const method = e.data.shipping_method;
       const params = defined({
         ...base,
@@ -211,17 +213,17 @@ export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
       return { name: 'purchase', params };
     }
     case 'upsell_completed': {
-      const { items, value = 0, currency = 'USD' } = ecommerce(e);
+      const { items, value = 0, currency = 'USD' } = ecommerce(e, packages);
       return { name: 'purchase', params: { transaction_id: e.event_id, value, currency, items } };
     }
     case 'product_list_viewed':
       return {
         name: 'view_item_list',
-        params: { ...ecommerce(e), item_list_id: 'product_list', item_list_name: 'Product List' },
+        params: { ...ecommerce(e, packages), item_list_id: 'product_list', item_list_name: 'Product List' },
       };
     case 'upsell_viewed':
     case 'upsell_skipped': {
-      const { items, value, currency } = ecommerce(e);
+      const { items, value, currency } = ecommerce(e, packages);
       const name = e.event_type === 'upsell_viewed' ? 'view_upsell' : 'skip_upsell';
       return { name, params: defined({ order_id: e.data.ref_id, currency, value, items }) };
     }
@@ -234,7 +236,7 @@ export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
     case 'page_viewed':
       return undefined;
     default:
-      return { name: GA4[e.event_type] as 'view_item', params: ecommerce(e) };
+      return { name: GA4[e.event_type] as 'view_item', params: ecommerce(e, packages) };
   }
 }
 
@@ -244,7 +246,7 @@ export function startGa4(engine: Engine): void {
   engine.on(
     'analytics',
     ({ data: e }) => {
-      const ga4 = ga4Event(e);
+      const ga4 = ga4Event(e, engine);
       if (!ga4) return;
       const gtag = (window as Win).gtag;
       if (typeof gtag !== 'function') {

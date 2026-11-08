@@ -83,11 +83,11 @@ describe('destination examples', () => {
     const rudderstack: Record<string, Entry> = {};
     for (const [name, example] of Object.entries(tracking) as Array<[TrackingName, Example]>) {
       const e = trackingEvent(name, example);
-      const g = ga4Event(e);
+      const g = ga4Event(e, engine);
       if (g) add(ga4, g.name, name, () => ({ params: g.params }));
-      const m = metaEvent(e);
+      const m = metaEvent(e, {}, engine);
       if (m) {
-        const stored = metaEvent(e, { storeName: STORE_NAME });
+        const stored = metaEvent(e, { storeName: STORE_NAME }, engine);
         add(meta, m.name, name, () => ({
           event_id: m.event_id,
           params: m.params,

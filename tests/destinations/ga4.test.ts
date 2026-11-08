@@ -128,6 +128,16 @@ describe('ga4Event', () => {
     expect(params).toMatchObject({ coupon: 'SAVE10', payment_type: 'paypal' });
   });
 
+  it('counts a cart line of a multi-unit package in units, as purchase lines are, keeping the value exact', () => {
+    const line = { package_id: 2, quantity: 1, product_title: 'Earbuds ×2', price: 10, original_price: 20 };
+    const packages = { getPackage: (id: number) => (id === 2 ? ({ qty: 3 } as never) : undefined) };
+    expect(ga4Event(event('product_added_to_cart', line), packages)?.params).toEqual({
+      currency: 'EUR',
+      value: 10,
+      items: [{ item_id: '2', item_name: 'Earbuds ×2', price: 3.33, discount: 3.34, quantity: 3, index: 0 }],
+    });
+  });
+
   it('does not send page_viewed: the Google tag sends its own', () => {
     expect(ga4Event(event('page_viewed'))).toBeUndefined();
   });
