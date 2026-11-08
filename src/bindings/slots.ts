@@ -3,7 +3,7 @@ import { cardSlots, pickedCard } from '../engine/cart/selectors';
 import { variantChoices } from '../engine/cart/variants';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
-import { cents, discountPercent, dollars, format, formatCents, localeOf } from '../engine/format';
+import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/format';
 import { cardQuote } from '../engine/values';
 import { applyValues, bindTokens, fillTemplate, ownProperties, pageProperties, selectorIdOf } from './dom';
 
@@ -26,7 +26,7 @@ function priceValues(engine: Engine, pkg: Package | undefined, line?: SummaryLin
     'item.unitPrice': money(unit),
     'item.originalUnitPrice': money(retail),
     'item.discountAmount': money(saved),
-    'item.discountPercentage': base ? `${Math.round((off / base) * 100)}%` : '0%',
+    'item.discountPercentage': format(pct(off, base), undefined, localeOf(engine.getState())),
     'item.hasDiscount': off > 0 ? 'show' : 'hide',
   };
 }

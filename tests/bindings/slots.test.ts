@@ -7,11 +7,22 @@ import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import type { Package } from '../../src/engine/types';
 
-async function mount(fetch?: typeof globalThis.fetch, packages?: Package[]) {
+async function mount(
+  fetch?: typeof globalThis.fetch,
+  packages?: Package[],
+  { locale, slot = '' }: { locale?: string; slot?: string } = {},
+) {
   const file = 'tests/fixtures/pages/olympus-multi-variant/checkout.html';
   const doc = new DOMParser().parseFromString(readFileSync(file, 'utf8'), 'text/html');
+  doc
+    .querySelector<HTMLTemplateElement>('#mv-slot-template')!
+    .content.firstElementChild!.insertAdjacentHTML('beforeend', slot);
   document.body.innerHTML = doc.body.innerHTML;
-  const { engine } = makeEngine({ fetch, ...(packages && { campaign: Promise.resolve({ ...campaign, packages }) }) });
+  const { engine } = makeEngine({
+    fetch,
+    locale,
+    ...(packages && { campaign: Promise.resolve({ ...campaign, packages }) }),
+  });
   await engine.start();
   bindAll(document, engine, () => {});
   bindSlots(engine);
@@ -102,6 +113,14 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
     document.body.innerHTML = '';
     const offer = await mount(fakeApi({ offers: { 1: 0.5 } }).fetch);
     expect(offer.slots()[0]!.querySelector<HTMLElement>('[data-next-discounts="offer"]')!.style.display).toBe('');
+  });
+
+  it('writes a unit’s discount percentage in the page’s language, like every other percentage', async () => {
+    const slot = '<span class="pct">{item.discountPercentage}</span>';
+    const fr = await mount(fakeApi({ offers: { 1: 0.5 } }).fetch, undefined, { locale: 'fr', slot });
+    expect(fr.slots()[0]!.querySelector('.pct')!.textContent).toBe(
+      new Intl.NumberFormat('fr', { style: 'percent' }).format(0.5),
+    );
   });
 
   it('keeps the quoted unit price and offer row while a variant change is being priced', async () => {
