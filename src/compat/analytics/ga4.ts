@@ -53,10 +53,27 @@ export const cartEcommerce = (engine: Engine, cart: Cart) => {
   };
 };
 
-export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, index: number) => {
+/**
+ * @deprecated 0.4.x tax basis of the `dl_*` prices: tax included when a line's price before
+ * discounts with tax is nearer its package's price than the one without. The `order.*` events
+ * carry `tax` on each line and shipping instead.
+ */
+export const taxIncluded = (engine: Engine, order: ApiOrder) => {
+  for (const line of order.lines ?? []) {
+    const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
+    const qty = line.quantity || 1;
+    const incl = Number(line.price_incl_tax_excl_discounts) / qty;
+    const excl = Number(line.price_excl_tax_excl_discounts) / qty;
+    if (!(catalog > 0) || !Number.isFinite(incl) || !Number.isFinite(excl) || Math.abs(incl - excl) <= 0.02) continue;
+    return Math.abs(incl - catalog) < Math.abs(excl - catalog);
+  }
+  return false;
+};
+
+export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, index: number, incl: boolean) => {
   const qty = line.quantity || 1;
-  const paid = Number(line.price_excl_tax) / qty;
-  const listed = Number(line.price_excl_tax_excl_discounts) / qty;
+  const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
+  const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;
   const pkg = line.package ? engine.getPackage(line.package) : undefined;
   const campaign = engine.getState().campaign?.name;
   const sku = line.product_sku || pkg?.product_sku;
@@ -81,14 +98,15 @@ export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, i
 
 /** GA4's `purchase` params from the order as the Campaigns API returned it, without its upsell lines. */
 export const purchase = (engine: Engine, order: ApiOrder, transaction: string, coupon?: string) => {
-  const items = (order.lines ?? []).filter((l) => !l.is_upsell).map((l, i) => orderItem(engine, order, l, i));
+  const incl = taxIncluded(engine, order);
+  const items = (order.lines ?? []).filter((l) => !l.is_upsell).map((l, i) => orderItem(engine, order, l, i, incl));
   const discount = Number(order.total_discounts ?? 0);
   return {
     currency: order.currency ?? currency(engine),
     transaction_id: transaction,
     value: valueOf(items),
     tax: Number(order.total_tax ?? 0),
-    shipping: Number(order.shipping_excl_tax ?? 0),
+    shipping: Number((incl ? order.shipping_incl_tax : order.shipping_excl_tax) ?? 0),
     affiliation: 'Online Store' as const,
     items,
     ...(coupon && { coupon }),
@@ -98,7 +116,7 @@ export const purchase = (engine: Engine, order: ApiOrder, transaction: string, c
 
 /** GA4's `purchase` params for one accepted upsell line of the order. */
 export const upsellPurchase = (engine: Engine, order: ApiOrder, line: ApiOrderLine, transaction: string) => {
-  const item = orderItem(engine, order, line, 0);
+  const item = orderItem(engine, order, line, 0, taxIncluded(engine, order));
   return {
     currency: item.currency,
     transaction_id: transaction,

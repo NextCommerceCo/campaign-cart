@@ -2,7 +2,7 @@ import type { TrackingEvent, TrackingName } from '../../engine/events/analytics'
 import type { CartItem } from '../../engine/events/carts';
 import type { OrderItem } from '../../engine/events/orders';
 import { dollars } from '../../engine/format';
-import { untaxed } from '../../engine/order';
+import type { ApiOrder } from '../../engine/types';
 import type {
   RudderStackCall,
   RudderStackCampaign,
@@ -45,6 +45,23 @@ const currencyOf = (e: TrackingEvent) => {
   return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency ?? 'USD';
 };
 
+/**
+ * @deprecated 0.4.x tax basis of RudderStack's order prices, kept for parity with what 0.4.x built
+ * from `dl_purchase`: tax included when a line's price before discounts with tax is nearer its
+ * package's price than the one without.
+ */
+const taxIncluded = (engine: RudderStackSource, order: ApiOrder) => {
+  for (const line of order.lines ?? []) {
+    const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
+    const qty = line.quantity || 1;
+    const incl = Number(line.price_incl_tax_excl_discounts) / qty;
+    const excl = Number(line.price_excl_tax_excl_discounts) / qty;
+    if (!(catalog > 0) || !Number.isFinite(incl) || !Number.isFinite(excl) || Math.abs(incl - excl) <= 0.02) continue;
+    return Math.abs(incl - catalog) < Math.abs(excl - catalog);
+  }
+  return false;
+};
+
 /** The `rudderanalytics` calls a tracking event becomes, in order; none for one that is not sent. */
 export function rudderStackCalls(
   e: TrackingEvent,
@@ -85,16 +102,18 @@ export function rudderStackCalls(
   const orderProducts = (refId: string, lines: OrderItem[]) => {
     const { paidOrder, order } = engine.getState().order ?? {};
     const raw = [paidOrder, order].find((o) => o?.ref_id === refId);
-    return lines.map((l, position): RudderStackProduct => {
+    const incl = raw ? taxIncluded(engine, raw) : true;
+    const products = lines.map((l, position): RudderStackProduct => {
       const line = raw?.lines?.find((r) => String(r.id) === l.id);
       const pkg = line?.package ? engine.getPackage(line.package) : undefined;
       const sku = l.sku || pkg?.product_sku || `SKU-${l.product_id || l.id}`;
       const id = l.product_id ?? pkg?.product_id;
+      const paid = line ? Number(incl ? line.price_incl_tax : line.price_excl_tax) / (line.quantity || 1) : l.price;
       return {
         product_id: id === undefined ? sku : String(id),
         sku,
         name: l.product_title,
-        price: untaxed(l).price,
+        price: dollars(paid),
         quantity: l.quantity,
         url,
         position,
@@ -106,6 +125,7 @@ export function rudderStackCalls(
         }),
       };
     });
+    return { raw, incl, products };
   };
 
   const track = <N extends TrackName>(name: N, properties: Omit<RudderStackEventMap[N], keyof RudderStackContext>) => ({
@@ -177,11 +197,11 @@ export function rudderStackCalls(
       const order = e.event_type === 'checkout_completed';
       const { user, billing_address: b } = e.data;
       const lines = order ? e.data.lines.filter((l) => !l.upsell) : [e.data.upsell.line];
-      const products = orderProducts(e.data.ref_id, lines);
+      const { raw, incl, products } = orderProducts(e.data.ref_id, lines);
       const subtotal = total(products);
       const tax = order ? e.data.tax : 0;
-      const method = order ? e.data.shipping_method : undefined;
-      const shipping = dollars((method?.price ?? 0) - (method?.tax ?? 0));
+      const rawShipping = raw && (incl ? raw.shipping_incl_tax : raw.shipping_excl_tax);
+      const shipping = order ? Number(rawShipping ?? e.data.shipping_method?.price ?? 0) : 0;
       const coupon = engine.getState().order?.coupon;
       const props = {
         checkout_id: e.session_id,
