@@ -1,11 +1,10 @@
 import type { Engine } from '../engine/engine';
-import { format, localeOf } from '../engine/format';
 import { resolve } from '../engine/values';
 import { type IconName, icon } from './icons';
 import type { PageConfigModal } from './config';
 import type { LocaleSummary } from './locale';
 import type { Theme } from './theme';
-import { badge, type Child, h, iconButton, plural } from './view';
+import { badge, type Child, h, iconButton, plural, priceText } from './view';
 
 export type MenuTab =
   'issues' | 'journey' | 'checkout' | 'analytics' | 'events' | 'elements' | 'state' | 'logs' | 'benchmark';
@@ -37,12 +36,11 @@ export interface MenuInput {
 }
 
 const cartText = (engine: Engine) => {
-  const state = engine.getState();
   const units = Number(resolve(engine, 'cart.quantity')?.value ?? 0);
   const total = resolve(engine, 'cart.total');
   if (!units) return 'Empty';
-  const price = total?.value === undefined ? '' : ` · ${format(total, state.campaign?.currency, localeOf(state))}`;
-  return `${plural(units, 'item')}${price}`;
+  const shown = total?.value === undefined ? '' : ` · ${priceText(engine, Number(total.value))}`;
+  return `${plural(units, 'item')}${shown}`;
 };
 
 const entry = (glyph: IconName, label: string, value: Child, onclick: () => void, variant = '') => {

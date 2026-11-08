@@ -1,7 +1,7 @@
 import { orderError, orderFailure } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
-import { createLedger, publicOrder, purchaseId } from '../../engine/order';
+import { publicOrder, reportPaid } from '../../engine/order';
 import { nextUrl } from '../../engine/params';
 import type { ApiOrder, CheckoutError } from '../../engine/types';
 import { orderBody, type OrderUrls, paymentCode } from './order-body';
@@ -49,13 +49,6 @@ interface Steps {
 export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>) => ctx.update('checkout', patch);
-
-  const ledger = createLedger(ctx);
-
-  const markPaid = (order: ApiOrder) => {
-    ledger.mark([purchaseId(order)]);
-    ctx.update('order', { paidOrder: order }, { silent: true });
-  };
 
   return async (input: PlaceOrder): Promise<ApiOrder | undefined> => {
     if (state().status !== 'idle') return undefined;
@@ -135,8 +128,7 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
       return order;
     }
     ctx.emit('order.created', created);
-    markPaid(order);
-    ctx.emit('order.paid', created);
+    reportPaid(ctx, order, created);
     ctx.emit('checkout.completed', { ...cart.currentCheckout(), payment_method: method, ref_id: order.ref_id });
     cart.clearAfterOrder();
     steps.reset();

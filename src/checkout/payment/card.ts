@@ -4,14 +4,17 @@ import type { Engine } from '../../engine/engine';
 import { showField } from '../form/errors';
 import { fieldControl, FIELDS, rawName } from '../form/fields';
 import { cardText, formText, label, textOf } from '../form/texts';
-import { bindExpiry } from './expiry';
+import { bindExpiry, type Expiry } from './expiry';
 
 declare const __VERSION__: string;
 
+type FieldChange = { field?: string; action?: string; validNumber?: boolean; validCvv?: boolean };
+type Validation = { errors?: Array<{ attribute?: string; message?: string }> };
+
 interface NextPaymentInstance {
   onReady: () => void;
-  onFieldStateChange: (state?: { field?: string; action?: string; validNumber?: boolean; validCvv?: boolean }) => void;
-  onValidation: (payload?: { errors?: Array<{ attribute?: string; message?: string }> }) => void;
+  onFieldStateChange: (state?: FieldChange) => void;
+  onValidation: (payload?: Validation) => void;
   onError: (error: unknown) => void;
   onTokenized: (result: unknown) => void;
   submit(card: Record<string, string>, params: { metadata: Record<string, string> }): void;
@@ -63,6 +66,77 @@ export interface Card {
   render(): void;
 }
 
+type HostedField = 'number' | 'cvv';
+type HostedFields = ReadonlyArray<readonly [HTMLElement, HostedField]>;
+type Flags = Record<HostedField, boolean>;
+type Pending = { resolve: (token: string) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> };
+
+function markHostedFields(hosts: HostedFields): void {
+  for (const [el, field] of hosts) {
+    el.id = `spreedly-${field}`;
+    el.setAttribute('data-spreedly', field);
+    el.classList.add('spreedly-field-transition');
+  }
+}
+
+function renderHostedFields(hosts: HostedFields, errors: Map<string, string>, valid: Flags, focused: Flags): void {
+  for (const [el, field] of hosts) {
+    const text = errors.get(field);
+    showField(el, field, text ? 'error' : valid[field] ? 'valid' : 'neutral', text);
+    el.classList.toggle('next-focused', focused[field]);
+    el.classList.toggle('has-focus', focused[field]);
+  }
+}
+
+function hostedFieldOptions(): object {
+  return {
+    numberEl: 'spreedly-number',
+    cvvEl: 'spreedly-cvv',
+    numberFormat: 'prettyFormat',
+    labels: {
+      number: textOf('payment.card.number.label', 'Card Number'),
+      cvv: textOf('payment.card.cvv.label', 'Security Code'),
+    },
+    placeholder: {
+      number: textOf('payment.card.number.placeholder', 'Card Number'),
+      cvv: textOf('payment.card.cvv.placeholder', 'CVV *'),
+    },
+    titles: {
+      number: textOf('payment.card.number.title', 'Enter your card number'),
+      cvv: textOf('payment.card.cvv.title', 'Enter your Security Code'),
+    },
+    styling: { number: FIELD_STYLE, cvv: FIELD_STYLE },
+  };
+}
+
+function applyFieldState(state: FieldChange | undefined, errors: Map<string, string>, valid: Flags, focused: Flags) {
+  const field = state?.field;
+  if (field !== 'number' && field !== 'cvv') return false;
+  if (typeof state?.validNumber === 'boolean') valid.number = state.validNumber;
+  if (typeof state?.validCvv === 'boolean') valid.cvv = state.validCvv;
+  if (state?.action === 'input') errors.delete(field);
+  if (state?.action === 'focus' || state?.action === 'blur') focused[field] = state.action === 'focus';
+  return true;
+}
+
+function addValidationErrors(errors: Map<string, string>, payload?: Validation): void {
+  for (const e of payload?.errors ?? []) {
+    const field = e.attribute === 'month' || e.attribute === 'year' || e.attribute === 'cvv' ? e.attribute : 'number';
+    errors.set(field, e.message ?? `Please enter a valid ${label(field).toLowerCase()}`);
+  }
+}
+
+function cardDetails(engine: Engine, expiry: Expiry): Record<string, string> {
+  const { fields } = engine.getState().checkout!;
+  const names = { first_name: fields.first_name ?? '', last_name: fields.last_name ?? '' };
+  return {
+    full_name: `${names.first_name} ${names.last_name}`.trim(),
+    ...names,
+    month: expiry.month(),
+    year: expiry.year(),
+  };
+}
+
 export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Card | undefined {
   const number = fieldControl(form, 'cc-number');
   const cvv = fieldControl(form, 'cvv');
@@ -70,14 +144,11 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   const envKey = campaign?.payment_env_key;
   if (!number || !cvv || !campaign || !envKey) return undefined;
 
-  for (const [el, field] of [
+  const hosts = [
     [number, 'number'],
     [cvv, 'cvv'],
-  ] as const) {
-    el.id = `spreedly-${field}`;
-    el.setAttribute('data-spreedly', field);
-    el.classList.add('spreedly-field-transition');
-  }
+  ] as const;
+  markHostedFields(hosts);
   const expiry = bindExpiry(form);
 
   const errors = new Map<string, string>();
@@ -85,25 +156,16 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   const focused = { number: false, cvv: false };
   let instance: NextPaymentInstance | undefined;
   let loadedAt = 0;
-  let pending:
-    | { resolve: (token: string) => void; reject: (err: Error) => void; timer: ReturnType<typeof setTimeout> }
-    | undefined;
+  let pending: Pending | undefined;
 
   const render = () => {
-    for (const [el, field] of [
-      [number, 'number'],
-      [cvv, 'cvv'],
-    ] as const) {
-      const text = errors.get(field);
-      showField(el, field, text ? 'error' : valid[field] ? 'valid' : 'neutral', text);
-      el.classList.toggle('next-focused', focused[field]);
-      el.classList.toggle('has-focus', focused[field]);
-    }
+    renderHostedFields(hosts, errors, valid, focused);
     expiry.render(errors);
   };
 
-  const ready = () => {
+  const changed = () => {
     if (valid.number && valid.cvv && expiry.month() && expiry.year()) checkout.paymentReady();
+    render();
   };
 
   const settle = (token?: string, error?: string) => {
@@ -119,41 +181,11 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     const NextPayment = window.NextPayment;
     if (!NextPayment) return;
     instance?.destroy();
-    instance = new NextPayment({
-      numberEl: 'spreedly-number',
-      cvvEl: 'spreedly-cvv',
-      numberFormat: 'prettyFormat',
-      labels: {
-        number: textOf('payment.card.number.label', 'Card Number'),
-        cvv: textOf('payment.card.cvv.label', 'Security Code'),
-      },
-      placeholder: {
-        number: textOf('payment.card.number.placeholder', 'Card Number'),
-        cvv: textOf('payment.card.cvv.placeholder', 'CVV *'),
-      },
-      titles: {
-        number: textOf('payment.card.number.title', 'Enter your card number'),
-        cvv: textOf('payment.card.cvv.title', 'Enter your Security Code'),
-      },
-      styling: { number: FIELD_STYLE, cvv: FIELD_STYLE },
-    });
+    instance = new NextPayment(hostedFieldOptions());
     instance.onReady = () => form.classList.remove('next-loading-spreedly');
-    instance.onFieldStateChange = (state) => {
-      const field = state?.field;
-      if (field !== 'number' && field !== 'cvv') return;
-      if (typeof state?.validNumber === 'boolean') valid.number = state.validNumber;
-      if (typeof state?.validCvv === 'boolean') valid.cvv = state.validCvv;
-      if (state?.action === 'input') errors.delete(field);
-      if (state?.action === 'focus' || state?.action === 'blur') focused[field] = state.action === 'focus';
-      ready();
-      render();
-    };
+    instance.onFieldStateChange = (state) => applyFieldState(state, errors, valid, focused) && changed();
     instance.onValidation = (payload) => {
-      for (const e of payload?.errors ?? []) {
-        const field =
-          e.attribute === 'month' || e.attribute === 'year' || e.attribute === 'cvv' ? e.attribute : 'number';
-        errors.set(field, e.message ?? `Please enter a valid ${label(field).toLowerCase()}`);
-      }
+      addValidationErrors(errors, payload);
       if (errors.size) settle(undefined, [...errors.values()].join('. '));
     };
     instance.onError = (error) => {
@@ -181,10 +213,8 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   });
   expiry.onChange((cleared) => {
     cleared.forEach((key) => errors.delete(key));
-    ready();
-    render();
+    changed();
   });
-  const checkExpiry = () => expiry.check(errors);
 
   return {
     render,
@@ -192,39 +222,30 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
       errors.clear();
       if (!valid.number) errors.set('number', cardText('number'));
       if (!valid.cvv) errors.set('cvv', cardText('cvv'));
-      checkExpiry();
+      expiry.check(errors);
       render();
     },
     tokenize() {
       errors.clear();
-      checkExpiry();
+      expiry.check(errors);
       render();
       if (errors.size) return Promise.reject(new Error([...errors.values()].join('. ')));
       if (!instance || stale()) {
         void load(true).catch(() => {});
         return Promise.reject(new Error(formText({ code: 'card_expired' })));
       }
-      const { fields } = engine.getState().checkout!;
-      const names = { first_name: fields.first_name ?? '', last_name: fields.last_name ?? '' };
+      const card = cardDetails(engine, expiry);
       return new Promise<string>((resolve, reject) => {
         const timer = setTimeout(() => settle(undefined, 'Credit card tokenization timed out'), TOKENIZE_TIMEOUT);
         pending = { resolve, reject, timer };
-        instance!.submit(
-          {
-            full_name: `${names.first_name} ${names.last_name}`.trim(),
-            ...names,
-            month: expiry.month(),
-            year: expiry.year(),
+        instance!.submit(card, {
+          metadata: {
+            source: 'next-campaign-cart',
+            sdk_version: __VERSION__,
+            campaign_id: String(campaign.id),
+            page: location.origin + location.pathname,
           },
-          {
-            metadata: {
-              source: 'next-campaign-cart',
-              sdk_version: __VERSION__,
-              campaign_id: String(campaign.id),
-              page: location.origin + location.pathname,
-            },
-          },
-        );
+        });
       });
     },
   };

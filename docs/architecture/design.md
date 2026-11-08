@@ -80,7 +80,9 @@ campaigns already use are kept, so templates need no edits.
 | Upsell, receipt                 | `data-next-upsell` · `data-next-upsell-action` · `order.*`                                                  | next   |
 
 - Values have types. Money is formatted as money in the campaign's currency and
-  language; booleans show or hide the element. Nothing is guessed from a field's name.
+  language; booleans show or hide the element. `data-next-display` paths carry their type;
+  `data-next-query` reads plain objects, so a number's format follows its field's name
+  (`price`, `*_total`, `*percentage`, as its guide lists) unless `data-next-format` says otherwise.
 - Values are written as text, never as HTML.
 - Old JavaScript entry points (`nextConfig.apiKey`, `next.addItem`, `next.clearCart`,
   `next.swapCart`, `next.getCartData`, `next.exitIntent`, `next.on('bundle:selection-changed')`,

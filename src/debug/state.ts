@@ -1,3 +1,4 @@
+import { unitsOf } from '../engine/cart/public';
 import type { Line } from '../engine/cart/types';
 import type { PageConfig } from '../engine/debug-config';
 import type { Context } from '../engine/engine';
@@ -69,13 +70,11 @@ const DENIED: Record<EventMap['coupon.denied']['reason'], string> = {
   check_failed: 'could not be checked',
 };
 
-const quantities = (lines: Line[]) => {
+export const quantities = (lines: Line[]) => {
   const byPackage = new Map<number, number>();
   for (const l of lines) byPackage.set(l.package_id, (byPackage.get(l.package_id) ?? 0) + l.quantity);
   return byPackage;
 };
-
-const count = (lines: Line[]) => lines.reduce((n, l) => n + l.quantity, 0);
 
 export function createDebug(ctx: Context, arrival: Arrival) {
   const saved = ctx.saved<DebugState>('debug');
@@ -97,7 +96,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
 
   const before = state.pages.at(-1);
   const order = ctx.getState().order?.refId ?? ctx.saved<{ refId?: string }>('order')?.refId;
-  const units = count(arrival.lines);
+  const units = unitsOf(arrival.lines);
   const warnings: Mark[] = [];
   const at = arrival.at;
   if (arrival.reset) warnings.push({ at, text: 'Saved data cleared with ?reset=1' });
@@ -161,7 +160,7 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       marks.push({ at, text: `Coupon ${code} removed` });
     seen = now;
     coupons = cart.coupons;
-    change({ units: count(merged) }, ...marks);
+    change({ units: unitsOf(merged) }, ...marks);
   };
 
   const shippingCode = (id: number | undefined) =>

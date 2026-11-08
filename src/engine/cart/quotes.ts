@@ -31,7 +31,7 @@ export function createQuotes(ctx: Context) {
   const key = (body: QuoteBody, upsell = false) =>
     JSON.stringify([{ ...body, vouchers: [...new Set(body.vouchers)].sort() }, upsell, campaignVersion()]);
 
-  const alive = (q: Saved[string] | undefined, now = Date.now()) => (q && now - q.at < QUOTE_MAX_AGE ? q : undefined);
+  const alive = (q: Saved[string] | undefined, now = ctx.now()) => (q && now - q.at < QUOTE_MAX_AGE ? q : undefined);
 
   const fresh = (body: QuoteBody, upsell?: boolean) => alive(fetched[key(body, upsell)])?.summary;
 
@@ -41,7 +41,7 @@ export function createQuotes(ctx: Context) {
   };
 
   const save = (k: string, summary: CartSummary) => {
-    const at = Date.now();
+    const at = ctx.now();
     fetched[k] = { at, summary };
     const newest = Object.entries({ ...ctx.local.get<Saved>(QUOTES), [k]: fetched[k] })
       .filter(([, q]) => alive(q, at))

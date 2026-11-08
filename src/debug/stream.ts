@@ -22,6 +22,12 @@ const tagged = (className: string, value: string, text?: string) => {
   return el;
 };
 
+export const lineText = (l: { product_title?: unknown; package_id?: unknown; quantity?: unknown }) =>
+  `${l.product_title ?? `#${l.package_id}`} ×${l.quantity}`;
+
+export const firstItems = (items: string[] = []) =>
+  items.length ? `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}` : '';
+
 export const pill = (text: string, tone: 'ok' | 'bad' | 'off' | 'warn') => {
   const el = h('span', 'spill', text);
   el.dataset.tone = tone;

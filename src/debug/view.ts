@@ -1,3 +1,5 @@
+import type { Engine } from '../engine/engine';
+import { format, localeOf } from '../engine/format';
 import { type IconName, icon } from './icons';
 
 export type Child = Node | string | false | null | undefined;
@@ -58,6 +60,20 @@ export const tab = (selected: boolean, onclick: () => void, ...label: Child[]) =
   el.setAttribute('aria-selected', String(selected));
   return el;
 };
+
+export const priceText = (engine: Engine, amount: string | number | undefined, currency?: string) => {
+  const state = engine.getState();
+  return format(
+    { type: 'money', value: amount === undefined ? undefined : Number(amount) },
+    currency ?? state.campaign?.currency,
+    localeOf(state),
+  );
+};
+
+export const pair = (label: Child, value: Child, className?: string, labelClass?: string) => [
+  h('dt', labelClass, label),
+  h('dd', className, value),
+];
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 

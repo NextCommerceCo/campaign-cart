@@ -246,3 +246,60 @@ export const trackingLineId = (l: TrackingLine): string =>
 /** The object without its `undefined` fields, as vendor payloads are sent. */
 export const defined = <T extends object>(o: T): T =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+
+/** How one destination turns tracking events into calls on a vendor's page script. */
+export interface Destination<V, C> {
+  destination: DestinationTrace['destination'];
+  /** The vendor's page script, when the page has one that can take calls. */
+  vendor: () => V | undefined;
+  /** Logged once while `vendor` returns nothing. */
+  missing: string;
+  /** Logged with the error of a call that throws. */
+  failed: string;
+  /** The vendor calls a tracking event becomes; none skips it. */
+  calls: (e: TrackingEvent) => C[];
+  send: (vendor: V, call: C) => void;
+  /** What a sent call logs: `destination <destination> <label ?? name> sent`. */
+  trace: (call: C) => { name: string; label?: string; payload: unknown };
+  /** Runs `flush` now or once the vendor's script is ready; the default runs it now. */
+  ready?: (vendor: V, flush: (vendor: V) => void) => void;
+}
+
+/** Sends every tracking event of this page, and each later one, through a destination. */
+export function startDestination<V, C>(engine: Engine, d: Destination<V, C>): void {
+  let warned = false;
+  engine.on(
+    'analytics',
+    ({ data: e }) => {
+      const calls = d.calls(e);
+      if (!calls.length) return;
+      const vendor = d.vendor();
+      if (vendor === undefined) {
+        if (!warned) engine.log.warn(d.missing);
+        warned = true;
+        return;
+      }
+      const flush = (v: V) => {
+        for (const call of calls) {
+          try {
+            d.send(v, call);
+            const { name, label = name, payload } = d.trace(call);
+            engine.log.debug(`destination ${d.destination} ${label} sent`, {
+              trace: 'destination',
+              destination: d.destination,
+              name,
+              tracking: e.event_type,
+              event_id: e.event_id,
+              payload,
+            } satisfies DestinationTrace);
+          } catch (err) {
+            engine.log.error(d.failed, err);
+          }
+        }
+      };
+      if (d.ready) d.ready(vendor, flush);
+      else flush(vendor);
+    },
+    { replay: true },
+  );
+}

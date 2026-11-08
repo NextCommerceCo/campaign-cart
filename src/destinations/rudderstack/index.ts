@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import type { DestinationTrace } from '../../engine/events/analytics';
+import { startDestination } from '../../engine/events/analytics';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -31,45 +31,28 @@ export function startRudderStack(engine: Engine, options: Pick<RudderStackOption
     checkout.markReported(STEP);
     return true;
   };
-  let warned = false;
-  engine.on(
-    'analytics',
-    ({ data: e }) => {
-      const calls = rudderStackCalls(e, engine, page).filter(firstStep);
-      if (!calls.length) return;
+  startDestination(engine, {
+    destination: 'rudderstack',
+    vendor: () => {
       const ra = win.rudderanalytics;
-      if (typeof ra?.track !== 'function' && typeof ra?.ready !== 'function') {
-        if (!warned)
-          engine.log.warn(
-            "RudderStack destination is on but the page has no rudderanalytics; add RudderStack's JS SDK snippet. Events before it loads are not sent",
-          );
-        warned = true;
-        return;
-      }
-      const send = () => {
-        const sdk = win.rudderanalytics!;
-        for (const c of calls) {
-          try {
-            if (c.call === 'page') sdk.page!(c.category, c.name, c.properties);
-            else if (c.call === 'identify') sdk.identify!(c.userId, c.traits);
-            else sdk.track!(c.name, c.properties);
-            const name = c.call === 'identify' ? undefined : c.name;
-            engine.log.debug(`destination rudderstack ${c.call}${name ? ` ${name}` : ''} sent`, {
-              trace: 'destination',
-              destination: 'rudderstack',
-              name: name ?? c.call,
-              tracking: e.event_type,
-              event_id: e.event_id,
-              payload: c,
-            } satisfies DestinationTrace);
-          } catch (err) {
-            engine.log.error('RudderStack destination failed', err);
-          }
-        }
-      };
-      if (typeof ra!.track === 'function') send();
-      else ra!.ready!(send);
+      return typeof ra?.track === 'function' || typeof ra?.ready === 'function' ? ra : undefined;
     },
-    { replay: true },
-  );
+    missing:
+      "RudderStack destination is on but the page has no rudderanalytics; add RudderStack's JS SDK snippet. Events before it loads are not sent",
+    failed: 'RudderStack destination failed',
+    calls: (e) => rudderStackCalls(e, engine, page).filter(firstStep),
+    send: (sdk, c) => {
+      if (c.call === 'page') sdk.page!(c.category, c.name, c.properties);
+      else if (c.call === 'identify') sdk.identify!(c.userId, c.traits);
+      else sdk.track!(c.name, c.properties);
+    },
+    trace: (c) =>
+      c.call === 'identify'
+        ? { name: c.call, payload: c }
+        : { name: c.name, label: c.name ? `${c.call} ${c.name}` : c.call, payload: c },
+    ready: (ra, flush) => {
+      if (typeof ra.track === 'function') flush(ra);
+      else ra.ready!(() => flush(win.rudderanalytics!));
+    },
+  });
 }

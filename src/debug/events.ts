@@ -3,7 +3,7 @@ import { format } from '../engine/format';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
 import type { DebugActions } from './state';
 import { eventDetail } from './event-detail';
-import { chips, type DetailModal, line } from './stream';
+import { chips, type DetailModal, firstItems, line, lineText } from './stream';
 import { button, type Child, empty, expandable, h, plural, stamp, time } from './view';
 
 const KEEP = 300;
@@ -57,12 +57,10 @@ export function eventsView(
 
   const summary = (e: SdkEvent) => {
     const d = e.data as Data;
-    const items =
-      d.changes?.map((c) => `${title(d, c.package_id)} ${c.from}→${c.to}`) ??
-      d.lines?.map((l) => `${l.product_title ?? `#${l.package_id}`} ×${l.quantity}`);
+    const items = d.changes?.map((c) => `${title(d, c.package_id)} ${c.from}→${c.to}`) ?? d.lines?.map(lineText);
     return [
       d.selector_id,
-      items && `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}`,
+      firstItems(items),
       typeof d.total === 'number' && `total ${format({ type: 'money', value: d.total }, d.currency)}`,
       d.code,
       d.method,

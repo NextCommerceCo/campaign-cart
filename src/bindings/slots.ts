@@ -107,6 +107,102 @@ function variantSelects(
   for (const f of drawn) if (!choices.some((c) => c.code === f.dataset.nextVariantCode)) f.remove();
 }
 
+type DiscountBox = { box: HTMLElement; tpl: string; html: string };
+type SlotValues = { values: Values; prices: Values };
+
+interface RenderedSlot extends SlotValues {
+  el: HTMLElement;
+  slot: Slot;
+  patch: (values: Values) => void;
+  variants: () => void;
+  boxes: DiscountBox[];
+}
+
+function slotValues(
+  engine: Engine,
+  selector: SelectorState,
+  card: SelectorCard,
+  slot: Slot,
+  index: number,
+  held?: Values,
+): SlotValues {
+  const pkg = engine.getPackage(slot.packageId);
+  const fresh = cardQuote(selector, card);
+  const pending = !fresh && !!selector.quoting;
+  const quote = fresh ?? (pending ? selector.quotes?.[card.id] : undefined);
+  const line = quote?.lines.find((l) => l.package_id === slot.packageId);
+  const prices = !line && pending && held ? held : priceValues(engine, pkg, line);
+  return { prices, values: { ...itemValues(engine, pkg, index), ...prices } };
+}
+
+function discountHtml(engine: Engine, tpl: string, found: SummaryDiscount[]): string {
+  return found
+    .map((d) =>
+      fillTemplate(
+        tpl,
+        {
+          'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
+          'discount.name': d.name ?? '',
+          'discount.amount': format(
+            { type: 'money', value: dollars(d.amount) },
+            engine.getState().campaign?.currency,
+            localeOf(engine.getState()),
+          ),
+        },
+        SLOT_TOKEN,
+      ),
+    )
+    .join('');
+}
+
+function refreshSlot(engine: Engine, selectorId: string, { el, slot, boxes }: RenderedSlot): void {
+  const { cart, selectors } = engine.getState();
+  const pending = cart.calculating || !!selectors[selectorId]?.quoting;
+  for (const entry of boxes) {
+    const { box, tpl } = entry;
+    const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer', pending);
+    if (found) entry.html = discountHtml(engine, tpl, found);
+    if (box.innerHTML !== entry.html) box.innerHTML = entry.html;
+  }
+  applyValues(el, engine);
+}
+
+function slotElement(cardId: string, index: number, template: string, values: Values) {
+  const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
+  Object.assign(el.dataset, { nextBundleId: cardId, nextSlotIndex: String(index) });
+  const inert = document.createElement('template');
+  inert.innerHTML = template;
+  const patch = bindTokens(inert.content);
+  patch(values);
+  el.append(inert.content);
+  return { el, patch };
+}
+
+function discountBoxes(el: Element): DiscountBox[] {
+  return [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box) => ({
+    box,
+    tpl: box.querySelector('template')?.innerHTML ?? '',
+    html: '',
+  }));
+}
+
+function updateSlot(
+  engine: Engine,
+  selectorId: string,
+  entry: RenderedSlot,
+  slot: Slot,
+  { values, prices }: SlotValues,
+) {
+  const moved = entry.slot.packageId !== slot.packageId;
+  Object.assign(entry, { slot, prices });
+  if (JSON.stringify(entry.values) !== JSON.stringify(values)) {
+    entry.values = values;
+    entry.patch(values);
+  }
+  if (moved) entry.variants();
+  refreshSlot(engine, selectorId, entry);
+}
+
 function renderStage(
   engine: Engine,
   selectorId: string,
@@ -115,25 +211,7 @@ function renderStage(
   cards: Map<string, Element>,
 ) {
   let shown = '';
-  const rendered: Array<{
-    el: HTMLElement;
-    slot: Slot;
-    values: Values;
-    prices: Values;
-    patch: (values: Values) => void;
-    variants: () => void;
-    boxes: Array<{ box: HTMLElement; tpl: string; html: string }>;
-  }> = [];
-
-  const valuesOf = (selector: SelectorState, card: SelectorCard, slot: Slot, index: number, held?: Values) => {
-    const pkg = engine.getPackage(slot.packageId);
-    const fresh = cardQuote(selector, card);
-    const pending = !fresh && !!selector.quoting;
-    const quote = fresh ?? (pending ? selector.quotes?.[card.id] : undefined);
-    const line = quote?.lines.find((l) => l.package_id === slot.packageId);
-    const prices = !line && pending && held ? held : priceValues(engine, pkg, line);
-    return { prices, values: { ...itemValues(engine, pkg, index), ...prices } };
-  };
+  const rendered: RenderedSlot[] = [];
 
   const apply = (card: SelectorCard, index: number, patch: Partial<Slot>) =>
     engine.selectors.setSlot(selectorId, card.id, index, patch);
@@ -143,54 +221,9 @@ function renderStage(
     ...ownProperties(el),
   });
 
-  const refresh = ({ el, slot, boxes }: (typeof rendered)[number]) => {
-    const { cart, selectors } = engine.getState();
-    const pending = cart.calculating || !!selectors[selectorId]?.quoting;
-    for (const entry of boxes) {
-      const { box, tpl } = entry;
-      const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer', pending);
-      if (found)
-        entry.html = found
-          .map((d) =>
-            fillTemplate(
-              tpl,
-              {
-                'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
-                'discount.name': d.name ?? '',
-                'discount.amount': format(
-                  { type: 'money', value: dollars(d.amount) },
-                  engine.getState().campaign?.currency,
-                  localeOf(engine.getState()),
-                ),
-              },
-              SLOT_TOKEN,
-            ),
-          )
-          .join('');
-      if (box.innerHTML !== entry.html) box.innerHTML = entry.html;
-    }
-    applyValues(el, engine);
-  };
-
-  const renderSlot = (
-    card: SelectorCard,
-    slot: Slot,
-    index: number,
-    { values, prices }: ReturnType<typeof valuesOf>,
-  ): (typeof rendered)[number] => {
-    const el = Object.assign(document.createElement('div'), { className: 'next-bundle-slot' });
-    Object.assign(el.dataset, { nextBundleId: card.id, nextSlotIndex: String(index) });
-    const inert = document.createElement('template');
-    inert.innerHTML = template;
-    const patch = bindTokens(inert.content);
-    patch(values);
-    el.append(inert.content);
-    const boxes = [...el.querySelectorAll<HTMLElement>('[data-next-discounts]')].map((box) => ({
-      box,
-      tpl: box.querySelector('template')?.innerHTML ?? '',
-      html: '',
-    }));
-    const entry = { el, slot, values, prices, patch, boxes, variants: () => {} };
+  const renderSlot = (card: SelectorCard, slot: Slot, index: number, { values, prices }: SlotValues): RenderedSlot => {
+    const { el, patch } = slotElement(card.id, index, template, values);
+    const entry: RenderedSlot = { el, slot, values, prices, patch, boxes: discountBoxes(el), variants: () => {} };
     const choose = (code: string, value: string) => {
       const choice = variantChoices(engine.getState().campaign?.packages ?? [], entry.slot.packageId).find(
         (c) => c.code === code,
@@ -208,7 +241,7 @@ function renderStage(
       input.value = slot.properties?.[name] ?? '';
       input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
     }
-    refresh(entry);
+    refreshSlot(engine, selectorId, entry);
     return entry;
   };
 
@@ -230,23 +263,14 @@ function renderStage(
       rendered.splice(
         0,
         rendered.length,
-        ...slots.map((slot, i) => renderSlot(card, slot, i, valuesOf(selector, card, slot, i))),
+        ...slots.map((slot, i) => renderSlot(card, slot, i, slotValues(engine, selector, card, slot, i))),
       );
       stage.replaceChildren(...rendered.map((r) => r.el));
       return;
     }
     slots.forEach((slot, i) => {
       const entry = rendered[i];
-      if (!entry) return;
-      const { values, prices } = valuesOf(selector, card, slot, i, entry.prices);
-      const moved = entry.slot.packageId !== slot.packageId;
-      Object.assign(entry, { slot, prices });
-      if (JSON.stringify(entry.values) !== JSON.stringify(values)) {
-        entry.values = values;
-        entry.patch(values);
-      }
-      if (moved) entry.variants();
-      refresh(entry);
+      if (entry) updateSlot(engine, selectorId, entry, slot, slotValues(engine, selector, card, slot, i, entry.prices));
     });
   };
 }

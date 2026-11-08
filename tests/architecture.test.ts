@@ -26,10 +26,9 @@ const LAZY: Record<string, string[]> = {
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
-  'debug/cart.ts': 394,
-  'order/state.ts': 339,
+  'debug/cart.ts': 391,
+  'order/state.ts': 335,
   'compat/checkout.ts': 339,
-  'engine/engine.ts': 304,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);

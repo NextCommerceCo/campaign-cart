@@ -5,9 +5,9 @@ import {
   trackingLineId,
   trackingLines,
   trackingValue,
-  type DestinationTrace,
   type Packages,
   perUnit,
+  startDestination,
   type TrackingEvent,
   type TrackingLine,
   type TrackingName,
@@ -147,35 +147,20 @@ export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?
 
 /** Sends every tracking event of this page, and each later one, to the page's `fbq`. */
 export function startMeta(engine: Engine, options: MetaOptions = {}): void {
-  let warned = false;
-  engine.on(
-    'analytics',
-    ({ data: e }) => {
-      const meta = metaEvent(e, options, engine);
-      if (!meta) return;
+  startDestination(engine, {
+    destination: 'meta',
+    vendor: () => {
       const fbq = (window as Win).fbq;
-      if (typeof fbq !== 'function') {
-        if (!warned)
-          engine.log.warn(
-            "Meta destination is on but the page has no Meta Pixel (fbq); add the pixel's base code. Events before it loads are not sent",
-          );
-        warned = true;
-        return;
-      }
-      try {
-        fbq('track', meta.name, meta.params, { eventID: meta.event_id });
-        engine.log.debug(`destination meta ${meta.name} sent`, {
-          trace: 'destination',
-          destination: 'meta',
-          name: meta.name,
-          tracking: e.event_type,
-          event_id: e.event_id,
-          payload: { params: meta.params, eventID: meta.event_id },
-        } satisfies DestinationTrace);
-      } catch (err) {
-        engine.log.error('Meta destination failed', err);
-      }
+      return typeof fbq === 'function' ? fbq : undefined;
     },
-    { replay: true },
-  );
+    missing:
+      "Meta destination is on but the page has no Meta Pixel (fbq); add the pixel's base code. Events before it loads are not sent",
+    failed: 'Meta destination failed',
+    calls: (e) => {
+      const meta = metaEvent(e, options, engine);
+      return meta ? [meta] : [];
+    },
+    send: (fbq, meta) => fbq('track', meta.name, meta.params, { eventID: meta.event_id }),
+    trace: (meta) => ({ name: meta.name, payload: { params: meta.params, eventID: meta.event_id } }),
+  });
 }

@@ -1,4 +1,4 @@
-import { truthy } from './value';
+import { truthyValue } from '../engine/format';
 
 /** A `data-next-show` condition, parsed once: paths, literals, `!`, `== != > < >= <=`, `&&`, `||`, parentheses. After `==` and `!=` a bare word is text (`param.banner == off`), as in 0.4.x. */
 export type Expression =
@@ -124,9 +124,9 @@ function value(e: Expression, read: (path: string) => unknown): unknown {
 export function evaluate(e: Expression, read: (path: string) => unknown): boolean {
   switch (e.kind) {
     case 'path':
-      return truthy(read(e.path));
+      return truthyValue(read(e.path));
     case 'literal':
-      return truthy(e.value);
+      return truthyValue(e.value);
     case 'not':
       return !evaluate(e.operand, read);
     case 'compare':

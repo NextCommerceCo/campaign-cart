@@ -71,15 +71,6 @@ export function display(field: string, value: unknown, engine: Engine, override?
   return format(v, currency, locale, override);
 }
 
-/** Truthiness of a model value: an empty list, `0`, `''`, `'false'` and `'0'` are false. */
-export function truthy(value: unknown): boolean {
-  if (Array.isArray(value)) return value.length > 0;
-  if (value === undefined || value === null || value === false) return false;
-  if (typeof value === 'number') return value !== 0;
-  if (typeof value === 'string') return value !== '' && value !== 'false' && value !== '0';
-  return true;
-}
-
 /** Writes a value into an element by its kind: an image's `src`, a link's `href`, a control's `value`, or text. */
 export function write(el: HTMLElement, field: string, value: unknown, engine: Engine, override?: string | null): void {
   const empty = el.getAttribute('data-next-empty') ?? '';

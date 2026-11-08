@@ -5,9 +5,9 @@ import {
   trackingLineId,
   trackingLines,
   trackingValue,
-  type DestinationTrace,
   type Packages,
   perUnit,
+  startDestination,
   type TrackingEvent,
   type TrackingLine,
   type TrackingName,
@@ -242,35 +242,20 @@ export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | unde
 
 /** Sends every tracking event of this page, and each later one, to the page's `gtag`. */
 export function startGa4(engine: Engine): void {
-  let warned = false;
-  engine.on(
-    'analytics',
-    ({ data: e }) => {
-      const ga4 = ga4Event(e, engine);
-      if (!ga4) return;
+  startDestination(engine, {
+    destination: 'ga4',
+    vendor: () => {
       const gtag = (window as Win).gtag;
-      if (typeof gtag !== 'function') {
-        if (!warned)
-          engine.log.warn(
-            "GA4 destination is on but the page has no Google tag (gtag); add the tag's base code. Events before it loads are not sent",
-          );
-        warned = true;
-        return;
-      }
-      try {
-        gtag('event', ga4.name, ga4.params);
-        engine.log.debug(`destination ga4 ${ga4.name} sent`, {
-          trace: 'destination',
-          destination: 'ga4',
-          name: ga4.name,
-          tracking: e.event_type,
-          event_id: e.event_id,
-          payload: ga4.params,
-        } satisfies DestinationTrace);
-      } catch (err) {
-        engine.log.error('GA4 destination failed', err);
-      }
+      return typeof gtag === 'function' ? gtag : undefined;
     },
-    { replay: true },
-  );
+    missing:
+      "GA4 destination is on but the page has no Google tag (gtag); add the tag's base code. Events before it loads are not sent",
+    failed: 'GA4 destination failed',
+    calls: (e) => {
+      const ga4 = ga4Event(e, engine);
+      return ga4 ? [ga4] : [];
+    },
+    send: (gtag, ga4) => gtag('event', ga4.name, ga4.params),
+    trace: (ga4) => ({ name: ga4.name, payload: ga4.params }),
+  });
 }

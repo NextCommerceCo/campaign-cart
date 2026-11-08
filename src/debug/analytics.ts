@@ -23,7 +23,16 @@ import {
   WIRING,
 } from './providers';
 import { type IconName, icon } from './icons';
-import { carried as carriedView, chips, type DetailModal, line, pill, type Priced } from './stream';
+import {
+  carried as carriedView,
+  chips,
+  type DetailModal,
+  firstItems,
+  line,
+  lineText,
+  pill,
+  type Priced,
+} from './stream';
 import { type Child, empty, h, plural, time } from './view';
 
 type Run = AnalyticsTrace & { at: number };
@@ -110,28 +119,24 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     ...(sentTo.get(run.id ?? '') ?? []).map((t) => ({ place: t.destination, name: t.name, payload: t.payload })),
   ];
 
-  const carried = (run: Run) => {
-    const event = run.id ? events.get(run.id) : undefined;
-    if (!event) return '';
-    const priced = pricedOf(run.name, event.data);
-    const money = (v: unknown) =>
-      typeof v === 'number' &&
-      format({ type: 'money', value: v }, (priced.currency as string) ?? event.context.campaign?.currency);
-    const items = linesOf(run.name, event.data).map((l) => `${l.product_title ?? `#${l.package_id}`} ×${l.quantity}`);
-    return [
-      priced.number && `#${priced.number}`,
-      kindOf(run.name) === 'promotion' && priced.id,
-      items.length > 0 && `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}`,
-      money(priced.total ?? priced.price),
-    ]
-      .filter(Boolean)
-      .join(' · ');
-  };
-
   const money = (run: Run, v: unknown) => {
     const event = run.id ? events.get(run.id) : undefined;
     const currency = (pricedOf(run.name, event?.data).currency as string) ?? event?.context.campaign?.currency;
     return typeof v === 'number' ? format({ type: 'money', value: v }, currency) : '';
+  };
+
+  const carried = (run: Run) => {
+    const event = run.id ? events.get(run.id) : undefined;
+    if (!event) return '';
+    const priced = pricedOf(run.name, event.data);
+    return [
+      priced.number && `#${priced.number}`,
+      kindOf(run.name) === 'promotion' && priced.id,
+      firstItems(linesOf(run.name, event.data).map(lineText)),
+      money(run, priced.total ?? priced.price),
+    ]
+      .filter(Boolean)
+      .join(' · ');
   };
 
   const status = (run: Run, d: Destination, got: Reach[], layers: Layer[]): ['ok' | 'warn' | 'bad' | 'off', string] => {

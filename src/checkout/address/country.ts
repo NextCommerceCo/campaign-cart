@@ -105,15 +105,14 @@ const BOXES = {
   billing_: '[data-next-component="billing-location"]',
 };
 
-export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Fields): () => void {
-  const hidden = legacyHiddenStates();
-  const revealed = { '': false, billing_: false };
-  const states = new Map<string, { select: HTMLSelectElement; input: HTMLInputElement }>();
+type Prefix = keyof typeof BOXES;
+type StatePairs = Map<string, { select: HTMLSelectElement; input: HTMLInputElement }>;
+
+function formatPostcodes(engine: Engine, form: HTMLFormElement, fields: Fields): void {
   const rulesFor = (name: string): CountryRules | undefined => {
     const checkout = engine.getState().checkout;
     return checkout?.rules[countryOf(checkout.fields, name) ?? ''];
   };
-
   form.addEventListener(
     'input',
     (e) => {
@@ -125,21 +124,47 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
     },
     true,
   );
+}
 
-  const stateControl = (name: string, text: boolean): Control | undefined => {
-    const current = fields.get(name);
-    let pair = states.get(name);
-    if (!pair && current instanceof HTMLSelectElement && text) {
-      states.set(name, (pair = { select: current, input: asText(current) }));
+function stateControl(fields: Fields, states: StatePairs, name: string, text: boolean): Control | undefined {
+  const current = fields.get(name);
+  let pair = states.get(name);
+  if (!pair && current instanceof HTMLSelectElement && text) {
+    states.set(name, (pair = { select: current, input: asText(current) }));
+  }
+  if (!pair) return current;
+  const next = text ? pair.input : pair.select;
+  if (current !== next) {
+    current?.replaceWith(next);
+    fields.set(name, next);
+  }
+  return next;
+}
+
+function stateOptions(rules: CountryRules, code: string | undefined, hidden: string[]): CountryOption[] {
+  return (rules.states ?? []).filter((s) => code !== 'US' || !(US_TERRITORIES.test(s.code) || hidden.includes(s.code)));
+}
+
+function applyFieldRules(fields: Fields, prefix: Prefix, rules: CountryRules | undefined): void {
+  for (const [name, el] of fields) {
+    if (!name.startsWith(prefix) || (!prefix && name.startsWith('billing_')) || el.closest(BUILT)) continue;
+    const base = name.slice(prefix.length);
+    const rule = rules?.fields[base];
+    if (rules && BY_COUNTRY.includes(base)) {
+      const shown = !!rule && (base !== 'state' || !(el instanceof HTMLSelectElement) || el.options.length > 1);
+      boxOf(el).style.display = shown || rule?.required ? '' : 'none';
     }
-    if (!pair) return current;
-    const next = text ? pair.input : pair.select;
-    if (current !== next) {
-      current?.replaceWith(next);
-      fields.set(name, next);
-    }
-    return next;
-  };
+    if (!rule) continue;
+    if (BY_COUNTRY.includes(base)) relabel(el, rule);
+    if (el instanceof HTMLInputElement) applyInput(el, rule, BY_COUNTRY.includes(base));
+  }
+}
+
+export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Fields): () => void {
+  const hidden = legacyHiddenStates();
+  const revealed = { '': false, billing_: false };
+  const states: StatePairs = new Map();
+  formatPostcodes(engine, form, fields);
 
   return () => {
     const checkout = engine.getState().checkout;
@@ -154,30 +179,17 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
       const stateRule = rules?.fields.state;
       const page = fields.get(`${prefix}state`);
       if (rules && page) {
-        const state = page.closest(BUILT) ? page : stateControl(`${prefix}state`, stateRule?.input?.type === 'text');
+        const state = page.closest(BUILT)
+          ? page
+          : stateControl(fields, states, `${prefix}state`, stateRule?.input?.type === 'text');
         if (state instanceof HTMLSelectElement) {
-          const options = (rules.states ?? []).filter(
-            (s) => code !== 'US' || !(US_TERRITORIES.test(s.code) || hidden.includes(s.code)),
-          );
-          fill(state, options, checkout.fields[`${prefix}state`] ?? '', {
+          fill(state, stateOptions(rules, code, hidden), checkout.fields[`${prefix}state`] ?? '', {
             placeholder: stateRule?.input?.placeholder ?? stateRule?.label,
           });
         }
       }
 
-      for (const [name, el] of fields) {
-        if (!name.startsWith(prefix) || (!prefix && name.startsWith('billing_')) || el.closest(BUILT)) continue;
-        const base = name.slice(prefix.length);
-        const rule = rules?.fields[base];
-        if (rules && BY_COUNTRY.includes(base)) {
-          const shown = !!rule && (base !== 'state' || !(el instanceof HTMLSelectElement) || el.options.length > 1);
-          boxOf(el).style.display = shown || rule?.required ? '' : 'none';
-        }
-        if (!rule) continue;
-        if (BY_COUNTRY.includes(base)) relabel(el, rule);
-        if (el instanceof HTMLInputElement) applyInput(el, rule, BY_COUNTRY.includes(base));
-      }
-
+      applyFieldRules(fields, prefix, rules);
       revealed[prefix] ||= !!checkout.fields[`${prefix}line1`]?.trim();
       reveal([...form.querySelectorAll<HTMLElement>(BOXES[prefix])], revealed[prefix]);
     }

@@ -5,7 +5,7 @@ import { baseLang, I18N_RULES } from '../engine/texts';
 import type { Send } from '../engine/types';
 import type { DebugActions } from './state';
 import { type IconName, icon } from './icons';
-import { type Child, h } from './view';
+import { type Child, h, pair } from './view';
 
 export const LANGUAGES: Record<string, string> = {
   da: 'Dansk',
@@ -201,7 +201,7 @@ export function localeTab(engine: Engine, debug: DebugActions, send: Send, rende
       ['IP', g.ip],
       ['Source', g.source === 'cf' ? 'Cloudflare edge' : 'No country resolved'],
     ];
-    return h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
+    return h('dl', 'lrows', ...rows.filter(([, v]) => v).flatMap(([k, v]) => pair(k, v)));
   };
 
   /** One line under a setting: how it compares with the visitor, and where the value in use comes from. */

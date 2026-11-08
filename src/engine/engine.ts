@@ -52,6 +52,7 @@ export interface Context {
   batch(fn: () => void): void;
   on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
   fail(action: ErrorAction, err: unknown): void;
+  now(): number;
   log: Logger;
   getPackage(id: number): Package | undefined;
   attribution(): Attribution;
@@ -62,6 +63,23 @@ export interface Context {
 }
 
 const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
+/** The checkout fields a reload restores. */
+const CHECKOUT_SAVED = [
+  'fields',
+  'phones',
+  'sameAsShipping',
+  'paymentMethod',
+  'step',
+  'steps',
+  'prospectSaved',
+  'user',
+  'shippingAddress',
+  'billingAddress',
+  'pendingRef',
+  'pendingMethod',
+  'id',
+  'reported',
+] as const satisfies ReadonlyArray<keyof NonNullable<State['checkout']>>;
 
 export class Engine {
   readonly log: Logger;
@@ -123,6 +141,7 @@ export class Engine {
       batch: (fn) => this.events.batch(fn),
       on: (name, fn, options) => this.events.on(name, fn, options),
       fail: (action, err) => this.fail(action, err),
+      now: () => (this.options.now ?? Date.now)(),
       log: this.log,
       getPackage: (id) => this.getPackage(id),
       attribution: () => this.attribution(),
@@ -137,7 +156,7 @@ export class Engine {
     this.cart = createCart(this.context);
     this.selectors = createSelectors(this.context, this.cart);
     this.toggles = createToggles(this.context, this.cart.quotes);
-    this.visit = createVisit(this.context, () => (this.options.now ?? Date.now)());
+    this.visit = createVisit(this.context, this.context.now);
 
     if (options.reset) for (const store of [this.session, this.local]) store.clear();
     this.restore();
@@ -207,7 +226,7 @@ export class Engine {
 
   attribution(): Attribution {
     const { visit, campaign } = this.state;
-    return buildAttribution(visit, this.options.funnel || campaign?.name, (this.options.now ?? Date.now)());
+    return buildAttribution(visit, this.options.funnel || campaign?.name, this.context.now());
   }
 
   private restore(): void {
@@ -276,38 +295,8 @@ export class Engine {
       const { refId, order: saved, loadedAt, accepted, coupon } = order;
       this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
     }
-    if (slice === 'checkout' && checkout) {
-      const {
-        fields,
-        phones,
-        sameAsShipping,
-        paymentMethod,
-        step,
-        steps,
-        prospectSaved,
-        pendingRef,
-        pendingMethod,
-        id,
-        reported,
-      } = checkout;
-      const { user, shippingAddress, billingAddress } = checkout;
-      this.session.set('checkout', {
-        fields,
-        phones,
-        sameAsShipping,
-        paymentMethod,
-        step,
-        steps,
-        prospectSaved,
-        user,
-        shippingAddress,
-        billingAddress,
-        pendingRef,
-        pendingMethod,
-        id,
-        reported,
-      });
-    }
+    if (slice === 'checkout' && checkout)
+      this.session.set('checkout', Object.fromEntries(CHECKOUT_SAVED.map((k) => [k, checkout[k]])));
   }
 
   private campaignKey(): string {

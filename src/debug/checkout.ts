@@ -1,4 +1,5 @@
 import type { CheckoutState } from '../checkout/state/types';
+import { unitsOf } from '../engine/cart/public';
 import type { Engine } from '../engine/engine';
 import type { CheckoutError } from '../engine/types';
 import { writtenAddress } from './address';
@@ -138,7 +139,7 @@ export function checkoutView(
 
   const steps = (state: CheckoutState): Step[] => {
     const { campaign, cart: basket } = engine.getState();
-    const units = engine.cart.lines().reduce((n, l) => n + l.quantity, 0);
+    const units = unitsOf(engine.cart.lines());
     const shown = Object.entries(state.errors).filter(([name]) => name !== 'form');
     const checked = Object.entries(engine.checkout!.problems()).filter(([name]) => !state.errors[name]);
     const empty = (code: string) => code === 'blank' || code === 'not_selected';

@@ -6,7 +6,7 @@ import type { Context } from '../engine/engine';
 import type { Checkout } from '../engine/events/checkout';
 import type { ErrorCode, Failure } from '../engine/events/sdk';
 import type { Upsell } from '../engine/events/upsells';
-import { appliedCodes, createLedger, paymentMethodCode, publicOrder, purchaseId } from '../engine/order';
+import { appliedCodes, createLedger, paymentMethodCode, publicOrder, reportPaid } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { latestWins } from '../engine/flow';
 import { bool, cents, money, type Value } from '../engine/format';
@@ -235,11 +235,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
     }
     const data = publicOrder(order, appliedCodes(order, state().coupon));
     ctx.emit('order.loaded', data);
-    if (paid && !ledger.has(purchaseId(order))) {
-      ledger.mark([purchaseId(order)]);
-      set({ paidOrder: order });
-      ctx.emit('order.paid', data);
-    }
+    if (paid) reportPaid(ctx, order, data);
     if (completed) ctx.emit('checkout.completed', { ...completed, ref_id: order.ref_id });
   };
 
@@ -247,7 +243,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
     async load(refId: string): Promise<void> {
       const { stale } = loads.start();
       const { order, loadedAt } = state();
-      if (order && state().refId === refId && loadedAt && Date.now() - loadedAt < ORDER_TTL) {
+      if (order && state().refId === refId && loadedAt && ctx.now() - loadedAt < ORDER_TTL) {
         set({ status: 'ready' });
         return settle(order);
       }
@@ -260,7 +256,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       try {
         const loaded = await fetchOrder(refId);
         if (stale()) return;
-        set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
+        set({ order: loaded, loadedAt: ctx.now(), status: 'ready' });
         settle(loaded);
       } catch (err) {
         if (stale()) return;
@@ -302,7 +298,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
 
       const upsell = upsellOf(offer, page);
       const added = (updated: ApiOrder): Accepted => {
-        set({ order: updated, loadedAt: Date.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
+        set({ order: updated, loadedAt: ctx.now(), status: 'ready', accepted: [...state().accepted, key].slice(-50) });
         ctx.emit('upsell.accepted', upsell);
         ctx.emit('order.updated', publicOrder(updated, appliedCodes(updated, state().coupon)));
         return 'accepted';

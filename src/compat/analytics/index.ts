@@ -64,7 +64,7 @@ const exitIntentName = (e: EngineEvent): string | undefined => {
   return CLOSED[reason!];
 };
 
-const legacyCart = (engine: Engine) => {
+const dataLayerCart = (engine: Engine) => {
   const summary = engine.getState().cart.summary;
   const items = engine.cart.lines().map((l) => {
     const line = summary?.lines.find((s) => s.package_id === l.package_id);
@@ -191,7 +191,7 @@ export function startLegacyDataLayer(
         return { ecommerce: { ...list, item_list_id: 'product_list', item_list_name: 'Product List' } };
       }
       case 'cart_updated':
-        return { cart_total: cartTotal(), ecommerce: cartEcommerce(engine, e.data), cart: legacyCart(engine) };
+        return { cart_total: cartTotal(), ecommerce: cartEcommerce(engine, e.data), cart: dataLayerCart(engine) };
       case 'checkout_started':
         return { cart_total: cartTotal(), ecommerce: cartEcommerce(engine, e.data.cart) };
       case 'checkout_contact_info_submitted': {

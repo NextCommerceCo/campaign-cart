@@ -1,8 +1,8 @@
 import type { Engine } from '../engine/engine';
-import { format, localeOf } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
-import { badge, button, h, iconButton, plural, tab, tablist, tsugi } from './view';
+import { quantities } from './state';
+import { badge, button, h, iconButton, plural, priceText, tab, tablist, tsugi } from './view';
 
 type Filter = 'all' | 'purchasable' | 'recurring' | 'selected';
 
@@ -68,17 +68,8 @@ export function productPicker(engine: Engine) {
   );
   dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
 
-  const quantities = () => {
-    const byPackage = new Map<number, number>();
-    for (const l of engine.cart.lines()) byPackage.set(l.package_id, (byPackage.get(l.package_id) ?? 0) + l.quantity);
-    return byPackage;
-  };
-  const money = (amount: number | string | undefined) => {
-    const { campaign } = engine.getState();
-    return format({ type: 'money', value: Number(amount) }, campaign?.currency, localeOf(engine.getState()));
-  };
   const shown = () => {
-    const inCart = quantities();
+    const inCart = quantities(engine.cart.lines());
     return (engine.getState().campaign?.packages ?? []).filter(
       (p) =>
         matches(p, search.value) &&
@@ -96,7 +87,7 @@ export function productPicker(engine: Engine) {
   const fill = () => {
     if (!dialog.open) return;
     const packages = engine.getState().campaign?.packages ?? [];
-    const inCart = quantities();
+    const inCart = quantities(engine.cart.lines());
     const rows = shown();
     active = Math.min(active, Math.max(0, rows.length - 1));
     search.placeholder = `Search ${packages.length} packages by name, ref_id or SKU`;
@@ -116,7 +107,8 @@ export function productPicker(engine: Engine) {
     list.replaceChildren(
       ...rows.slice(0, SHOWN).map((p, i) => {
         const n = inCart.get(p.ref_id) ?? 0;
-        const retail = Number(p.price_retail_total) > Number(p.price_total) && h('s', {}, money(p.price_retail_total));
+        const retail =
+          Number(p.price_retail_total) > Number(p.price_total) && h('s', {}, priceText(engine, p.price_retail_total));
         const row = h(
           'div',
           `prow${n ? ' on' : ''}${i === active ? ' active' : ''}`,
@@ -133,7 +125,7 @@ export function productPicker(engine: Engine) {
             ),
             h('small', {}, `#${p.ref_id} · ${p.product_sku || 'no SKU'} · qty ${p.qty}`),
           ),
-          h('span', 'pprice', money(p.price_total), retail),
+          h('span', 'pprice', priceText(engine, p.price_total), retail),
           n
             ? h(
                 'span',
@@ -165,7 +157,7 @@ export function productPicker(engine: Engine) {
     );
     summary.replaceChildren(
       `${plural(inCart.size, 'package')} · ${plural(units, 'unit')} · `,
-      h('b', {}, money(total)),
+      h('b', {}, priceText(engine, total)),
       ' before discounts',
     );
     clear.hidden = !inCart.size;
@@ -184,7 +176,7 @@ export function productPicker(engine: Engine) {
       list.querySelector('.active')?.scrollIntoView?.({ block: 'nearest' });
     } else if (e.key === 'Enter' && e.target === search && rows[active]) {
       e.preventDefault();
-      set(rows[active]!, (quantities().get(rows[active]!.ref_id) ?? 0) + 1);
+      set(rows[active]!, (quantities(engine.cart.lines()).get(rows[active]!.ref_id) ?? 0) + 1);
     }
   });
   engine.subscribe(fill);

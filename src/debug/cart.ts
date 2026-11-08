@@ -1,12 +1,12 @@
 import { bundleGroup, cardSlots, pickedCard } from '../engine/cart/selectors';
 import { variantChoices } from '../engine/cart/variants';
+import { unitsOf } from '../engine/cart/public';
 import type { CartSummary, SummaryDiscount, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import { format, localeOf } from '../engine/format';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { productPicker, thumb } from './picker';
-import { badge, button, type Child, clock, h, iconButton, plural, tsugi } from './view';
+import { badge, button, type Child, clock, h, iconButton, pair, plural, priceText, tsugi } from './view';
 
 const source = (group: string) =>
   group === 'items'
@@ -41,6 +41,13 @@ export function swapPackage(engine: Engine, from: number, to: number): Promise<v
 const lower = (before: string | undefined, now: string | undefined) =>
   before && now && Number(before) > Number(now) ? before : undefined;
 
+const offerOf = (d: SummaryDiscount) => `${d.offer_id}:${d.name ?? ''}`;
+
+const itemDiscounts = (s: CartSummary) => {
+  const onShipping = new Set((s.shipping_method?.discounts ?? []).map(offerOf));
+  return [...s.offer_discounts, ...s.voucher_discounts].filter((d) => !onShipping.has(offerOf(d)));
+};
+
 export function cartView(engine: Engine, ui: { open: Set<string>; render: () => void; showState: () => void }) {
   let message: { text: string; tone: 'green' | 'amber' } | undefined;
   let pricedAt: number | undefined;
@@ -54,11 +61,8 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
   });
   const picker = productPicker(engine);
 
-  const money = (amount: string | number | undefined) => {
-    const { campaign, cart } = engine.getState();
-    const value = amount === undefined ? undefined : Number(amount);
-    return format({ type: 'money', value }, cart.summary?.currency ?? campaign?.currency, localeOf(engine.getState()));
-  };
+  const money = (amount: string | number | undefined) =>
+    priceText(engine, amount, engine.getState().cart.summary?.currency);
 
   const act = (work: Promise<unknown>, done?: (result: unknown) => void) => {
     message = undefined;
@@ -131,7 +135,6 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
     const recurring = (priced?.is_recurring ?? p?.is_recurring) && (priced?.price_recurring ?? p?.price_recurring);
     const every =
       p?.interval_count && p.interval_count > 1 ? `${p.interval_count} ${p.interval}s` : (p?.interval ?? 'month');
-    const row = (label: string, value: Child, className = '') => [h('dt', {}, label), h('dd', className, value)];
     return h(
       'div',
       'cmore',
@@ -139,17 +142,17 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
       h(
         'dl',
         {},
-        ...row('Package', `#${packageId}${p?.product_sku ? ` · SKU ${p.product_sku}` : ''}`),
-        ...row('From', from.join(', ')),
-        ...row('Price', priced ? `${priced.quantity} × ${money(priced.package_price)}` : 'not priced yet'),
+        ...pair('Package', `#${packageId}${p?.product_sku ? ` · SKU ${p.product_sku}` : ''}`),
+        ...pair('From', from.join(', ')),
+        ...pair('Price', priced ? `${priced.quantity} × ${money(priced.package_price)}` : 'not priced yet'),
         ...(priced?.discounts ?? []).flatMap((d) =>
-          row(
+          pair(
             codes.has(d.name ?? '') ? `Code ${d.name}` : d.name || `Offer #${d.offer_id}`,
             `−${money(d.amount)}`,
             'green',
           ),
         ),
-        ...(recurring ? row('Then', `${money(String(recurring))} every ${every}`) : []),
+        ...(recurring ? pair('Then', `${money(String(recurring))} every ${every}`) : []),
       ),
     );
   };
@@ -215,11 +218,9 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
 
   const totals = (s: CartSummary) => {
     const ship = s.shipping_method;
-    const offerOf = (d: SummaryDiscount) => `${d.offer_id}:${d.name ?? ''}`;
-    const onShipping = new Set((ship?.discounts ?? []).map(offerOf));
-    const discounts = [...s.offer_discounts, ...s.voucher_discounts].filter((d) => !onShipping.has(offerOf(d)));
+    const discounts = itemDiscounts(s);
     const codes = new Set(s.voucher_discounts.map((d) => d.name ?? ''));
-    const row = (label: Child, value: Child, className = '') => [h('dt', className, label), h('dd', className, value)];
+    const row = (label: Child, value: Child, className?: string) => pair(label, value, className, className);
     return h(
       'dl',
       'ctot',
@@ -250,11 +251,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
 
   const total = (s: CartSummary) => {
     const ship = s.shipping_method;
-    const offerOf = (d: SummaryDiscount) => `${d.offer_id}:${d.name ?? ''}`;
-    const onShipping = new Set((ship?.discounts ?? []).map(offerOf));
-    const itemDiscount = [...s.offer_discounts, ...s.voucher_discounts]
-      .filter((d) => !onShipping.has(offerOf(d)))
-      .reduce((n, d) => n + Number(d.amount), 0);
+    const itemDiscount = itemDiscounts(s).reduce((n, d) => n + Number(d.amount), 0);
     const expected = Number(s.subtotal) - itemDiscount + Number(ship?.price ?? 0);
     const addsUp = Math.abs(expected - Number(s.total)) < 0.005;
     const math = `${Number(s.subtotal).toFixed(2)} − ${itemDiscount.toFixed(2)} + ${Number(ship?.price ?? 0).toFixed(2)} = ${expected.toFixed(2)}`;
@@ -270,7 +267,7 @@ export function cartView(engine: Engine, ui: { open: Set<string>; render: () => 
   const view = (): Child[] => {
     const { cart, campaign } = engine.getState();
     const lines = engine.cart.lines();
-    const units = lines.reduce((n, l) => n + l.quantity, 0);
+    const units = unitsOf(lines);
     const summary = lines.length ? cart.summary : undefined;
     const codes = new Set(summary?.voucher_discounts.map((d) => d.name ?? '') ?? []);
     const packages = campaign?.packages.length ?? 0;

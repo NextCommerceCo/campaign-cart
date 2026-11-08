@@ -1,10 +1,9 @@
 import type { Engine } from '../engine/engine';
-import { format, localeOf } from '../engine/format';
 import { type IconName, icon } from './icons';
 import { sourceOf, sourceView } from './source-card';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import type { DetailModal } from './stream';
-import { badge, type Child, clock, empty, h, plural } from './view';
+import { badge, type Child, clock, empty, h, plural, priceText } from './view';
 
 const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
 
@@ -81,14 +80,7 @@ export function journeyView(
 ) {
   let resized: ResizeObserver | undefined;
 
-  const money = (p: PageVisit, value = p.total === undefined ? undefined : Number(p.total)) =>
-    value === undefined
-      ? ''
-      : format(
-          { type: 'money', value },
-          p.currency ?? engine.getState().campaign?.currency,
-          localeOf(engine.getState()),
-        );
+  const money = (p: PageVisit, value: string | number | undefined = p.total) => priceText(engine, value, p.currency);
   const holding = (p: PageVisit) =>
     p.order
       ? [`Order ${p.order}`, money(p)].filter(Boolean).join(' · ')

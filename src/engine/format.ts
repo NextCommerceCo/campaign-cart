@@ -78,9 +78,13 @@ export const phoneText = (raw: string): string => {
   return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw;
 };
 
-export function truthy(v: Value | undefined): boolean {
-  if (!v || v.value === undefined || v.value === null) return false;
-  if (typeof v.value === 'boolean') return v.value;
-  if (typeof v.value === 'number') return v.value !== 0;
-  return v.value !== '' && v.value !== 'false' && v.value !== '0';
+/** Truthiness of a shown value: an empty list, `0`, `''`, `'false'` and `'0'` are false. */
+export function truthyValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value === undefined || value === null || value === false) return false;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') return value !== '' && value !== 'false' && value !== '0';
+  return true;
 }
+
+export const truthy = (v: Value | undefined): boolean => truthyValue(v?.value);

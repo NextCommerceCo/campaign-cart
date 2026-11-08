@@ -70,6 +70,15 @@ export function createLedger(ctx: Pick<Context, 'local'>) {
 
 export type Ledger = ReturnType<typeof createLedger>;
 
+/** Sends `order.paid` once per order in this browser, keeping the order as it was then as `paidOrder`. */
+export function reportPaid(ctx: Pick<Context, 'local' | 'update' | 'emit'>, raw: ApiOrder, order: Order): void {
+  const ledger = createLedger(ctx);
+  if (ledger.has(purchaseId(raw))) return;
+  ledger.mark([purchaseId(raw)]);
+  ctx.update('order', { paidOrder: raw }, { silent: true });
+  ctx.emit('order.paid', order);
+}
+
 /** The API's payment method code, such as `card_token`; an order sends it as a string or `{ code }`. */
 export const paymentMethodCode = (method: ApiOrder['payment_method']): string =>
   typeof method === 'string' ? method : (method?.code ?? '');

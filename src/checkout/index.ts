@@ -16,7 +16,7 @@ import { bindAutocomplete } from './address/autocomplete';
 import { bindBilling, cloneBillingRows } from './address/billing';
 import { bindExpress } from './payment/express';
 import { bindPaymentWidget } from './payment/widget';
-import { bindFields, phoneRequired, scanFields, syncFields } from './form/fields';
+import { bindFields, type Fields, phoneRequired, scanFields, syncFields } from './form/fields';
 import { bindLabels } from './form/labels';
 import {
   announceProspect,
@@ -105,6 +105,81 @@ interface BindOptions {
   translations?: Readonly<Record<string, Texts>>;
 }
 
+function bindTexts(engine: Engine, send: Send, translations: Readonly<Record<string, Texts>>): RulesApi {
+  const lang = localeOf(engine.getState()) || 'en';
+  const own = textsIn(translations, lang);
+  useTexts(own, serviceTexts(send, lang));
+  return new RulesApi(send, I18N_RULES, lang, own);
+}
+
+function pageUrls(engine: Engine, form: HTMLFormElement) {
+  const go = form.getAttribute('data-next-go');
+  const middleStep = form.hasAttribute('data-next-step');
+  if (middleStep && !go) engine.log.warn('data-next-step on the checkout form needs data-next-go, its next page');
+  const successUrl = () => (!middleStep && go) || metaContent(...SUCCESS_URL_META);
+  if (!successUrl() && !middleStep) {
+    engine.log.error(
+      'the checkout page has no <meta name="next-success-url">: the purchase will not be tracked, and a payment gateway will send the shopper to /success',
+    );
+  }
+  return { successUrl, stepUrl: (middleStep && go) || stepUrlOf(form) };
+}
+
+function stepOf(engine: Engine, form: HTMLFormElement, page: string, stepUrl: string | null): number {
+  const { step: advanced, steps } = engine.getState().checkout!;
+  return (
+    Number(form.getAttribute('data-next-step-number')) || steps?.[page] || (advanced > 1 ? advanced : stepUrl ? 1 : 0)
+  );
+}
+
+function focusFirstError(engine: Engine, fields: Fields): void {
+  const errors = engine.getState().checkout?.errors ?? {};
+  const first = [...fields].find(([name, el]) => errors[name] && shown(el))?.[1];
+  setTimeout(() => {
+    first?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    first?.focus({ preventScroll: true });
+  }, 100);
+}
+
+function errorText(state: CheckoutState, fields: Fields, box: string): string {
+  const order = [...fields.keys()];
+  const unshown = Object.keys(state.errors)
+    .filter((name) => {
+      if (name === 'form' || state.errors[name]?.warning) return false;
+      const el = fields.get(name);
+      return !el || !shown(el);
+    })
+    .sort((a, b) => (order.indexOf(a) + 1 || order.length + 1) - (order.indexOf(b) + 1 || order.length + 1));
+  const parts = [];
+  if (state.errors.form) parts.push(formText(state.errors.form));
+  if (unshown.length) parts.push(formText({ code: 'unshown' }, { fields: unshown.map((n) => label(n)).join(', ') }));
+  return box === 'express' && parts.length ? expressText(parts.join(' ')) : parts.join(' ');
+}
+
+function renderErrorBoxes(form: HTMLFormElement, box: string, text: string): void {
+  const target =
+    box === 'express'
+      ? (document.querySelector<HTMLElement>('[data-next-component="express-error"]') ?? errorBox(document, 'credit'))
+      : (errorBox(form, box) ?? errorBox(document, box));
+  for (const el of document.querySelectorAll<HTMLElement>('[data-next-component$="-error"]')) {
+    if (el !== target) showBox(el, undefined);
+  }
+  if (target) showBox(target, text || undefined);
+}
+
+function bindSubmitState(engine: Engine, form: HTMLFormElement): () => void {
+  const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
+  const wasDisabled = !!submit?.disabled;
+  const showOverlay = overlay();
+  return () => {
+    const busy = engine.getState().checkout?.status !== 'idle';
+    showOverlay(busy);
+    if (!submit) return;
+    submit.disabled = busy || wasDisabled;
+    submit.setAttribute('aria-busy', String(busy));
+  };
+}
+
 export function bindCheckout(
   engine: Engine,
   form: HTMLFormElement,
@@ -116,23 +191,12 @@ export function bindCheckout(
     translations = {},
   }: BindOptions = {},
 ): CheckoutActions {
-  const lang = localeOf(engine.getState()) || 'en';
-  const own = textsIn(translations, lang);
-  useTexts(own, serviceTexts(send, lang));
-  const rules = new RulesApi(send, I18N_RULES, lang, own);
+  const rules = bindTexts(engine, send, translations);
   const lead = leadOf(engine, form);
   const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
   const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
   engine.checkout = checkout;
-  const go = form.getAttribute('data-next-go');
-  const middleStep = form.hasAttribute('data-next-step');
-  if (middleStep && !go) engine.log.warn('data-next-step on the checkout form needs data-next-go, its next page');
-  const successUrl = () => (!middleStep && go) || metaContent(...SUCCESS_URL_META);
-  if (!successUrl() && !middleStep) {
-    engine.log.error(
-      'the checkout page has no <meta name="next-success-url">: the purchase will not be tracked, and a payment gateway will send the shopper to /success',
-    );
-  }
+  const { successUrl, stepUrl } = pageUrls(engine, form);
   form.noValidate = true;
   cloneBillingRows(form);
   const paymentWidget = bindPaymentWidget(engine, form);
@@ -144,25 +208,12 @@ export function bindCheckout(
   const card = bindCard(engine, checkout, form);
   const phones = bindPhones(engine, checkout, form, fields, I18N_RULES);
   const address = bindAddress(engine, form, fields);
-  const stepUrl = (middleStep && go) || stepUrlOf(form);
   const page = location.pathname;
-  const { step: advanced, steps } = engine.getState().checkout!;
-  const step =
-    Number(form.getAttribute('data-next-step-number')) || steps?.[page] || (advanced > 1 ? advanced : stepUrl ? 1 : 0);
-  const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
-  const wasDisabled = !!submit?.disabled;
-  const showOverlay = overlay();
+  const step = stepOf(engine, form, page, stepUrl);
+  const renderSubmit = bindSubmitState(engine, form);
   let box = 'credit';
 
   const current = () => new URL(location.href);
-  const focusFirstError = () => {
-    const errors = engine.getState().checkout?.errors ?? {};
-    const first = [...fields].find(([name, el]) => errors[name] && shown(el))?.[1];
-    setTimeout(() => {
-      first?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-      first?.focus({ preventScroll: true });
-    }, 100);
-  };
 
   const pay = async (expressMethod?: string): Promise<void> => {
     syncFields(fields, checkout, engine.getState().checkout);
@@ -179,7 +230,7 @@ export function bindCheckout(
     if (!order) {
       const errors = Object.keys(engine.getState().checkout?.errors ?? {});
       if (!expressMethod && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
-      return focusFirstError();
+      return focusFirstError(engine, fields);
     }
     clearStepGuard();
     navigate(redirectFor(order, successUrl(), current(), engine.getState().visit.params));
@@ -187,7 +238,7 @@ export function bindCheckout(
 
   const advance = () => {
     syncFields(fields, checkout, engine.getState().checkout);
-    if (!checkout.nextStep(step === 1 && phoneRequired(fields))) return focusFirstError();
+    if (!checkout.nextStep(step === 1 && phoneRequired(fields))) return focusFirstError(engine, fields);
     writeStepGuard(engine);
     navigate(nextUrl(stepUrl!, current(), engine.getState().visit.params));
   };
@@ -198,45 +249,14 @@ export function bindCheckout(
     else void pay();
   });
 
-  const boxText = (state: CheckoutState) => {
-    const order = [...fields.keys()];
-    const unshown = Object.keys(state.errors)
-      .filter((name) => {
-        if (name === 'form' || state.errors[name]?.warning) return false;
-        const el = fields.get(name);
-        return !el || !shown(el);
-      })
-      .sort((a, b) => (order.indexOf(a) + 1 || order.length + 1) - (order.indexOf(b) + 1 || order.length + 1));
-    const parts = [];
-    if (state.errors.form) parts.push(formText(state.errors.form));
-    if (unshown.length) parts.push(formText({ code: 'unshown' }, { fields: unshown.map((n) => label(n)).join(', ') }));
-    return box === 'express' && parts.length ? expressText(parts.join(' ')) : parts.join(' ');
-  };
   query?.register('checkout.errors', () => {
     const state = engine.getState().checkout;
-    return state && errorTexts(state, boxText(state));
+    return state && errorTexts(state, errorText(state, fields, box));
   });
 
   const renderErrors = () => {
     const state = engine.getState().checkout;
-    if (!state) return;
-    const text = boxText(state);
-    const target =
-      box === 'express'
-        ? (document.querySelector<HTMLElement>('[data-next-component="express-error"]') ?? errorBox(document, 'credit'))
-        : (errorBox(form, box) ?? errorBox(document, box));
-    for (const el of document.querySelectorAll<HTMLElement>('[data-next-component$="-error"]')) {
-      if (el !== target) showBox(el, undefined);
-    }
-    if (target) showBox(target, text || undefined);
-  };
-
-  const renderSubmit = () => {
-    const busy = engine.getState().checkout?.status !== 'idle';
-    showOverlay(busy);
-    if (!submit) return;
-    submit.disabled = busy || wasDisabled;
-    submit.setAttribute('aria-busy', String(busy));
+    if (state) renderErrorBoxes(form, box, errorText(state, fields, box));
   };
 
   const renders = [
