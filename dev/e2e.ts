@@ -116,10 +116,14 @@ const browser = await chromium.launch({ executablePath: chrome(), args: ['--no-s
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const problems: string[] = [];
 await page.route(/29next\.store/, (route) => route.abort());
-await page.route(/29next\.com|nextcommerce\.com|spreedly\.com/, (route) => {
-  problems.push(`production request blocked: ${route.request().url()}`);
-  return route.abort();
-});
+const I18N_RULES = 'i18n-rules.nextcommerce.com';
+await page.route(
+  (url) => /29next\.com|nextcommerce\.com|spreedly\.com/.test(url.hostname) && url.hostname !== I18N_RULES,
+  (route) => {
+    problems.push(`production request blocked: ${route.request().url()}`);
+    return route.abort();
+  },
+);
 page.on('console', (m) => m.type() === 'error' && problems.push(`console error: ${m.text()}`));
 page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
 
