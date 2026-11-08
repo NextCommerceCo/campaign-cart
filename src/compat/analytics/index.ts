@@ -3,9 +3,8 @@ import type { Engine } from '../../engine/engine';
 import { newId } from '../../engine/id';
 import { legacyRegistry } from '../legacy/registry';
 import type { EngineEvent } from '../../engine/events/bus';
-import type { AnalyticsTrace, TrackingEvent, TrackingName } from '../../engine/events/analytics';
+import type { AnalyticsTrace, DataLayerTrace, TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import type { EventMap, EventName } from '../../engine/events/bus';
-import type { Checkout } from '../../engine/events/checkout';
 import type { EventContext } from '../../engine/events/context';
 import type { ApiOrder } from '../../engine/types';
 import { isLineEvent, lineBurst, type LineEvent } from './burst';
@@ -172,11 +171,13 @@ export function startLegacyDataLayer(
 
   const SHIPPING_INFO = 'dl_add_shipping_info';
   const shippingSent = new Set<string>();
-  const shippingInfoOwed = (checkout: Checkout) => {
-    if (shippingSent.has(checkout.id) || engine.checkout?.reported(SHIPPING_INFO)) return false;
-    shippingSent.add(checkout.id);
+  const shippingInfoSent = (e: TrackingEvent) => {
+    if (e.event_type !== 'checkout_shipping_address_submitted' && e.event_type !== 'checkout_shipping_method_submitted')
+      return false;
+    if (shippingSent.has(e.data.id) || engine.checkout?.reported(SHIPPING_INFO)) return true;
+    shippingSent.add(e.data.id);
     engine.checkout?.markReported(SHIPPING_INFO);
-    return true;
+    return false;
   };
 
   const payload = (e: Exclude<TrackingEvent, LineEvent>): object | undefined => {
@@ -199,7 +200,6 @@ export function startLegacyDataLayer(
       }
       case 'checkout_shipping_address_submitted':
       case 'checkout_shipping_method_submitted': {
-        if (!shippingInfoOwed(e.data)) return undefined;
         const cart = cartEcommerce(engine, e.data.cart);
         const shipping_tier = e.data.cart.shipping_method?.name ?? 'Standard';
         return {
@@ -268,6 +268,11 @@ export function startLegacyDataLayer(
 
   engine.on('analytics', ({ data: e }) => {
     if (isLineEvent(e)) return burst.collect(e);
+    if (shippingInfoSent(e)) {
+      const skipped = 'already sent this checkout';
+      const trace: DataLayerTrace = { trace: 'data_layer', name: SHIPPING_INFO, event_id: e.event_id, skipped };
+      return engine.log.debug(`${SHIPPING_INFO} not sent for ${e.event_type}: ${skipped}`, trace);
+    }
     const body = payload(e);
     if (!body) return engine.log.debug(`${NAMES[e.event_type]} not sent for ${e.event_type} ${e.event_id}`);
     send(NAMES[e.event_type], e.event_id, e.created_at, e.context, body);

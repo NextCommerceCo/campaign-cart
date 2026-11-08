@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startAnalytics } from '../../src/analytics';
+import { startLegacyDataLayer } from '../../src/compat/analytics';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { detailModal } from '../../src/debug/stream';
 import { analyticsFlow } from '../../src/debug/analytics';
@@ -396,6 +397,23 @@ describe('analytics tab', () => {
     flow.problems()[0]!.open();
     expect(detail.dialog.querySelector('h2')!.textContent).toMatch(/^checkout_completed/);
     expect(flow.summary()).toBe('1 sent · ⚠ 1');
+  });
+
+  it('shows a step the data layer sends once per checkout as already sent, not as a problem', () => {
+    const { engine, flow, paint, send, rows, open } = setup();
+    win.NextDataLayer = [];
+    win.dataLayer = [];
+    startLegacyDataLayer(engine, { apiKey: 'pk_test', version: 'test' });
+    send('shipping.settled', 'checkout_shipping_method_submitted', CHECKOUT, 'sm', { layers: false });
+    send('address.entered', 'checkout_shipping_address_submitted', CHECKOUT, 'sa', { layers: false });
+    paint();
+    expect(rows()).toEqual([
+      'checkout_shipping_address_submitted | Earbuds ×1 · $49.00',
+      'checkout_shipping_method_submitted | Earbuds ×1 · $49.00',
+    ]);
+    expect(open(0).problems()).toEqual([]);
+    expect(open(0).places()[0]).toBe('GTM |  | dl_add_shipping_info already sent this checkout | off');
+    expect(flow.problems()).toEqual([]);
   });
 
   it('takes one push for every line of a bundle added or removed at once', () => {

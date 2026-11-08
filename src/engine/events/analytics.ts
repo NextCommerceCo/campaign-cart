@@ -163,6 +163,13 @@ export interface DestinationTrace {
   payload: unknown;
 }
 
+export interface DataLayerTrace {
+  trace: 'data_layer';
+  name: string;
+  event_id: string;
+  skipped: string;
+}
+
 export interface AnalyticsEvents {
   /** @internal One tracking event, for `next.analytics.on`. */
   analytics: TrackingEvent;

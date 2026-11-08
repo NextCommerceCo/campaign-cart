@@ -1,4 +1,10 @@
-import type { AnalyticsTrace, DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
+import type {
+  AnalyticsTrace,
+  DataLayerTrace,
+  DestinationTrace,
+  TrackingEvent,
+  TrackingName,
+} from '../engine/events/analytics';
 import type { EngineEvent } from '../engine/events/bus';
 import { format } from '../engine/format';
 import type { LogEntry } from '../engine/log';
@@ -50,6 +56,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
   const kinds = new Set<string>();
   const runs: Run[] = [];
   const sentTo = new Map<string, DestinationTrace[]>();
+  const skipped = new Map<string, DataLayerTrace>();
 
   const record = (e: EngineEvent) => {
     if (e.name !== 'analytics') return;
@@ -63,6 +70,10 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
       const trace = entry.data as DestinationTrace;
       sentTo.set(trace.event_id, [...(sentTo.get(trace.event_id) ?? []), trace]);
       if (sentTo.size > KEEP) sentTo.delete(sentTo.keys().next().value!);
+    } else if (traceOf(entry.data) === 'data_layer') {
+      const trace = entry.data as DataLayerTrace;
+      skipped.set(trace.event_id, trace);
+      if (skipped.size > KEEP) skipped.delete(skipped.keys().next().value!);
     } else if (traceOf(entry.data) === 'analytics') {
       runs.push({ ...(entry.data as AnalyticsTrace), at: entry.at });
       if (runs.length > KEEP) runs.shift();
@@ -87,7 +98,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     const event = run.id ? events.get(run.id) : undefined;
     return [
       ...(event ? checks(event.event_type, event.data) : []),
-      ...layers.filter((l) => !pushedTo(l, burst(run))).map((l) => `not in ${l}`),
+      ...layers.filter((l) => !pushedTo(l, burst(run)) && !skipped.has(run.id ?? '')).map((l) => `not in ${l}`),
     ];
   };
 
@@ -123,12 +134,14 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     return typeof v === 'number' ? format({ type: 'money', value: v }, currency) : '';
   };
 
-  const status = (d: Destination, got: Reach[], layers: Layer[]): ['ok' | 'warn' | 'bad' | 'off', string] => {
+  const status = (run: Run, d: Destination, got: Reach[], layers: Layer[]): ['ok' | 'warn' | 'bad' | 'off', string] => {
     const hit = got.find((g) => g.place === d.place);
+    const skip = skipped.get(run.id ?? '');
     if (!d.on && !hit) return ['off', 'off'];
     if (d.missing) return ['warn', `${hit ? 'received · ' : ''}no ${d.missing} on the page`];
     if (hit) return ['ok', 'received'];
-    return layers.includes(d.place as Layer) ? ['bad', 'not pushed'] : ['off', 'nothing for this event'];
+    if (!layers.includes(d.place as Layer)) return ['off', 'nothing for this event'];
+    return skip ? ['off', `${skip.name} ${skip.skipped}`] : ['bad', 'not pushed'];
   };
 
   const open = (run: Run, got: Reach[], layers: Layer[]) => {
@@ -138,7 +151,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
     const places = destinations(ui.config(), started())
       .filter((d) => d.place !== 'NextDataLayer')
       .map((d) => {
-        const [tone, text] = status(d, got, layers);
+        const [tone, text] = status(run, d, got, layers);
         const el = h(
           'li',
           {},

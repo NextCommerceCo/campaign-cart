@@ -107,6 +107,21 @@ describe('0.4.x data layer from tracking events', () => {
     expect(pushes('dl_add_shipping_info')[1].ecommerce).not.toHaveProperty('shipping');
   });
 
+  it('logs the shipping step it does not send, for the debug panel', async () => {
+    const engine = await started();
+    const traces: unknown[] = [];
+    engine.log.stream((entry) => traces.push(entry.data));
+    const cart: Cart = { ...emptyCart, lines: [line(2, 1, 89)] };
+    track(engine, 'checkout_shipping_method_submitted', { id: 'c1', cart });
+    const id = track(engine, 'checkout_shipping_address_submitted', { id: 'c1', cart });
+    expect(traces).toContainEqual({
+      trace: 'data_layer',
+      name: 'dl_add_shipping_info',
+      event_id: id,
+      skipped: 'already sent this checkout',
+    });
+  });
+
   it('builds dl_purchase from the order as the API returned it, with the code the checkout sent', async () => {
     const engine = await started();
     engine.attach((ctx) =>
