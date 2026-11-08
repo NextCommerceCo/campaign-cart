@@ -9,8 +9,10 @@ export interface Value {
   held?: boolean;
 }
 
-export const cents = (amount: string | number | undefined): number => Math.round(Number(amount ?? 0) * 100);
-export const dollars = (amount: string | number | undefined): number => cents(amount) / 100;
+type Amount = string | number | null | undefined;
+
+export const cents = (amount: Amount): number => Math.round(Number(amount ?? 0) * 100);
+export const dollars = (amount: Amount): number => cents(amount) / 100;
 export const addDollars = (amounts: number[]): number => Math.round(amounts.reduce((n, a) => n + a * 100, 0)) / 100;
 export const money = (c: number | undefined): Value => ({
   type: 'money',
@@ -69,6 +71,12 @@ export function discountPercent(value: string | undefined, locale?: string): str
   if (!value || !Number.isFinite(n)) return '';
   return formatter(locale, { style: 'percent', maximumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n / 100);
 }
+
+/** A 10-digit number as `(555) 123-4567`; anything else as typed. */
+export const phoneText = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw;
+};
 
 export function truthy(v: Value | undefined): boolean {
   if (!v || v.value === undefined || v.value === null) return false;

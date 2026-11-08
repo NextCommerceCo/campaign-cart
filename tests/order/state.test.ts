@@ -3,7 +3,7 @@ import { createCheckout } from '../../src/checkout/state/checkout';
 import { upsellId } from '../../src/engine/order';
 import { createOrder, orderValue } from '../../src/order/state';
 import { format } from '../../src/engine/format';
-import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
+import { createLedger, publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
 import type { EngineEvent } from '../../src/engine/events/bus';
 import type { CheckoutState } from '../../src/checkout/state/types';
 import type { ApiOrderLine } from '../../src/engine/types';
@@ -284,12 +284,13 @@ describe('order', () => {
     const raw = next.engine.getState().order!.order!;
     const ids = raw.lines!.filter((l) => l.is_upsell).map((l) => upsellId(raw, l));
     expect(ids).toEqual(['R1:99']);
-    expect(next.order.reported()).toEqual(['1001']);
+    const ledger = next.engine.attach(createLedger);
+    expect(next.engine.attach((ctx) => ctx.local.get(REPORTED))).toEqual(['1001']);
     expect(next.paid).not.toHaveBeenCalled();
-    next.order.markReported(ids);
+    ledger.mark(ids);
     const later = await setup({ session, local });
     await later.order.load('R1');
-    expect(later.order.reported()).toEqual(['1001', 'R1:99']);
+    expect(later.engine.attach((ctx) => ctx.local.get(REPORTED))).toEqual(['1001', 'R1:99']);
   });
 
   it('sends upsell.accepted with the offer as quoted, then order.updated with the order it made', async () => {

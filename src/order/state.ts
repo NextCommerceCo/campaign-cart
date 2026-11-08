@@ -6,8 +6,9 @@ import type { Context } from '../engine/engine';
 import type { Checkout } from '../engine/events/checkout';
 import type { ErrorCode, Failure } from '../engine/events/sdk';
 import type { Upsell } from '../engine/events/upsells';
-import { appliedCodes, publicOrder, purchaseId, REPORTED, REPORTED_KEEP } from '../engine/order';
+import { appliedCodes, createLedger, paymentMethodCode, publicOrder, purchaseId } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
+import { latestWins } from '../engine/flow';
 import { bool, cents, money, type Value } from '../engine/format';
 import type { CartLine, Line } from '../engine/cart/types';
 import type { ApiOrder, ApiOrderAddress, ApiOrderLine, CheckoutError, State } from '../engine/types';
@@ -49,10 +50,8 @@ const PAYMENT_LABELS: Record<string, string> = {
   shop_pay: 'Shop Pay',
 };
 
-const methodCode = (method: ApiOrder['payment_method']) => (typeof method === 'string' ? method : (method?.code ?? ''));
-
 function paymentLabel(method: ApiOrder['payment_method']): string {
-  const raw = methodCode(method);
+  const raw = paymentMethodCode(method);
   const code = raw.toLowerCase().replace(/[\s-]/g, '_');
   return PAYMENT_LABELS[code] ?? raw;
 }
@@ -183,13 +182,11 @@ const hasOfferLines = (before: ApiOrder, after: ApiOrder, lines: Line[], package
 export function createOrder(ctx: Context, cart: CartActions) {
   const state = () => ctx.getState().order!;
   const set = (patch: Partial<OrderState>) => ctx.update('order', patch);
-  let seq = 0;
+  const loads = latestWins();
 
   set({ status: 'idle', accepted: [], ...ctx.saved<Partial<OrderState>>('order') });
 
-  const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
-  const markReported = (ids: string[]) =>
-    ctx.local.set(REPORTED, [...new Set([...reported(), ...ids])].slice(-REPORTED_KEEP));
+  const ledger = createLedger(ctx);
 
   const fetchOrder = (refId: string) => {
     const controller = new AbortController();
@@ -238,8 +235,8 @@ export function createOrder(ctx: Context, cart: CartActions) {
     }
     const data = publicOrder(order, appliedCodes(order, state().coupon));
     ctx.emit('order.loaded', data);
-    if (paid && !reported().includes(purchaseId(order))) {
-      markReported([purchaseId(order)]);
+    if (paid && !ledger.has(purchaseId(order))) {
+      ledger.mark([purchaseId(order)]);
       set({ paidOrder: order });
       ctx.emit('order.paid', data);
     }
@@ -247,11 +244,8 @@ export function createOrder(ctx: Context, cart: CartActions) {
   };
 
   return {
-    reported,
-    markReported,
-
     async load(refId: string): Promise<void> {
-      const current = ++seq;
+      const { stale } = loads.start();
       const { order, loadedAt } = state();
       if (order && state().refId === refId && loadedAt && Date.now() - loadedAt < ORDER_TTL) {
         set({ status: 'ready' });
@@ -265,11 +259,11 @@ export function createOrder(ctx: Context, cart: CartActions) {
       });
       try {
         const loaded = await fetchOrder(refId);
-        if (current !== seq) return;
+        if (stale()) return;
         set({ order: loaded, loadedAt: Date.now(), status: 'ready' });
         settle(loaded);
       } catch (err) {
-        if (current !== seq) return;
+        if (stale()) return;
         set({ status: 'failed', order: undefined, error: orderError(err) });
         ctx.fail('order.load', err);
       }
@@ -335,7 +329,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
         const error = orderFailure(err);
         if (error.code === 'declined') {
           ctx.emit('upsell.declined', { ...upsell, error, message: failureOf(err).message });
-          ctx.emit('payment.failed', { method: methodCode(order.payment_method), ref_id: refId, error });
+          ctx.emit('payment.failed', { method: paymentMethodCode(order.payment_method), ref_id: refId, error });
           return 'failed';
         }
         ctx.fail('upsell.add', err);
@@ -348,8 +342,8 @@ export function createOrder(ctx: Context, cart: CartActions) {
     paymentFailed(): void {
       const checkout = ctx.saved<Partial<CheckoutState>>('checkout');
       const refId = checkout?.pendingRef;
-      if (!refId || reported().includes(`failed:${refId}`)) return;
-      markReported([`failed:${refId}`]);
+      if (!refId || ledger.has(`failed:${refId}`)) return;
+      ledger.mark([`failed:${refId}`]);
       const sent = ctx.getState().visit.params.payment_method;
       const method = (sent !== 'None' && sent) || checkout?.pendingMethod || checkout?.paymentMethod || '';
       ctx.emit('payment.failed', { method, ref_id: refId, error: { code: 'payment_failed' } });

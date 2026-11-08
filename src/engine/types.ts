@@ -120,6 +120,10 @@ export interface ApiOrderAddress {
   phone_number?: string;
 }
 
+/** An address the SDK sends with an order or an Open Cart: the fields every country has are always there. */
+export type ApiAddress = ApiOrderAddress &
+  Required<Pick<ApiOrderAddress, 'first_name' | 'last_name' | 'line1' | 'line4' | 'country'>>;
+
 /**
  * The Cart the store created from the shopper's contact details: an Open Cart in the dashboard.
  * The Campaigns API answers with more fields (`user`, `lines`, `discounts`, the other totals).

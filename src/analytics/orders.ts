@@ -3,7 +3,7 @@ import type { Order } from '../engine/events/orders';
 import { appliedCodes, publicOrder, purchaseId, upsellId } from '../engine/order';
 import type { ApiOrder } from '../engine/types';
 import type { Handlers, Report } from './report';
-import type { Ledger } from './state';
+import type { Ledger } from '../engine/order';
 
 export function orderReports({ engine, emit, skip }: Report, ledger: Ledger): Handlers {
   const upsellPages = new Set<string>();

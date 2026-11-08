@@ -1,9 +1,15 @@
 import type { Engine } from '../engine/engine';
-import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
-import type { CartItem } from '../engine/events/carts';
-import type { OrderItem } from '../engine/events/orders';
-import { addDollars } from '../engine/format';
-import { untaxed } from '../engine/order';
+import {
+  defined,
+  trackingCurrency,
+  trackingLineId,
+  trackingLines,
+  trackingValue,
+  type DestinationTrace,
+  type TrackingEvent,
+  type TrackingLine,
+  type TrackingName,
+} from '../engine/events/analytics';
 
 /** One product of a Meta event's `contents`. */
 export interface MetaContent {
@@ -99,66 +105,33 @@ export interface MetaOptions {
   storeName?: string;
 }
 
-type Line = CartItem | OrderItem;
 type Win = Window & { fbq?: (...args: unknown[]) => void };
 
-const linesOf = (e: TrackingEvent): Line[] => {
-  switch (e.event_type) {
-    case 'product_viewed':
-    case 'product_added_to_cart':
-      return [e.data];
-    case 'checkout_started':
-    case 'checkout_contact_info_submitted':
-    case 'checkout_payment_info_submitted':
-      return e.data.cart.lines;
-    case 'checkout_completed':
-      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
-    case 'upsell_completed':
-      return [untaxed(e.data.upsell.line)];
-    default:
-      return [];
-  }
-};
-
-const idOf = (l: Line) => l.sku || String('package_id' in l ? l.package_id : (l.product_id ?? l.id));
-
-const defined = <T extends object>(o: T): T =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
-
-const valueOf = (lines: Line[]) => {
-  const priced = lines.filter((l) => l.price !== undefined);
-  return priced.length ? addDollars(priced.map((l) => l.price! * l.quantity)) : undefined;
-};
-
-const currencyOf = (e: TrackingEvent) => {
-  const data = e.data as { currency?: string; cart?: { currency?: string } };
-  return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency;
-};
-
-const contents = (e: TrackingEvent, lines: Line[]): MetaContents =>
+const contents = (e: TrackingEvent, lines: TrackingLine[]): MetaContents =>
   defined({
-    content_ids: lines.map(idOf),
-    contents: lines.map((l) => defined({ id: idOf(l), quantity: l.quantity, item_price: l.price })),
+    content_ids: lines.map(trackingLineId),
+    contents: lines.map((l) => defined({ id: trackingLineId(l), quantity: l.quantity, item_price: l.price })),
     content_type: 'product' as const,
     content_name: lines.length === 1 ? lines[0]!.product_title : undefined,
-    value: valueOf(lines),
-    currency: currencyOf(e),
+    value: trackingValue(lines),
+    currency: trackingCurrency(e),
   });
 
 /** The Meta call a tracking event becomes, if any. */
 export function metaEvent(e: TrackingEvent, options: MetaOptions = {}): MetaEvent | undefined {
   const name = META[e.event_type];
   if (!name) return undefined;
-  const lines = linesOf(e);
+  const lines = trackingLines(e);
   const event_id = e.event_id;
-  if (name === 'Lead') return { name, params: defined({ value: valueOf(lines), currency: currencyOf(e) }), event_id };
+  if (name === 'Lead')
+    return { name, params: defined({ value: trackingValue(lines), currency: trackingCurrency(e) }), event_id };
   if (name === 'InitiateCheckout') {
     const num_items = lines.reduce((n, l) => n + l.quantity, 0);
     return { name, params: { ...contents(e, lines), num_items }, event_id };
   }
   if (e.event_type === 'checkout_completed' || e.event_type === 'upsell_completed') {
     const order = e.event_type === 'checkout_completed';
-    const params = { ...contents(e, lines), value: valueOf(lines) ?? 0, currency: currencyOf(e) ?? 'USD' };
+    const params = { ...contents(e, lines), value: trackingValue(lines) ?? 0, currency: trackingCurrency(e) ?? 'USD' };
     const id = order && options.storeName ? `${options.storeName}-${e.data.number ?? e.data.ref_id}` : event_id;
     return { name: 'Purchase', params, event_id: id };
   }

@@ -1,9 +1,10 @@
 import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/public';
 import type { Line } from '../../engine/cart/types';
-import type { State } from '../../engine/types';
+import type { ApiAddress, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
-import type { ApiAddress, CheckoutState, OrderBody, OrderUser } from './types';
+import { addressOf } from '../../engine/order';
+import type { CheckoutState, OrderBody, OrderUser } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
 
@@ -42,20 +43,9 @@ function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: strin
   };
 }
 
-export function publicAddress(checkout: CheckoutState, prefix: '' | 'billing_'): Address {
-  const a = address(checkout, prefix, phoneOf(checkout, `${prefix}phone_number`));
-  return {
-    first_name: a.first_name,
-    last_name: a.last_name,
-    line1: a.line1,
-    ...(a.line2 && { line2: a.line2 }),
-    ...(a.line4 && { city: a.line4 }),
-    ...(a.state && { state: a.state }),
-    ...(a.postcode && { postcode: a.postcode }),
-    country: a.country,
-    ...(a.phone_number && { phone: a.phone_number }),
-  };
-}
+/** Only for an `addressValid` address, whose country is set. */
+export const publicAddress = (checkout: CheckoutState, prefix: '' | 'billing_'): Address =>
+  addressOf(address(checkout, prefix, phoneOf(checkout, `${prefix}phone_number`)))!;
 
 export function orderBody(
   state: State,

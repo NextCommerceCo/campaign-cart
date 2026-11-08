@@ -1,12 +1,12 @@
 import type { Engine } from '../engine/engine';
 import { cents, formatCents } from '../engine/format';
 import type { ApiOrderLine } from '../engine/types';
+import { fillTemplate } from '../bindings/dom';
+
+const ITEM_TOKEN = /\{item\.(\w+)\}/g;
 
 const DEFAULT_TEMPLATE =
   '<div class="order-item"><img src="{item.image}" alt=""><span>{item.name}</span> × {item.quantity} <span>{item.lineTotal}</span></div>';
-
-const escape = (text: string) =>
-  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 function templateOf(el: Element): string {
   const id = el.getAttribute('data-item-template-id');
@@ -67,14 +67,7 @@ export function bindReceipt(engine: Engine): Array<() => void> {
             ? '<div class="status-message">Error loading order items</div>'
             : status === 'empty'
               ? empty
-              : lines
-                  .map((line) => {
-                    const values = tokens(line, money);
-                    return template.replace(/\{item\.(\w+)\}/g, (raw, key: string) =>
-                      key in values ? escape(values[key]!) : raw,
-                    );
-                  })
-                  .join('');
+              : lines.map((line) => fillTemplate(template, tokens(line, money), ITEM_TOKEN)).join('');
       for (const s of ['loading', 'error', 'empty', 'has-items']) el.classList.toggle(`order-${s}`, s === status);
       if (html !== shown) el.innerHTML = shown = html;
     };

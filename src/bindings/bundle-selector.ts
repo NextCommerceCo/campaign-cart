@@ -3,7 +3,7 @@ import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
 import { isFormControl, onceVisible, selectorIdOf, setState, stamp } from './dom';
-import { discountTokens } from '../engine/tokens';
+import { discountsOfKind, discountTokens } from '../engine/tokens';
 import { cardQuote, repricing } from '../engine/values';
 
 function parseList(raw: string | null): unknown[] {
@@ -124,14 +124,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
         const quote = selector && card && cardQuote(selector, card);
         if (selector && card && repricing(selector, card)) return;
         for (const box of el.querySelectorAll('[data-next-discounts]')) {
-          const kind = box.getAttribute('data-next-discounts');
-          const list = !quote
-            ? []
-            : kind === 'offer'
-              ? quote.offer_discounts
-              : kind === 'voucher'
-                ? quote.voucher_discounts
-                : [...quote.offer_discounts, ...quote.voucher_discounts];
+          const list = discountsOfKind(quote, box.getAttribute('data-next-discounts'));
           stamp(box, list, (d) => discountTokens(d, quote?.currency, localeOf(b.engine.getState())));
         }
       });

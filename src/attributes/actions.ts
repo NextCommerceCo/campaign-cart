@@ -2,6 +2,7 @@ import type { ActionArgs, ActionName, ActionResult } from '../engine/actions';
 import { nextQuantity } from '../engine/actions';
 import { nextUrl } from '../engine/params';
 import type { Render } from '../bindings/context';
+import { matching } from '../bindings/dom';
 import type { AttributeContext } from './context';
 
 /** Attributes with their own role: never an action argument. */
@@ -105,10 +106,8 @@ function ready(a: AttributeContext, name: ActionName, args: ActionArgs): boolean
 
 /** `data-next-action="<name>"`: runs `next.actions.<name>` on click, or on submit for a form. */
 export function bindActions(root: ParentNode, a: AttributeContext): Render[] {
-  const els = [...root.querySelectorAll<HTMLElement>('[data-next-action]')];
-  if (root instanceof HTMLElement && root.matches('[data-next-action]')) els.unshift(root);
   const renders: Render[] = [];
-  for (const el of els) {
+  for (const el of matching(root, '[data-next-action]')) {
     const name = el.getAttribute('data-next-action') as ActionName;
     if (!(name in a.actions) || !a.b.claim(el, 'data-next-action')) continue;
     const argsOf = (): ActionArgs => ({

@@ -5,15 +5,9 @@ import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } 
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf } from '../engine/format';
 import { cardQuote } from '../engine/values';
-import { applyValues, bindTokens, ownProperties, pageProperties, selectorIdOf } from './dom';
+import { applyValues, bindTokens, fillTemplate, ownProperties, pageProperties, selectorIdOf } from './dom';
 
-const escape = (text: string) =>
-  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-
-const fill = (html: string, values: Record<string, string>) =>
-  html.replace(/\{((?:slot|item|discount)\.\w+)\}/g, (raw, key: string) =>
-    key in values ? escape(values[key]!) : raw,
-  );
+const SLOT_TOKEN = /\{((?:slot|item|discount)\.\w+)\}/g;
 
 type Values = Record<string, string>;
 
@@ -158,15 +152,19 @@ function renderStage(
       if (found)
         entry.html = found
           .map((d) =>
-            fill(tpl, {
-              'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
-              'discount.name': d.name ?? '',
-              'discount.amount': format(
-                { type: 'money', value: dollars(d.amount) },
-                engine.getState().campaign?.currency,
-                localeOf(engine.getState()),
-              ),
-            }),
+            fillTemplate(
+              tpl,
+              {
+                'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
+                'discount.name': d.name ?? '',
+                'discount.amount': format(
+                  { type: 'money', value: dollars(d.amount) },
+                  engine.getState().campaign?.currency,
+                  localeOf(engine.getState()),
+                ),
+              },
+              SLOT_TOKEN,
+            ),
           )
           .join('');
       if (box.innerHTML !== entry.html) box.innerHTML = entry.html;

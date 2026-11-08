@@ -18,6 +18,9 @@ export function asciiDigits(text: string): string {
 
 const digitsOf = (text: string) => asciiDigits(text).replace(/\D/g, '');
 
+export const countryOf = (fields: Record<string, string> | undefined, name: string): string | undefined =>
+  fields?.[name.startsWith('billing_') ? 'billing_country' : 'country'];
+
 export const phoneKey = (text: string) => asciiDigits(text).replace(/[^\d+]/g, '');
 
 const compiled = new Map<string, RegExp>();

@@ -1,12 +1,12 @@
 import type { Engine } from '../../engine/engine';
 import { BY_COUNTRY, formatPostcode } from '../state/rules';
+import { countryOf } from '../state/phone';
 import type { CountryOption, CountryRules, FieldRule } from '../state/types';
 import { type Control, fieldName, type Fields, option } from '../form/fields';
 import { legacyHiddenStates } from '../../compat/checkout';
 import { reformat } from '../form/reformat';
+import { WRAPPERS } from '../form/errors';
 
-const WRAPPER =
-  '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';
 const BUILT = '[data-next-address-field]';
 const SIGNIFICANT = /[\p{L}\p{N}]/u;
 const INPUT_ATTRS = { max_length: 'maxlength', input_mode: 'inputmode', auto_capitalize: 'autocapitalize' } as const;
@@ -46,7 +46,7 @@ function reveal(boxes: HTMLElement[], shown: boolean): void {
 function boxOf(el: Control): HTMLElement {
   const group = el.closest<HTMLElement>('.form-group');
   if (group && group.querySelectorAll('input, select, textarea').length === 1) return group;
-  return el.closest<HTMLElement>(WRAPPER) ?? el;
+  return el.closest<HTMLElement>(WRAPPERS) ?? el;
 }
 
 function own(el: Control): PageText {
@@ -111,8 +111,7 @@ export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Field
   const states = new Map<string, { select: HTMLSelectElement; input: HTMLInputElement }>();
   const rulesFor = (name: string): CountryRules | undefined => {
     const checkout = engine.getState().checkout;
-    const country = name.startsWith('billing_') ? checkout?.fields.billing_country : checkout?.fields.country;
-    return checkout?.rules[country ?? ''];
+    return checkout?.rules[countryOf(checkout.fields, name) ?? ''];
   };
 
   form.addEventListener(

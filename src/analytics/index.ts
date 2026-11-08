@@ -10,7 +10,7 @@ import { orderReports } from './orders';
 import { reportPage } from './pages';
 import { promotionReports } from './promotions';
 import { createReport, dispatch } from './report';
-import { createLedger } from './state';
+import { createLedger } from '../engine/order';
 
 export interface AnalyticsOptions {
   apiKey: string;

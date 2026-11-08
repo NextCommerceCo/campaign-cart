@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine';
-import { format, localeOf, type Value, type ValueType } from '../engine/format';
+import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/format';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 
@@ -37,11 +37,6 @@ function number(n: number, locale: string | undefined, options: Intl.NumberForma
   }
 }
 
-const phone = (raw: string) => {
-  const digits = raw.replace(/\D/g, '');
-  return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw;
-};
-
 /** The text a value shows as, by its field's type or `data-next-format`. */
 export function display(field: string, value: unknown, engine: Engine, override?: string | null): string {
   if (value === undefined || value === null) return '';
@@ -67,7 +62,7 @@ export function display(field: string, value: unknown, engine: Engine, override?
     case 'number':
       return number(n, locale, { maximumFractionDigits: 2 });
     case 'phone':
-      return phone(String(value));
+      return phoneText(String(value));
     case 'address':
       return String(value);
   }

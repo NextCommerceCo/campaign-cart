@@ -1,6 +1,7 @@
 import type { Texts } from '../../engine/texts';
 import type { CheckoutError } from '../../engine/types';
 import type { CheckoutState, CountryRules } from '../state/types';
+import { countryOf } from '../state/phone';
 
 const LABELS: Record<string, string> = {
   email: 'Email',
@@ -112,8 +113,7 @@ export function formText(error: CheckoutError, fill: Record<string, string> = {}
 /** The `data-next-field` key of a field: `phone_number` is `phone`. */
 export const v2Key = (name: string) => name.replace(/phone_number$/, 'phone');
 
-const rulesOf = (state: CheckoutState, name: string) =>
-  state.rules[(name.startsWith('billing_') ? state.fields.billing_country : state.fields.country) ?? ''];
+const rulesOf = (state: CheckoutState, name: string) => state.rules[countryOf(state.fields, name) ?? ''];
 
 /** `checkout.errors` as a page reads it: each field's message under its name and key, and `payment`, the error box's. */
 export function errorTexts(state: CheckoutState, payment: string): Record<string, string> {

@@ -8,6 +8,7 @@ import { nextUrl } from '../engine/params';
 import type { Query } from '../engine/query';
 import type { Send } from '../engine/types';
 import { localeOf } from '../engine/format';
+import { metaContent } from '../bindings/dom';
 import { I18N_RULES, rulesSend, serviceTexts, textsIn, type Texts } from '../engine/texts';
 import { bindAddress } from './address/country';
 import { bindAddressForms } from './address/block';
@@ -41,13 +42,10 @@ import { errorTexts, expressText, formText, label, useTexts } from './form/texts
 
 const SUBMIT = ['button[type="submit"]', 'input[type="submit"]', ...SUBMIT_ATTRS.map((a) => `[${a}]`)].join(', ');
 
-const meta = (...names: string[]) =>
-  names.map((n) => document.querySelector<HTMLMetaElement>(`meta[name="${n}"]`)?.content).find(Boolean);
-
 function failureUrl(): string {
   const url = new URL(location.href);
   url.searchParams.set('payment_failed', 'true');
-  return meta(...FAILURE_URL_META) ?? url.href;
+  return metaContent(...FAILURE_URL_META) ?? url.href;
 }
 
 function overlay(): (busy: boolean) => void {
@@ -129,7 +127,7 @@ export function bindCheckout(
   const go = form.getAttribute('data-next-go');
   const middleStep = form.hasAttribute('data-next-step');
   if (middleStep && !go) engine.log.warn('data-next-step on the checkout form needs data-next-go, its next page');
-  const successUrl = () => (!middleStep && go) || meta(...SUCCESS_URL_META);
+  const successUrl = () => (!middleStep && go) || metaContent(...SUCCESS_URL_META);
   if (!successUrl() && !middleStep) {
     engine.log.error(
       'the checkout page has no <meta name="next-success-url">: the purchase will not be tracked, and a payment gateway will send the shopper to /success',

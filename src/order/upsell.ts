@@ -1,17 +1,15 @@
 import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from './state';
 import { nextUrl } from '../engine/params';
-import { onceVisible, selectorIdOf } from '../bindings/dom';
+import { metaContent, onceVisible, selectorIdOf } from '../bindings/dom';
 import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from '../compat/order';
 
 const FEEDBACK_MS = 1000;
 const SUCCESS_MS = 100;
 
-const meta = (name: string) => document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content;
-
 function targetUrl(button: Element, accept: boolean, engine: Engine): string | undefined {
   const own = NEXT_URL_ATTRS.map((a) => button.getAttribute(a)).find(Boolean);
-  const target = own ?? meta(accept ? 'next-upsell-accept-url' : 'next-upsell-decline-url');
+  const target = own ?? metaContent(accept ? 'next-upsell-accept-url' : 'next-upsell-decline-url');
   if (!target) return undefined;
   const url = new URL(target, location.href);
   const refId = engine.getState().order?.refId;

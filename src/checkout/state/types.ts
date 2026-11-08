@@ -1,7 +1,7 @@
 import type { Attribution } from '../../engine/attribution';
 import type { Line } from '../../engine/cart/types';
 import type { Address, User } from '../../engine/events/checkout';
-import type { CheckoutError, OpenCart } from '../../engine/types';
+import type { ApiAddress, CheckoutError, OpenCart } from '../../engine/types';
 
 export interface AddressSuggestion {
   label: string;
@@ -96,18 +96,6 @@ export interface CheckoutState {
   id?: string;
   /** The analytics events already sent for this checkout, such as `add_shipping_info`. */
   reported?: string[];
-}
-
-export interface ApiAddress {
-  first_name: string;
-  last_name: string;
-  line1: string;
-  line2?: string;
-  line4: string;
-  state?: string;
-  postcode?: string;
-  country: string;
-  phone_number?: string;
 }
 
 export interface OrderUser {

@@ -1,11 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { CheckoutState } from './state/types';
 import { LEGACY_FIELDS } from '../compat/checkout';
-
-const phone = (value: string) => {
-  const digits = value.replace(/\D/g, '');
-  return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : value;
-};
+import { phoneText } from '../engine/format';
 
 function address(checkout: CheckoutState, prefix: '' | 'billing_'): string {
   const f = (name: string) => checkout.fields[prefix + name]?.trim() ?? '';
@@ -35,7 +31,7 @@ export function bindReview(engine: Engine): () => void {
     for (const el of els) {
       const key = el.getAttribute('data-next-checkout-review') ?? '';
       let text = value(engine, key);
-      if (text && (el.getAttribute('data-next-format') === 'phone' || key === 'phone')) text = phone(text);
+      if (text && (el.getAttribute('data-next-format') === 'phone' || key === 'phone')) text = phoneText(text);
       el.classList.toggle('next-review-empty', !text);
       const shown = text || el.getAttribute('data-next-fallback') || '';
       if (el.textContent !== shown) el.textContent = shown;

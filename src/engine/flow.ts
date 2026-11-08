@@ -17,6 +17,33 @@ export function latestWins() {
   };
 }
 
+/**
+ * `latestWins` per key: a run supersedes the one before it with the same key. `dropPrevious()` aborts that
+ * one; call it after this run's requests started, so a request both share is not cancelled.
+ */
+export function keyedLatestWins<K>() {
+  const runs = new Map<K, AbortController>();
+  return {
+    start(key: K) {
+      const previous = runs.get(key);
+      const controller = new AbortController();
+      runs.set(key, controller);
+      return {
+        signal: controller.signal,
+        stale: () => runs.get(key) !== controller,
+        dropPrevious: () => previous?.abort(),
+        finish: () => void (runs.get(key) === controller && runs.delete(key)),
+      };
+    },
+    /** Aborts and forgets the key's run; returns nothing to wait for. */
+    cancel(key: K): void {
+      runs.get(key)?.abort();
+      runs.delete(key);
+    },
+    running: (key: K) => runs.has(key),
+  };
+}
+
 /** Runs tasks one after another, each after the last settled, whether it resolved or rejected. */
 export function serialize() {
   let tail: Promise<unknown> = Promise.resolve();

@@ -1,6 +1,7 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
 import type { CheckoutState } from '../state/types';
+import { countryOf } from '../state/phone';
 import { LEGACY_FIELD_ATTRS, LEGACY_FIELDS } from '../../compat/checkout';
 import { showField } from './errors';
 import { fieldText, v2Key } from './texts';
@@ -141,8 +142,7 @@ export function bindFields(
       if (value !== undefined && !(el instanceof HTMLSelectElement)) setValue(el, value);
       if (isCheckbox(el)) continue;
       const error = state.errors[name];
-      const rules =
-        state.rules[(name.startsWith('billing_') ? state.fields.billing_country : state.fields.country) ?? ''];
+      const rules = state.rules[countryOf(state.fields, name) ?? ''];
       if (error) showField(el, name, 'error', fieldText(name, error, rules), inline(name));
       else showField(el, name, left.has(name) && value?.trim() ? 'valid' : 'neutral');
     }

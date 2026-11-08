@@ -1,9 +1,16 @@
 import type { Engine } from '../engine/engine';
-import type { DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
-import type { CartItem } from '../engine/events/carts';
-import type { OrderItem } from '../engine/events/orders';
+import {
+  defined,
+  trackingCurrency,
+  trackingLineId,
+  trackingLines,
+  trackingValue,
+  type DestinationTrace,
+  type TrackingEvent,
+  type TrackingLine,
+  type TrackingName,
+} from '../engine/events/analytics';
 import { addDollars } from '../engine/format';
-import { untaxed } from '../engine/order';
 
 /**
  * One product of a GA4 event's `items`.
@@ -142,43 +149,12 @@ export const GA4: Partial<Record<TrackingName, Ga4Name>> = {
   promotion_selected: 'select_promotion',
 };
 
-type Line = CartItem | OrderItem;
 type Win = Window & { gtag?: (...args: unknown[]) => void };
 
-const linesOf = (e: TrackingEvent): Line[] => {
-  switch (e.event_type) {
-    case 'product_viewed':
-    case 'product_added_to_cart':
-    case 'product_removed_from_cart':
-      return [e.data];
-    case 'product_list_viewed':
-      return e.data;
-    case 'cart_updated':
-    case 'upsell_viewed':
-    case 'upsell_skipped':
-      return e.data.lines;
-    case 'checkout_started':
-    case 'checkout_contact_info_submitted':
-    case 'checkout_shipping_address_submitted':
-    case 'checkout_shipping_method_submitted':
-    case 'checkout_payment_info_submitted':
-      return e.data.cart.lines;
-    case 'checkout_completed':
-      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
-    case 'upsell_completed':
-      return [untaxed(e.data.upsell.line)];
-    default:
-      return [];
-  }
-};
-
-const defined = <T extends object>(o: T): T =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
-
-const item = (l: Line, index: number): Ga4Item => {
+const item = (l: TrackingLine, index: number): Ga4Item => {
   const discount = l.price !== undefined && l.original_price !== undefined ? l.original_price - l.price : 0;
   return defined({
-    item_id: l.sku || String('package_id' in l ? l.package_id : (l.product_id ?? l.id)),
+    item_id: trackingLineId(l),
     item_name: l.product_title,
     item_variant: l.variant_title,
     price: l.price,
@@ -188,21 +164,11 @@ const item = (l: Line, index: number): Ga4Item => {
   });
 };
 
-const valueOf = (lines: Line[]) => {
-  const priced = lines.filter((l) => l.price !== undefined);
-  return priced.length ? addDollars(priced.map((l) => l.price! * l.quantity)) : undefined;
-};
-
-const currencyOf = (e: TrackingEvent) => {
-  const data = e.data as { currency?: string; cart?: { currency?: string } };
-  return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency;
-};
-
-const ecommerce = (e: TrackingEvent, lines = linesOf(e)): Ga4Ecommerce => {
+const ecommerce = (e: TrackingEvent, lines = trackingLines(e)): Ga4Ecommerce => {
   const data = e.data as { coupons?: string[]; cart?: { coupons?: string[] } };
   return defined({
-    currency: currencyOf(e),
-    value: valueOf(lines),
+    currency: trackingCurrency(e),
+    value: trackingValue(lines),
     coupon: (data.coupons ?? data.cart?.coupons)?.[0],
     items: lines.map(item),
   });
@@ -214,7 +180,11 @@ export function ga4Event(e: TrackingEvent): Ga4Event | undefined {
     case 'checkout_contact_info_submitted':
       return {
         name: 'generate_lead',
-        params: defined({ currency: currencyOf(e), value: valueOf(linesOf(e)), lead_source: 'checkout' as const }),
+        params: defined({
+          currency: trackingCurrency(e),
+          value: trackingValue(trackingLines(e)),
+          lead_source: 'checkout' as const,
+        }),
       };
     case 'checkout_shipping_address_submitted':
     case 'checkout_shipping_method_submitted':

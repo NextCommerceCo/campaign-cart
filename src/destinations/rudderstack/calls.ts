@@ -1,4 +1,9 @@
-import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
+import {
+  defined as withoutUndefined,
+  trackingCurrency,
+  type TrackingEvent,
+  type TrackingName,
+} from '../../engine/events/analytics';
 import type { CartItem } from '../../engine/events/carts';
 import type { OrderItem } from '../../engine/events/orders';
 import { dollars } from '../../engine/format';
@@ -40,11 +45,6 @@ const defined = <T extends object>(o: T): T =>
 
 const total = (products: RudderStackProduct[]) => dollars(products.reduce((n, p) => n + p.price * p.quantity, 0));
 
-const currencyOf = (e: TrackingEvent) => {
-  const data = e.data as { currency?: string; cart?: { currency?: string } };
-  return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency ?? 'USD';
-};
-
 /**
  * @deprecated 0.4.x tax basis of RudderStack's order prices, kept for parity with what 0.4.x built
  * from `dl_purchase`: tax included when a line's price before discounts with tax is nearer its
@@ -81,7 +81,7 @@ export function rudderStackCalls(
     campaign_session_id: e.context.session_id,
   });
   const context: RudderStackContext = { page_type, page_name, ...campaignProps };
-  const currency = currencyOf(e);
+  const currency = trackingCurrency(e) ?? 'USD';
 
   const cartProduct = (l: CartItem, position: number): RudderStackProduct => {
     const pkg = engine.getPackage(l.package_id);
@@ -217,18 +217,16 @@ export function rudderStackCalls(
         ...(order && e.data.total_discount > 0 && { discount: e.data.total_discount }),
         ...(order && coupon?.refId === e.data.ref_id && coupon.code && { coupon: coupon.code }),
       };
-      const traits = Object.fromEntries(
-        Object.entries({
-          email: user?.email,
-          firstName: (b ? b.first_name || user?.first_name : user?.first_name) || undefined,
-          lastName: (b ? b.last_name || user?.last_name : user?.last_name) || undefined,
-          phone: (b ? b.phone || user?.phone : user?.phone) || undefined,
-          city: b && (b.city ?? ''),
-          state: b && (b.state ?? ''),
-          country: b?.country,
-          postalCode: b && (b.postcode ?? ''),
-        }).filter(([, v]) => v !== undefined),
-      ) as RudderStackTraits;
+      const traits: RudderStackTraits = withoutUndefined({
+        email: user?.email,
+        firstName: (b ? b.first_name || user?.first_name : user?.first_name) || undefined,
+        lastName: (b ? b.last_name || user?.last_name : user?.last_name) || undefined,
+        phone: (b ? b.phone || user?.phone : user?.phone) || undefined,
+        city: b && (b.city ?? ''),
+        state: b && (b.state ?? ''),
+        country: b?.country,
+        postalCode: b && (b.postcode ?? ''),
+      });
       const identify: RudderStackCall[] = Object.keys(traits).length
         ? [{ call: 'identify', userId: user?.email || e.event_id, traits }]
         : [];

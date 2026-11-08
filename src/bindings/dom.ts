@@ -21,6 +21,25 @@ export function onceVisible(el: Element, fn: () => void): void {
   observer.observe(el);
 }
 
+/** The elements under `root` matching `selector`, `root` first when it matches too. */
+export function matching<E extends Element = HTMLElement>(root: ParentNode, selector: string): E[] {
+  const els = [...root.querySelectorAll<E>(selector)];
+  if (root instanceof Element && root.matches(selector)) els.unshift(root as E);
+  return els;
+}
+
+/** The first of these `<meta name>` tags that has content. */
+export const metaContent = (...names: string[]): string | undefined =>
+  names.map((n) => document.querySelector<HTMLMetaElement>(`meta[name="${n}"]`)?.content).find(Boolean);
+
+const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c]!);
+
+/** An HTML template with each `{key}` that `pattern` captures replaced by its escaped value; unknown keys stay. */
+export const fillTemplate = (html: string, values: Record<string, string>, pattern: RegExp): string =>
+  html.replace(pattern, (raw, key: string) => (key in values ? escapeHtml(values[key]!) : raw));
+
 export function selectorIdOf(el: Element): string {
   return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';
 }

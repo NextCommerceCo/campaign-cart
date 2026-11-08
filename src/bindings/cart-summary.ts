@@ -1,6 +1,6 @@
 import { localeOf } from '../engine/format';
 import { cartTokens, lineTokens } from '../engine/cart/tokens';
-import { discountTokens } from '../engine/tokens';
+import { discountsOfKind, discountTokens } from '../engine/tokens';
 import type { BindContext, Render } from './context';
 import { applyValues, fillTokens, stamp, tokenValue } from './dom';
 
@@ -9,14 +9,7 @@ function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): voi
   const s = cart.summary;
   root.querySelectorAll<HTMLElement>('[data-next-discounts]').forEach((el) => {
     if (!scoped && (el.closest('[data-next-cart-summary]') || el.closest('[data-next-bundle-card]'))) return;
-    const kind = el.getAttribute('data-next-discounts');
-    const list = !s
-      ? []
-      : kind === 'offer'
-        ? s.offer_discounts
-        : kind === 'voucher'
-          ? s.voucher_discounts
-          : [...s.offer_discounts, ...s.voucher_discounts];
+    const list = discountsOfKind(s, el.getAttribute('data-next-discounts'));
     stamp(el, list, (d) => discountTokens(d, s?.currency, localeOf(b.engine.getState())));
   });
 }

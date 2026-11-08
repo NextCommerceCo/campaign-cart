@@ -30,10 +30,10 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        chunkFileNames: (chunk) =>
-          chunk.name === 'index' && chunk.facadeModuleId
-            ? `${chunk.facadeModuleId.split('/').at(-2)}-[hash].js`
-            : '[name]-[hash].js',
+        chunkFileNames: (chunk) => {
+          const entry = chunk.facadeModuleId ?? chunk.moduleIds.find((id) => /\/src\/[^/]+\/index\.ts$/.test(id));
+          return chunk.name === 'index' && entry ? `${entry.split('/').at(-2)}-[hash].js` : '[name]-[hash].js';
+        },
       },
     },
   },

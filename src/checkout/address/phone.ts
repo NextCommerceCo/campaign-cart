@@ -1,6 +1,6 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
-import { asciiDigits, formatPhone, PHONES } from '../state/phone';
+import { asciiDigits, countryOf, formatPhone, PHONES } from '../state/phone';
 import type { Fields } from '../form/fields';
 import { reformat } from '../form/reformat';
 
@@ -58,8 +58,8 @@ export function bindPhones(
   const bound = new Map<string, Bound>();
   const pauses = new Map<string, ReturnType<typeof setTimeout>>();
   const state = () => engine.getState().checkout;
-  const countryOf = (name: string) => state()?.fields[name.startsWith('billing_') ? 'billing_country' : 'country'];
-  const formatOf = (name: string) => state()?.rules[countryOf(name) ?? '']?.fields.phone_number?.format;
+  const fieldCountry = (name: string) => countryOf(state()?.fields, name);
+  const formatOf = (name: string) => state()?.rules[fieldCountry(name) ?? '']?.fields.phone_number?.format;
   const phoneOf = (target: EventTarget | null) => PHONES.find((name) => fields.get(name) === target);
 
   const mask = (name: string, input: HTMLInputElement, forward = false) => {
@@ -109,7 +109,7 @@ export function bindPhones(
       if (!phone) bound.set(name, (phone = attach(input)));
 
       const read = current.phones[name];
-      const country = read?.country ?? countryOf(name);
+      const country = read?.country ?? fieldCountry(name);
       if (country) {
         phone.flag.src = `${flags}/v1/flags/${encodeURIComponent(country.toLowerCase())}.svg`;
         input.setAttribute('data-next-phone-country', country);
@@ -118,7 +118,7 @@ export function bindPhones(
       if (read) input.setAttribute('data-next-phone-e164', read.value);
       else input.removeAttribute('data-next-phone-e164');
 
-      const rulesFor = formatOf(name) ? countryOf(name) : undefined;
+      const rulesFor = formatOf(name) ? fieldCountry(name) : undefined;
       if (rulesFor && rulesFor !== phone.maskedFor && document.activeElement !== input && input.value) {
         phone.maskedFor = rulesFor;
         const before = input.value;

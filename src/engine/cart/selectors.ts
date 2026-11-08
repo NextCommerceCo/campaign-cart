@@ -3,6 +3,7 @@ import { apiLines, lineKey, mergeLines } from './lines';
 import { cartItems, optionPrice, unitsOf } from './public';
 import type { Context } from '../engine';
 import type { Selector, SelectorOption } from '../events/selectors';
+import { keyedLatestWins } from '../flow';
 import { cents } from '../format';
 import { forcedBundle } from '../params';
 import type { CartGroup, CartLine, SelectorState, SelectorCard, SelectorMode, Slot, SummaryLine } from './types';
@@ -62,7 +63,7 @@ function quantityIn(card: SelectorCard, group: CartGroup): number | undefined {
   return groupKey(scaled) === groupKey(group) ? times : undefined;
 }
 
-const amount = (lines: SummaryLine[], field: 'total' | 'subtotal') =>
+const sumOf = (lines: SummaryLine[], field: 'total' | 'subtotal') =>
   lines.reduce((n, l) => n + cents(l[field]), 0) / 100;
 
 function publicOption(state: State, selector: SelectorState, card: SelectorCard): SelectorOption {
@@ -70,8 +71,8 @@ function publicOption(state: State, selector: SelectorState, card: SelectorCard)
   const lines = cartItems(state, apiLines(cardLines(selector, card)), quoted);
   const priced = !!quoted && lines.every((l) => l.price !== undefined);
   const quantity = unitsOf(lines);
-  const total = priced ? amount(quoted, 'total') : undefined;
-  const subtotal = priced ? amount(quoted, 'subtotal') : undefined;
+  const total = priced ? sumOf(quoted, 'total') : undefined;
+  const subtotal = priced ? sumOf(quoted, 'subtotal') : undefined;
   return {
     option_id: card.id,
     lines,
@@ -83,7 +84,7 @@ function publicOption(state: State, selector: SelectorState, card: SelectorCard)
 
 export function createSelectors(ctx: Context, cart: CartActions) {
   const { quotes } = cart;
-  const inFlight = new Map<string, AbortController>();
+  const runs = keyedLatestWins<string>();
   const bound = new Set<string>();
   const viewed = new Set<string>();
   const quotedOn = new Map<string, string>();
@@ -174,28 +175,28 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     };
     const unpriced = requests.filter((r) => !quotes.stored(r.body, upsell));
     const unchecked = requests.filter((r) => !quotes.fresh(r.body, upsell));
-    const previous = inFlight.get(id);
-    inFlight.delete(id);
+    const run = runs.start(id);
     if (!unpriced.length) settle();
-    if (!unchecked.length) return previous?.abort();
-    const controller = new AbortController();
-    inFlight.set(id, controller);
-    const pricing = Promise.all(unchecked.map((r) => quotes.calculate(r.body, { signal: controller.signal, upsell })));
-    previous?.abort();
+    if (!unchecked.length) {
+      run.finish();
+      return run.dropPrevious();
+    }
+    const pricing = Promise.all(unchecked.map((r) => quotes.calculate(r.body, { signal: run.signal, upsell })));
+    run.dropPrevious();
     if (unpriced.length) {
       set(id, { quoting: true });
       ctx.emit('selector.pricing', publicSelector(id));
     }
     try {
       await pricing;
-      if (inFlight.get(id) !== controller) return;
+      if (run.stale()) return;
       settle();
     } catch (err) {
-      if (inFlight.get(id) !== controller) return;
+      if (run.stale()) return;
       set(id, { quoting: false });
       ctx.fail('selector.price', err);
     } finally {
-      if (inFlight.get(id) === controller) inFlight.delete(id);
+      run.finish();
     }
   };
 
@@ -267,7 +268,7 @@ export function createSelectors(ctx: Context, cart: CartActions) {
     },
     campaignLoaded(): void {
       for (const [id, selector] of Object.entries(ctx.getState().selectors)) {
-        if (quotedOn.get(id) !== basis() || (!selector.quotes && !inFlight.has(id))) void quote(id);
+        if (quotedOn.get(id) !== basis() || (!selector.quotes && !runs.running(id))) void quote(id);
       }
     },
   };

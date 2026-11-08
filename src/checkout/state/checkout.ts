@@ -5,7 +5,7 @@ import { newId } from '../../engine/id';
 import { createContact, type Lead } from './contact';
 import { paymentCode, publicAddress } from './order-body';
 import { createPlaceOrder } from './place-order';
-import { asciiDigits, PHONES, phoneFieldOf, phoneKey } from './phone';
+import { asciiDigits, countryOf, PHONES, phoneFieldOf, phoneKey } from './phone';
 import {
   addressValid,
   fieldError,
@@ -41,9 +41,6 @@ const emptyCheckout = (): CheckoutState => ({
   express: undefined,
   steps: undefined,
 });
-
-const countryOf = (fields: Record<string, string>, name: string) =>
-  name.startsWith('billing_') ? fields.billing_country : fields.country;
 
 export function createCheckout(
   ctx: Context,
@@ -208,8 +205,7 @@ export function createCheckout(
 
     async leave(name: string): Promise<void> {
       const { fields, rules } = state();
-      const country = name.startsWith('billing_') ? fields.billing_country : fields.country;
-      const code = fieldError(name, fields[name] ?? '', false, rules[country ?? '']);
+      const code = fieldError(name, fields[name] ?? '', false, rules[countryOf(fields, name) ?? '']);
       if (code) set({ errors: { ...state().errors, [name]: { code } } });
       if (PHONES.includes(name)) await checkPhone(name, true);
       if (name === 'postcode' || name === 'state') await verifyPostcode();

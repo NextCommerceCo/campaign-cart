@@ -1,5 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { CardRef, ValueScope } from '../engine/values';
+import { matching } from './dom';
 
 export type Render = () => void;
 
@@ -20,10 +21,9 @@ export class BindContext {
   }
 
   each<E extends Element = HTMLElement>(root: ParentNode, attr: string, fn: (el: E) => void): void {
-    const selector = `[${attr}]`;
-    const els = [...root.querySelectorAll<E>(selector)];
-    if (root instanceof Element && root.matches(selector)) els.unshift(root as E);
-    els.filter((el) => this.claim(el, attr)).forEach(fn);
+    matching<E>(root, `[${attr}]`)
+      .filter((el) => this.claim(el, attr))
+      .forEach(fn);
   }
 
   cardOf(el: Element): CardRef | undefined {

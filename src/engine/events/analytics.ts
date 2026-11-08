@@ -5,6 +5,8 @@ import type { EventContext } from './context';
 import type { Order, OrderItem } from './orders';
 import type { Promotion, PromotionEvents } from './promotions';
 import type { Upsell } from './upsells';
+import { addDollars } from '../format';
+import { untaxed } from '../order';
 
 /**
  * Every tracking event the analytics chunk sends, and its `data`: the same objects the SDK's
@@ -174,3 +176,53 @@ export interface AnalyticsEvents {
   /** @internal One tracking event, for `next.analytics.on`. */
   analytics: TrackingEvent;
 }
+
+/** A product line of a tracking event: a cart line, or an order line before tax. */
+export type TrackingLine = CartItem | OrderItem;
+
+/** The product lines a tracking event is about; an order's without its upsell lines. */
+export function trackingLines(e: TrackingEvent): TrackingLine[] {
+  switch (e.event_type) {
+    case 'product_viewed':
+    case 'product_added_to_cart':
+    case 'product_removed_from_cart':
+      return [e.data];
+    case 'product_list_viewed':
+      return e.data;
+    case 'cart_updated':
+    case 'upsell_viewed':
+    case 'upsell_skipped':
+      return e.data.lines;
+    case 'checkout_started':
+    case 'checkout_contact_info_submitted':
+    case 'checkout_shipping_address_submitted':
+    case 'checkout_shipping_method_submitted':
+    case 'checkout_payment_info_submitted':
+      return e.data.cart.lines;
+    case 'checkout_completed':
+      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
+    case 'upsell_completed':
+      return [untaxed(e.data.upsell.line)];
+    default:
+      return [];
+  }
+}
+
+/** `Σ price × quantity` of the priced lines; none when no line is priced. */
+export const trackingValue = (lines: TrackingLine[]): number | undefined => {
+  const priced = lines.filter((l) => l.price !== undefined);
+  return priced.length ? addDollars(priced.map((l) => l.price! * l.quantity)) : undefined;
+};
+
+export const trackingCurrency = (e: TrackingEvent): string | undefined => {
+  const data = e.data as { currency?: string; cart?: { currency?: string } };
+  return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency;
+};
+
+/** A line's SKU, else its package id (a cart line) or product id, else its order line id. */
+export const trackingLineId = (l: TrackingLine): string =>
+  l.sku || String('package_id' in l ? l.package_id : (l.product_id ?? l.id));
+
+/** The object without its `undefined` fields, as vendor payloads are sent. */
+export const defined = <T extends object>(o: T): T =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;

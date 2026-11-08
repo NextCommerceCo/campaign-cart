@@ -1,6 +1,7 @@
 import { mergeLines, toggleGroup } from './lines';
 import { publicToggle } from './public';
 import type { Context } from '../engine';
+import { keyedLatestWins } from '../flow';
 import type { Quotes } from './quotes';
 import type { CartSummary } from './types';
 import type { Selector } from '../events/selectors';
@@ -8,7 +9,7 @@ import type { Selector } from '../events/selectors';
 export { toggleGroup };
 
 export function createToggles(ctx: Context, quotes: Quotes) {
-  const inFlight = new Map<number, AbortController>();
+  const runs = keyedLatestWins<number>();
   const viewed = new Set<number>();
 
   const selectorOf = (packageId: number, quantity: number): Selector => {
@@ -36,8 +37,8 @@ export function createToggles(ctx: Context, quotes: Quotes) {
       };
       const key = quotes.key(body);
       if (toggles[packageId]?.key === key) return;
-      inFlight.get(packageId)?.abort();
-      inFlight.delete(packageId);
+      const run = runs.start(packageId);
+      run.dropPrevious();
       const settle = (summary: CartSummary) => {
         ctx.update('toggles', {
           [packageId]: { key, quantity, line: summary.lines.find((l) => l.package_id === packageId) },
@@ -46,24 +47,20 @@ export function createToggles(ctx: Context, quotes: Quotes) {
       };
       const stored = quotes.stored(body);
       if (stored) settle(stored);
-      if (quotes.fresh(body)) return;
-      const controller = new AbortController();
-      inFlight.set(packageId, controller);
+      if (quotes.fresh(body)) return run.finish();
       if (!stored) {
         ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
         ctx.emit('selector.pricing', selectorOf(packageId, quantity));
       }
       quotes
-        .calculate(body, { signal: controller.signal })
+        .calculate(body, { signal: run.signal })
         .then((summary) => {
-          if (inFlight.get(packageId) === controller) settle(summary);
+          if (!run.stale()) settle(summary);
         })
         .catch((err: unknown) => {
-          if (inFlight.get(packageId) === controller) ctx.fail('selector.price', err);
+          if (!run.stale()) ctx.fail('selector.price', err);
         })
-        .finally(() => {
-          if (inFlight.get(packageId) === controller) inFlight.delete(packageId);
-        });
+        .finally(run.finish);
     },
   };
 }

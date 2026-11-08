@@ -2,6 +2,7 @@ import { variantChoices } from '../engine/cart/variants';
 import type { Engine } from '../engine/engine';
 import type { Query } from '../engine/query';
 import type { Render } from '../bindings/context';
+import { matching } from '../bindings/dom';
 import type { AttributeContext } from './context';
 
 type Model = Record<string, unknown>;
@@ -131,10 +132,8 @@ function bindProperty(input: HTMLInputElement, a: AttributeContext): void {
 
 /** `data-next-field` outside a checkout form: `variants.<code>` pickers and a slot's `properties.<name>`. */
 export function bindFields(root: ParentNode, a: AttributeContext): Render[] {
-  const els = [...root.querySelectorAll<HTMLElement>('[data-next-field]')];
-  if (root instanceof HTMLElement && root.matches('[data-next-field]')) els.unshift(root);
   const renders: Render[] = [];
-  for (const el of els) {
+  for (const el of matching(root, '[data-next-field]')) {
     if (el.closest('form[data-next-checkout]') || !a.b.claim(el, 'data-next-field')) continue;
     const name = el.getAttribute('data-next-field') ?? '';
     if (name.startsWith('variants.')) renders.push(bindPicker(el, name.slice('variants.'.length), a));

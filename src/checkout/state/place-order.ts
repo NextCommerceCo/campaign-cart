@@ -1,7 +1,7 @@
 import { orderError, orderFailure } from '../../engine/api';
 import type { CartActions } from '../../engine/cart/cart';
 import type { Context } from '../../engine/engine';
-import { publicOrder, purchaseId, REPORTED, REPORTED_KEEP } from '../../engine/order';
+import { createLedger, publicOrder, purchaseId } from '../../engine/order';
 import { nextUrl } from '../../engine/params';
 import type { ApiOrder, CheckoutError } from '../../engine/types';
 import { orderBody, type OrderUrls, paymentCode } from './order-body';
@@ -50,9 +50,10 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>) => ctx.update('checkout', patch);
 
+  const ledger = createLedger(ctx);
+
   const markPaid = (order: ApiOrder) => {
-    const reported = ctx.local.get<string[]>(REPORTED) ?? [];
-    ctx.local.set(REPORTED, [...new Set([...reported, purchaseId(order)])].slice(-REPORTED_KEEP));
+    ledger.mark([purchaseId(order)]);
     ctx.update('order', { paidOrder: order }, { silent: true });
   };
 

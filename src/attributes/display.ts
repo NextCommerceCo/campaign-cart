@@ -1,29 +1,21 @@
-import { setVisible } from '../bindings/dom';
+import { matching, setVisible } from '../bindings/dom';
 import type { Render } from '../bindings/context';
 import { evaluate, parseExpression } from './condition';
 import type { AttributeContext } from './context';
 import { write } from './value';
 
-const own = <E extends Element = HTMLElement>(root: ParentNode, attr: string): E[] => {
-  const selector = `[${attr}]`;
-  const els = [...root.querySelectorAll<E>(selector)];
-  if (root instanceof Element && root.matches(selector)) els.unshift(root as E);
-  return els;
-};
-
 /** `data-next-for="path"`: the object its children read short paths from. */
 export function bindFor(root: ParentNode, a: AttributeContext): Render[] {
-  for (const el of own(root, 'data-next-for')) {
-    if (!a.b.claim(el, 'data-next-for')) continue;
+  a.b.each(root, 'data-next-for', (el) => {
     const path = el.getAttribute('data-next-for') ?? '';
     a.setScope(el, () => a.query.get(path, a.outerScopeOf(el)));
-  }
+  });
   return [];
 }
 
 /** `data-next-query="path"`: writes the value into the element by its kind. */
 export function bindQuery(root: ParentNode, a: AttributeContext): Render[] {
-  return own(root, 'data-next-query')
+  return matching(root, '[data-next-query]')
     .filter((el) => a.b.claim(el, 'data-next-query'))
     .map((el) => {
       const path = el.getAttribute('data-next-query') ?? '';
@@ -39,7 +31,7 @@ export function bindQuery(root: ParentNode, a: AttributeContext): Render[] {
 export function bindShow(root: ParentNode, a: AttributeContext, only?: Set<Element>): Render[] {
   const renders: Render[] = [];
   for (const attr of ['data-next-show', 'data-next-hide'] as const) {
-    for (const el of own(root, attr)) {
+    for (const el of matching(root, `[${attr}]`)) {
       if (only && !only.has(el)) continue;
       if (!a.b.claim(el, attr)) continue;
       const source = el.getAttribute(attr) ?? '';
@@ -74,7 +66,7 @@ const identity = (item: unknown) => {
  * keeps its focus and text while prices update.
  */
 export function bindEach(root: ParentNode, a: AttributeContext): Render[] {
-  return own(root, 'data-next-each')
+  return matching(root, '[data-next-each]')
     .filter((el) => a.b.claim(el, 'data-next-each'))
     .flatMap((container) => {
       const template = container.querySelector<HTMLTemplateElement>(':scope > template');

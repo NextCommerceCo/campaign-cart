@@ -1,10 +1,11 @@
+import type { Context } from './engine';
 import type { Address } from './events/checkout';
 import type { Order, OrderItem } from './events/orders';
+import { dollars as amount } from './format';
 import type { ApiOrder, ApiOrderAddress, ApiOrderLine } from './types';
 
-const amount = (value?: string | number | null) => Math.round(Number(value ?? 0) * 100) / 100;
-
-function address(raw?: ApiOrderAddress): Address | undefined {
+/** The public Address of an API address (`line4` is the city); none without a country. */
+export function addressOf(raw?: ApiOrderAddress): Address | undefined {
   if (!raw?.country) return undefined;
   return {
     first_name: raw.first_name ?? '',
@@ -53,9 +54,25 @@ export function untaxed<L extends Priced>(line: L): L {
   };
 }
 
-/** The browser's ledger of what was reported once: paid orders, upsell lines, failed payments. */
 export const REPORTED = 'reported';
-export const REPORTED_KEEP = 50;
+const REPORTED_KEEP = 50;
+
+/** The browser's ledger of what was reported once: paid orders (`purchaseId`), upsell lines (`upsellId`), `failed:<ref_id>`. */
+export function createLedger(ctx: Pick<Context, 'local'>) {
+  const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
+  return {
+    has: (id: string) => reported().includes(id),
+    mark(ids: string[]): void {
+      ctx.local.set(REPORTED, [...new Set([...reported(), ...ids])].slice(-REPORTED_KEEP));
+    },
+  };
+}
+
+export type Ledger = ReturnType<typeof createLedger>;
+
+/** The API's payment method code, such as `card_token`; an order sends it as a string or `{ code }`. */
+export const paymentMethodCode = (method: ApiOrder['payment_method']): string =>
+  typeof method === 'string' ? method : (method?.code ?? '');
 
 /** The ledger key of a paid order: `order.paid` and `purchase` come once per key. */
 export const purchaseId = (order: ApiOrder) => String(order.number ?? order.ref_id);
@@ -69,15 +86,15 @@ export const appliedCodes = (raw: ApiOrder, coupon?: { refId: string; codes: str
 
 /** The Order every `order.*` event carries, from the Campaigns API's order. */
 export function publicOrder(raw: ApiOrder, coupons: string[] = []): Order {
-  const method = typeof raw.payment_method === 'string' ? raw.payment_method : raw.payment_method?.code;
+  const method = paymentMethodCode(raw.payment_method);
   const user = raw.user && {
     ...(raw.user.email && { email: raw.user.email }),
     first_name: raw.user.first_name ?? '',
     last_name: raw.user.last_name ?? '',
     ...(raw.user.phone_number && { phone: raw.user.phone_number }),
   };
-  const shipping = address(raw.shipping_address);
-  const billing = address(raw.billing_address);
+  const shipping = addressOf(raw.shipping_address);
+  const billing = addressOf(raw.billing_address);
   return {
     ref_id: raw.ref_id,
     ...(raw.number !== undefined && { number: String(raw.number) }),

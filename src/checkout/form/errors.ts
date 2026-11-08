@@ -1,4 +1,4 @@
-const WRAPPERS =
+export const WRAPPERS =
   '.form-group, .frm-flds, .form-input, .select-form-wrapper, .field-wrapper, .input-wrapper, .form-field';
 
 const wrapperOf = (field: Element) => field.closest(WRAPPERS) ?? field.parentElement;

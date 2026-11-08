@@ -1,4 +1,4 @@
-import { asciiDigits, plausiblePhone } from './phone';
+import { asciiDigits, countryOf, plausiblePhone } from './phone';
 import { askGeo, type VisitorGeo } from '../../engine/geo';
 import { fill, type Texts } from '../../engine/texts';
 import type { Send } from '../../engine/types';
@@ -186,7 +186,7 @@ export function formErrors(checkout: CheckoutState, scope: Scope, phoneRequired 
     const billing = name.startsWith('billing_');
     if (Array.isArray(scope) ? !scope.includes(name) : billing && (sameAsShipping || scope !== 'all')) continue;
     if (checkout.phones[name]) continue;
-    const country = rules[(billing ? fields.billing_country : fields.country) ?? ''];
+    const country = rules[countryOf(fields, name) ?? ''];
     if (!hasField(country, name)) continue;
     const error = fieldError(name, fields[name] ?? '', required.includes(name), country);
     if (error) errors[name] = error;

@@ -6,7 +6,7 @@ import type { SelectorCard, SelectorMode } from '../engine/cart/types';
 import { cents } from '../engine/format';
 import type { Engine } from '../engine/engine';
 import type { Render } from '../bindings/context';
-import { isFormControl, onceVisible } from '../bindings/dom';
+import { isFormControl, matching, onceVisible } from '../bindings/dom';
 import type { AttributeContext } from './context';
 
 type Model = Record<string, unknown>;
@@ -257,12 +257,8 @@ function bindOffer(el: HTMLElement, a: AttributeContext): Render[] {
 /** `data-next-selector` with its `data-next-option`s, and an option on its own: an order bump, or an offer after the order. */
 export function bindOptions(root: ParentNode, a: AttributeContext): Render[] {
   const renders: Render[] = [];
-  const selectors = [...root.querySelectorAll<HTMLElement>('[data-next-selector]')];
-  if (root instanceof HTMLElement && root.matches('[data-next-selector]')) selectors.unshift(root);
-  for (const el of selectors) if (a.b.claim(el, 'data-next-selector')) renders.push(...bindSelector(el, a));
-  const options = [...root.querySelectorAll<HTMLElement>('[data-next-option]')];
-  if (root instanceof HTMLElement && root.matches('[data-next-option]')) options.unshift(root);
-  for (const el of options) {
+  a.b.each(root, 'data-next-selector', (el) => renders.push(...bindSelector(el, a)));
+  for (const el of matching(root, '[data-next-option]')) {
     if (el.closest('[data-next-selector]') || !a.b.claim(el, 'data-next-option')) continue;
     renders.push(...(orderPage() ? bindOffer(el, a) : bindBump(el, a)));
   }

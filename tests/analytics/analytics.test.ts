@@ -594,7 +594,11 @@ describe('analytics', () => {
     const one = withUpsell(ORDER, 99, 1);
     const first = await run(one);
     expect(first.sent).toEqual(['R1-US1']);
-    expect(first.engine.order!.reported()).toEqual(['1001', upsellId(one, one.lines!.at(-1)!), 'purchase:1001']);
+    expect(first.engine.attach((ctx) => ctx.local.get(REPORTED))).toEqual([
+      '1001',
+      upsellId(one, one.lines!.at(-1)!),
+      'purchase:1001',
+    ]);
     const two = withUpsell(one, 100, 2);
     expect((await run(two)).sent).toEqual(['R1-US2']);
     expect((await run(two)).sent).toEqual([]);
