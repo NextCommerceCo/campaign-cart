@@ -9,6 +9,7 @@ test-results/
 docs/site/
 docs/.staged/
 docs/.staged-home.md
+docs/.legacy/
 dist/
 dev/campaigns/
 .campaigns/

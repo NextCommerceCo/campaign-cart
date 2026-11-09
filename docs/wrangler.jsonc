@@ -1,0 +1,12 @@
+// Assets-only Worker for the docs site; .github/workflows/docs-deploy.yml deploys it.
+// Workers static assets rather than Pages: one folder per release outgrows the Pages
+// 20,000-file limit.
+{
+  "name": "campaign-cart-docs",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+}
