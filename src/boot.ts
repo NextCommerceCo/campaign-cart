@@ -181,7 +181,7 @@ function pageChunks(
         events: legacy.widgets,
       }),
     );
-  const i18n = document.querySelector('[data-next-i18n]') ? import('./compat/i18n') : undefined;
+  const i18n = document.querySelector('[data-next-i18n]') ? import('./attributes/i18n') : undefined;
   const slots = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]')
     ? import('./bindings/slots')
     : undefined;

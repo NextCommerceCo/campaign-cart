@@ -174,7 +174,7 @@ those tags another source.
 | `data-next-fallback`                     |          0 | Supported             |                                                                                             |
 | `data-next-format`                       |         38 | Supported             |                                                                                             |
 | `data-next-hide`                         |         21 | Supported             |                                                                                             |
-| `data-next-i18n`                         |          1 | Deprecated            | `compat/i18n.ts`                                                                            |
+| `data-next-i18n`                         |          1 | Supported             | `attributes/i18n.ts`                                                                        |
 | `data-next-id`                           |          0 | Supported             | 0.4.x alias of `data-next-selector-id`                                                      |
 | `data-next-in-cart`                      |          0 | Supported             |                                                                                             |
 | `data-next-include-shipping`             |          4 | Ignored (documented)  | 0.4.x never sent it                                                                         |

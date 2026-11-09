@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bindI18n, parseI18n } from '../../src/compat/i18n';
+import { bindI18n, parseI18n } from '../../src/attributes/i18n';
 import { Logger } from '../../src/engine/runtime/log';
 
 const locales =

@@ -54,8 +54,8 @@ function bindElement(el: Element, log: Logger): (translate: (key: string) => str
 }
 
 /**
- * @deprecated 0.4.x `data-next-i18n`: a key's text in `lang`, from the page's `translations` (`page`), then
- * i18n-rules'; the page's own text when neither has it.
+ * `data-next-i18n`: a key's text in `lang`, from the page's `translations` (`page`), then i18n-rules'; the
+ * page's own text when neither has it.
  */
 export function bindI18n(
   root: ParentNode,

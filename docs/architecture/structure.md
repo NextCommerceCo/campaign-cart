@@ -164,6 +164,8 @@ src/
     options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
     actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
     fields.ts                      data-next-field outside a checkout: variants.<code> pickers, a slot's properties
+    i18n.ts            i18n        data-next-i18n: a key's text from nextConfig.translations, then i18n-rules' /v1/locales;
+                                   its own chunk, loaded by any page with [data-next-i18n]
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     hooks.ts                       CheckoutHooks: what compat/checkout.ts adds; bindCheckout calls them
@@ -220,8 +222,6 @@ src/
                                    the old SDK's stored personal data
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
     widgets.ts         widgets     deprecated page widgets 0.4.x pages rely on: accordion, tooltip, scroll hint, countdown
-    i18n.ts            i18n        data-next-i18n: a key's text from nextConfig.translations, then i18n-rules' /v1/locales;
-                                   legacy/globals.ts reads nextConfig.locale and translations
     checkout.ts        checkout    legacyCheckout: nextConfig address and payment options, lead attributes, step guard and
                                    the 0.4.x DOM events, as checkout/hooks.ts hooks; the checkout's 0.4.x event names
     order.ts           order       the old offer attribute, the order's 0.4.x event names
@@ -277,7 +277,7 @@ src/
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
-`compat/exit-intent.ts`, `compat/widgets.ts`, `compat/i18n.ts`, `compat/legacy/index.ts` (with the `events.ts` and
+`attributes/i18n.ts`, `compat/exit-intent.ts`, `compat/widgets.ts`, `compat/legacy/index.ts` (with the `events.ts` and
 `payloads.ts` beside it), plus `compat/checkout.ts`, `compat/order.ts` and `compat/analytics/`,
 which only their own chunk may import statically.
 
