@@ -1,5 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Upsell } from '../engine/events/upsells';
+import type { ApiOrder, ApiOrderLine, Package } from '../engine/types';
+import type { OrderActions } from '../order/state';
 import { ACCEPT_WORDS, NEXT_URL_ATTRS } from '../order/upsell';
 import { selectorIdOf } from '../dom/dom';
 import { addLegacyEvents, legacyEvent, legacyFire } from './legacy/registry';
@@ -81,4 +83,87 @@ export function legacyOrderEvents(engine: Engine): void {
     adding.add(offer);
     legacyFire(engine, 'upsell:adding', { packageId: packageOf(engine, offer) });
   });
+}
+
+const QTY_TOGGLE = 'data-next-upsell-quantity-toggle';
+
+/**
+ * @deprecated `data-next-upsell-quantity-toggle="n"`: a click sets the offer's `data-next-quantity` and marks that
+ * toggle `next-selected`. Use `data-next-quantity` on the offer, or a bundle selector inside it.
+ */
+export function legacyQuantityToggles(): void {
+  for (const offer of document.querySelectorAll<HTMLElement>('[data-next-upsell]')) {
+    const toggles = [...offer.querySelectorAll<HTMLElement>(`[${QTY_TOGGLE}]`)];
+    if (!toggles.length) continue;
+    const select = (qty: number) => {
+      offer.setAttribute('data-next-quantity', String(qty));
+      for (const t of toggles) t.classList.toggle('next-selected', Number(t.getAttribute(QTY_TOGGLE)) === qty);
+    };
+    select(Number(offer.getAttribute('data-next-quantity')) || 1);
+    for (const t of toggles) t.addEventListener('click', () => select(Number(t.getAttribute(QTY_TOGGLE)) || 1));
+  }
+}
+
+export interface LegacyUpsellOptions {
+  packageId?: number;
+  quantity?: number;
+  items?: Array<{ packageId: number; quantity?: number }>;
+}
+
+export interface LegacyUpsellApi {
+  /** @deprecated Use `next.actions.acceptUpsell({ items: '12x2' })` or `data-next-upsell-action="add"`. Throws as 0.4.x did. */
+  addUpsell(o: LegacyUpsellOptions): Promise<{ order: ApiOrder; addedLines: ApiOrderLine[]; totalValue: number }>;
+  /** @deprecated Read `next.snapshot().order`. */
+  canAddUpsells(): boolean;
+  /** @deprecated The package ids of the order's upsell lines, as strings. */
+  getCompletedUpsells(): string[];
+  /** @deprecated Whether the order has an upsell line of this package. */
+  isUpsellAlreadyAdded(packageId: number): boolean;
+  /** @deprecated The values of one variant attribute across the product's packages, sorted. */
+  getAvailableVariantAttributes(productId: number, code: string): string[];
+  /** @deprecated The first package of the product with every one of these attribute values. */
+  getPackageByVariantSelection(productId: number, picked: Record<string, string>): Package | null;
+}
+
+/** @deprecated The order chunk's 0.4.x `window.next` methods: post-purchase upsells and the variant lookups their scripts use. */
+export function legacyUpsellApi(engine: Engine, order: OrderActions): LegacyUpsellApi {
+  const state = () => engine.getState().order;
+  const upsellLines = (o?: ApiOrder) => (o?.lines ?? []).filter((l) => l.is_upsell);
+  const completed = () => upsellLines(state()?.order).map((l) => String(l.package ?? ''));
+  const packagesOf = (productId: number) =>
+    (engine.getState().campaign?.packages ?? []).filter((p) => p.product_id === productId);
+  return {
+    async addUpsell({ packageId, quantity, items }) {
+      const before = state()?.order;
+      if (!before) throw new Error('No order found. Upsells can only be added after order completion.');
+      const lines = items?.length
+        ? items.map((i) => ({ packageId: i.packageId, quantity: i.quantity || 1 }))
+        : packageId
+          ? [{ packageId, quantity: quantity || 1 }]
+          : [];
+      if (!lines.length) throw new Error('Either packageId or items array must be provided');
+      const result = await order.accept({ lines }, location.pathname);
+      if (result !== 'accepted' && result !== 'repeat') throw new Error(`Failed to add upsell: ${result}`);
+      const after = state()!.order!;
+      const known = new Set(upsellLines(before).map((l) => String(l.id)));
+      const addedLines = upsellLines(after).filter((l) => !known.has(String(l.id)));
+      const totalValue = addedLines.reduce((n, l) => n + Number(l.price_incl_tax || 0), 0);
+      return { order: after, addedLines, totalValue };
+    },
+    canAddUpsells: () => state()?.status === 'ready' && !!state()?.order?.supports_post_purchase_upsells,
+    getCompletedUpsells: completed,
+    isUpsellAlreadyAdded: (packageId) => completed().includes(String(packageId)),
+    getAvailableVariantAttributes: (productId, code) => {
+      const values = packagesOf(productId).flatMap((p) =>
+        (p.product_variant_attribute_values ?? []).filter((a) => a.code === code).map((a) => a.value),
+      );
+      return [...new Set(values)].sort();
+    },
+    getPackageByVariantSelection: (productId, picked) =>
+      packagesOf(productId).find((p) =>
+        Object.entries(picked).every(([code, value]) =>
+          p.product_variant_attribute_values?.some((a) => a.code === code && a.value === value),
+        ),
+      ) ?? null,
+  };
 }

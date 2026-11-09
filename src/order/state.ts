@@ -48,7 +48,8 @@ declare module '../engine/engine' {
 const ORDER_TTL = 15 * 60 * 1000;
 const LOAD_TIMEOUT = 10_000;
 
-export type Accepted = 'accepted' | 'repeat' | 'unsupported' | 'failed' | 'busy';
+/** `empty`: the offer has no package and no picked option, so nothing was sent. */
+export type Accepted = 'accepted' | 'repeat' | 'unsupported' | 'failed' | 'busy' | 'empty';
 
 type SavedCheckout = Partial<NonNullable<State['checkout']>>;
 
@@ -238,7 +239,7 @@ export function createOrder(ctx: Context, cart: CartActions) {
       if (!body.length) {
         const name = offer.selectorId ? `selector "${offer.selectorId}"` : 'no selector';
         ctx.log.warn(`upsell offer on ${page} (${name}) has nothing to add: no package and no picked option`);
-        return 'failed';
+        return 'empty';
       }
 
       const upsell = upsellOf(ctx, offer, page);

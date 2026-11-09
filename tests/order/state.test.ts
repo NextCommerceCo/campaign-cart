@@ -404,7 +404,7 @@ describe('order', () => {
     const { engine, order, upsells } = await setup();
     const warn = vi.spyOn(engine.log, 'warn').mockImplementation(() => {});
     await order.load('R1');
-    expect(await order.accept({ selectorId: 'missing' }, '/up-1/')).toBe('failed');
+    expect(await order.accept({ selectorId: 'missing' }, '/up-1/')).toBe('empty');
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/\/up-1\/.*"missing".*nothing to add/));
     expect(upsells()).toHaveLength(0);
   });

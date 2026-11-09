@@ -39,7 +39,7 @@ function bindOffer(
   navigate: (url: string) => void,
   page: string,
   offer: HTMLElement,
-  spec: Offer,
+  spec: () => Offer,
 ): () => void {
   const buttons = [...offer.querySelectorAll<HTMLElement>('[data-next-upsell-action]')];
   const go = (url: string | undefined, delay: number) => url && setTimeout(() => navigate(url), delay);
@@ -50,12 +50,12 @@ function bindOffer(
   const view = () => {
     if (viewed || !shown || !onScreen) return;
     viewed = true;
-    order.view(spec, page);
+    order.view(spec(), page);
   };
   const show = () => {
     if (shown || !engine.getState().order?.order) return;
     shown = true;
-    order.shown(spec, page);
+    order.shown(spec(), page);
     view();
   };
   const seen = () => {
@@ -74,13 +74,17 @@ function bindOffer(
       const url = targetUrl(button, accept, engine);
       if (!accept) {
         leaving = true;
-        order.skip(spec, page);
+        order.skip(spec(), page);
         offer.classList.add('next-skipped');
         return go(url, 0);
       }
       offer.classList.add('next-processing');
-      const result: Accepted = await order.accept(spec, page);
+      const result: Accepted = await order.accept(spec(), page);
       if (result === 'busy') return offer.classList.remove('next-processing');
+      if (result === 'empty') {
+        offer.classList.remove('next-processing');
+        return flash(offer, 'next-error', 5000);
+      }
       leaving = true;
       if (result === 'accepted' || result === 'repeat') {
         flash(offer, 'next-success', 3000);
@@ -98,7 +102,8 @@ function bindOffer(
       const available = !!state.order?.supports_post_purchase_upsells;
       offer.classList.toggle('next-available', available);
       offer.classList.toggle('next-hidden', !available);
-      const quoting = spec.selectorId && engine.selectors.get(spec.selectorId)?.quoting;
+      const { selectorId } = spec();
+      const quoting = selectorId && engine.selectors.get(selectorId)?.quoting;
       if (available && !quoting) show();
     }
     const busy = state?.status === 'accepting' || leaving;
@@ -114,6 +119,6 @@ export function bindUpsells(
 ): Array<() => void> {
   const page = location.pathname;
   return [...document.querySelectorAll<HTMLElement>('[data-next-upsell]')].map((offer) =>
-    bindOffer(engine, order, navigate, page, offer, offerOf(offer, offerSelector)),
+    bindOffer(engine, order, navigate, page, offer, () => offerOf(offer, offerSelector)),
   );
 }

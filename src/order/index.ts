@@ -4,7 +4,7 @@ import { orderValue } from './values';
 import { registerValues } from '../engine/display/values';
 import { bindReceipt } from './receipt';
 import { bindUpsells } from './upsell';
-import { legacyOfferSelector, legacyOrderEvents } from '../compat/order';
+import { legacyOfferSelector, legacyOrderEvents, legacyQuantityToggles, legacyUpsellApi } from '../compat/order';
 
 export async function bindOrder(
   engine: Engine,
@@ -14,6 +14,8 @@ export async function bindOrder(
   engine.order = order;
   registerValues('order', orderValue);
 
+  legacyQuantityToggles();
+  Object.assign((window as { next?: object }).next ?? {}, legacyUpsellApi(engine, order));
   const renders = [...bindUpsells(engine, order, navigate, legacyOfferSelector), ...bindReceipt(engine)];
   legacyOrderEvents(engine);
   const render = () => renders.forEach((r) => r());
