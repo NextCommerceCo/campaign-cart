@@ -18,6 +18,11 @@ Writes a value of the object model into the element and keeps it current. The pa
 Inside an option, an `each` row or a `data-next-for`, a path that is not a root reads that object:
 `data-next-query="total"`.
 
+A field its object does not have, such as `cart.totl`, logs a warning once
+(`unknown field "totl" on Cart in data-next-query="cart.totl"`) and is marked in the debug panel's
+Elements tab, for `data-next-show`, `-hide`, `-each` and `-for` too. A field not known yet, such as
+`cart.total` before the price arrives, and one the page defines are not.
+
 ## How a value is written
 
 | Element                       | Gets                                                                  |

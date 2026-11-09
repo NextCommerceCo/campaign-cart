@@ -29,6 +29,16 @@ short paths, and actions inside it act on that item.
 Any list of the model works: `cart.lines`, `cart.coupons`, `cart.discounts`, `order.lines`, an
 option's `lines`, `discounts` or `slots`, a variant's values (`variants.color`).
 
+A row of a list of plain values, such as the codes in `cart.coupons`, reads its item as `value`:
+
+```html
+<ul data-next-each="cart.coupons">
+  <template>
+    <li><span data-next-query="value"></span> <button data-next-action="removeCoupon">Remove</button></li>
+  </template>
+</ul>
+```
+
 ## Set by the SDK
 
 `data-next-empty` on the element while the list has no items.

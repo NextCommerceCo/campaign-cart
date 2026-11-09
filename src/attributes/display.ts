@@ -8,7 +8,7 @@ import { write } from './value';
 export function bindFor(root: ParentNode, a: AttributeContext): Render[] {
   a.b.each(root, 'data-next-for', (el) => {
     const path = el.getAttribute('data-next-for') ?? '';
-    a.setScope(el, () => a.query.get(path, a.outerScopeOf(el)));
+    a.setScope(el, () => a.readIn(path, a.outerScopeOf(el), el, 'data-next-for'));
   });
   return [];
 }
@@ -20,7 +20,7 @@ export function bindQuery(root: ParentNode, a: AttributeContext): Render[] {
     .map((el) => {
       const path = el.getAttribute('data-next-query') ?? '';
       return () => {
-        const { value, parent, field } = a.readField(path, el);
+        const { value, parent, field } = a.readField(path, el, 'data-next-query');
         const override = el.getAttribute('data-next-format') ?? a.query.formatOf(parent, field);
         write(el, field, value, a.engine, override);
       };
@@ -37,11 +37,11 @@ export function bindShow(root: ParentNode, a: AttributeContext, only?: Set<Eleme
       const source = el.getAttribute(attr) ?? '';
       const expression = parseExpression(source);
       if (!expression) {
-        a.b.warn(`cannot read ${attr}="${source}"`);
+        a.warn(el, attr, 'cannot read the condition');
         continue;
       }
       renders.push(() => {
-        const met = evaluate(expression, (path) => a.read(path, el));
+        const met = evaluate(expression, (path) => a.read(path, el, attr));
         el.hidden = !showWhen(el, attr, met);
       });
     }
@@ -78,7 +78,7 @@ export function bindEach(root: ParentNode, a: AttributeContext): Render[] {
       let rows: Render[] = [];
       return [
         () => {
-          const list = a.read(path, container);
+          const list = a.read(path, container, 'data-next-each');
           const next = Array.isArray(list) ? list : [];
           const key = JSON.stringify(next.map(identity));
           items = next;

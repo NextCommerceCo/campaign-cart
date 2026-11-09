@@ -159,6 +159,59 @@ describe('attributes v2: reading values', () => {
   });
 });
 
+describe('attributes v2: unknown fields', () => {
+  const unknownWarnings = (engine: { log: { entries(): Array<{ level: string; message: string }> } }) =>
+    engine.log
+      .entries()
+      .filter((e) => e.level === 'warn' && e.message.startsWith('unknown field'))
+      .map((e) => e.message);
+
+  it('warns once about a field its object’s type does not have, in a query, a condition, a list and a row', async () => {
+    const { engine } = await mount(`
+      <span data-next-query="cart.totl"></span><span data-next-query="cart.totl"></span>
+      <p data-next-show="cart.total_discont > 0">Saved</p>
+      <ul data-next-each="cart.line"><template><li></li></template></ul>
+      <div data-next-each="cart.lines"><template><span data-next-query="totl"></span></template></div>`);
+    await engine.cart.addItem(1);
+    await settle(engine);
+    await engine.cart.addItem(2);
+    await settle(engine);
+    expect(unknownWarnings(engine)).toEqual([
+      'unknown field "line" on Cart in data-next-each="cart.line"',
+      'unknown field "totl" on Cart in data-next-query="cart.totl"',
+      'unknown field "total_discont" on Cart in data-next-show="cart.total_discont > 0"',
+      'unknown field "totl" on CartItem in data-next-query="totl"',
+    ]);
+  });
+
+  it('never warns about a field not priced yet, an option’s own field, or one the page defined', async () => {
+    const { engine, query, bindings } = await mount(
+      `<span data-next-query="cart.total"></span><p data-next-show="cart.discount_percentage > 0"></p>`,
+    );
+    expect(query.get('cart.total')).toBeUndefined();
+    query.define('Cart', 'free_shipping_left', () => undefined);
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `<span data-next-query="cart.free_shipping_left"></span>
+       <div data-next-selector="main"><div data-next-option="one" data-next-items="1">
+         <span data-next-query="original_total"></span></div></div>`,
+    );
+    bindings.bind(document.body);
+    await settle(engine);
+    expect(unknownWarnings(engine)).toEqual([]);
+  });
+
+  it('reads a field the page defined for options inside an option', async () => {
+    const { engine, query, bindings, $ } = await mount(`
+      <div data-next-selector="main"><div data-next-option="three" data-next-items="1x3">
+        <span id="per-day" data-next-query="per_day"></span></div></div>`);
+    query.define('Option', 'per_day', (o: { quantity: number }) => o.quantity * 10);
+    bindings.render();
+    await settle(engine);
+    expect($('#per-day').textContent).toBe('30');
+  });
+});
+
 describe('attributes v2: options', () => {
   const SELECTOR = `
     <div id="sel" data-next-selector="main">
@@ -408,7 +461,7 @@ describe('attributes v2: actions', () => {
     const { engine, $ } = await mount(`
       <form id="coupon" data-next-action="applyCoupon"><input id="code" data-next-field="code"><button>Apply</button></form>
       <p id="why" data-next-query="errors.code"></p>
-      <div data-next-each="cart.coupons"><template><span class="c" data-next-query="code"></span>
+      <div data-next-each="cart.coupons"><template><span class="c" data-next-query="value"></span>
         <button class="x" data-next-action="removeCoupon">×</button></template></div>`);
     await engine.cart.addItem(1);
     await settle(engine);
@@ -422,6 +475,7 @@ describe('attributes v2: actions', () => {
     await settle(engine);
     expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
     expect($('#why').textContent).toBe('');
+    expect(document.querySelector('.c')!.textContent).toBe('SAVE10');
     document.querySelector<HTMLElement>('.x')!.click();
     await settle(engine);
     expect(engine.getState().cart.coupons).toEqual([]);

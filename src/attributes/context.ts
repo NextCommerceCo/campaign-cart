@@ -12,6 +12,7 @@ export type Binder = (root: ParentNode, a: AttributeContext, only?: Set<Element>
  */
 export class AttributeContext {
   private scopes = new WeakMap<Element, () => unknown>();
+  private warned = new Set<string>();
   /** The last refusal of each action argument, read as `errors.<field>`. */
   readonly errors: Record<string, string> = {};
 
@@ -46,16 +47,33 @@ export class AttributeContext {
     return el.parentElement ? this.scopeOf(el.parentElement) : undefined;
   }
 
-  read(path: string, el: Element): unknown {
+  read(path: string, el: Element, attr?: string): unknown {
     if (path.startsWith('errors.')) return this.errors[path.slice('errors.'.length)];
-    return this.query.get(path, this.scopeOf(el));
+    return this.readIn(path, this.scopeOf(el), el, attr);
+  }
+
+  /** Reads `path` in `scope`; an undefined field its object's type lacks warns once, naming `el`'s `attr`. */
+  readIn(path: string, scope: unknown, el: Element, attr?: string): unknown {
+    const value = this.query.get(path, scope);
+    const unknown = value === undefined && attr && this.query.unknown(path, scope);
+    if (unknown) this.warn(el, attr!, `unknown field "${unknown.field}" on ${unknown.type}`);
+    return value;
+  }
+
+  /** Warns once about an element's attribute, with the attribute and its value as data for the debug panel. */
+  warn(el: Element, attribute: string, note: string): void {
+    const value = el.getAttribute(attribute) ?? '';
+    const message = `${note} in ${attribute}="${value}"`;
+    if (this.warned.has(message)) return;
+    this.warned.add(message);
+    this.engine.log.warn(message, { attribute, value, note });
   }
 
   /** The value of a path and the object it is a field of, for that object's defined formats. */
-  readField(path: string, el: Element): { value: unknown; parent: unknown; field: string } {
+  readField(path: string, el: Element, attr: string): { value: unknown; parent: unknown; field: string } {
     const parts = path.split('.');
     const field = parts.pop() ?? '';
     const parent = parts.length ? this.read(parts.join('.'), el) : this.scopeOf(el);
-    return { value: this.read(path, el), parent, field };
+    return { value: this.read(path, el, attr), parent, field };
   }
 }

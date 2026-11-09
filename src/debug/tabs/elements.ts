@@ -41,7 +41,15 @@ const describe = (el: Element) =>
     .map((c) => `.${c}`)
     .join('')}`;
 
+/** Where the 0.4.x bindings leave a condition they cannot read to attributes v2. */
+const V2_SCOPE = '[data-next-option],[data-next-for],[data-next-selector],[data-next-each]';
+
 function noteFor(engine: Engine, el: Element, attr: string, value: string): Omit<Note, 'attr' | 'value'> {
+  const warned = engine.log
+    .entries()
+    .map((e) => e.data as { attribute?: string; value?: string; note?: string } | undefined)
+    .find((d) => d?.attribute === attr && d.value === value);
+  if (warned) return { note: warned.note, bad: true };
   const { campaign } = engine.getState();
   if (attr === 'data-next-package-id') {
     const pkg = engine.getPackage(Number(value));
@@ -51,11 +59,13 @@ function noteFor(engine: Engine, el: Element, attr: string, value: string): Omit
   const toggle = attr === 'data-next-show' || attr === 'data-next-hide';
   if (!toggle && attr !== 'data-next-display') return {};
   const condition = toggle ? parseCondition(value) : undefined;
-  if (condition === null) return { note: 'cannot read', bad: true };
   const path = condition?.path ?? value;
-  if (!path.includes('.') && el.closest('[data-next-bundle-card]')) return {};
+  if (condition !== null && !path.includes('.') && el.closest('[data-next-bundle-card]')) return {};
   const packageId = Number(el.closest('[data-next-package-id]')?.getAttribute('data-next-package-id'));
-  const v = resolve(engine, path, packageId ? { packageId } : {});
+  const v = condition !== null && resolve(engine, path, packageId ? { packageId } : {});
+  if (!v && toggle && (el.closest(V2_SCOPE) || !/[A-Z]/.test(value)))
+    return { note: (el as HTMLElement).hidden ? 'hidden' : 'shown' };
+  if (condition === null) return { note: 'cannot read', bad: true };
   if (!v) return { note: 'unknown path', bad: true };
   if (condition) {
     const shown = conditionMet(condition, v) === (attr === 'data-next-show');

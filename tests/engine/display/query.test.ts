@@ -1,5 +1,6 @@
+import ts from 'typescript';
 import { describe, expect, it, vi } from 'vitest';
-import { modelType, Query } from '../../../src/engine/display/query';
+import { FIELDS, modelType, Query } from '../../../src/engine/display/query';
 import { flush, makeEngine } from '../../fixtures/engine';
 
 async function ready(params?: Record<string, string>) {
@@ -94,5 +95,77 @@ describe('query', () => {
     expect(modelType({ id: 'L', upsell: false, product_title: 'x' })).toBe('OrderItem');
     expect(modelType({ id: 'c', cart: {} })).toBe('Checkout');
     expect(modelType(3)).toBeUndefined();
+  });
+
+  it('names an option card, which carries its selector’s id, an Option, and an order bump a Selector', () => {
+    expect(modelType({ option_id: 'a', selector_id: 'main', selected: true, lines: [], slots: [] })).toBe('Option');
+    expect(modelType({ selector_id: 'toggle:9', in_cart: false, option_id: 'protect', selected: false })).toBe(
+      'Selector',
+    );
+  });
+
+  it('reads a list entry that is a plain value, such as a coupon code, as `value`', async () => {
+    const { engine, query } = await ready();
+    expect(query.get('value', 'SAVE10')).toBe('SAVE10');
+    expect(query.get('value', 3)).toBe(3);
+    await engine.cart.addItem(1);
+    await engine.cart.applyCoupon('save10');
+    expect(query.get('cart.coupons.0.value')).toBe('SAVE10');
+    expect(query.get('value', { value: 'Black', name: 'Black' })).toBe('Black');
+  });
+});
+
+describe('query: unknown fields', () => {
+  it('names a field the object’s type does not have', async () => {
+    const { query } = await ready();
+    expect(query.unknown('cart.totl')).toEqual({ field: 'totl', type: 'Cart' });
+    expect(query.unknown('totl', { package_id: 1, quantity: 1 })).toEqual({ field: 'totl', type: 'CartItem' });
+    expect(query.unknown('package.2.prise')).toEqual({ field: 'prise', type: 'CartItem' });
+  });
+
+  it('never names a field its type has but the object lacks yet, an id lookup, an untyped object or a defined field', async () => {
+    const { engine, query } = await ready();
+    expect(query.get('cart.total')).toBeUndefined();
+    for (const path of [
+      'cart.total',
+      'cart.discount_percentage',
+      'selector.nope',
+      'cart.lines.4',
+      'param.x',
+      'cart.shipping_method.nme',
+    ])
+      expect(query.unknown(path)).toBeUndefined();
+    expect(query.unknown('original_total', { option_id: 'a', selector_id: 'm', selected: false, lines: [] })).toBe(
+      undefined,
+    );
+    query.define('Cart', 'free_shipping_left', () => undefined);
+    expect(query.unknown('cart.free_shipping_left')).toBeUndefined();
+    await engine.cart.addItem(1);
+    expect(query.unknown('cart.lines.0.totl')).toEqual({ field: 'totl', type: 'CartItem' });
+  });
+
+  it('lists exactly the fields of each model type’s TypeScript interface', () => {
+    const files = ['carts', 'selectors', 'checkout', 'orders'].map((f) => `src/engine/events/${f}.ts`);
+    const program = ts.createProgram(files, { strict: true, noEmit: true });
+    const checker = program.getTypeChecker();
+    const interfaces = new Map<string, ts.Type>();
+    for (const file of files)
+      ts.forEachChild(program.getSourceFile(file)!, (node) => {
+        if (ts.isInterfaceDeclaration(node)) interfaces.set(node.name.text, checker.getTypeAtLocation(node));
+      });
+    const TYPES = {
+      Cart: 'Cart',
+      CartItem: 'CartItem',
+      Selector: 'Selector',
+      Option: 'SelectorOption',
+      Checkout: 'Checkout',
+      Order: 'Order',
+      OrderItem: 'OrderItem',
+    } as const;
+    for (const [type, name] of Object.entries(TYPES)) {
+      const keys = checker.getPropertiesOfType(interfaces.get(name)!).map((p) => p.name);
+      expect(FIELDS[type as keyof typeof TYPES].split(' ').sort(), type).toEqual(keys.sort());
+    }
+    expect(Object.keys(FIELDS).sort()).toEqual(Object.keys(TYPES).sort());
   });
 });

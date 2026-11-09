@@ -31,7 +31,7 @@ The form sends its `code` field to `applyCoupon` on submit. A code that takes no
 refused: `errors.code` holds the reason until a code is applied, in the SDK's English for
 developers, so the page shows its own words. Each row of `cart.discounts` is one offer on the
 products; a row whose `source` is `coupon` has the `code`, and `removeCoupon` inside it takes that
-code off.
+code off. For the codes alone, a `data-next-each="cart.coupons"` row reads its code as `value`.
 
 | Style                                       | When                      |
 | ------------------------------------------- | ------------------------- |
