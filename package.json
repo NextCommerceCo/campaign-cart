@@ -42,6 +42,6 @@
     "@clean-jsdoc-theme/dwar": "5.1.1",
     "@clean-jsdoc-theme/rang": "5.1.1",
     "@clean-jsdoc-theme/setu": "5.1.1",
-    "@clean-jsdoc-theme/utils": "5.1.1"
+    "@clean-jsdoc-theme/utils": "$@clean-jsdoc-theme/utils"
   }
 }

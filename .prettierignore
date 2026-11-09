@@ -7,3 +7,5 @@ public/campaign-cart.css
 vendor/
 tests/golden/
 .golden/
+docs/analytics-examples.json
+docs/destination-examples.json
