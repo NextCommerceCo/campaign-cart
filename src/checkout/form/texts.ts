@@ -1,4 +1,4 @@
-import type { Texts } from '../../engine/texts';
+import type { Texts } from '../../engine/display/texts';
 import type { CheckoutError } from '../../engine/types';
 import type { CheckoutState, CountryRules } from '../state/types';
 import { parse, rulesOf, toV2 } from './names';

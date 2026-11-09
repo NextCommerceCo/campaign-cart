@@ -1,5 +1,5 @@
-import type { Logger } from '../engine/log';
-import { serviceTexts, type Texts } from '../engine/texts';
+import type { Logger } from '../engine/runtime/log';
+import { serviceTexts, type Texts } from '../engine/display/texts';
 import type { Send } from '../engine/types';
 
 /** One translation: `attribute` is `null` for the element's text. */

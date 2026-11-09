@@ -1,4 +1,4 @@
-import { latestWins } from '../flow';
+import { latestWins } from '../runtime/flow';
 import { knownOnly, mergeLines, quantities, toggleOn, vouchersOf, withItem, withQuantity } from './lines';
 import { changesOf, publicCart, publicCheckout, publicToggle, shippingMethodOf } from './public';
 import { createCoupons } from './coupons';

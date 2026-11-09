@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAttributes } from '../../src/attributes';
 import { bindAll } from '../../src/bindings';
-import { Query } from '../../src/engine/query';
+import { Query } from '../../src/engine/display/query';
 import { heldApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 import { FakeObserver } from '../bindings/observer';

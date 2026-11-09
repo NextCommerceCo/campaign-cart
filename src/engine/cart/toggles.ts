@@ -1,7 +1,7 @@
 import { mergeLines, toggleGroup } from './lines';
 import { publicToggle } from './public';
 import type { Context } from '../engine';
-import { keyedLatestWins } from '../flow';
+import { keyedLatestWins } from '../runtime/flow';
 import type { Quotes } from './quotes';
 import type { Selector } from '../events/selectors';
 

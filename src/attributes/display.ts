@@ -1,6 +1,6 @@
-import { matching, showWhen } from '../bindings/dom';
-import type { Render } from '../bindings/context';
-import { evaluate, parseExpression } from './condition';
+import { matching, showWhen } from '../dom/dom';
+import type { Render } from '../dom/context';
+import { evaluate, parseExpression } from './expression';
 import type { AttributeContext } from './context';
 import { write } from './value';
 

@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Upsell } from '../engine/events/upsells';
 import { ACCEPT_WORDS, NEXT_URL_ATTRS } from '../order/upsell';
-import { selectorIdOf } from '../bindings/dom';
+import { selectorIdOf } from '../dom/dom';
 import { addLegacyEvents, legacyEvent, legacyFire } from './legacy/registry';
 
 /** @deprecated `data-next-bundle-selector-id` on `[data-next-upsell]`. Put the `[data-next-bundle-selector]` inside the offer. */

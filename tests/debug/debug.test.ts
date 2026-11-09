@@ -13,7 +13,7 @@ import {
   PANEL_CSS,
   TSUGI_CSS,
   STREAM_CSS,
-} from '../../src/debug/styles';
+} from '../../src/debug/ui/styles';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from '../fixtures/api';
 import { makeEngine } from '../fixtures/engine';
@@ -604,8 +604,8 @@ describe('debug tools', () => {
     ];
     const counts = rules.reduce<Record<string, number>>((n, [, name]) => ({ ...n, [name!]: (n[name!] ?? 0) + 1 }), {});
     expect(Object.entries(counts).filter(([, n]) => n > 1)).toEqual([]);
-    const code = readdirSync('src/debug')
-      .filter((file) => file !== 'styles.ts')
+    const code = readdirSync('src/debug', { recursive: true, encoding: 'utf8' })
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('styles.ts'))
       .map((file) => readFileSync(`src/debug/${file}`, 'utf8'))
       .join('\n');
     const unused = (names: Set<string | undefined>) =>

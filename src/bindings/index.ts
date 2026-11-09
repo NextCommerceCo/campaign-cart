@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { bindAddToCart } from './add-to-cart';
 import { bindBundleSelectors } from './bundle-selector';
 import { bindCartControls } from './cart-controls';
-import { BindContext, type Render } from './context';
+import { BindContext, type Render } from '../dom/context';
 import { bindDisplay } from './display';
 import { bindLinks } from './links';
 import { bindPackageToggles } from './package-toggle';

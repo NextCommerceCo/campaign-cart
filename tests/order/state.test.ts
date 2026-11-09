@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
-import { upsellId } from '../../src/engine/order';
+import { upsellId } from '../../src/engine/order/order';
 import { createOrder, ORDER_VALUES, orderValue, pathsOf } from '../../src/order/state';
-import { format } from '../../src/engine/format';
-import { createLedger, publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
+import { format } from '../../src/engine/display/format';
+import { createLedger, publicOrder, purchaseId, REPORTED } from '../../src/engine/order/order';
 import type { EngineEvent } from '../../src/engine/events/bus';
 import type { CheckoutState } from '../../src/checkout/state/types';
 import type { ApiOrderLine } from '../../src/engine/types';

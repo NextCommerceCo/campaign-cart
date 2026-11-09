@@ -3,13 +3,13 @@ import { cardSlots, pickedCard } from '../engine/cart/selectors';
 import { variantChoices, variantPackage } from '../engine/cart/variants';
 import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } from '../engine/cart/types';
 import type { Package } from '../engine/types';
-import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/format';
-import { cardQuote } from '../engine/values';
+import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/display/format';
+import { cardQuote } from '../engine/display/values';
 import { bundleCardId, ownProperties, pageProperties } from './cards';
-import type { Render } from './context';
+import type { Render } from '../dom/context';
 import { applyValues } from './display';
-import { fill, fillTemplate, selectorIdOf, showWhen, withAttribute } from './dom';
-import { eachTokenText } from './tokens';
+import { fill, fillTemplate, selectorIdOf, showWhen, withAttribute } from '../dom/dom';
+import { eachTokenText } from '../dom/templates';
 
 type Values = Record<string, string>;
 

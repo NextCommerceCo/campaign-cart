@@ -1,8 +1,8 @@
 import type { ActionArgs, ActionName, ActionResult } from '../engine/actions';
 import { ready } from '../engine/actions';
-import { nextUrl } from '../engine/params';
-import type { Render } from '../bindings/context';
-import { matching } from '../bindings/dom';
+import { nextUrl } from '../engine/visit/params';
+import type { Render } from '../dom/context';
+import { matching } from '../dom/dom';
 import type { AttributeContext } from './context';
 
 /** Attributes with their own role: never an action argument. */

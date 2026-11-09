@@ -1,6 +1,6 @@
 import type { EventName } from '../engine/events/bus';
 import type { Order } from '../engine/events/orders';
-import { appliedCodes, publicOrder, purchaseId, upsellId } from '../engine/order';
+import { appliedCodes, publicOrder, purchaseId, upsellId } from '../engine/order/order';
 import type { ApiOrder } from '../engine/types';
 import type { Handlers, Report } from './report';
 

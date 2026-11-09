@@ -2,8 +2,8 @@ import type { Engine } from '../engine/engine';
 import { toggleGroup } from '../engine/cart/toggles';
 import type { Package } from '../engine/types';
 import { markedSelected, ownProperties, pageProperties, setState } from './cards';
-import { type BindContext, type Render } from './context';
-import { bindToggle } from './dom';
+import { type BindContext, type Render } from '../dom/context';
+import { bindToggle } from '../dom/dom';
 
 const ids = (el: Element, attr: string) => (el.getAttribute(attr) ?? '').split(',').map(Number).filter(Boolean);
 

@@ -34,8 +34,8 @@ and watch the panel's state and events while you read.
 ## Pricing
 
 9. `apply` ends with `recalculate()` (`cart.ts:112`): one price request per tick. `calculate`
-   (`cart.ts:80`) asks the API (`src/engine/api.ts:27`, `POST /carts/calculate/`). A newer change
-   makes an older request stale (`latestWins` in `src/engine/flow.ts`), so a slow answer never
+   (`cart.ts:80`) asks the API (`src/engine/runtime/api.ts`, `POST /carts/calculate/`). A newer change
+   makes an older request stale (`latestWins` in `src/engine/runtime/flow.ts`), so a slow answer never
    overwrites a newer one.
 10. The answer is written to `cart.summary` and `cart.calculated` fires (`cart.ts:99`).
 
@@ -43,7 +43,7 @@ and watch the panel's state and events while you read.
 
 - **The page**: the render scheduled in step 7 runs every binding again. A
   `data-next-display="cart.total"` element reads the value through `resolve`
-  (`src/engine/values.ts:252`) and shows the new total.
+  (`src/engine/display/values.ts`) and shows the new total.
 - **Page scripts**: `next.on('cart.added', fn)` gets the event with its envelope (`src/boot.ts`).
 - **Analytics**: `src/analytics/carts.ts` turns `cart.calculated` into `product_added_to_cart`
   (one per line) and `cart_updated`, typed by `TrackingMap` (`src/engine/events/analytics.ts`).

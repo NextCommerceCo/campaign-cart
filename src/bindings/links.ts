@@ -1,5 +1,5 @@
-import { nextUrl } from '../engine/params';
-import type { BindContext, Render } from './context';
+import { nextUrl } from '../engine/visit/params';
+import type { BindContext, Render } from '../dom/context';
 
 export function bindLinks(root: ParentNode, b: BindContext): Render[] {
   if (root !== document || !b.claim(document.documentElement, 'links')) return [];

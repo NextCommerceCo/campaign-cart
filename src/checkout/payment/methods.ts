@@ -1,6 +1,6 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
-import { paymentCode } from '../../engine/payment';
+import { paymentCode } from '../../engine/order/payment';
 import { FIELDS, rawName } from '../form/fields';
 
 /** The campaign's payment methods and the checkout's pick, for the payment radios and panels. */

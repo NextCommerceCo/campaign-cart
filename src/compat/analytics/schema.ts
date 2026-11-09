@@ -1,4 +1,4 @@
-import type { Attribution } from '../../engine/attribution';
+import type { Attribution } from '../../engine/visit/attribution';
 
 /**
  * The fields every `dl_*` push carries, in the 0.4.x Elevar format.

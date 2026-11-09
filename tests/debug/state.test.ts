@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Arrival, createDebug } from '../../src/debug/state';
-import { publicOrder } from '../../src/engine/order';
+import { publicOrder } from '../../src/engine/order/order';
 import type { ApiOrder } from '../../src/engine/types';
 import { makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';

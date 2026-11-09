@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindI18n, parseI18n } from '../../src/compat/i18n';
-import { Logger } from '../../src/engine/log';
+import { Logger } from '../../src/engine/runtime/log';
 
 const locales =
   (trees: Record<string, unknown>) =>

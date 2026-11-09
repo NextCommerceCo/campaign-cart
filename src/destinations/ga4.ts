@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { trackingLines, type TrackingEvent, type TrackingLine, type TrackingName } from '../engine/events/analytics';
-import { addDollars } from '../engine/format';
-import { paymentType } from '../engine/payment';
+import { addDollars } from '../engine/display/format';
+import { paymentType } from '../engine/order/payment';
 import {
   defined,
   type Packages,

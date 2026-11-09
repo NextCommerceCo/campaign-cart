@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from './state';
-import { nextUrl } from '../engine/params';
-import { metaContent, onceVisible, selectorIdOf } from '../bindings/dom';
+import { nextUrl } from '../engine/visit/params';
+import { metaContent, onceVisible, selectorIdOf } from '../dom/dom';
 
 /** `data-next-upsell-action` words that accept (`accept` is 0.4.x's `add`); any other skips. */
 export const ACCEPT_WORDS = ['add', 'accept'];

@@ -1,9 +1,9 @@
-import type { Attribution } from '../../engine/attribution';
+import type { Attribution } from '../../engine/visit/attribution';
 import { shippingMethodOf } from '../../engine/cart/public';
 import type { Line } from '../../engine/cart/types';
 import type { ApiAddress, OrderBody, OrderUser, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
-import { addressOf } from '../../engine/order';
+import { addressOf } from '../../engine/order/order';
 import type { CheckoutState } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';

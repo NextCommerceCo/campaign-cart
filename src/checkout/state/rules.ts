@@ -1,6 +1,6 @@
 import { asciiDigits, countryOf, plausiblePhone } from './phone';
-import { askGeo, type VisitorGeo } from '../../engine/geo';
-import { fill, type Texts } from '../../engine/texts';
+import { askGeo, type VisitorGeo } from '../../engine/visit/geo';
+import { fill, type Texts } from '../../engine/display/texts';
 import type { Send } from '../../engine/types';
 import type { CheckoutState, CountryOption, CountryRules, FieldError, FieldFormat, FieldRule } from './types';
 

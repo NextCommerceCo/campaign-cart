@@ -167,7 +167,7 @@ queued across a redirect.
   Back cannot charge twice; a repeat moves on as if accepted. Lines are the offer selector's
   picked card × its stepper quantity, with the card's vouchers.
 - `order.loaded`, `order.paid` and `order.updated` carry the Order (`publicOrder` in
-  `src/engine/order.ts`). Upsells are reported from the order on the page after the accept, so a
+  `src/engine/order/order.ts`). Upsells are reported from the order on the page after the accept, so a
   redirect can never drop them, and nothing is queued. A paid order clears a cart that was
   kept for a payment gateway.
 - `order.*` values resolve once the chunk registers them (`registerValues`); before that they

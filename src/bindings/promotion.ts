@@ -1,6 +1,6 @@
 import type { Promotion } from '../engine/events/promotions';
-import type { BindContext, Render } from './context';
-import { onceVisible } from './dom';
+import type { BindContext, Render } from '../dom/context';
+import { onceVisible } from '../dom/dom';
 
 function promotionOf(el: Element): Promotion {
   const name = el.getAttribute('data-next-promotion-name');

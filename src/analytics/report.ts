@@ -7,7 +7,7 @@ import {
   type TrackingName,
 } from '../engine/events/analytics';
 import { envelope, type EngineEvent, type EventMap, type EventName } from '../engine/events/bus';
-import { newId } from '../engine/id';
+import { newId } from '../engine/runtime/id';
 import { createOnce } from '../engine/tracking';
 
 export interface Why {

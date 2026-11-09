@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { isExpress, paymentCode } from '../../engine/payment';
+import { isExpress, paymentCode } from '../../engine/order/payment';
 import { EXPRESS_BUTTONS } from './logos';
 
 function button(method: string): HTMLButtonElement {

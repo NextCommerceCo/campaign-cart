@@ -1,7 +1,7 @@
-import type { Api } from '../api';
+import type { Api } from '../runtime/api';
 import type { Context } from '../engine';
-import type { keyedLatestWins } from '../flow';
-import { hash } from '../scope';
+import type { keyedLatestWins } from '../runtime/flow';
+import { hash } from '../visit/scope';
 import type { Campaign } from '../types';
 import type { CartSummary } from './types';
 

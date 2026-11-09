@@ -3,7 +3,7 @@ import { readConfig } from '../src/config';
 import { boot, type NextApi } from '../src/boot';
 import { createCheckout } from '../src/checkout/state/checkout';
 import type { TrackingEvent } from '../src/engine/events/analytics';
-import { funnelFromPath, storageScope } from '../src/engine/scope';
+import { funnelFromPath, storageScope } from '../src/engine/visit/scope';
 import type { Campaign } from '../src/engine/types';
 import { fakeApi, json } from './fixtures/api';
 import { campaign } from './fixtures/campaign';

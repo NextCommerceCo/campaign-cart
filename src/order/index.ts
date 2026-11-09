@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import { createOrder, type OrderActions, orderValue } from './state';
-import { registerValues } from '../engine/values';
+import { registerValues } from '../engine/display/values';
 import { bindReceipt } from './receipt';
 import { bindUpsells } from './upsell';
 import { legacyOfferSelector, legacyOrderEvents } from '../compat/order';

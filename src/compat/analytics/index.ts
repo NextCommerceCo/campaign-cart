@@ -1,10 +1,10 @@
-import { type Attribution, withoutQuery } from '../../engine/attribution';
+import { type Attribution, withoutQuery } from '../../engine/visit/attribution';
 import type { Engine } from '../../engine/engine';
 import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import type { EngineEvent } from '../../engine/events/bus';
 import type { EventContext } from '../../engine/events/context';
 import { createOnce, startDestination } from '../../engine/tracking';
-import { exitIntentPushes } from './exit-intent';
+import { exitIntentPushes } from './exit-pushes';
 import { dataLayerFields, type Fields, isLineEvent, lineFields, type LineEvent } from './pushes';
 import type { DataLayerName, DataLayerPush } from './schema';
 

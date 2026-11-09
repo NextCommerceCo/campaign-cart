@@ -5,7 +5,7 @@ import { NAMES as DATA_LAYER } from '../src/compat/analytics';
 import { createCheckout } from '../src/checkout/state/checkout';
 import type { Engine } from '../src/engine/engine';
 import type { TrackingName } from '../src/engine/events/analytics';
-import { WIRING } from '../src/debug/providers';
+import { WIRING } from '../src/debug/tabs/providers';
 import { createOrder } from '../src/order/state';
 import { fakeApi, json } from './fixtures/api';
 import { flush, makeEngine } from './fixtures/engine';

@@ -2,8 +2,8 @@ import type { TrackingEvent, TrackingName } from '../../engine/events/analytics'
 import type { CartItem } from '../../engine/events/carts';
 import type { Checkout } from '../../engine/events/checkout';
 import type { Order, OrderItem } from '../../engine/events/orders';
-import { addDollars, dollars } from '../../engine/format';
-import { paymentType } from '../../engine/payment';
+import { addDollars, dollars } from '../../engine/display/format';
+import { paymentType } from '../../engine/order/payment';
 import {
   apiOrder,
   defined,

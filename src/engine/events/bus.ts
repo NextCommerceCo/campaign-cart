@@ -1,5 +1,5 @@
-import { newId } from '../id';
-import type { Logger } from '../log';
+import { newId } from '../runtime/id';
+import type { Logger } from '../runtime/log';
 import type { AnalyticsEvents } from './analytics';
 import type { CartEvents } from './carts';
 import type { CheckoutEvents } from './checkout';

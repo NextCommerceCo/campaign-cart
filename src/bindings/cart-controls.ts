@@ -1,4 +1,4 @@
-import type { BindContext, Render } from './context';
+import type { BindContext, Render } from '../dom/context';
 
 const packageIdOf = (el: Element) => {
   const holder = el.closest('[data-package-id], [data-next-package-id]');

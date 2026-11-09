@@ -1,4 +1,4 @@
-import { inputValues, stateClasses } from './dom';
+import { inputValues, stateClasses } from '../dom/dom';
 
 /** A bundle card's id: its `data-next-bundle-id`, else its place among the selector's cards. */
 export const bundleCardId = (el: Element, index: number): string =>

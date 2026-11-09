@@ -2,7 +2,7 @@ import { cartItem } from '../engine/cart/public';
 import type { Line, SummaryLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
 import type { CartItem } from '../engine/events/carts';
-import { cents } from '../engine/format';
+import { cents } from '../engine/display/format';
 import type { Package } from '../engine/types';
 
 const times = (amount: string | number, quantity: number) => String((cents(amount) * quantity) / 100);

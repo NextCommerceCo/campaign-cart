@@ -1,4 +1,4 @@
-import { addDollars, dollars, percentOf } from '../format';
+import { addDollars, dollars, percentOf } from '../display/format';
 import type { State } from '../types';
 import type { Context } from '../engine';
 import type { Cart, CartChange, CartItem } from '../events/carts';

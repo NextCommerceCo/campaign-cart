@@ -1,4 +1,4 @@
-import { Logger } from '../engine/log';
+import { Logger } from '../engine/runtime/log';
 
 const TOOLTIP_CSS = `.next-tooltip{position:fixed;top:0;left:0;z-index:99999;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease,transform .2s ease;transform:scale(.95);pointer-events:none}
 .next-tooltip--visible{opacity:1;visibility:visible;transform:scale(1);pointer-events:auto}

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PAYMENT_METHODS } from '../src/engine/payment';
+import { PAYMENT_METHODS } from '../src/engine/order/payment';
 
 const LAZY: Record<string, string[]> = {
   analytics: ['compat/analytics'],
@@ -34,15 +34,16 @@ const BROWSER_GLOBALS =
 
 const ALLOWED: Record<string, string[]> = {
   engine: ['engine'],
-  bindings: ['engine', 'bindings', 'compat/legacy'],
-  checkout: ['engine', 'checkout', 'bindings/context', 'bindings/dom', 'compat/checkout'],
-  order: ['engine', 'order', 'bindings/context', 'bindings/dom', 'compat/order'],
+  dom: ['engine', 'dom'],
+  bindings: ['engine', 'bindings', 'dom'],
+  checkout: ['engine', 'checkout', 'dom', 'compat/checkout'],
+  order: ['engine', 'order', 'dom', 'compat/order'],
   analytics: ['engine', 'compat/analytics'],
-  attributes: ['engine', 'attributes', 'bindings/context', 'bindings/dom'],
+  attributes: ['engine', 'attributes', 'dom'],
   destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
-  compat: ['engine', 'bindings/dom', 'checkout/form/names', 'order/upsell'],
-  boot: ['engine', 'bindings', 'compat/legacy'],
+  compat: ['engine', 'dom', 'checkout/form/names', 'order/upsell'],
+  boot: ['engine', 'bindings', 'dom', 'compat/legacy'],
   loader: ['config', 'compat/config'],
   config: ['compat/config'],
 };
@@ -150,7 +151,7 @@ describe('architecture', () => {
 
   it('only the logger writes to the console', () => {
     const direct = sources
-      .filter((s) => !['engine/log', 'loader'].includes(s.path) && /\bconsole\./.test(s.code))
+      .filter((s) => !['engine/runtime/log', 'loader'].includes(s.path) && /\bconsole\./.test(s.code))
       .map((s) => s.path);
     expect(direct).toEqual([]);
   });
@@ -196,13 +197,13 @@ describe('architecture', () => {
     expect(guessing).toEqual([]);
   });
 
-  it('payment methods are named and aliased only in engine/payment', () => {
+  it('payment methods are named and aliased only in engine/order/payment', () => {
     const words = Object.values(PAYMENT_METHODS).flatMap((m) => [
       m.label,
       ...(m.aliases ?? []).filter((a) => a.length > 6),
     ]);
     const elsewhere = sources
-      .filter((s) => s.path !== 'engine/payment')
+      .filter((s) => s.path !== 'engine/order/payment')
       .flatMap((s) => words.filter((w) => s.code.includes(`'${w}'`)).map((w) => `${s.path}: '${w}'`));
     expect(elsewhere).toEqual([]);
   });

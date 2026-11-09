@@ -1,8 +1,8 @@
 import type { Engine } from '../../engine/engine';
 import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
-import { paymentType } from '../../engine/payment';
+import { paymentType } from '../../engine/order/payment';
 import { apiOrder, PRODUCT_LIST, promotionFields, shippingTier, upsellPackage } from '../../engine/tracking';
-import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ga4';
+import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ecommerce';
 import type { DataLayerEcommerce, DataLayerEventMap, DataLayerName, DataLayerPush } from './schema';
 import type { NAMES } from '.';
 

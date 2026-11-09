@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
-import { cents, formatCents } from '../engine/format';
+import { cents, formatCents } from '../engine/display/format';
 import type { ApiOrderLine } from '../engine/types';
-import { fillTemplate } from '../bindings/dom';
+import { fillTemplate } from '../dom/dom';
 
 const ITEM_TOKEN = /\{item\.(\w+)\}/g;
 

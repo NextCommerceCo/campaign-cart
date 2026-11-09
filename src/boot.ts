@@ -1,18 +1,18 @@
 import { bindAll } from './bindings';
-import { pageEnvironment } from './bindings/environment';
-import { runReadyQueue } from './bindings/ready';
+import { pageEnvironment } from './dom/environment';
+import { runReadyQueue } from './dom/ready';
 import type { BootConfig } from './config';
 import { Engine } from './engine/engine';
 import { envelope, PUBLIC, type SdkEvent } from './engine/events/bus';
-import type { Logger } from './engine/log';
-import { funnelFromPath, storageScope } from './engine/scope';
+import type { Logger } from './engine/runtime/log';
+import { funnelFromPath, storageScope } from './engine/visit/scope';
 import type { TrackingEvent, TrackingName } from './engine/events/analytics';
 import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
 import type { Campaign } from './engine/types';
 import type { NextActions } from './engine/actions';
-import type { ModelType, Query } from './engine/query';
+import type { ModelType, Query } from './engine/display/query';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
 import { legacyEvents } from './compat/legacy/registry';
 import {
@@ -22,10 +22,10 @@ import {
   readLegacyI18n,
   removeLegacyPersonalData,
 } from './compat/legacy/globals';
-import { triedConfig, withTried } from './engine/debug-config';
-import { localeOf } from './engine/format';
-import { trackingIgnored } from './engine/params';
-import { rulesSend, textsIn } from './engine/texts';
+import { triedConfig, withTried } from './engine/visit/debug-config';
+import { localeOf } from './engine/display/format';
+import { trackingIgnored } from './engine/visit/params';
+import { rulesSend, textsIn } from './engine/display/texts';
 
 declare const __VERSION__: string;
 
@@ -170,7 +170,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   }
 
   let query: Promise<Query> | undefined;
-  const queried = () => (query ??= import('./engine/query').then((m) => new m.Query(engine)));
+  const queried = () => (query ??= import('./engine/display/query').then((m) => new m.Query(engine)));
   let attributes: Promise<typeof import('./attributes')> | undefined;
   /** Every `next.actions` call loads the actions on first use; 0.5's positional calls work there too. */
   const actions = new Proxy({} as NextActions, {

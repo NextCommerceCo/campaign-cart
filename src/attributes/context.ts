@@ -1,7 +1,7 @@
 import type { Actions } from '../engine/actions';
 import type { Engine } from '../engine/engine';
-import type { Query } from '../engine/query';
-import type { BindContext, Render } from '../bindings/context';
+import type { Query } from '../engine/display/query';
+import type { BindContext, Render } from '../dom/context';
 
 /** Binds one kind of attribute inside `root`, returning what renders it; `only` limits show / hide to those elements. */
 export type Binder = (root: ParentNode, a: AttributeContext, only?: Set<Element>) => Render[];

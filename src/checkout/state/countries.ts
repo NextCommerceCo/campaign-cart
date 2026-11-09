@@ -1,5 +1,5 @@
 import type { Context } from '../../engine/engine';
-import { visitorGeo } from '../../engine/geo';
+import { visitorGeo } from '../../engine/visit/geo';
 import type { RulesApi } from './rules';
 import type { CheckoutState, CountryOption } from './types';
 

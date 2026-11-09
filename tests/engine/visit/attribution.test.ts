@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest';
+import { buildAttribution } from '../../../src/engine/visit/attribution';
+import { makeEngine } from '../../fixtures/engine';
+import { MemoryStorage } from '../../fixtures/storage';
+
+describe('attribution', () => {
+  it('builds the object orders and events carry', () => {
+    const visit = {
+      landingPage: 'https://shop.test/lp',
+      referrer: 'https://google.com',
+      device: 'UA',
+      deviceType: 'mobile' as const,
+      fbp: 'fb.1',
+      fbc: '',
+      domain: 'shop.test',
+      pixelId: '123456',
+    };
+    expect(
+      buildAttribution(
+        {
+          params: { aff: 'A1', sub2: 'x'.repeat(300), utm_source: 'fb', fbclid: 'F', evclid: 'E', other: 'y' },
+          landing: visit,
+          geo: { ip: '203.0.113.7' },
+        },
+        'Olympus',
+        1000,
+      ),
+    ).toEqual({
+      affiliate: 'A1',
+      funnel: 'Olympus',
+      utm_source: 'fb',
+      subaffiliate2: 'x'.repeat(225),
+      everflow_transaction_id: 'E',
+      metadata: {
+        landing_page: 'https://shop.test/lp',
+        referrer: 'https://google.com',
+        device: 'UA',
+        device_type: 'mobile',
+        fb_fbp: 'fb.1',
+        fb_fbc: '',
+        domain: 'shop.test',
+        fb_pixel_id: '123456',
+        sdk_version: expect.any(String),
+        conversion_timestamp: 1000,
+        user_ip: '203.0.113.7',
+        fbclid: 'F',
+        everflow_transaction_id: 'E',
+      },
+    });
+  });
+
+  it('records the TikTok, Microsoft and Google app click ids on the order', () => {
+    const params = { ttclid: 'T', msclkid: 'M', gbraid: 'G', wbraid: 'W' };
+    expect(buildAttribution({ params }, undefined, 0).metadata).toMatchObject(params);
+  });
+
+  it('keeps the first landing page of the tab', async () => {
+    const store = new MemoryStorage();
+    const first = makeEngine({
+      session: store,
+      visit: { landingPage: 'https://shop.test/lp', referrer: 'r', device: 'UA', deviceType: 'desktop' },
+    }).engine;
+    const second = makeEngine({
+      session: store,
+      visit: { landingPage: 'https://shop.test/checkout', referrer: '', device: 'UA', deviceType: 'desktop' },
+    }).engine;
+    expect(second.attribution().metadata.landing_page).toBe('https://shop.test/lp');
+  });
+});

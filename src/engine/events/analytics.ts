@@ -5,7 +5,7 @@ import type { EventContext } from './context';
 import type { Order, OrderItem } from './orders';
 import type { Promotion, PromotionEvents } from './promotions';
 import type { Upsell } from './upsells';
-import { untaxed } from '../order';
+import { untaxed } from '../order/order';
 
 /**
  * Every tracking event the analytics chunk sends, and its `data`: the same objects the SDK's

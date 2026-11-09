@@ -7,7 +7,7 @@ import type { CheckoutHooks } from '../checkout/hooks';
 import { PAGE_FIELDS, pageFieldName, pageName } from '../checkout/form/names';
 import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy/registry';
 import { nextConfig as config } from './legacy/globals';
-import { paymentCode } from '../engine/payment';
+import { paymentCode } from '../engine/order/payment';
 
 /** @deprecated `nextConfig.addressConfig.countries`. The campaign's shipping countries are used. */
 const legacyCountries = () => (config().addressConfig?.countries ?? []).map((c) => c.code);

@@ -1,6 +1,6 @@
-import type { Attribution, Visit } from './attribution';
+import type { Attribution, Visit } from './visit/attribution';
 import type { CartState, Line, SelectorState, Toggle } from './cart/types';
-import type { VisitorGeo } from './geo';
+import type { VisitorGeo } from './visit/geo';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
 

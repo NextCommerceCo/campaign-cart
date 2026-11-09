@@ -1,8 +1,8 @@
 import { variantChoices } from '../engine/cart/variants';
 import type { Engine } from '../engine/engine';
-import type { Query } from '../engine/query';
-import type { Render } from '../bindings/context';
-import { matching } from '../bindings/dom';
+import type { Query } from '../engine/display/query';
+import type { Render } from '../dom/context';
+import { matching } from '../dom/dom';
 import type { AttributeContext } from './context';
 import { PROPERTY_FIELD, propertiesOf } from './options';
 

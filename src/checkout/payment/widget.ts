@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { paymentCode } from '../../engine/payment';
+import { paymentCode } from '../../engine/order/payment';
 import { FIELD_ATTR, FIELDS, rawName } from '../form/fields';
 import { EXPRESS_BUTTONS } from './logos';
 import { collapse, paymentChoice } from './methods';

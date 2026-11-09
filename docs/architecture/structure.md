@@ -111,41 +111,41 @@ src/
   config.ts            loader      page setup from the script tag and URL
   boot.ts              boot        boot: Engine, bindings, window.next, ready
   engine/              boot        headless core every page needs
-    engine.ts types.ts log.ts                   the Engine, shared types and State, the one logger
-    events/                                     one file per event group (carts.ts, checkout.ts, …): its objects and its events;
-                                                context.ts the envelope every event carries; bus.ts the EventMap and the bus
-    api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
-    values.ts format.ts tokens.ts condition.ts  display paths, value formatting (localeOf: the page's language over the campaign's),
-                                                template tokens, the 0.4.x condition parser and compare (the one meaning of
-                                                == != > < >= <=)
-    texts.ts                                    texts by key: i18n-rules' /v1/locales (once per language), the page's translations
-    flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
-    query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines;
-                                                a chunk of its own, loaded by the first next.query, attributes v2 or a v2 checkout
-    actions.ts                                  next.actions / data-next-action: every action, one object of field names in, { ok, errors } out
-    visit.ts                                    the visit's timers and exit-intent count (engine.visit)
-    attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
-    order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
-    tracking.ts                                 what every destination shares: units, value, currency, line ids,
-                                                startDestination (skip, burst, deliver), createOnce (page, checkout and
-                                                browser keys); the 0.4.x order product and tax-basis guess (@deprecated)
-    payment.ts                                  payment methods: codes and their aliases, labels, wallets, express buttons;
-                                                a chunk the lazy chunks share, kept out of boot
-    id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
-    cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
-                                                lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
-                                                that events carry), selectors.ts (bundle selectors), variants.ts (a package's
-                                                variant choices, for slots, variant pickers and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
-  bindings/            boot        DOM, one file per attribute family
+    engine.ts types.ts actions.ts  the Engine, shared types and State, next.actions / data-next-action (every action,
+                                   one object of field names in, { ok, errors } out)
+    tracking.ts                    what every destination shares: units, value, currency, line ids, startDestination
+                                   (skip, burst, deliver), createOnce (page, checkout and browser keys); the 0.4.x order
+                                   product and tax-basis guess (@deprecated)
+    runtime/                       what the engine runs on: api.ts (the API; also maps order errors: one request less per
+                                   lazy chunk), storage.ts, session.ts (the campaign session the NEXT analytics script
+                                   shares), log.ts (the one logger), flow.ts (latestWins, serialize), id.ts (event ids)
+    visit/                         the visit: visit.ts (timers, exit-intent count: engine.visit), attribution.ts, params.ts
+                                   (kept URL params), scope.ts (storage scope), geo.ts (the visitor's country; a chunk),
+                                   debug-config.ts (a nextConfig tried from the debug panel)
+    order/                         order.ts (the Order every order.* event and snapshot() carry, the reported ledger),
+                                   payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
+                                   chunks share, kept out of boot)
+    display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;
+                                   localeOf), tokens.ts (template tokens), condition.ts (the 0.4.x condition parser and
+                                   compare, the one meaning of == != > < >= <=), texts.ts (texts by key: i18n-rules'
+                                   /v1/locales, the page's translations), query.ts (next.query / data-next-query: paths
+                                   over the objects events carry, fields a page defines; a chunk of its own)
+    events/                        one file per event group (carts.ts, checkout.ts, …): its objects and its events;
+                                   context.ts the envelope every event carries; bus.ts the EventMap and the bus
+    cart/                          cart.ts (cart actions), coupons.ts (checking, holding and removing codes), lines.ts
+                                   (groups merged into lines), public.ts (the Cart, Checkout and toggle that events
+                                   carry), selectors.ts (bundle selectors), variants.ts (a package's variant choices),
+                                   summary-tokens.ts (the cart summary's tokens), quotes.ts, toggles.ts, types.ts
+  dom/                 boot        the DOM toolkit bindings, attributes v2, checkout and order share
+    context.ts                     BindContext (engine, claim, warn, listen, offs: what dispose removes)
+    dom.ts                         selector and toggle registration, state classes, showWhen, input values, a card from
+                                   its element, the bundle selector id, the one template token pattern and fill, image sources
+    templates.ts                   fillTokens, stamp, eachTokenText (the one walk over template text)
+    environment.ts ready.ts        the page and browser every event's context carries; the nextReady queue
+  bindings/            boot        0.4.x attributes, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe, dispose; loads cart-summary.ts when a bound
                                    node has [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
-    context.ts                     BindContext (engine, claim, warn, listen, offs: what dispose removes)
-    environment.ts                 the page and browser every event's context carries
-    dom.ts                         what bindings, attributes v2, checkout and order share: selector and toggle registration,
-                                   state classes, showWhen, input values, a card from its element, the bundle selector
-                                   id, the one template token pattern and fill, image sources
     cards.ts                       the 0.4.x card dialect: card ids, data-next-selected, setState, line properties
-    tokens.ts                      fillTokens, stamp, eachTokenText (the one walk over template text)
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-controls.ts links.ts
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
@@ -155,7 +155,7 @@ src/
     index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
     context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
     display.ts                     data-next-for, -query, -show / -hide, -each
-    condition.ts value.ts          the condition grammar (&&, ||, > <) on engine/condition's compare; a value written by its
+    expression.ts value.ts         the condition grammar (&&, ||, > <) on engine/display/condition's compare; a value written by its
                                    field's type or data-next-format
     options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
     actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
@@ -168,7 +168,7 @@ src/
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), countries.ts
                                    (the country list and the visitor's country), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
-                                   autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
+                                   autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone-input.ts (flag, mask)
     payment/                       methods.ts (payment radios and panels, the method choice widget.ts shares),
                                    card.ts (card fields, payment.js), expiry.ts (month + year selects or card.expiry),
                                    widget.ts ([data-next-payment]), express.ts, logos.ts
@@ -190,35 +190,20 @@ src/
     rudderstack/                   index.ts startRudderStack: the page's rudderanalytics, waiting for ready();
                                    calls.ts the tracking event → 0.4.x RudderStack calls; types.ts RudderStackEventMap
   debug/               debug       loaded with ?debug=1
-    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds events, elements, state, logs and .devonly detail), window.nextDebug
-    shell.ts                       the panel's state (view, tab, picking, side) and its moves between views; painting;
-                                   startDebug returns stop(), which removes every listener, subscription and the panel
-    cart-line.ts                   one line of the Cart tab, swapPackage
-    state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
-                                   session under next:debug, outside the storage scope
-    events.ts                      the Events tab: each public event in the envelope next.on gets
-    logs.ts                        the Logs tab: every log line, also the Issues tab's warnings and errors
-    journey.ts                     the Journey tab: tsugi's journey of the tab's pages, the picked page's stats and timeline
-    source.ts                      where the tab came from: each utm, click id, affiliate and Meta cookie, where it was read
-                                   and whether it reaches the order and tracking events; checkLink for a pasted ad link
-    source-card.ts                 the Journey's Source step and card
-    icons.ts                       Lucide icons as inline SVG (a shadow root cannot load tsugi's icon font)
-    elements.ts view.ts            page elements: what each data-next-* resolves to, highlight, pick; value tree
-    cart.ts                        the cart part of Checkout, as campaign-client draws it: lines with their variant,
-                                   stepper and price, a line opened for its discounts and variant selects (a bundle slot
-                                   changes through its selector), vouchers, shipping, totals and the math that checks them
-    checkout.ts address.ts         the Checkout tab: whether the order can go through and each step, the cart, the
-                                   customer with addresses written by the country's i18n-rules format; Check form and
-                                   Fill test details call engine.checkout
-    picker.ts                      Add packages: tsugi's dialog with every package in one list, as campaign-client's picker;
-                                   Add and the stepper set the quantity through engine.cart
-    analytics.ts                   the Analytics tab: setup notes, then this page's tracking events with the logo of each place
-                                   they reached and their problems, each opening to the envelope, the data layer pushes and
-                                   what each destination's trace says it sent; the problems and notes Issues lists
-    legacy.ts                      the attributes v2 name of each earlier attribute, shown in the Elements tab
-    providers.ts                   setup notes on the destinations, engine event → tracking event / dl_* wiring (checked
-                                   against compat/analytics/), the checks each tracking event's object passes
-    styles.ts                      vendored tsugi first, then the panel, cart, checkout and journey stylesheets on its tokens
+    index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout,
+                                   analytics; developer mode adds events, elements, state, logs and .devonly detail),
+                                   window.nextDebug; returns stop(), which removes every listener, subscription and the panel
+    state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left;
+                                   kept in the session under next:debug, outside the storage scope
+    ui/                            the panel itself: shell.ts (its state and moves between views, painting), view.ts (h(),
+                                   rows, badges, the value tree), tabs.ts menu.ts picker.ts (Add packages), stream.ts
+                                   event-detail.ts (event rows and their detail), source-card.ts, icons.ts (Lucide as
+                                   inline SVG), styles.ts (vendored tsugi, then each tab's stylesheet) theme.ts
+    tabs/                          one file per tab and what only it uses: journey.ts source.ts (where the tab came from),
+                                   checkout.ts address.ts cart.ts cart-line.ts (the Checkout tab), analytics.ts
+                                   providers.ts (setup notes, event wiring checked against compat/analytics/), events.ts
+                                   logs.ts issues.ts elements.ts legacy.ts (each earlier attribute's v2 name), locale.ts
+                                   config.ts draft.ts (Page config), benchmark.ts
   compat/                          @deprecated 0.4.x support; each file ships with its importer
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy/            boot        events.ts: selector ids, the 0.4.x event names made from the new events;
@@ -235,50 +220,51 @@ src/
     order.ts           order       the old offer attribute, the order's 0.4.x event names
     analytics/         analytics   index.ts: the NextDataLayer destination on startDestination, dl_* events (Elevar format)
                                    into NextDataLayer / dataLayer; pushes.ts: each event's dl_* fields, one dl_add_to_cart /
-                                   dl_remove_from_cart push per burst of line events; exit-intent.ts: dl_exit_intent_*;
-                                   ga4.ts: their GA4-style ecommerce payloads (items, value, purchase); schema.ts:
+                                   dl_remove_from_cart push per burst of line events; exit-pushes.ts: dl_exit_intent_*;
+                                   ecommerce.ts: their GA4-style ecommerce payloads (items, value, purchase); schema.ts:
                                    DataLayerEventMap, the type every dl_* push is checked against
 ```
 
-| Chunk        | Loaded when                                                                                 | Budget (gzip) |
-| ------------ | ------------------------------------------------------------------------------------------- | ------------- |
-| loader       | always, inline                                                                              | 2.5 KB        |
-| boot         | always                                                                                      | 25.5 KB       |
-| checkout     | `form[data-next-checkout]`                                                                  | 30 KB         |
-| order        | `[data-next-upsell]` or `order.*`                                                           | 10 KB         |
-| analytics    | idle after ready                                                                            | 8 KB          |
-| ga4          | after analytics, when `destinations.ga4` is on                                              | 2 KB          |
-| meta         | after analytics, when `destinations.meta` is on                                             | 2 KB          |
-| rudderstack  | after analytics, when `destinations.rudderstack` is on                                      | 3 KB          |
-| exit-intent  | first `next.exitIntent()`                                                                   | 3 KB          |
-| slots        | a bundle selector with a slot template                                                      | 6 KB          |
-| attributes   | a v2 attribute on the page, or a script's first new-style action                            | 12 KB         |
-| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)                           | 1 KB          |
-| query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/query.ts`) | 2 KB          |
-| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                       | 3 KB          |
-| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
-| i18n         | `[data-next-i18n]`                                                                          | 1 KB          |
-| legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
-| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 56.5 KB       |
-| debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
-| geo          | shared by checkout and debug (`engine/geo.ts`)                                              | 1 KB          |
+| Chunk        | Loaded when                                                                                         | Budget (gzip) |
+| ------------ | --------------------------------------------------------------------------------------------------- | ------------- |
+| loader       | always, inline                                                                                      | 2.5 KB        |
+| boot         | always                                                                                              | 25.5 KB       |
+| checkout     | `form[data-next-checkout]`                                                                          | 30 KB         |
+| order        | `[data-next-upsell]` or `order.*`                                                                   | 10 KB         |
+| analytics    | idle after ready                                                                                    | 8 KB          |
+| ga4          | after analytics, when `destinations.ga4` is on                                                      | 2 KB          |
+| meta         | after analytics, when `destinations.meta` is on                                                     | 2 KB          |
+| rudderstack  | after analytics, when `destinations.rudderstack` is on                                              | 3 KB          |
+| exit-intent  | first `next.exitIntent()`                                                                           | 3 KB          |
+| slots        | a bundle selector with a slot template                                                              | 6 KB          |
+| attributes   | a v2 attribute on the page, or a script's first new-style action                                    | 12 KB         |
+| variants     | shared by slots, attributes and debug (`engine/cart/variants.ts`)                                   | 1 KB          |
+| query        | `next.query`, `next.watch`, `next.define`, attributes v2, a v2 checkout (`engine/display/query.ts`) | 2 KB          |
+| cart summary | `[data-next-cart-summary]`, or `[data-next-discounts]` outside a card                               | 3 KB          |
+| widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                                 | 3 KB          |
+| i18n         | `[data-next-i18n]`                                                                                  | 1 KB          |
+| legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name         | 3.5 KB        |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                             | 56.5 KB       |
+| debug icons  | the Checkout tab's payment step                                                                     | 16 KB         |
+| geo          | shared by checkout and debug (`engine/visit/geo.ts`)                                                | 1 KB          |
 
 ## Imports
 
-| File                      | May import                                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                        |
-| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`                                                 |
-| `checkout/*`              | `engine/*`, `checkout/*`, `bindings/context.ts`, `bindings/dom.ts`; `compat/checkout.ts` from `index.ts` |
-| `order/*`                 | `engine/*`, `order/*`, `bindings/context.ts`, `bindings/dom.ts`; `compat/order.ts` from `index.ts`       |
-| `analytics/*`             | `engine/*`, `compat/analytics/*`; `destinations/*` only via `import()`                                   |
-| `attributes/*`            | `engine/*`, `attributes/*`, `bindings/context.ts`, `bindings/dom.ts`                                     |
-| `destinations/*`          | `engine/*`                                                                                               |
-| `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()`    |
-| `compat/*`                | `engine/*`, `compat/*`, `bindings/dom.ts`, `checkout/form/names.ts`, `order/upsell.ts`                   |
-| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`; lazy chunks only via `import()`                |
-| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                           |
-| `config.ts`               | `compat/config.ts`                                                                                       |
+| File                      | May import                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `engine/**`, `*/state/**` | `engine/**` and the feature's own `state`, and no browser globals                                     |
+| `dom/*`                   | `engine/*` (boot files), `dom/*`                                                                      |
+| `bindings/*`              | `engine/*` (boot files), `bindings/*`, `dom/*`                                                        |
+| `checkout/*`              | `engine/*`, `checkout/*`, `dom/*`; `compat/checkout.ts` from `index.ts`                               |
+| `order/*`                 | `engine/*`, `order/*`, `dom/*`; `compat/order.ts` from `index.ts`                                     |
+| `analytics/*`             | `engine/*`, `compat/analytics/*`; `destinations/*` only via `import()`                                |
+| `attributes/*`            | `engine/*`, `attributes/*`, `dom/*`                                                                   |
+| `destinations/*`          | `engine/*`                                                                                            |
+| `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()` |
+| `compat/*`                | `engine/*`, `compat/*`, `dom/dom.ts`, `checkout/form/names.ts`, `order/upsell.ts`                     |
+| `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `dom/*`, `compat/legacy/*`; lazy chunks only via `import()`    |
+| `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                        |
+| `config.ts`               | `compat/config.ts`                                                                                    |
 
 Lazy chunks are `checkout/`, `order/`, `analytics/`, `attributes/`, `destinations/ga4.ts`, `destinations/meta.ts`,
 `destinations/rudderstack/`, `debug/`, `bindings/slots.ts`, `bindings/cart-summary.ts`,
@@ -302,10 +288,10 @@ types included: a lazy chunk adds its `State` slice and its `Engine` actions wit
 chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) in headless code; a folder deeper
-than three levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
+than three levels; a default export or a re-export barrel; `console` outside `engine/runtime/log.ts` and
 `loader.ts`; an import, type or `declare module`, from `engine/` to anywhere else; a compat import outside
 an entry; a payment method's
-label or alias outside `engine/payment.ts`.
+label or alias outside `engine/order/payment.ts`.
 
 ## Tests
 

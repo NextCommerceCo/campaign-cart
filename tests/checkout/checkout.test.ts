@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bindCheckout } from '../../src/checkout';
 import type { Checkout } from '../../src/engine/events/checkout';
-import { Query } from '../../src/engine/query';
+import { Query } from '../../src/engine/display/query';
 import { migrate } from '../../scripts/migrate.mjs';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi, json } from '../fixtures/api';

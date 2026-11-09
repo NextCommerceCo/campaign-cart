@@ -1,12 +1,12 @@
 import { unitsOf } from '../engine/cart/public';
 import type { Line } from '../engine/cart/types';
-import type { PageConfig } from '../engine/debug-config';
+import type { PageConfig } from '../engine/visit/debug-config';
 import type { Context } from '../engine/engine';
 import type { AnalyticsTrace } from '../engine/events/analytics';
 import type { EventMap, EventName } from '../engine/events/bus';
 import type { Upsell } from '../engine/events/upsells';
-import { addDollars } from '../engine/format';
-import type { Theme } from './theme';
+import { addDollars } from '../engine/display/format';
+import type { Theme } from './ui/theme';
 
 export type PageKind = 'product' | 'checkout' | 'upsell' | 'receipt' | 'page';
 

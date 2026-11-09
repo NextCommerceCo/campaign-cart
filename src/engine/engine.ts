@@ -1,17 +1,17 @@
-import { Api, failureOf } from './api';
-import { type Attribution, buildAttribution, eventAttribution, type Visit } from './attribution';
+import { Api, failureOf } from './runtime/api';
+import { type Attribution, buildAttribution, eventAttribution, type Visit } from './visit/attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
 import { type EngineEvent, Events } from './events/bus';
 import type { Browser, EventCampaign, EventContext } from './events/context';
 import type { ErrorAction, Snapshot } from './events/sdk';
-import { type LogLevel, Logger } from './log';
-import { appliedCodes, publicOrder } from './order';
-import { keptParams, parseForcePackages } from './params';
+import { type LogLevel, Logger } from './runtime/log';
+import { appliedCodes, publicOrder } from './order/order';
+import { keptParams, parseForcePackages } from './visit/params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
-import { campaignSession, type Cookies } from './session';
-import { StorageAdapter } from './storage';
+import { campaignSession, type Cookies } from './runtime/session';
+import { StorageAdapter } from './runtime/storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
-import { createVisit, type VisitActions } from './visit';
+import { createVisit, type VisitActions } from './visit/visit';
 import type { EventMap, EventName } from './events/bus';
 import type { Campaign, Package, Send, Slice, State } from './types';
 

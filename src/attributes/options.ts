@@ -3,9 +3,9 @@ import { optionPrice, publicToggle, unitsOf } from '../engine/cart/public';
 import { cardSlots } from '../engine/cart/selectors';
 import { toggleGroup } from '../engine/cart/toggles';
 import type { SelectorCard, SelectorMode } from '../engine/cart/types';
-import { cents } from '../engine/format';
+import { cents } from '../engine/display/format';
 import type { Engine } from '../engine/engine';
-import type { Render } from '../bindings/context';
+import type { Render } from '../dom/context';
 import {
   bindToggle,
   cardFromElement,
@@ -14,7 +14,7 @@ import {
   onceVisible,
   registerSelector,
   stateClasses,
-} from '../bindings/dom';
+} from '../dom/dom';
 import type { AttributeContext } from './context';
 
 type Model = Record<string, unknown>;

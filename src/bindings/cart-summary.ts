@@ -1,9 +1,9 @@
-import { localeOf, type Value } from '../engine/format';
-import { cartTokens, lineTokens } from '../engine/cart/tokens';
-import { discountsOfKind, discountTokens, type Tokens } from '../engine/tokens';
-import type { BindContext, Render } from './context';
+import { localeOf, type Value } from '../engine/display/format';
+import { cartTokens, lineTokens } from '../engine/cart/summary-tokens';
+import { discountsOfKind, discountTokens, type Tokens } from '../engine/display/tokens';
+import type { BindContext, Render } from '../dom/context';
 import { applyValues } from './display';
-import { fillTokens, stamp } from './tokens';
+import { fillTokens, stamp } from '../dom/templates';
 
 const tokenValue =
   (tokens: Tokens) =>

@@ -1,5 +1,5 @@
-import type { Logger } from '../../engine/log';
-import { flattenTexts, type Texts } from '../../engine/texts';
+import type { Logger } from '../../engine/runtime/log';
+import { flattenTexts, type Texts } from '../../engine/display/texts';
 
 /** `window.nextConfig`: the page's setup, 0.4.x options among it. */
 export interface NextConfig {

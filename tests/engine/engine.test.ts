@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
-import { ApiError } from '../../src/engine/api';
+import { ApiError } from '../../src/engine/runtime/api';
 import { createOrder } from '../../src/order/state';
 import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine, wait } from '../fixtures/engine';

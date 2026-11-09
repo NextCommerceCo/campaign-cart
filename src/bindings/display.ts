@@ -1,9 +1,9 @@
-import { conditionMet, parseCondition } from '../engine/condition';
+import { conditionMet, parseCondition } from '../engine/display/condition';
 import type { Engine } from '../engine/engine';
-import { format, localeOf, truthy, type Value } from '../engine/format';
-import { resolve, resolveCard, resolveToggle } from '../engine/values';
-import { type BindContext, type Render } from './context';
-import { setSource, setText, setVisible, showWhen } from './dom';
+import { format, localeOf, truthy, type Value } from '../engine/display/format';
+import { resolve, resolveCard, resolveToggle } from '../engine/display/values';
+import { type BindContext, type Render } from '../dom/context';
+import { setSource, setText, setVisible, showWhen } from '../dom/dom';
 
 const V2_SCOPE = '[data-next-option],[data-next-for],[data-next-selector],[data-next-each]';
 const SHOW_HIDE = ['data-next-show', 'data-next-hide'] as const;

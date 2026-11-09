@@ -1,9 +1,9 @@
 import { createActions, type ActionArgs, type Actions } from '../engine/actions';
 import type { CartLine } from '../engine/cart/types';
 import type { Engine } from '../engine/engine';
-import { nextUrl } from '../engine/params';
-import type { Query } from '../engine/query';
-import { BindContext, type Render } from '../bindings/context';
+import { nextUrl } from '../engine/visit/params';
+import type { Query } from '../engine/display/query';
+import { BindContext, type Render } from '../dom/context';
 import { bindActions } from './actions';
 import { AttributeContext, type Binder } from './context';
 import { bindEach, bindFor, bindQuery, bindShow } from './display';

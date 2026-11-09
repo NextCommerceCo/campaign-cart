@@ -1,6 +1,6 @@
-import { setSource } from '../bindings/dom';
+import { setSource } from '../dom/dom';
 import type { Engine } from '../engine/engine';
-import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/format';
+import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/display/format';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 

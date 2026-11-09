@@ -1,5 +1,5 @@
-import { nextUrl } from '../engine/params';
-import type { BindContext, Render } from './context';
+import { nextUrl } from '../engine/visit/params';
+import type { BindContext, Render } from '../dom/context';
 
 export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: string) => void): Render[] {
   b.each(root, 'data-next-action', (el) => {

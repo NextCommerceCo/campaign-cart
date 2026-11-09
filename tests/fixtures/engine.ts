@@ -1,6 +1,6 @@
-import { pageEnvironment } from '../../src/bindings/environment';
+import { pageEnvironment } from '../../src/dom/environment';
 import { Engine, type Environment } from '../../src/engine/engine';
-import type { Visit } from '../../src/engine/attribution';
+import type { Visit } from '../../src/engine/visit/attribution';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from './api';
 import { campaign } from './campaign';

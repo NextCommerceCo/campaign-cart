@@ -1,12 +1,12 @@
-import { localeOf } from '../engine/format';
+import { localeOf } from '../engine/display/format';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
-import { discountsOfKind, discountTokens } from '../engine/tokens';
-import { cardQuote, repricing } from '../engine/values';
+import { discountsOfKind, discountTokens } from '../engine/display/tokens';
+import { cardQuote, repricing } from '../engine/display/values';
 import { bundleCardId, markedSelected, setState } from './cards';
-import { type BindContext, type Render } from './context';
-import { cardFromElement, registerSelector, selectorIdOf, withAttribute } from './dom';
-import { stamp } from './tokens';
+import { type BindContext, type Render } from '../dom/context';
+import { cardFromElement, registerSelector, selectorIdOf, withAttribute } from '../dom/dom';
+import { stamp } from '../dom/templates';
 
 function parseList(raw: string | null): unknown[] {
   if (!raw) return [];

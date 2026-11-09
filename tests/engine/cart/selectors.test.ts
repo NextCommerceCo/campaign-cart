@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SelectorCard } from '../../../src/engine/cart/types';
-import { format } from '../../../src/engine/format';
-import { resolve } from '../../../src/engine/values';
+import { format } from '../../../src/engine/display/format';
+import { resolve } from '../../../src/engine/display/values';
 import { fakeApi } from '../../fixtures/api';
 import { campaign } from '../../fixtures/campaign';
 import { flush, makeEngine, wait } from '../../fixtures/engine';
