@@ -1,9 +1,8 @@
 import type { CheckoutActions } from '../state/checkout';
-import { paymentCode } from '../../engine/payment';
 import type { Engine } from '../../engine/engine';
 import { showField } from '../form/errors';
-import { fieldControl, FIELDS, rawName } from '../form/fields';
-import { cardText, formText, label, textOf } from '../form/texts';
+import { fieldControl } from '../form/fields';
+import { cardText, formText, refusedText, textOf } from '../form/texts';
 import { bindExpiry, type Expiry } from './expiry';
 
 declare const __VERSION__: string;
@@ -109,7 +108,30 @@ function hostedFieldOptions(): object {
   };
 }
 
-function applyFieldState(state: FieldChange | undefined, errors: Map<string, string>, valid: Flags, focused: Flags) {
+interface CardView {
+  errors: Map<string, string>;
+  valid: Flags;
+  focused: Flags;
+  render(): void;
+  changed(): void;
+}
+
+function cardView(hosts: HostedFields, expiry: Expiry, checkout: CheckoutActions): CardView {
+  const errors = new Map<string, string>();
+  const valid = { number: false, cvv: false };
+  const focused = { number: false, cvv: false };
+  const render = () => {
+    renderHostedFields(hosts, errors, valid, focused);
+    expiry.render(errors);
+  };
+  const changed = () => {
+    if (valid.number && valid.cvv && expiry.month() && expiry.year()) checkout.paymentReady();
+    render();
+  };
+  return { errors, valid, focused, render, changed };
+}
+
+function applyFieldState(state: FieldChange | undefined, { errors, valid, focused }: CardView): boolean {
   const field = state?.field;
   if (field !== 'number' && field !== 'cvv') return false;
   if (typeof state?.validNumber === 'boolean') valid.number = state.validNumber;
@@ -122,7 +144,7 @@ function applyFieldState(state: FieldChange | undefined, errors: Map<string, str
 function addValidationErrors(errors: Map<string, string>, payload?: Validation): void {
   for (const e of payload?.errors ?? []) {
     const field = e.attribute === 'month' || e.attribute === 'year' || e.attribute === 'cvv' ? e.attribute : 'number';
-    errors.set(field, e.message ?? `Please enter a valid ${label(field).toLowerCase()}`);
+    errors.set(field, e.message ?? refusedText(field));
   }
 }
 
@@ -137,44 +159,25 @@ function cardDetails(engine: Engine, expiry: Expiry): Record<string, string> {
   };
 }
 
-export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Card | undefined {
-  const number = fieldControl(form, 'cc-number');
-  const cvv = fieldControl(form, 'cvv');
-  const campaign = engine.getState().campaign;
-  const envKey = campaign?.payment_env_key;
-  if (!number || !cvv || !campaign || !envKey) return undefined;
+interface PaymentJs {
+  /** Loaded, and its credentials still fresh. */
+  ready(): boolean;
+  reload(): void;
+  submit(card: Record<string, string>, metadata: Record<string, string>): Promise<string>;
+}
 
-  const hosts = [
-    [number, 'number'],
-    [cvv, 'cvv'],
-  ] as const;
-  markHostedFields(hosts);
-  const expiry = bindExpiry(form);
-
-  const errors = new Map<string, string>();
-  const valid = { number: false, cvv: false };
-  const focused = { number: false, cvv: false };
+function connect(envKey: string, form: HTMLFormElement, view: CardView): PaymentJs {
   let instance: NextPaymentInstance | undefined;
   let loadedAt = 0;
   let pending: Pending | undefined;
-
-  const render = () => {
-    renderHostedFields(hosts, errors, valid, focused);
-    expiry.render(errors);
-  };
-
-  const changed = () => {
-    if (valid.number && valid.cvv && expiry.month() && expiry.year()) checkout.paymentReady();
-    render();
-  };
 
   const settle = (token?: string, error?: string) => {
     if (!pending) return;
     clearTimeout(pending.timer);
     if (token) pending.resolve(token);
-    else pending.reject(new Error(error ?? 'Please check your card details and try again.'));
+    else pending.reject(new Error(error ?? formText({ code: 'card' })));
     pending = undefined;
-    render();
+    view.render();
   };
 
   const create = () => {
@@ -183,10 +186,10 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     instance?.destroy();
     instance = new NextPayment(hostedFieldOptions());
     instance.onReady = () => form.classList.remove('next-loading-spreedly');
-    instance.onFieldStateChange = (state) => applyFieldState(state, errors, valid, focused) && changed();
+    instance.onFieldStateChange = (state) => applyFieldState(state, view) && view.changed();
     instance.onValidation = (payload) => {
-      addValidationErrors(errors, payload);
-      if (errors.size) settle(undefined, [...errors.values()].join('. '));
+      addValidationErrors(view.errors, payload);
+      if (view.errors.size) settle(undefined, [...view.errors.values()].join('. '));
     };
     instance.onError = (error) => {
       const message = (error as { message?: unknown } | undefined)?.message;
@@ -211,17 +214,46 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && loadedAt && stale()) void load(true).catch(() => {});
   });
+
+  return {
+    ready: () => !!instance && !stale(),
+    reload: () => void load(true).catch(() => {}),
+    submit: (card, metadata) =>
+      new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => settle(undefined, 'Credit card tokenization timed out'), TOKENIZE_TIMEOUT);
+        pending = { resolve, reject, timer };
+        instance!.submit(card, { metadata });
+      }),
+  };
+}
+
+export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Card | undefined {
+  const number = fieldControl(form, 'cc-number');
+  const cvv = fieldControl(form, 'cvv');
+  const campaign = engine.getState().campaign;
+  const envKey = campaign?.payment_env_key;
+  if (!number || !cvv || !campaign || !envKey) return undefined;
+
+  const hosts = [
+    [number, 'number'],
+    [cvv, 'cvv'],
+  ] as const;
+  markHostedFields(hosts);
+  const expiry = bindExpiry(form);
+  const view = cardView(hosts, expiry, checkout);
+  const { errors, render } = view;
+  const paymentJs = connect(envKey, form, view);
   expiry.onChange((cleared) => {
     cleared.forEach((key) => errors.delete(key));
-    changed();
+    view.changed();
   });
 
   return {
     render,
     check() {
       errors.clear();
-      if (!valid.number) errors.set('number', cardText('number'));
-      if (!valid.cvv) errors.set('cvv', cardText('cvv'));
+      if (!view.valid.number) errors.set('number', cardText('number'));
+      if (!view.valid.cvv) errors.set('cvv', cardText('cvv'));
       expiry.check(errors);
       render();
     },
@@ -230,68 +262,16 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
       expiry.check(errors);
       render();
       if (errors.size) return Promise.reject(new Error([...errors.values()].join('. ')));
-      if (!instance || stale()) {
-        void load(true).catch(() => {});
+      if (!paymentJs.ready()) {
+        paymentJs.reload();
         return Promise.reject(new Error(formText({ code: 'card_expired' })));
       }
-      const card = cardDetails(engine, expiry);
-      return new Promise<string>((resolve, reject) => {
-        const timer = setTimeout(() => settle(undefined, 'Credit card tokenization timed out'), TOKENIZE_TIMEOUT);
-        pending = { resolve, reject, timer };
-        instance!.submit(card, {
-          metadata: {
-            source: 'next-campaign-cart',
-            sdk_version: __VERSION__,
-            campaign_id: String(campaign.id),
-            page: location.origin + location.pathname,
-          },
-        });
+      return paymentJs.submit(cardDetails(engine, expiry), {
+        source: 'next-campaign-cart',
+        sdk_version: __VERSION__,
+        campaign_id: String(campaign.id),
+        page: location.origin + location.pathname,
       });
     },
-  };
-}
-
-export function bindPayment(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): () => void {
-  const radios = [...form.querySelectorAll<HTMLInputElement>(`input[name="payment_method"], ${FIELDS}`)].filter(
-    (r) => r.type === 'radio' && (r.name === 'payment_method' || rawName(r) === 'payment-method'),
-  );
-  const panels = [...form.querySelectorAll<HTMLElement>('[data-next-payment-method]')];
-  const offered = engine.getState().campaign?.available_payment_methods?.map((m) => paymentCode(m.code));
-  const codeOf = (el: Element, attr: string) => paymentCode(el.getAttribute(attr) ?? '');
-
-  if (offered?.length) {
-    for (const panel of panels) {
-      const code = codeOf(panel, 'data-next-payment-method');
-      if (code === 'card_token' || offered.includes(code)) continue;
-      panel.classList.add('next-hidden');
-      panel.style.display = 'none';
-    }
-  }
-
-  const usable = (radio: HTMLInputElement) =>
-    !radio.hidden && !radio.closest<HTMLElement>('[data-next-payment-method].next-hidden');
-  const saved = engine.getState().checkout?.paymentMethod;
-  const initial =
-    radios.find((r) => usable(r) && paymentCode(r.value) === saved) ??
-    radios.find((r) => usable(r) && r.checked) ??
-    radios.find(usable);
-  if (initial) checkout.setPaymentMethod(initial.value);
-  for (const radio of radios)
-    radio.addEventListener('change', () => radio.checked && checkout.setPaymentMethod(radio.value));
-
-  return () => {
-    const method = engine.getState().checkout?.paymentMethod;
-    for (const radio of radios) radio.checked = paymentCode(radio.value) === method;
-    for (const panel of panels) {
-      const on = codeOf(panel, 'data-next-payment-method') === method;
-      panel.classList.toggle('next-selected', on);
-      const body = panel.querySelector<HTMLElement>('[data-next-payment-form]');
-      if (!body) continue;
-      body.setAttribute('data-next-payment-state', on ? 'expanded' : 'collapsed');
-      body.classList.toggle('payment-method__form--expanded', on);
-      body.classList.toggle('payment-method__form--collapsed', !on);
-      body.style.height = on ? '' : '0px';
-      body.style.overflow = on ? '' : 'hidden';
-    }
   };
 }

@@ -3,6 +3,8 @@ import { FIELD_ATTRS } from './fields';
 type Field = HTMLInputElement | HTMLSelectElement;
 
 const FIELD = FIELD_ATTRS.flatMap((a) => [`input[${a}]`, `select[${a}]`]).join(', ');
+/** Autofill can fill a field without an input event: re-read every label this long, as 0.4.x did. */
+const AUTOFILL_WATCH = 30_000;
 
 const filled = (field: Field) =>
   field instanceof HTMLSelectElement
@@ -51,7 +53,8 @@ export function bindLabels(form: HTMLFormElement): () => void {
   }
   const all = () => pairs.forEach(([label, field]) => update(label, field));
   if (pairs.length) {
-    const timer = setInterval(() => (form.isConnected ? all() : clearInterval(timer)), 500);
+    const timer = setInterval(all, 500);
+    setTimeout(() => clearInterval(timer), AUTOFILL_WATCH);
   }
   all();
   return all;

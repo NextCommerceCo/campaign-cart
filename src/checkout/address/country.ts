@@ -1,8 +1,8 @@
 import type { Engine } from '../../engine/engine';
 import { BY_COUNTRY, formatPostcode } from '../state/rules';
-import { countryOf } from '../state/phone';
 import type { CountryOption, CountryRules, FieldRule } from '../state/types';
-import { type Control, fieldName, type Fields, option } from '../form/fields';
+import { type Control, type Fields, onField, option } from '../form/fields';
+import { parse, rulesOf } from '../form/names';
 import { legacyHiddenStates } from '../../compat/checkout';
 import { reformat } from '../form/reformat';
 import { WRAPPERS } from '../form/errors';
@@ -109,21 +109,11 @@ type Prefix = keyof typeof BOXES;
 type StatePairs = Map<string, { select: HTMLSelectElement; input: HTMLInputElement }>;
 
 function formatPostcodes(engine: Engine, form: HTMLFormElement, fields: Fields): void {
-  const rulesFor = (name: string): CountryRules | undefined => {
-    const checkout = engine.getState().checkout;
-    return checkout?.rules[countryOf(checkout.fields, name) ?? ''];
-  };
-  form.addEventListener(
-    'input',
-    (e) => {
-      const el = e.target;
-      const name = el instanceof HTMLInputElement ? fieldName(el) : undefined;
-      if (!name || name.replace(/^billing_/, '') !== 'postcode' || fields.get(name) !== el) return;
-      const format = rulesFor(name)?.fields.postcode?.format;
-      reformat(el as HTMLInputElement, formatPostcode((el as HTMLInputElement).value, format), SIGNIFICANT);
-    },
-    true,
-  );
+  onField(form, fields, 'input', (name, el) => {
+    if (!(el instanceof HTMLInputElement) || parse(name).api !== 'postcode') return;
+    const format = rulesOf(engine.getState().checkout, name)?.fields.postcode?.format;
+    reformat(el, formatPostcode(el.value, format), SIGNIFICANT);
+  });
 }
 
 function stateControl(fields: Fields, states: StatePairs, name: string, text: boolean): Control | undefined {

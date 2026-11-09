@@ -30,6 +30,7 @@ const CAMPAIGN: Campaign = {
 
 class FakeNextPayment {
   static fail: string | undefined;
+  static refuse: Array<{ attribute?: string; message?: string }> | undefined;
   static submitted: Array<Record<string, string>> = [];
   static metadata: Record<string, string> | undefined;
   onReady = () => {};
@@ -44,9 +45,11 @@ class FakeNextPayment {
     FakeNextPayment.submitted.push(card);
     FakeNextPayment.metadata = options?.metadata;
     queueMicrotask(() =>
-      FakeNextPayment.fail
-        ? this.onError({ message: FakeNextPayment.fail })
-        : this.onTokenized({ tokenResponse: { payment_method: { token: 'tok_1' } } }),
+      FakeNextPayment.refuse
+        ? this.onValidation({ errors: FakeNextPayment.refuse })
+        : FakeNextPayment.fail
+          ? this.onError({ message: FakeNextPayment.fail })
+          : this.onTokenized({ tokenResponse: { payment_method: { token: 'tok_1' } } }),
     );
   }
   destroy() {}
@@ -136,6 +139,7 @@ async function mount(
 beforeEach(() => {
   history.replaceState(null, '', '/olympus/checkout/');
   FakeNextPayment.fail = undefined;
+  FakeNextPayment.refuse = undefined;
   FakeNextPayment.submitted = [];
   sessionStorage.clear();
 });
@@ -275,6 +279,34 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(orders()).toHaveLength(2);
   });
 
+  it('holds every submit button of the form while the order is placed', async () => {
+    let answer = (_: Response) => {};
+    const { fill, card, submit, form } = await mount('olympus/checkout.html', {
+      markup: (body) =>
+        body
+          .querySelector('form[data-next-checkout]')!
+          .append(Object.assign(document.createElement('button'), { type: 'submit', className: 'mobile-submit' })),
+      order: () => new Promise<Response>((resolve) => (answer = resolve)) as unknown as Response,
+    });
+    const buttons = [...form.querySelectorAll<HTMLButtonElement>('button[type="submit"]')];
+    expect(buttons).toHaveLength(2);
+    fill(SHIPPING);
+    card();
+    await submit();
+    await flush();
+    expect(buttons.map((b) => [b.disabled, b.getAttribute('aria-busy')])).toEqual([
+      [true, 'true'],
+      [true, 'true'],
+    ]);
+    answer(json({ payment_response_code: '51' }, 400));
+    await flush();
+    await flush();
+    expect(buttons.map((b) => [b.disabled, b.getAttribute('aria-busy')])).toEqual([
+      [false, 'false'],
+      [false, 'false'],
+    ]);
+  });
+
   it('writes the checkout in nextConfig.locale, the page’s translations over i18n-rules’ texts (0.4.x)', async () => {
     const answers = [json({ payment_response_code: '3005', payment_details: 'Invalid Card Number' }, 400)];
     const { fill, card, submit, $, rules } = await mount('olympus/checkout.html', {
@@ -317,6 +349,19 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('[data-next-component="credit-error-text"]').textContent).toBe('Card number is invalid');
     expect(document.querySelector('[data-next-error-for="month"]')).toBeNull();
     expect(orders()).toHaveLength(0);
+  });
+
+  it('words what payment.js refused without a message in the page’s translations', async () => {
+    const { fill, card, submit, $ } = await mount('olympus/checkout.html', {
+      locale: 'th-TH',
+      translations: { th: { 'payment.card.number.errors.invalid': 'กรุณากรอกหมายเลขบัตรให้ถูกต้อง' } },
+    });
+    fill(SHIPPING);
+    card();
+    FakeNextPayment.refuse = [{ attribute: 'number' }];
+    await submit();
+    await flush();
+    expect($('.next-error-label[data-next-error-for="number"]').textContent).toBe('กรุณากรอกหมายเลขบัตรให้ถูกต้อง');
   });
 
   it('pays by Klarna without touching the card form', async () => {
@@ -494,6 +539,10 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await flush();
     expect(field('city').value).toBe('Austin');
     expect(label('city').classList).toContain('has-value');
+    engine.checkout!.setField('state', 'NY');
+    await flush();
+    expect(field('province').value).toBe('NY');
+    expect(label('province').classList).toContain('has-value');
   });
 
   it('floats a placeholder-style label while its field has focus', async () => {
@@ -513,6 +562,27 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     input.dispatchEvent(new Event('blur'));
     expect(label.classList).not.toContain('has-value');
     expect(input.placeholder).toBe('Email*');
+  });
+
+  it('floats the label of a field autofill filled without an event, for the first 30 seconds', async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `<form><div class="form-group"><div class="form-input">
+      <label class="label-checkout">Email</label><input data-next-checkout-field="email">
+    </div></div><div class="form-group"><div class="form-input">
+      <label class="label-checkout">City</label><input data-next-checkout-field="city">
+    </div></div></form>`;
+    const { bindLabels } = await import('../../src/checkout/form/labels');
+    bindLabels(document.querySelector('form')!);
+    const [email, city] = [...document.querySelectorAll('input')];
+    const [emailLabel, cityLabel] = [...document.querySelectorAll('label')];
+    email!.value = 'jane@example.com';
+    vi.advanceTimersByTime(500);
+    expect(emailLabel!.classList).toContain('has-value');
+    vi.advanceTimersByTime(30_000);
+    city!.value = 'Austin';
+    vi.advanceTimersByTime(500);
+    expect(cityLabel!.classList).not.toContain('has-value');
+    vi.useRealTimers();
   });
 
   it('shows an express failure next to the express buttons', async () => {

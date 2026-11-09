@@ -19,9 +19,13 @@ export const LEGACY_FIELDS: Record<string, string> = {
 };
 
 const API_TO_LEGACY = Object.fromEntries(Object.entries(LEGACY_FIELDS).map(([page, api]) => [api, page]));
+const legacyName = (name: string) => API_TO_LEGACY[name] ?? name;
 
-/** @deprecated The page name of an API field (`line1` → `address1`). Fields built by `data-next-address` keep 0.4.x names, which page CSS selects. */
-export const pageFieldName = (name: string) => API_TO_LEGACY[name] ?? name;
+/** @deprecated The page name of an API field: `line1` → `address1`, `billing_line1` → `billing_address1` (`separator` `-`: `billing-address1`). Fields built by `data-next-address` keep 0.4.x names, which page CSS selects. */
+export function pageFieldName(name: string, separator: '_' | '-' = '_'): string {
+  const base = name.replace(/^billing_/, '');
+  return base === name ? legacyName(name) : `billing${separator}${legacyName(base)}`;
+}
 
 /** @deprecated `data-next-checkout-field` / `os-checkout-field`. Use `data-next-field`. */
 export const LEGACY_FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
@@ -100,9 +104,7 @@ const GUARD_KEY = 'next-checkout-store';
 export function writeStepGuard(engine: Engine): void {
   const { checkout, cart } = engine.getState();
   if (!checkout) return;
-  const formData = Object.fromEntries(
-    Object.entries(checkout.fields).map(([name, value]) => [API_TO_LEGACY[name] ?? name, value]),
-  );
+  const formData = Object.fromEntries(Object.entries(checkout.fields).map(([n, v]) => [legacyName(n), v]));
   const state = { step: checkout.step, formData, shippingMethod: cart.shippingId && { id: cart.shippingId } };
   try {
     sessionStorage.setItem(GUARD_KEY, JSON.stringify({ state, version: 0 }));
@@ -244,12 +246,9 @@ const CHECKOUT_EVENTS = {
   'express-checkout:failed': expressFailed,
 };
 
-const formFieldName = (name: string) =>
-  name.startsWith('billing_') ? `billing_${pageFieldName(name.slice(8))}` : pageFieldName(name);
-
 /** 0.4.x `CheckoutData`: the form under 0.4.x field names. */
 const checkoutData = (checkout: Checkout, state: State) => ({
-  formData: Object.fromEntries(Object.entries(state.checkout?.fields ?? {}).map(([n, v]) => [formFieldName(n), v])),
+  formData: Object.fromEntries(Object.entries(state.checkout?.fields ?? {}).map(([n, v]) => [pageFieldName(n), v])),
   paymentMethod:
     !checkout.payment_method || checkout.payment_method === 'card_token' ? 'credit-card' : checkout.payment_method,
   isProcessing: false,

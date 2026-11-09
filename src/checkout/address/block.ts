@@ -1,7 +1,7 @@
 import type { Engine } from '../../engine/engine';
 import type { CountryRules, FieldRule } from '../state/types';
 import { type Control, FIELD_ATTR, type Fields, scanFields } from '../form/fields';
-import { pageFieldName } from '../../compat/checkout';
+import { toPage } from '../form/names';
 
 interface Block {
   el: HTMLElement;
@@ -63,7 +63,7 @@ function control(rule: FieldRule, page: string, id: string, section: string, lab
 
 function cell(block: Block, name: string, rules: CountryRules | undefined): HTMLElement {
   const rule = ruleFor(name, rules);
-  const page = (block.prefix ? 'billing-' : '') + pageFieldName(name);
+  const page = toPage(block.prefix + name);
   const section = block.prefix ? 'billing' : 'shipping';
   const id = `next-${section}-${page}`;
   const label = (rule.required ? rule.label : (rule.label_optional ?? `${rule.label} (optional)`)) ?? name;

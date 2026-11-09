@@ -1,7 +1,7 @@
 import type { Texts } from '../../engine/texts';
 import type { CheckoutError } from '../../engine/types';
 import type { CheckoutState, CountryRules } from '../state/types';
-import { countryOf } from '../state/phone';
+import { parse, rulesOf, toV2 } from './names';
 
 const LABELS: Record<string, string> = {
   email: 'Email',
@@ -62,6 +62,13 @@ const CARD_KEYS: Record<string, string> = {
   expired: 'payment.card.expiry_month.errors.expired',
 };
 
+const CARD_FIELDS: Record<string, string> = {
+  number: 'number',
+  cvv: 'cvv',
+  month: 'expiry_month',
+  year: 'expiry_year',
+};
+
 const FORM_KEYS: Record<string, string> = { card_expired: 'payment.card.errors.session_expired' };
 
 let page: Texts = {};
@@ -83,14 +90,14 @@ export const textOf = (key: string | undefined, english: string): string =>
   (key && (page[key] ?? service?.[key])) || english;
 
 export function label(name: string, rules?: CountryRules): string {
-  const base = name.replace(/^billing_/, '');
+  const { billing, api: base } = parse(name);
   const text = rules?.fields[base]?.label ?? page[`fields.${base}.label`] ?? LABELS[base] ?? base;
-  return name.startsWith('billing_') ? `Billing ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text;
+  return billing ? `Billing ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text;
 }
 
 export function fieldText(name: string, error: CheckoutError, rules?: CountryRules): string {
   if (error.message) return error.message;
-  const base = name.replace(/^billing_/, '');
+  const base = parse(name).api;
   const served =
     (rules?.fields[base]?.errors as Record<string, string> | undefined)?.[error.code] ??
     page[`fields.${base}.errors.${error.code}`];
@@ -110,22 +117,21 @@ export function formText(error: CheckoutError, fill: Record<string, string> = {}
   return Object.entries(fill).reduce((t, [k, v]) => t.replace(`{${k}}`, v), text);
 }
 
-/** The `data-next-field` key of a field: `phone_number` is `phone`. */
-export const v2Key = (name: string) => name.replace(/phone_number$/, 'phone');
-
-const rulesOf = (state: CheckoutState, name: string) => state.rules[countryOf(state.fields, name) ?? ''];
-
 /** `checkout.errors` as a page reads it: each field's message under its name and key, and `payment`, the error box's. */
 export function errorTexts(state: CheckoutState, payment: string): Record<string, string> {
   const texts: Record<string, string> = {};
   for (const [name, error] of Object.entries(state.errors)) {
     if (name === 'form') continue;
-    texts[name] = texts[v2Key(name)] = fieldText(name, error, rulesOf(state, name));
+    texts[name] = texts[toV2(name)] = fieldText(name, error, rulesOf(state, name));
   }
   if (payment) texts.payment = payment;
   return texts;
 }
 
 export const cardText = (problem: string) => textOf(CARD_KEYS[problem], CARD[problem]!);
+
+/** What payment.js refused in a card field without saying why. */
+export const refusedText = (field: string) =>
+  textOf(`payment.card.${CARD_FIELDS[field]}.errors.invalid`, `Please enter a valid ${label(field).toLowerCase()}`);
 
 export const expressText = (message: string) => FORM.express!.replace('{message}', message.replace(/\.$/, ''));

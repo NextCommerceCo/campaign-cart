@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { CheckoutState } from './state/types';
-import { LEGACY_FIELDS } from '../compat/checkout';
+import { toApi } from './form/names';
 import { phoneText } from '../engine/format';
 
 function address(checkout: CheckoutState, prefix: '' | 'billing_'): string {
@@ -19,10 +19,7 @@ function value(engine: Engine, key: string): string {
     const method = cart.summary?.shipping_method as Record<string, unknown> | undefined;
     return String(method?.[key.slice('shippingMethod.'.length)] ?? '');
   }
-  const billing = key.startsWith('billingAddress.');
-  const base = billing ? key.slice('billingAddress.'.length) : key;
-  const name = LEGACY_FIELDS[base] ?? base;
-  return checkout.fields[billing ? `billing_${name}` : name]?.trim() ?? '';
+  return checkout.fields[toApi(key.replace(/^billingAddress\./, 'billing_'))]?.trim() ?? '';
 }
 
 export function bindReview(engine: Engine): () => void {

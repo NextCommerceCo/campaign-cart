@@ -37,6 +37,16 @@ function closeButton(onClose: () => void): HTMLButtonElement {
   return button;
 }
 
+function suggestionItem(query: string, suggestion: AddressSuggestion, onPick: () => void): HTMLElement {
+  const el = Object.assign(document.createElement('div'), { className: 'pac-item-nextcommerce' });
+  el.append(
+    Object.assign(document.createElement('span'), { className: 'pac-icon pac-icon-marker' }),
+    highlight(query, suggestion.label),
+  );
+  el.addEventListener('click', onPick);
+  return el;
+}
+
 function pickState(select: HTMLSelectElement, code: string, name: string, attempt = 0): void {
   if (attempt >= 5) return;
   setTimeout(
@@ -75,23 +85,28 @@ function fill(fields: Fields, prefix: '' | 'billing_', { address }: AddressSugge
     pickState(state, address.state_code, address.state);
 }
 
-function attach(
-  input: HTMLInputElement,
-  country: () => string,
-  search: CheckoutActions['suggestAddresses'],
-  choose: (s: AddressSuggestion) => void,
-): void {
+interface SuggestionList {
+  show(query: string, found: AddressSuggestion[]): void;
+  /** Shows the list again if it is still there. */
+  reveal(): boolean;
+  hide(): void;
+  close(): void;
+  move(down: boolean): void;
+  pick(): void;
+  /** The shopper typed: the list stops pointing at a suggestion. */
+  typing(): void;
+}
+
+function suggestionList(input: HTMLInputElement, choose: (s: AddressSuggestion) => void): SuggestionList {
   let box: HTMLElement | undefined;
   let results: AddressSuggestion[] = [];
   let active = -1;
   let typed: string | null = null;
-  let navigating = false;
-  let last: { query: string; results: AddressSuggestion[] } | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let controller: AbortController | undefined;
 
   const items = () => [...(box?.querySelectorAll<HTMLElement>('.pac-item-nextcommerce') ?? [])];
-  const open = () => !!box && box.style.display !== 'none';
+  const hide = () => {
+    if (box) box.style.display = 'none';
+  };
   const outside = (e: MouseEvent) => {
     if (box && !box.contains(e.target as Node) && e.target !== input) box.style.display = 'none';
   };
@@ -109,6 +124,12 @@ function attach(
     active = index;
     input.value = index >= 0 && results[index] ? results[index].label : (typed ?? '');
   };
+  const select = (suggestion: AddressSuggestion) => {
+    typed = null;
+    input.value = suggestion.label;
+    choose(suggestion);
+    hide();
+  };
   const show = (query: string, found: AddressSuggestion[]) => {
     close();
     box = Object.assign(document.createElement('div'), { className: 'pac-container-nextcommerce pac-logo' });
@@ -118,21 +139,7 @@ function attach(
     document.body.append(box);
     results = found;
     typed = input.value;
-    for (const suggestion of found) {
-      const item = Object.assign(document.createElement('div'), { className: 'pac-item-nextcommerce' });
-      item.append(
-        Object.assign(document.createElement('span'), { className: 'pac-icon pac-icon-marker' }),
-        highlight(query, suggestion.label),
-      );
-      item.addEventListener('click', () => {
-        typed = null;
-        input.value = suggestion.label;
-        choose(suggestion);
-        if (box) box.style.display = 'none';
-      });
-      box.append(item);
-    }
-    box.append(closeButton(() => box && (box.style.display = 'none')));
+    box.append(...found.map((s) => suggestionItem(query, s, () => select(s))), closeButton(hide));
     if (!found.length) return;
     const rect = input.getBoundingClientRect();
     Object.assign(box.style, {
@@ -142,6 +149,43 @@ function attach(
       display: 'block',
     });
   };
+
+  return {
+    show,
+    reveal() {
+      if (box) box.style.display = 'block';
+      return !!box;
+    },
+    hide,
+    close,
+    move(down) {
+      const count = items().length;
+      if (!box || box.style.display === 'none' || !count) return;
+      if (down) setActive(active >= count - 1 ? 0 : active + 1);
+      else setActive(active <= 0 ? count - 1 : active - 1);
+    },
+    pick() {
+      if (active >= 0) items()[active]?.click();
+    },
+    typing() {
+      typed = null;
+      if (active >= 0) setActive(-1);
+    },
+  };
+}
+
+function attach(
+  input: HTMLInputElement,
+  country: () => string,
+  search: CheckoutActions['suggestAddresses'],
+  choose: (s: AddressSuggestion) => void,
+): void {
+  const list = suggestionList(input, choose);
+  let navigating = false;
+  let last: { query: string; results: AddressSuggestion[] } | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let controller: AbortController | undefined;
+
   const lookup = async (query: string) => {
     controller?.abort();
     controller = new AbortController();
@@ -149,34 +193,31 @@ function attach(
     const found = await search(query, country(), signal);
     if (signal.aborted) return;
     last = { query, results: found };
-    show(query, found);
+    list.show(query, found);
   };
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (active >= 0) items()[active]?.click();
+      list.pick();
       return;
     }
-    if (e.key === 'Escape') return close();
+    if (e.key === 'Escape') return list.close();
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
       navigating = false;
       return;
     }
     e.preventDefault();
     navigating = true;
-    const count = items().length;
-    if (!open() || !count) return;
-    if (e.key === 'ArrowDown') setActive(active >= count - 1 ? 0 : active + 1);
-    else setActive(active <= 0 ? count - 1 : active - 1);
+    list.move(e.key === 'ArrowDown');
   });
   input.addEventListener('focus', () => {
-    if (box && last?.results.length) box.style.display = 'block';
-    else if (last?.results.length) show(last.query, last.results);
-    else if (searchable(input.value)) void lookup(input.value);
+    if (last?.results.length) {
+      if (!list.reveal()) list.show(last.query, last.results);
+    } else if (searchable(input.value)) void lookup(input.value);
   });
   input.addEventListener('blur', () => {
-    if (!navigating) close();
+    if (!navigating) list.close();
     navigating = false;
   });
   input.addEventListener('input', () => {
@@ -184,11 +225,10 @@ function attach(
       navigating = false;
       return;
     }
-    typed = null;
-    if (active >= 0) setActive(-1);
+    list.typing();
     clearTimeout(timer);
     if (!searchable(input.value)) {
-      if (box) box.style.display = 'none';
+      list.hide();
       return;
     }
     const query = input.value;

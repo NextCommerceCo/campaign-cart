@@ -29,7 +29,7 @@ const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
   'debug/cart.ts': 391,
   'order/state.ts': 309,
-  'compat/checkout.ts': 338,
+  'compat/checkout.ts': 337,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);

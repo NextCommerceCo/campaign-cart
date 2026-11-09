@@ -1,7 +1,8 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
 import { asciiDigits, countryOf, formatPhone, PHONES } from '../state/phone';
-import type { Fields } from '../form/fields';
+import { type Fields, onField } from '../form/fields';
+import { rulesOf } from '../form/names';
 import { reformat } from '../form/reformat';
 
 const FLAG_WIDTH = 20;
@@ -59,8 +60,7 @@ export function bindPhones(
   const pauses = new Map<string, ReturnType<typeof setTimeout>>();
   const state = () => engine.getState().checkout;
   const fieldCountry = (name: string) => countryOf(state()?.fields, name);
-  const formatOf = (name: string) => state()?.rules[fieldCountry(name) ?? '']?.fields.phone_number?.format;
-  const phoneOf = (target: EventTarget | null) => PHONES.find((name) => fields.get(name) === target);
+  const formatOf = (name: string) => rulesOf(state(), name)?.fields.phone_number?.format;
 
   const mask = (name: string, input: HTMLInputElement, forward = false) => {
     const typed = asciiDigits(input.value);
@@ -69,14 +69,9 @@ export function bindPhones(
   };
 
   const listen = (type: string, fn: (name: string, input: HTMLInputElement, e: Event) => void) =>
-    form.addEventListener(
-      type,
-      (e) => {
-        const name = phoneOf(e.target);
-        if (name && e.target instanceof HTMLInputElement) fn(name, e.target, e);
-      },
-      true,
-    );
+    onField(form, fields, type, (name, el, e) => {
+      if (PHONES.includes(name) && el instanceof HTMLInputElement) fn(name, el, e);
+    });
   listen('input', (name, input, e) => {
     mask(name, input, e instanceof InputEvent && e.inputType.endsWith('Forward'));
     clearTimeout(pauses.get(name));

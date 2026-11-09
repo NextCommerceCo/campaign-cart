@@ -35,7 +35,8 @@ import {
   writeStepGuard,
 } from '../compat/checkout';
 import { errorBox, showBox, shown } from './form/errors';
-import { bindCard, bindPayment } from './payment/card';
+import { bindCard, type Card } from './payment/card';
+import { bindPayment } from './payment/methods';
 import { bindPhones } from './address/phone';
 import { bindReview } from './review';
 import { errorTexts, expressText, formText, label, useTexts } from './form/texts';
@@ -168,36 +169,31 @@ function renderErrorBoxes(form: HTMLFormElement, box: string, text: string): voi
 }
 
 function bindSubmitState(engine: Engine, form: HTMLFormElement): () => void {
-  const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>(SUBMIT);
-  const wasDisabled = !!submit?.disabled;
+  const buttons = [...form.querySelectorAll<HTMLButtonElement | HTMLInputElement>(SUBMIT)].map(
+    (button) => [button, button.disabled] as const,
+  );
   const showOverlay = overlay();
   return () => {
     const busy = engine.getState().checkout?.status !== 'idle';
     showOverlay(busy);
-    if (!submit) return;
-    submit.disabled = busy || wasDisabled;
-    submit.setAttribute('aria-busy', String(busy));
+    for (const [button, wasDisabled] of buttons) {
+      button.disabled = busy || wasDisabled;
+      button.setAttribute('aria-busy', String(busy));
+    }
   };
 }
 
-export function bindCheckout(
-  engine: Engine,
-  form: HTMLFormElement,
-  {
-    navigate = (url) => location.assign(url),
-    rules: send = rulesSend(window.fetch.bind(window)),
-    legacyCheckoutStarted,
-    query,
-    translations = {},
-  }: BindOptions = {},
-): CheckoutActions {
-  const rules = bindTexts(engine, send, translations);
-  const lead = leadOf(engine, form);
-  const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
-  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
-  engine.checkout = checkout;
-  const { successUrl, stepUrl } = pageUrls(engine, form);
-  form.noValidate = true;
+interface Parts {
+  fields: Fields;
+  card: Card | undefined;
+  renders: Array<() => void>;
+}
+
+/**
+ * Billing rows and the payment widget add fields, so they come before scanFields; the phone and postcode listeners
+ * come before bindFields', so a value is masked before it is read; labels float after the address fills its selects.
+ */
+function bindParts(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Parts {
   cloneBillingRows(form);
   const paymentWidget = bindPaymentWidget(engine, form);
   const fields = scanFields(form);
@@ -208,11 +204,38 @@ export function bindCheckout(
   const card = bindCard(engine, checkout, form);
   const phones = bindPhones(engine, checkout, form, fields, I18N_RULES);
   const address = bindAddress(engine, form, fields);
-  const page = location.pathname;
-  const step = stepOf(engine, form, page, stepUrl);
-  const renderSubmit = bindSubmitState(engine, form);
-  let box = 'credit';
+  const renders = [
+    addressForms,
+    bindFields(engine, checkout, form, fields),
+    phones,
+    address,
+    labels,
+    bindBilling(engine, checkout, form),
+    bindPayment(engine, checkout, form),
+    paymentWidget,
+  ];
+  return { fields, card, renders };
+}
 
+interface Urls extends ReturnType<typeof pageUrls> {
+  step: number;
+  navigate: (url: string) => void;
+}
+
+interface Order {
+  pay(expressMethod?: string): Promise<void>;
+  /** The error box the last attempt reports to: `express`, or the payment method's. */
+  box(): string;
+}
+
+function bindOrder(
+  engine: Engine,
+  checkout: CheckoutActions,
+  form: HTMLFormElement,
+  { fields, card }: Parts,
+  { successUrl, stepUrl, step, navigate }: Urls,
+): Order {
+  let box = 'credit';
   const current = () => new URL(location.href);
 
   const pay = async (expressMethod?: string): Promise<void> => {
@@ -248,29 +271,49 @@ export function bindCheckout(
     if (stepUrl) advance();
     else void pay();
   });
+  return { pay, box: () => box };
+}
+
+export function bindCheckout(
+  engine: Engine,
+  form: HTMLFormElement,
+  {
+    navigate = (url) => location.assign(url),
+    rules: send = rulesSend(window.fetch.bind(window)),
+    legacyCheckoutStarted,
+    query,
+    translations = {},
+  }: BindOptions = {},
+): CheckoutActions {
+  const rules = bindTexts(engine, send, translations);
+  const lead = leadOf(engine, form);
+  const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
+  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
+  engine.checkout = checkout;
+  const urls = pageUrls(engine, form);
+  form.noValidate = true;
+  const parts = bindParts(engine, checkout, form);
+  const page = location.pathname;
+  const step = stepOf(engine, form, page, urls.stepUrl);
+  const renderSubmit = bindSubmitState(engine, form);
+  const order = bindOrder(engine, checkout, form, parts, { ...urls, step, navigate });
+  const boxText = (state: CheckoutState) => errorText(state, parts.fields, order.box());
 
   query?.register('checkout.errors', () => {
     const state = engine.getState().checkout;
-    return state && errorTexts(state, errorText(state, fields, box));
+    return state && errorTexts(state, boxText(state));
   });
 
   const renderErrors = () => {
     const state = engine.getState().checkout;
-    if (state) renderErrorBoxes(form, box, errorText(state, fields, box));
+    if (state) renderErrorBoxes(form, order.box(), boxText(state));
   };
 
   const renders = [
-    addressForms,
-    bindFields(engine, checkout, form, fields),
-    phones,
-    labels,
-    address,
-    bindBilling(engine, checkout, form),
-    bindPayment(engine, checkout, form),
-    paymentWidget,
-    bindExpress(engine, pay),
+    ...parts.renders,
+    bindExpress(engine, order.pay),
     bindReview(engine),
-    card?.render ?? (() => {}),
+    parts.card?.render ?? (() => {}),
     renderErrors,
     renderSubmit,
   ];

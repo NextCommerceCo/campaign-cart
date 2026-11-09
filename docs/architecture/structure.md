@@ -123,6 +123,8 @@ src/
     visit.ts                                    the visit's timers and exit-intent count (engine.visit)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
+    payment.ts                                  payment methods: codes and their aliases, labels, wallets, express buttons;
+                                                a chunk the lazy chunks share, kept out of boot
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
     cart/                                       cart.ts (cart actions), coupons.ts (checking, holding and removing codes),
                                                 lines.ts (groups merged into lines), public.ts (the Cart, Checkout and toggle
@@ -150,13 +152,15 @@ src/
   checkout/            checkout    loaded when the page has form[data-next-checkout], bound on ready
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
-                                   place-order.ts (placeOrder, redirectFor), order-body.ts (order body, payment codes),
+                                   place-order.ts (placeOrder, redirectFor), order-body.ts (order body),
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
-    payment/                       card.ts (payment radios and panels, payment.js), expiry.ts (month + year selects or
-                                   card.expiry), widget.ts ([data-next-payment]), express.ts, logos.ts
-    form/                          fields.ts, labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
+    payment/                       methods.ts (payment radios and panels, the method choice widget.ts shares),
+                                   card.ts (card fields, payment.js), expiry.ts (month + year selects or card.expiry),
+                                   widget.ts ([data-next-payment]), express.ts, logos.ts
+    form/                          fields.ts, names.ts (a field's name in every spelling, its country's rules),
+                                   labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
     review.ts                      [data-next-checkout-review]
   order/               order       loaded when the page has an upsell offer or order.* values
     index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
