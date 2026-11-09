@@ -5,7 +5,15 @@ import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } 
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/format';
 import { cardQuote } from '../engine/values';
-import { applyValues, bindTokens, fillTemplate, ownProperties, pageProperties, selectorIdOf } from './dom';
+import {
+  applyValues,
+  bindTokens,
+  fillTemplate,
+  ownProperties,
+  pageProperties,
+  selectorIdOf,
+  withAttribute,
+} from './dom';
 
 const SLOT_TOKEN = /\{((?:slot|item|discount)\.\w+)\}/g;
 
@@ -278,7 +286,7 @@ export function bindSlots(engine: Engine): () => void {
     const source = templateId ? document.getElementById(templateId) : null;
     const template = source?.innerHTML ?? selectorEl.getAttribute('data-next-bundle-slot-template');
     const selectorId = selectorIdOf(selectorEl);
-    const stage = document.querySelector(`[data-next-bundle-slots-for="${selectorId}"]`);
+    const stage = withAttribute(document, 'data-next-bundle-slots-for', selectorId)[0];
     if (!template || !stage) return [];
     const cards = new Map(
       [...selectorEl.querySelectorAll('[data-next-bundle-card]')].map((el, i) => [

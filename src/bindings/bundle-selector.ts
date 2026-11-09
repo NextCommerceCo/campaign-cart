@@ -2,7 +2,7 @@ import { localeOf } from '../engine/format';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { type BindContext, type Render } from './context';
-import { registerSelector, selectorIdOf, setState, stamp } from './dom';
+import { registerSelector, selectorIdOf, setState, stamp, withAttribute } from './dom';
 import { discountsOfKind, discountTokens } from '../engine/tokens';
 import { cardQuote, repricing } from '../engine/values';
 
@@ -39,7 +39,7 @@ function modeOf(el: Element, upsellPage: boolean): SelectorMode {
 const STEP = { increase: 1, decrease: -1 } as const;
 
 function bindStepper(b: BindContext, selectorId: string, els: Map<string, Element>): Render {
-  const hosts = [...document.querySelectorAll(`[data-next-bundle-qty-for="${selectorId}"]`), ...els.values()];
+  const hosts = [...withAttribute(document, 'data-next-bundle-qty-for', selectorId), ...els.values()];
   const within = <E extends Element>(selector: string) => [
     ...new Set(hosts.flatMap((host) => [...host.querySelectorAll<E>(selector)])),
   ];

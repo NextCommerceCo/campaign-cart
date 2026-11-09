@@ -5,7 +5,7 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf, truthy, type Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
 import { resolve } from '../engine/values';
-import { legacySelectorId } from '../compat/legacy/registry';
+import { bundleSelectorId } from '../compat/legacy/registry';
 
 const VISIBLE = 0.5;
 
@@ -42,9 +42,11 @@ export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c)
 export const fillTemplate = (html: string, values: Record<string, string>, pattern: RegExp): string =>
   html.replace(pattern, (raw, key: string) => (key in values ? escapeHtml(values[key]!) : raw));
 
-export function selectorIdOf(el: Element): string {
-  return el.getAttribute('data-next-selector-id') || legacySelectorId(el) || 'default';
-}
+export const selectorIdOf = (el: Element): string => bundleSelectorId(el);
+
+/** The elements whose `attr` is exactly `value`, whatever characters it has. */
+export const withAttribute = (root: ParentNode, attr: string, value: string): Element[] =>
+  [...root.querySelectorAll(`[${attr}]`)].filter((el) => el.getAttribute(attr) === value);
 
 export function ownProperties(el: Element): Record<string, string> {
   const inputs = [...el.querySelectorAll<HTMLInputElement>('[data-next-property]')];

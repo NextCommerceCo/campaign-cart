@@ -1,7 +1,7 @@
 import type { Engine } from '../engine/engine';
 import { pickedCard } from '../engine/cart/selectors';
 import type { Upsell } from '../engine/events/upsells';
-import { addLegacyEvents, legacyEvent, legacyFire, legacySelectorId } from './legacy/registry';
+import { addLegacyEvents, legacyEvent, legacyFire, bundleSelectorId } from './legacy/registry';
 
 /** @deprecated `accept` / `decline`. Use `data-next-upsell-action="add"` / `"skip"`. */
 export const ACCEPT_WORDS = ['add', 'accept'];
@@ -63,7 +63,7 @@ const ORDER_EVENTS = {
 function packageOf(engine: Engine, offer: Element): number {
   const own = Number(offer.getAttribute('data-next-package-id'));
   const box = offer.querySelector('[data-next-bundle-selector]');
-  const id = box ? (box.getAttribute('data-next-selector-id') ?? legacySelectorId(box)) : legacyOfferSelector(offer);
+  const id = box ? bundleSelectorId(box) : legacyOfferSelector(offer);
   const selector = id ? engine.getState().selectors[id] : undefined;
   return own || (pickedCard(selector)?.lines[0]?.packageId ?? 0);
 }

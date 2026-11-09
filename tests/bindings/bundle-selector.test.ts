@@ -94,6 +94,19 @@ describe('bundle selector', () => {
     expect(engine.cart.lines()).toEqual([]);
   });
 
+  it('binds a selector whose id has quotes and brackets', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id='a"[b]'>
+        <div data-next-bundle-card data-next-bundle-id="b" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-selected="true" data-next-max-quantity="3"></div>
+      </div>
+      <div data-next-bundle-qty-for='a"[b]'><button id="up" data-next-quantity-increase>+</button></div>
+      <div data-next-bundle-slots-for='a"[b]'></div>`);
+    $('#up').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+  });
+
   it('steps the quantity from a row outside the selector and from inside the card', async () => {
     const { engine, $ } = await mount(`
       <div data-next-bundle-selector data-next-selector-id="main">
