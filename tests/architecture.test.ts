@@ -6,8 +6,8 @@ import { PAYMENT_METHODS } from '../src/engine/payment';
 const LAZY: Record<string, string[]> = {
   analytics: ['compat/analytics'],
   attributes: [],
-  checkout: [],
-  order: [],
+  checkout: ['compat/checkout'],
+  order: ['compat/order'],
   debug: [],
   'bindings/slots': [],
   'bindings/cart-summary': [],
@@ -28,7 +28,6 @@ const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
   'debug/cart.ts': 391,
-  'compat/checkout.ts': 337,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
@@ -44,7 +43,7 @@ const ALLOWED: Record<string, string[]> = {
   attributes: ['engine', 'attributes', 'bindings/context', 'bindings/dom'],
   destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
-  compat: ['engine'],
+  compat: ['engine', 'checkout/form/names', 'order/upsell'],
   boot: ['engine', 'bindings', 'compat/legacy'],
   loader: ['config', 'compat/config'],
   config: ['compat/config'],

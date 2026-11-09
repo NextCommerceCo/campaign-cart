@@ -1,6 +1,27 @@
 import type { CheckoutState, CountryRules } from '../state/types';
 import { countryOf } from '../state/phone';
-import { LEGACY_FIELDS, pageFieldName } from '../../compat/checkout';
+
+/** Page field names that differ from the API's; `data-next-address` writes them, and page CSS selects them. */
+export const PAGE_FIELDS: Record<string, string> = {
+  fname: 'first_name',
+  lname: 'last_name',
+  address1: 'line1',
+  address2: 'line2',
+  province: 'state',
+  postal: 'postcode',
+  phone: 'phone_number',
+};
+
+const API_TO_PAGE = Object.fromEntries(Object.entries(PAGE_FIELDS).map(([page, api]) => [api, page]));
+
+/** `line1` → `address1`; a billing name stays as it is. */
+export const pageName = (name: string) => API_TO_PAGE[name] ?? name;
+
+/** `line1` → `address1`, `billing_line1` → `billing_address1` (`separator` `-`: `billing-address1`). */
+export function pageFieldName(name: string, separator: '_' | '-' = '_'): string {
+  const base = name.replace(/^billing_/, '');
+  return base === name ? pageName(name) : `billing${separator}${pageName(base)}`;
+}
 
 const V2_NAMES: Record<string, string> = {
   'card.number': 'cc-number',
@@ -15,7 +36,7 @@ const ADDRESS_KEYS = ['first_name', 'last_name', 'phone', 'country', 'line1', 'l
 /** A field name in any spelling (`billing-fname`, `billing_first_name`, `phone`) as its API name, split. */
 export function parse(raw: string): { billing: boolean; api: string } {
   const base = raw.replace(/^billing[-_]/, '');
-  return { billing: base !== raw, api: LEGACY_FIELDS[base] ?? base };
+  return { billing: base !== raw, api: PAGE_FIELDS[base] ?? base };
 }
 
 /** `billing-fname` → `billing_first_name`. */

@@ -1,7 +1,6 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { AddressSuggestion } from '../../engine/types';
 import type { Fields } from '../form/fields';
-import { legacyAddressFilled } from '../../compat/checkout';
 
 const DEBOUNCE = 300;
 const searchable = (text: string) => /\S\s+\S/.test(text);
@@ -238,7 +237,11 @@ function attach(
 
 const attached = new WeakSet<HTMLInputElement>();
 
-export function bindAutocomplete(fields: Fields, checkout: CheckoutActions): void {
+export function bindAutocomplete(
+  fields: Fields,
+  checkout: CheckoutActions,
+  filled?: (type: 'shipping' | 'billing', components: AddressSuggestion) => void,
+): void {
   for (const prefix of ['', 'billing_'] as const) {
     const input = fields.get(`${prefix}line1`);
     if (!(input instanceof HTMLInputElement) || attached.has(input)) continue;
@@ -248,7 +251,7 @@ export function bindAutocomplete(fields: Fields, checkout: CheckoutActions): voi
     attach(input, country, checkout.suggestAddresses, (s) => {
       checkout.autofill(type, s);
       fill(fields, prefix, s);
-      legacyAddressFilled(input, type, s);
+      filled?.(type, s);
     });
   }
 }

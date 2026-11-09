@@ -3,7 +3,6 @@ import { BY_COUNTRY, formatPostcode } from '../state/rules';
 import type { CountryOption, CountryRules, FieldRule } from '../state/types';
 import { type Control, type Fields, onField, option } from '../form/fields';
 import { parse, rulesOf } from '../form/names';
-import { legacyHiddenStates } from '../../compat/checkout';
 import { reformat } from '../form/reformat';
 import { WRAPPERS } from '../form/errors';
 
@@ -150,8 +149,7 @@ function applyFieldRules(fields: Fields, prefix: Prefix, rules: CountryRules | u
   }
 }
 
-export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Fields): () => void {
-  const hidden = legacyHiddenStates();
+export function bindAddress(engine: Engine, form: HTMLFormElement, fields: Fields, hidden: string[]): () => void {
   const revealed = { '': false, billing_: false };
   const states: StatePairs = new Map();
   formatPostcodes(engine, form, fields);

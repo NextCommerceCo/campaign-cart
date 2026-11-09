@@ -1,11 +1,8 @@
-interface LegacyConfig {
-  apiKey?: string;
-  funnel?: string;
-}
+import type { NextConfig } from './legacy/globals';
 
 const meta = (doc: Document, name: string) => doc.querySelector(`meta[name="${name}"]`)?.getAttribute('content') ?? '';
-const nextConfig = (win: Window) =>
-  ((win as unknown as { nextConfig?: LegacyConfig }).nextConfig ?? {}) as LegacyConfig;
+/** `legacy/globals.ts`' `nextConfig` for the loader, which shares no module with boot. */
+const nextConfig = (win: Window): NextConfig => (win as { nextConfig?: NextConfig }).nextConfig ?? {};
 
 /** @deprecated Put the key on the script tag: `data-campaign="pk_…"`. */
 export function legacyApiKey(doc: Document, win: Window): string {

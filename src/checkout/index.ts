@@ -18,22 +18,9 @@ import { bindExpress } from './payment/express';
 import { bindPaymentWidget } from './payment/widget';
 import { bindFields, type Fields, phoneRequired, scanFields, syncFields } from './form/fields';
 import { bindLabels } from './form/labels';
-import {
-  announceProspect,
-  legacyLead,
-  clearStepGuard,
-  FAILURE_URL_META,
-  legacyAutocomplete,
-  type LegacyCheckoutStarted,
-  legacyCountries,
-  legacyCheckoutEvents,
-  legacyWalletChecks,
-  legacyStartedEachPage,
-  stepUrlOf,
-  SUBMIT_ATTRS,
-  SUCCESS_URL_META,
-  writeStepGuard,
-} from '../compat/checkout';
+import type { Checkout } from '../engine/events/checkout';
+import type { CheckoutHooks } from './hooks';
+import { legacyCheckout } from '../compat/checkout';
 import { errorBox, showBox, shown } from './form/errors';
 import { bindCard, type Card } from './payment/card';
 import { bindPayment } from './payment/methods';
@@ -41,12 +28,12 @@ import { bindPhones } from './address/phone';
 import { bindReview } from './review';
 import { errorTexts, expressText, formText, label, useTexts } from './form/texts';
 
-const SUBMIT = ['button[type="submit"]', 'input[type="submit"]', ...SUBMIT_ATTRS.map((a) => `[${a}]`)].join(', ');
+const SUBMIT = 'button[type="submit"], input[type="submit"], [data-next-checkout-submit], [os-checkout-submit]';
 
 function failureUrl(): string {
   const url = new URL(location.href);
   url.searchParams.set('payment_failed', 'true');
-  return metaContent(...FAILURE_URL_META) ?? url.href;
+  return metaContent('next-failure-url', 'os-failure-url') ?? url.href;
 }
 
 function overlay(): (busy: boolean) => void {
@@ -86,9 +73,9 @@ function parseLead(value: string): Lead | undefined {
   return words.includes('email') ? (words.includes('phone') ? 'email+phone' : 'email') : 'phone';
 }
 
-function leadOf(engine: Engine, form: HTMLFormElement): Lead {
+function leadOf(engine: Engine, form: HTMLFormElement, hooks: CheckoutHooks): Lead {
   const value = form.getAttribute('data-next-lead');
-  const legacy = legacyLead(engine, form);
+  const legacy = hooks.lead?.();
   if (value === null) return legacy ?? 'email';
   const lead = parseLead(value);
   if (!lead) engine.log.warn(`data-next-lead="${value}" is not email, phone, email+phone or off; using email`);
@@ -99,7 +86,8 @@ interface BindOptions {
   navigate?: (url: string) => void;
   /** How it asks i18n-rules: boot's names the campaign's key. */
   rules?: Send;
-  legacyCheckoutStarted?: LegacyCheckoutStarted;
+  /** 0.4.x `checkout:started`: once a page, when the page opens the checkout. */
+  legacyCheckoutStarted?: (checkout: Checkout) => void;
   /** Where `checkout.errors` gets the texts the page shows. */
   query?: Query;
   /** The page's own texts by language (0.4.x `nextConfig.translations`), read before i18n-rules' and the English. */
@@ -117,13 +105,14 @@ function pageUrls(engine: Engine, form: HTMLFormElement) {
   const go = form.getAttribute('data-next-go');
   const middleStep = form.hasAttribute('data-next-step');
   if (middleStep && !go) engine.log.warn('data-next-step on the checkout form needs data-next-go, its next page');
-  const successUrl = () => (!middleStep && go) || metaContent(...SUCCESS_URL_META);
+  const successUrl = () => (!middleStep && go) || metaContent('next-success-url', 'next-next-url', 'os-next-page');
   if (!successUrl() && !middleStep) {
     engine.log.error(
       'the checkout page has no <meta name="next-success-url">: the purchase will not be tracked, and a payment gateway will send the shopper to /success',
     );
   }
-  return { successUrl, stepUrl: (middleStep && go) || stepUrlOf(form) };
+  const stepUrl = form.getAttribute('data-next-checkout-step') ?? form.getAttribute('os-checkout-step');
+  return { successUrl, stepUrl: (middleStep && go) || stepUrl };
 }
 
 function stepOf(engine: Engine, form: HTMLFormElement, page: string, stepUrl: string | null): number {
@@ -193,17 +182,17 @@ interface Parts {
  * Billing rows and the payment widget add fields, so they come before scanFields; the phone and postcode listeners
  * come before bindFields', so a value is masked before it is read; labels float after the address fills its selects.
  */
-function bindParts(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement): Parts {
+function bindParts(engine: Engine, checkout: CheckoutActions, form: HTMLFormElement, hooks: CheckoutHooks): Parts {
   cloneBillingRows(form);
   const paymentWidget = bindPaymentWidget(engine, form);
   const fields = scanFields(form);
-  const autocomplete = () => legacyAutocomplete() && bindAutocomplete(fields, checkout);
+  const autocomplete = () => hooks.autocomplete?.() && bindAutocomplete(fields, checkout, hooks.addressFilled);
   const addressForms = bindAddressForms(engine, form, fields, autocomplete);
   const labels = bindLabels(form);
   autocomplete();
   const card = bindCard(engine, checkout, form);
   const phones = bindPhones(engine, checkout, form, fields, I18N_RULES);
-  const address = bindAddress(engine, form, fields);
+  const address = bindAddress(engine, form, fields, hooks.hiddenStates?.() ?? []);
   const renders = [
     addressForms,
     bindFields(engine, checkout, form, fields),
@@ -234,6 +223,7 @@ function bindOrder(
   form: HTMLFormElement,
   { fields, card }: Parts,
   { successUrl, stepUrl, step, navigate }: Urls,
+  hooks: CheckoutHooks,
 ): Order {
   let box = 'credit';
   const current = () => new URL(location.href);
@@ -243,7 +233,7 @@ function bindOrder(
     box = expressMethod ? 'express' : (engine.getState().checkout?.paymentMethod ?? 'credit');
     const order = await checkout.placeOrder({
       expressMethod,
-      walletChecks: legacyWalletChecks(),
+      walletChecks: hooks.walletChecks?.(),
       successUrl: successUrl(),
       failureUrl: failureUrl(),
       pageUrl: location.href,
@@ -255,14 +245,14 @@ function bindOrder(
       if (!expressMethod && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
       return focusFirstError(engine, fields);
     }
-    clearStepGuard();
+    hooks.placed?.();
     navigate(redirectFor(order, successUrl(), current(), engine.getState().visit.params));
   };
 
   const advance = () => {
     syncFields(fields, checkout, engine.getState().checkout);
     if (!checkout.nextStep(step === 1 && phoneRequired(fields))) return focusFirstError(engine, fields);
-    writeStepGuard(engine);
+    hooks.advanced?.();
     navigate(nextUrl(stepUrl!, current(), engine.getState().visit.params));
   };
 
@@ -286,17 +276,17 @@ export function bindCheckout(
   }: BindOptions = {},
 ): CheckoutActions {
   const rules = bindTexts(engine, send, translations);
-  const lead = leadOf(engine, form);
-  const opened = legacyCheckoutStarted && legacyStartedEachPage(engine, legacyCheckoutStarted);
-  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened }));
+  const hooks = legacyCheckout(engine, form, legacyCheckoutStarted);
+  const lead = leadOf(engine, form, hooks);
+  const checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, rules, { lead, opened: hooks.opened }));
   engine.checkout = checkout;
   const urls = pageUrls(engine, form);
   form.noValidate = true;
-  const parts = bindParts(engine, checkout, form);
+  const parts = bindParts(engine, checkout, form, hooks);
   const page = location.pathname;
   const step = stepOf(engine, form, page, urls.stepUrl);
   const renderSubmit = bindSubmitState(engine, form);
-  const order = bindOrder(engine, checkout, form, parts, { ...urls, step, navigate });
+  const order = bindOrder(engine, checkout, form, parts, { ...urls, step, navigate }, hooks);
   const boxText = (state: CheckoutState) => errorText(state, parts.fields, order.box());
 
   query?.register('checkout.errors', () => {
@@ -311,20 +301,19 @@ export function bindCheckout(
 
   const renders = [
     ...parts.renders,
-    bindExpress(engine, order.pay),
+    bindExpress(engine, order.pay, hooks.expressOrder?.()),
     bindReview(engine),
     parts.card?.render ?? (() => {}),
     renderErrors,
     renderSubmit,
   ];
-  legacyCheckoutEvents(engine, form);
+  hooks.bound?.();
   const render = () => renders.forEach((r) => r());
   engine.subscribe(render);
   render();
 
-  announceProspect(engine, form);
   checkout.setStep(step, page);
   checkout.begin();
-  void checkout.loadCountries(legacyCountries());
+  void checkout.loadCountries(hooks.countries?.() ?? []);
   return checkout;
 }

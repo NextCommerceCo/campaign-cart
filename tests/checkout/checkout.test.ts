@@ -494,6 +494,20 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(off.orders()).toHaveLength(1);
   });
 
+  it('keeps the states and express order nextConfig.addressConfig and paymentConfig ask for, like 0.4.x', async () => {
+    (window as unknown as { nextConfig: unknown }).nextConfig = {
+      addressConfig: { dontShowStates: ['NY'] },
+      paymentConfig: { expressCheckout: { methodOrder: ['apple_pay', 'paypal'] } },
+    };
+    const { $ } = await mount('olympus/checkout.html');
+    expect([...$<HTMLSelectElement>('[data-next-checkout-field="province"]').options].map((o) => o.value)).toEqual([
+      '',
+      'CA',
+    ]);
+    const express = [...document.querySelectorAll('[data-next-express-checkout="buttons"] button')];
+    expect(express.map((b) => b.getAttribute('data-next-express-checkout'))).toEqual(['apple_pay', 'paypal']);
+  });
+
   it('suggests addresses from the NextCommerce lookup and fills the address, like 0.4.x', async () => {
     (window as unknown as { nextConfig: unknown }).nextConfig = { addressConfig: { enableAutocomplete: true } };
     const { field, api, engine } = await mount('olympus/checkout.html');

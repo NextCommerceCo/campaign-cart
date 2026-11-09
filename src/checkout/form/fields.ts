@@ -1,7 +1,6 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
 import type { CheckoutState } from '../state/types';
-import { LEGACY_FIELD_ATTRS } from '../../compat/checkout';
 import { showField } from './errors';
 import { fromV2, rulesOf, toApi, toV2 } from './names';
 import { fieldText } from './texts';
@@ -13,7 +12,9 @@ export const option = (text: string, value: string) =>
   Object.assign(document.createElement('option'), { textContent: text, value });
 
 export const FIELD_ATTR = 'data-next-field';
-export const FIELD_ATTRS = [FIELD_ATTR, ...LEGACY_FIELD_ATTRS];
+/** The attributes `data-next-address` and 0.4.x pages name a field with. */
+export const PAGE_FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
+export const FIELD_ATTRS = [FIELD_ATTR, ...PAGE_FIELD_ATTRS];
 export const FIELDS = FIELD_ATTRS.map((a) => `[${a}]`).join(', ');
 
 const NOT_ADDRESS = [
@@ -33,7 +34,7 @@ const inBilling = (el: Element) => el.closest('[data-next-address]')?.getAttribu
 export function rawName(el: Element): string {
   const key = el.getAttribute(FIELD_ATTR);
   if (key) return fromV2(key, inBilling(el));
-  return LEGACY_FIELD_ATTRS.map((a) => el.getAttribute(a)).find(Boolean) ?? '';
+  return PAGE_FIELD_ATTRS.map((a) => el.getAttribute(a)).find(Boolean) ?? '';
 }
 
 /** The first field in `root` whose legacy name is one of `names`. */

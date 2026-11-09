@@ -1,10 +1,12 @@
 import type { CheckoutActions } from '../state/checkout';
 import type { Engine } from '../../engine/engine';
-import { component, LEGACY_FIELD_ATTRS } from '../../compat/checkout';
-import { FIELDS, fieldControl } from '../form/fields';
+import { FIELDS, fieldControl, PAGE_FIELD_ATTRS } from '../form/fields';
+
+const component = (name: string) =>
+  `[data-next-component="${name}"], [os-checkout-element="${name}"], [os-checkout-component="${name}"]`;
 
 function renameField(el: Element): void {
-  for (const attr of LEGACY_FIELD_ATTRS) {
+  for (const attr of PAGE_FIELD_ATTRS) {
     const raw = el.getAttribute(attr);
     if (raw && !raw.startsWith('billing')) el.setAttribute(attr, `billing-${raw}`);
   }

@@ -3,80 +3,33 @@ import type { EventMap } from '../engine/events/bus';
 import type { Checkout } from '../engine/events/checkout';
 import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
-import type { AddressSuggestion } from '../engine/types';
+import type { CheckoutHooks } from '../checkout/hooks';
+import { PAGE_FIELDS, pageFieldName, pageName } from '../checkout/form/names';
 import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy/registry';
+import { nextConfig as config } from './legacy/globals';
 import { paymentCode } from '../engine/payment';
 
-/** @deprecated Page field names. Use the API names: `first_name`, `last_name`, `line1`, `line2`, `state`, `postcode`, `phone_number`. */
-export const LEGACY_FIELDS: Record<string, string> = {
-  fname: 'first_name',
-  lname: 'last_name',
-  address1: 'line1',
-  address2: 'line2',
-  province: 'state',
-  postal: 'postcode',
-  phone: 'phone_number',
-};
-
-const API_TO_LEGACY = Object.fromEntries(Object.entries(LEGACY_FIELDS).map(([page, api]) => [api, page]));
-const legacyName = (name: string) => API_TO_LEGACY[name] ?? name;
-
-/** @deprecated The page name of an API field: `line1` → `address1`, `billing_line1` → `billing_address1` (`separator` `-`: `billing-address1`). Fields built by `data-next-address` keep 0.4.x names, which page CSS selects. */
-export function pageFieldName(name: string, separator: '_' | '-' = '_'): string {
-  const base = name.replace(/^billing_/, '');
-  return base === name ? legacyName(name) : `billing${separator}${legacyName(base)}`;
-}
-
-/** @deprecated `data-next-checkout-field` / `os-checkout-field`. Use `data-next-field`. */
-export const LEGACY_FIELD_ATTRS = ['data-next-checkout-field', 'os-checkout-field'];
-
-/** @deprecated `os-checkout-submit`. Use `data-next-checkout-submit`. */
-export const SUBMIT_ATTRS = ['data-next-checkout-submit', 'os-checkout-submit'];
-
-/** @deprecated `<meta name="os-failure-url">`. Use `next-failure-url`. */
-export const FAILURE_URL_META = ['next-failure-url', 'os-failure-url'];
-
-/** @deprecated `<meta name="next-next-url">` / `os-next-page`. Use `next-success-url`. */
-export const SUCCESS_URL_META = ['next-success-url', 'next-next-url', 'os-next-page'];
-
-/** @deprecated `os-checkout-step`. Use `data-next-checkout-step`. */
-export const stepUrlOf = (form: Element) =>
-  form.getAttribute('data-next-checkout-step') ?? form.getAttribute('os-checkout-step');
-
-/** @deprecated `os-checkout-element` / `os-checkout-component`. Use `data-next-component`. */
-export const component = (name: string) =>
-  `[data-next-component="${name}"], [os-checkout-element="${name}"], [os-checkout-component="${name}"]`;
-
-interface LegacyConfig {
-  addressConfig?: { countries?: Array<{ code: string }>; dontShowStates?: string[]; enableAutocomplete?: boolean };
-  paymentConfig?: {
-    expressCheckout?: { methodOrder?: string[]; requireValidation?: boolean; requiredFields?: string[] };
-  };
-}
-
-const config = () => (window as unknown as { nextConfig?: LegacyConfig }).nextConfig ?? {};
-
 /** @deprecated `nextConfig.addressConfig.countries`. The campaign's shipping countries are used. */
-export const legacyCountries = () => (config().addressConfig?.countries ?? []).map((c) => c.code);
+const legacyCountries = () => (config().addressConfig?.countries ?? []).map((c) => c.code);
 
 /** @deprecated `nextConfig.addressConfig.dontShowStates`. */
-export const legacyHiddenStates = () => config().addressConfig?.dontShowStates ?? [];
+const legacyHiddenStates = () => config().addressConfig?.dontShowStates ?? [];
 
 /** @deprecated `nextConfig.addressConfig.enableAutocomplete`, the NextCommerce address lookup. */
-export const legacyAutocomplete = () => config().addressConfig?.enableAutocomplete === true;
+const legacyAutocomplete = () => config().addressConfig?.enableAutocomplete === true;
 
 /** @deprecated `nextConfig.paymentConfig.expressCheckout.methodOrder`. The campaign's order is used. */
-export const legacyExpressOrder = () => config().paymentConfig?.expressCheckout?.methodOrder?.map(paymentCode);
+const legacyExpressOrder = () => config().paymentConfig?.expressCheckout?.methodOrder?.map(paymentCode);
 
 /**
  * @deprecated `nextConfig.paymentConfig.expressCheckout.requireValidation` and `requiredFields`, for PayPal, Apple
  * Pay or Google Pay picked in the form (an express button never checks the form, as in 0.4.x): `true` checks the
  * listed fields (page or API names), or the whole form when none are listed; `false` checks nothing.
  */
-export function legacyWalletChecks(): Scope | null | undefined {
+function legacyWalletChecks(): Scope | null | undefined {
   const express = config().paymentConfig?.expressCheckout;
   if (!express?.requireValidation) return express?.requireValidation === false ? null : undefined;
-  return express.requiredFields?.map((name) => LEGACY_FIELDS[name] ?? name) ?? 'all';
+  return express.requiredFields?.map((name) => PAGE_FIELDS[name] ?? name) ?? 'all';
 }
 
 /**
@@ -85,10 +38,10 @@ export function legacyWalletChecks(): Scope | null | undefined {
  * the page opens the checkout: right after `checkout.started` on the page that starts it, and on each later page of
  * the same checkout. `checkout:started` maps to this, not to `checkout.started`, or the first page gets it twice.
  */
-export type LegacyCheckoutStarted = (checkout: Checkout) => void;
+type LegacyCheckoutStarted = (checkout: Checkout) => void;
 
 /** @deprecated See {@link LegacyCheckoutStarted}. A listener that throws is logged and leaves the checkout bound. */
-export const legacyStartedEachPage =
+const legacyStartedEachPage =
   (engine: Engine, fn: LegacyCheckoutStarted) =>
   (checkout: Checkout): void => {
     try {
@@ -101,10 +54,10 @@ export const legacyStartedEachPage =
 const GUARD_KEY = 'next-checkout-store';
 
 /** @deprecated The shop-three-step page guard reads `sessionStorage['next-checkout-store']` in the 0.4.x shape. */
-export function writeStepGuard(engine: Engine): void {
+function writeStepGuard(engine: Engine): void {
   const { checkout, cart } = engine.getState();
   if (!checkout) return;
-  const formData = Object.fromEntries(Object.entries(checkout.fields).map(([n, v]) => [legacyName(n), v]));
+  const formData = Object.fromEntries(Object.entries(checkout.fields).map(([n, v]) => [pageName(n), v]));
   const state = { step: checkout.step, formData, shippingMethod: cart.shippingId && { id: cart.shippingId } };
   try {
     sessionStorage.setItem(GUARD_KEY, JSON.stringify({ state, version: 0 }));
@@ -112,7 +65,7 @@ export function writeStepGuard(engine: Engine): void {
 }
 
 /** @deprecated See {@link writeStepGuard}. */
-export function clearStepGuard(): void {
+function clearStepGuard(): void {
   try {
     sessionStorage.removeItem(GUARD_KEY);
   } catch {}
@@ -137,7 +90,7 @@ const TRIGGERS: Record<string, 'email' | 'phone' | 'email+phone' | 'off' | 'form
  * @deprecated 0.4.x lead options on the checkout form. `data-trigger-on` and
  * `data-auto-create="false"` become `data-next-lead`; the rest are no longer read, and say so.
  */
-export function legacyLead(engine: Engine, form: HTMLFormElement) {
+function legacyLead(engine: Engine, form: HTMLFormElement) {
   for (const [name, instead] of Object.entries(UNREAD)) {
     if (form.hasAttribute(name)) engine.log.warn(`${name} on the checkout form is no longer read; ${instead}`);
   }
@@ -156,7 +109,7 @@ export function legacyLead(engine: Engine, form: HTMLFormElement) {
 }
 
 /** @deprecated `next:prospect-cart-created` on the form. Use `next.on('user.created')`. */
-export function announceProspect(engine: Engine, form: HTMLFormElement): void {
+function announceProspect(engine: Engine, form: HTMLFormElement): void {
   engine.on('user.created', ({ data }) => {
     const cart = (engine.getState().checkout?.openCart ?? {}) as Record<string, unknown>;
     const prospectCart = {
@@ -270,15 +223,6 @@ const LOCATIONS = [
   ['[data-next-component="billing-location"]', 'checkout:billing-location-fields-shown'],
 ] as const;
 
-const engines = new WeakMap<HTMLFormElement, Engine>();
-
-/** @deprecated 0.4.x `address:autocomplete-filled`, once a suggestion filled the address. */
-export function legacyAddressFilled(input: HTMLElement, type: 'shipping' | 'billing', components: AddressSuggestion) {
-  const form = input.closest('form');
-  const engine = form && engines.get(form);
-  if (engine) legacyFire(engine, 'address:autocomplete-filled', { type, components });
-}
-
 /**
  * @deprecated The checkout's 0.4.x `next.on` names: payment and wallet events, and the page moments 0.4.x sent:
  * `checkout:form-initialized`, `express-checkout:initialized`, `checkout:payment-ready` once the card fields load,
@@ -290,7 +234,6 @@ export function legacyCheckoutEvents(engine: Engine, form: HTMLFormElement): voi
     { ...CHECKOUT_EVENTS, 'payment:tokenized': tokenized(engine) },
     { 'checkout:started': checkoutData },
   );
-  engines.set(form, engine);
   const fire = (name: string, data: object, keep?: boolean) => legacyFire(engine, name, data, keep);
   fire('checkout:form-initialized', { form });
   for (const button of document.querySelectorAll<HTMLElement>('button[data-next-express-checkout]'))
@@ -343,3 +286,25 @@ export function legacyCheckoutEvents(engine: Engine, form: HTMLFormElement): voi
     }).observe(block, { attributeFilter: ['data-next-address-state'] });
   }
 }
+
+/** @deprecated The checkout's 0.4.x options, attributes and events, as the hooks `bindCheckout` calls. */
+export const legacyCheckout = (
+  engine: Engine,
+  form: HTMLFormElement,
+  started?: LegacyCheckoutStarted,
+): CheckoutHooks => ({
+  lead: () => legacyLead(engine, form),
+  countries: legacyCountries,
+  hiddenStates: legacyHiddenStates,
+  autocomplete: legacyAutocomplete,
+  addressFilled: (type, components) => legacyFire(engine, 'address:autocomplete-filled', { type, components }),
+  expressOrder: legacyExpressOrder,
+  walletChecks: legacyWalletChecks,
+  opened: started && legacyStartedEachPage(engine, started),
+  bound: () => {
+    legacyCheckoutEvents(engine, form);
+    announceProspect(engine, form);
+  },
+  advanced: () => writeStepGuard(engine),
+  placed: clearStepGuard,
+});

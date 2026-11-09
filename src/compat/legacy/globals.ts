@@ -1,10 +1,25 @@
 import type { Logger } from '../../engine/log';
 import { flattenTexts, type Texts } from '../../engine/texts';
 
-interface LegacyAnalyticsConfig {
-  enabled?: boolean;
-  providers?: Record<string, { enabled?: boolean } | undefined>;
+/** `window.nextConfig`: the page's setup, 0.4.x options among it. */
+export interface NextConfig {
+  [key: string]: unknown;
+  apiKey?: string;
+  funnel?: string;
+  storeName?: string;
+  locale?: unknown;
+  translations?: unknown;
+  analytics?: {
+    enabled?: boolean;
+    providers?: Record<string, { enabled?: boolean } | undefined>;
+  };
+  addressConfig?: { countries?: Array<{ code: string }>; dontShowStates?: string[]; enableAutocomplete?: boolean };
+  paymentConfig?: {
+    expressCheckout?: { methodOrder?: string[]; requireValidation?: boolean; requiredFields?: string[] };
+  };
 }
+
+export const nextConfig = (): NextConfig => (window as { nextConfig?: NextConfig }).nextConfig ?? {};
 
 export interface LegacyAnalytics {
   enabled: boolean;
@@ -21,9 +36,8 @@ export interface LegacyAnalytics {
 
 /** @deprecated `nextConfig.analytics`. GTM reads `dataLayer`; other vendors use GTM or the page's forwarder. */
 export function readLegacyAnalytics(): LegacyAnalytics {
-  const next = (window as unknown as { nextConfig?: { analytics?: LegacyAnalyticsConfig; storeName?: string } })
-    .nextConfig;
-  const config = next?.analytics;
+  const next = nextConfig();
+  const config = next.analytics;
   const providers = config?.providers ?? {};
   return {
     enabled: config?.enabled !== false,
@@ -31,7 +45,7 @@ export function readLegacyAnalytics(): LegacyAnalytics {
     dataLayer: providers.gtm?.enabled !== false,
     meta: providers.facebook?.enabled === true,
     rudderstack: providers.rudderstack?.enabled === true,
-    ...(next?.storeName && { storeName: next.storeName }),
+    ...(next.storeName && { storeName: next.storeName }),
     unsupported: ['custom'].filter((name) => providers[name]?.enabled),
   };
 }
@@ -48,11 +62,11 @@ export function legacyAnalytics(log: Logger): LegacyAnalytics {
 
 /** @deprecated `nextConfig.locale` and `nextConfig.translations`: the page's language, and its own texts by language. */
 export function readLegacyI18n(): { locale?: string; translations: Record<string, Texts> } {
-  const next = (window as unknown as { nextConfig?: { locale?: unknown; translations?: unknown } }).nextConfig;
+  const next = nextConfig();
   const translations: Record<string, Texts> = {};
-  for (const [lang, texts] of Object.entries(next?.translations ?? {}))
+  for (const [lang, texts] of Object.entries(next.translations ?? {}))
     translations[lang.toLowerCase()] = flattenTexts(texts);
-  const locale = typeof next?.locale === 'string' ? next.locale.trim() : '';
+  const locale = typeof next.locale === 'string' ? next.locale.trim() : '';
   return { ...(locale && { locale }), translations };
 }
 

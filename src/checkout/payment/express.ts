@@ -1,5 +1,4 @@
 import type { Engine } from '../../engine/engine';
-import { legacyExpressOrder } from '../../compat/checkout';
 import { isExpress, paymentCode } from '../../engine/payment';
 import { EXPRESS_BUTTONS } from './logos';
 
@@ -20,20 +19,23 @@ function button(method: string): HTMLButtonElement {
   return el;
 }
 
-export function expressMethods(engine: Engine): string[] {
+export function expressMethods(engine: Engine, order?: string[]): string[] {
   const offered = (engine.getState().campaign?.available_express_payment_methods ?? []).map((m) => paymentCode(m.code));
-  const order = legacyExpressOrder();
   const methods = order ? order.filter((m) => offered.includes(m)) : offered;
   const android = /android/i.test(navigator.userAgent);
   return methods.filter((m) => isExpress(m) && !(m === 'apple_pay' && android));
 }
 
-export function bindExpress(engine: Engine, pay: (method: string) => Promise<void>): () => void {
+export function bindExpress(
+  engine: Engine,
+  pay: (method: string) => Promise<void>,
+  order: string[] | undefined,
+): () => void {
   const containers = [
     ...document.querySelectorAll<HTMLElement>('[data-next-express-checkout="container"], [data-next-express]'),
   ];
   if (!containers.length) return () => {};
-  const methods = expressMethods(engine);
+  const methods = expressMethods(engine, order);
   const buttons: HTMLButtonElement[] = [];
 
   for (const container of containers) {

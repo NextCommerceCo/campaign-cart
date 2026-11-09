@@ -2,7 +2,12 @@ import type { Engine } from '../engine/engine';
 import type { Accepted, OrderActions } from './state';
 import { nextUrl } from '../engine/params';
 import { metaContent, onceVisible, selectorIdOf } from '../bindings/dom';
-import { ACCEPT_WORDS, legacyOfferSelector, NEXT_URL_ATTRS } from '../compat/order';
+
+/** `data-next-upsell-action` words that accept (`accept` is 0.4.x's `add`); any other skips. */
+export const ACCEPT_WORDS = ['add', 'accept'];
+
+/** Where an upsell button goes next, over the page's accept or decline meta; the last two are 0.4.x's. */
+export const NEXT_URL_ATTRS = ['data-next-url', 'data-next-next-url', 'data-os-next-url'];
 
 const FEEDBACK_MS = 1000;
 const SUCCESS_MS = 100;
@@ -15,11 +20,16 @@ function targetUrl(button: Element, accept: boolean, engine: Engine): string | u
   return nextUrl(target, new URL(location.href), visit.params, order?.refId);
 }
 
-export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url: string) => void): Array<() => void> {
+export function bindUpsells(
+  engine: Engine,
+  order: OrderActions,
+  navigate: (url: string) => void,
+  offerSelector?: (offer: Element) => string | undefined,
+): Array<() => void> {
   const page = location.pathname;
   return [...document.querySelectorAll<HTMLElement>('[data-next-upsell]')].map((offer) => {
     const selectorEl = offer.querySelector('[data-next-bundle-selector]');
-    const selectorId = selectorEl ? selectorIdOf(selectorEl) : legacyOfferSelector(offer);
+    const selectorId = selectorEl ? selectorIdOf(selectorEl) : offerSelector?.(offer);
     const packageId = Number(offer.getAttribute('data-next-package-id'));
     const quantity = Number(offer.getAttribute('data-next-quantity')) || 1;
     const spec = { selectorId, lines: packageId ? [{ packageId, quantity }] : undefined };
