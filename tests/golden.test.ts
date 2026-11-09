@@ -27,7 +27,7 @@ const external = (process.env.GOLDEN_PAGES ?? '')
   .flatMap((dir) =>
     htmlIn(dir).map((path) => ({
       path,
-      snapshot: `../.golden/${relative(join(dir, '..'), path).replace(/[/\\]/g, '__')}`,
+      snapshot: `../.golden/${relative(join(dir, '..', '..'), path).replace(/[/\\]/g, '__')}`,
     })),
   );
 
