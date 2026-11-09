@@ -1,8 +1,7 @@
 import type { Engine } from '../../engine/engine';
 import { legacyExpressOrder } from '../../compat/checkout';
+import { isExpress, paymentCode } from '../../engine/payment';
 import { EXPRESS_BUTTONS } from './logos';
-
-const EXPRESS_METHODS = ['paypal', 'apple_pay', 'google_pay', 'shop_pay'];
 
 function button(method: string): HTMLButtonElement {
   const look = EXPRESS_BUTTONS[method]!;
@@ -22,13 +21,11 @@ function button(method: string): HTMLButtonElement {
 }
 
 export function expressMethods(engine: Engine): string[] {
-  const offered = (engine.getState().campaign?.available_express_payment_methods ?? []).map((m) =>
-    m.code.toLowerCase().replace(/-/g, '_'),
-  );
+  const offered = (engine.getState().campaign?.available_express_payment_methods ?? []).map((m) => paymentCode(m.code));
   const order = legacyExpressOrder();
   const methods = order ? order.filter((m) => offered.includes(m)) : offered;
   const android = /android/i.test(navigator.userAgent);
-  return methods.filter((m) => EXPRESS_METHODS.includes(m) && !(m === 'apple_pay' && android));
+  return methods.filter((m) => isExpress(m) && !(m === 'apple_pay' && android));
 }
 
 export function bindExpress(engine: Engine, pay: (method: string) => Promise<void>): () => void {

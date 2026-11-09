@@ -1,5 +1,5 @@
 import type { CheckoutActions } from '../state/checkout';
-import { paymentCode } from '../state/order-body';
+import { paymentCode } from '../../engine/payment';
 import type { Engine } from '../../engine/engine';
 import { showField } from '../form/errors';
 import { fieldControl, FIELDS, rawName } from '../form/fields';

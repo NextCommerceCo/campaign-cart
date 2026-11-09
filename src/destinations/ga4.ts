@@ -13,6 +13,7 @@ import {
   type TrackingName,
 } from '../engine/events/analytics';
 import { addDollars } from '../engine/format';
+import { paymentType } from '../engine/payment';
 
 /**
  * One product of a GA4 event's `items`.
@@ -197,7 +198,7 @@ export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | unde
       };
     case 'checkout_payment_info_submitted': {
       const method = e.data.payment_method;
-      const payment_type = method === 'card_token' ? 'Credit Card' : method;
+      const payment_type = paymentType(method);
       return { name: 'add_payment_info', params: defined({ ...ecommerce(e, packages), payment_type }) };
     }
     case 'checkout_completed': {

@@ -4,13 +4,13 @@ import type { Context } from '../../engine/engine';
 import { publicOrder, reportPaid } from '../../engine/order';
 import { nextUrl } from '../../engine/params';
 import type { ApiOrder, CheckoutError } from '../../engine/types';
-import { orderBody, type OrderUrls, paymentCode } from './order-body';
+import { isWallet, paymentCode } from '../../engine/payment';
+import { orderBody, type OrderUrls } from './order-body';
 import { PHONES } from './phone';
 import { formErrors, type Scope } from './rules';
 import type { CheckoutState } from './types';
 
 const PHONE_WAIT = 2000;
-const WALLETS = ['paypal', 'apple_pay', 'google_pay'];
 
 const within = (work: Promise<unknown>, ms: number) =>
   Promise.race([work, new Promise((done) => setTimeout(done, ms))]);
@@ -56,7 +56,7 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
     const method = input.expressMethod ? paymentCode(input.expressMethod) : state().paymentMethod;
     const checks = express
       ? undefined
-      : WALLETS.includes(method) && input.walletChecks !== undefined
+      : isWallet(method) && input.walletChecks !== undefined
         ? input.walletChecks
         : 'all';
     set({ status: 'placing', express });

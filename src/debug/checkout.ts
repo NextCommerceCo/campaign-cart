@@ -6,6 +6,7 @@ import { writtenAddress } from './address';
 import type { cartView } from './cart';
 import { icon } from './icons';
 import { badge, button, type Child, h, plural } from './view';
+import { PAYMENT_METHODS, paymentCode, paymentLabel } from '../engine/payment';
 
 const PROBLEMS: Record<string, string> = {
   blank: 'Missing',
@@ -15,13 +16,6 @@ const PROBLEMS: Record<string, string> = {
   contains_emoji: 'Has an emoji',
   too_long: 'Too long',
   not_in_state: 'Not in this state',
-};
-const METHODS: Record<string, string> = {
-  card_token: 'Card',
-  paypal: 'PayPal',
-  apple_pay: 'Apple Pay',
-  google_pay: 'Google Pay',
-  shop_pay: 'Shop Pay',
 };
 const CARD_BRANDS = ['visa', 'mastercard', 'american-express', 'discover'];
 const iconOf = (code: string) => (code === 'card_token' ? CARD_BRANDS : [code.replace(/_/g, '-')]);
@@ -111,10 +105,8 @@ export function checkoutView(
     ui.paymentIcons();
     const { campaign } = engine.getState();
     const method = state.paymentMethod;
-    const offered = campaign?.available_payment_methods?.find(
-      (m) => (m.code === 'bankcard' ? 'card_token' : m.code) === method,
-    );
-    const name = METHODS[method] ?? offered?.label ?? method;
+    const offered = campaign?.available_payment_methods?.find((m) => paymentCode(m.code) === method);
+    const name = method in PAYMENT_METHODS ? paymentLabel(method) : (offered?.label ?? method);
     const icons = h('span', 'kicons', ...iconOf(method).map(paymentIcon));
     if (method !== 'card_token') return { title: 'Payment', detail: h('span', {}, icons, name), tone: 'done' };
     const broken = cardSetup();

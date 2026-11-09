@@ -1,9 +1,7 @@
 import type { Engine } from '../../engine/engine';
-import { paymentCode } from '../state/order-body';
+import { paymentCode } from '../../engine/payment';
 import { FIELD_ATTR, FIELDS, rawName } from '../form/fields';
 import { EXPRESS_BUTTONS } from './logos';
-
-const methodCode = (code: string) => (code === 'bankcard' ? 'card_token' : paymentCode(code));
 
 const element = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, key?: string) => {
   const el = Object.assign(document.createElement(tag), { className });
@@ -62,15 +60,15 @@ export function bindPaymentWidget(engine: Engine, form: HTMLFormElement): () => 
   const widgets = [...form.querySelectorAll<HTMLElement>('[data-next-payment]')];
   if (!widgets.length) return () => {};
   const methods = engine.getState().campaign?.available_payment_methods ?? [];
-  const offered = methods.map((m) => methodCode(m.code));
+  const offered = methods.map((m) => paymentCode(m.code));
   for (const widget of widgets) {
     if (!widget.querySelector(`[${FIELD_ATTR}]`)) {
-      widget.replaceChildren(...methods.map((m) => method(methodCode(m.code), m.label || m.code)));
+      widget.replaceChildren(...methods.map((m) => method(paymentCode(m.code), m.label || m.code)));
       continue;
     }
     if (!offered.length) continue;
     for (const radio of radiosIn(widget)) {
-      if (offered.includes(methodCode(radio.value))) continue;
+      if (offered.includes(paymentCode(radio.value))) continue;
       radio.hidden = true;
       const label = labelOf(radio);
       if (label) label.hidden = true;
@@ -81,9 +79,9 @@ export function bindPaymentWidget(engine: Engine, form: HTMLFormElement): () => 
     const picked = engine.getState().checkout?.paymentMethod;
     for (const widget of widgets) {
       for (const el of widget.querySelectorAll<HTMLElement>('[data-next-value]'))
-        el.toggleAttribute('data-next-selected', methodCode(el.getAttribute('data-next-value') ?? '') === picked);
+        el.toggleAttribute('data-next-selected', paymentCode(el.getAttribute('data-next-value') ?? '') === picked);
       for (const radio of radiosIn(widget))
-        labelOf(radio)?.toggleAttribute('data-next-selected', methodCode(radio.value) === picked);
+        labelOf(radio)?.toggleAttribute('data-next-selected', paymentCode(radio.value) === picked);
       for (const fields of widget.querySelectorAll<HTMLElement>('.next-payment-fields')) {
         const on = picked === 'card_token';
         fields.style.height = on ? '' : '0px';

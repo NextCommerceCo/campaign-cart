@@ -20,6 +20,7 @@ import type {
   RudderStackTraits,
   TrackName,
 } from './types';
+import { paymentType } from '../../engine/payment';
 
 /** What each tracking event is sent as; the others are not sent. */
 export const RUDDERSTACK: Partial<Record<TrackingName, RudderStackName>> = {
@@ -189,7 +190,7 @@ export function rudderStackCalls(
     }
     case 'checkout_payment_info_submitted': {
       const method = e.data.payment_method;
-      const payment_method = method === 'card_token' ? 'Credit Card' : method;
+      const payment_method = paymentType(method);
       return [track('Payment Info Entered', defined({ checkout_id: e.session_id, step: 3 as const, payment_method }))];
     }
     case 'checkout_completed':

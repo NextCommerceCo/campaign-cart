@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../../src/checkout/state/checkout';
 import type { Lead } from '../../../src/checkout/state/contact';
 import { redirectFor } from '../../../src/checkout/state/place-order';
-import { orderBody, paymentCode } from '../../../src/checkout/state/order-body';
+import { orderBody } from '../../../src/checkout/state/order-body';
 import type { Scope } from '../../../src/checkout/state/rules';
 import { createOrder } from '../../../src/order/state';
 import { fakeApi, type FakeApiOptions, json, OPEN_CART } from '../../fixtures/api';
@@ -45,15 +45,6 @@ async function setup(
 }
 
 describe('checkout', () => {
-  it('turns page payment words into API codes', () => {
-    expect(['credit', 'apple-pay', 'Klarna', 'card_token'].map(paymentCode)).toEqual([
-      'card_token',
-      'apple_pay',
-      'klarna',
-      'card_token',
-    ]);
-  });
-
   it('sends the shopper with the campaign’s language, not always English', async () => {
     const { engine, checkout, fill, posts } = await setup({
       campaign: Promise.resolve({ ...campaign, language: 'fr' }),

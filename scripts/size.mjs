@@ -22,6 +22,7 @@ const BUDGETS = [
   { match: /^debug-.*\.js$/, name: 'debug', kb: 56 },
   { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },
   { match: /^geo-.*\.js$/, name: 'geo', kb: 1 },
+  { match: /^payment-(?!icons).*\.js$/, name: 'payment', kb: 1 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
 ];
 

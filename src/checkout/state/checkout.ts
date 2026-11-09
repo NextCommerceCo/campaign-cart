@@ -3,7 +3,8 @@ import type { Context } from '../../engine/engine';
 import { visitorGeo } from '../../engine/geo';
 import { newId } from '../../engine/id';
 import { createContact, type Lead } from './contact';
-import { paymentCode, publicAddress } from './order-body';
+import { publicAddress } from './order-body';
+import { paymentCode } from '../../engine/payment';
 import { createPlaceOrder } from './place-order';
 import { asciiDigits, countryOf, PHONES, phoneFieldOf, phoneKey } from './phone';
 import {

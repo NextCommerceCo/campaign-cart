@@ -9,6 +9,7 @@ import type { Upsell } from '../engine/events/upsells';
 import { appliedCodes, createLedger, paymentMethodCode, publicOrder, reportPaid } from '../engine/order';
 import { cardLines, pickedCard } from '../engine/cart/selectors';
 import { latestWins } from '../engine/flow';
+import { paymentLabel } from '../engine/payment';
 import { bool, cents, money, type Value } from '../engine/format';
 import type { CartLine, Line } from '../engine/cart/types';
 import type { ApiOrder, ApiOrderAddress, ApiOrderLine, CheckoutError, State } from '../engine/types';
@@ -29,32 +30,6 @@ export interface OrderState {
 
 const ORDER_TTL = 15 * 60 * 1000;
 const LOAD_TIMEOUT = 10_000;
-
-const PAYMENT_LABELS: Record<string, string> = {
-  card_token: 'Credit Card',
-  saved_card: 'Saved Card',
-  apple_pay: 'Apple Pay',
-  google_pay: 'Google Pay',
-  paypal: 'PayPal',
-  ideal: 'iDEAL',
-  sepa_debit: 'SEPA Direct Debit',
-  klarna: 'Klarna',
-  link: 'Link',
-  affirm: 'Affirm',
-  bancontact: 'Bancontact',
-  external: 'External',
-  giropay: 'Giropay',
-  sofort: 'Sofort',
-  swish: 'Swish',
-  twint: 'Twint',
-  shop_pay: 'Shop Pay',
-};
-
-function paymentLabel(method: ApiOrder['payment_method']): string {
-  const raw = paymentMethodCode(method);
-  const code = raw.toLowerCase().replace(/[\s-]/g, '_');
-  return PAYMENT_LABELS[code] ?? raw;
-}
 
 function addressValue(address: ApiOrderAddress | undefined, prop: string): Value | undefined {
   const a = address ?? {};
@@ -133,7 +108,7 @@ export function orderValue(state: State, path: string): Value | undefined {
     case 'shippingMethod':
       return { type: 'text', value: order.shipping_method ?? '' };
     case 'paymentMethod':
-      return { type: 'text', value: paymentLabel(order.payment_method) };
+      return { type: 'text', value: paymentLabel(paymentMethodCode(order.payment_method)) };
     case 'customer':
     case 'user': {
       const values: Record<string, string | undefined> = {

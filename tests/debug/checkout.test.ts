@@ -63,7 +63,7 @@ describe('checkout tab', () => {
       ['Cart', '1 item', 'done'],
       ['Details', 'Not filled in yet: Email, First name, Last name, Address, Town/City, Postcode', 'todo'],
       ['Shipping', 'Standard', 'done'],
-      ['Payment', 'Card · no cc-number and cvv fields on the page', 'bad'],
+      ['Payment', 'Credit Card · no cc-number and cvv fields on the page', 'bad'],
       ['Order', 'Not placed yet', 'todo'],
     ]);
     expect(view.problems()).toEqual([
@@ -131,11 +131,11 @@ describe('checkout tab', () => {
     button('Fill test details').click();
     await vi.waitFor(() => expect(engine.getState().checkout!.rules.US).toBeDefined());
     paint();
-    expect(steps()[3]).toEqual(['Payment', 'Card · card details not entered yet', 'todo']);
+    expect(steps()[3]).toEqual(['Payment', 'Credit Card · card details not entered yet', 'todo']);
     expect(verdict()).toBe('Not ready yet: payment');
     engine.checkout!.paymentReady();
     paint();
-    expect(steps()[3]).toEqual(['Payment', 'Card · card details entered', 'done']);
+    expect(steps()[3]).toEqual(['Payment', 'Credit Card · card details entered', 'done']);
     expect(verdict()).toBe('Ready: nothing stops the order');
     document.body.innerHTML = '';
   });

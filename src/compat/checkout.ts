@@ -5,6 +5,7 @@ import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
 import type { AddressSuggestion } from '../checkout/state/types';
 import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy/registry';
+import { paymentCode } from '../engine/payment';
 
 /** @deprecated Page field names. Use the API names: `first_name`, `last_name`, `line1`, `line2`, `state`, `postcode`, `phone_number`. */
 export const LEGACY_FIELDS: Record<string, string> = {
@@ -61,8 +62,7 @@ export const legacyHiddenStates = () => config().addressConfig?.dontShowStates ?
 export const legacyAutocomplete = () => config().addressConfig?.enableAutocomplete === true;
 
 /** @deprecated `nextConfig.paymentConfig.expressCheckout.methodOrder`. The campaign's order is used. */
-export const legacyExpressOrder = () =>
-  config().paymentConfig?.expressCheckout?.methodOrder?.map((m) => m.toLowerCase().replace(/-/g, '_'));
+export const legacyExpressOrder = () => config().paymentConfig?.expressCheckout?.methodOrder?.map(paymentCode);
 
 /**
  * @deprecated `nextConfig.paymentConfig.expressCheckout.requireValidation` and `requiredFields`, for PayPal, Apple

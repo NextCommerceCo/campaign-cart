@@ -9,6 +9,7 @@ import type { EventContext } from '../../engine/events/context';
 import type { ApiOrder } from '../../engine/types';
 import { isLineEvent, lineBurst, type LineEvent } from './burst';
 import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ga4';
+import { paymentType } from '../../engine/payment';
 
 type DataLayerEvent = { event: string; event_id: string; [key: string]: unknown };
 type Win = Window & {
@@ -211,7 +212,7 @@ export function startLegacyDataLayer(
       }
       case 'checkout_payment_info_submitted': {
         const method = e.data.payment_method;
-        const payment_type = method === 'card_token' ? 'Credit Card' : method;
+        const payment_type = paymentType(method);
         return {
           ecommerce: { ...cartEcommerce(engine, e.data.cart), payment_type },
           event_category: 'ecommerce',
