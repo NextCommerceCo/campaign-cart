@@ -34,6 +34,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE: ${{ inputs.release }}
+      LEGACY_TAG: v0.4.43
+      LEGACY_BUILDER: 4c00ba067bfe8dc2ea884f75404592f6c629873f
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,6 +45,36 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # The 0.4 tags use the pre-rewrite layout, so their docs come from the builder as it
+      # stood before the rewrite. Built once from the tags, then attached to the last 0.4
+      # release and unpacked from there like every other release.
+      - name: Check for the 0.4 docs
+        id: legacy
+        run: |
+          if gh release view "$LEGACY_TAG" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx docs-site.tar.gz; then
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ steps.legacy.outputs.missing == 'true' }}
+      - name: Build the 0.4 docs from their tags
+        if: ${{ steps.legacy.outputs.missing == 'true' }}
+        run: |
+          builder="$RUNNER_TEMP/docs-0.4"
+          mkdir -p "$RUNNER_TEMP/legacy"
+          git worktree add --detach "$builder" "$LEGACY_BUILDER"
+          (cd "$builder" && bun install && bun run docs:publish --no-branch)
+          tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C "$builder/docs/site" $(cd "$builder/docs/site" && ls -d v0.4.* latest)
+          mkdir -p docs/site
+          tar xzf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C docs/site
+      - name: Attach the 0.4 docs to ${{ env.LEGACY_TAG }}
+        if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        run: |
+          gh release view "$LEGACY_TAG" >/dev/null 2>&1 \
+            || gh release create "$LEGACY_TAG" --verify-tag --latest=false --title "$LEGACY_TAG" --notes ""
+          gh release upload "$LEGACY_TAG" "$RUNNER_TEMP/legacy/docs-site.tar.gz" --clobber
 
       - name: Unpack released docs, oldest first so the newest latest/ wins
         run: |
@@ -67,7 +99,7 @@ jobs:
         run: gh release upload "$RELEASE" "$RUNNER_TEMP/docs-site.tar.gz" --clobber
 
       - run: npm run docs:build -- main
-      - run: npm run docs:site
+      - run: npm run docs:site -- --require-release
         env:
           DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
 

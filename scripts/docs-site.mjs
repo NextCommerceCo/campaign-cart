@@ -6,6 +6,7 @@
  * `main/` are in place.
  *
  *   node scripts/docs-site.mjs [--base-url https://…]    # default: $DOCS_BASE_URL
+ *   node scripts/docs-site.mjs --require-release          # fail without a release folder (CI)
  */
 
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
@@ -74,6 +75,10 @@ function main(argv) {
   const root = join(REPO, DEFAULT_SITE_ROOT);
 
   const { versions } = buildVersionIndex({ root });
+  if (argv.includes('--require-release') && versions.length === 0) {
+    process.stderr.write(`docs site has no release folders under ${root}; refusing to publish main/ alone.\n`);
+    return 1;
+  }
   const home = existsSync(join(root, 'latest')) ? 'latest/' : 'main/';
   writeFileSync(join(root, 'versions.json'), `${JSON.stringify(versions, null, 2)}\n`);
   writeFileSync(join(root, 'index.html'), renderRootRedirect(home));
