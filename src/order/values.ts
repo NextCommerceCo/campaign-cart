@@ -1,3 +1,4 @@
+import { formatAddress, ORDER_LAYOUT } from '../engine/order/address-line';
 import { paymentMethodCode } from '../engine/order/order';
 import { paymentLabel } from '../engine/order/payment';
 import { bool, cents, money, type Value } from '../engine/display/format';
@@ -18,7 +19,7 @@ const filled = (value?: string): Value => ({ type: 'text', value: value ?? '' })
 
 const ADDRESS: Fields<ApiOrderAddress> = {
   name: (a) => filled([a.first_name, a.last_name].filter(Boolean).join(' ')),
-  full: (a) => filled([a.line1, a.line2, a.line4, a.state, a.postcode, a.country].filter(Boolean).join(', ')),
+  full: (a) => filled(formatAddress(a, ORDER_LAYOUT)),
   line1: (a) => filled(a.line1),
   line2: (a) => filled(a.line2),
   state: (a) => filled(a.state),

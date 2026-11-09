@@ -4,6 +4,7 @@ import type { Line } from '../../engine/cart/types';
 import type { ApiAddress, OrderBody, OrderUser, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
 import { addressFromApi } from '../../engine/order/address';
+import { addressToApi } from '../../engine/order/address-line';
 import type { CheckoutState } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
@@ -26,16 +27,7 @@ export const userOf = (fields: Record<string, string>, language: string, phone?:
 function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: string): ApiAddress {
   const { fields, rules } = checkout;
   const country = rules[fields[`${prefix}country`] ?? ''];
-  const get = (name: string) => (hasField(country, name) && fields[prefix + name]?.trim()) || undefined;
-  const optional = { line2: get('line2'), state: get('state'), postcode: get('postcode'), phone_number: phone };
-  return {
-    first_name: get('first_name') ?? '',
-    last_name: get('last_name') ?? '',
-    line1: get('line1') ?? '',
-    line4: get('city') ?? '',
-    country: get('country') ?? '',
-    ...Object.fromEntries(Object.entries(optional).filter(([, v]) => v)),
-  };
+  return addressToApi((name) => (hasField(country, name) && fields[prefix + name]?.trim()) || undefined, phone);
 }
 
 /** Only for an `addressValid` address, whose country is set. */

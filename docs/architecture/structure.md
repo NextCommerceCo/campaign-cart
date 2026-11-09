@@ -123,7 +123,9 @@ src/
                                    (kept URL params), scope.ts (storage scope), geo.ts (the visitor's country; a chunk),
                                    debug-config.ts (a nextConfig tried from the debug panel)
     order/                         order.ts (the Order every order.* event and snapshot() carry, the reported ledger),
-                                   address.ts (an API address as the public Address),
+                                   address.ts (an API address as the public Address), address-line.ts (form fields
+                                   as an API address; an address on one line by a named layout; a chunk checkout, order
+                                   and attributes v2 share),
                                    payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
                                    chunks share, kept out of boot)
     display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;
@@ -252,6 +254,8 @@ src/
 | debug        | `?debug=1`, then every page of the tab until `?debug=0`                                             | 56.5 KB       |
 | debug icons  | the Checkout tab's payment step                                                                     | 16 KB         |
 | geo          | shared by checkout and debug (`engine/visit/geo.ts`)                                                | 1 KB          |
+| payment      | shared by checkout, order, destinations and debug (`engine/order/payment.ts`)                       | 1 KB          |
+| address      | shared by checkout, order and attributes v2 (`engine/order/address-line.ts`)                        | 0.5 KB        |
 
 ## Imports
 

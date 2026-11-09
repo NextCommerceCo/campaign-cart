@@ -1,6 +1,8 @@
 import { setSource } from '../dom/dom';
 import type { Engine } from '../engine/engine';
 import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/display/format';
+import type { Address } from '../engine/events/checkout';
+import { formatAddress, LINE_LAYOUT } from '../engine/order/address-line';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 
@@ -15,20 +17,7 @@ export function fieldType(field: string, value: unknown): ValueType {
   return field === 'image' || field.endsWith('_url') ? 'url' : 'text';
 }
 
-interface AddressLike {
-  line1?: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postcode?: string;
-  country?: string;
-}
-
-const isAddress = (v: unknown): v is AddressLike => !!v && typeof v === 'object' && 'line1' in v && 'country' in v;
-
-/** An address on one line: street, city, state and postcode, country. */
-export const addressLine = (a: AddressLike) =>
-  [a.line1, a.line2, a.city, [a.state, a.postcode].filter(Boolean).join(' '), a.country].filter(Boolean).join(', ');
+const isAddress = (v: unknown): v is Partial<Address> => !!v && typeof v === 'object' && 'line1' in v && 'country' in v;
 
 function number(n: number, locale: string | undefined, options: Intl.NumberFormatOptions): string {
   try {
@@ -41,7 +30,7 @@ function number(n: number, locale: string | undefined, options: Intl.NumberForma
 /** The text a value shows as, by its field's type or `data-next-format`. */
 export function display(field: string, value: unknown, engine: Engine, override?: string | null): string {
   if (value === undefined || value === null) return '';
-  if (isAddress(value)) return addressLine(value);
+  if (isAddress(value)) return formatAddress(value, LINE_LAYOUT);
   if (Array.isArray(value)) return String(value.length);
   if (typeof value === 'object') return '';
   const campaign = engine.getState().campaign;

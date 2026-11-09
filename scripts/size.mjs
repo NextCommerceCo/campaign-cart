@@ -23,6 +23,7 @@ const BUDGETS = [
   { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },
   { match: /^geo-.*\.js$/, name: 'geo', kb: 1 },
   { match: /^payment-(?!icons).*\.js$/, name: 'payment', kb: 1 },
+  { match: /^address-line-.*\.js$/, name: 'address', kb: 0.5 },
   { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
 ];
 

@@ -2,12 +2,13 @@ import type { Engine } from '../engine/engine';
 import type { CheckoutState } from './state/types';
 import { toApi } from './form/names';
 import { phoneText } from '../engine/display/format';
+import { formatAddress, REVIEW_LAYOUT } from '../engine/order/address-line';
 
 function address(checkout: CheckoutState, prefix: '' | 'billing_'): string {
   const f = (name: string) => checkout.fields[prefix + name]?.trim() ?? '';
   const country = checkout.countries.find((c) => c.code === f('country'))?.name ?? f('country');
-  const place = [f('city'), f('state'), f('postcode')].filter(Boolean).join(' ');
-  return [f('line1'), f('line2'), place, country].filter(Boolean).join(', ');
+  const fields = { line1: f('line1'), line2: f('line2'), city: f('city'), state: f('state'), postcode: f('postcode') };
+  return formatAddress({ ...fields, country }, REVIEW_LAYOUT);
 }
 
 function value(engine: Engine, key: string): string {
