@@ -16,6 +16,7 @@ describe('events tab', () => {
         title: '/',
         kind: 'product',
         scope: 's1',
+        funnel: 'f1',
         reload: false,
         reset: false,
         lines: [],

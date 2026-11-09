@@ -24,7 +24,7 @@ const KINDS: Record<PageKind, string> = {
   receipt: 'Receipt',
   page: 'Page',
 };
-const CARRY = /^The cart \(|^Storage scope changed/;
+const CARRY = /^The cart \(|^Storage scope changed|^Funnel changed/;
 
 const stayed = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -152,7 +152,7 @@ function carry(before: PageVisit | undefined, p: PageVisit): Child {
   const text =
     lost?.text ?? (before?.order ? `Order ${before.order} carried over` : before?.units ? 'Cart carried over' : '');
   if (!before || !text) return null;
-  return toned(h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`), lost?.tone ?? 'done');
+  return toned(h('p', 'jcarry', `${lost?.tone ? '⚠' : '↓'} ${text}`), lost?.tone ?? 'done');
 }
 
 const issueVariant = (p: PageVisit) => (p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning');

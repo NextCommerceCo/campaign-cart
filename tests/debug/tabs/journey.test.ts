@@ -17,6 +17,7 @@ const visit = (session: Storage, path: string, kind: PageKind, storagePrefix?: s
       title: path,
       kind,
       scope: 's1',
+      funnel: 'f1',
       reload,
       reset: false,
       lines: engine.cart.lines(),

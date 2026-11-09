@@ -12,6 +12,7 @@ const arrival = (path: string): Arrival => ({
   title: path,
   kind: 'page',
   scope: 's1',
+  funnel: 'f1',
   reload: false,
   reset: false,
   lines: [],
@@ -69,6 +70,18 @@ describe('debug journey', () => {
     expect(moved.marks[0]!.text).toMatch(/^Storage scope changed from s1 to s2/);
     const reset = page(session, '/d/', { scope: 's2', reset: true }).debug.state().pages[3]!;
     expect(reset.marks.map((m) => m.text)).toEqual(['Saved data cleared with ?reset=1']);
+  });
+
+  it('notes, without a warning, a page of another funnel, which keeps its own cart', async () => {
+    const session = new MemoryStorage();
+    const before = page(session, '/demeter/checkout/', { funnel: 'Demeter' });
+    await before.engine.start();
+    await before.engine.cart.addItem(1);
+    session.removeItem('next:test:cart');
+    const other = page(session, '/apollo/checkout/', { funnel: 'Apollo', scope: 's2' }).debug.state().pages[1]!;
+    expect(other.marks).toEqual([
+      { at: expect.any(Number), text: 'Funnel changed from Demeter to Apollo, which keeps its own cart' },
+    ]);
   });
 
   it('follows the order from checkout to the upsell, and flags an upsell page without one', async () => {

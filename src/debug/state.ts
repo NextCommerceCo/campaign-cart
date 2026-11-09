@@ -22,6 +22,7 @@ export interface PageVisit {
   title: string;
   kind: PageKind;
   scope: string;
+  funnel: string;
   reloads: number;
   units: number;
   total?: number;
@@ -65,6 +66,7 @@ export interface Arrival {
   title: string;
   kind: PageKind;
   scope: string;
+  funnel: string;
   reload: boolean;
   reset: boolean;
   lines: Line[];
@@ -91,9 +93,11 @@ const side = (type: string) => (type === 'billing' ? 'Billing' : 'Shipping');
 
 /** What went amiss between the page before and this one. */
 function arrivalWarnings(arrival: Arrival, before: PageVisit | undefined, units: number, linked: boolean): Mark[] {
-  const { at, kind, scope } = arrival;
+  const { at, kind, scope, funnel } = arrival;
   const warnings: Mark[] = [];
   if (arrival.reset) warnings.push({ at, text: 'Saved data cleared with ?reset=1' });
+  else if (before && before.funnel !== funnel)
+    warnings.push({ at, text: `Funnel changed from ${before.funnel} to ${funnel}, which keeps its own cart` });
   else if (before && before.scope !== scope)
     warnings.push({
       at,

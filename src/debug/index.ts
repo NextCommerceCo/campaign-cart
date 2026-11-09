@@ -133,6 +133,7 @@ export function startDebug(engine: Engine, info: DebugInfo): () => void {
       title: document.title,
       kind: pageKind(),
       scope: info.scope,
+      funnel: info.funnel,
       reload: navigation?.type === 'reload',
       ...info.arrived,
     }),
