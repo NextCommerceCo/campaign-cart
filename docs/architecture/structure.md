@@ -300,7 +300,8 @@ chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a brow
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) in headless code; a folder deeper
 than three levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
-`loader.ts`; an import, type or `declare module`, from `engine/` to anywhere else; a payment method's
+`loader.ts`; an import, type or `declare module`, from `engine/` to anywhere else; a compat import outside
+an entry; a payment method's
 label or alias outside `engine/payment.ts`.
 
 ## Tests

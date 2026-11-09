@@ -90,6 +90,18 @@ describe('architecture', () => {
     expect(wrong).toEqual([]);
   });
 
+  it('only entries wire compat in', () => {
+    const entry = (path: string) => ['boot', 'loader', 'config'].includes(path) || /^[^/]+\/index$/.test(path);
+    const wired = sources
+      .filter((s) => s.top !== 'compat' && !entry(s.path))
+      .flatMap(({ file, path, code }) =>
+        imports(code, file)
+          .statics.filter((target) => within(target, 'compat'))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(wired).toEqual([]);
+  });
+
   it('lazy chunks are only loaded with import()', () => {
     const unit = (path: string) => Object.keys(LAZY).find((lazy) => path === lazy || path.startsWith(`${lazy}/`));
     const eager = sources.flatMap(({ file, path, code }) => {

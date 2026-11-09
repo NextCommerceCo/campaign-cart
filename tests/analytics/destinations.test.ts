@@ -12,7 +12,6 @@ const { startGa4, startMeta, startRudderStack, startLegacyDataLayer } = vi.hoist
 vi.mock('../../src/destinations/ga4', () => ({ startGa4 }));
 vi.mock('../../src/destinations/meta', () => ({ startMeta }));
 vi.mock('../../src/destinations/rudderstack', () => ({ startRudderStack }));
-vi.mock('../../src/compat/analytics', () => ({ startLegacyDataLayer }));
 
 const win = window as Window & { nextConfig?: unknown };
 const configure = (destinations: object) => (win.nextConfig = { analytics: { destinations } });
@@ -64,7 +63,12 @@ describe('startDestinations', () => {
   afterEach(() => vi.clearAllMocks());
 
   it('loads and starts each destination that is on', async () => {
-    startDestinations(engine, { gtm: true, ga4: true, meta: true, rudderstack: true, storeName: 'shop' }, options);
+    startDestinations(
+      engine,
+      { gtm: true, ga4: true, meta: true, rudderstack: true, storeName: 'shop' },
+      options,
+      startLegacyDataLayer,
+    );
     expect(startLegacyDataLayer).toHaveBeenCalledWith(engine, { ...options, dataLayer: true });
     await vi.waitFor(() => {
       expect(startGa4).toHaveBeenCalledWith(engine);
@@ -74,14 +78,24 @@ describe('startDestinations', () => {
   });
 
   it('starts none that is off, and the data layer always, on window.dataLayer only with GTM on', async () => {
-    startDestinations(engine, { gtm: false, ga4: false, meta: true, rudderstack: false }, options);
+    startDestinations(
+      engine,
+      { gtm: false, ga4: false, meta: true, rudderstack: false },
+      options,
+      startLegacyDataLayer,
+    );
     expect(startLegacyDataLayer).toHaveBeenCalledWith(engine, { ...options, dataLayer: false });
     await vi.waitFor(() => expect(startMeta).toHaveBeenCalledWith(engine, { storeName: undefined }));
     await flush();
     expect(startGa4).not.toHaveBeenCalled();
     expect(startRudderStack).not.toHaveBeenCalled();
 
-    startDestinations(engine, { gtm: true, ga4: false, meta: false, rudderstack: false }, options);
+    startDestinations(
+      engine,
+      { gtm: true, ga4: false, meta: false, rudderstack: false },
+      options,
+      startLegacyDataLayer,
+    );
     await flush();
     expect(startMeta).toHaveBeenCalledTimes(1);
   });

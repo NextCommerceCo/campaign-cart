@@ -9,6 +9,7 @@ import { orderReports } from './orders';
 import { reportPage } from './pages';
 import { promotionReports } from './promotions';
 import { createReport, dispatch } from './report';
+import { startLegacyDataLayer } from '../compat/analytics';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -26,10 +27,12 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
-  const legacyExitIntent = startDestinations(engine, readDestinations(options.legacy), {
-    apiKey: options.apiKey,
-    version: options.version,
-  });
+  const legacyExitIntent = startDestinations(
+    engine,
+    readDestinations(options.legacy),
+    { apiKey: options.apiKey, version: options.version },
+    startLegacyDataLayer,
+  );
   const report = createReport(engine);
   const carts = cartReports(report);
   const checkout = checkoutReports(report);
