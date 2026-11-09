@@ -24,7 +24,7 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 **[Quickstart](./guides/quickstart.md)**: a whole landing page to copy, line by line. **[Recipes](./guides/recipes/bundle-tiers.md)**: one common task per page: bundle tiers, order bumps, variants, coupons, upsells, the receipt.
 
-**[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 7× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
+**[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 5× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
 
 **[Migrating from 0.4.x](./guides/migrating-from-0.4.md)**: pages built for 0.4.x keep working. This lists what changes for a page builder.
 
