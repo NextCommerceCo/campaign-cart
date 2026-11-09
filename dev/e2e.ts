@@ -1,4 +1,5 @@
 import { existsSync, readdirSync } from 'node:fs';
+import { createServer, type AddressInfo } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, type Page } from 'playwright-core';
@@ -111,7 +112,16 @@ async function funnel(page: Page, origin: string) {
   check(true, 'the receipt skeleton is lifted');
 }
 
-const { origin, close } = await startDev({ quiet: true });
+/** A port nothing listens on: a running `bun dev` or QA server holds 5173. */
+const freePort = () =>
+  new Promise<number>((done) => {
+    const probe = createServer().listen(0, () => {
+      const { port } = probe.address() as AddressInfo;
+      probe.close(() => done(port));
+    });
+  });
+
+const { origin, close } = await startDev({ quiet: true, port: await freePort() });
 const browser = await chromium.launch({ executablePath: chrome(), args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const problems: string[] = [];
