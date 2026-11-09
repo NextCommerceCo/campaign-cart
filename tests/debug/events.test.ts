@@ -14,7 +14,7 @@ describe('events tab', () => {
         at: Date.now(),
         path: '/',
         title: '/',
-        kind: 'landing',
+        kind: 'product',
         scope: 's1',
         reload: false,
         reset: false,
