@@ -1,8 +1,9 @@
-import type { DestinationTrace, TrackingEvent, TrackingLine } from './events/analytics';
+import type { DestinationTrace, TrackingEvent, TrackingLine, TrackingName } from './events/analytics';
 import type { Checkout } from './events/checkout';
 import type { Promotion } from './events/promotions';
 import type { Engine } from './engine';
 import { addDollars, dollars } from './format';
+import { createLedger } from './order';
 import type { ApiOrder, ApiOrderLine, Package } from './types';
 
 /** Where a destination looks up a cart line's package. */
@@ -56,12 +57,20 @@ export const promotionFields = ({ id, name, creative }: Promotion) => ({
 export const shippingTier = (checkout: Checkout): string => checkout.cart.shipping_method?.name ?? 'Standard';
 
 /** The package an upsell event is about: the page for a shown offer, else the skipped package. */
-export const upsellPackage = (packages: Packages, e: TrackingEvent<'upsell_viewed' | 'upsell_skipped'>) => {
+export function upsellPackage(
+  packages: Packages,
+  e: TrackingEvent<'upsell_viewed'>,
+): { id: 'page_view'; name: 'Upsell Page View' };
+export function upsellPackage(
+  packages: Packages,
+  e: TrackingEvent<'upsell_viewed' | 'upsell_skipped'>,
+): { id: string; name: string };
+export function upsellPackage(packages: Packages, e: TrackingEvent<'upsell_viewed' | 'upsell_skipped'>) {
   if (e.event_type === 'upsell_viewed') return { id: 'page_view', name: 'Upsell Page View' };
   const id = e.data.lines[0]?.package_id;
   if (!id) return { id: 'unknown', name: 'Unknown Package' };
   return { id: String(id), name: packages.getPackage(id)?.name ?? `Package ${id}` };
-};
+}
 
 /** The order as the Campaigns API returned it, for the prices before tax the public Order leaves out. */
 export const apiOrder = (engine: Pick<Engine, 'getState'>, refId: string): ApiOrder | undefined => {
@@ -108,59 +117,140 @@ export const orderLineProduct = (
   };
 };
 
+/** Where `once` keeps a key: this page; the checkout, which a reload keeps and a placed order clears; this browser. */
+export type OnceScope = 'page' | 'checkout' | 'browser';
+
+const pages = new WeakMap<Engine, Set<string>>();
+
+/**
+ * `once(scope, key)`: true the first time, and keeps `key`; `once.sent(scope, key)` only looks. Checkout keys
+ * live in the checkout's state (in the page without a checkout chunk), browser keys in the order ledger.
+ */
+export function createOnce(engine: Engine) {
+  const ledger = engine.attach(createLedger);
+  const page = pages.get(engine) ?? new Set<string>();
+  pages.set(engine, page);
+  const checkout = (scope: OnceScope) => (scope === 'checkout' ? engine.checkout : undefined);
+  const sent = (scope: OnceScope, key: string): boolean =>
+    scope === 'browser' ? ledger.has(key) : (checkout(scope)?.reported(key) ?? page.has(`${scope}:${key}`));
+  const once = (scope: OnceScope, key: string): boolean => {
+    if (sent(scope, key)) return false;
+    if (scope === 'browser') ledger.mark([key]);
+    else if (checkout(scope)) checkout(scope)!.markReported(key);
+    else page.add(`${scope}:${key}`);
+    return true;
+  };
+  return Object.assign(once, { sent });
+}
+
+/** What destination calls are sent for: a tracking event, or none (`tracking` left out). */
+interface Sending {
+  event_id: string;
+  tracking?: TrackingName;
+}
+
 /** How one destination turns tracking events into calls on a vendor's page script. */
 export interface Destination<V, C> {
   destination: DestinationTrace['destination'];
   /** The vendor's page script, when the page has one that can take calls. */
   vendor: () => V | undefined;
   /** Logged once while `vendor` returns nothing. */
-  missing: string;
+  missing?: string;
   /** Logged with the error of a call that throws. */
   failed: string;
+  /** Why this destination leaves a tracking event out, logged as a skipped trace. */
+  skip?: (e: TrackingEvent) => { name: string; reason: string } | undefined;
   /** The vendor calls a tracking event becomes; none skips it. */
   calls: (e: TrackingEvent) => C[];
-  send: (vendor: V, call: C) => void;
+  /**
+   * Tracking events that go out together: a run of one `event_type` that `of` picks becomes the calls of
+   * `calls`, sent on a microtask or before the next call.
+   */
+  burst?: { of: (e: TrackingEvent) => boolean; calls: (run: TrackingEvent[]) => C[] };
+  /** Sends one call; `false` when the page dropped it. */
+  send: (vendor: V, call: C) => void | false;
   /** What a sent call logs: `destination <destination> <label ?? name> sent`. */
   trace: (call: C) => { name: string; label?: string; payload: unknown };
   /** Runs `flush` now or once the vendor's script is ready; the default runs it now. */
   ready?: (vendor: V, flush: (vendor: V) => void) => void;
+  /** `false`: only the tracking events from now on, for a destination started before analytics sends any. */
+  replay?: false;
 }
 
-/** Sends every tracking event of this page, and each later one, through a destination. */
-export function startDestination<V, C>(engine: Engine, d: Destination<V, C>): void {
+/**
+ * Sends every tracking event of this page, and each later one, through a destination. Returns `deliver`,
+ * which sends calls no tracking event made, after a pending burst.
+ */
+export function startDestination<V, C>(engine: Engine, d: Destination<V, C>) {
   let warned = false;
+  let run: TrackingEvent[] = [];
+
+  const send = (calls: C[], about: Sending) => {
+    const vendor = d.vendor();
+    if (vendor === undefined) {
+      if (!warned && d.missing) engine.log.warn(d.missing);
+      warned = true;
+      return;
+    }
+    const flush = (v: V) => {
+      for (const call of calls) {
+        try {
+          if (d.send(v, call) === false) continue;
+          const { name, label = name, payload } = d.trace(call);
+          engine.log.debug(`destination ${d.destination} ${label} sent`, {
+            trace: 'destination',
+            destination: d.destination,
+            name,
+            ...(about.tracking && { tracking: about.tracking }),
+            event_id: about.event_id,
+            payload,
+          } satisfies DestinationTrace);
+        } catch (err) {
+          engine.log.error(d.failed, err);
+        }
+      }
+    };
+    if (d.ready) d.ready(vendor, flush);
+    else flush(vendor);
+  };
+
+  const flushRun = () => {
+    if (!run.length) return;
+    const events = run as [TrackingEvent, ...TrackingEvent[]];
+    run = [];
+    send(d.burst!.calls(events), { event_id: events[0].event_id, tracking: events[0].event_type });
+  };
+
+  const deliver = (calls: C[], about: Sending) => {
+    flushRun();
+    send(calls, about);
+  };
+
   engine.on(
     'analytics',
     ({ data: e }) => {
-      const calls = d.calls(e);
-      if (!calls.length) return;
-      const vendor = d.vendor();
-      if (vendor === undefined) {
-        if (!warned) engine.log.warn(d.missing);
-        warned = true;
+      if (d.burst?.of(e)) {
+        if (run[0] && run[0].event_type !== e.event_type) flushRun();
+        if (!run.length) queueMicrotask(flushRun);
+        run.push(e);
         return;
       }
-      const flush = (v: V) => {
-        for (const call of calls) {
-          try {
-            d.send(v, call);
-            const { name, label = name, payload } = d.trace(call);
-            engine.log.debug(`destination ${d.destination} ${label} sent`, {
-              trace: 'destination',
-              destination: d.destination,
-              name,
-              tracking: e.event_type,
-              event_id: e.event_id,
-              payload,
-            } satisfies DestinationTrace);
-          } catch (err) {
-            engine.log.error(d.failed, err);
-          }
-        }
-      };
-      if (d.ready) d.ready(vendor, flush);
-      else flush(vendor);
+      const skipped = d.skip?.(e);
+      if (skipped) {
+        const { name, reason } = skipped;
+        return engine.log.debug(`destination ${d.destination} ${name} not sent for ${e.event_type}: ${reason}`, {
+          trace: 'destination',
+          destination: d.destination,
+          name,
+          tracking: e.event_type,
+          event_id: e.event_id,
+          skipped: reason,
+        } satisfies DestinationTrace);
+      }
+      const calls = d.calls(e);
+      if (calls.length) deliver(calls, { event_id: e.event_id, tracking: e.event_type });
     },
-    { replay: true },
+    { replay: d.replay ?? true },
   );
+  return deliver;
 }

@@ -1,7 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { SummaryLine } from '../engine/cart/types';
 import type { EventMap } from '../engine/events/bus';
-import { startLegacyDataLayer } from '../compat/analytics';
 import type { LegacyAnalytics } from '../compat/legacy/globals';
 import { cartReports } from './carts';
 import { readDestinations, startDestinations } from './destinations';
@@ -10,7 +9,6 @@ import { orderReports } from './orders';
 import { reportPage } from './pages';
 import { promotionReports } from './promotions';
 import { createReport, dispatch } from './report';
-import { createLedger } from '../engine/order';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -28,17 +26,14 @@ const NEXT_CAMPAIGN_SCRIPT = 'https://campaigns.apps.29next.com/js/v1/campaign/'
 
 export function startAnalytics(engine: Engine, options: AnalyticsOptions): void {
   const win = window as Win;
-  const ledger = engine.attach(createLedger);
-  const destinations = readDestinations(options.legacy);
-  const legacyExitIntent = startLegacyDataLayer(engine, {
+  const legacyExitIntent = startDestinations(engine, readDestinations(options.legacy), {
     apiKey: options.apiKey,
     version: options.version,
-    dataLayer: destinations.gtm,
   });
   const report = createReport(engine);
   const carts = cartReports(report);
   const checkout = checkoutReports(report);
-  const groups = [carts.handlers, checkout.handlers, orderReports(report, ledger), promotionReports(report)];
+  const groups = [carts.handlers, checkout.handlers, orderReports(report), promotionReports(report)];
 
   let ready = false;
   let priced: SummaryLine[] | undefined;
@@ -62,7 +57,6 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
     { replay: true },
   );
   checkout.beginOwed();
-  startDestinations(engine, destinations, { apiKey: options.apiKey });
 
   if (options.nextCampaign && !document.querySelector(`script[src="${NEXT_CAMPAIGN_SCRIPT}"]`)) {
     const script = Object.assign(document.createElement('script'), { src: NEXT_CAMPAIGN_SCRIPT, async: true });

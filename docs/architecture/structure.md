@@ -127,7 +127,8 @@ src/
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
     tracking.ts                                 what every destination shares: units, value, currency, line ids,
-                                                startDestination; the 0.4.x order product and tax-basis guess (@deprecated)
+                                                startDestination (skip, burst, deliver), createOnce (page, checkout and
+                                                browser keys); the 0.4.x order product and tax-basis guess (@deprecated)
     payment.ts                                  payment methods: codes and their aliases, labels, wallets, express buttons;
                                                 a chunk the lazy chunks share, kept out of boot
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
@@ -181,8 +182,8 @@ src/
     report.ts                      emit and skip with their trace, typed by `TrackingMap`; Handlers and dispatch
     pages.ts carts.ts checkout.ts orders.ts promotions.ts   one file per event group: what it sends, and when
     items.ts                       a CartItem at the price the server gave it, the catalog's, or the one it was reported with
-    state.ts                       headless: the browser's REPORTED ledger, shared with the order state and the checkout
-    destinations.ts                which destinations are on (nextConfig.analytics.destinations over the 0.4.x keys); import() of each
+    destinations.ts                which destinations are on (nextConfig.analytics.destinations over the 0.4.x keys); starts
+                                   the dl_* data layer and returns its exit-intent handler; import() of each other one
   destinations/        ga4, meta, rudderstack   one chunk per built-in destination, loaded after analytics when it is on
     ga4.ts                         Ga4EventMap, the tracking event → GA4 remap, startGa4: the page's gtag
     meta.ts                        MetaEventMap, the tracking event → Meta remap, startMeta: the page's fbq
@@ -229,10 +230,11 @@ src/
     checkout.ts        checkout    legacyCheckout: nextConfig address and payment options, lead attributes, step guard and
                                    the 0.4.x DOM events, as checkout/hooks.ts hooks; the checkout's 0.4.x event names
     order.ts           order       the old offer attribute, the order's 0.4.x event names
-    analytics/         analytics   index.ts: dl_* events (Elevar format) into NextDataLayer / dataLayer, built from the
-                                   tracking events; pushes.ts: each event's dl_* fields; exit-intent.ts: dl_exit_intent_*;
-                                   ga4.ts: their GA4-style ecommerce payloads (items, value, purchase); burst.ts: one dl_add_to_cart / dl_remove_from_cart push per burst of line events;
-                                   schema.ts: DataLayerEventMap, the type of every dl_* push (types only, for the docs)
+    analytics/         analytics   index.ts: the NextDataLayer destination on startDestination, dl_* events (Elevar format)
+                                   into NextDataLayer / dataLayer; pushes.ts: each event's dl_* fields, one dl_add_to_cart /
+                                   dl_remove_from_cart push per burst of line events; exit-intent.ts: dl_exit_intent_*;
+                                   ga4.ts: their GA4-style ecommerce payloads (items, value, purchase); schema.ts:
+                                   DataLayerEventMap, the type every dl_* push is checked against
 ```
 
 | Chunk        | Loaded when                                                                                 | Budget (gzip) |

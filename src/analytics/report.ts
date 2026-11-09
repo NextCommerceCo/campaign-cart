@@ -8,6 +8,7 @@ import {
 } from '../engine/events/analytics';
 import { envelope, type EngineEvent, type EventMap, type EventName } from '../engine/events/bus';
 import { newId } from '../engine/id';
+import { createOnce } from '../engine/tracking';
 
 export interface Why {
   trigger: EventName;
@@ -32,7 +33,7 @@ export function createReport(engine: Engine) {
     trace(why.trigger, name, true, why.reason, event.event_id);
   };
 
-  return { engine, skip, emit };
+  return { engine, skip, emit, once: createOnce(engine) };
 }
 
 export type Report = ReturnType<typeof createReport>;

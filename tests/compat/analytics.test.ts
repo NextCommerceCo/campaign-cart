@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { startLegacyDataLayer } from '../../src/compat/analytics';
+import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
 import { OBJECTS, type TrackingEvent, type TrackingMap, type TrackingName } from '../../src/engine/events/analytics';
 import type { Cart, CartItem } from '../../src/engine/events/carts';
 import { newId } from '../../src/engine/id';
 import { publicOrder } from '../../src/engine/order';
 import { makeEngine } from '../fixtures/engine';
+import { fakeRules } from '../fixtures/rules';
 import { ORDER, withUpsell } from '../fixtures/order';
 
 type Win = Window & { NextDataLayer?: any[]; dataLayer?: any[] };
@@ -87,6 +89,7 @@ describe('0.4.x data layer from tracking events', () => {
 
   it('sends dl_add_shipping_info once per checkout, on the first of the address and the method', async () => {
     const engine = await started();
+    engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
     const cart: Cart = {
       ...emptyCart,
       lines: [line(2, 1, 89)],
@@ -94,6 +97,7 @@ describe('0.4.x data layer from tracking events', () => {
     };
     track(engine, 'checkout_shipping_address_submitted', { id: 'c1', cart });
     track(engine, 'checkout_shipping_method_submitted', { id: 'c1', cart });
+    engine.attach((ctx) => ctx.update('checkout', { id: 'c2', reported: undefined }));
     track(engine, 'checkout_shipping_method_submitted', { id: 'c2', cart: { ...emptyCart, lines: cart.lines } });
     track(engine, 'checkout_shipping_address_submitted', { id: 'c2', cart });
     expect(pushes('dl_add_shipping_info')).toMatchObject([
@@ -107,6 +111,14 @@ describe('0.4.x data layer from tracking events', () => {
     expect(pushes('dl_add_shipping_info')[1].ecommerce).not.toHaveProperty('shipping');
   });
 
+  it('keeps dl_add_shipping_info sent by an earlier page of the checkout, under the key it stored', async () => {
+    const engine = await started();
+    engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+    engine.attach((ctx) => ctx.update('checkout', { id: 'c1', reported: ['dl_add_shipping_info'] }));
+    track(engine, 'checkout_shipping_method_submitted', { id: 'c1', cart: { ...emptyCart, lines: [line(2, 1, 89)] } });
+    expect(pushes('dl_add_shipping_info')).toEqual([]);
+  });
+
   it('logs the shipping step it does not send, for the debug panel', async () => {
     const engine = await started();
     const traces: unknown[] = [];
@@ -115,11 +127,44 @@ describe('0.4.x data layer from tracking events', () => {
     track(engine, 'checkout_shipping_method_submitted', { id: 'c1', cart });
     const id = track(engine, 'checkout_shipping_address_submitted', { id: 'c1', cart });
     expect(traces).toContainEqual({
-      trace: 'data_layer',
+      trace: 'destination',
+      destination: 'NextDataLayer',
       name: 'dl_add_shipping_info',
+      tracking: 'checkout_shipping_address_submitted',
       event_id: id,
       skipped: 'already sent this checkout',
     });
+  });
+
+  it('logs each push with the destination trace the other destinations log', async () => {
+    const engine = await started();
+    const traces: unknown[] = [];
+    engine.log.stream((entry) => traces.push(entry.data));
+    const id = track(engine, 'promotion_viewed', { id: 'summer', type: 'banner', creative: 'hero' });
+    expect(traces).toContainEqual({
+      trace: 'destination',
+      destination: 'NextDataLayer',
+      name: 'dl_view_promotion',
+      tracking: 'promotion_viewed',
+      event_id: id,
+      payload: win.NextDataLayer![0],
+    });
+  });
+
+  it('logs a push that throws and keeps pushing', async () => {
+    const engine = await started();
+    const errors: string[] = [];
+    engine.log.stream((entry) => entry.level === 'error' && errors.push(entry.message));
+    win.dataLayer = {
+      push: () => {
+        throw new Error('blocked');
+      },
+    } as never;
+    track(engine, 'promotion_viewed', { id: 'summer', type: 'banner', creative: 'hero' });
+    win.dataLayer = [];
+    track(engine, 'promotion_selected', { id: 'summer', type: 'banner', creative: 'hero' });
+    expect(errors).toEqual(['dl_* data layer push failed']);
+    expect(win.dataLayer.map((e: any) => e?.event)).toEqual([undefined, 'dl_select_promotion']);
   });
 
   it('builds dl_purchase from the order as the API returned it, with the code the checkout sent', async () => {

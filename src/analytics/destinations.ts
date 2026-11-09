@@ -1,5 +1,7 @@
-import type { Engine } from '../engine/engine';
+import { startLegacyDataLayer } from '../compat/analytics';
 import type { LegacyAnalytics } from '../compat/legacy/globals';
+import type { Engine } from '../engine/engine';
+import type { EngineEvent } from '../engine/events/bus';
 
 type Switch = { enabled?: boolean } | undefined;
 
@@ -36,11 +38,21 @@ export function readDestinations(
   return destinations;
 }
 
-/** Loads the chunk of each destination that is on; one that is off never loads. */
-export function startDestinations(engine: Engine, destinations: Destinations, options: { apiKey?: string } = {}): void {
+/**
+ * Starts the `dl_*` data layer, which is always on (`gtm` only decides `window.dataLayer`), and loads the
+ * chunk of each other destination that is on; one that is off never loads. Returns the data layer's
+ * exit-intent handler, for the caller to run in event order.
+ */
+export function startDestinations(
+  engine: Engine,
+  destinations: Destinations,
+  options: { apiKey: string; version: string },
+): (e: EngineEvent) => void {
+  const exitIntent = startLegacyDataLayer(engine, { ...options, dataLayer: destinations.gtm });
   if (destinations.ga4) void import('../destinations/ga4').then((m) => m.startGa4(engine));
   if (destinations.meta)
     void import('../destinations/meta').then((m) => m.startMeta(engine, { storeName: destinations.storeName }));
   if (destinations.rudderstack)
     void import('../destinations/rudderstack').then((m) => m.startRudderStack(engine, { apiKey: options.apiKey }));
+  return exitIntent;
 }

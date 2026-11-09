@@ -5,15 +5,14 @@ import type { Handlers, Report } from './report';
 
 type OncePerCheckout = { [K in keyof TrackingMap]: TrackingMap[K] extends Checkout ? K : never }[keyof TrackingMap];
 
-export function checkoutReports({ engine, emit, skip }: Report) {
+export function checkoutReports({ engine, emit, skip, once }: Report) {
   const current = () => engine.cart.currentCheckout();
+  const started = () => !!engine.checkout && !!engine.getState().checkout?.id;
 
   const oncePerCheckout = (trigger: EventName, name: OncePerCheckout, checkout: () => Checkout, reason: string) => {
-    const actions = engine.checkout;
-    if (!actions || !engine.getState().checkout?.id) return skip(trigger, name, 'The checkout has not started');
-    if (actions.reported(name)) return skip(trigger, name, 'Already sent for this checkout');
+    if (!started()) return skip(trigger, name, 'The checkout has not started');
+    if (!once('checkout', name)) return skip(trigger, name, 'Already sent for this checkout');
     emit(name, checkout(), { trigger, reason });
-    actions.markReported(name);
   };
 
   const handlers: Handlers = {
@@ -50,7 +49,7 @@ export function checkoutReports({ engine, emit, skip }: Report) {
   };
 
   const beginOwed = () => {
-    if (engine.getState().checkout?.id && engine.checkout && !engine.checkout.reported('checkout_started'))
+    if (started() && !once.sent('checkout', 'checkout_started'))
       oncePerCheckout(
         'checkout.started',
         'checkout_started',

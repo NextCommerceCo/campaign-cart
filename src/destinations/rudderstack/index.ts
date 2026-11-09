@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { startDestination } from '../../engine/tracking';
+import { createOnce, startDestination } from '../../engine/tracking';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -28,13 +28,12 @@ export function startRudderStack(engine: Engine, options: Pick<RudderStackOption
     const ra = win.rudderanalytics;
     return typeof ra?.track === 'function' || typeof ra?.ready === 'function' ? ra : undefined;
   };
-  const firstStep = (call: RudderStackCall) => {
-    const checkout = engine.checkout;
-    if (call.call !== 'track' || call.name !== 'Checkout Step Completed' || !checkout) return true;
-    if (checkout.reported(STEP)) return false;
-    if (vendor()) checkout.markReported(STEP);
-    return true;
-  };
+  const once = createOnce(engine);
+  /** One per checkout; one dropped for want of rudderanalytics does not count. */
+  const firstStep = (call: RudderStackCall) =>
+    call.call !== 'track' ||
+    call.name !== 'Checkout Step Completed' ||
+    (vendor() ? once('checkout', STEP) : !once.sent('checkout', STEP));
   startDestination(engine, {
     destination: 'rudderstack',
     vendor,

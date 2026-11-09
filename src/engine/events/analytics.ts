@@ -157,18 +157,15 @@ export interface AnalyticsTrace {
 
 export interface DestinationTrace {
   trace: 'destination';
-  destination: 'ga4' | 'meta' | 'rudderstack';
+  destination: 'NextDataLayer' | 'ga4' | 'meta' | 'rudderstack';
   name: string;
-  tracking: TrackingName;
+  /** None on a push no tracking event made (exit intent). */
+  tracking?: TrackingName;
   event_id: string;
-  payload: unknown;
-}
-
-export interface DataLayerTrace {
-  trace: 'data_layer';
-  name: string;
-  event_id: string;
-  skipped: string;
+  /** What was sent; none when skipped. */
+  payload?: unknown;
+  /** Why it was not sent. */
+  skipped?: string;
 }
 
 export interface AnalyticsEvents {

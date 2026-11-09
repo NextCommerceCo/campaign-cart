@@ -1,10 +1,4 @@
-import type {
-  AnalyticsTrace,
-  DataLayerTrace,
-  DestinationTrace,
-  TrackingEvent,
-  TrackingName,
-} from '../engine/events/analytics';
+import type { AnalyticsTrace, DestinationTrace, TrackingEvent, TrackingName } from '../engine/events/analytics';
 import type { EngineEvent } from '../engine/events/bus';
 import type { LogEntry } from '../engine/log';
 import {
@@ -69,7 +63,7 @@ export function analyticsFlow(ui: {
   const kinds = new Set<string>();
   const runs: Run[] = [];
   const sentTo = new Map<string, DestinationTrace[]>();
-  const skipped = new Map<string, DataLayerTrace>();
+  const skipped = new Map<string, DestinationTrace>();
 
   const record = (e: EngineEvent) => {
     if (e.name !== 'analytics') return;
@@ -79,14 +73,14 @@ export function analyticsFlow(ui: {
   };
 
   const note = (entry: LogEntry) => {
-    if (traceOf(entry.data) === 'destination') {
+    if (traceOf(entry.data) === 'destination' && (entry.data as DestinationTrace).skipped) {
+      const trace = entry.data as DestinationTrace;
+      skipped.set(trace.event_id, trace);
+      if (skipped.size > KEEP) skipped.delete(skipped.keys().next().value!);
+    } else if (traceOf(entry.data) === 'destination') {
       const trace = entry.data as DestinationTrace;
       sentTo.set(trace.event_id, [...(sentTo.get(trace.event_id) ?? []), trace]);
       if (sentTo.size > KEEP) sentTo.delete(sentTo.keys().next().value!);
-    } else if (traceOf(entry.data) === 'data_layer') {
-      const trace = entry.data as DataLayerTrace;
-      skipped.set(trace.event_id, trace);
-      if (skipped.size > KEEP) skipped.delete(skipped.keys().next().value!);
     } else if (traceOf(entry.data) === 'analytics') {
       runs.push({ ...(entry.data as AnalyticsTrace), at: entry.at });
       if (runs.length > KEEP) runs.shift();

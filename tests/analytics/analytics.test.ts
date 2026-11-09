@@ -287,6 +287,27 @@ describe('analytics', () => {
     expect((await page()).sent).toEqual(steps);
   });
 
+  it('reads the once-only keys a page stored before, in the checkout and in the browser', async () => {
+    const checkout = await ready();
+    await checkout.cart.addItem(2);
+    startCheckout(checkout);
+    const reported = ['checkout_started', 'checkout_shipping_address_submitted', 'dl_add_shipping_info'];
+    checkout.attach((ctx) => ctx.update('checkout', { reported }));
+    startAnalytics(checkout, options);
+    checkout.events.emit('address.entered', SHIPPING);
+    await flush();
+    expect(names()).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
+
+    delete win.NextDataLayer;
+    const local = new MemoryStorage();
+    const order = withUpsell(ORDER, 99, 1);
+    makeEngine({ local }).engine.attach((ctx) =>
+      ctx.local.set(REPORTED, [purchaseId(order), `purchase:${purchaseId(order)}`, upsellId(order, order.lines![1]!)]),
+    );
+    startAnalytics(await loadOrder(order, { local }), options);
+    expect(names()).toEqual(['dl_user_data']);
+  });
+
   it('sends begin_checkout on a later page when the page that started the checkout was left first', async () => {
     const session = new MemoryStorage();
     const first = makeEngine({ session }).engine;

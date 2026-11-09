@@ -199,12 +199,12 @@ export interface DataLayerEventMap {
    * @see https://docs.getelevar.com/docs/view-all-event-triggers-and-data-layer-variables
    */
   dl_add_payment_info: DataLayerPush & {
-    ecommerce: DataLayerEcommerce & { payment_type: string };
+    ecommerce: DataLayerEcommerce & { payment_type?: string };
     event_category: 'ecommerce';
     /** The cart's total. */
     event_value: number;
-    /** `Credit Card` for a card, else the payment method. */
-    payment_type: string;
+    /** `Credit Card` for a card, else the payment method; none before one is picked. */
+    payment_type?: string;
   };
   /**
    * An order was paid, without its upsells.

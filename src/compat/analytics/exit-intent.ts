@@ -4,10 +4,20 @@ import type { EngineEvent, EventMap, EventName } from '../../engine/events/bus';
 import type { EventContext } from '../../engine/events/context';
 import { newId } from '../../engine/id';
 import { legacyRegistry } from '../legacy/registry';
+import type { Fields } from './pushes';
+import type { DataLayerName } from './schema';
 
-type Send = (name: string, id: string, time: string, context: EventContext, data: object) => void;
+type ExitIntentName = Extract<DataLayerName, `dl_exit_intent_${string}`>;
+type Moment = ExitIntentName extends `dl_exit_intent_${infer M}` ? M : never;
+type Send = <N extends ExitIntentName>(
+  name: N,
+  id: string,
+  time: string,
+  context: EventContext,
+  fields: Fields<N>,
+) => void;
 
-const CLOSED: Partial<Record<EventMap['promotion.closed']['reason'], string>> = {
+const CLOSED: Partial<Record<EventMap['promotion.closed']['reason'], Moment>> = {
   dismissed: 'dismissed',
   close_button: 'closed',
 };
@@ -15,7 +25,7 @@ const CLOSED: Partial<Record<EventMap['promotion.closed']['reason'], string>> = 
 type PopupEvent = EventMap['promotion.clicked'] & Partial<EventMap['promotion.closed']>;
 
 /** 0.4.43's `exit-intent:*` moments: a close or apply-coupon button's action as it is clicked; a custom one is `customAction`. */
-const exitIntentName = (e: EngineEvent): string | undefined => {
+const exitIntentName = (e: EngineEvent): Moment | undefined => {
   const { type, action, coupon_code, reason } = e.data as PopupEvent;
   if (!e.name.startsWith('promotion.') || type !== 'exit_intent') return undefined;
   if (e.name === 'promotion.viewed') return 'shown';
@@ -31,17 +41,17 @@ const exitIntentName = (e: EngineEvent): string | undefined => {
  * the popup's `promotion.*` events, for the caller to run in event order.
  */
 export function exitIntentPushes(engine: Engine, send: Send): (e: EngineEvent) => void {
-  const exitIntent = (trigger: EventName, name: string, data: object) => {
-    const event = `dl_exit_intent_${name}`;
+  const exitIntent = <N extends ExitIntentName>(trigger: EventName, event: N, fields: Fields<N>) => {
     const id = newId();
-    send(event, id, new Date().toISOString(), engine.eventContext(), { event_category: 'engagement', ...data });
+    send(event, id, new Date().toISOString(), engine.eventContext(), fields);
     const reason = 'Data layer only: there is no analytics event';
     const trace: AnalyticsTrace = { trace: 'analytics', trigger, name: event, sent: true, reason, id };
     engine.log.debug(`analytics ${event} sent: ${reason}`, trace);
   };
 
   const acted = (action: string, coupon_code = '') =>
-    exitIntent('promotion.clicked', 'action', {
+    exitIntent('promotion.clicked', 'dl_exit_intent_action', {
+      event_category: 'engagement',
       event_action: `exit_intent_${action}`,
       event_label: coupon_code || action,
       exit_intent: { action, coupon_code },
@@ -55,7 +65,8 @@ export function exitIntentPushes(engine: Engine, send: Send): (e: EngineEvent) =
     const { id, action, coupon_code } = e.data as PopupEvent;
     if (name === 'action') return acted(action!, coupon_code);
     const { imageUrl = '', template = '' } = registry.popups[id] ?? {};
-    exitIntent(e.name, name, {
+    exitIntent(e.name, `dl_exit_intent_${name}`, {
+      event_category: 'engagement',
       event_action: `exit_intent_${name}`,
       event_label: imageUrl || template || 'exit-intent',
       exit_intent: { image_url: imageUrl, template },
