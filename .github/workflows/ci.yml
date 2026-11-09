@@ -17,14 +17,46 @@ jobs:
       - run: npm test
       - run: npm run docs:check
       - run: npm run build
-      - name: Check the committed dist/ matches the build
-        run: |
-          if [ -n "$(git status --porcelain -- dist)" ]; then
-            git status --short -- dist
-            echo "::error::dist/ is stale: run npm run build and commit dist/"
-            exit 1
-          fi
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
+
+  # jsDelivr serves cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v<version>/dist from
+  # the tagged tree, and main does not carry dist/. When main reaches a package.json
+  # version with no tag yet, this tags a commit off main that adds the dist/ built above.
+  # The GitHub release is then created by hand from that tag.
+  tag:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find an untagged version
+        id: version
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag is already tagged"
+          else
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: ${{ steps.version.outputs.tag }}
+        with:
+          name: dist
+          path: dist
+      - name: Tag a commit that carries dist/
+        if: ${{ steps.version.outputs.tag }}
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --quiet --detach
+          git add --force dist
+          git commit --quiet -m "Release $TAG"
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
