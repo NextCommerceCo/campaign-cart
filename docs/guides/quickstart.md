@@ -14,7 +14,7 @@ total, and goes on to checkout. Copy it, put your campaign key and package ids i
 <!doctype html>
 <html>
   <head>
-    <script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="earbuds"></script>
+    <script type="module" src=".../loader.js" data-campaign="pk_…"></script>
     <style>
       html:not([data-next-ready]) .price {
         visibility: hidden;
@@ -45,18 +45,18 @@ total, and goes on to checkout. Copy it, put your campaign key and package ids i
 </html>
 ```
 
-| Line                                   | What it does                                                                                                |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `<script … data-campaign data-funnel>` | Loads the SDK for this campaign. Every page of the funnel uses the same `data-funnel`, so they share a cart |
-| `data-next-selector="main"`            | A group of options, one picked. The picked one is the cart: no add-to-cart button needed                    |
-| `data-next-option` + `data-next-items` | One option and its packages: `"1x2"` is package 1 twice, so `price` is the price of one                     |
-| `data-next-selected`                   | Picked first. The SDK moves it as the shopper clicks                                                        |
-| `data-next-query="price"`              | Inside an option, a short path reads that option. Prices come from the server, with its discounts           |
-| `data-next-show="total_discount > 0"`  | Shown only while the condition holds                                                                        |
-| an option on its own                   | An order bump: a click adds it, the next click takes it out                                                 |
-| `cart.total`, `data-next-empty`        | Anywhere on the page a path starts with its object. `…` shows until the price arrives                       |
-| `html[data-next-ready]`                | Set once the page is bound and priced: hide prices until then, so placeholders never flash                  |
-| a plain link                           | The cart is already saved; links keep the visit's URL parameters                                            |
+| Line                                   | What it does                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `<script … data-campaign>`             | Loads the SDK for this campaign. Every page of the campaign shares one cart                       |
+| `data-next-selector="main"`            | A group of options, one picked. The picked one is the cart: no add-to-cart button needed          |
+| `data-next-option` + `data-next-items` | One option and its packages: `"1x2"` is package 1 twice, so `price` is the price of one           |
+| `data-next-selected`                   | Picked first. The SDK moves it as the shopper clicks                                              |
+| `data-next-query="price"`              | Inside an option, a short path reads that option. Prices come from the server, with its discounts |
+| `data-next-show="total_discount > 0"`  | Shown only while the condition holds                                                              |
+| an option on its own                   | An order bump: a click adds it, the next click takes it out                                       |
+| `cart.total`, `data-next-empty`        | Anywhere on the page a path starts with its object. `…` shows until the price arrives             |
+| `html[data-next-ready]`                | Set once the page is bound and priced: hide prices until then, so placeholders never flash        |
+| a plain link                           | The cart is already saved; links keep the visit's URL parameters                                  |
 
 ## Next
 

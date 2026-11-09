@@ -6,7 +6,7 @@ The shortest page that works:
 
 ```html
 <head>
-  <script type="module" src=".../loader.js" data-campaign="{YOUR_CAMPAIGN_API_KEY}" data-funnel="my-funnel"></script>
+  <script type="module" src=".../loader.js" data-campaign="{YOUR_CAMPAIGN_API_KEY}"></script>
 </head>
 
 <body>

@@ -5,7 +5,7 @@ analytics and debug tools subscribe to its events. Design:
 [docs/architecture/design.md](docs/architecture/design.md).
 
 ```html
-<script type="module" src=".../loader.js" data-campaign="pk_live_…" data-funnel="my-funnel"></script>
+<script type="module" src=".../loader.js" data-campaign="pk_live_…"></script>
 ```
 
 **Status:** landing, cart, checkout, upsell and receipt pages are built and run on the live 0.4.x

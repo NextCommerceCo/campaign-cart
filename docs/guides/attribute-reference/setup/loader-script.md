@@ -11,17 +11,17 @@ stylesheet (`campaign-cart.css`) to the page, and fetches the campaign while the
 being parsed.
 
 ```html
-<script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="my-funnel"></script>
+<script type="module" src=".../loader.js" data-campaign="pk_…"></script>
 ```
 
 ## Attributes
 
-| Attribute       | Means                                                                                                                                                                                                                            |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-campaign` | The campaign's API key. Without it the SDK does not start, logs an error and sets `html[data-next-error="config"]`                                                                                                               |
-| `data-funnel`   | The storage scope: the cart, checkout fields and visit are kept per campaign and funnel, so two funnels on one domain never share a cart. Without it, the first folder of the page's path is used (`/vip/checkout.html` → `vip`) |
+| Attribute       | Means                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-campaign` | The campaign's API key. Without it the SDK does not start, logs an error and sets `html[data-next-error="config"]`                                                                                                                                |
+| `data-funnel`   | Optional. The cart, checkout fields and visit are kept per campaign; this splits them further, for two funnels of one campaign that must not share a cart. Without it, the first folder of the page's path is used (`/vip/checkout.html` → `vip`) |
 
-Every page of one funnel uses the same `data-campaign` and `data-funnel`. `?currency=EUR` on the
+Every page of one funnel uses the same `data-campaign`. `?currency=EUR` on the
 URL asks the campaign for that currency (see [URL parameters](url-parameters.md)).
 
 The loader creates `window.nextReady` if the page has not: a queue for scripts that run before the

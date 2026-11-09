@@ -11,12 +11,12 @@ on. Both load the SDK the same way:
 
 ```html
 <head>
-  <script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="my-funnel"></script>
+  <script type="module" src=".../loader.js" data-campaign="pk_…"></script>
 </head>
 ```
 
-Every page of one funnel uses the same `data-funnel`: that is what lets the checkout see the
-cart the landing page filled.
+Every page of the campaign shares one cart, so the checkout sees the cart the landing page filled.
+To keep two funnels of one campaign apart, give each its own optional `data-funnel`.
 
 ## Prices and packages
 

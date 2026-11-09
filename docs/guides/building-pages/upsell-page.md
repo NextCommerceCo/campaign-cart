@@ -12,7 +12,7 @@ that, and every option on the page is a post-purchase offer, priced for the orde
 
 ```html
 <head>
-  <script type="module" src=".../loader.js" data-campaign="pk_…" data-funnel="my-funnel"></script>
+  <script type="module" src=".../loader.js" data-campaign="pk_…"></script>
 </head>
 ```
 
