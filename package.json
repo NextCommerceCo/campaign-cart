@@ -22,6 +22,7 @@
     "docs:check": "patch-package --error-on-fail && node scripts/docs-build.mjs latest && node scripts/docs-versions.mjs --local",
     "docs:build": "node scripts/docs-build.mjs",
     "docs:site": "node scripts/docs-site.mjs",
+    "docs:preview": "node scripts/docs-preview.mjs",
     "postinstall": "patch-package"
   },
   "devDependencies": {

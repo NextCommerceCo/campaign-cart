@@ -35,7 +35,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE: ${{ inputs.release }}
       LEGACY_TAG: v0.4.43
-      LEGACY_BUILDER: 4c00ba067bfe8dc2ea884f75404592f6c629873f
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,9 +45,8 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # The 0.4 tags use the pre-rewrite layout, so their docs come from the builder as it
-      # stood before the rewrite. Built once from the tags, then attached to the last 0.4
-      # release and unpacked from there like every other release.
+      # The 0.4 docs are built from their tags once (scripts/docs-legacy.mjs), attached to
+      # the last 0.4 release, and unpacked from there like every other release after that.
       - name: Check for the 0.4 docs
         id: legacy
         run: |
@@ -62,13 +60,9 @@ jobs:
       - name: Build the 0.4 docs from their tags
         if: ${{ steps.legacy.outputs.missing == 'true' }}
         run: |
-          builder="$RUNNER_TEMP/docs-0.4"
+          node scripts/docs-legacy.mjs docs/site
           mkdir -p "$RUNNER_TEMP/legacy"
-          git worktree add --detach "$builder" "$LEGACY_BUILDER"
-          (cd "$builder" && bun install && bun run docs:publish --no-branch)
-          tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C "$builder/docs/site" $(cd "$builder/docs/site" && ls -d v0.4.* latest)
-          mkdir -p docs/site
-          tar xzf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C docs/site
+          tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C docs/site $(cd docs/site && ls -d v0.4.* latest)
       - name: Attach the 0.4 docs to ${{ env.LEGACY_TAG }}
         if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && github.ref == 'refs/heads/main' }}
         run: |
