@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAttributes } from '../../src/attributes';
+import { bindAll } from '../../src/bindings';
 import { Query } from '../../src/engine/query';
 import { heldApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -66,6 +67,26 @@ describe('attributes v2: reading values', () => {
     await engine.cart.addItem(1);
     await settle(engine);
     expect($('#per-day').textContent).toBe('$1.50');
+  });
+
+  it('binds a later subtree’s 0.4.x condition once, through the 0.4.x bindings only', async () => {
+    document.body.innerHTML = '<main></main>';
+    const { engine } = makeEngine();
+    await engine.start();
+    const v1 = bindAll(document, engine, vi.fn());
+    const v2 = bindAttributes(document, engine, new Query(engine), { navigate: vi.fn(), deferred: v1.deferred });
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<section id="later"><p id="has" data-next-show="cart.hasItems">In cart</p></section>',
+    );
+    const later = document.querySelector('#later')!;
+    v1.bind(later);
+    v2.bind(later);
+    await engine.cart.addItem(2);
+    await settle(engine);
+    const has = document.querySelector<HTMLElement>('#has')!;
+    expect(has.hidden).toBe(false);
+    expect(has.style.display).toBe('');
   });
 
   it('shows and hides on conditions the 0.4.x grammar could not read', async () => {

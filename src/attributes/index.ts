@@ -67,6 +67,7 @@ export interface AttributeBindings {
  * Binds attributes v2 inside `root`: scopes first (`data-next-for`, selectors and options), then
  * lists, then what reads and acts on them. `deferred` are the `data-next-show` / `-hide`
  * elements the 0.4.x bindings left to v2: a condition they cannot read or a path they do not know.
+ * A list row's copy is bound whole: the 0.4.x bindings never saw it.
  */
 export function bindAttributes(
   root: ParentNode,
@@ -76,12 +77,12 @@ export function bindAttributes(
 ): AttributeBindings {
   const renders: Render[] = [];
   const render = () => renders.forEach((r) => r());
-  const bindTree = (node: ParentNode): Render[] => [
+  const bindTree = (node: ParentNode, shown?: Set<Element>): Render[] => [
     ...bindFor(node, a),
     ...bindOptions(node, a),
     ...bindEach(node, a),
     ...bindQuery(node, a),
-    ...bindShow(node, a, node === root ? options.deferred : undefined),
+    ...bindShow(node, a, shown),
     ...bindActions(node, a),
     ...bindFields(node, a),
   ];
@@ -90,17 +91,17 @@ export function bindAttributes(
     query,
     pageActions(engine),
     options.navigate ?? ((url) => location.assign(url)),
-    bindTree,
+    (node) => bindTree(node),
     render,
   );
   defineVariants(query, engine);
-  renders.push(...bindTree(root));
+  renders.push(...bindTree(root, options.deferred));
   engine.subscribe(render);
   render();
   return {
     render,
     bind: (node) => {
-      const added = bindTree(node);
+      const added = bindTree(node, options.deferred);
       renders.push(...added);
       added.forEach((r) => r());
     },
