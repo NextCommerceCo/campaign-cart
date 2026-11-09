@@ -38,7 +38,9 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
 8. **Comments are rare.** Code says what it does; `docs/` says why. The exception is async
    ordering the code cannot show (an identity token, a serialized chain, latest-wins): one line
    on why.
-9. **Build output is never committed.** CI builds `dist/`.
+9. **`dist/` is committed and checked.** jsDelivr serves it from the release tag, so it rides
+   along with the source; CI fails when it differs from a fresh build, and `.gitattributes`
+   keeps it out of diffs.
 10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
     attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
     skeleton, button spinners, `.hide` utilities, radio and validation styles), so

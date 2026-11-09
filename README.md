@@ -21,7 +21,7 @@ and watch the panel's state and events while you click. Then read
 | -------------------- | --------------------------------------------------------------------------------- |
 | `npm test`           | unit tests (the Engine suite runs in plain Node)                                  |
 | `npm run typecheck`  | TypeScript                                                                        |
-| `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
+| `npm run build`      | build `dist/` (committed + CI-checked) and fail if a file is over its gzip budget |
 | `bun dev`            | the real campaign pages with this SDK from source; see below                      |
 | `bun run e2e`        | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
 | `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |

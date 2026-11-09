@@ -17,6 +17,13 @@ jobs:
       - run: npm test
       - run: npm run docs:check
       - run: npm run build
+      - name: Check the committed dist/ matches the build
+        run: |
+          if [ -n "$(git status --porcelain -- dist)" ]; then
+            git status --short -- dist
+            echo "::error::dist/ is stale: run npm run build and commit dist/"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: dist
