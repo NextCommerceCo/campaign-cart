@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PAYMENT_METHODS } from '../src/engine/payment';
 
 const LAZY: Record<string, string[]> = {
   analytics: ['compat/analytics'],
@@ -161,6 +162,17 @@ describe('architecture', () => {
       })
       .map(([file]) => file);
     expect(stale).toEqual([]);
+  });
+
+  it('payment methods are named and aliased only in engine/payment', () => {
+    const words = Object.values(PAYMENT_METHODS).flatMap((m) => [
+      m.label,
+      ...(m.aliases ?? []).filter((a) => a.length > 6),
+    ]);
+    const elsewhere = sources
+      .filter((s) => s.path !== 'engine/payment')
+      .flatMap((s) => words.filter((w) => s.code.includes(`'${w}'`)).map((w) => `${s.path}: '${w}'`));
+    expect(elsewhere).toEqual([]);
   });
 
   it('no default exports and no re-export barrels', () => {
