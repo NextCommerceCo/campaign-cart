@@ -1,0 +1,79 @@
+name: Deploy docs
+
+# The site is one folder per release, plus `latest/` and `main/`. A Workers deploy
+# replaces every file, so each run rebuilds the whole site: released folders come from
+# the `docs-site.tar.gz` attached to each GitHub release, `main/` is built fresh.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Assemble the site without deploying
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release:
+        description: Tag to build a folder for, attach to its release, and serve as latest/
+        type: string
+        required: true
+      dry-run:
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE: ${{ inputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Unpack released docs, oldest first so the newest latest/ wins
+        run: |
+          mkdir -p docs/site
+          gh release list --limit 1000 --json tagName --jq '.[].tagName' | sort -V | while read -r tag; do
+            if gh release view "$tag" --json assets --jq '.assets[].name' | grep -qx docs-site.tar.gz; then
+              rm -rf docs/site/latest
+              gh release download "$tag" --pattern docs-site.tar.gz --output - | tar xz -C docs/site
+            fi
+          done
+
+      - name: Build the release folder and latest/
+        if: ${{ inputs.release }}
+        run: |
+          npm run docs:build -- "$RELEASE"
+          rm -rf docs/site/latest
+          npm run docs:build -- latest
+          tar czf "$RUNNER_TEMP/docs-site.tar.gz" -C docs/site "$RELEASE" latest
+
+      - name: Attach the docs to the release
+        if: ${{ inputs.release && !inputs.dry-run }}
+        run: gh release upload "$RELEASE" "$RUNNER_TEMP/docs-site.tar.gz" --clobber
+
+      - run: npm run docs:build -- main
+      - run: npm run docs:site
+        env:
+          DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
+
+      - name: Deploy to Cloudflare
+        if: ${{ !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy -c docs/wrangler.jsonc
