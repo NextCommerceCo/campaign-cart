@@ -1,4 +1,5 @@
-import { bindAll } from './bindings';
+import { bindAll, type Bindings } from './bindings';
+import { browserOptions, browserStorage } from './dom/browser';
 import { pageEnvironment } from './dom/environment';
 import { runReadyQueue } from './dom/ready';
 import type { BootConfig } from './config';
@@ -10,11 +11,11 @@ import type { TrackingEvent, TrackingName } from './engine/events/analytics';
 import type { EventMap, EventName, InternalEventName } from './engine/events/bus';
 import type { EventContext } from './engine/events/context';
 import type { Snapshot } from './engine/events/sdk';
-import type { Campaign } from './engine/types';
+import type { Campaign, Send } from './engine/types';
 import type { NextActions } from './engine/actions';
 import type { ModelType, Query } from './engine/display/query';
 import { announceLegacyReady, legacyApi, type LegacyApi } from './compat/legacy/api';
-import { legacyEvents } from './compat/legacy/registry';
+import { legacyEvents, type LegacyEvents } from './compat/legacy/registry';
 import {
   legacyAnalytics,
   nextConfig,
@@ -25,7 +26,7 @@ import {
 import { triedConfig, withTried } from './engine/visit/debug-config';
 import { localeOf } from './engine/display/format';
 import { trackingIgnored } from './engine/visit/params';
-import { rulesSend, textsIn } from './engine/display/texts';
+import { rulesSend, textsIn, type Texts } from './engine/display/texts';
 
 declare const __VERSION__: string;
 
@@ -34,20 +35,10 @@ const ORDER_MARKUP =
 /** 0.4.x and 0.5 markup the checkout and order chunks bind, beside what `bindAll` binds. */
 const LEGACY_FORMS =
   '[data-next-checkout-field], [os-checkout-field], [data-next-upsell], [data-next-upsell-action], [data-next-order-items]';
+const V2 =
+  '[data-next-query],[data-next-each],[data-next-for],[data-next-selector],[data-next-option],[data-next-field],[data-next-action]:not([data-next-action=add-to-cart],[data-next-action=select-variants],[data-next-action=checkout])';
 
-const browserStorage = (get: () => Storage): Storage | null => {
-  try {
-    return get();
-  } catch {
-    return null;
-  }
-};
-
-const cookie = (name: string) => document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1];
-
-const pixelId = () =>
-  document.querySelector<HTMLMetaElement>('meta[name="os-facebook-pixel"], meta[name="facebook-pixel-id"]')?.content ||
-  [...document.scripts].map((s) => s.text.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/)?.[1]).find(Boolean);
+const v2In = (root: ParentNode) => !!root.querySelector(V2) || (root instanceof Element && root.matches(V2));
 
 /** The names `next.on` takes: every event but the SDK's internal ones. */
 export type PublicEventName = Exclude<EventName, InternalEventName>;
@@ -87,7 +78,6 @@ export interface NextApi extends LegacyApi {
 
 /** @internal */
 export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
-  const html = document.documentElement;
   const params = new URLSearchParams(location.search);
   const funnel = config.funnel || funnelFromPath(location.pathname);
   const scope = storageScope(config.apiKey, funnel);
@@ -108,31 +98,14 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     send,
     campaign,
     storagePrefix: `next:${scope}`,
-    storage: { local: browserStorage(() => localStorage), session: browserStorage(() => sessionStorage) },
-    cookies: {
-      get: cookie,
-      set: (name, value, days) => {
-        document.cookie = `${name}=${value}; path=/; max-age=${days * 86400}; SameSite=Lax`;
-      },
-    },
+    ...browserOptions(),
     currency: config.currency,
     locale: config.lang || i18n.locale,
     params: Object.fromEntries(params),
-    visit: {
-      landingPage: location.href,
-      referrer: document.referrer,
-      device: navigator.userAgent,
-      deviceType: matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop',
-      fbp: cookie('_fbp'),
-      fbc: cookie('_fbc'),
-      domain: location.hostname,
-      pixelId: pixelId(),
-    },
     funnel: config.funnel || undefined,
     reset: config.reset,
     debug: config.debug,
   });
-
   if (engine.debug) {
     engine.log.info(`storage scope ${scope} (funnel "${funnel || '(none)'}")`);
     const arrived = { lines: engine.cart.lines(), reset: config.reset };
@@ -161,14 +134,82 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const legacy = legacyEvents(engine, () => import('./compat/legacy'));
   const bindings = bindAll(document, engine);
-  const checkoutForm = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
-  const checkoutChunk = checkoutForm ? import('./checkout') : undefined;
-  if (checkoutForm) {
+  if (bindings.legacy || !v2In(document) || document.querySelector(LEGACY_FORMS)) void legacy.preload();
+  const [next, queried, bindV2] = nextApi(engine, legacy, bindings);
+  (window as unknown as { next: NextApi }).next = next;
+  const orderParams = params.has('ref_id') || params.has('order_ref_id') || paymentFailed;
+  const bindChunks = pageChunks(engine, legacy, queried, orderParams, rules, i18n.translations);
+  revealWhenBound(engine, bindings, next, bindChunks, bindV2, config.apiKey);
+  engine.on('sdk.error', (e) => {
+    if (e.data.action === 'campaign.load') document.documentElement.setAttribute('data-next-error', 'campaign');
+  });
+  void engine.start();
+
+  addEventListener('pageshow', (e) => {
+    if (e.persisted) location.reload();
+  });
+  removeLegacyPersonalData();
+
+  return next;
+}
+
+/** Loads the lazy chunks the page's markup needs; the function it returns binds them once the campaign has loaded. */
+function pageChunks(
+  engine: Engine,
+  legacy: LegacyEvents,
+  queried: () => Promise<Query>,
+  orderParams: boolean,
+  rules: Send,
+  translations: Record<string, Texts>,
+): (v2Page: boolean) => unknown[] {
+  const form = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
+  const checkout = form ? import('./checkout') : undefined;
+  if (form) {
     for (const href of ['https://payments.29next.com', 'https://core.spreedly.com']) {
       document.head.append(Object.assign(document.createElement('link'), { rel: 'preconnect', href, crossOrigin: '' }));
     }
   }
+  const order = document.querySelector(ORDER_MARKUP) || orderParams ? import('./order') : undefined;
+  const widgets = document.querySelector(
+    '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
+  );
+  if (widgets)
+    void import('./compat/widgets').then((m) =>
+      m.bindWidgets(document, {
+        timerStart: (id, ms) => engine.visit.timerStart(id, ms),
+        log: engine.log,
+        events: legacy.widgets,
+      }),
+    );
+  const i18n = document.querySelector('[data-next-i18n]') ? import('./compat/i18n') : undefined;
+  const slots = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]')
+    ? import('./bindings/slots')
+    : undefined;
+  return (v2Page) => [
+    form &&
+      Promise.all([checkout!, v2Page && queried()]).then(([m, q]) =>
+        m.bindCheckout(engine, form, {
+          rules,
+          legacyCheckoutStarted: legacy.checkoutStarted,
+          query: q || undefined,
+          translations,
+        }),
+      ),
+    order?.then((m) => m.bindOrder(engine)),
+    slots?.then((m) => m.bindSlots(engine)),
+    i18n?.then((m) => {
+      const lang = localeOf(engine.getState()) || 'en';
+      void m.bindI18n(document, { send: rules, lang, page: textsIn(translations, lang), log: engine.log });
+    }),
+  ];
+}
 
+/** `window.next`, with the query and attributes v2 loaders it shares with the page's own binding. */
+function nextApi(
+  engine: Engine,
+  legacy: LegacyEvents,
+  bindings: Bindings,
+): [NextApi, () => Promise<Query>, () => Promise<{ bind(root: ParentNode): void }>] {
   let query: Promise<Query> | undefined;
   const queried = () => (query ??= import('./engine/display/query').then((m) => new m.Query(engine)));
   let attributes: Promise<typeof import('./attributes')> | undefined;
@@ -179,16 +220,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       (...args: unknown[]) =>
         (attributes ??= import('./attributes')).then((m) => m.runAction(engine, name, args)),
   });
-  const V2 =
-    '[data-next-query],[data-next-each],[data-next-for],[data-next-selector],[data-next-option],[data-next-field],[data-next-action]:not([data-next-action=add-to-cart],[data-next-action=select-variants],[data-next-action=checkout])';
-  const v2In = (root: ParentNode) => !!root.querySelector(V2) || (root instanceof Element && root.matches(V2));
   let v2: Promise<{ bind(root: ParentNode): void }> | undefined;
   const bindV2 = () =>
     (v2 ??= Promise.all([(attributes ??= import('./attributes')), queried()]).then(([m, q]) =>
       m.bindAttributes(document, engine, q, { deferred: bindings.deferred }),
     ));
-  const legacyPage = bindings.legacy || !v2In(document) || !!document.querySelector(LEGACY_FORMS);
-  if (legacyPage) void legacy.preload();
   const next: NextApi = {
     version: __VERSION__,
     on: (name, fn) => {
@@ -237,31 +273,26 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
     actions,
     ...legacyApi(engine),
   };
-  (window as unknown as { next: NextApi }).next = next;
+  return [next, queried, bindV2];
+}
 
-  const orderPage =
-    document.querySelector(ORDER_MARKUP) || params.has('ref_id') || params.has('order_ref_id') || paymentFailed;
-  const orderChunk = orderPage ? import('./order') : undefined;
-  const widgetsPage = document.querySelector(
-    '[data-next-accordion], [data-next-tooltip], [data-next-component="scroll-hint"], [data-next-timer]',
-  );
-  if (widgetsPage)
-    void import('./compat/widgets').then((m) =>
-      m.bindWidgets(document, {
-        timerStart: (id, ms) => engine.visit.timerStart(id, ms),
-        log: engine.log,
-        events: legacy.widgets,
-      }),
-    );
-  const i18nChunk = document.querySelector('[data-next-i18n]') ? import('./compat/i18n') : undefined;
-  const slotsPage = document.querySelector('[data-next-bundle-slot-template-id], [data-next-bundle-slot-template]');
-  const slotsChunk = slotsPage ? import('./bindings/slots') : undefined;
-
+/**
+ * Once the campaign has loaded and the page's chunks are bound, shows the page, runs its ready callbacks and
+ * starts analytics when the browser is idle.
+ */
+function revealWhenBound(
+  engine: Engine,
+  bindings: Bindings,
+  next: NextApi,
+  bindChunks: (v2Page: boolean) => unknown[],
+  bindV2: () => Promise<unknown>,
+  apiKey: string,
+) {
   const reveal = () => {
     try {
       bindings.render();
     } finally {
-      html.setAttribute('data-next-ready', '');
+      document.documentElement.setAttribute('data-next-ready', '');
       performance.mark?.('next:ready');
     }
     announceLegacyReady(next);
@@ -273,7 +304,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
       const start = () =>
         import('./analytics').then((m) =>
           m.startAnalytics(engine, {
-            apiKey: config.apiKey,
+            apiKey,
             version: next.version,
             nextCampaign: analytics.nextCampaign,
             legacy: analytics,
@@ -284,42 +315,8 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   };
   engine.on('sdk.ready', () => {
     const v2Page = v2In(document) || bindings.deferred.size > 0;
-    const binding = [
-      checkoutForm &&
-        Promise.all([checkoutChunk!, v2Page && queried()]).then(([m, q]) =>
-          m.bindCheckout(engine, checkoutForm, {
-            rules,
-            legacyCheckoutStarted: legacy.checkoutStarted,
-            query: q || undefined,
-            translations: i18n.translations,
-          }),
-        ),
-      orderChunk?.then((m) => m.bindOrder(engine)),
-      slotsChunk?.then((m) => m.bindSlots(engine)),
-      i18nChunk?.then((m) => {
-        const lang = localeOf(engine.getState()) || 'en';
-        void m.bindI18n(document, {
-          send: rules,
-          lang,
-          page: textsIn(i18n.translations, lang),
-          log: engine.log,
-        });
-      }),
-      v2Page && bindV2(),
-      bindings.ready,
-    ].filter(Boolean);
+    const binding = [...bindChunks(v2Page), v2Page && bindV2(), bindings.ready].filter(Boolean);
     if (binding.length) void Promise.allSettled(binding).then(reveal);
     else reveal();
   });
-  engine.on('sdk.error', (e) => {
-    if (e.data.action === 'campaign.load') html.setAttribute('data-next-error', 'campaign');
-  });
-  void engine.start();
-
-  addEventListener('pageshow', (e) => {
-    if (e.persisted) location.reload();
-  });
-  removeLegacyPersonalData();
-
-  return next;
 }

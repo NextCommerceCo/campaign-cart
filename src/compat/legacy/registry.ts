@@ -128,15 +128,13 @@ export interface LegacyEvents {
   widgets: WidgetEvents;
 }
 
-/**
- * @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. Page moments
- * are kept here; the names made from events come from `load`, and a listener added before it has loaded gets the
- * events since then once it has.
- */
-export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Promise<LegacyTranslator>): LegacyEvents {
+type Load = () => LegacyTranslator | Promise<LegacyTranslator>;
+
+/** Loads the legacy chunk on the first call; returns the chunk once it has loaded, the promise of it before. */
+function translatorOf(load: Load): Load {
   let loaded: LegacyTranslator | undefined;
   let loading: Promise<LegacyTranslator> | undefined;
-  const translator = (): LegacyTranslator | Promise<LegacyTranslator> => {
+  return () => {
     if (loaded) return loaded;
     if (!loading) {
       const m = load();
@@ -145,7 +143,10 @@ export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Prom
     }
     return loading;
   };
+}
 
+/** The page moments: `fire` sends one (see `MOMENTS`); `listen` adds a listener, which also gets the kept ones. */
+function pageMoments(engine: Engine, r: Registry) {
   const kept = new Map<string, unknown[]>();
   const listeners = new Map<string, Set<(data: unknown) => void>>();
   const call = (fn: (data: unknown) => void, data: unknown) => {
@@ -155,13 +156,22 @@ export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Prom
       engine.log.error('a 0.4.x event listener failed', err);
     }
   };
-  const r = legacyRegistry(engine);
   const fire = (r.fire = (name: string, data: unknown, keep?: boolean) => {
     const shaped = r.shapes[name] ? r.shapes[name](data as never, engine.getState()) : data;
     if (keep) kept.set(name, [...(kept.get(name) ?? []), shaped]);
     listeners.get(name)?.forEach((fn) => call(fn, shaped));
   });
+  const listen = (name: string, fn: (data: unknown) => void) => {
+    const set = listeners.get(name) ?? new Set();
+    listeners.set(name, set.add(fn));
+    kept.get(name)?.forEach((data) => call(fn, data));
+    return () => void set.delete(fn);
+  };
+  return [fire, listen] as const;
+}
 
+/** Keeps the package each selector had picked before its latest pick, for the payloads' `previousPick`. */
+function trackPicks(engine: Engine, r: Registry) {
   const picks = new Map<string, number | undefined>();
   const previous = new Map<string, number | undefined>();
   const counted = new WeakSet<EngineEvent>();
@@ -176,6 +186,58 @@ export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Prom
   r.previousPick = (e, id) => (picked(e as EngineEvent<'selector.selected'>), previous.get(id));
   engine.on('selector.bound', picked);
   engine.on('selector.selected', picked);
+}
+
+/**
+ * `next.on` for a name the legacy chunk makes from the events. Before the chunk has loaded the events are held, and
+ * the listener gets them once it has.
+ */
+function onTranslated(
+  engine: Engine,
+  translator: Load,
+  name: string,
+  fn: (data: unknown, event?: EngineEvent) => void,
+): () => void {
+  let stop = false;
+  let off = () => {};
+  const start = (m: LegacyTranslator, queued: EngineEvent[] = []) => {
+    const handler = m.legacyHandler(engine, name, fn);
+    if (!handler) return engine.log.warn(`next.on: unknown event "${name}"`);
+    if (!handler.replay) for (const e of queued) stop ||= handler.handle(e);
+    if (stop) return;
+    off = engine.on('*', (e) => void (stop ||= handler.handle(e)), { replay: handler.replay });
+    if (stop) off();
+  };
+  const now = translator();
+  if (!(now instanceof Promise)) start(now);
+  else {
+    const queued: EngineEvent[] = [];
+    const collect = engine.on('*', (e) => void queued.push(e));
+    off = collect;
+    void now.then(
+      (m) => {
+        collect();
+        if (!stop) start(m, queued);
+      },
+      () => collect(),
+    );
+  }
+  return () => {
+    stop = true;
+    off();
+  };
+}
+
+/**
+ * @deprecated 0.4.x `next.on` names. See the Campaign SDK event reference for the name each became. Page moments
+ * are kept here; the names made from events come from `load`, and a listener added before it has loaded gets the
+ * events since then once it has.
+ */
+export function legacyEvents(engine: Engine, load: Load): LegacyEvents {
+  const translator = translatorOf(load);
+  const r = legacyRegistry(engine);
+  const [fire, listen] = pageMoments(engine, r);
+  trackPicks(engine, r);
   addEventListener('click', noteClick, true);
 
   return {
@@ -186,41 +248,8 @@ export function legacyEvents(engine: Engine, load: () => LegacyTranslator | Prom
         engine.log.warn(`next.on: "${name}" is no longer sent: ${why}`);
         return () => {};
       }
-      if (MOMENTS.includes(name)) {
-        const set = listeners.get(name) ?? new Set();
-        listeners.set(name, set.add(fn));
-        kept.get(name)?.forEach((data) => call(fn, data));
-        return () => void set.delete(fn);
-      }
-      if (!name.includes(':')) return undefined;
-      let stop = false;
-      let off = () => {};
-      const start = (m: LegacyTranslator, queued: EngineEvent[] = []) => {
-        const handler = m.legacyHandler(engine, name, fn);
-        if (!handler) return engine.log.warn(`next.on: unknown event "${name}"`);
-        if (!handler.replay) for (const e of queued) stop ||= handler.handle(e);
-        if (stop) return;
-        off = engine.on('*', (e) => void (stop ||= handler.handle(e)), { replay: handler.replay });
-        if (stop) off();
-      };
-      const now = translator();
-      if (!(now instanceof Promise)) start(now);
-      else {
-        const queued: EngineEvent[] = [];
-        const collect = engine.on('*', (e) => void queued.push(e));
-        off = collect;
-        void now.then(
-          (m) => {
-            collect();
-            if (!stop) start(m, queued);
-          },
-          () => collect(),
-        );
-      }
-      return () => {
-        stop = true;
-        off();
-      };
+      if (MOMENTS.includes(name)) return listen(name, fn);
+      return name.includes(':') ? onTranslated(engine, translator, name, fn) : undefined;
     },
     preload: () =>
       Promise.resolve(translator()).then(

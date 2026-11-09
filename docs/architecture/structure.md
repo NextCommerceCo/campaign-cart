@@ -142,6 +142,7 @@ src/
                                    its element, the bundle selector id, the one template token pattern and fill, image sources
     templates.ts                   fillTokens, stamp, eachTokenText (the one walk over template text)
     environment.ts ready.ts        the page and browser every event's context carries; the nextReady queue
+    browser.ts                     what the Engine reads from the browser: storage, cookies, the visit (fbp/fbc, pixel id)
   bindings/            boot        0.4.x attributes, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe, dispose; loads cart-summary.ts when a bound
                                    node has [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
@@ -208,7 +209,8 @@ src/
     config.ts          loader      nextConfig / meta-tag readers, nextReady, next:ready
     legacy/            boot        events.ts: selector ids, the 0.4.x event names made from the new events;
                                    payloads.ts: their 0.4.x cart and item shapes; registry.ts: next.on for 0.4.x names
-                                   (lazy chunks add theirs with addLegacyEvents); api.ts: the window.next 0.4.x API,
+                                   (lazy chunks add theirs with addLegacyEvents) with the page moments and picks it keeps until the legacy chunk
+                                   loads; api.ts: the window.next 0.4.x API,
                                    nextReady; globals.ts: NextConfig and the one nextConfig() reader, nextConfig.analytics,
                                    the old SDK's stored personal data
     exit-intent.ts     exit-intent loaded on the first next.exitIntent() call; the popup's promotion.* events
