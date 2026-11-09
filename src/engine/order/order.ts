@@ -1,24 +1,8 @@
 import type { Context } from '../engine';
-import type { Address } from '../events/checkout';
 import type { Order, OrderItem } from '../events/orders';
 import { dollars as amount } from '../display/format';
-import type { ApiOrder, ApiOrderAddress, ApiOrderLine } from '../types';
-
-/** The public Address of an API address (`line4` is the city); none without a country. */
-export function addressOf(raw?: ApiOrderAddress): Address | undefined {
-  if (!raw?.country) return undefined;
-  return {
-    first_name: raw.first_name ?? '',
-    last_name: raw.last_name ?? '',
-    line1: raw.line1 ?? '',
-    ...(raw.line2 && { line2: raw.line2 }),
-    ...(raw.line4 && { city: raw.line4 }),
-    ...(raw.state && { state: raw.state }),
-    ...(raw.postcode && { postcode: raw.postcode }),
-    country: raw.country,
-    ...(raw.phone_number && { phone: raw.phone_number }),
-  };
-}
+import type { ApiOrder, ApiOrderLine } from '../types';
+import { addressFromApi } from './address';
 
 function item(raw: ApiOrderLine): OrderItem {
   const units = raw.quantity || 1;
@@ -102,8 +86,8 @@ export function publicOrder(raw: ApiOrder, coupons: string[] = []): Order {
     last_name: raw.user.last_name ?? '',
     ...(raw.user.phone_number && { phone: raw.user.phone_number }),
   };
-  const shipping = addressOf(raw.shipping_address);
-  const billing = addressOf(raw.billing_address);
+  const shipping = addressFromApi(raw.shipping_address);
+  const billing = addressFromApi(raw.billing_address);
   return {
     ref_id: raw.ref_id,
     ...(raw.number !== undefined && { number: String(raw.number) }),

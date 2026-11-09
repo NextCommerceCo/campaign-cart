@@ -3,12 +3,12 @@ import type { Context } from '../../engine/engine';
 import { newId } from '../../engine/runtime/id';
 import { createContact, type Lead } from './contact';
 import { createCountries } from './countries';
-import { publicAddress } from './order-body';
+import { announceAddresses, checkPhone, fieldActions } from './fields';
 import { paymentCode } from '../../engine/order/payment';
 import { createPlaceOrder, type PlaceOrder } from './place-order';
-import { asciiDigits, countryOf, createPhoneReads, PHONES, phoneChecked, phoneFieldOf, phoneKey } from './phone';
-import { addressValid, fieldError, formErrors, postcodeChecked, type RulesApi, type Scope } from './rules';
-import type { Address, AddressType, Checkout } from '../../engine/events/checkout';
+import { createPhoneReads } from './phone';
+import { formErrors, type RulesApi, type Scope } from './rules';
+import type { AddressType, Checkout } from '../../engine/events/checkout';
 import type { AddressSuggestion, ApiOrder, CheckoutError } from '../../engine/types';
 import type { CheckoutState, FieldError } from './types';
 
@@ -80,26 +80,51 @@ const emptyCheckout = (): CheckoutState => ({
   steps: undefined,
 });
 
-const isCountry = (name: string) => name === 'country' || name === 'billing_country';
-
-/** The checkout once `name` is `value`: a new country empties its state and forgets the phone read against the old one. */
-function withField({ fields, phones, errors }: CheckoutState, name: string, value: string): Partial<CheckoutState> {
-  const country = isCountry(name);
-  const phone = country ? phoneFieldOf(name) : name;
-  const forget =
-    country || (PHONES.includes(name) && phoneKey(fields[name] ?? '') !== phoneKey(value)) ? phone : undefined;
-  const { [name]: _, ...kept } = errors;
-  if (country && kept[phone]?.warning) delete kept[phone];
-  const { [forget ?? '']: __, ...read } = phones;
-  return {
-    fields: { ...fields, [name]: value, ...(country && !!fields[name] && { [name.replace('country', 'state')]: '' }) },
-    errors: kept,
-    phones: read,
-  };
-}
-
 const asErrors = (errors: Record<string, string>) =>
   Object.fromEntries(Object.entries(errors).map(([name, code]) => [name, { code } as CheckoutError]));
+
+const checkoutOf = (ctx: Context) => ctx.getState().checkout!;
+const setCheckout = (ctx: Context, patch: Partial<CheckoutState>, options?: { silent?: boolean }) =>
+  ctx.update('checkout', patch, options);
+
+function validateForm(ctx: Context, scope: Scope, phoneRequired = false): boolean {
+  const errors = formErrors(checkoutOf(ctx), scope, phoneRequired);
+  setCheckout(ctx, { errors: asErrors(errors) });
+  return !Object.keys(errors).length;
+}
+
+function choosePayment(ctx: Context, word: string, open: boolean): void {
+  const { form: _, ...errors } = checkoutOf(ctx).errors;
+  const method = paymentCode(word);
+  const changed = method !== checkoutOf(ctx).paymentMethod;
+  setCheckout(ctx, { paymentMethod: method, errors });
+  if (changed && open) ctx.emit('payment.selected', { method });
+}
+
+async function addressSuggestions(
+  ctx: Context,
+  query: string,
+  country: string,
+  signal?: AbortSignal,
+): Promise<AddressSuggestion[]> {
+  try {
+    return (await ctx.api.autocomplete(query, country, signal)).results ?? [];
+  } catch (err) {
+    if (!signal?.aborted) ctx.fail('address.suggest', err);
+    return [];
+  }
+}
+
+/** Sends `checkout.started` once per checkout id; a reload of a started checkout only calls `opened`. */
+function startCheckout(ctx: Context, cart: CartActions, opened?: (checkout: Checkout) => void): void {
+  if (checkoutOf(ctx).id) return opened?.(cart.currentCheckout());
+  setCheckout(ctx, { id: newId() });
+  const off = ctx.on('checkout.started', (e) => {
+    off();
+    opened?.(e.data);
+  });
+  ctx.emit('checkout.started', cart.currentCheckout());
+}
 
 export function createCheckout(
   ctx: Context,
@@ -107,8 +132,8 @@ export function createCheckout(
   rulesApi: RulesApi,
   { lead = 'email', opened }: { lead?: Lead; opened?: (checkout: Checkout) => void } = {},
 ): CheckoutActions {
-  const state = () => ctx.getState().checkout!;
-  const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => ctx.update('checkout', patch, options);
+  const state = () => checkoutOf(ctx);
+  const set = (patch: Partial<CheckoutState>, options?: { silent?: boolean }) => setCheckout(ctx, patch, options);
   let bound = false;
   let open = false;
 
@@ -118,60 +143,16 @@ export function createCheckout(
   const saveContact = createContact(ctx, cart, lead, () => open);
   const { loadCountry, loadCountries } = createCountries(ctx, rulesApi);
   const readPhone = createPhoneReads(rulesApi);
-
-  const announceAddresses = () => {
-    if (!open) return;
-    const checkout = state();
-    for (const type of ['shipping', 'billing'] as const) {
-      const prefix = type === 'billing' ? 'billing_' : '';
-      if ((type === 'billing' && checkout.sameAsShipping) || !addressValid(checkout, prefix)) continue;
-      const before = type === 'billing' ? checkout.billingAddress : checkout.shippingAddress;
-      const address = publicAddress(checkout, prefix);
-      if (JSON.stringify(address) === JSON.stringify(before)) continue;
-      set(type === 'billing' ? { billingAddress: address } : { shippingAddress: address });
-      ctx.emit(before ? 'address.updated' : 'address.entered', { ...address, type });
-    }
-  };
-
-  const verifyPostcode = async (): Promise<void> => {
-    const { fields } = state();
-    const value = fields.postcode?.trim();
-    if (!fields.country || !value) return;
-    try {
-      const sent = { postcode: value, ...(fields.state && { state: fields.state }) };
-      const result = (await rulesApi.validate(fields.country, sent)).postcode;
-      const errors = postcodeChecked(state(), fields, result);
-      if (errors) set({ errors });
-    } catch {}
-  };
-
-  const checkPhone = async (name: string, warn = false): Promise<void> => {
-    const country = countryOf(state().fields, name);
-    const typed = asciiDigits(state().fields[name]?.trim() ?? '');
-    if (!country || !typed) return;
-    const patch = phoneChecked(state(), name, country, typed, await readPhone(country, typed), warn);
-    if (patch) set(patch);
-  };
-
-  const validate = (scope: Scope, phoneRequired = false): boolean => {
-    const errors = formErrors(state(), scope, phoneRequired);
-    set({ errors: asErrors(errors) });
-    return !Object.keys(errors).length;
+  const phone = (name: string, warn?: boolean) => checkPhone(ctx, readPhone, name, warn);
+  const announce = () => {
+    if (open) announceAddresses(ctx);
   };
 
   const start = () => {
     if (!bound || open || !cart.lines().length) return;
     open = true;
-    if (state().id) opened?.(cart.currentCheckout());
-    else {
-      set({ id: newId() });
-      const off = ctx.on('checkout.started', (e) => {
-        off();
-        opened?.(e.data);
-      });
-      ctx.emit('checkout.started', cart.currentCheckout());
-    }
-    announceAddresses();
+    startCheckout(ctx, cart, opened);
+    announce();
     void saveContact();
   };
   ctx.on('cart.updated', start);
@@ -181,7 +162,7 @@ export function createCheckout(
 
   return {
     placeOrder: createPlaceOrder(ctx, cart, {
-      checkPhone,
+      checkPhone: phone,
       showErrors: asErrors,
       invalid,
       reset: () => set({ ...emptyCheckout(), status: 'placed' }, { silent: true }),
@@ -195,48 +176,13 @@ export function createCheckout(
       const reported = state().reported ?? [];
       if (!reported.includes(name)) set({ reported: [...reported, name] }, { silent: true });
     },
-    setField(name, value) {
-      if (state().status === 'placed' || state().fields[name] === value) return;
-      set(withField(state(), name, value));
-      if (isCountry(name))
-        void loadCountry(value).then(() => checkPhone(phoneFieldOf(name), true).then(announceAddresses));
-    },
-    async leave(name) {
-      const { fields, rules } = state();
-      const code = fieldError(name, fields[name] ?? '', false, rules[countryOf(fields, name) ?? '']);
-      if (code) set({ errors: { ...state().errors, [name]: { code } } });
-      if (PHONES.includes(name)) await checkPhone(name, true);
-      if (name === 'postcode' || name === 'state') await verifyPostcode();
-      announceAddresses();
-      await saveContact();
-    },
-    readPhone: (name) => checkPhone(name),
-    writePhone(name) {
-      const { fields, phones } = state();
-      const read = phones[name];
-      const written = read && (read.country === countryOf(fields, name) ? read.national : read.international);
-      if (written && written !== fields[name]) set({ fields: { ...fields, [name]: written } });
-    },
-    setSameAsShipping(same) {
-      if (same === state().sameAsShipping) return;
-      set({ sameAsShipping: same });
-      if (!same && !state().fields.billing_country && state().fields.country) {
-        set({ fields: { ...state().fields, billing_country: state().fields.country! } });
-      }
-      announceAddresses();
-    },
-    setPaymentMethod(word) {
-      const { form: _, ...errors } = state().errors;
-      const method = paymentCode(word);
-      const changed = method !== state().paymentMethod;
-      set({ paymentMethod: method, errors });
-      if (changed && open) ctx.emit('payment.selected', { method });
-    },
+    ...fieldActions(ctx, rulesApi, { isOpen: () => open, phone, announce, saveContact, loadCountry }),
+    setPaymentMethod: (word) => choosePayment(ctx, word, open),
     setStep(step, page) {
       set({ step, ...(page !== undefined && { steps: { ...state().steps, [page]: step } }) });
     },
     nextStep(phoneRequired = false) {
-      if (!validate('shipping', phoneRequired)) {
+      if (!validateForm(ctx, 'shipping', phoneRequired)) {
         invalid(state().errors);
         return false;
       }
@@ -245,32 +191,11 @@ export function createCheckout(
       return true;
     },
     problems: (scope = 'all') => formErrors(state(), scope),
-    validate,
-    autofill(type, { address }) {
-      if (!open) return;
-      const filled: Partial<Address> = {
-        line1: address.line1,
-        city: address.city,
-        postcode: address.postcode,
-        country: address.country_code,
-        state: address.state_code,
-      };
-      ctx.emit('address.autofilled', {
-        ...Object.fromEntries(Object.entries(filled).filter(([, value]) => value)),
-        type,
-      });
-    },
+    validate: (scope, phoneRequired) => validateForm(ctx, scope, phoneRequired),
     paymentReady() {
       if (!state().cardReady) set({ cardReady: true });
     },
-    async suggestAddresses(query, country, signal) {
-      try {
-        return (await ctx.api.autocomplete(query, country, signal)).results ?? [];
-      } catch (err) {
-        if (!signal?.aborted) ctx.fail('address.suggest', err);
-        return [];
-      }
-    },
+    suggestAddresses: (query, country, signal) => addressSuggestions(ctx, query, country, signal),
     loadCountries,
   };
 }

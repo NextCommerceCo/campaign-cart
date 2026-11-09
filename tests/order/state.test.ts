@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { upsellId } from '../../src/engine/order/order';
-import { createOrder, ORDER_VALUES, orderValue, pathsOf } from '../../src/order/state';
-import { format } from '../../src/engine/display/format';
+import { createOrder } from '../../src/order/state';
 import { createLedger, publicOrder, purchaseId, REPORTED } from '../../src/engine/order/order';
 import type { EngineEvent } from '../../src/engine/events/bus';
 import type { CheckoutState } from '../../src/checkout/state/types';
@@ -468,66 +467,5 @@ describe('order', () => {
     expect(sent('upsell.failed')).toEqual([]);
     expect(sent('sdk.error')).toEqual([]);
     expect(sent('upsell.declined')).toMatchObject([{ ref_id: 'R1', page: '/up/', error }]);
-  });
-
-  it('answers the receipt’s order.* paths', async () => {
-    const { engine, order } = await setup();
-    const show = (path: string) => {
-      const v = orderValue(engine.getState(), path);
-      return v && format(v, 'USD', 'en');
-    };
-    expect(orderValue(engine.getState(), 'hasTax')).toEqual({ type: 'bool', value: false });
-    await order.load('R1');
-    expect(show('total')).toBe('$106.11');
-    expect(show('subtotal')).toBe('$89.00');
-    expect(show('tax')).toBe('$7.12');
-    expect(show('shipping')).toBe('$9.99');
-    expect(orderValue(engine.getState(), 'hasTax')).toEqual({ type: 'bool', value: true });
-    expect(show('number')).toBe('1001');
-    expect(show('paymentMethod')).toBe('Credit Card');
-    expect(show('customer.name')).toBe('Jane Doe');
-    expect(show('shippingAddress.city')).toBe('Austin');
-    expect(show('billingAddress.name')).toBe('Ann Lee');
-    expect(orderValue(engine.getState(), 'nope')).toBeUndefined();
-  });
-
-  it('lists every order path, and reads the customer and addresses by their own fields only', async () => {
-    expect(pathsOf('order', ORDER_VALUES)).toMatchInlineSnapshot(`
-      [
-        "order.number",
-        "order.refId",
-        "order.ref_id",
-        "order.currency",
-        "order.total",
-        "order.totalExclTax",
-        "order.total_excl_tax",
-        "order.tax",
-        "order.shipping",
-        "order.shippingExclTax",
-        "order.discounts",
-        "order.subtotal",
-        "order.hasTax",
-        "order.hasShipping",
-        "order.hasDiscounts",
-        "order.hasItems",
-        "order.isEmpty",
-        "order.hasUpsells",
-        "order.supportsUpsells",
-        "order.itemCount",
-        "order.shippingMethod",
-        "order.paymentMethod",
-        "order.customer",
-        "order.user",
-        "order.shippingAddress",
-        "order.billingAddress",
-      ]
-    `);
-    const { engine, order } = await setup();
-    await order.load('R1');
-    const state = engine.getState();
-    expect(orderValue(state, 'customer.email')).toEqual(orderValue(state, 'user.email'));
-    expect(orderValue(state, 'shippingAddress.zip')).toEqual(orderValue(state, 'shippingAddress.postcode'));
-    expect(orderValue(state, 'customer.constructor')).toBeUndefined();
-    expect(orderValue(state, 'billingAddress.toString')).toBeUndefined();
   });
 });

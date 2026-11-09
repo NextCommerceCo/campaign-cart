@@ -3,7 +3,7 @@ import { shippingMethodOf } from '../../engine/cart/public';
 import type { Line } from '../../engine/cart/types';
 import type { ApiAddress, OrderBody, OrderUser, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
-import { addressOf } from '../../engine/order/order';
+import { addressFromApi } from '../../engine/order/address';
 import type { CheckoutState } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
@@ -40,7 +40,7 @@ function address(checkout: CheckoutState, prefix: '' | 'billing_', phone?: strin
 
 /** Only for an `addressValid` address, whose country is set. */
 export const publicAddress = (checkout: CheckoutState, prefix: '' | 'billing_'): Address =>
-  addressOf(address(checkout, prefix, phoneOf(checkout, `${prefix}phone_number`)))!;
+  addressFromApi(address(checkout, prefix, phoneOf(checkout, `${prefix}phone_number`)))!;
 
 export function orderBody(
   state: State,

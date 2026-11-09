@@ -123,6 +123,7 @@ src/
                                    (kept URL params), scope.ts (storage scope), geo.ts (the visitor's country; a chunk),
                                    debug-config.ts (a nextConfig tried from the debug panel)
     order/                         order.ts (the Order every order.* event and snapshot() carry, the reported ledger),
+                                   address.ts (an API address as the public Address),
                                    payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
                                    chunks share, kept out of boot)
     display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;
@@ -165,7 +166,8 @@ src/
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     hooks.ts                       CheckoutHooks: what compat/checkout.ts adds; bindCheckout calls them
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
-                                   place-order.ts (placeOrder, redirectFor), order-body.ts (order body),
+                                   place-order.ts (placeOrder, redirectFor), order-body.ts (order body), fields.ts (what
+                                   the shopper types, leaves and picks; address.entered / address.updated),
                                    rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), countries.ts
                                    (the country list and the visitor's country), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
@@ -177,7 +179,8 @@ src/
                                    labels.ts (floating), errors.ts, texts.ts, reformat.ts (keep the caret)
     review.ts                      [data-next-checkout-review]
   order/               order       loaded when the page has an upsell offer or order.* values
-    index.ts state.ts upsell.ts receipt.ts   state.ts is headless: load, accept, skip
+    index.ts state.ts upsell.ts receipt.ts values.ts   state.ts is headless: load, accept, skip; values.ts the order.*
+                                   display paths
   analytics/           analytics   subscriber, loaded on idle
     index.ts                       startAnalytics: engine events → each group's handlers → tracking events (`analytics`)
     report.ts                      emit and skip with their trace, typed by `TrackingMap`; Handlers and dispatch

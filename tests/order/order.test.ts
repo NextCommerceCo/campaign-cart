@@ -269,4 +269,12 @@ describe('receipt (apollo)', () => {
     expect(list.querySelector('.cart-item__quantity')!.textContent).toBe('2');
     expect(list.querySelector('img')!.getAttribute('src')).toBe('https://img.test/eb.png');
   });
+
+  it('fills only the item tokens of an item template and keeps any other token as written', async () => {
+    const template = '<b>{item.name}</b> {item.constructor} {item.nope} {order.total} {name}';
+    const { $ } = await mountHtml(`<div data-next-order-items data-item-template="${template}"></div>`);
+    expect($('[data-next-order-items]').innerHTML).toBe(
+      '<b>Earbuds</b> {item.constructor} {item.nope} {order.total} {name}',
+    );
+  });
 });

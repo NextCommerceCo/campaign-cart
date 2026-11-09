@@ -3,8 +3,6 @@ import { cents, formatCents } from '../engine/display/format';
 import type { ApiOrderLine } from '../engine/types';
 import { fillTemplate } from '../dom/dom';
 
-const ITEM_TOKEN = /\{item\.(\w+)\}/g;
-
 const DEFAULT_TEMPLATE =
   '<div class="order-item"><img src="{item.image}" alt=""><span>{item.name}</span> × {item.quantity} <span>{item.lineTotal}</span></div>';
 
@@ -21,25 +19,25 @@ function tokens(line: ApiOrderLine, money: (c: number) => string): Record<string
   const flag = (on: boolean) => String(on);
   const show = (on: boolean) => (on ? 'show' : 'hide');
   return {
-    id: String(line.id),
-    name: line.product_title,
-    title: line.product_title,
-    sku: line.product_sku ?? '',
-    quantity: String(line.quantity),
-    image: line.image ?? '',
-    description: line.product_description ?? '',
-    variant: line.variant_title ?? '',
-    price: each(line.price_incl_tax),
-    priceExclTax: each(line.price_excl_tax),
-    lineTotal: money(cents(line.price_incl_tax)),
-    lineTotalExclTax: money(cents(line.price_excl_tax)),
-    isUpsell: flag(!!line.is_upsell),
-    upsellBadge: line.is_upsell ? 'UPSELL' : '',
-    showUpsell: show(!!line.is_upsell),
-    hasImage: flag(!!line.image),
-    showImage: show(!!line.image),
-    hasVariant: flag(!!line.variant_title),
-    showVariant: show(!!line.variant_title),
+    'item.id': String(line.id),
+    'item.name': line.product_title,
+    'item.title': line.product_title,
+    'item.sku': line.product_sku ?? '',
+    'item.quantity': String(line.quantity),
+    'item.image': line.image ?? '',
+    'item.description': line.product_description ?? '',
+    'item.variant': line.variant_title ?? '',
+    'item.price': each(line.price_incl_tax),
+    'item.priceExclTax': each(line.price_excl_tax),
+    'item.lineTotal': money(cents(line.price_incl_tax)),
+    'item.lineTotalExclTax': money(cents(line.price_excl_tax)),
+    'item.isUpsell': flag(!!line.is_upsell),
+    'item.upsellBadge': line.is_upsell ? 'UPSELL' : '',
+    'item.showUpsell': show(!!line.is_upsell),
+    'item.hasImage': flag(!!line.image),
+    'item.showImage': show(!!line.image),
+    'item.hasVariant': flag(!!line.variant_title),
+    'item.showVariant': show(!!line.variant_title),
   };
 }
 
@@ -67,7 +65,7 @@ export function bindReceipt(engine: Engine): Array<() => void> {
             ? '<div class="status-message">Error loading order items</div>'
             : status === 'empty'
               ? empty
-              : lines.map((line) => fillTemplate(template, tokens(line, money), ITEM_TOKEN)).join('');
+              : lines.map((line) => fillTemplate(template, tokens(line, money))).join('');
       for (const s of ['loading', 'error', 'empty', 'has-items']) el.classList.toggle(`order-${s}`, s === status);
       if (html !== shown) el.innerHTML = shown = html;
     };

@@ -1080,6 +1080,24 @@ describe('three-step checkout (shop-three-step)', () => {
     expect($('[data-next-checkout-review="address"]').textContent).toContain('1 Main St, Austin');
     expect($('[data-next-checkout-review="phone"]').classList).toContain('next-review-empty');
   });
+
+  it('reviews the address on one line: city, state and postcode one part, then the country by name', async () => {
+    history.replaceState(null, '', '/shop-three-step/billing/');
+    const { checkout, $ } = await mount('shop-three-step/billing.html');
+    const review = () => $('[data-next-checkout-review="address"]').textContent;
+    checkout.setField('country', 'US');
+    checkout.setField('line1', ' 1 Main St ');
+    checkout.setField('line2', 'Apt 2');
+    checkout.setField('city', 'Austin');
+    checkout.setField('state', 'TX');
+    checkout.setField('postcode', '73301');
+    await flush();
+    expect(review()).toBe('1 Main St, Apt 2, Austin TX 73301, United States');
+    checkout.setField('line2', '');
+    checkout.setField('city', '');
+    await flush();
+    expect(review()).toBe('1 Main St, TX 73301, United States');
+  });
 });
 
 describe('attributes v2 checkout (data-next-field, data-next-address, data-next-payment)', () => {
