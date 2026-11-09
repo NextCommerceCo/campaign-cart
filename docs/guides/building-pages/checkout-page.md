@@ -85,8 +85,8 @@ the page's own wording. Styling the fields and their errors:
 [data-next-address CSS](../attribute-reference/widgets/data-next-address.md#css).
 
 As soon as the checkout has started and the shopper has a name and an email, the checkout saves
-them as a lead (`user.created`), the cart that `cart.abandoned` follows up. `data-next-lead` changes
-when; see [Checkout](../attribute-reference/objects/checkout.md).
+them as a lead with an Open Cart (`user.created`); `cart.abandoned` follows that cart up.
+`data-next-lead` changes when; see [Checkout](../attribute-reference/objects/checkout.md).
 
 ## Payment
 
