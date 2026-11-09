@@ -35,8 +35,12 @@ export const sourceOf = (engine: Engine) => {
 const copy = (text: string) => void navigator.clipboard?.writeText(text);
 
 const linkTester = () => {
-  const input = h('input', { type: 'url', className: 'input', placeholder: 'https://shop.com/landing?utm_source=…' });
-  input.setAttribute('aria-label', 'Ad link');
+  const input = h('input', {
+    type: 'url',
+    className: 'input',
+    ariaLabel: 'Ad link',
+    placeholder: 'https://shop.com/landing?utm_source=…',
+  });
   const result = h('div', 'jlinkres');
   const run = () => {
     const found = checkLink(input.value.trim());

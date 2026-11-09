@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { boot } from '../../src/boot';
+import { type DebugInfo, startDebug } from '../../src/debug';
 import {
   ANALYTICS_CSS,
   BENCH_CSS,
@@ -15,6 +16,7 @@ import {
 } from '../../src/debug/styles';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from '../fixtures/api';
+import { makeEngine } from '../fixtures/engine';
 import { campaign } from '../fixtures/campaign';
 
 const shadow = () => document.querySelector('next-debug')!.shadowRoot!;
@@ -696,5 +698,64 @@ describe('debug tools', () => {
         'data-next-display': 'campaign.name → "Olympus"',
       }),
     );
+  });
+});
+
+describe('stopping the panel', () => {
+  const INFO: DebugInfo = {
+    version: 'test',
+    apiBase: 'https://api.test',
+    scope: 's1',
+    funnel: 'f1',
+    arrived: { lines: [], reset: false },
+    reset: () => {},
+    off: () => {},
+    analytics: () => ({ enabled: true, nextCampaign: true, dataLayer: true, unsupported: [] }),
+    send: fakeApi().fetch,
+    page: {},
+    tried: false,
+  };
+
+  /** Counts the subscriptions `key` hands out that are not undone yet. */
+  const tracked = (live: Set<object>, target: object, key: string) => {
+    const real = (target as Record<string, (...args: unknown[]) => () => void>)[key]!.bind(target);
+    vi.spyOn(target as Record<string, () => void>, key).mockImplementation((...args: unknown[]) => {
+      const off = real(...args);
+      const token = {};
+      live.add(token);
+      return () => {
+        live.delete(token);
+        off();
+      };
+    });
+  };
+
+  it('removes the panel and undoes every listener and subscription it added', async () => {
+    const { engine } = makeEngine({ debug: true });
+    await engine.start();
+    const live = new Set<object>();
+    tracked(live, engine, 'on');
+    tracked(live, engine, 'subscribe');
+    tracked(live, engine.log, 'stream');
+    const signals: AbortSignal[] = [];
+    const listen = document.addEventListener.bind(document);
+    vi.spyOn(document, 'addEventListener').mockImplementation((type, fn, options) => {
+      if (typeof options === 'object' && options.signal) signals.push(options.signal);
+      listen(type, fn, options);
+    });
+    const scheme = { matches: false, addEventListener: vi.fn() };
+    vi.stubGlobal('matchMedia', () => scheme);
+
+    const stop = startDebug(engine, INFO);
+    expect(document.querySelector('next-debug')).not.toBeNull();
+    expect(live.size).toBeGreaterThan(5);
+    stop();
+
+    expect(live.size).toBe(0);
+    expect(signals).toHaveLength(2);
+    expect(signals.every((s) => s.aborted)).toBe(true);
+    expect(scheme.addEventListener.mock.calls[0]![2].signal.aborted).toBe(true);
+    expect(document.querySelector('next-debug')).toBeNull();
+    expect((window as { nextDebug?: unknown }).nextDebug).toBeUndefined();
   });
 });

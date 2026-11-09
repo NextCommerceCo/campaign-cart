@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { card, type highlighter, inspect } from './elements';
 import type { DebugActions, PageVisit } from './state';
 import { icon } from './icons';
-import { type Child, empty, h, plural } from './view';
+import { type Child, counted, empty, h, link, plural, toned } from './view';
 
 export type IssueTab = 'journey' | 'checkout' | 'analytics';
 const LABELS: Record<IssueTab, string> = { journey: 'Journey', checkout: 'Checkout', analytics: 'Analytics' };
@@ -11,23 +11,36 @@ const LABELS: Record<IssueTab, string> = { journey: 'Journey', checkout: 'Checko
 type Problem = { text: string; error: boolean; open?: () => void; focus?: string };
 type Tone = 'error' | 'warn' | 'note';
 
+interface Sources {
+  checkout: { problems(): Problem[] };
+  flow: { problems(): Problem[]; notes(): string[] };
+  logs: { row(entry: ReturnType<Engine['log']['entries']>[number]): Child };
+  box: ReturnType<typeof highlighter>;
+  show(tab: IssueTab): void;
+  /** Shows a tab scrolled to its `[data-focus]` part, flashed. */
+  focus(tab: IssueTab, part: string): void;
+  /** Opens this page's Journey detail. */
+  journey(): void;
+}
+
 /** One problem: its tone, what happened (the text before `: `), and the rest with where it was found. */
 const row = (text: string, from: string, tone: Tone, onclick: () => void, times = 1) => {
   const cut = text.indexOf(': ');
   const [title, detail] = cut > 0 ? [text.slice(0, cut), text.slice(cut + 2)] : [text, ''];
-  const el = h(
-    'button',
-    { type: 'button', className: 'irow', onclick },
+  return toned(
     h(
-      'span',
-      'itext',
-      h('b', {}, title),
-      h('small', {}, [detail, from, times > 1 && `×${times}`].filter(Boolean).join(' · ')),
+      'button',
+      { type: 'button', className: 'irow', onclick },
+      h(
+        'span',
+        'itext',
+        h('b', {}, title),
+        h('small', {}, [detail, from, times > 1 && `×${times}`].filter(Boolean).join(' · ')),
+      ),
+      icon('chevron'),
     ),
-    icon('chevron'),
+    tone,
   );
-  el.dataset.tone = tone;
-  return el;
 };
 
 /** Problems with the same text and tab, once each with how many times. */
@@ -40,53 +53,43 @@ const grouped = <T extends { text: string; from: IssueTab }>(list: T[]) => {
   return [...seen.values()];
 };
 
-export function issuesView(
-  engine: Engine,
-  debug: DebugActions,
-  ui: {
-    checkout: { problems(): Problem[] };
-    flow: { problems(): Problem[]; notes(): string[] };
-    logs: { row(entry: ReturnType<Engine['log']['entries']>[number]): Child };
-    box: ReturnType<typeof highlighter>;
-    show(tab: IssueTab): void;
-    /** Shows a tab scrolled to its `[data-focus]` part, flashed. */
-    focus(tab: IssueTab, part: string): void;
-    /** Opens this page's Journey detail. */
-    journey(): void;
-  },
-) {
-  const { checkout, flow, logs, box, show, focus } = ui;
-  const find = () => {
-    const page = inspect(engine).filter((i) => i.bad);
-    const shownOnPage = page.flatMap((i) => i.notes.filter((n) => n.bad).map((n) => `"${n.value}"`));
-    const logged = engine.log
-      .entries()
-      .filter((e) => (e.level === 'warn' || e.level === 'error') && !shownOnPage.some((v) => e.message.includes(v)))
-      .reverse();
-    const pages = debug.state().pages;
-    const marks = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
-    const found = grouped<Problem & { from: IssueTab }>([
-      ...marks(pages.at(-1)).map((m) => ({
-        from: 'journey' as IssueTab,
-        text: m.text,
-        error: m.tone === 'error',
-        open: ui.journey,
-      })),
-      ...checkout.problems().map((p) => ({ from: 'checkout' as IssueTab, ...p })),
-      ...flow.problems().map((p) => ({ from: 'analytics' as IssueTab, ...p })),
-    ]);
-    const earlier = pages.slice(0, -1).reduce((n, p) => n + new Set(marks(p).map((m) => m.text)).size, 0);
-    const tone = logged.some((e) => e.level === 'error') || found.some((f) => f.error) ? 'red' : 'amber';
-    return {
-      page,
-      logged,
-      found,
-      earlier,
-      notes: flow.notes(),
-      count: page.length + logged.length + found.length,
-      tone,
-    };
+const warned = (p: PageVisit | undefined) => (p?.marks ?? []).filter((m) => m.tone === 'warn' || m.tone === 'error');
+
+/** Every problem on this page: SDK attributes, warnings logged, and what the other tabs found. */
+function findIssues(engine: Engine, debug: DebugActions, ui: Sources) {
+  const page = inspect(engine).filter((i) => i.bad);
+  const shownOnPage = page.flatMap((i) => i.notes.filter((n) => n.bad).map((n) => `"${n.value}"`));
+  const logged = engine.log
+    .entries()
+    .filter((e) => (e.level === 'warn' || e.level === 'error') && !shownOnPage.some((v) => e.message.includes(v)))
+    .reverse();
+  const pages = debug.state().pages;
+  const found = grouped<Problem & { from: IssueTab }>([
+    ...warned(pages.at(-1)).map((m) => ({
+      from: 'journey' as IssueTab,
+      text: m.text,
+      error: m.tone === 'error',
+      open: ui.journey,
+    })),
+    ...ui.checkout.problems().map((p) => ({ from: 'checkout' as IssueTab, ...p })),
+    ...ui.flow.problems().map((p) => ({ from: 'analytics' as IssueTab, ...p })),
+  ]);
+  const earlier = pages.slice(0, -1).reduce((n, p) => n + new Set(warned(p).map((m) => m.text)).size, 0);
+  const tone = logged.some((e) => e.level === 'error') || found.some((f) => f.error) ? 'red' : 'amber';
+  return {
+    page,
+    logged,
+    found,
+    earlier,
+    notes: ui.flow.notes(),
+    count: page.length + logged.length + found.length,
+    tone,
   };
+}
+
+export function issuesView(engine: Engine, debug: DebugActions, ui: Sources) {
+  const { box, show, focus } = ui;
+  const find = () => findIssues(engine, debug, ui);
 
   const view = (): Child[] => {
     const { page, logged, found, earlier, notes } = find();
@@ -96,13 +99,13 @@ export function issuesView(
         'p',
         'summary',
         `Earlier pages in this tab had ${plural(earlier, 'problem')}. `,
-        h('button', { type: 'button', className: 'link', onclick: () => show('journey') }, 'Open Journey'),
+        link('Open Journey', () => show('journey')),
       );
-    const setup = [
-      notes.length > 0 && h('h3', {}, `Setup notes · ${notes.length}`),
-      notes.length > 0 &&
-        h('div', 'ilist', ...notes.map((text) => row(text, LABELS.analytics, 'note', () => show('analytics')))),
-    ];
+    const setup = counted(
+      'Setup notes',
+      notes.map((text) => row(text, LABELS.analytics, 'note', () => show('analytics'))),
+      'ilist',
+    );
     if (!page.length && !logged.length && !found.length)
       return [
         empty(
@@ -113,26 +116,22 @@ export function issuesView(
         before,
         ...setup,
       ];
+    const problems = found.map((f) =>
+      row(
+        f.text,
+        LABELS[f.from],
+        f.error ? 'error' : 'warn',
+        f.open ?? (() => (f.focus ? focus(f.from, f.focus) : show(f.from))),
+        f.times,
+      ),
+    );
     return [
-      found.length > 0 && h('h3', {}, `Problems · ${found.length}`),
-      found.length > 0 &&
-        h(
-          'div',
-          'ilist',
-          ...found.map((f) =>
-            row(
-              f.text,
-              LABELS[f.from],
-              f.error ? 'error' : 'warn',
-              f.open ?? (() => (f.focus ? focus(f.from, f.focus) : show(f.from))),
-              f.times,
-            ),
-          ),
-        ),
-      page.length > 0 && h('h3', {}, `Page setup · ${page.length}`),
-      ...page.map((i) => card(i, box)),
-      logged.length > 0 && h('h3', {}, `Warnings and errors · ${logged.length}`),
-      ...logged.map(logs.row),
+      ...counted('Problems', problems, 'ilist'),
+      ...counted(
+        'Page setup',
+        page.map((i) => card(i, box)),
+      ),
+      ...counted('Warnings and errors', logged.map(ui.logs.row)),
       before,
       ...setup,
     ];

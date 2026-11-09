@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import type { Package } from '../engine/types';
 import { icon } from './icons';
 import { quantities } from './state';
-import { badge, button, h, iconButton, plural, priceText, tab, tablist, tsugi } from './view';
+import { badge, button, h, modal, plural, priceText, stepper, tab, tablist } from './view';
 
 type Filter = 'all' | 'purchasable' | 'recurring' | 'selected';
 
@@ -29,115 +29,129 @@ export const matches = (p: Package, query: string) => {
     .every((term) => (/^#\d+$/.test(term) ? `#${p.ref_id}` === term : words.includes(term)));
 };
 
+const kbd = (key: string) => h('kbd', 'kbd', key);
+
+function pickerDialog(
+  search: HTMLInputElement,
+  filters: HTMLElement,
+  list: HTMLElement,
+  summary: HTMLElement,
+  clear: HTMLElement,
+) {
+  const dialog = modal(
+    'picker',
+    'lg',
+    h(
+      'header',
+      {},
+      h('h2', {}, 'Add packages to the cart'),
+      h('p', {}, 'Search the whole catalog and set quantities. Totals recalculate as you go.'),
+    ),
+    h('section', {}, h('div', 'ptools', search, h('div', 'tabs', filters)), list),
+    h(
+      'footer',
+      {},
+      h('p', 'pfoot', summary, h('span', 'phint', kbd('↑'), kbd('↓'), ' move · ', kbd('Enter'), ' add')),
+      clear,
+      button('Done', () => dialog.close()),
+    ),
+  );
+  return dialog;
+}
+
+/** One package: its picture, name and badges, price, and a quantity stepper once it is in the cart. */
+function pickerRow(engine: Engine, p: Package, n: number, active: boolean, set: (p: Package, n: number) => void) {
+  const retail =
+    Number(p.price_retail_total) > Number(p.price_total) && h('s', {}, priceText(engine, p.price_retail_total));
+  return h(
+    'div',
+    { className: `prow${n ? ' on' : ''}${active ? ' active' : ''}`, role: 'option', ariaSelected: String(active) },
+    thumb(p.image),
+    h(
+      'span',
+      'pinfo',
+      h(
+        'span',
+        {},
+        h('b', {}, p.name),
+        p.is_recurring && badge('Recurring', 'outline'),
+        !purchasable(p) && badge('Unavailable', 'destructive'),
+      ),
+      h('small', {}, `#${p.ref_id} · ${p.product_sku || 'no SKU'} · qty ${p.qty}`),
+    ),
+    h('span', 'pprice', priceText(engine, p.price_total), retail),
+    n ? stepper(n, (to) => () => set(p, to)) : button('Add', () => set(p, 1), { variant: 'outline', size: 'sm' }),
+  );
+}
+
+/** What the cart holds: its packages and units, and its subtotal once priced. */
+function pickerSummary(engine: Engine) {
+  const cart = engine.cart.current();
+  const subtotal = cart.lines.length ? cart.subtotal : 0;
+  return [
+    `${plural(cart.lines.length, 'package')} · ${plural(cart.quantity, 'unit')} · `,
+    subtotal === undefined ? 'pricing…' : h('b', {}, priceText(engine, subtotal)),
+    subtotal === undefined ? '' : ' before discounts',
+  ];
+}
+
+/** The packages the search and the filter keep. */
+const shownPackages = (engine: Engine, filter: Filter, query: string) => {
+  const inCart = quantities(engine.cart.lines());
+  return (engine.getState().campaign?.packages ?? []).filter(
+    (p) =>
+      matches(p, query) &&
+      (filter === 'purchasable'
+        ? purchasable(p)
+        : filter === 'recurring'
+          ? p.is_recurring
+          : filter === 'selected'
+            ? inCart.has(p.ref_id)
+            : true),
+  );
+};
+
+const listNotes = (count: number) => [
+  ...(count ? [] : [h('p', 'pempty', 'No package matches. Try another filter.')]),
+  ...(count > SHOWN ? [h('p', 'pempty', `Showing ${SHOWN} of ${count}. Type to narrow the list.`)] : []),
+];
+
 export function productPicker(engine: Engine) {
   let filter: Filter = 'purchasable';
   let active = 0;
   const search = h('input', { type: 'search', className: 'input' });
   const filters = tablist({ size: 'sm' }, 'Filter packages');
-  const list = h('div', 'plist scrollbar-sm');
-  list.setAttribute('role', 'listbox');
+  const list = h('div', { className: 'plist scrollbar-sm', role: 'listbox' });
   const summary = h('span', 'psum');
   const clear = button('Clear', () => void engine.cart.clear(), { variant: 'ghost' });
-  const close = iconButton('close', 'Close dialog', () => dialog.close(), 'icon-sm');
-  const kbd = (key: string) => h('kbd', 'kbd', key);
-  const dialog = tsugi(
-    h(
-      'dialog',
-      'dialog picker',
-      h(
-        'div',
-        {},
-        h(
-          'header',
-          {},
-          h('h2', {}, 'Add packages to the cart'),
-          h('p', {}, 'Search the whole catalog and set quantities. Totals recalculate as you go.'),
-        ),
-        h('section', {}, h('div', 'ptools', search, h('div', 'tabs', filters)), list),
-        h(
-          'footer',
-          {},
-          h('p', 'pfoot', summary, h('span', 'phint', kbd('↑'), kbd('↓'), ' move · ', kbd('Enter'), ' add')),
-          clear,
-          button('Done', () => dialog.close()),
-        ),
-        close,
-      ),
-    ),
-    { size: 'lg' },
-  );
-  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
+  const dialog = pickerDialog(search, filters, list, summary, clear);
 
-  const shown = () => {
-    const inCart = quantities(engine.cart.lines());
-    return (engine.getState().campaign?.packages ?? []).filter(
-      (p) =>
-        matches(p, search.value) &&
-        (filter === 'purchasable'
-          ? purchasable(p)
-          : filter === 'recurring'
-            ? p.is_recurring
-            : filter === 'selected'
-              ? inCart.has(p.ref_id)
-              : true),
-    );
-  };
+  const shown = () => shownPackages(engine, filter, search.value);
   const set = (p: Package, n: number) => void engine.cart.setQuantity(p.ref_id, n);
+  const pickFilter = (value: Filter) => () => {
+    filter = value;
+    active = 0;
+    fill();
+  };
 
   const fill = () => {
     if (!dialog.open) return;
-    const packages = engine.getState().campaign?.packages ?? [];
     const inCart = quantities(engine.cart.lines());
     const rows = shown();
     active = Math.min(active, Math.max(0, rows.length - 1));
-    search.placeholder = `Search ${packages.length} packages by name, ref_id or SKU`;
+    search.placeholder = `Search ${engine.getState().campaign?.packages.length ?? 0} packages by name, ref_id or SKU`;
     filters.replaceChildren(
       ...FILTERS.map(([value, label]) =>
         tab(
           value === filter,
-          () => {
-            filter = value;
-            active = 0;
-            fill();
-          },
+          pickFilter(value),
           value === 'selected' && inCart.size ? `${label} (${inCart.size})` : label,
         ),
       ),
     );
     list.replaceChildren(
       ...rows.slice(0, SHOWN).map((p, i) => {
-        const n = inCart.get(p.ref_id) ?? 0;
-        const retail =
-          Number(p.price_retail_total) > Number(p.price_total) && h('s', {}, priceText(engine, p.price_retail_total));
-        const row = h(
-          'div',
-          `prow${n ? ' on' : ''}${i === active ? ' active' : ''}`,
-          thumb(p.image),
-          h(
-            'span',
-            'pinfo',
-            h(
-              'span',
-              {},
-              h('b', {}, p.name),
-              p.is_recurring && badge('Recurring', 'outline'),
-              !purchasable(p) && badge('Unavailable', 'destructive'),
-            ),
-            h('small', {}, `#${p.ref_id} · ${p.product_sku || 'no SKU'} · qty ${p.qty}`),
-          ),
-          h('span', 'pprice', priceText(engine, p.price_total), retail),
-          n
-            ? h(
-                'span',
-                'qty',
-                h('button', { type: 'button', title: 'One less', onclick: () => set(p, n - 1) }, '−'),
-                h('span', {}, String(n)),
-                h('button', { type: 'button', title: 'One more', onclick: () => set(p, n + 1) }, '+'),
-              )
-            : button('Add', () => set(p, 1), { variant: 'outline', size: 'sm' }),
-        );
-        row.setAttribute('role', 'option');
-        row.setAttribute('aria-selected', String(i === active));
+        const row = pickerRow(engine, p, inCart.get(p.ref_id) ?? 0, i === active, set);
         row.onmouseenter = () => {
           active = i;
           list.querySelector('.active')?.classList.remove('active');
@@ -145,21 +159,9 @@ export function productPicker(engine: Engine) {
         };
         return row;
       }),
-      ...(rows.length ? [] : [h('p', 'pempty', 'No package matches. Try another filter.')]),
-      ...(rows.length > SHOWN
-        ? [h('p', 'pempty', `Showing ${SHOWN} of ${rows.length}. Type to narrow the list.`)]
-        : []),
+      ...listNotes(rows.length),
     );
-    const units = [...inCart.values()].reduce((a, b) => a + b, 0);
-    const total = [...inCart].reduce(
-      (sum, [id, q]) => sum + Number(packages.find((p) => p.ref_id === id)?.price_total ?? 0) * q,
-      0,
-    );
-    summary.replaceChildren(
-      `${plural(inCart.size, 'package')} · ${plural(units, 'unit')} · `,
-      h('b', {}, priceText(engine, total)),
-      ' before discounts',
-    );
+    summary.replaceChildren(...pickerSummary(engine));
     clear.hidden = !inCart.size;
   };
 
@@ -179,7 +181,7 @@ export function productPicker(engine: Engine) {
       set(rows[active]!, (quantities(engine.cart.lines()).get(rows[active]!.ref_id) ?? 0) + 1);
     }
   });
-  engine.subscribe(fill);
+  const stop = engine.subscribe(fill);
 
   return {
     dialog,
@@ -190,5 +192,6 @@ export function productPicker(engine: Engine) {
       fill();
       search.focus();
     },
+    stop,
   };
 }

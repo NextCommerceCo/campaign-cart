@@ -26,9 +26,7 @@ const LAZY: Record<string, string[]> = {
 };
 const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
-const SHRINKING: Record<string, number> = {
-  'debug/cart.ts': 391,
-};
+const SHRINKING: Record<string, number> = {};
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
 const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
 const BROWSER_GLOBALS =
@@ -187,7 +185,7 @@ describe('architecture', () => {
   });
 
   it('the DOM layers read selectors through engine.selectors, not raw state', () => {
-    const reads = /getState\(\)\.selectors\b/;
+    const reads = /getState\(\)\.selectors\b|\{[^}]*\bselectors\b[^}]*\}\s*=\s*[\w.]*getState\(\)/;
     const raw = sources.filter((s) => !headless(s.path) && reads.test(s.code)).map((s) => s.path);
     expect(raw).toEqual([]);
   });

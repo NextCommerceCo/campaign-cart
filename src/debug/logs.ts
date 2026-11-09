@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine';
 import type { LogEntry } from '../engine/log';
-import { chips, type DetailModal, type Line, line, pill } from './stream';
+import { chips, type DetailModal, type Line, line, listed, pill, tally } from './stream';
 import { type Child, empty, h, time } from './view';
 
 const KEEP = 150;
@@ -58,7 +58,7 @@ export function logsView(engine: Engine, detail: DetailModal, render: () => void
     const entries = engine.log.entries();
     if (!entries.length) return [empty('Nothing logged yet', 'Each SDK log line shows here as it is written.')];
     const tagged = entries.map((e) => ({ e, tag: parse(e).tag, warn: e.level === 'warn' || e.level === 'error' }));
-    const counts = tagged.reduce<Record<string, number>>((n, { tag }) => ({ ...n, [tag]: (n[tag] ?? 0) + 1 }), {});
+    const counts = tally(tagged, (t) => t.tag);
     const warnings = tagged.filter((t) => t.warn).length;
     const shown = tagged
       .filter(
@@ -67,10 +67,11 @@ export function logsView(engine: Engine, detail: DetailModal, render: () => void
       )
       .slice(-KEEP)
       .reverse();
-    return [
-      chips([...Object.entries(counts), ...(warnings ? [[WARN, warnings] as [string, number]] : [])], picked, render),
-      ...(shown.length ? shown.map(({ e }) => row(e)) : [empty('Nothing matches', 'No log line fits the filter.')]),
-    ];
+    return listed(
+      chips([...counts, ...(warnings ? [[WARN, warnings] as [string, number]] : [])], picked, render),
+      shown.map(({ e }) => row(e)),
+      'No log line fits the filter.',
+    );
   };
 
   return { row, view };

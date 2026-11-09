@@ -4,7 +4,7 @@ import { type IconName, icon } from './icons';
 import type { PageConfigModal } from './config';
 import type { LocaleSummary } from './locale';
 import type { Theme } from './theme';
-import { badge, type Child, h, iconButton, plural, priceText } from './view';
+import { badge, type Child, h, iconButton, link, plural, priceText } from './view';
 
 export type MenuTab =
   'issues' | 'journey' | 'checkout' | 'analytics' | 'events' | 'elements' | 'state' | 'logs' | 'benchmark';
@@ -46,21 +46,16 @@ const cartText = (engine: Engine) => {
 const entry = (glyph: IconName, label: string, value: Child, onclick: () => void, variant = '') => {
   const el = h(
     'button',
-    { type: 'button', onclick },
+    { type: 'button', onclick, role: 'menuitem' },
     icon(glyph),
     h('span', {}, label),
     value && h('span', { className: 'mval', title: typeof value === 'string' ? value : '' }, value),
   );
-  el.setAttribute('role', 'menuitem');
   if (variant) el.dataset.variant = variant;
   return el;
 };
 
-const separator = () => {
-  const el = h('div');
-  el.setAttribute('role', 'separator');
-  return el;
-};
+const separator = () => h('div', { role: 'separator' });
 
 const choice = (
   role: 'menuitemcheckbox' | 'menuitemradio',
@@ -69,34 +64,21 @@ const choice = (
   on: boolean,
   onclick: () => void,
 ) => {
-  const el = h(
+  const tick = h('span', 'mval', icon('tick'));
+  tick.dataset.indicator = '';
+  return h(
     'button',
-    { type: 'button', onclick },
+    { type: 'button', onclick, role, ariaChecked: String(on) },
     icon(glyph),
     h('span', {}, label),
-    h('span', 'mval', icon('tick')),
+    tick,
   );
-  el.setAttribute('role', role);
-  el.setAttribute('aria-checked', String(on));
-  el.lastElementChild!.setAttribute('data-indicator', '');
-  return el;
 };
 
-const group = (label: string, ...items: Child[]) => {
-  const heading = h('div', {}, label);
-  heading.setAttribute('role', 'heading');
-  const el = h('div', {}, heading, ...items);
-  el.setAttribute('role', 'group');
-  el.setAttribute('aria-label', label);
-  return el;
-};
+const group = (label: string, ...items: Child[]) =>
+  h('div', { role: 'group', ariaLabel: label }, h('div', { role: 'heading' }, label), ...items);
 
-const menu = (...items: Child[]) => {
-  const el = h('div', 'mlist', ...items);
-  el.setAttribute('role', 'menu');
-  el.setAttribute('aria-label', 'Debug');
-  return el;
-};
+const menu = (...items: Child[]) => h('div', { className: 'mlist', role: 'menu', ariaLabel: 'Debug' }, ...items);
 
 const THEMES: Array<[IconName, string, Theme | undefined]> = [
   ['monitor', 'Auto', undefined],
@@ -106,27 +88,24 @@ const THEMES: Array<[IconName, string, Theme | undefined]> = [
 
 const localeValue = ({ text, differs }: LocaleSummary) => {
   if (!differs) return text;
-  const dot = h('span', { className: 'mdot', title: "Differs from the visitor's geo" });
-  dot.setAttribute('role', 'img');
-  dot.setAttribute('aria-label', dot.title);
-  return h('span', {}, text, dot);
+  const differ = "Differs from the visitor's geo";
+  return h('span', {}, text, h('span', { className: 'mdot', title: differ, role: 'img', ariaLabel: differ }));
 };
 
 const devSwitch = (on: boolean, onclick: () => void) => {
-  const el = h(
+  return h(
     'button',
     {
       type: 'button',
       onclick,
       title: 'Adds the Developer tab: Elements, State, Logs, Performance, and ids in the others',
+      role: 'menuitemcheckbox',
+      ariaChecked: String(on),
     },
     icon('flask'),
     h('span', {}, 'Developer mode'),
     h('span', 'mval', h('span', 'mswitch')),
   );
-  el.setAttribute('role', 'menuitemcheckbox');
-  el.setAttribute('aria-checked', String(on));
-  return el;
 };
 
 const settingsView = (m: MenuInput): Child[] => {
@@ -178,8 +157,8 @@ export function menuView(engine: Engine, m: MenuInput): Child[] {
         'p',
         'mtry',
         'This tab tries a nextConfig of its own.',
-        h('button', { type: 'button', className: 'link', onclick: () => m.pageConfig.open() }, 'Open'),
-        h('button', { type: 'button', className: 'link', onclick: () => m.pageConfig.reset() }, 'Reset'),
+        link('Open', () => m.pageConfig.open()),
+        link('Reset', () => m.pageConfig.reset()),
       ),
     menu(
       entry(

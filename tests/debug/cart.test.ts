@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { cartView, swapPackage } from '../../src/debug/cart';
+import { cartView } from '../../src/debug/cart';
+import { swapPackage } from '../../src/debug/cart-line';
 import { nodes } from '../../src/debug/view';
 import { makeEngine } from '../fixtures/engine';
 

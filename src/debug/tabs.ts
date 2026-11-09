@@ -18,10 +18,17 @@ export const DEV: Tab[] = ['elements', 'state', 'logs', 'benchmark'];
 const ICONS: Record<string, IconName> = { elements: 'code', state: 'braces', logs: 'list', benchmark: 'gauge' };
 const ALL = Object.keys(TABS) as Tab[];
 
-const item = (glyph: IconName, label: string, onclick: () => void) => {
-  const el = h('button', { type: 'button', onclick }, icon(glyph), h('span', {}, label));
-  el.setAttribute('role', 'menuitem');
-  return el;
+const item = (glyph: IconName, label: string, onclick: () => void) =>
+  h('button', { type: 'button', onclick, role: 'menuitem' }, icon(glyph), h('span', {}, label));
+
+/** Every tab in one select, for a narrow panel. */
+const tabSelect = (show: (tab: Tab) => void) => {
+  const select = h(
+    'select',
+    { className: 'select tabpick', ariaLabel: 'Panel tab', onchange: () => show(select.value as Tab) },
+    ...ALL.map((t) => h('option', { value: t }, DEV.includes(t) ? `Developer · ${TABS[t]}` : TABS[t])),
+  );
+  return select;
 };
 
 /** The panel's tabs: one row, Developer's tools in a dropdown on its last tab, and one select for a narrow panel. */
@@ -46,13 +53,11 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
   });
   const list = h(
     'div',
-    'mlist',
+    { className: 'mlist', role: 'menu', ariaLabel: 'Developer' },
     ...tools,
     h('div', { role: 'separator' }),
     item('pick', 'Pick an element', () => (close(), pick())),
   );
-  list.setAttribute('role', 'menu');
-  list.setAttribute('aria-label', 'Developer');
   const menu = h('div', 'dmenu dropdown pop', list, info);
   menu.hidden = true;
 
@@ -70,12 +75,7 @@ export function tabBar(show: (tab: Tab) => void, pick: () => void) {
     menu.style.left = `${Math.max(8, developer.getBoundingClientRect().left - box.left)}px`;
   };
 
-  const select = h(
-    'select',
-    { className: 'select tabpick', onchange: () => show(select.value as Tab) },
-    ...ALL.map((t) => h('option', { value: t }, DEV.includes(t) ? `Developer · ${TABS[t]}` : TABS[t])),
-  );
-  select.setAttribute('aria-label', 'Panel tab');
+  const select = tabSelect(show);
 
   const paint = (now: { tab: Tab; dev: boolean; issues: number; tone: string; setup: Array<[string, string]> }) => {
     const inDev = now.dev && DEV.includes(now.tab);

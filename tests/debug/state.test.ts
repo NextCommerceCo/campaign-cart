@@ -78,7 +78,7 @@ describe('debug journey', () => {
       'order.created',
       publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: '49.00', currency: 'USD' } as ApiOrder),
     );
-    expect(checkout.debug.state().pages[0]).toMatchObject({ order: 'R1', total: '49.00', units: 0 });
+    expect(checkout.debug.state().pages[0]).toMatchObject({ order: 'R1', total: 49, units: 0 });
     expect(page(session, '/upsell/', { kind: 'upsell' }).debug.state().pages[1]!.marks[0]!.text).toBe(
       'No order here: an upsell page shows the order placed at checkout',
     );
@@ -99,22 +99,57 @@ describe('debug journey', () => {
     });
   });
 
+  const order = (total: string) =>
+    publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: total, currency: 'USD' } as ApiOrder);
+  const accepted = (total?: number, lines = [{ package_id: 2, quantity: 1, total: 19.5 }]) => ({
+    ref_id: 'R1',
+    page: '/upsell/',
+    lines,
+    currency: 'USD',
+    ...(total !== undefined && { total }),
+  });
+
   it('records what each page added to the order: its total at checkout, an upsell after it', () => {
     const session = new MemoryStorage();
-    const order = (total: string) =>
-      publicOrder({ ref_id: 'R1', number: 1001, total_incl_tax: total, currency: 'USD' } as ApiOrder);
     page(session, '/checkout/', { kind: 'checkout' }).engine.events.emit('order.created', order('49.00'));
     const upsell = page(session, '/upsell/', { kind: 'upsell' });
     upsell.engine.events.emit('order.loaded', order('49.00'));
+    upsell.engine.events.emit('upsell.accepted', accepted(19.5));
     upsell.engine.events.emit('order.updated', order('68.50'));
     page(session, '/declined/', { kind: 'upsell' }).engine.events.emit('order.loaded', order('68.50'));
     const { debug } = page(session, '/receipt/', { kind: 'receipt' });
     expect(debug.state().pages.map((p) => [p.path, p.total, p.earned])).toEqual([
-      ['/checkout/', '49.00', 49],
-      ['/upsell/', '68.50', 19.5],
-      ['/declined/', '68.50', undefined],
+      ['/checkout/', 49, 49],
+      ['/upsell/', 68.5, 19.5],
+      ['/declined/', 68.5, undefined],
       ['/receipt/', undefined, undefined],
     ]);
+  });
+
+  it("adds up two upsells accepted on one page from each upsell's own total, whatever the order's totals", () => {
+    const session = new MemoryStorage();
+    page(session, '/checkout/', { kind: 'checkout' }).engine.events.emit('order.created', order('49.00'));
+    const { engine, debug } = page(session, '/upsell/', { kind: 'upsell' });
+    engine.events.emit('upsell.accepted', accepted(19.5));
+    engine.events.emit('order.updated', order('70.06'));
+    engine.events.emit(
+      'upsell.accepted',
+      accepted(undefined, [
+        { package_id: 3, quantity: 1, total: 10.1 },
+        { package_id: 9, quantity: 1, total: 0.2 },
+      ]),
+    );
+    engine.events.emit('order.updated', order('80.36'));
+    expect(debug.state().pages[1]).toMatchObject({ upsell: 'accepted', total: 80.36, earned: 29.8 });
+  });
+
+  it('stops recording the page once stopped', () => {
+    const { engine, debug } = page(new MemoryStorage(), '/checkout/', { kind: 'checkout' });
+    debug.stop();
+    engine.events.emit('order.created', order('49.00'));
+    engine.log.debug('analytics page_viewed sent', { trace: 'analytics', name: 'page_viewed', sent: true });
+    expect(debug.state().pages[0]).toMatchObject({ marks: [], sent: [] });
+    expect(debug.state().pages[0]!.order).toBeUndefined();
   });
 
   it('marks a stopped submit, a refused order, a payment left unpaid at the gateway and a paid order on their page', () => {

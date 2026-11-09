@@ -191,6 +191,9 @@ src/
                                    calls.ts the tracking event → 0.4.x RudderStack calls; types.ts RudderStackEventMap
   debug/               debug       loaded with ?debug=1
     index.ts                       startDebug: floating button with issue count, menu, panel (journey, issues, checkout, analytics; developer mode adds events, elements, state, logs and .devonly detail), window.nextDebug
+    shell.ts                       the panel's state (view, tab, picking, side) and its moves between views; painting;
+                                   startDebug returns stop(), which removes every listener, subscription and the panel
+    cart-line.ts                   one line of the Cart tab, swapPackage
     state.ts                       headless: the pages of this tab and what happened on each, the panel as it was left; kept in the
                                    session under next:debug, outside the storage scope
     events.ts                      the Events tab: each public event in the envelope next.on gets
@@ -256,7 +259,7 @@ src/
 | widgets      | `[data-next-accordion]`, `[data-next-tooltip]`, `[data-next-timer]`                         | 3 KB          |
 | i18n         | `[data-next-i18n]`                                                                          | 1 KB          |
 | legacy       | at boot on a page with any markup but v2's; elsewhere a script's first 0.4.x `next.on` name | 3.5 KB        |
-| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 56 KB         |
+| debug        | `?debug=1`, then every page of the tab until `?debug=0`                                     | 56.5 KB       |
 | debug icons  | the Checkout tab's payment step                                                             | 16 KB         |
 | geo          | shared by checkout and debug (`engine/geo.ts`)                                              | 1 KB          |
 

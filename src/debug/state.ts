@@ -3,7 +3,9 @@ import type { Line } from '../engine/cart/types';
 import type { PageConfig } from '../engine/debug-config';
 import type { Context } from '../engine/engine';
 import type { AnalyticsTrace } from '../engine/events/analytics';
-import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
+import type { EventMap, EventName } from '../engine/events/bus';
+import type { Upsell } from '../engine/events/upsells';
+import { addDollars } from '../engine/format';
 import type { Theme } from './theme';
 
 export type PageKind = 'product' | 'checkout' | 'upsell' | 'receipt' | 'page';
@@ -22,10 +24,10 @@ export interface PageVisit {
   scope: string;
   reloads: number;
   units: number;
-  total?: string;
+  total?: number;
   currency?: string;
   order?: string;
-  /** What this page added to the order: the order's total at checkout, an upsell's amount after it. */
+  /** What this page added to the order: the order's total at checkout, the accepted upsells' after it. */
   earned?: number;
   upsell?: 'accepted' | 'declined';
   sent: string[];
@@ -82,35 +84,21 @@ export const quantities = (lines: Line[]) => {
   return byPackage;
 };
 
-export function createDebug(ctx: Context, arrival: Arrival) {
-  const saved = ctx.saved<DebugState>('debug');
-  let state: DebugState = {
-    pages: saved?.pages ?? [],
-    panel: saved?.panel ?? { open: false, tab: 'journey', right: true },
-    ...(saved?.config && { config: saved.config }),
-  };
-  const save = () => ctx.update('debug', state, { silent: true });
+/** What an accepted upsell adds: its total, else its priced lines'. */
+const upsellTotal = (u: Upsell) => u.total ?? addDollars(u.lines.map((l) => l.total ?? 0));
 
-  const change = (patch: Partial<PageVisit>, ...marks: Mark[]) => {
-    const page = state.pages.at(-1)!;
-    state = {
-      ...state,
-      pages: [...state.pages.slice(0, -1), { ...page, ...patch, marks: [...page.marks, ...marks].slice(-MARKS) }],
-    };
-    save();
-  };
+const side = (type: string) => (type === 'billing' ? 'Billing' : 'Shipping');
 
-  const before = state.pages.at(-1);
-  const order = ctx.getState().order?.refId ?? ctx.saved<{ refId?: string }>('order')?.refId;
-  const units = unitsOf(arrival.lines);
+/** What went amiss between the page before and this one. */
+function arrivalWarnings(arrival: Arrival, before: PageVisit | undefined, units: number, linked: boolean): Mark[] {
+  const { at, kind, scope } = arrival;
   const warnings: Mark[] = [];
-  const at = arrival.at;
   if (arrival.reset) warnings.push({ at, text: 'Saved data cleared with ?reset=1' });
-  else if (before && before.scope !== arrival.scope)
+  else if (before && before.scope !== scope)
     warnings.push({
       at,
       tone: 'error',
-      text: `Storage scope changed from ${before.scope} to ${arrival.scope}, so the cart and order of the pages before are not here. Pages of one funnel need the same campaign key and data-funnel.`,
+      text: `Storage scope changed from ${before.scope} to ${scope}, so the cart and order of the pages before are not here. Pages of one funnel need the same campaign key and data-funnel.`,
     });
   else if (before && before.units > 0 && !before.order && units === 0)
     warnings.push({
@@ -118,40 +106,34 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       tone: 'error',
       text: `The cart (${before.units} item${before.units === 1 ? '' : 's'}) did not carry over from ${before.path}`,
     });
-  if ((arrival.kind === 'upsell' || arrival.kind === 'receipt') && !order && !ctx.getState().visit.params.ref_id)
+  if ((kind === 'upsell' || kind === 'receipt') && !linked)
     warnings.push({
       at,
       tone: 'warn',
-      text: `No order here: ${arrival.kind === 'upsell' ? 'an upsell' : 'a receipt'} page shows the order placed at checkout`,
+      text: `No order here: ${kind === 'upsell' ? 'an upsell' : 'a receipt'} page shows the order placed at checkout`,
     });
+  return warnings;
+}
 
+/** The pages with this one: a reload folds into the page before, anything else starts a new step. */
+function arrive(pages: PageVisit[], arrival: Arrival, units: number, order: string | undefined, warnings: Mark[]) {
   const { lines, reset, reload, ...visit } = arrival;
-  const pages =
-    reload && before?.path === arrival.path
-      ? [
-          ...state.pages.slice(0, -1),
-          {
-            ...before,
-            units,
-            order,
-            reloads: before.reloads + 1,
-            marks: [
-              ...before.marks,
-              { at, text: 'Reloaded' },
-              ...warnings.filter((w) => !before.marks.some((m) => m.text === w.text)),
-            ].slice(-MARKS),
-          },
-        ]
-      : [...state.pages, { ...visit, units, order, reloads: 0, sent: [], marks: warnings }].slice(-PAGES);
-  state = { ...state, pages };
-  save();
+  const before = pages.at(-1);
+  if (!reload || before?.path !== arrival.path)
+    return [...pages, { ...visit, units, order, reloads: 0, sent: [], marks: warnings }].slice(-PAGES);
+  const marks = [
+    ...before.marks,
+    { at: arrival.at, text: 'Reloaded' },
+    ...warnings.filter((w) => !before.marks.some((m) => m.text === w.text)),
+  ].slice(-MARKS);
+  return [...pages.slice(0, -1), { ...before, units, order, reloads: before.reloads + 1, marks }];
+}
 
-  const name = (id: number) => ctx.getPackage(id)?.name ?? `package ${id}`;
+/** Marks what changed in the cart since the last `cart.updated`: lines added, removed or recounted, and codes. */
+function cartMarks(lines: Line[], coupons: string[], name: (id: number) => string) {
   let seen = quantities(lines);
-  let coupons = ctx.getState().cart.coupons;
-  const cartChanged = (cart: EventMap['cart.updated'], at: number) => {
-    const merged = cart.lines;
-    const now = quantities(merged);
+  return (cart: EventMap['cart.updated'], at: number): Mark[] => {
+    const now = quantities(cart.lines);
     const marks: Mark[] = [];
     for (const id of new Set([...seen.keys(), ...now.keys()])) {
       const was = seen.get(id) ?? 0;
@@ -166,115 +148,118 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       marks.push({ at, text: `Coupon ${code} removed` });
     seen = now;
     coupons = cart.coupons;
-    change({ units: unitsOf(merged) }, ...marks);
+    return marks;
+  };
+}
+
+/** What an event writes on its page: a patch, then a mark's text and tone. */
+type Seen = [patch: Partial<PageVisit>, text?: string, tone?: Mark['tone']];
+interface Journal {
+  ctx: Context;
+  page: () => PageVisit;
+  name: (id: number) => string;
+}
+
+const placed = (d: { number?: string; ref_id: string }) => d.number ?? d.ref_id;
+const failed = (d: { error: { message?: string; code: string } }) => d.error.message ?? d.error.code;
+
+/** Each event the journey records, in the order it listens (replayed events keep that order). */
+const SEEN: { [K in EventName]?: (d: EventMap[K], j: Journal) => Seen } = {
+  'cart.calculated': (d) => [{ total: d.total, currency: d.currency }],
+  'coupon.denied': (d) => [{}, `Coupon ${d.code} ${DENIED[d.reason]}`, 'warn'],
+  'shipping.selected': (d, { ctx }) => [
+    {},
+    `Shipping set to ${d.code ?? ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === d.id)?.code ?? `method ${d.id}`}`,
+  ],
+  'checkout.started': () => [{}, 'Checkout started'],
+  'address.entered': (d) => [{}, `${side(d.type)} address entered`],
+  'payment.selected': (d) => [{}, `Payment method ${d.method} chosen`],
+  'checkout.continued': (d) => [{}, `Step ${d.step ?? 1} passed its checks`],
+  'address.autofilled': (d) => [{}, `${side(d.type)} address filled from a suggestion`],
+  'checkout.submitted': () => [{}, 'Order submitted'],
+  'checkout.invalid': (d) => [{}, `Submit stopped: ${Object.keys(d.errors).join(', ') || 'form not ready'}`, 'warn'],
+  'checkout.completed': (d) => [{}, `Checkout completed: order ${d.ref_id}`, 'done'],
+  'user.created': () => [{}, 'User created: open cart saved on the store'],
+  'checkout.failed': (d) => [{}, `Order refused: ${failed(d)}`, 'warn'],
+  'payment.redirected': (d) => [{}, `Left for the payment gateway to pay order ${d.ref_id}`],
+  'payment.failed': (d) => [
+    {},
+    d.error.code === 'declined'
+      ? `Payment declined${d.ref_id ? ` for order ${d.ref_id}` : ''}: ${d.error.decline_code ?? d.error.message ?? 'no reason given'}`
+      : `Payment for order ${d.ref_id} not completed at the gateway`,
+    'warn',
+  ],
+  'order.created': (d) => [
+    { order: d.ref_id, total: d.total, currency: d.currency, units: 0, earned: d.total },
+    `Order ${placed(d)} placed`,
+    'done',
+  ],
+  'order.loaded': (d) => [{ order: d.ref_id, total: d.total, currency: d.currency }, `Order ${placed(d)} loaded`],
+  'order.updated': (d) => [{ total: d.total, currency: d.currency }],
+  'order.paid': (d) => [{}, `Order ${placed(d)} paid`, 'done'],
+  'upsell.accepted': (d, { page, name }) => [
+    { upsell: 'accepted', earned: addDollars([page().earned ?? 0, upsellTotal(d)]) },
+    `Upsell accepted: ${d.lines.map((l) => name(l.package_id)).join(', ')}`,
+    'done',
+  ],
+  'upsell.skipped': () => [{ upsell: 'declined' }, 'Upsell declined'],
+  'upsell.failed': (d) => [{}, `Upsell refused: ${failed(d)}`, 'warn'],
+  'promotion.viewed': (d) => [{}, d.type === 'exit_intent' ? 'Exit popup shown' : `Promotion ${d.id} shown`],
+  'sdk.error': (d) =>
+    d.action === 'storage.write'
+      ? [{}, `Storage degraded: ${d.message}`, 'warn']
+      : [{}, `${d.action} failed: ${d.message}`, 'error'],
+};
+
+export function createDebug(ctx: Context, arrival: Arrival) {
+  const saved = ctx.saved<DebugState>('debug');
+  let state: DebugState = {
+    pages: saved?.pages ?? [],
+    panel: saved?.panel ?? { open: false, tab: 'journey', right: true },
+    ...(saved?.config && { config: saved.config }),
+  };
+  const save = () => ctx.update('debug', state, { silent: true });
+  const page = () => state.pages.at(-1)!;
+  const change = (patch: Partial<PageVisit>, ...marks: Mark[]) => {
+    const now = page();
+    state = {
+      ...state,
+      pages: [...state.pages.slice(0, -1), { ...now, ...patch, marks: [...now.marks, ...marks].slice(-MARKS) }],
+    };
+    save();
   };
 
-  const shippingCode = (id: number | undefined) =>
-    ctx.getState().campaign?.shipping_methods.find((m) => m.ref_id === id)?.code ?? `method ${id}`;
-  const on = <K extends EventName>(event: K, fn: (e: EngineEvent<K>) => void) => ctx.on(event, fn, { replay: true });
-  on('cart.updated', (e) => cartChanged(e.data, e.at));
-  on('cart.calculated', (e) => change({ total: e.data.total?.toFixed(2), currency: e.data.currency }));
-  on('coupon.denied', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Coupon ${e.data.code} ${DENIED[e.data.reason]}` }),
-  );
-  on('shipping.selected', (e) =>
-    change({}, { at: e.at, text: `Shipping set to ${e.data.code ?? shippingCode(e.data.id)}` }),
-  );
-  on('checkout.started', (e) => change({}, { at: e.at, text: 'Checkout started' }));
-  on('address.entered', (e) =>
-    change({}, { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address entered` }),
-  );
-  on('payment.selected', (e) => change({}, { at: e.at, text: `Payment method ${e.data.method} chosen` }));
-  on('checkout.continued', (e) => change({}, { at: e.at, text: `Step ${e.data.step ?? 1} passed its checks` }));
-  on('address.autofilled', (e) =>
-    change(
-      {},
-      { at: e.at, text: `${e.data.type === 'billing' ? 'Billing' : 'Shipping'} address filled from a suggestion` },
+  const order = ctx.getState().order?.refId ?? ctx.saved<{ refId?: string }>('order')?.refId;
+  const units = unitsOf(arrival.lines);
+  const linked = !!order || !!ctx.getState().visit.params.ref_id;
+  const warnings = arrivalWarnings(arrival, state.pages.at(-1), units, linked);
+  state = { ...state, pages: arrive(state.pages, arrival, units, order, warnings) };
+  save();
+
+  const journal: Journal = { ctx, page, name: (id) => ctx.getPackage(id)?.name ?? `package ${id}` };
+  const cartChanged = cartMarks(arrival.lines, ctx.getState().cart.coupons, journal.name);
+  const stops = [
+    ctx.on('cart.updated', (e) => change({ units: unitsOf(e.data.lines) }, ...cartChanged(e.data, e.at)), {
+      replay: true,
+    }),
+    ...Object.entries(SEEN).map(([event, seen]) =>
+      ctx.on(
+        event as EventName,
+        (e) => {
+          const [patch, text, tone] = (seen as (d: unknown, j: Journal) => Seen)(e.data, journal);
+          change(patch, ...(text ? [{ at: e.at, text, ...(tone && { tone }) }] : []));
+        },
+        { replay: true },
+      ),
     ),
-  );
-  on('checkout.submitted', (e) => change({}, { at: e.at, text: 'Order submitted' }));
-  on('checkout.invalid', (e) =>
-    change(
-      {},
-      { at: e.at, tone: 'warn', text: `Submit stopped: ${Object.keys(e.data.errors).join(', ') || 'form not ready'}` },
-    ),
-  );
-  on('checkout.completed', (e) =>
-    change({}, { at: e.at, tone: 'done', text: `Checkout completed: order ${e.data.ref_id}` }),
-  );
-  on('user.created', (e) => change({}, { at: e.at, text: 'User created: open cart saved on the store' }));
-  on('checkout.failed', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Order refused: ${e.data.error.message ?? e.data.error.code}` }),
-  );
-  on('payment.redirected', (e) =>
-    change({}, { at: e.at, text: `Left for the payment gateway to pay order ${e.data.ref_id}` }),
-  );
-  on('payment.failed', (e) =>
-    change(
-      {},
-      {
-        at: e.at,
-        tone: 'warn',
-        text:
-          e.data.error.code === 'declined'
-            ? `Payment declined${e.data.ref_id ? ` for order ${e.data.ref_id}` : ''}: ${e.data.error.decline_code ?? e.data.error.message ?? 'no reason given'}`
-            : `Payment for order ${e.data.ref_id} not completed at the gateway`,
+    ctx.log.stream(
+      (entry) => {
+        const trace = entry.data as Partial<AnalyticsTrace> | undefined;
+        if (trace?.trace === 'analytics' && trace.sent) change({ sent: [...page().sent, trace.name!] });
       },
+      { replay: true },
     ),
-  );
-  on('order.created', (e) =>
-    change(
-      {
-        order: e.data.ref_id,
-        total: e.data.total.toFixed(2),
-        currency: e.data.currency,
-        units: 0,
-        earned: e.data.total,
-      },
-      { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} placed` },
-    ),
-  );
-  on('order.loaded', (e) =>
-    change(
-      { order: e.data.ref_id, total: e.data.total.toFixed(2), currency: e.data.currency },
-      { at: e.at, text: `Order ${e.data.number ?? e.data.ref_id} loaded` },
-    ),
-  );
-  on('order.updated', (e) => {
-    const page = state.pages.at(-1)!;
-    const was = page.total ?? state.pages.at(-2)?.total;
-    change({
-      total: e.data.total.toFixed(2),
-      currency: e.data.currency,
-      ...(was !== undefined && { earned: (page.earned ?? 0) + e.data.total - Number(was) }),
-    });
-  });
-  on('order.paid', (e) => change({}, { at: e.at, tone: 'done', text: `Order ${e.data.number ?? e.data.ref_id} paid` }));
-  on('upsell.accepted', (e) =>
-    change(
-      { upsell: 'accepted' },
-      { at: e.at, tone: 'done', text: `Upsell accepted: ${e.data.lines.map((l) => name(l.package_id)).join(', ')}` },
-    ),
-  );
-  on('upsell.skipped', (e) => change({ upsell: 'declined' }, { at: e.at, text: 'Upsell declined' }));
-  on('upsell.failed', (e) =>
-    change({}, { at: e.at, tone: 'warn', text: `Upsell refused: ${e.data.error.message ?? e.data.error.code}` }),
-  );
-  on('promotion.viewed', (e) =>
-    change({}, { at: e.at, text: e.data.type === 'exit_intent' ? 'Exit popup shown' : `Promotion ${e.data.id} shown` }),
-  );
-  on('sdk.error', (e) =>
-    e.data.action === 'storage.write'
-      ? change({}, { at: e.at, tone: 'warn', text: `Storage degraded: ${e.data.message}` })
-      : change({}, { at: e.at, tone: 'error', text: `${e.data.action} failed: ${e.data.message}` }),
-  );
-  ctx.log.stream(
-    (entry) => {
-      const trace = entry.data as Partial<AnalyticsTrace> | undefined;
-      if (trace?.trace === 'analytics' && trace.sent) change({ sent: [...state.pages.at(-1)!.sent, trace.name!] });
-    },
-    { replay: true },
-  );
+  ];
 
   return {
     state: () => state,
@@ -290,6 +275,8 @@ export function createDebug(ctx: Context, arrival: Arrival) {
       state = { ...state, pages: state.pages.slice(-1) };
       save();
     },
+    /** Stops recording this page. */
+    stop: () => stops.forEach((stop) => stop()),
   };
 }
 

@@ -1,9 +1,10 @@
 import type { Engine } from '../engine/engine';
+import { addDollars } from '../engine/format';
 import { type IconName, icon } from './icons';
 import { sourceOf, sourceView } from './source-card';
 import type { DebugActions, Mark, PageKind, PageVisit } from './state';
 import type { DetailModal } from './stream';
-import { badge, type Child, clock, empty, h, plural, priceText } from './view';
+import { badge, type Child, clock, empty, h, link, plural, priceText, toned } from './view';
 
 const PAGE_KINDS: PageKind[] = ['product', 'checkout', 'upsell', 'receipt'];
 
@@ -67,224 +68,209 @@ const lines = (root: HTMLElement, svg: SVGSVGElement) => {
   );
 };
 
-export function journeyView(
-  engine: Engine,
-  debug: DebugActions,
+interface Journey {
+  engine: Engine;
+  debug: DebugActions;
   ui: {
     render: () => void;
     show: (tab: 'analytics' | 'issues') => void;
     detail: DetailModal;
     /** What the Issues tab counts: this page's and the earlier pages' issues. */
     issues: () => number;
-  },
-) {
-  let resized: ResizeObserver | undefined;
-
-  const money = (p: PageVisit, value: string | number | undefined = p.total) => priceText(engine, value, p.currency);
-  const holding = (p: PageVisit) =>
-    p.order
-      ? [`Order ${p.order}`, money(p)].filter(Boolean).join(' · ')
-      : p.units
-        ? `${plural(p.units, 'item')} · ${money(p)}`
-        : 'Empty cart';
-  const link = (text: string, onclick: () => void) => h('button', { type: 'button', className: 'link', onclick }, text);
-
-  const moment = (m: Mark) => {
-    const el = h(
-      'div',
-      'jmom',
-      h('span', 'time', clock(m.at)),
-      h('span', {}, m.tone === 'done' && icon('check'), m.text),
-    );
-    if (m.tone) el.dataset.tone = m.tone;
-    return el;
   };
+}
 
-  /** A tsugi journey step: its pill and name, a muted note and its status badges, then its page. */
-  const step = (pill: string, name: string, note: string, badges: Child[], row: HTMLElement) =>
+const money = (engine: Engine, p: PageVisit, value = p.total) => priceText(engine, value, p.currency);
+
+const holding = (engine: Engine, p: PageVisit) =>
+  p.order
+    ? [`Order ${p.order}`, money(engine, p)].filter(Boolean).join(' · ')
+    : p.units
+      ? `${plural(p.units, 'item')} · ${money(engine, p)}`
+      : 'Empty cart';
+
+const moment = (m: Mark) =>
+  toned(
+    h('div', 'jmom', h('span', 'time', clock(m.at)), h('span', {}, m.tone === 'done' && icon('check'), m.text)),
+    m.tone,
+  );
+
+/** A tsugi journey step: its pill and name, a muted note and its status badges, then its page. */
+const step = (pill: string, name: string, note: string, badges: Child[], row: HTMLElement) =>
+  h(
+    'li',
+    {},
     h(
-      'li',
+      'header',
       {},
-      h(
-        'header',
-        {},
-        h('span', {}, pill),
-        h('strong', {}, name),
-        note && h('small', {}, note),
-        h('div', 'jtags', ...badges),
-      ),
-      h('ul', {}, row),
-    );
-  const marked = (name: IconName, variant: string, text: string) => badge(icon(name), variant, text);
+      h('span', {}, pill),
+      h('strong', {}, name),
+      note && h('small', {}, note),
+      h('div', 'jtags', ...badges),
+    ),
+    h('ul', {}, h('li', {}, row)),
+  );
 
-  /** A picked page row: name and badges, path, then what it held and when. */
-  const row = (name: Child[], path: string, figure: string, when: string, onclick: () => void) => {
-    const el = h(
-      'button',
-      { type: 'button', onclick },
-      h('span', {}, ...name),
-      h('small', {}, path),
-      h('data', {}, figure),
-      h('data', {}, when),
-    );
-    el.setAttribute('aria-pressed', 'true');
-    return el;
-  };
+const marked = (name: IconName, variant: string, text: string) => badge(icon(name), variant, text);
 
-  const source = (first: PageVisit) => {
-    const s = sourceOf(engine);
-    const warn = s.steps.find((st) => st.tone === 'warn');
-    const open = () =>
-      ui.detail.show({
-        title: 'Source',
-        subtitle: `${s.headline} · where this tab came from`,
-        sections: [['Parameters', [sourceView(engine)]]],
-        payloads: [],
-      });
-    return step(
-      'Entry',
-      s.entry,
-      s.steps[0]?.tone === 'done' ? s.steps[0].detail : '',
-      [
-        ...s.platforms.map((name) => badge(name, 'outline')),
-        warn && marked('warn', 'warning', `${warn.label}: ${warn.detail}`),
-      ],
-      h('li', {}, row([s.headline], 'Where this tab came from', 'Details', clock(first.at), open)),
-    );
-  };
+/** A picked page row: name and badges, path, then what it held and when. */
+const row = (name: string, path: string, figure: string, when: string, onclick: () => void) => {
+  return h(
+    'button',
+    { type: 'button', onclick, ariaPressed: 'true' },
+    h('span', {}, name),
+    h('small', {}, path),
+    h('data', {}, figure),
+    h('data', {}, when),
+  );
+};
 
-  const carry = (before: PageVisit | undefined, p: PageVisit): Child => {
-    const lost = p.marks.find((m) => CARRY.test(m.text));
-    const text =
-      lost?.text ?? (before?.order ? `Order ${before.order} carried over` : before?.units ? 'Cart carried over' : '');
-    if (!before || !text) return null;
-    const el = h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`);
-    el.dataset.tone = lost?.tone ?? 'done';
-    return el;
-  };
-
-  const open = (p: PageVisit, i: number, pages: PageVisit[]) => {
-    const next = pages[i + 1];
-    const issues = p.marks.filter(bad).length;
-    const moments = p.marks.filter((m) => !CARRY.test(m.text));
+function sourceStep({ engine, ui }: Journey, first: PageVisit) {
+  const s = sourceOf(engine);
+  const warn = s.steps.find((st) => st.tone === 'warn');
+  const open = () =>
     ui.detail.show({
-      title: p.title || p.path,
-      badge: issues
-        ? [plural(issues, 'issue'), p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning']
-        : next
-          ? undefined
-          : ['Now', 'outline'],
-      subtitle: `Step ${i + 1} · ${KINDS[p.kind]} · ${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'open now'}`,
-      sections: [
-        ['Page', [h('p', 'jmeta', p.path, h('span', 'devonly', ` · storage ${p.scope}`)), carry(pages[i - 1], p)]],
-        [
-          'What happened',
-          moments.length
-            ? [h('div', 'jmoms', ...moments.map(moment))]
-            : [h('p', 'jnote', 'Nothing happened to the cart here.')],
-        ],
-        [
-          'Tracking',
-          [
-            h(
-              'p',
-              'jnote',
-              `${plural(p.sent.length, 'tracking event')} sent`,
-              !next &&
-                p.sent.length > 0 &&
-                link('See Analytics', () => {
-                  ui.detail.dialog.close();
-                  ui.show('analytics');
-                }),
-            ),
-          ],
-        ],
-      ],
+      title: 'Source',
+      subtitle: `${s.headline} · where this tab came from`,
+      sections: [['Parameters', [sourceView(engine)]]],
       payloads: [],
     });
-  };
+  return step(
+    'Entry',
+    s.entry,
+    s.steps[0]?.tone === 'done' ? s.steps[0].detail : '',
+    [
+      ...s.platforms.map((name) => badge(name, 'outline')),
+      warn && marked('warn', 'warning', `${warn.label}: ${warn.detail}`),
+    ],
+    row(s.headline, 'Where this tab came from', 'Details', clock(first.at), open),
+  );
+}
 
-  const page = (p: PageVisit, i: number, pages: PageVisit[]) => {
-    const next = pages[i + 1];
-    const issues = p.marks.filter(bad).length;
-    const earned = p.earned ? `+${money(p, p.earned)}` : '';
-    const badges = [
-      p.upsell === 'accepted' && marked('check', 'success', ['Accepted', earned].filter(Boolean).join(' ')),
-      p.upsell === 'declined' && badge('Declined', 'outline'),
-      !p.upsell && earned && badge(earned, 'success'),
-      !next && badge('Now', 'info'),
-      p.reloads > 0 && marked('reset', 'outline', p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded'),
-      issues > 0 &&
-        marked('warn', p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning', plural(issues, 'issue')),
-    ];
-    return step(
-      `Step ${i + 1}`,
-      KINDS[p.kind],
-      next ? stayed(next.at - p.at) : '',
-      badges,
-      h(
-        'li',
-        {},
-        row([p.title || p.path], p.path, holding(p), clock(p.at), () => open(p, i, pages)),
-      ),
-    );
-  };
+function carry(before: PageVisit | undefined, p: PageVisit): Child {
+  const lost = p.marks.find((m) => CARRY.test(m.text));
+  const text =
+    lost?.text ?? (before?.order ? `Order ${before.order} carried over` : before?.units ? 'Cart carried over' : '');
+  if (!before || !text) return null;
+  return toned(h('p', 'jcarry', `${lost ? '⚠' : '↓'} ${text}`), lost?.tone ?? 'done');
+}
 
-  const summary = (pages: PageVisit[]) => {
-    const now = pages.at(-1)!;
-    const issues = ui.issues();
-    const upsold = pages.reduce((n, p) => n + (p.kind === 'upsell' ? (p.earned ?? 0) : 0), 0);
-    return h(
-      'div',
-      'jsum',
+const issueVariant = (p: PageVisit) => (p.marks.some((m) => m.tone === 'error') ? 'destructive' : 'warning');
+
+/** A page's detail: where it is, what happened there, and what it sent. */
+function openPage({ ui }: Journey, p: PageVisit, i: number, pages: PageVisit[]) {
+  const next = pages[i + 1];
+  const issues = p.marks.filter(bad).length;
+  const moments = p.marks.filter((m) => !CARRY.test(m.text));
+  const analytics = () => {
+    ui.detail.dialog.close();
+    ui.show('analytics');
+  };
+  ui.detail.show({
+    title: p.title || p.path,
+    badge: issues ? [plural(issues, 'issue'), issueVariant(p)] : next ? undefined : ['Now', 'outline'],
+    subtitle: `Step ${i + 1} · ${KINDS[p.kind]} · ${clock(p.at)} · ${next ? stayed(next.at - p.at) : 'open now'}`,
+    sections: [
+      ['Page', [h('p', 'jmeta', p.path, h('span', 'devonly', ` · storage ${p.scope}`)), carry(pages[i - 1], p)]],
+      [
+        'What happened',
+        moments.length
+          ? [h('div', 'jmoms', ...moments.map(moment))]
+          : [h('p', 'jnote', 'Nothing happened to the cart here.')],
+      ],
+      [
+        'Tracking',
+        [
+          h(
+            'p',
+            'jnote',
+            `${plural(p.sent.length, 'tracking event')} sent`,
+            !next && p.sent.length > 0 && link('See Analytics', analytics),
+          ),
+        ],
+      ],
+    ],
+    payloads: [],
+  });
+}
+
+function pageStep(j: Journey, p: PageVisit, i: number, pages: PageVisit[]) {
+  const next = pages[i + 1];
+  const issues = p.marks.filter(bad).length;
+  const earned = p.earned ? `+${money(j.engine, p, p.earned)}` : '';
+  const badges = [
+    p.upsell === 'accepted' && marked('check', 'success', ['Accepted', earned].filter(Boolean).join(' ')),
+    p.upsell === 'declined' && badge('Declined', 'outline'),
+    !p.upsell && earned && badge(earned, 'success'),
+    !next && badge('Now', 'info'),
+    p.reloads > 0 && marked('reset', 'outline', p.reloads > 1 ? `Reloaded ×${p.reloads}` : 'Reloaded'),
+    issues > 0 && marked('warn', issueVariant(p), plural(issues, 'issue')),
+  ];
+  return step(
+    `Step ${i + 1}`,
+    KINDS[p.kind],
+    next ? stayed(next.at - p.at) : '',
+    badges,
+    row(p.title || p.path, p.path, holding(j.engine, p), clock(p.at), () => openPage(j, p, i, pages)),
+  );
+}
+
+function summary({ engine, debug, ui }: Journey, pages: PageVisit[]) {
+  const now = pages.at(-1)!;
+  const issues = ui.issues();
+  const upsold = addDollars(pages.map((p) => (p.kind === 'upsell' ? (p.earned ?? 0) : 0)));
+  const notes = [now.order ? '' : 'no order yet', upsold > 0 && `upsells +${money(engine, now, upsold)}`];
+  return h(
+    'div',
+    'jsum',
+    h(
+      'span',
+      'jstate',
+      h('b', {}, holding(engine, now)),
       h(
         'span',
-        'jstate',
-        h('b', {}, holding(now)),
-        h(
-          'span',
-          'dim',
-          [
-            now.order ? '' : 'no order yet',
-            upsold > 0 && `upsells +${money(now, upsold)}`,
-            plural(pages.length, 'page'),
-          ]
-            .filter(Boolean)
-            .map((part) => ` · ${part}`)
-            .join(''),
-        ),
+        'dim',
+        [...notes, plural(pages.length, 'page')]
+          .filter(Boolean)
+          .map((part) => ` · ${part}`)
+          .join(''),
       ),
-      issues > 0 && link(`⚠ ${plural(issues, 'issue')}`, () => ui.show('issues')),
-      pages.length > 1 &&
-        link('Clear', () => {
-          debug.clear();
-          ui.render();
-        }),
-    );
-  };
+    ),
+    issues > 0 && link(`⚠ ${plural(issues, 'issue')}`, () => ui.show('issues')),
+    pages.length > 1 &&
+      link('Clear', () => {
+        debug.clear();
+        ui.render();
+      }),
+  );
+}
+
+export function journeyView(engine: Engine, debug: DebugActions, ui: Journey['ui']) {
+  const j: Journey = { engine, debug, ui };
+  let resized: ResizeObserver | undefined;
 
   const view = (): Child[] => {
     const { pages } = debug.state();
     if (!pages.length) return [empty('No pages yet', '', 'route')];
     const svg = document.createElementNS(SVG, 'svg');
     svg.setAttribute('aria-hidden', 'true');
-    const map = h('div', 'journey', h('ol', {}, source(pages[0]!), ...pages.map((p, i) => page(p, i, pages))));
+    const steps = [sourceStep(j, pages[0]!), ...pages.map((p, i) => pageStep(j, p, i, pages))];
+    const map = h('div', { className: 'journey', ariaLabel: 'This visit' }, h('ol', {}, ...steps));
     map.dataset.orientation = 'vertical';
-    map.setAttribute('aria-label', 'This visit');
     map.append(svg);
     resized?.disconnect();
     if (typeof ResizeObserver === 'function') {
       resized = new ResizeObserver(() => lines(map, svg));
       resized.observe(map);
     }
-    return [summary(pages), h('div', 'jmap', map)];
+    return [summary(j, pages), h('div', 'jmap', map)];
   };
 
   /** Opens this page's detail: what happened here, its problems marked. */
   const openNow = () => {
     const { pages } = debug.state();
-    if (pages.length) open(pages.at(-1)!, pages.length - 1, pages);
+    if (pages.length) openPage(j, pages.at(-1)!, pages.length - 1, pages);
   };
 
-  return { view, openNow };
+  return { view, openNow, stop: () => resized?.disconnect() };
 }

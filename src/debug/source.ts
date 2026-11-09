@@ -79,13 +79,11 @@ const reaches = (key: string, value: string, shape: (a: Attribution) => Flat, re
   return Object.entries(shape(built({ [key]: value }))).some(([f, v]) => v !== empty[f] && real[f] === v);
 };
 
-export function readSource({ params, landing, current, attribution, cookies }: SourceInput): Source {
-  const order = onOrder(attribution);
-  const events = onEvents(attribution);
-  const landed = query(landing?.landingPage);
-  const here = query(current);
-
-  const fromUrl = Object.entries(params).flatMap(([key, value]): SourceParam[] => {
+/** The URL's attribution params: where each came from and whether it reached the order and the events. */
+const fromUrl = (input: SourceInput, order: Flat, events: Flat): SourceParam[] => {
+  const landed = query(input.landing?.landingPage);
+  const here = query(input.current);
+  return Object.entries(input.params).flatMap(([key, value]): SourceParam[] => {
     const group = groupOf(key);
     if (!group || !isAttributionParam(key)) return [];
     const was = landed.get(key) ?? undefined;
@@ -101,8 +99,10 @@ export function readSource({ params, landing, current, attribution, cookies }: S
       },
     ];
   });
+};
 
-  const fromCookies = (['fbc', 'fbp'] as const).flatMap((name): SourceParam[] => {
+const fromCookies = ({ landing, cookies }: SourceInput, order: Flat, events: Flat) =>
+  (['fbc', 'fbp'] as const).flatMap((name): SourceParam[] => {
     const read = landing?.[name];
     const value = read || cookies[name];
     if (!value) return [];
@@ -119,7 +119,8 @@ export function readSource({ params, landing, current, attribution, cookies }: S
     ];
   });
 
-  const visit: SourceParam[] = (
+const fromVisit = ({ landing, attribution }: SourceInput, order: Flat, events: Flat): SourceParam[] =>
+  (
     [
       ['landing', path(landing?.landingPage), 'landing_page'],
       ['referrer', host(landing?.referrer), 'referrer'],
@@ -136,13 +137,44 @@ export function readSource({ params, landing, current, attribution, cookies }: S
       events: !!events[field],
     }));
 
-  const rows = [...fromUrl, ...fromCookies, ...visit];
-  const carried = fromUrl;
+/** Captured on the landing URL, kept in the tab, carried on this URL, recorded on the order. */
+function steps(input: SourceInput, carried: SourceParam[], rows: SourceParam[]): SourceStep[] {
+  const landed = query(input.landing?.landingPage);
+  const here = query(input.current);
   const captured = [...landed.keys()].filter((k) => groupOf(k));
-  const lost = captured.filter((k) => !(k in params));
+  const lost = captured.filter((k) => !(k in input.params));
   const notHere = carried.filter((r) => !here.has(r.key)).map((r) => r.key);
   const notRecorded = rows.filter((r) => !r.order).map((r) => r.key);
+  return [
+    captured.length
+      ? {
+          label: 'Captured',
+          detail: `${plural(captured.length, 'param')} on ${path(input.landing?.landingPage)}`,
+          tone: 'done',
+        }
+      : { label: 'Captured', detail: 'None on the landing URL', tone: 'off' },
+    lost.length
+      ? { label: 'Kept', detail: `Lost ${lost.join(', ')}`, tone: 'warn' }
+      : carried.length
+        ? { label: 'Kept', detail: `${plural(carried.length, 'param')} in this tab`, tone: 'done' }
+        : { label: 'Kept', detail: 'Nothing to keep', tone: 'off' },
+    notHere.length
+      ? { label: 'Carried', detail: `Not on this URL: ${notHere.join(', ')}`, tone: 'warn' }
+      : carried.length
+        ? { label: 'Carried', detail: "On this page's URL", tone: 'done' }
+        : { label: 'Carried', detail: 'Nothing to carry', tone: 'off' },
+    notRecorded.length
+      ? { label: 'On the order', detail: `Not recorded: ${notRecorded.join(', ')}`, tone: 'warn' }
+      : { label: 'On the order', detail: 'All recorded', tone: 'done' },
+  ];
+}
 
+export function readSource(input: SourceInput): Source {
+  const { params, landing, attribution } = input;
+  const order = onOrder(attribution);
+  const events = onEvents(attribution);
+  const carried = fromUrl(input, order, events);
+  const rows = [...carried, ...fromCookies(input, order, events), ...fromVisit(input, order, events)];
   const referrer = host(landing?.referrer);
   const source = attribution.utm_source || referrer || 'direct';
   const medium = attribution.utm_medium || (referrer ? 'referral' : 'none');
@@ -161,28 +193,7 @@ export function readSource({ params, landing, current, attribution, cookies }: S
     params: rows,
     unset: UTMS.filter((k) => !(k in params)),
     ignored: trackingIgnored(params),
-    steps: [
-      captured.length
-        ? {
-            label: 'Captured',
-            detail: `${plural(captured.length, 'param')} on ${path(landing?.landingPage)}`,
-            tone: 'done',
-          }
-        : { label: 'Captured', detail: 'None on the landing URL', tone: 'off' },
-      lost.length
-        ? { label: 'Kept', detail: `Lost ${lost.join(', ')}`, tone: 'warn' }
-        : carried.length
-          ? { label: 'Kept', detail: `${plural(carried.length, 'param')} in this tab`, tone: 'done' }
-          : { label: 'Kept', detail: 'Nothing to keep', tone: 'off' },
-      notHere.length
-        ? { label: 'Carried', detail: `Not on this URL: ${notHere.join(', ')}`, tone: 'warn' }
-        : carried.length
-          ? { label: 'Carried', detail: "On this page's URL", tone: 'done' }
-          : { label: 'Carried', detail: 'Nothing to carry', tone: 'off' },
-      notRecorded.length
-        ? { label: 'On the order', detail: `Not recorded: ${notRecorded.join(', ')}`, tone: 'warn' }
-        : { label: 'On the order', detail: 'All recorded', tone: 'done' },
-    ],
+    steps: steps(input, carried, rows),
   };
 }
 

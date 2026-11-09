@@ -23,101 +23,119 @@ const entries = <T extends PerformanceEntry>(type: string) => {
   }
 };
 
-/** The developer Benchmark tab: this page load's timings, from the browser's own performance entries. */
-export function benchmarkView(engine: Engine) {
-  let ready: number | undefined;
-  engine.on('sdk.ready', (e) => (ready = e.at - performance.timeOrigin), { replay: true });
-
-  const vitals: Record<string, number> = {};
-  const observe = (type: string, fn: (e: PerformanceEntry & Record<string, unknown>) => void, extra = {}) => {
+/** Watches this load's Web Vitals into `vitals`; returns what stops watching. */
+function observeVitals(vitals: Record<string, number>) {
+  let observer: PerformanceObserver | undefined;
+  try {
+    observer = new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as Array<PerformanceEntry & Record<string, number>>) {
+        if (e.entryType === 'largest-contentful-paint') vitals.LCP = e.startTime;
+        else if (e.entryType === 'layout-shift') {
+          if (!e.hadRecentInput) vitals.CLS = (vitals.CLS ?? 0) + Number(e.value);
+        } else if (e.interactionId) vitals.INP = Math.max(vitals.INP ?? 0, e.duration);
+      }
+    });
+  } catch {}
+  for (const type of ['largest-contentful-paint', 'layout-shift', 'event'])
     try {
-      new PerformanceObserver((list) => list.getEntries().forEach((e) => fn(e as never))).observe({
-        type,
-        buffered: true,
-        ...extra,
-      });
+      observer?.observe({ type, buffered: true, durationThreshold: 16 } as PerformanceObserverInit);
     } catch {}
-  };
-  observe('largest-contentful-paint', (e) => (vitals.LCP = e.startTime));
-  observe('layout-shift', (e) => {
-    if (!e.hadRecentInput) vitals.CLS = (vitals.CLS ?? 0) + Number(e.value);
-  });
-  observe(
-    'event',
-    (e) => {
-      if (e.interactionId) vitals.INP = Math.max(vitals.INP ?? 0, e.duration);
-    },
-    { durationThreshold: 16 },
+  return () => observer?.disconnect();
+}
+
+function read() {
+  const nav = entries<PerformanceNavigationTiming>('navigation')[0];
+  const loader = document.querySelector<HTMLScriptElement>('script[src*="loader"]')?.src;
+  const base = loader ? new URL('.', loader).href : undefined;
+  const resources = entries<Resource>('resource');
+  const files = resources.filter((r) => base && r.name.startsWith(base) && !CALL.test(r.name));
+  const calls = resources.filter((r) => CALL.test(r.name));
+  const shown = entries('mark').find((m) => m.name === 'next:ready')?.startTime;
+  return { nav, files, calls, shown };
+}
+
+const name = (url: string) => {
+  const u = new URL(url);
+  return u.pathname.split('/').pop() || u.pathname;
+};
+const path = (url: string) => {
+  const u = new URL(url);
+  return u.origin === location.origin ? u.pathname : `${u.host}${u.pathname}`;
+};
+
+const tile = (label: string, value: string, note = '') =>
+  h('div', 'bmtile', h('small', {}, label), h('b', {}, value), note && h('small', {}, note));
+
+const legend = () =>
+  h(
+    'p',
+    'bmlegend',
+    ...(['file', 'call'] as const).map((kind) => {
+      const key = h('span', 'bmbar');
+      key.dataset.kind = kind;
+      return h('span', {}, key, kind === 'file' ? 'SDK file' : 'API call');
+    }),
+    h('span', {}, h('span', { className: 'bmdot' }), 'milestone'),
   );
 
-  const read = () => {
-    const nav = entries<PerformanceNavigationTiming>('navigation')[0];
-    const loader = document.querySelector<HTMLScriptElement>('script[src*="loader"]')?.src;
-    const base = loader ? new URL('.', loader).href : undefined;
-    const resources = entries<Resource>('resource');
-    const files = resources.filter((r) => base && r.name.startsWith(base) && !CALL.test(r.name));
-    const calls = resources.filter((r) => CALL.test(r.name));
-    const shown = entries('mark').find((m) => m.name === 'next:ready')?.startTime;
-    return { nav, files, calls, shown };
+function waterfall(spans: Span[], marks: Mark[]) {
+  const end = Math.max(1, ...spans.map((s) => s.end), ...marks.map((m) => m.at)) * 1.04;
+  const at = (n: number) => `${((n / end) * 100).toFixed(2)}%`;
+  const bar = (s: Span) => {
+    const el = h('span', 'bmbar');
+    el.dataset.kind = s.kind;
+    el.style.left = at(s.start);
+    el.style.width = at(Math.max(s.end - s.start, end / 400));
+    return el;
   };
-
-  const name = (url: string) => {
-    const u = new URL(url);
-    return u.pathname.split('/').pop() || u.pathname;
+  const dot = (m: Mark) => {
+    const el = h('span', 'bmdot');
+    if (m.main) el.dataset.main = '';
+    el.style.left = at(m.at);
+    return el;
   };
-  const path = (url: string) => {
-    const u = new URL(url);
-    return u.origin === location.origin ? u.pathname : `${u.host}${u.pathname}`;
-  };
-
-  const tile = (label: string, value: string, note = '') =>
-    h('div', 'bmtile', h('small', {}, label), h('b', {}, value), note && h('small', {}, note));
-
-  const waterfall = (spans: Span[], marks: Mark[]) => {
-    const end = Math.max(1, ...spans.map((s) => s.end), ...marks.map((m) => m.at)) * 1.04;
-    const at = (n: number) => `${((n / end) * 100).toFixed(2)}%`;
-    const shown = spans.slice(0, SHOWN);
-    const bar = (s: Span) => {
-      const el = h('span', 'bmbar');
-      el.dataset.kind = s.kind;
-      el.style.left = at(s.start);
-      el.style.width = at(Math.max(s.end - s.start, end / 400));
-      return el;
-    };
-    const dot = (m: Mark) => {
-      const el = h('span', 'bmdot');
-      if (m.main) el.dataset.main = '';
-      el.style.left = at(m.at);
-      return el;
-    };
-    return [
-      h(
-        'div',
-        'bmwf',
-        ...shown.flatMap((s) => [
+  return [
+    h(
+      'div',
+      'bmwf',
+      ...spans
+        .slice(0, SHOWN)
+        .flatMap((s) => [
           h('span', { className: s.kind === 'page' ? '' : 'bmname', title: s.label }, s.label),
           h('span', 'bmtrack', bar(s)),
           h('span', 'bmms', ms(s.end - s.start)),
         ]),
-        ...marks.flatMap((m) => [
-          h('span', m.main ? '' : 'dim', m.main ? h('b', {}, m.label) : m.label),
-          h('span', 'bmtrack', dot(m)),
-          h('span', 'bmms', ms(m.at)),
-        ]),
-      ),
-      spans.length > SHOWN && h('p', 'bmnote', `+${plural(spans.length - SHOWN, 'more file')} and calls, not drawn`),
-      h(
-        'p',
-        'bmlegend',
-        ...(['file', 'call'] as const).map((kind) => {
-          const key = h('span', 'bmbar');
-          key.dataset.kind = kind;
-          return h('span', {}, key, kind === 'file' ? 'SDK file' : 'API call');
-        }),
-        h('span', {}, h('span', { className: 'bmdot' }), 'milestone'),
-      ),
-    ];
-  };
+      ...marks.flatMap((m) => [
+        h('span', m.main ? '' : 'dim', m.main ? h('b', {}, m.label) : m.label),
+        h('span', 'bmtrack', dot(m)),
+        h('span', 'bmms', ms(m.at)),
+      ]),
+    ),
+    spans.length > SHOWN && h('p', 'bmnote', `+${plural(spans.length - SHOWN, 'more file')} and calls, not drawn`),
+    legend(),
+  ];
+}
+
+const vitalTiles = (vitals: Record<string, number>) =>
+  VITALS.map(([label, good, poor, show]) => {
+    const v = vitals[label];
+    const el = tile(
+      label,
+      v === undefined ? '—' : show(v),
+      v === undefined ? 'not measured yet' : v <= good ? 'good' : v <= poor ? 'needs work' : 'poor',
+    );
+    el.dataset.tone = v === undefined ? '' : v <= good ? 'good' : v <= poor ? 'work' : 'poor';
+    return el;
+  });
+
+/** The developer Benchmark tab: this page load's timings, from the browser's own performance entries. */
+export function benchmarkView(engine: Engine) {
+  let ready: number | undefined;
+  const vitals: Record<string, number> = {};
+  const stops = [
+    engine.on('sdk.ready', (e) => (ready = e.at - performance.timeOrigin), { replay: true }),
+    observeVitals(vitals),
+  ];
 
   const view = (): Child[] => {
     const { nav, files, calls, shown } = read();
@@ -169,23 +187,10 @@ export function benchmarkView(engine: Engine) {
           )
         : h('p', 'bmnote', 'No API call on this page yet.'),
       h('h3', 'bmhead', 'Web Vitals · this load, this browser'),
-      h(
-        'div',
-        'bmtiles',
-        ...VITALS.map(([label, good, poor, show]) => {
-          const v = vitals[label];
-          const el = tile(
-            label,
-            v === undefined ? '—' : show(v),
-            v === undefined ? 'not measured yet' : v <= good ? 'good' : v <= poor ? 'needs work' : 'poor',
-          );
-          el.dataset.tone = v === undefined ? '' : v <= good ? 'good' : v <= poor ? 'work' : 'poor';
-          return el;
-        }),
-      ),
+      h('div', 'bmtiles', ...vitalTiles(vitals)),
       h('p', 'bmnote', 'One load in this browser: compare before and after a change, not across machines.'),
     ];
   };
 
-  return { view };
+  return { view, stop: () => stops.forEach((stop) => stop()) };
 }

@@ -122,7 +122,8 @@ describe('journey tab', () => {
       upsell.engine.events.emit('upsell.accepted', {
         ref_id: 'R1',
         page: '/upsell/',
-        lines: [{ package_id: 2, quantity: 1 }],
+        lines: [{ package_id: 2, quantity: 1, total: 19.5 }],
+        total: 19.5,
       });
       upsell.engine.events.emit('order.updated', order('68.50'));
       const declined = visit(session, '/declined/', 'upsell');

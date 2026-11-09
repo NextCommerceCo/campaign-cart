@@ -2,7 +2,7 @@ import type { Engine } from '../engine/engine';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
 import type { DebugActions } from './state';
 import { eventDetail } from './event-detail';
-import { chips, type DetailModal, firstItems, line, lineText } from './stream';
+import { chips, type DetailModal, firstItems, line, lineText, listed, tally } from './stream';
 import { button, type Child, empty, expandable, h, plural, priceText, stamp, time } from './view';
 
 const KEEP = 300;
@@ -33,6 +33,76 @@ const byAction = (events: SdkEvent[]) =>
     return all;
   }, []);
 
+const title = (engine: Engine, d: Data, id: number) =>
+  d.lines?.find((l) => l.package_id === id)?.product_title ?? engine.getPackage(id)?.name ?? `#${id}`;
+
+/** An event's one-line summary: what it is about, its items, total and outcome. */
+const summary = (engine: Engine, e: SdkEvent) => {
+  const d = e.data as Data;
+  const items = d.changes?.map((c) => `${title(engine, d, c.package_id)} ${c.from}→${c.to}`) ?? d.lines?.map(lineText);
+  return [
+    d.selector_id,
+    firstItems(items),
+    typeof d.total === 'number' && `total ${priceText(engine, d.total, d.currency)}`,
+    d.code,
+    d.method,
+    d.ref_id,
+    d.step && `step ${d.step}`,
+    d.reason,
+    d.error?.code,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+};
+
+const showEvent = (engine: Engine, detail: DetailModal, e: SdkEvent) => {
+  const d = e.data as Data & { cart?: { currency?: string } };
+  const currency = d.currency ?? d.cart?.currency;
+  detail.show({
+    title: e.event_type,
+    subtitle: [time(at(e)), e.object, currency].filter(Boolean).join(' · '),
+    ...eventDetail(
+      e.event_type,
+      d,
+      (value) => priceText(engine, value, currency),
+      (id) => title(engine, d, id),
+    ),
+    payloads: [['Event', e]],
+  });
+};
+
+const eventRow = (engine: Engine, detail: DetailModal, e: SdkEvent, start?: number) =>
+  line({
+    at: start === undefined ? at(e) : `+${at(e) - start} ms`,
+    tag: e.object,
+    name: e.event_type,
+    detail: [h('span', 'dim', summary(engine, e))],
+    open: () => showEvent(engine, detail, e),
+  });
+
+/** The events one action set off, folded under its first and last. */
+const actionGroup = (
+  engine: Engine,
+  ui: { open: Set<string>; detail: DetailModal },
+  events: SdkEvent[],
+  path: string,
+) => {
+  const [first] = events as [SdkEvent];
+  const last = events.at(-1)!;
+  return expandable(
+    [
+      stamp(at(first)),
+      h('code', 'sname', first.event_type),
+      h('span', 'dim', ` → ${last.event_type}`),
+      h('span', 'dim sgcount', `${plural(events.length, 'event')} · ${at(last) - at(first)} ms`),
+    ],
+    path,
+    ui.open,
+    () => events.map((e) => eventRow(engine, ui.detail, e, at(first))),
+    'sgroup',
+  );
+};
+
 export function eventsView(
   engine: Engine,
   debug: DebugActions,
@@ -51,73 +121,14 @@ export function eventsView(
     if (seen.length > KEEP) seen.shift();
   };
 
-  const title = (d: Data, id: number) =>
-    d.lines?.find((l) => l.package_id === id)?.product_title ?? engine.getPackage(id)?.name ?? `#${id}`;
-
-  const summary = (e: SdkEvent) => {
-    const d = e.data as Data;
-    const items = d.changes?.map((c) => `${title(d, c.package_id)} ${c.from}→${c.to}`) ?? d.lines?.map(lineText);
-    return [
-      d.selector_id,
-      firstItems(items),
-      typeof d.total === 'number' && `total ${priceText(engine, d.total, d.currency)}`,
-      d.code,
-      d.method,
-      d.ref_id,
-      d.step && `step ${d.step}`,
-      d.reason,
-      d.error?.code,
-    ]
-      .filter(Boolean)
-      .join(' · ');
-  };
-
-  const show = (e: SdkEvent) => {
-    const d = e.data as Data & { cart?: { currency?: string } };
-    const currency = d.currency ?? d.cart?.currency;
-    detail.show({
-      title: e.event_type,
-      subtitle: [time(at(e)), e.object, currency].filter(Boolean).join(' · '),
-      ...eventDetail(
-        e.event_type,
-        d,
-        (value) => priceText(engine, value, currency),
-        (id) => title(d, id),
-      ),
-      payloads: [['Event', e]],
-    });
-  };
-
-  const row = (e: SdkEvent, start?: number) =>
-    line({
-      at: start === undefined ? at(e) : `+${at(e) - start} ms`,
-      tag: e.object,
-      name: e.event_type,
-      detail: [h('span', 'dim', summary(e))],
-      open: () => show(e),
-    });
-
   const group = (events: SdkEvent[], top: boolean) => {
-    const [first] = events as [SdkEvent];
-    const last = events.at(-1)!;
-    if (events.length < 2) return row(first);
-    const path = `g${first.event_id}`;
+    if (events.length < 2) return eventRow(engine, detail, events[0]!);
+    const path = `g${events[0]!.event_id}`;
     if (top && newest !== path) {
       open.delete(newest);
       open.add((newest = path));
     }
-    return expandable(
-      [
-        stamp(at(first)),
-        h('code', 'sname', first.event_type),
-        h('span', 'dim', ` → ${last.event_type}`),
-        h('span', 'dim sgcount', `${plural(events.length, 'event')} · ${at(last) - at(first)} ms`),
-      ],
-      path,
-      open,
-      () => events.map((e) => row(e, at(first))),
-      'sgroup',
-    );
+    return actionGroup(engine, ui, events, path);
   };
 
   const grouped = () => debug.state().panel.grouped === true;
@@ -134,24 +145,27 @@ export function eventsView(
 
   const view = (query: string): Child[] => {
     if (!seen.length) return [empty('No events yet', 'Each SDK event shows here as next.on gets it.')];
-    const counts = seen.reduce<Record<string, number>>((n, e) => ({ ...n, [e.object]: (n[e.object] ?? 0) + 1 }), {});
     const shown = seen.filter(
       (e) =>
         (!kinds.size || kinds.has(e.object)) &&
-        (e.event_type.includes(query) || summary(e).toLowerCase().includes(query)),
+        (e.event_type.includes(query) || summary(engine, e).toLowerCase().includes(query)),
     );
-    return [
-      chips(Object.entries(counts), kinds, render, grouping()),
-      ...(!shown.length
-        ? [empty('Nothing matches', 'No event fits the filter.')]
-        : grouped()
-          ? byAction(shown)
-              .reverse()
-              .map((events, i) => group(events, i === 0))
-          : shown.reverse().map((e) => row(e))),
-    ];
+    return listed(
+      chips(
+        tally(seen, (e) => e.object),
+        kinds,
+        render,
+        grouping(),
+      ),
+      grouped()
+        ? byAction(shown)
+            .reverse()
+            .map((events, i) => group(events, i === 0))
+        : shown.reverse().map((e) => eventRow(engine, detail, e)),
+      'No event fits the filter.',
+    );
   };
 
-  engine.on('*', record, { replay: true });
-  return { view, count: () => total };
+  const stop = engine.on('*', record, { replay: true });
+  return { view, count: () => total, stop };
 }

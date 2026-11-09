@@ -1,5 +1,5 @@
 import { icon } from './icons';
-import { badge, button, type Child, h, iconButton, nodes, stamp, tab, tablist, tree, tsugi } from './view';
+import { badge, button, type Child, empty, h, modal, nodes, rows, stamp, tab, tablist, toned, tree } from './view';
 
 /** One line of the Events, Analytics and Logs tabs: the same columns in all three. */
 export interface Line {
@@ -28,11 +28,7 @@ export const lineText = (l: { product_title?: unknown; package_id?: unknown; qua
 export const firstItems = (items: string[] = []) =>
   items.length ? `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}` : '';
 
-export const pill = (text: string, tone: 'ok' | 'bad' | 'off' | 'warn') => {
-  const el = h('span', 'spill', text);
-  el.dataset.tone = tone;
-  return el;
-};
+export const pill = (text: string, tone: 'ok' | 'bad' | 'off' | 'warn') => toned(h('span', 'spill', text), tone);
 
 export function line(l: Line): HTMLElement {
   const cells = [
@@ -49,6 +45,19 @@ export function line(l: Line): HTMLElement {
   if (l.title) el.title = l.title;
   return el;
 }
+
+/** How many items each key has, in the order the keys first appear. */
+export const tally = <T>(items: T[], key: (item: T) => string): Array<[string, number]> => {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(key(item), (counts.get(key(item)) ?? 0) + 1);
+  return [...counts];
+};
+
+/** The chips, then the lines the filter keeps, or a note that it keeps none. */
+export const listed = (head: Child, lines: Child[], none: string): Child[] => [
+  head,
+  ...(lines.length ? lines : [empty('Nothing matches', none)]),
+];
 
 /** `All N` and one chip per tag, several at once; `extra` (a mode switch) sits at the end. */
 export function chips(counts: Array<[string, number]>, picked: Set<string>, render: () => void, ...extra: Child[]) {
@@ -165,29 +174,15 @@ export function carried(p: Priced, money: (value: number) => string, lead: Array
           ),
         ),
       ),
-    totals.length > 0 && h('dl', 'stotals', ...totals.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
+    totals.length > 0 && rows('stotals', totals),
   ];
 }
 
 export function detailModal(open: Set<string>) {
   const head = h('header', {});
   const body = h('div', 'smbody');
-  const dialog = tsugi(
-    h(
-      'dialog',
-      'dialog smodal',
-      h(
-        'div',
-        {},
-        head,
-        body,
-        iconButton('close', 'Close dialog', () => dialog.close(), 'icon-sm'),
-      ),
-    ),
-    { size: 'lg' },
-  );
+  const dialog = modal('smodal', 'lg', head, body);
   dialog.tabIndex = -1;
-  dialog.addEventListener('click', (e) => e.target === dialog && dialog.close());
 
   const payloads = (sources: Detail['payloads']) => {
     const pane = h('div', 'spane');
@@ -226,7 +221,10 @@ export function detailModal(open: Set<string>) {
         ...(d.sections ?? []).flatMap(([heading, children]) => [h('h3', 'shead', heading), ...nodes(children)]),
         fields.length > 0 && h('h3', 'shead', 'Details'),
         fields.length > 0 &&
-          h('dl', 'sfields', ...fields.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, String(v))])),
+          rows(
+            'sfields',
+            fields.map(([k, v]) => [k, String(v)]),
+          ),
         d.payloads.length > 0 && h('div', 'spay', shown, reveal),
       ]),
     );

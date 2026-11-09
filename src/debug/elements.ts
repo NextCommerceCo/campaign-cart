@@ -3,7 +3,7 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf, truthy } from '../engine/format';
 import { resolve } from '../engine/values';
 import { replacementFor } from './legacy';
-import { empty, h } from './view';
+import { empty, h, link } from './view';
 
 const PREFIX = 'data-next-';
 
@@ -193,7 +193,7 @@ export function elementsView(engine: Engine, box: Box, picked: Element | undefin
       'summary',
       picked ? 'Picked element and its SDK parents' : `${found.length} elements`,
       bad > 0 && h('span', 'red', ` · ${bad} with problems`),
-      picked && h('button', { type: 'button', className: 'link', onclick: unpick }, 'Show all'),
+      picked && link('Show all', unpick),
     ),
     ...found.slice(0, LIMIT).map((i) => card(i, box)),
     found.length > LIMIT && h('div', 'summary', `Showing ${LIMIT} of ${found.length}. Filter to narrow.`),
