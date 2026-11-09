@@ -18,9 +18,11 @@ interface Pending {
   waiting: number;
 }
 
-export function createQuotes(ctx: Context) {
+const alive = (q: Saved[string] | undefined, now: number) => (q && now - q.at < QUOTE_MAX_AGE ? q : undefined);
+
+/** Quotes by what was sent: the page's own, and localStorage's for 10 minutes. */
+function createQuoteStore(ctx: Context) {
   const fetched: Saved = {};
-  const pending = new Map<string, Pending>();
   let version: { campaign: Campaign; hash: string } | undefined;
 
   const campaignVersion = () => {
@@ -33,23 +35,33 @@ export function createQuotes(ctx: Context) {
   const key = (body: QuoteBody, upsell = false) =>
     JSON.stringify([{ ...body, vouchers: [...new Set(body.vouchers)].sort() }, upsell, campaignVersion()]);
 
-  const alive = (q: Saved[string] | undefined, now = ctx.now()) => (q && now - q.at < QUOTE_MAX_AGE ? q : undefined);
+  const fetchedAt = (k: string) => alive(fetched[k], ctx.now());
 
-  const fresh = (body: QuoteBody, upsell?: boolean) => alive(fetched[key(body, upsell)])?.summary;
-
-  const stored = (body: QuoteBody, upsell?: boolean) => {
-    const k = key(body, upsell);
-    return (alive(fetched[k]) ?? alive(ctx.local.get<Saved>(QUOTES)?.[k]))?.summary;
+  return {
+    key,
+    campaignVersion,
+    fetchedAt,
+    fresh: (body: QuoteBody, upsell?: boolean) => fetchedAt(key(body, upsell))?.summary,
+    stored(body: QuoteBody, upsell?: boolean) {
+      const k = key(body, upsell);
+      return (fetchedAt(k) ?? alive(ctx.local.get<Saved>(QUOTES)?.[k], ctx.now()))?.summary;
+    },
+    save(k: string, summary: CartSummary) {
+      const at = ctx.now();
+      fetched[k] = { at, summary };
+      const newest = Object.entries({ ...ctx.local.get<Saved>(QUOTES), [k]: fetched[k] })
+        .filter(([, q]) => alive(q, at))
+        .sort(([, a], [, b]) => b.at - a.at);
+      ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
+    },
   };
+}
 
-  const save = (k: string, summary: CartSummary) => {
-    const at = ctx.now();
-    fetched[k] = { at, summary };
-    const newest = Object.entries({ ...ctx.local.get<Saved>(QUOTES), [k]: fetched[k] })
-      .filter(([, q]) => alive(q, at))
-      .sort(([, a], [, b]) => b.at - a.at);
-    ctx.local.set(QUOTES, Object.fromEntries(newest.slice(0, QUOTE_LIMIT)));
-  };
+type QuoteStore = ReturnType<typeof createQuoteStore>;
+
+/** One request per quote at a time; it is aborted once every caller waiting for it aborts. */
+function createCalculate(ctx: Context, store: QuoteStore) {
+  const pending = new Map<string, Pending>();
 
   const request = (k: string, body: QuoteBody, upsell: boolean): Pending => {
     const controller = new AbortController();
@@ -59,7 +71,7 @@ export function createQuotes(ctx: Context) {
       promise: ctx.api
         .calculate(body, { signal: controller.signal, upsell })
         .then((summary) => {
-          save(k, summary);
+          store.save(k, summary);
           return summary;
         })
         .finally(() => {
@@ -71,13 +83,13 @@ export function createQuotes(ctx: Context) {
     return entry;
   };
 
-  const calculate = (
+  return (
     body: QuoteBody,
     { signal, upsell = false }: { signal?: AbortSignal; upsell?: boolean } = {},
   ): Promise<CartSummary> => {
     if (signal?.aborted) return Promise.reject(signal.reason);
-    const k = key(body, upsell);
-    const known = alive(fetched[k]);
+    const k = store.key(body, upsell);
+    const known = store.fetchedAt(k);
     if (known) return Promise.resolve(known.summary);
     const entry = pending.get(k) ?? request(k, body, upsell);
     entry.waiting++;
@@ -93,6 +105,12 @@ export function createQuotes(ctx: Context) {
       entry.promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
     });
   };
+}
+
+export function createQuotes(ctx: Context) {
+  const store = createQuoteStore(ctx);
+  const { key, fresh, stored, campaignVersion } = store;
+  const calculate = createCalculate(ctx, store);
 
   /**
    * One price run of a selector's or a toggle's `bodies`: stored prices settle at once and, when fresh, end the run;

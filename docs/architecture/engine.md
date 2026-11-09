@@ -211,16 +211,17 @@ class Engine {
   snapshot(): Snapshot; // what the page shows, as the events carry it: next.snapshot(), sdk.ready
   subscribe(fn: () => void): () => void; // after any change, once per tick
   on(event, fn, { replay }): () => void; // domain events; replay: the page's last 100 first
-  cart: CartActions;
-  selectors: SelectorActions;
+  cart: CartActions; // with the queries cart.line(packageId) and cart.group(id)
+  selectors: SelectorActions; // with the queries selectors.get(id) and selectors.picked(id)
   checkout?: CheckoutActions;
   order?: OrderActions; // attached by their chunks
 }
 // context given to every action file: getState, update(slice, patch), emit, api, storage
 ```
 
-`values.ts` reads only `getState()`, so `bundle.main.price` resolves from `selectors` (offer
-cards use their quote).
+`display/values.ts` reads only `getState()`, so `bundle.main.price` resolves from `selectors` (offer
+cards use their quote). The DOM layers read a selector or a cart line or group through these queries,
+never `getState().selectors` (the architecture test checks it).
 
 ## 4. Main flows
 
@@ -246,12 +247,13 @@ skip → `order.skip(offer, page)` and navigate.
 
 ## 5. Files
 
-`src/engine/` (boot): `engine.ts`, `types.ts`, `api.ts` (with the order error mapping),
-`storage.ts`, `events/` (one file per event group), `log.ts`, `order.ts` (the public Order), `id.ts`, `session.ts`,
-`values.ts`, `condition.ts`, `attribution.ts`, `params.ts`, `scope.ts`, `format.ts`, `tokens.ts`,
-and `cart/` (`cart.ts`, `coupons.ts`, `lines.ts`, `public.ts`, `selectors.ts`, `toggles.ts`, `types.ts`). Loaded by their chunks:
-`checkout/state/` (`checkout.ts`, `order-body.ts`, `rules.ts`, `phone.ts`, `types.ts`) and
-`order/state.ts`. See [structure.md](structure.md).
+`src/engine/` (boot): `engine.ts`, `types.ts`, `actions.ts`, `tracking.ts`; `runtime/` (`api.ts` with the order
+error mapping, `storage.ts`, `session.ts`, `log.ts`, `flow.ts`, `id.ts`); `visit/` (`visit.ts`, `attribution.ts`,
+`params.ts`, `scope.ts`, `geo.ts`, `debug-config.ts`); `order/` (`order.ts`, the public Order; `payment.ts`); `display/`
+(`values.ts`, `format.ts`, `tokens.ts`, `condition.ts`, `texts.ts`, `query.ts`); `events/` (one file per event group); and
+`cart/` (`cart.ts`, `coupons.ts`, `lines.ts`, `public.ts`, `quotes.ts`, `selectors.ts`, `summary-tokens.ts`, `toggles.ts`,
+`types.ts`, `variants.ts`). Loaded by their chunks: `checkout/state/` (`checkout.ts`, `contact.ts`, `countries.ts`,
+`order-body.ts`, `place-order.ts`, `rules.ts`, `phone.ts`, `types.ts`) and `order/state.ts`. See [structure.md](structure.md).
 
 ## 6. Migration
 

@@ -139,7 +139,7 @@ async function cardVariant(
 
 /** The cart's own line of package `current` takes the variant's package. */
 async function lineVariant(engine: Engine, current: number | undefined, packageFor: PackageFor): Promise<boolean> {
-  const items = engine.getState().cart.groups.items;
+  const items = engine.cart.group('items');
   const own = items?.lines.find((l) => l.packageId === current);
   const packageId = current && packageFor(current);
   if (!items || !own || !packageId) return false;
@@ -150,6 +150,54 @@ async function lineVariant(engine: Engine, current: number | undefined, packageF
   return true;
 }
 
+async function addItem(engine: Engine, args: ActionArgs): Promise<ActionResult> {
+  const selectorId = selectorOf(args);
+  const lines = text(args.items)
+    ? parseItems(text(args.items))
+    : num(args.package_id)
+      ? [{ packageId: num(args.package_id)!, quantity: num(args.quantity) ?? 1 }]
+      : [];
+  if (!selectorId && !lines.length) return fail('items', 'nothing to add: items, package_id or selector_id');
+  if (!canAdd(engine, args)) return fail('selector_id', `selector "${selectorId}" has no picked option`);
+  if (args.replace === true || args.replace === 'true' || args.replace === '') await engine.cart.clear();
+  if (selectorId) await engine.selectors.addToCart(selectorId);
+  else for (const line of lines) await engine.cart.addItem(line.packageId, line.quantity);
+  return OK;
+}
+
+async function setQuantity(engine: Engine, args: ActionArgs): Promise<ActionResult> {
+  const step = quantityStep(engine, args);
+  if ('ok' in step) return step;
+  if (step.selectorId) await engine.selectors.setQuantity(step.selectorId, step.next);
+  else await engine.cart.setQuantity(step.packageId!, Math.min(step.max, Math.max(step.min, step.next)));
+  return OK;
+}
+
+async function selectVariant(engine: Engine, args: ActionArgs): Promise<ActionResult> {
+  const code = text(args.code);
+  const value = text(args.value);
+  if (!code || value === undefined) return fail('value', 'selectVariant needs code and value');
+  const packages = engine.getState().campaign?.packages ?? [];
+  const packageFor = (current: number) => variantPackage(packages, current, code, value);
+  const selectorId = selectorOf(args);
+  const optionId = text(args.option_id);
+  const card = selectorId ? engine.selectors.get(selectorId)?.cards.find((c) => c.id === optionId) : undefined;
+  if (card && args.slot_index !== undefined)
+    return (await slotVariant(engine, selectorId!, card, Number(args.slot_index), packageFor))
+      ? OK
+      : noVariant(code, value);
+  if (card) return (await cardVariant(engine, selectorId!, card, packageFor)) ? OK : noVariant(code, value);
+  return (await lineVariant(engine, num(args.package_id), packageFor))
+    ? OK
+    : fail('value', 'this line cannot change its variant');
+}
+
+const offer = (args: ActionArgs) => {
+  const selectorId = selectorOf(args);
+  const lines = parseItems(text(args.items));
+  return { selectorId, lines: lines.length ? lines : undefined };
+};
+
 /**
  * Every action a page or a script can ask for, under the names `next.actions` and
  * `data-next-action` share. Each takes one object of the model's field names and resolves to
@@ -159,38 +207,9 @@ export function createActions(
   engine: Engine,
   host: { page: () => string; navigate: (url: string) => void; url: (target: string) => string },
 ) {
-  const addItem: Action = async (args = {}) => {
-    const selectorId = selectorOf(args);
-    const lines = text(args.items)
-      ? parseItems(text(args.items))
-      : num(args.package_id)
-        ? [{ packageId: num(args.package_id)!, quantity: num(args.quantity) ?? 1 }]
-        : [];
-    if (!selectorId && !lines.length) return fail('items', 'nothing to add: items, package_id or selector_id');
-    if (!canAdd(engine, args)) return fail('selector_id', `selector "${selectorId}" has no picked option`);
-    if (args.replace === true || args.replace === 'true' || args.replace === '') await engine.cart.clear();
-    if (selectorId) await engine.selectors.addToCart(selectorId);
-    else for (const line of lines) await engine.cart.addItem(line.packageId, line.quantity);
-    return OK;
-  };
-
-  const setQuantity: Action = async (args = {}) => {
-    const step = quantityStep(engine, args);
-    if ('ok' in step) return step;
-    if (step.selectorId) await engine.selectors.setQuantity(step.selectorId, step.next);
-    else await engine.cart.setQuantity(step.packageId!, Math.min(step.max, Math.max(step.min, step.next)));
-    return OK;
-  };
-
-  const offer = (args: ActionArgs) => {
-    const selectorId = selectorOf(args);
-    const lines = parseItems(text(args.items));
-    return { selectorId, lines: lines.length ? lines : undefined };
-  };
-
   return {
-    addItem,
-    setQuantity,
+    addItem: (args = {}) => addItem(engine, args),
+    setQuantity: (args = {}) => setQuantity(engine, args),
     async removeItem(args = {}) {
       const packageId = num(args.package_id);
       if (!packageId) return fail('package_id', 'removeItem needs package_id');
@@ -239,24 +258,7 @@ export function createActions(
       order.skip(offer(args), host.page());
       return OK;
     },
-    async selectVariant(args = {}) {
-      const code = text(args.code);
-      const value = text(args.value);
-      if (!code || value === undefined) return fail('value', 'selectVariant needs code and value');
-      const packages = engine.getState().campaign?.packages ?? [];
-      const packageFor = (current: number) => variantPackage(packages, current, code, value);
-      const selectorId = selectorOf(args);
-      const optionId = text(args.option_id);
-      const card = selectorId ? engine.selectors.get(selectorId)?.cards.find((c) => c.id === optionId) : undefined;
-      if (card && args.slot_index !== undefined)
-        return (await slotVariant(engine, selectorId!, card, Number(args.slot_index), packageFor))
-          ? OK
-          : noVariant(code, value);
-      if (card) return (await cardVariant(engine, selectorId!, card, packageFor)) ? OK : noVariant(code, value);
-      return (await lineVariant(engine, num(args.package_id), packageFor))
-        ? OK
-        : fail('value', 'this line cannot change its variant');
-    },
+    selectVariant: (args = {}) => selectVariant(engine, args),
     async go(args = {}) {
       const url = text(args.url);
       if (!url) return fail('url', 'go needs url');

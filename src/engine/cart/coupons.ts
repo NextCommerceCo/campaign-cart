@@ -26,37 +26,26 @@ function addsDiscount(without: CartSummary, withCode: CartSummary): boolean {
   return [...ids(withCode)].some((id) => !before.has(id)) || cents(withCode.total) < cents(without.total);
 }
 
-export function createCoupons(ctx: Context, cart: CouponCart) {
-  let checkingHeld = false;
+type Deny = (code: string, reason: EventMap['coupon.denied']['reason'], message?: string) => void;
+
+function discountsOf(priced: Cart, code: string) {
+  const discounts = [...(priced.discounts ?? []), ...(priced.shipping_method?.discounts ?? [])].filter(
+    (d) => d.code === code,
+  );
+  return discounts.length ? { amount: addDollars(discounts.map((d) => d.amount)), discounts } : {};
+}
+
+const unheld = (state: CartState, code: string) => state.held.filter((c) => c !== code);
+
+/** One check of a code at a time; a newer check of the code, a removal or a clear drops the running one. */
+function createChecks(ctx: Context, cart: CouponCart, deny: Deny) {
   const inTurn = serialize();
-  const waiting = new Map<string, (applied: boolean) => void>();
   const checking = new Map<string, object>();
-  const state = () => ctx.getState().cart;
-  const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
-
-  const deny = (code: string, reason: EventMap['coupon.denied']['reason'], message?: string) =>
-    ctx.emit('coupon.denied', { code, reason, ...(message && { message }) });
-
-  const discountsOf = (code: string, summary: CartSummary) => {
-    const priced = cart.cartOf(summary);
-    const discounts = [...(priced.discounts ?? []), ...(priced.shipping_method?.discounts ?? [])].filter(
-      (d) => d.code === code,
-    );
-    return discounts.length ? { amount: addDollars(discounts.map((d) => d.amount)), discounts } : {};
-  };
-
-  const answer = (code: string, applied: boolean) => {
-    waiting.get(code)?.(applied);
-    waiting.delete(code);
-  };
-
-  const unheld = (code: string) => state().held.filter((c) => c !== code);
 
   const check = (code: string) => {
-    // identity token: a newer check of this code, a removal or a clear drops this one
     const run = {};
     checking.set(code, run);
-    const go = async (): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
+    return inTurn(async (): Promise<'applied' | 'denied' | 'frozen' | 'dropped'> => {
       let without: CartSummary | undefined;
       let withCode: CartSummary | undefined;
       let error: unknown;
@@ -70,7 +59,8 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
       }
       if (checking.get(code) !== run) return 'dropped';
       checking.delete(code);
-      if (state().frozen) return 'frozen';
+      const state = ctx.getState().cart;
+      if (state.frozen) return 'frozen';
       if (!withCode) {
         ctx.fail('coupon.check', error);
         deny(code, 'check_failed', failureOf(error).message);
@@ -80,12 +70,28 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
         deny(code, 'no_discount');
         return 'denied';
       }
-      await cart.commit({ coupons: [...state().coupons, code], held: unheld(code) }, undefined, () =>
-        ctx.emit('coupon.applied', { code, ...discountsOf(code, withCode) }),
+      await cart.commit({ coupons: [...state.coupons, code], held: unheld(state, code) }, undefined, () =>
+        ctx.emit('coupon.applied', { code, ...discountsOf(cart.cartOf(withCode), code) }),
       );
       return 'applied';
-    };
-    return inTurn(go);
+    });
+  };
+
+  return { check, checking };
+}
+
+export function createCoupons(ctx: Context, cart: CouponCart) {
+  let checkingHeld = false;
+  const waiting = new Map<string, (applied: boolean) => void>();
+  const state = () => ctx.getState().cart;
+  const set = (patch: Partial<CartState>) => ctx.update('cart', patch);
+  const deny: Deny = (code, reason, message) =>
+    ctx.emit('coupon.denied', { code, reason, ...(message && { message }) });
+  const { check, checking } = createChecks(ctx, cart, deny);
+
+  const answer = (code: string, applied: boolean) => {
+    waiting.get(code)?.(applied);
+    waiting.delete(code);
   };
 
   const checkHeld = async () => {
@@ -96,7 +102,7 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
         if (state().frozen || !cart.lines().length) break;
         const result = await check(code);
         if (result === 'frozen') break;
-        if (result === 'denied') set({ held: unheld(code) });
+        if (result === 'denied') set({ held: unheld(state(), code) });
         if (result !== 'dropped') answer(code, result === 'applied');
       }
     } finally {
@@ -128,7 +134,7 @@ export function createCoupons(ctx: Context, cart: CouponCart) {
       if (state().frozen) return Promise.resolve();
       checking.delete(normalized);
       if (state().held.includes(normalized)) {
-        set({ held: unheld(normalized) });
+        set({ held: unheld(state(), normalized) });
         answer(normalized, false);
       }
       if (!state().coupons.includes(normalized)) return Promise.resolve();

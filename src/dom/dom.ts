@@ -163,16 +163,16 @@ export function bindToggle(
   };
   addPreselected();
   b.offs.push(onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1)));
-  for (const input of inputs) b.listen(input, 'change', () => engine.getState().cart.groups[group] && void add());
+  for (const input of inputs) b.listen(input, 'change', () => engine.cart.group(group) && void add());
   el.addEventListener('click', (e) => {
     if (isFormControl(e.target)) return;
     if (!on()) void add();
-    else if (engine.getState().cart.groups[group]) void engine.cart.setGroup(group, null, { dismiss: true });
+    else if (engine.cart.group(group)) void engine.cart.setGroup(group, null, { dismiss: true });
     else void engine.cart.removeItem(packageId);
   });
   return () => {
     addPreselected();
-    const current = engine.getState().cart.groups[group]?.lines[0]?.quantity;
+    const current = engine.cart.group(group)?.lines[0]?.quantity;
     if (current !== undefined && current !== quantity()) void add();
   };
 }

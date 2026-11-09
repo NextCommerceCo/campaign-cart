@@ -171,9 +171,9 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
   }
   const { engine } = a;
   const group = toggleGroup(line.packageId);
-  const on = () => !!engine.getState().cart.groups[group];
+  const on = () => !!engine.cart.group(group);
   const current = () =>
-    publicToggle(engine.getState(), group, engine.getState().cart.groups[group] ?? { lines: [line], vouchers: [] });
+    publicToggle(engine.getState(), group, engine.cart.group(group) ?? { lines: [line], vouchers: [] });
   if (optionId) a.query.register(`selector.${optionId}`, current);
   a.setScope(el, () => {
     const toggle = withCatalogPrice(engine, current() as unknown as Model)!;

@@ -976,4 +976,12 @@ describe('cart', () => {
     expect(engine.cart.line(9)).toEqual({ package_id: 9, quantity: 1 });
     expect(engine.cart.line(2)).toBeUndefined();
   });
+
+  it('finds a cart group by id', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
+    expect(engine.cart.group('toggle:9')).toEqual({ lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
+    expect(engine.cart.group('items')).toBeUndefined();
+  });
 });
