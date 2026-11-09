@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -26,5 +26,15 @@ describe('docs site root files', () => {
     writeFileSync(join(root, 'index.html'), '');
     writeFileSync(join(root, 'latest/a/page.html'), '');
     expect(countFiles(root)).toBe(2);
+  });
+});
+
+describe('docs sidebar sections', () => {
+  it('puts every sidebar group in a section, so none shows in all of them', () => {
+    const { docGroups } = JSON.parse(readFileSync('typedoc.json', 'utf8')).cleanJsdocTheme;
+    const sectioned = [...readFileSync('docs/assets/site.js', 'utf8').matchAll(/groups: \[([^\]]*)\]/g)].flatMap(
+      ([, list]) => [...list!.matchAll(/'([^']+)'/g)].map(([, name]) => name),
+    );
+    expect(docGroups.filter((group: string) => !sectioned.includes(group))).toEqual([]);
   });
 });
