@@ -5,6 +5,7 @@ import { format } from '../../src/engine/display/format';
 import { fakeApi } from '../fixtures/api';
 import { makeEngine } from '../fixtures/engine';
 import { ORDER } from '../fixtures/order';
+import { publicOrder } from '../../src/engine/order/order';
 import type { ApiOrder, State } from '../../src/engine/types';
 
 async function setup() {
@@ -44,6 +45,9 @@ describe('order values', () => {
         "order.refId",
         "order.ref_id",
         "order.currency",
+        "order.test",
+        "order.paid",
+        "order.coupons",
         "order.total",
         "order.totalExclTax",
         "order.total_excl_tax",
@@ -51,6 +55,7 @@ describe('order values', () => {
         "order.shipping",
         "order.shippingExclTax",
         "order.discounts",
+        "order.total_discount",
         "order.subtotal",
         "order.hasTax",
         "order.hasShipping",
@@ -59,13 +64,20 @@ describe('order values', () => {
         "order.isEmpty",
         "order.hasUpsells",
         "order.supportsUpsells",
+        "order.supports_upsells",
         "order.itemCount",
+        "order.lines",
         "order.shippingMethod",
+        "order.shipping_method",
         "order.paymentMethod",
+        "order.payment_method",
+        "order.status_url",
         "order.customer",
         "order.user",
         "order.shippingAddress",
+        "order.shipping_address",
         "order.billingAddress",
+        "order.billing_address",
       ]
     `);
     const { engine, order } = await setup();
@@ -75,6 +87,20 @@ describe('order values', () => {
     expect(orderValue(state, 'shippingAddress.zip')).toEqual(orderValue(state, 'shippingAddress.postcode'));
     expect(orderValue(state, 'customer.constructor')).toBeUndefined();
     expect(orderValue(state, 'billingAddress.toString')).toBeUndefined();
+  });
+
+  it('answers every field of the public Order under its own name, as the event carries it', () => {
+    const raw = { ...ORDER, is_test: true, order_status_url: 'https://shop.test/s', payment_complete_url: null };
+    const state = { order: { order: raw, coupon: { refId: 'R1', codes: ['SAVE'] } } } as State;
+    const shown = (path: string) => orderValue(state, path)?.value;
+    for (const [key, value] of Object.entries(publicOrder(raw, ['SAVE']))) {
+      if (key === 'lines') expect(shown(key)).toBe(ORDER.lines!.length);
+      else if (Array.isArray(value)) expect(shown(key)).toBe(value.join(', '));
+      else if (value && typeof value === 'object')
+        for (const [field, inner] of Object.entries(value))
+          expect([key, field, shown(`${key}.${field}`)]).toEqual([key, field, inner]);
+      else expect([key, shown(key)]).toEqual([key, value]);
+    }
   });
 
   it('writes an order address on one line, every field its own part, empty ones left out', () => {

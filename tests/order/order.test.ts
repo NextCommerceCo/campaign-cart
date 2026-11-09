@@ -278,3 +278,27 @@ describe('receipt (apollo)', () => {
     );
   });
 });
+
+describe('order values by their Order field names', () => {
+  it.each([true, false])(
+    'shows and hides on order.supports_upsells (%s) once the order arrives after binding',
+    async (supports) => {
+      const warnings: string[] = [];
+      vi.spyOn(console, 'warn').mockImplementation((...args) => void warnings.push(args.join(' ')));
+      const { $ } = await mountHtml(
+        `<div id="offer" data-next-show="order.supports_upsells">Offer</div>
+         <p id="thanks" data-next-hide="order.supports_upsells">Thanks</p>
+         <span id="discount" data-next-display="order.total_discount"></span>
+         <span id="method" data-next-display="order.shipping_method.name"></span>
+         <span id="name" data-next-display="order.user.first_name"></span>`,
+        { getOrder: (ref) => json({ ...ORDER, ref_id: ref, supports_post_purchase_upsells: supports }) },
+      );
+      expect(warnings.filter((w) => w.startsWith('[next]'))).toEqual([]);
+      expect($('#offer').style.display).toBe(supports ? '' : 'none');
+      expect($('#thanks').style.display).toBe(supports ? 'none' : '');
+      expect($('#discount').textContent).toBe('$0.00');
+      expect($('#method').textContent).toBe('Express');
+      expect($('#name').textContent).toBe('Jane');
+    },
+  );
+});
