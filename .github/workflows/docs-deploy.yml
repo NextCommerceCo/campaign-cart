@@ -38,6 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.release && format('refs/tags/{0}', inputs.release) || '' }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -62,9 +63,9 @@ jobs:
         run: |
           node scripts/docs-legacy.mjs docs/site
           mkdir -p "$RUNNER_TEMP/legacy"
-          tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C docs/site $(cd docs/site && ls -d v0.4.* latest)
+          (cd docs/site && tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" v0.4.* latest)
       - name: Attach the 0.4 docs to ${{ env.LEGACY_TAG }}
-        if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && (github.ref == 'refs/heads/main' || inputs.release) }}
         run: |
           gh release view "$LEGACY_TAG" >/dev/null 2>&1 \
             || gh release create "$LEGACY_TAG" --verify-tag --latest=false --title "$LEGACY_TAG" --notes ""
@@ -98,7 +99,7 @@ jobs:
           DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
 
       - name: Deploy to Cloudflare
-        if: ${{ !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        if: ${{ !inputs.dry-run && (github.ref == 'refs/heads/main' || inputs.release) }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

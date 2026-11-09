@@ -1,11 +1,18 @@
 name: Release
 
-# Releases package.json's version. Pages load the SDK from
+# Publishing a GitHub release finishes it: pages load the SDK from
 # cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v<version>/dist, which reads the tagged
-# tree, so the tag points at a commit off main that carries the built dist/.
+# tree, so the tag is moved to a commit off main that carries the built dist/, the dist
+# zip is attached, and the docs are deployed. Run it by hand to finish a release again.
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
+      tag:
+        description: Release tag to finish, e.g. v0.5.0
+        type: string
+        required: true
       dry-run:
         description: Run every step but push nothing and deploy nothing
         type: boolean
@@ -16,30 +23,29 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.version.outputs.tag }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: refs/tags/${{ env.TAG }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
 
-      - id: version
+      - name: Start from the release's source commit
         run: |
-          tag="v$(node -p "require('./package.json').version")"
-          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$tag is not a release version"; exit 1; }
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            echo "::error::$tag already exists; bump the version in package.json"
-            exit 1
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not a release tag (vX.Y.Z)"; exit 1; }
+          # A finished release's tag already points at the dist/ commit; build from its parent.
+          if git cat-file -e HEAD:dist 2>/dev/null; then git checkout --quiet --detach HEAD^; fi
+          version="v$(node -p "require('./package.json').version")"
+          [[ "$version" == "$TAG" ]] || { echo "::error::package.json is $version but the release is $TAG"; exit 1; }
 
+      - run: npm ci
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
@@ -47,31 +53,24 @@ jobs:
       - run: npm run build
 
       - name: Tag a commit that carries dist/
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --detach
           git add --force dist
           git commit --quiet -m "Release $TAG"
-          git tag "$TAG"
-
-      - name: Push the tag and create the release
-        if: ${{ !inputs.dry-run }}
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git push origin "refs/tags/$TAG"
+          git tag --force "$TAG"
           (cd dist && zip -qr "$RUNNER_TEMP/campaign-cart-$TAG.zip" .)
-          gh release create "$TAG" --verify-tag --generate-notes "$RUNNER_TEMP/campaign-cart-$TAG.zip"
 
-  # A tag pushed with GITHUB_TOKEN starts no workflow, so the docs deploy is called here.
+      - name: Move the tag and attach dist
+        if: ${{ !inputs.dry-run }}
+        run: |
+          git push --force origin "refs/tags/$TAG"
+          gh release upload "$TAG" "$RUNNER_TEMP/campaign-cart-$TAG.zip" --clobber
+
   docs:
     needs: release
     uses: ./.github/workflows/docs-deploy.yml
     with:
-      release: ${{ needs.release.outputs.tag }}
-      dry-run: ${{ inputs.dry-run }}
+      release: ${{ github.event.release.tag_name || inputs.tag }}
+      dry-run: ${{ inputs.dry-run || false }}
     secrets: inherit
