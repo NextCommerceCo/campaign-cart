@@ -30,6 +30,9 @@ await next.query('cart.total'); // 39
 next.on('cart.calculated', (cart) => cart.total); // the same Cart
 ```
 
+New here? Start with the [Quickstart](quickstart.md), a whole page to copy, then the
+[Recipes](recipes/bundle-tiers.md): one task per page, each example tested against the SDK.
+
 Pages built with the earlier attributes keep working: see [Legacy attributes](attribute-reference/legacy/legacy-attributes.md).
 
 ## Setup

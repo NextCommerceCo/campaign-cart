@@ -10,17 +10,19 @@ The shortest page that works:
 </head>
 
 <body>
-  <button data-next-action="add-to-cart" data-next-package-id="42">
-    Add to cart <span data-next-display="package.price">$0.00</span>
+  <button data-next-action="addItem" data-next-package-id="42">
+    Add to cart <span data-next-query="package.42.price"></span>
   </button>
 
-  <span data-next-display="cart.totalQuantity">0</span> items, total <span data-next-display="cart.total">$0.00</span>
+  <span data-next-query="cart.quantity"></span> items, total <span data-next-query="cart.total"></span>
 </body>
 ```
 
 That page adds package 42 to a cart, shows its price in the campaign's currency, and keeps the two totals in sync as the visitor clicks. Everything else on this site is a variation on those three steps: mark an element, name a value, react to a change.
 
 ## Where to go next
+
+**[Quickstart](./guides/quickstart.md)**: a whole landing page to copy, line by line. **[Recipes](./guides/recipes/bundle-tiers.md)**: one common task per page: bundle tiers, order bumps, variants, coupons, upsells, the receipt.
 
 **[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 7× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
 
