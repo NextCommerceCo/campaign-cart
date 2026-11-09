@@ -175,6 +175,17 @@ describe('architecture', () => {
     expect(outside).toEqual([]);
   });
 
+  it('the DOM layers read selectors through engine.selectors, not raw state', () => {
+    const raw = sources.filter((s) => !headless(s.path) && /getState\(\)\.selectors\b/.test(s.code)).map((s) => s.path);
+    expect(raw).toEqual([]);
+  });
+
+  it('only the 0.4.x-parity paths guess USD for a currency they do not know', () => {
+    const parity = (path: string) => within(path, 'compat') || within(path, 'destinations/rudderstack');
+    const guessing = sources.filter((s) => !parity(s.path) && /'USD'/.test(s.code)).map((s) => s.path);
+    expect(guessing).toEqual([]);
+  });
+
   it('payment methods are named and aliased only in engine/payment', () => {
     const words = Object.values(PAYMENT_METHODS).flatMap((m) => [
       m.label,
