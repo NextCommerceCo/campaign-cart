@@ -13,7 +13,7 @@ import {
   unsupportedNotes,
   WIRING,
 } from '../../src/debug/providers';
-import { nodes } from '../../src/debug/view';
+import { nodes, priceText } from '../../src/debug/view';
 import { GA4 } from '../../src/destinations/ga4';
 import {
   type AnalyticsTrace,
@@ -76,7 +76,12 @@ function setup(config: ProviderConfig = ON) {
   let query = '';
   const paint = (q = query) => root.replaceChildren(...nodes(flow.view((query = q))));
   const detail = detailModal(new Set());
-  const flow = analyticsFlow({ config: () => config, detail, render: () => paint() });
+  const flow = analyticsFlow({
+    config: () => config,
+    detail,
+    render: () => paint(),
+    price: (amount, currency) => priceText(engine, amount, currency),
+  });
   document.body.append(detail.dialog);
   engine.on('*', flow.record);
   engine.log.stream(flow.note, { replay: true });

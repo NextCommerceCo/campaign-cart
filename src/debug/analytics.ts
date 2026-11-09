@@ -6,7 +6,6 @@ import type {
   TrackingName,
 } from '../engine/events/analytics';
 import type { EngineEvent } from '../engine/events/bus';
-import { format } from '../engine/format';
 import type { LogEntry } from '../engine/log';
 import {
   analyticsOff,
@@ -60,7 +59,12 @@ const kindOf = (name: string) => {
   return wire ? (KIND_OF[wire.object!] ?? wire.object ?? wire.from[0]!.split('.')[0]!) : 'page';
 };
 
-export function analyticsFlow(ui: { config: () => ProviderConfig; detail: DetailModal; render: () => void }) {
+export function analyticsFlow(ui: {
+  config: () => ProviderConfig;
+  detail: DetailModal;
+  render: () => void;
+  price: (amount: number, currency?: string) => string;
+}) {
   const events = new Map<string, TrackingEvent>();
   const kinds = new Set<string>();
   const runs: Run[] = [];
@@ -122,7 +126,7 @@ export function analyticsFlow(ui: { config: () => ProviderConfig; detail: Detail
   const money = (run: Run, v: unknown) => {
     const event = run.id ? events.get(run.id) : undefined;
     const currency = (pricedOf(run.name, event?.data).currency as string) ?? event?.context.campaign?.currency;
-    return typeof v === 'number' ? format({ type: 'money', value: v }, currency) : '';
+    return typeof v === 'number' ? ui.price(v, currency) : '';
   };
 
   const carried = (run: Run) => {

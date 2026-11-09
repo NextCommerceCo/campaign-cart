@@ -1,10 +1,9 @@
 import type { Engine } from '../engine/engine';
-import { format } from '../engine/format';
 import { type EngineEvent, envelope, PUBLIC, type SdkEvent } from '../engine/events/bus';
 import type { DebugActions } from './state';
 import { eventDetail } from './event-detail';
 import { chips, type DetailModal, firstItems, line, lineText } from './stream';
-import { button, type Child, empty, expandable, h, plural, stamp, time } from './view';
+import { button, type Child, empty, expandable, h, plural, priceText, stamp, time } from './view';
 
 const KEEP = 300;
 const ACTION_GAP = 1000;
@@ -61,7 +60,7 @@ export function eventsView(
     return [
       d.selector_id,
       firstItems(items),
-      typeof d.total === 'number' && `total ${format({ type: 'money', value: d.total }, d.currency)}`,
+      typeof d.total === 'number' && `total ${priceText(engine, d.total, d.currency)}`,
       d.code,
       d.method,
       d.ref_id,
@@ -82,7 +81,7 @@ export function eventsView(
       ...eventDetail(
         e.event_type,
         d,
-        (value) => format({ type: 'money', value }, currency),
+        (value) => priceText(engine, value, currency),
         (id) => title(d, id),
       ),
       payloads: [['Event', e]],

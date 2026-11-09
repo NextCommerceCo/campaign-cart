@@ -32,7 +32,7 @@ import {
   TSUGI_CSS,
 } from './styles';
 import { DEV, type Tab, TABS, tabBar } from './tabs';
-import { type Child, h, iconButton, nodes, plural, tree } from './view';
+import { type Child, h, iconButton, nodes, plural, priceText, tree } from './view';
 
 const FILTERED: Tab[] = ['elements', 'analytics', 'events', 'logs'];
 export interface DebugInfo {
@@ -147,7 +147,12 @@ export function startDebug(engine: Engine, info: DebugInfo): void {
   const detail = detailModal(open);
   const events = eventsView(engine, debug, { open, detail, render: () => render() });
   const pageConfig = configModal(engine, debug, info, () => render());
-  const flow = analyticsFlow({ config: info.analytics, detail, render: () => render() });
+  const flow = analyticsFlow({
+    config: info.analytics,
+    detail,
+    render: () => render(),
+    price: (amount, currency) => priceText(engine, amount, currency),
+  });
   const cart = cartView(engine, { open, render: () => render(), showState: () => show('state') });
   const journey = journeyView(engine, debug, {
     render: () => render(),
