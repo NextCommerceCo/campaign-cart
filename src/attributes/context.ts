@@ -3,8 +3,8 @@ import type { Engine } from '../engine/engine';
 import type { Query } from '../engine/query';
 import type { BindContext, Render } from '../bindings/context';
 
-/** Binds one kind of attribute inside `root`, returning what renders it. */
-export type Binder = (root: ParentNode, a: AttributeContext) => Render[];
+/** Binds one kind of attribute inside `root`, returning what renders it; `only` limits show / hide to those elements. */
+export type Binder = (root: ParentNode, a: AttributeContext, only?: Set<Element>) => Render[];
 
 /**
  * What every v2 binding shares: the object model, the actions, and the scope each element reads

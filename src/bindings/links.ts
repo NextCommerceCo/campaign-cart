@@ -3,7 +3,7 @@ import type { BindContext, Render } from './context';
 
 export function bindLinks(root: ParentNode, b: BindContext): Render[] {
   if (root !== document || !b.claim(document.documentElement, 'links')) return [];
-  document.addEventListener('click', (e) => {
+  const onClick = (e: MouseEvent) => {
     const link = (e.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
     if (!link || link.hasAttribute('data-next-action')) return;
     const href = link.getAttribute('href') ?? '';
@@ -11,6 +11,8 @@ export function bindLinks(root: ParentNode, b: BindContext): Render[] {
     const current = new URL(location.href);
     if (new URL(href, current).origin !== current.origin) return;
     link.href = nextUrl(href, current, b.engine.getState().visit.params);
-  });
+  };
+  document.addEventListener('click', onClick);
+  b.offs.push(() => document.removeEventListener('click', onClick));
   return [];
 }

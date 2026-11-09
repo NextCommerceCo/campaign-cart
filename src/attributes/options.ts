@@ -6,7 +6,15 @@ import type { SelectorCard, SelectorMode } from '../engine/cart/types';
 import { cents } from '../engine/format';
 import type { Engine } from '../engine/engine';
 import type { Render } from '../bindings/context';
-import { bindToggle, matching, onceVisible, registerSelector } from '../bindings/dom';
+import {
+  bindToggle,
+  cardFromElement,
+  inputValues,
+  matching,
+  onceVisible,
+  registerSelector,
+  stateClasses,
+} from '../bindings/dom';
 import type { AttributeContext } from './context';
 
 type Model = Record<string, unknown>;
@@ -54,27 +62,26 @@ function showState(el: Element, selected: boolean, inCart: boolean, loading: boo
   el.setAttribute('aria-pressed', String(selected));
   el.toggleAttribute('data-next-in-cart', inCart);
   el.toggleAttribute('data-next-loading', loading);
-  el.classList.toggle('next-selected', selected);
-  el.classList.toggle('next-active', selected);
-  el.classList.toggle('next-in-cart', inCart);
-  el.classList.toggle('next-not-in-cart', !inCart);
+  stateClasses(el, selected, inCart);
 }
 
 function cardOf(el: Element, id: string): SelectorCard | undefined {
   const lines = parseItems(el.getAttribute('data-next-items') ?? undefined);
   if (!lines.length) return undefined;
   const slots = el.hasAttribute('data-next-slots');
-  const n = (attr: string) => Number(el.getAttribute(attr)) || undefined;
-  return {
+  return cardFromElement(
+    el,
     id,
-    lines: slots ? lines.map((l) => ({ ...l, configurable: true })) : lines,
-    vouchers: list(el.getAttribute('data-next-vouchers')),
-    shippingId: n('data-next-shipping-id'),
-    quantity: n('data-next-quantity'),
-    min: n('data-next-min-quantity'),
-    max: n('data-next-max-quantity'),
-  };
+    slots ? lines.map((l) => ({ ...l, configurable: true })) : lines,
+    list(el.getAttribute('data-next-vouchers')),
+  );
 }
+
+export const PROPERTY_FIELD = '[data-next-field^="properties."]';
+
+/** Line properties typed into `data-next-field="properties.<name>"` inputs. */
+export const propertiesOf = (inputs: Iterable<Element>): Record<string, string> =>
+  inputValues(inputs, (i) => i.getAttribute('data-next-field')!.slice('properties.'.length));
 
 const orderPage = () => {
   const params = new URLSearchParams(location.search);
@@ -117,21 +124,12 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
   if (!cards.length) return [];
   const mode: SelectorMode = orderPage() ? 'offer' : selectorEl.hasAttribute('data-next-defer') ? 'select' : 'swap';
   els.forEach((el, optionId) => {
-    const own = [...el.querySelectorAll('[data-next-field^="properties."]')].filter(
-      (i) => !i.closest('[data-next-each]'),
-    );
+    const own = [...el.querySelectorAll(PROPERTY_FIELD)].filter((i) => !i.closest('[data-next-each]'));
     for (const input of own)
       input.addEventListener('change', () => {
         const selector = a.engine.getState().selectors[id];
         if (!selector) return;
-        const properties = Object.fromEntries(
-          own
-            .map((i) => [
-              i.getAttribute('data-next-field')!.slice('properties.'.length),
-              (i as HTMLInputElement).value.trim(),
-            ])
-            .filter(([, v]) => v),
-        );
+        const properties = propertiesOf(own);
         const withProperties = selector.cards.map((c) =>
           c.id === optionId
             ? {
@@ -163,16 +161,6 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
   ];
 }
 
-/** Line properties typed into `data-next-field="properties.<name>"` inside an element. */
-export function propertiesIn(el: Element): Record<string, string> {
-  const found: Record<string, string> = {};
-  for (const input of el.querySelectorAll<HTMLInputElement>('[data-next-field^="properties."]')) {
-    const value = input.value.trim();
-    if (value) found[input.getAttribute('data-next-field')!.slice('properties.'.length)] = value;
-  }
-  return found;
-}
-
 function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
   const optionId = el.getAttribute('data-next-option') || '';
   const lines = parseItems(el.getAttribute('data-next-items') ?? undefined);
@@ -192,7 +180,7 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
     return { ...toggle, option_id: optionId, selected: toggle.in_cart };
   });
   const add = () => {
-    const properties = propertiesIn(el);
+    const properties = propertiesOf(el.querySelectorAll(PROPERTY_FIELD));
     return engine.cart.setGroup(group, {
       lines: [{ ...line, ...(Object.keys(properties).length && { properties }) }],
       vouchers: [],
@@ -204,7 +192,7 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
     line.packageId,
     () => line.quantity,
     add,
-    [...el.querySelectorAll('[data-next-field^="properties."]')],
+    [...el.querySelectorAll(PROPERTY_FIELD)],
     on,
     preselected(el),
   );

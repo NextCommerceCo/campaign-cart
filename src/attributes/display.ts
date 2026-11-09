@@ -1,4 +1,4 @@
-import { matching, setVisible } from '../bindings/dom';
+import { matching, showWhen } from '../bindings/dom';
 import type { Render } from '../bindings/context';
 import { evaluate, parseExpression } from './condition';
 import type { AttributeContext } from './context';
@@ -42,9 +42,7 @@ export function bindShow(root: ParentNode, a: AttributeContext, only?: Set<Eleme
       }
       renders.push(() => {
         const met = evaluate(expression, (path) => a.read(path, el));
-        const visible = attr === 'data-next-show' ? met : !met;
-        setVisible(el, visible);
-        el.hidden = !visible;
+        el.hidden = !showWhen(el, attr, met);
       });
     }
   }

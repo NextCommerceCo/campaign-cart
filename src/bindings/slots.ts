@@ -5,15 +5,11 @@ import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } 
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/format';
 import { cardQuote } from '../engine/values';
-import {
-  applyValues,
-  bindTokens,
-  fillTemplate,
-  ownProperties,
-  pageProperties,
-  selectorIdOf,
-  withAttribute,
-} from './dom';
+import { bundleCardId, ownProperties, pageProperties } from './cards';
+import type { Render } from './context';
+import { applyValues } from './display';
+import { fillTemplate, selectorIdOf, withAttribute } from './dom';
+import { bindTokens } from './tokens';
 
 const SLOT_TOKEN = /\{((?:slot|item|discount)\.\w+)\}/g;
 
@@ -213,11 +209,12 @@ function updateSlot(
 
 function renderStage(
   engine: Engine,
+  offs: Array<() => void>,
   selectorId: string,
   stage: Element,
   template: string,
   cards: Map<string, Element>,
-) {
+): Render {
   let shown = '';
   const rendered: RenderedSlot[] = [];
 
@@ -251,10 +248,12 @@ function renderStage(
   };
 
   for (const input of document.querySelectorAll('[data-next-default-property]')) {
-    input.addEventListener('change', () => {
+    const onChange = () => {
       const card = pickedCard(engine.getState().selectors[selectorId]);
       if (card) rendered.forEach(({ el }, i) => void apply(card, i, { properties: properties(card, el) }));
-    });
+    };
+    input.addEventListener('change', onChange);
+    offs.push(() => input.removeEventListener('change', onChange));
   }
 
   return () => {
@@ -280,7 +279,8 @@ function renderStage(
   };
 }
 
-export function bindSlots(engine: Engine): () => void {
+export function bindSlots(engine: Engine): { render: Render; dispose: () => void } {
+  const offs: Array<() => void> = [];
   const renders = [...document.querySelectorAll('[data-next-bundle-selector]')].flatMap((selectorEl) => {
     const templateId = selectorEl.getAttribute('data-next-bundle-slot-template-id');
     const source = templateId ? document.getElementById(templateId) : null;
@@ -289,15 +289,12 @@ export function bindSlots(engine: Engine): () => void {
     const stage = withAttribute(document, 'data-next-bundle-slots-for', selectorId)[0];
     if (!template || !stage) return [];
     const cards = new Map(
-      [...selectorEl.querySelectorAll('[data-next-bundle-card]')].map((el, i) => [
-        el.getAttribute('data-next-bundle-id') || String(i),
-        el,
-      ]),
+      [...selectorEl.querySelectorAll('[data-next-bundle-card]')].map((el, i) => [bundleCardId(el, i), el]),
     );
-    return [renderStage(engine, selectorId, stage, template, cards)];
+    return [renderStage(engine, offs, selectorId, stage, template, cards)];
   });
   const render = () => renders.forEach((r) => r());
-  engine.subscribe(render);
+  offs.push(engine.subscribe(render));
   render();
-  return render;
+  return { render, dispose: () => offs.forEach((off) => off()) };
 }

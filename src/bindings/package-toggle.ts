@@ -1,8 +1,9 @@
 import type { Engine } from '../engine/engine';
 import { toggleGroup } from '../engine/cart/toggles';
 import type { Package } from '../engine/types';
+import { markedSelected, ownProperties, pageProperties, setState } from './cards';
 import { type BindContext, type Render } from './context';
-import { bindToggle, ownProperties, pageProperties, setState } from './dom';
+import { bindToggle } from './dom';
 
 const ids = (el: Element, attr: string) => (el.getAttribute(attr) ?? '').split(',').map(Number).filter(Boolean);
 
@@ -70,10 +71,10 @@ function bindToggleCard(b: BindContext, el: HTMLElement): Render | undefined {
     add,
     [...el.querySelectorAll('[data-next-property]'), ...document.querySelectorAll('[data-next-default-property]')],
     isOn,
-    el.getAttribute('data-next-selected') === 'true',
+    markedSelected(el),
   );
 
-  if (sync.length || products.length) engine.on('cart.updated', resync);
+  if (sync.length || products.length) b.offs.push(engine.on('cart.updated', resync));
 
   const image = el.querySelector<HTMLImageElement>('img[data-next-toggle-image]');
   return () => {

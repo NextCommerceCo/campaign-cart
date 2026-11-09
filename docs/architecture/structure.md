@@ -133,11 +133,14 @@ src/
                                                 that events carry), selectors.ts (bundle selectors), variants.ts (a package's
                                                 variant choices, for slots, variant pickers and debug), tokens.ts (the cart summary's tokens), toggles.ts, types.ts
   bindings/            boot        DOM, one file per attribute family
-    index.ts                       bindAll: scan once, render on subscribe; loads cart-summary.ts when a bound node has
-                                   [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
-    context.ts                     BindContext (engine, claim, warn)
+    index.ts                       bindAll: scan once, render on subscribe, dispose; loads cart-summary.ts when a bound
+                                   node has [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
+    context.ts                     BindContext (engine, claim, warn, offs: what dispose removes)
     environment.ts                 the page and browser every event's context carries
-    dom.ts                         setText, setVisible, setState, token stamping
+    dom.ts                         what bindings, attributes v2, checkout and order share: selector and toggle registration,
+                                   state classes, showWhen, input values, a card from its element
+    cards.ts                       the 0.4.x card dialect: card ids, data-next-selected, setState, line properties
+    tokens.ts                      template tokens: fillTokens, stamp, bindTokens
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-controls.ts links.ts
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]

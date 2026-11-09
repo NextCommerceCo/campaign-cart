@@ -38,4 +38,18 @@ describe('coupon', () => {
     expect(engine.getState().cart.coupons).toEqual(['SAVE10']);
     expect(input.value).toBe('welcome');
   });
+
+  it('takes the loading class off the button and logs the error when applying the code fails', async () => {
+    const { engine, $ } = await setup(`<div data-next-coupon><input><button>Apply</button></div>`);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = new Error('offline');
+    vi.spyOn(engine.cart, 'applyCoupon').mockRejectedValue(failure);
+    ($('input') as HTMLInputElement).value = 'save10';
+    $('button').click();
+    await flush();
+    expect($('button').classList.contains('next-loading')).toBe(false);
+    expect(engine.log.entries()).toContainEqual(
+      expect.objectContaining({ level: 'error', message: 'applyCoupon failed', data: failure }),
+    );
+  });
 });

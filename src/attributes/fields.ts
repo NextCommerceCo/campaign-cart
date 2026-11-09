@@ -4,6 +4,7 @@ import type { Query } from '../engine/query';
 import type { Render } from '../bindings/context';
 import { matching } from '../bindings/dom';
 import type { AttributeContext } from './context';
+import { PROPERTY_FIELD, propertiesOf } from './options';
 
 type Model = Record<string, unknown>;
 
@@ -119,13 +120,8 @@ function bindProperty(input: HTMLInputElement, a: AttributeContext): void {
     const scope = a.scopeOf(input) as Model | undefined;
     const row = input.closest('[data-next-each] > *');
     if (!row || !scope || scope.slot_index === undefined) return;
-    const properties: Record<string, string> = {};
-    for (const field of row.querySelectorAll<HTMLInputElement>('[data-next-field^="properties."]')) {
-      const value = field.value.trim();
-      if (value) properties[field.getAttribute('data-next-field')!.slice('properties.'.length)] = value;
-    }
     void a.engine.selectors.setSlot(String(scope.selector_id), String(scope.option_id), Number(scope.slot_index), {
-      properties,
+      properties: propertiesOf(row.querySelectorAll(PROPERTY_FIELD)),
     });
   });
 }

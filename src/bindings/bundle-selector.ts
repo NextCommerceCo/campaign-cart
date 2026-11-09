@@ -1,10 +1,12 @@
 import { localeOf } from '../engine/format';
 import { cardQuantity, pickedCard } from '../engine/cart/selectors';
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
-import { type BindContext, type Render } from './context';
-import { registerSelector, selectorIdOf, setState, stamp, withAttribute } from './dom';
 import { discountsOfKind, discountTokens } from '../engine/tokens';
 import { cardQuote, repricing } from '../engine/values';
+import { bundleCardId, markedSelected, setState } from './cards';
+import { type BindContext, type Render } from './context';
+import { cardFromElement, registerSelector, selectorIdOf, withAttribute } from './dom';
+import { stamp } from './tokens';
 
 function parseList(raw: string | null): unknown[] {
   if (!raw) return [];
@@ -90,36 +92,19 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
     selectorEl.querySelectorAll('[data-next-bundle-card]').forEach((el, i) => {
       const lines = parseLines(el.getAttribute('data-next-bundle-items'));
       if (!lines.length) return b.warn(`bundle card ${i} in "${selectorId}" has no data-next-bundle-items`);
-      const id = el.getAttribute('data-next-bundle-id') || String(i);
-      cards.push({
-        id,
-        lines,
-        vouchers: parseCodes(el.getAttribute('data-next-bundle-vouchers')),
-        shippingId: Number(el.getAttribute('data-next-shipping-id')) || undefined,
-        quantity: Number(el.getAttribute('data-next-quantity')) || undefined,
-        min: Number(el.getAttribute('data-next-min-quantity')) || undefined,
-        max: Number(el.getAttribute('data-next-max-quantity')) || undefined,
-      });
+      const id = bundleCardId(el, i);
+      cards.push(cardFromElement(el, id, lines, parseCodes(el.getAttribute('data-next-bundle-vouchers'))));
       els.set(id, el);
       b.cards.set(el, { selectorId, cardId: id });
     });
     if (!cards.length) return;
 
-    registerSelector(
-      b.engine,
-      selectorEl,
-      selectorId,
-      cards,
-      els,
-      modeOf(selectorEl, upsellPage),
-      (el) => el.getAttribute('data-next-selected') === 'true',
-    );
+    registerSelector(b.engine, selectorEl, selectorId, cards, els, modeOf(selectorEl, upsellPage), markedSelected);
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {
       const selector = b.engine.getState().selectors[selectorId];
       selectorEl.setAttribute('data-selected-bundle', selector?.picked ?? '');
-      const { campaign } = b.engine.getState();
       els.forEach((el, id) => {
         setState(el, id === selector?.picked);
         el.classList.toggle('next-loading', !!selector?.quoting);

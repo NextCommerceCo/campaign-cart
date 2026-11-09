@@ -17,6 +17,8 @@ export interface Bindings {
   deferred: Set<Element>;
   /** Whether the page had markup for these bindings when they started. */
   legacy: boolean;
+  /** Stops rendering on engine updates and removes the listeners these bindings added outside the bound elements. */
+  dispose(): void;
 }
 
 const SUMMARY = '[data-next-cart-summary], [data-next-discounts]';
@@ -63,7 +65,7 @@ export function bindAll(
 
   const render = () => renders.forEach((r) => r());
 
-  engine.subscribe(render);
+  context.offs.push(engine.subscribe(render));
   bind(root);
   render();
 
@@ -72,6 +74,7 @@ export function bindAll(
     bind: (node) => bind(node).forEach((r) => r()),
     deferred: context.deferred,
     legacy: renders.length > 0 || !!ready,
+    dispose: () => context.offs.forEach((off) => off()),
     get ready() {
       return ready;
     },

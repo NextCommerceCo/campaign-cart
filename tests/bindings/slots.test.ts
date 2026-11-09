@@ -25,7 +25,7 @@ async function mount(
   });
   await engine.start();
   bindAll(document, engine, () => {});
-  bindSlots(engine);
+  const slotBindings = bindSlots(engine);
   await flush();
   const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
   const slots = () => [
@@ -36,7 +36,7 @@ async function mount(
     el.dispatchEvent(new Event('change', { bubbles: true }));
     await flush();
   };
-  return { engine, $, slots, change };
+  return { engine, $, slots, change, slotBindings };
 }
 
 afterEach(() => {
@@ -44,6 +44,15 @@ afterEach(() => {
 });
 
 describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
+  it('stops drawing slots on an engine update once disposed', async () => {
+    const { engine, slots, slotBindings } = await mount();
+    slotBindings.dispose();
+    await engine.selectors.pick('main', 'buy3');
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 3 }]);
+    expect(slots()).toHaveLength(1);
+  });
+
   it('draws one slot per unit of the picked bundle, from the page template', async () => {
     const { $, slots, engine } = await mount();
     expect(slots()).toHaveLength(1);

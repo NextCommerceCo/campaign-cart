@@ -5,7 +5,7 @@ import { nextUrl } from '../engine/params';
 import type { Query } from '../engine/query';
 import { BindContext, type Render } from '../bindings/context';
 import { bindActions } from './actions';
-import { AttributeContext } from './context';
+import { AttributeContext, type Binder } from './context';
 import { bindEach, bindFor, bindQuery, bindShow } from './display';
 import { bindFields, defineVariants } from './fields';
 import { bindOptions } from './options';
@@ -61,6 +61,8 @@ export function runAction(engine: Engine, name: string, args: unknown[]): Promis
 export interface AttributeBindings {
   render(): void;
   bind(root: ParentNode): void;
+  /** Stops rendering on engine updates and removes the listeners these bindings own. */
+  dispose(): void;
 }
 
 /**
@@ -77,17 +79,12 @@ export function bindAttributes(
 ): AttributeBindings {
   const renders: Render[] = [];
   const render = () => renders.forEach((r) => r());
-  const bindTree = (node: ParentNode, shown?: Set<Element>): Render[] => [
-    ...bindFor(node, a),
-    ...bindOptions(node, a),
-    ...bindEach(node, a),
-    ...bindQuery(node, a),
-    ...bindShow(node, a, shown),
-    ...bindActions(node, a),
-    ...bindFields(node, a),
-  ];
+  const binders: Binder[] = [bindFor, bindOptions, bindEach, bindQuery, bindShow, bindActions, bindFields];
+  const bindTree = (node: ParentNode, shown?: Set<Element>): Render[] =>
+    binders.flatMap((binder) => binder(node, a, shown));
+  const b = new BindContext(engine);
   const a: AttributeContext = new AttributeContext(
-    new BindContext(engine),
+    b,
     query,
     pageActions(engine),
     options.navigate ?? ((url) => location.assign(url)),
@@ -96,10 +93,11 @@ export function bindAttributes(
   );
   defineVariants(query, engine);
   renders.push(...bindTree(root, options.deferred));
-  engine.subscribe(render);
+  b.offs.push(engine.subscribe(render));
   render();
   return {
     render,
+    dispose: () => b.offs.forEach((off) => off()),
     bind: (node) => {
       const added = bindTree(node, options.deferred);
       renders.push(...added);

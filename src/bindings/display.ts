@@ -1,10 +1,43 @@
 import { conditionMet, parseCondition } from '../engine/condition';
-import type { Value } from '../engine/format';
+import type { Engine } from '../engine/engine';
+import { format, localeOf, truthy, type Value } from '../engine/format';
 import { resolve, resolveCard, resolveToggle } from '../engine/values';
 import { type BindContext, type Render } from './context';
+import { setText, setVisible, showWhen } from './dom';
 
 const V2_SCOPE = '[data-next-option],[data-next-for],[data-next-selector],[data-next-each]';
-import { setVisible, writeValue } from './dom';
+const SHOW_HIDE = ['data-next-show', 'data-next-hide'] as const;
+
+export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
+  if (v.held) return;
+  const campaign = engine.getState().campaign;
+  if (v.type === 'bool') return setVisible(el, truthy(v));
+  if (v.type === 'url' && el instanceof HTMLImageElement) {
+    if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
+    return;
+  }
+  setText(el, format(v, campaign?.currency, localeOf(engine.getState()), el.getAttribute('data-next-format')));
+}
+
+/** Writes each `data-next-display` and `data-next-show` / `-hide` under `root` once, `local` paths first. */
+export function applyValues(
+  root: ParentNode,
+  engine: Engine,
+  local: (path: string) => Value | undefined = () => undefined,
+): void {
+  for (const el of root.querySelectorAll<HTMLElement>('[data-next-display]')) {
+    const path = el.getAttribute('data-next-display')!;
+    const v = local(path) ?? resolve(engine, path);
+    if (v) writeValue(el, v, engine);
+  }
+  for (const attr of SHOW_HIDE) {
+    for (const el of root.querySelectorAll<HTMLElement>(`[${attr}]`)) {
+      const condition = parseCondition(el.getAttribute(attr)!);
+      const v = condition && (local(condition.path) ?? resolve(engine, condition.path));
+      if (condition && v && !v.held) showWhen(el, attr, conditionMet(condition, v));
+    }
+  }
+}
 
 const write = (el: HTMLElement, v: Value, b: BindContext) => writeValue(el, v, b.engine);
 
@@ -45,7 +78,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
     });
   });
 
-  for (const attr of ['data-next-show', 'data-next-hide'] as const) {
+  for (const attr of SHOW_HIDE) {
     b.each(root, attr, (el) => {
       const source = el.getAttribute(attr) ?? '';
       const condition = parseCondition(source);
@@ -57,9 +90,7 @@ export function bindDisplay(root: ParentNode, b: BindContext): Render[] {
       renders.push(() => {
         const v = resolve(b.engine, condition.path, ctx);
         if (!v) return b.warn(`unknown path "${condition.path}" in ${attr}`);
-        if (v.held) return;
-        const met = conditionMet(condition, v);
-        setVisible(el, attr === 'data-next-show' ? met : !met);
+        if (!v.held) showWhen(el, attr, conditionMet(condition, v));
       });
     });
   }

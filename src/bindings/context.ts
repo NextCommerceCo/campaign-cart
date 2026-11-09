@@ -10,6 +10,8 @@ export class BindContext {
   readonly deferred = new Set<Element>();
   private bound = new WeakMap<Element, Set<string>>();
   private warned = new Set<string>();
+  /** What `dispose` runs: engine subscriptions and listeners outside the bound elements. */
+  readonly offs: Array<() => void> = [];
 
   constructor(readonly engine: Engine) {}
 

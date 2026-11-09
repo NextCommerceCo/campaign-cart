@@ -8,7 +8,7 @@ const packageIdOf = (el: Element) => {
 export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
   const { engine } = b;
   if (root === document && b.claim(document.documentElement, 'cart-controls')) {
-    document.addEventListener('click', (e) => {
+    const onClick = (e: MouseEvent) => {
       const el = (e.target as Element).closest?.(
         '[data-next-quantity="increase"], [data-next-quantity="decrease"], [data-next-remove-item]',
       );
@@ -24,7 +24,9 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
       else if (el.getAttribute('data-next-quantity') === 'increase')
         void engine.cart.setQuantity(packageId, Math.min(max, current + step));
       else void engine.cart.setQuantity(packageId, Math.max(min, current - step));
-    });
+    };
+    document.addEventListener('click', onClick);
+    b.offs.push(() => document.removeEventListener('click', onClick));
   }
 
   b.each(root, 'data-next-coupon', (el) => {
@@ -35,7 +37,7 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
       const code = input.value.trim();
       if (!code || button?.classList.contains('next-loading')) return;
       button?.classList.add('next-loading');
-      const applied = await engine.cart.applyCoupon(code);
+      const applied = await engine.cart.applyCoupon(code).catch((err) => engine.log.error('applyCoupon failed', err));
       button?.classList.remove('next-loading');
       if (applied && input.value.trim() === code) input.value = '';
       button?.classList.toggle('next-disabled', !input.value.trim());

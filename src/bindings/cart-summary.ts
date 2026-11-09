@@ -2,11 +2,11 @@ import { localeOf } from '../engine/format';
 import { cartTokens, lineTokens } from '../engine/cart/tokens';
 import { discountsOfKind, discountTokens } from '../engine/tokens';
 import type { BindContext, Render } from './context';
-import { applyValues, fillTokens, stamp, tokenValue } from './dom';
+import { applyValues } from './display';
+import { fillTokens, stamp, tokenValue } from './tokens';
 
 function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): void {
-  const { cart, campaign } = b.engine.getState();
-  const s = cart.summary;
+  const s = b.engine.getState().cart.summary;
   root.querySelectorAll<HTMLElement>('[data-next-discounts]').forEach((el) => {
     if (!scoped && (el.closest('[data-next-cart-summary]') || el.closest('[data-next-bundle-card]'))) return;
     const list = discountsOfKind(s, el.getAttribute('data-next-discounts'));

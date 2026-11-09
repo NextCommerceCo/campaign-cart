@@ -367,3 +367,17 @@ describe('attributes v2: actions', () => {
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
   });
 });
+
+describe('attributes v2: dispose', () => {
+  it('stops rendering on an engine update once disposed', async () => {
+    const { engine, bindings, $ } = await mount('<span id="qty" data-next-query="cart.quantity"></span>');
+    await engine.cart.addItem(1);
+    await settle(engine);
+    expect($('#qty').textContent).toBe('1');
+    bindings.dispose();
+    await engine.cart.addItem(1);
+    await settle(engine);
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect($('#qty').textContent).toBe('1');
+  });
+});

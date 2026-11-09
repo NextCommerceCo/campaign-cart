@@ -1,11 +1,7 @@
-import { conditionMet, parseCondition } from '../engine/condition';
-import type { SelectorCard, SelectorMode } from '../engine/cart/types';
+import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { toggleGroup } from '../engine/cart/toggles';
-import type { Engine } from '../engine/engine';
-import { format, localeOf, truthy, type Value } from '../engine/format';
-import type { Tokens } from '../engine/tokens';
-import { resolve } from '../engine/values';
 import { bundleSelectorId } from '../compat/legacy/registry';
+import type { Engine } from '../engine/engine';
 
 const VISIBLE = 0.5;
 
@@ -48,20 +44,12 @@ export const selectorIdOf = (el: Element): string => bundleSelectorId(el);
 export const withAttribute = (root: ParentNode, attr: string, value: string): Element[] =>
   [...root.querySelectorAll(`[${attr}]`)].filter((el) => el.getAttribute(attr) === value);
 
-export function ownProperties(el: Element): Record<string, string> {
-  const inputs = [...el.querySelectorAll<HTMLInputElement>('[data-next-property]')];
-  return Object.fromEntries(
-    inputs.map((i) => [i.getAttribute('data-next-property')!, i.value.trim()]).filter(([, value]) => value),
-  );
-}
-
-export function pageProperties(card?: Element): Record<string, string> {
-  const exclude = (card?.getAttribute('data-next-exclude-property') ?? '').split(',').map((s) => s.trim());
-  if (exclude.includes('*')) return {};
+/** Each input's trimmed value under its name; empty ones are left out. */
+export function inputValues(inputs: Iterable<Element>, nameOf: (input: Element) => string): Record<string, string> {
   const found: Record<string, string> = {};
-  for (const el of document.querySelectorAll<HTMLInputElement>('[data-next-default-property]')) {
-    const name = el.getAttribute('data-next-default-property')!;
-    if (el.value.trim() && !exclude.includes(name)) found[name] = el.value.trim();
+  for (const input of inputs) {
+    const value = (input as HTMLInputElement).value.trim();
+    if (value) found[nameOf(input)] = value;
   }
   return found;
 }
@@ -76,18 +64,37 @@ export function setVisible(el: HTMLElement, visible: boolean): void {
   el.classList.toggle('next-hidden', !visible);
 }
 
-export function setState(el: Element, on: boolean): void {
-  el.classList.toggle('next-selected', on);
-  el.classList.toggle('next-active', on);
-  el.classList.toggle('next-in-cart', on);
-  el.classList.toggle('next-not-in-cart', !on);
-  el.setAttribute('data-next-selected', String(on));
-  el.setAttribute('data-next-active', String(on));
-  el.setAttribute('aria-pressed', String(on));
+/** Shows `el` while `met` for `data-next-show`, while not `met` for `data-next-hide`; returns whether it shows. */
+export function showWhen(el: HTMLElement, attr: 'data-next-show' | 'data-next-hide', met: boolean): boolean {
+  const visible = met === (attr === 'data-next-show');
+  setVisible(el, visible);
+  return visible;
+}
+
+/** The 0.4.x state classes page CSS selects. */
+export function stateClasses(el: Element, selected: boolean, inCart: boolean): void {
+  el.classList.toggle('next-selected', selected);
+  el.classList.toggle('next-active', selected);
+  el.classList.toggle('next-in-cart', inCart);
+  el.classList.toggle('next-not-in-cart', !inCart);
 }
 
 export const isFormControl = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('a, input, select, textarea, label');
+
+/** A selector card: its lines and vouchers as the dialect reads them, the rest from the attributes both share. */
+export function cardFromElement(el: Element, id: string, lines: SelectorLine[], vouchers: string[]): SelectorCard {
+  const n = (attr: string) => Number(el.getAttribute(attr)) || undefined;
+  return {
+    id,
+    lines,
+    vouchers,
+    shippingId: n('data-next-shipping-id'),
+    quantity: n('data-next-quantity'),
+    min: n('data-next-min-quantity'),
+    max: n('data-next-max-quantity'),
+  };
+}
 
 /** A click on a card picks it, the first `selected` card is the page's pick, `view` once half of `el` is on screen. */
 export function registerSelector(
@@ -146,120 +153,4 @@ export function bindToggle(
     const current = engine.getState().cart.groups[group]?.lines[0]?.quantity;
     if (current !== undefined && current !== quantity()) void add();
   };
-}
-
-export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
-  if (v.held) return;
-  const campaign = engine.getState().campaign;
-  if (v.type === 'bool') return setVisible(el, truthy(v));
-  if (v.type === 'url' && el instanceof HTMLImageElement) {
-    if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
-    return;
-  }
-  setText(el, format(v, campaign?.currency, localeOf(engine.getState()), el.getAttribute('data-next-format')));
-}
-
-export const tokenValue =
-  (tokens: Record<string, string>) =>
-  (path: string): Value | undefined => {
-    const raw = tokens[path];
-    if (raw === undefined) return undefined;
-    if (raw === 'true' || raw === 'show') return { type: 'bool', value: true };
-    if (raw === 'false' || raw === 'hide') return { type: 'bool', value: false };
-    return { type: 'text', value: raw };
-  };
-
-export function applyValues(
-  root: ParentNode,
-  engine: Engine,
-  local: (path: string) => Value | undefined = () => undefined,
-): void {
-  for (const el of root.querySelectorAll<HTMLElement>('[data-next-display]')) {
-    const path = el.getAttribute('data-next-display')!;
-    const v = local(path) ?? resolve(engine, path);
-    if (v) writeValue(el, v, engine);
-  }
-  for (const attr of ['data-next-show', 'data-next-hide'] as const) {
-    for (const el of root.querySelectorAll<HTMLElement>(`[${attr}]`)) {
-      const condition = parseCondition(el.getAttribute(attr)!);
-      const v = condition && (local(condition.path) ?? resolve(engine, condition.path));
-      if (!condition || !v || v.held) continue;
-      const met = conditionMet(condition, v);
-      setVisible(el, attr === 'data-next-show' ? met : !met);
-    }
-  }
-}
-
-const TOKEN = /\{([\w.]+)\}/g;
-
-export function fillTokens(root: ParentNode, tokens: Tokens): void {
-  const replace = (text: string) => text.replace(TOKEN, (_, key: string) => tokens[key] ?? '');
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (node.nodeValue?.includes('{')) node.nodeValue = replace(node.nodeValue);
-    } else {
-      for (const attr of [...(node as Element).attributes]) {
-        if (attr.value.includes('{')) attr.value = replace(attr.value);
-      }
-    }
-  }
-}
-
-export function stamp<T>(
-  container: Element,
-  items: T[],
-  tokensOf: (item: T) => Tokens,
-  each?: (el: DocumentFragment, item: T) => void,
-): void {
-  const template = container.querySelector(':scope > template');
-  if (!template) return;
-  container.replaceChildren(template);
-  for (const item of items) {
-    const copy = (template as HTMLTemplateElement).content.cloneNode(true) as DocumentFragment;
-    fillTokens(copy, tokensOf(item));
-    each?.(copy, item);
-    container.append(copy);
-  }
-  container.classList.toggle('next-summary-empty', !items.length);
-  container.classList.toggle('next-summary-has-items', items.length > 0);
-  container.classList.toggle('next-discounts-empty', !items.length);
-  container.classList.toggle('next-discounts-has-items', items.length > 0);
-}
-
-const SLOT_TOKEN = /\{((?:slot|item)\.\w+)\}/g;
-
-/** Binds every `{slot.*}` / `{item.*}` token in `root` once; the returned patch rewrites only what changed. */
-export function bindTokens(root: ParentNode): (values: Tokens) => void {
-  const writes: Array<(values: Tokens) => void> = [];
-  const filled = (raw: string, values: Tokens) => raw.replace(SLOT_TOKEN, (t, key: string) => values[key] ?? t);
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node as Text;
-      const raw = text.data;
-      if (raw.match(SLOT_TOKEN))
-        writes.push((v) => {
-          const next = filled(raw, v);
-          if (text.data !== next) text.data = next;
-        });
-      continue;
-    }
-    const el = node as Element;
-    for (const { name, value: raw } of [...el.attributes]) {
-      if (raw.match(SLOT_TOKEN))
-        writes.push((v) => {
-          const next = filled(raw, v);
-          if (el.getAttribute(name) !== next) el.setAttribute(name, next);
-        });
-    }
-  }
-  const toggles = (['data-next-show', 'data-next-hide'] as const).flatMap((attr) =>
-    [...root.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)].map((node) => {
-      const key = node.getAttribute(attr)!;
-      node.removeAttribute(attr);
-      return (v: Tokens) => setVisible(node, (v[key] === 'show') === (attr === 'data-next-show'));
-    }),
-  );
-  return (values) => [...writes, ...toggles].forEach((write) => write(values));
 }
