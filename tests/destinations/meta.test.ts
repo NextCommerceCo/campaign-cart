@@ -66,6 +66,14 @@ describe('metaEvent', () => {
     });
   });
 
+  it('sends a purchase whose currency is unknown without one, never as USD', () => {
+    const unknown = (type: 'checkout_completed' | 'upsell_completed') => {
+      const e = event(type, { ...(EXAMPLES[type].data as object), currency: undefined });
+      return { ...e, context: { ...e.context, campaign: undefined } } as TrackingEvent;
+    };
+    expect(metaEvent(unknown('checkout_completed'))?.params).not.toHaveProperty('currency');
+  });
+
   it('sends an order line before tax', () => {
     const order = EXAMPLES.checkout_completed.data as { lines: object[] };
     const params = metaEvent(

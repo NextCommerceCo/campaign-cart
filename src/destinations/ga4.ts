@@ -51,7 +51,8 @@ export interface Ga4Purchase extends Ga4Ecommerce {
   /** The tracking event's `event_id`: the order number, or `<ref_id>-US<n>` for an upsell. */
   transaction_id: string;
   value: number;
-  currency: string;
+  /** ISO 4217; left out when neither the order nor the campaign has one. */
+  currency?: string;
   shipping?: number;
   tax?: number;
 }
@@ -206,15 +207,14 @@ export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | unde
         ...base,
         transaction_id: e.event_id,
         value: base.value ?? 0,
-        currency: base.currency ?? 'USD',
         shipping: method?.price === undefined ? undefined : addDollars([method.price, -(method.tax ?? 0)]),
         tax: e.data.tax,
       });
       return { name: 'purchase', params };
     }
     case 'upsell_completed': {
-      const { items, value = 0, currency = 'USD' } = ecommerce(e, packages);
-      return { name: 'purchase', params: { transaction_id: e.event_id, value, currency, items } };
+      const { items, value = 0, currency } = ecommerce(e, packages);
+      return { name: 'purchase', params: defined({ transaction_id: e.event_id, value, currency, items }) };
     }
     case 'product_list_viewed':
       return {

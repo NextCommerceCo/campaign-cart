@@ -77,7 +77,7 @@ export interface MetaEventMap {
    * An order was paid: the order, or one accepted upsell.
    * @see https://developers.facebook.com/docs/meta-pixel/reference#standard-events
    */
-  Purchase: MetaContents & { value: number; currency: string };
+  Purchase: MetaContents & { value: number };
 }
 
 export type MetaName = keyof MetaEventMap;
@@ -134,11 +134,7 @@ export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?
   }
   if (e.event_type === 'checkout_completed' || e.event_type === 'upsell_completed') {
     const order = e.event_type === 'checkout_completed';
-    const params = {
-      ...contents(e, lines, units),
-      value: trackingValue(lines) ?? 0,
-      currency: trackingCurrency(e) ?? 'USD',
-    };
+    const params = { ...contents(e, lines, units), value: trackingValue(lines) ?? 0 };
     const id = order && options.storeName ? `${options.storeName}-${e.data.number ?? e.data.ref_id}` : event_id;
     return { name: 'Purchase', params, event_id: id };
   }

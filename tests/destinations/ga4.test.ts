@@ -97,6 +97,15 @@ describe('ga4Event', () => {
     });
   });
 
+  it('sends a purchase whose currency is unknown without one, never as USD', () => {
+    const unknown = (type: 'checkout_completed' | 'upsell_completed') => {
+      const e = event(type, { ...(EXAMPLES[type].data as object), currency: undefined });
+      return { ...e, context: { ...e.context, campaign: undefined } } as TrackingEvent;
+    };
+    expect(ga4Event(unknown('checkout_completed'))?.params).not.toHaveProperty('currency');
+    expect(ga4Event(unknown('upsell_completed'))?.params).not.toHaveProperty('currency');
+  });
+
   it('sends an order line and shipping before tax', () => {
     const order = EXAMPLES.checkout_completed.data as { lines: object[] };
     const taxed = { ...order.lines[0], tax: 6.12 };
