@@ -147,7 +147,7 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
     const selector = a.query.get(`selector.${id}`) as Model | undefined;
     return priced('', selector, selector?.type === 'offer');
   });
-  registerSelector(a.engine, selectorEl, id, cards, els, mode, preselected);
+  registerSelector(a.b, selectorEl, id, cards, els, mode, preselected);
   return [
     ...(mode === 'offer' ? [announceOffer(selectorEl, id, a)] : []),
     () => {
@@ -187,7 +187,7 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
     });
   };
   bindToggle(
-    engine,
+    a.b,
     el,
     line.packageId,
     () => line.quantity,
@@ -210,11 +210,10 @@ function announceOffer(el: Element, selectorId: string, a: AttributeContext): Re
   let shown = false;
   let onScreen = false;
   let viewed = false;
-  onceVisible(el, () => (onScreen = true));
+  a.b.offs.push(onceVisible(el, () => (onScreen = true)));
   return () => {
-    const { order, selectors } = a.engine.getState();
     const actions = a.engine.order;
-    if (!actions || !order?.order || selectors[selectorId]?.quoting) return;
+    if (!actions || !a.engine.getState().order?.order || a.engine.selectors.get(selectorId)?.quoting) return;
     const spec = { selectorId };
     if (!shown) {
       shown = true;

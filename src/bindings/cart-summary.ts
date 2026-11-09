@@ -1,9 +1,19 @@
-import { localeOf } from '../engine/format';
+import { localeOf, type Value } from '../engine/format';
 import { cartTokens, lineTokens } from '../engine/cart/tokens';
-import { discountsOfKind, discountTokens } from '../engine/tokens';
+import { discountsOfKind, discountTokens, type Tokens } from '../engine/tokens';
 import type { BindContext, Render } from './context';
 import { applyValues } from './display';
-import { fillTokens, stamp, tokenValue } from './tokens';
+import { fillTokens, stamp } from './tokens';
+
+const tokenValue =
+  (tokens: Tokens) =>
+  (path: string): Value | undefined => {
+    const raw = tokens[path];
+    if (raw === undefined) return undefined;
+    if (raw === 'true' || raw === 'show') return { type: 'bool', value: true };
+    if (raw === 'false' || raw === 'hide') return { type: 'bool', value: false };
+    return { type: 'text', value: raw };
+  };
 
 function renderDiscounts(root: ParentNode, b: BindContext, scoped: boolean): void {
   const s = b.engine.getState().cart.summary;

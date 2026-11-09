@@ -3,7 +3,7 @@ import type { Engine } from '../engine/engine';
 import { format, localeOf, truthy, type Value } from '../engine/format';
 import { resolve, resolveCard, resolveToggle } from '../engine/values';
 import { type BindContext, type Render } from './context';
-import { setText, setVisible, showWhen } from './dom';
+import { setSource, setText, setVisible, showWhen } from './dom';
 
 const V2_SCOPE = '[data-next-option],[data-next-for],[data-next-selector],[data-next-each]';
 const SHOW_HIDE = ['data-next-show', 'data-next-hide'] as const;
@@ -12,10 +12,7 @@ export function writeValue(el: HTMLElement, v: Value, engine: Engine): void {
   if (v.held) return;
   const campaign = engine.getState().campaign;
   if (v.type === 'bool') return setVisible(el, truthy(v));
-  if (v.type === 'url' && el instanceof HTMLImageElement) {
-    if (v.value && el.getAttribute('src') !== v.value) el.src = String(v.value);
-    return;
-  }
+  if (v.type === 'url' && el instanceof HTMLImageElement) return setSource(el, v.value);
   setText(el, format(v, campaign?.currency, localeOf(engine.getState()), el.getAttribute('data-next-format')));
 }
 

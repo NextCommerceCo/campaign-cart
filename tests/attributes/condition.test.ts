@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate, parseExpression, pathsOf } from '../../src/attributes/condition';
+import { conditionMet, parseCondition } from '../../src/engine/condition';
 
 const values: Record<string, unknown> = {
   'cart.total': 80,
@@ -50,5 +51,18 @@ describe('conditions', () => {
     expect(parseExpression('(cart.total')).toBeNull();
     expect(parseExpression('')).toBeNull();
     expect(pathsOf(parseExpression('a > b.c && !d || 3 == "x"')!)).toEqual(['a', 'b.c', 'd']);
+  });
+
+  it('reads every 0.4.x condition as the 0.4.x bindings do', () => {
+    const sources = ['cart.hasItems', '!cart.hasItems', 'cart.hasItems()', "param.banner=='n'", 'param.banner != off'];
+    for (const source of sources) {
+      for (const value of [undefined, '', 'n', 'off', 0, 1, '0', 'false', true, false]) {
+        const v1 = conditionMet(parseCondition(source)!, { type: 'text', value });
+        expect(
+          evaluate(parseExpression(source)!, () => value),
+          `${source} with ${String(value)}`,
+        ).toBe(v1);
+      }
+    }
   });
 });

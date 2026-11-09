@@ -18,7 +18,7 @@ export function bindPromotions(root: ParentNode, b: BindContext): Render[] {
   b.each(root, 'data-next-promotion', (el) => {
     if (!el.getAttribute('data-next-promotion')) return b.warn('data-next-promotion needs an id');
     el.addEventListener('click', () => events.emit('promotion.clicked', promotionOf(el)));
-    onceVisible(el, () => events.emit('promotion.viewed', promotionOf(el)));
+    b.offs.push(onceVisible(el, () => events.emit('promotion.viewed', promotionOf(el))));
   });
   return [];
 }

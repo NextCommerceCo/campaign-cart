@@ -15,6 +15,12 @@ export class BindContext {
 
   constructor(readonly engine: Engine) {}
 
+  /** Adds a listener that `dispose` removes. */
+  listen<E extends Event>(target: EventTarget, type: string, fn: (e: E) => void): void {
+    target.addEventListener(type, fn as EventListener);
+    this.offs.push(() => target.removeEventListener(type, fn as EventListener));
+  }
+
   claim(el: Element, attr: string): boolean {
     const attrs = this.bound.get(el) ?? new Set<string>();
     if (attrs.has(attr)) return false;

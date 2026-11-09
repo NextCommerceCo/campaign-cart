@@ -116,7 +116,8 @@ src/
                                                 context.ts the envelope every event carries; bus.ts the EventMap and the bus
     api.ts storage.ts                           the API (also maps order errors: one request less per lazy chunk) and storage
     values.ts format.ts tokens.ts condition.ts  display paths, value formatting (localeOf: the page's language over the campaign's),
-                                                template tokens, conditions
+                                                template tokens, the 0.4.x condition parser and compare (the one meaning of
+                                                == != > < >= <=)
     texts.ts                                    texts by key: i18n-rules' /v1/locales (once per language), the page's translations
     flow.ts                                     latestWins (a newer run drops the older) and serialize (one at a time)
     query.ts                                    next.query / data-next-query: paths over the objects events carry, fields a page defines;
@@ -137,12 +138,13 @@ src/
   bindings/            boot        DOM, one file per attribute family
     index.ts                       bindAll: scan once, render on subscribe, dispose; loads cart-summary.ts when a bound
                                    node has [data-next-cart-summary] or [data-next-discounts] outside a card (`ready` settles)
-    context.ts                     BindContext (engine, claim, warn, offs: what dispose removes)
+    context.ts                     BindContext (engine, claim, warn, listen, offs: what dispose removes)
     environment.ts                 the page and browser every event's context carries
     dom.ts                         what bindings, attributes v2, checkout and order share: selector and toggle registration,
-                                   state classes, showWhen, input values, a card from its element
+                                   state classes, showWhen, input values, a card from its element, the bundle selector
+                                   id, the one template token pattern and fill, image sources
     cards.ts                       the 0.4.x card dialect: card ids, data-next-selected, setState, line properties
-    tokens.ts                      template tokens: fillTokens, stamp, bindTokens
+    tokens.ts                      fillTokens, stamp, eachTokenText (the one walk over template text)
     display.ts bundle-selector.ts package-toggle.ts add-to-cart.ts
     cart-controls.ts links.ts
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
@@ -152,7 +154,8 @@ src/
     index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
     context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
     display.ts                     data-next-for, -query, -show / -hide, -each
-    condition.ts value.ts          the condition grammar (&&, ||, > <); a value written by its field's type or data-next-format
+    condition.ts value.ts          the condition grammar (&&, ||, > <) on engine/condition's compare; a value written by its
+                                   field's type or data-next-format
     options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
     actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
     fields.ts                      data-next-field outside a checkout: variants.<code> pickers, a slot's properties
@@ -267,7 +270,7 @@ src/
 | `attributes/*`            | `engine/*`, `attributes/*`, `bindings/context.ts`, `bindings/dom.ts`                                     |
 | `destinations/*`          | `engine/*`                                                                                               |
 | `debug/*`                 | `engine/*`, `debug/*`, `vendor/tsugi/tsugi.css`; `vendor/tsugi/payment-icons.css` only via `import()`    |
-| `compat/*`                | `engine/*`, `compat/*`, `checkout/form/names.ts`, `order/upsell.ts`                                      |
+| `compat/*`                | `engine/*`, `compat/*`, `bindings/dom.ts`, `checkout/form/names.ts`, `order/upsell.ts`                   |
 | `boot.ts`                 | `engine/*` (boot files), `bindings/*`, `compat/legacy/*`; lazy chunks only via `import()`                |
 | `loader.ts`               | `config.ts`, `compat/config.ts`; `boot.ts` only via `import()`                                           |
 | `config.ts`               | `compat/config.ts`                                                                                       |

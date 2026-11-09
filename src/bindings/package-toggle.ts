@@ -64,7 +64,7 @@ function bindToggleCard(b: BindContext, el: HTMLElement): Render | undefined {
     });
   };
   const resync = bindToggle(
-    engine,
+    b,
     el,
     packageId,
     quantity,

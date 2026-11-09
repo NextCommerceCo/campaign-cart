@@ -43,7 +43,7 @@ const ALLOWED: Record<string, string[]> = {
   attributes: ['engine', 'attributes', 'bindings/context', 'bindings/dom'],
   destinations: ['engine'],
   debug: ['engine', '../vendor/tsugi'],
-  compat: ['engine', 'checkout/form/names', 'order/upsell'],
+  compat: ['engine', 'bindings/dom', 'checkout/form/names', 'order/upsell'],
   boot: ['engine', 'bindings', 'compat/legacy'],
   loader: ['config', 'compat/config'],
   config: ['compat/config'],
@@ -175,7 +175,8 @@ describe('architecture', () => {
   });
 
   it('the DOM layers read selectors through engine.selectors, not raw state', () => {
-    const raw = sources.filter((s) => !headless(s.path) && /getState\(\)\.selectors\b/.test(s.code)).map((s) => s.path);
+    const reads = /getState\(\)\.selectors\b/;
+    const raw = sources.filter((s) => !headless(s.path) && reads.test(s.code)).map((s) => s.path);
     expect(raw).toEqual([]);
   });
 

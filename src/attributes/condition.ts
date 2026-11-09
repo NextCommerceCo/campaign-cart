@@ -1,3 +1,4 @@
+import { compare, type CompareOp } from '../engine/condition';
 import { truthyValue } from '../engine/format';
 
 /** A `data-next-show` condition, parsed once: paths, literals, `!`, `== != > < >= <=`, `&&`, `||`, parentheses. After `==` and `!=` a bare word is text (`param.banner == off`), as in 0.4.x. */
@@ -5,22 +6,22 @@ export type Expression =
   | { kind: 'path'; path: string }
   | { kind: 'literal'; value: string | number | boolean }
   | { kind: 'not'; operand: Expression }
-  | { kind: 'compare'; op: '==' | '!=' | '>' | '<' | '>=' | '<='; left: Expression; right: Expression }
+  | { kind: 'compare'; op: CompareOp; left: Expression; right: Expression }
   | { kind: 'and' | 'or'; left: Expression; right: Expression };
 
-const TOKEN = /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[A-Za-z_][\w.-]*|[\w.]+)/y;
+const LEXEME = /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[A-Za-z_][\w.-]*|[\w.]+)/y;
 
 function tokenize(source: string): string[] | null {
   const tokens: string[] = [];
-  TOKEN.lastIndex = 0;
+  LEXEME.lastIndex = 0;
   let index = 0;
   while (index < source.length) {
     if (!source.slice(index).trim()) break;
-    TOKEN.lastIndex = index;
-    const m = TOKEN.exec(source);
+    LEXEME.lastIndex = index;
+    const m = LEXEME.exec(source);
     if (!m) return null;
     tokens.push(m[1]!);
-    index = TOKEN.lastIndex;
+    index = LEXEME.lastIndex;
   }
   return tokens;
 }
@@ -60,7 +61,7 @@ export function parseExpression(source: string): Expression | null {
     const bare = (op === '==' || op === '!=') && next !== undefined && /^[A-Za-z_][\w-]*$/.test(next);
     const right =
       bare && !['true', 'false'].includes(next!) ? (at++, { kind: 'literal' as const, value: next! }) : operand();
-    return right && { kind: 'compare', op: op as '==', left, right };
+    return right && { kind: 'compare', op: op as CompareOp, left, right };
   };
   const and = (): Expression | null => {
     let left = compare();
@@ -98,17 +99,6 @@ export function pathsOf(e: Expression): string[] {
   }
 }
 
-function compareValues(op: string, a: unknown, b: unknown): boolean {
-  if (op === '==' || op === '!=') {
-    const same = String(a ?? '') === String(b ?? '');
-    return op === '==' ? same : !same;
-  }
-  const x = Number(a);
-  const y = Number(b);
-  if (a === undefined || a === null || Number.isNaN(x) || Number.isNaN(y)) return false;
-  return op === '>' ? x > y : op === '<' ? x < y : op === '>=' ? x >= y : x <= y;
-}
-
 function value(e: Expression, read: (path: string) => unknown): unknown {
   switch (e.kind) {
     case 'path':
@@ -130,7 +120,7 @@ export function evaluate(e: Expression, read: (path: string) => unknown): boolea
     case 'not':
       return !evaluate(e.operand, read);
     case 'compare':
-      return compareValues(e.op, value(e.left, read), value(e.right, read));
+      return compare(e.op, value(e.left, read), value(e.right, read));
     case 'and':
       return evaluate(e.left, read) && evaluate(e.right, read);
     case 'or':

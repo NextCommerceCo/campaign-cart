@@ -1,7 +1,8 @@
 import type { Engine } from '../engine/engine';
 import type { Upsell } from '../engine/events/upsells';
 import { ACCEPT_WORDS, NEXT_URL_ATTRS } from '../order/upsell';
-import { addLegacyEvents, legacyEvent, legacyFire, bundleSelectorId } from './legacy/registry';
+import { selectorIdOf } from '../bindings/dom';
+import { addLegacyEvents, legacyEvent, legacyFire } from './legacy/registry';
 
 /** @deprecated `data-next-bundle-selector-id` on `[data-next-upsell]`. Put the `[data-next-bundle-selector]` inside the offer. */
 export const legacyOfferSelector = (offer: Element) => offer.getAttribute('data-next-bundle-selector-id') ?? undefined;
@@ -57,7 +58,7 @@ const ORDER_EVENTS = {
 function packageOf(engine: Engine, offer: Element): number {
   const own = Number(offer.getAttribute('data-next-package-id'));
   const box = offer.querySelector('[data-next-bundle-selector]');
-  const id = box ? bundleSelectorId(box) : legacyOfferSelector(offer);
+  const id = box ? selectorIdOf(box) : legacyOfferSelector(offer);
   return own || ((id ? engine.selectors.picked(id) : undefined)?.lines[0]?.packageId ?? 0);
 }
 

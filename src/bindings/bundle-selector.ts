@@ -52,7 +52,7 @@ function bindStepper(b: BindContext, selectorId: string, els: Map<string, Elemen
   const cardOf = (el: Element) => [...els].find(([, card]) => card.contains(el))?.[0];
 
   for (const { el, dir } of controls) {
-    el.addEventListener('click', async (e) => {
+    b.listen(el, 'click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const card = cardOf(el);
@@ -98,7 +98,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
     });
     if (!cards.length) return;
 
-    registerSelector(b.engine, selectorEl, selectorId, cards, els, modeOf(selectorEl, upsellPage), markedSelected);
+    registerSelector(b, selectorEl, selectorId, cards, els, modeOf(selectorEl, upsellPage), markedSelected);
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {

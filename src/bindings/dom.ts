@@ -1,13 +1,12 @@
 import type { SelectorCard, SelectorLine, SelectorMode } from '../engine/cart/types';
 import { toggleGroup } from '../engine/cart/toggles';
-import { bundleSelectorId } from '../compat/legacy/registry';
-import type { Engine } from '../engine/engine';
+import type { BindContext } from './context';
 
 const VISIBLE = 0.5;
 
-/** Calls `fn` once, when half of `el` is on screen; at once where the browser cannot tell. */
-export function onceVisible(el: Element, fn: () => void): void {
-  if (typeof IntersectionObserver === 'undefined') return fn();
+/** Calls `fn` once, when half of `el` is on screen; at once where the browser cannot tell. Returns what stops watching. */
+export function onceVisible(el: Element, fn: () => void): () => void {
+  if (typeof IntersectionObserver === 'undefined') return (fn(), () => {});
   const observer = new IntersectionObserver(
     (entries) => {
       if (!entries.some((e) => e.intersectionRatio >= VISIBLE)) return;
@@ -17,6 +16,7 @@ export function onceVisible(el: Element, fn: () => void): void {
     { threshold: VISIBLE },
   );
   observer.observe(el);
+  return () => observer.disconnect();
 }
 
 /** The elements under `root` matching `selector`, `root` first when it matches too. */
@@ -34,11 +34,26 @@ const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;
 
 export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c]!);
 
-/** An HTML template with each `{key}` that `pattern` captures replaced by its escaped value; unknown keys stay. */
-export const fillTemplate = (html: string, values: Record<string, string>, pattern: RegExp): string =>
-  html.replace(pattern, (raw, key: string) => (key in values ? escapeHtml(values[key]!) : raw));
+/** A template token: `{key}`, `{item.price}`, `{slot.index}`, `{discount.name}`. */
+const TOKEN = /\{([\w.]+)\}/g;
 
-export const selectorIdOf = (el: Element): string => bundleSelectorId(el);
+/** `text` with each token's value (through `as`); an unknown key stays when `keep`, else goes. */
+export const fill = (
+  text: string,
+  values: Record<string, string>,
+  keep?: boolean,
+  as: (value: string) => string = String,
+  pattern = TOKEN,
+): string =>
+  text.replace(pattern, (raw, key: string) => (values[key] === undefined ? (keep ? raw : '') : as(values[key])));
+
+/** An HTML template with each token replaced by its escaped value; unknown keys stay. */
+export const fillTemplate = (html: string, values: Record<string, string>, pattern?: RegExp): string =>
+  fill(html, values, true, escapeHtml, pattern);
+
+/** A bundle selector's id: `data-next-selector-id`, else the deprecated `data-next-id`, else `default`. */
+export const selectorIdOf = (el: Element): string =>
+  el.getAttribute('data-next-selector-id') || el.getAttribute('data-next-id') || 'default';
 
 /** The elements whose `attr` is exactly `value`, whatever characters it has. */
 export const withAttribute = (root: ParentNode, attr: string, value: string): Element[] =>
@@ -52,6 +67,12 @@ export function inputValues(inputs: Iterable<Element>, nameOf: (input: Element) 
     if (value) found[nameOf(input)] = value;
   }
   return found;
+}
+
+/** Points an image, or a `<source>`'s srcset, at `src` when it is a new, non-empty address. */
+export function setSource(el: HTMLImageElement | HTMLSourceElement, src: unknown): void {
+  const attr = el instanceof HTMLSourceElement ? 'srcset' : 'src';
+  if (src && el.getAttribute(attr) !== src) el.setAttribute(attr, String(src));
 }
 
 export function setText(el: Element, text: string): void {
@@ -98,7 +119,7 @@ export function cardFromElement(el: Element, id: string, lines: SelectorLine[], 
 
 /** A click on a card picks it, the first `selected` card is the page's pick, `view` once half of `el` is on screen. */
 export function registerSelector(
-  engine: Engine,
+  b: BindContext,
   el: Element,
   id: string,
   cards: SelectorCard[],
@@ -106,6 +127,7 @@ export function registerSelector(
   mode: SelectorMode,
   selected: (card: Element) => boolean,
 ): void {
+  const { engine } = b;
   els.forEach((card, cardId) =>
     card.addEventListener('click', (e) => {
       if (!isFormControl(e.target)) void engine.selectors.pick(id, cardId);
@@ -113,7 +135,7 @@ export function registerSelector(
   );
   const preferred = [...els].find(([, card]) => selected(card))?.[0];
   void engine.selectors.register(id, cards, mode, preferred);
-  onceVisible(el, () => engine.selectors.view(id));
+  b.offs.push(onceVisible(el, () => engine.selectors.view(id)));
 }
 
 /**
@@ -122,7 +144,7 @@ export function registerSelector(
  * Returns a resync for a quantity that follows the cart: the preselect retried, a changed quantity added.
  */
 export function bindToggle(
-  engine: Engine,
+  b: BindContext,
   el: Element,
   packageId: number,
   quantity: () => number,
@@ -131,6 +153,7 @@ export function bindToggle(
   on: () => boolean,
   selected: boolean,
 ): () => void {
+  const { engine } = b;
   const group = toggleGroup(packageId);
   let preselected = selected && !engine.getState().cart.dismissed.includes(group);
   const addPreselected = () => {
@@ -139,9 +162,8 @@ export function bindToggle(
     void add();
   };
   addPreselected();
-  onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1));
-  for (const input of inputs)
-    input.addEventListener('change', () => engine.getState().cart.groups[group] && void add());
+  b.offs.push(onceVisible(el, () => engine.toggles.view(packageId, quantity() || 1)));
+  for (const input of inputs) b.listen(input, 'change', () => engine.getState().cart.groups[group] && void add());
   el.addEventListener('click', (e) => {
     if (isFormControl(e.target)) return;
     if (!on()) void add();

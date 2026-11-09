@@ -4,6 +4,7 @@ import { bindAll } from '../../src/bindings';
 import { Query } from '../../src/engine/query';
 import { heldApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
+import { FakeObserver } from '../bindings/observer';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -35,6 +36,7 @@ describe('attributes v2: reading values', () => {
       <span id="total" data-next-query="cart.total" data-next-empty="…"></span>
       <span id="qty" data-next-query="cart.quantity"></span>
       <img id="img" data-next-query="package.2.image" alt="">
+      <picture><source id="source" data-next-query="package.2.image"></picture>
       <a id="link" data-next-query="param.next">go</a>
       <input id="input" data-next-query="package.2.price">
       <span id="pct" data-next-query="cart.discount_percentage"></span>
@@ -47,6 +49,7 @@ describe('attributes v2: reading values', () => {
     expect($('#total').textContent).toBe('$98.00');
     expect($('#qty').textContent).toBe('2');
     expect($('#img').getAttribute('src')).toBe('https://cdn.test/2.png');
+    expect($('#source').getAttribute('srcset')).toBe('https://cdn.test/2.png');
     expect($('#link').getAttribute('href')).toBe('https://shop.test/n');
     expect(($('#input') as HTMLInputElement).value).toBe('$89.00');
     expect($('#pct').textContent).toBe('0%');
@@ -379,5 +382,17 @@ describe('attributes v2: dispose', () => {
     await settle(engine);
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
     expect($('#qty').textContent).toBe('1');
+  });
+
+  it('stops watching its selectors and bumps come on screen once disposed', async () => {
+    FakeObserver.all = [];
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+    const { bindings } = await mount(`
+      <div data-next-selector="main"><div data-next-option="one" data-next-items="1"></div></div>
+      <div data-next-option="protect" data-next-items="9"></div>`);
+    expect(FakeObserver.all.filter((o) => o.targets.size)).toHaveLength(2);
+    bindings.dispose();
+    expect(FakeObserver.all.filter((o) => o.targets.size)).toEqual([]);
+    vi.unstubAllGlobals();
   });
 });

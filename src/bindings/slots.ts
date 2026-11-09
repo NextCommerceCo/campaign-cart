@@ -8,12 +8,24 @@ import { cardQuote } from '../engine/values';
 import { bundleCardId, ownProperties, pageProperties } from './cards';
 import type { Render } from './context';
 import { applyValues } from './display';
-import { fillTemplate, selectorIdOf, withAttribute } from './dom';
-import { bindTokens } from './tokens';
-
-const SLOT_TOKEN = /\{((?:slot|item|discount)\.\w+)\}/g;
+import { fill, fillTemplate, selectorIdOf, showWhen, withAttribute } from './dom';
+import { eachTokenText } from './tokens';
 
 type Values = Record<string, string>;
+
+/** Binds every token in `root` once; the returned patch rewrites only what changed, leaving unknown tokens. */
+function bindTokens(root: ParentNode): (values: Values) => void {
+  const writes: Array<(values: Values) => void> = [];
+  eachTokenText(root, (raw, write) => writes.push((v) => write(fill(raw, v, true))));
+  const toggles = (['data-next-show', 'data-next-hide'] as const).flatMap((attr) =>
+    [...root.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)].map((node) => {
+      const key = node.getAttribute(attr)!;
+      node.removeAttribute(attr);
+      return (v: Values) => void showWhen(node, attr, v[key] === 'show');
+    }),
+  );
+  return (values) => [...writes, ...toggles].forEach((write) => write(values));
+}
 
 function priceValues(engine: Engine, pkg: Package | undefined, line?: SummaryLine): Values {
   const money = (c: number) => formatCents(c, engine.getState());
@@ -142,26 +154,21 @@ function slotValues(
 function discountHtml(engine: Engine, tpl: string, found: SummaryDiscount[]): string {
   return found
     .map((d) =>
-      fillTemplate(
-        tpl,
-        {
-          'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
-          'discount.name': d.name ?? '',
-          'discount.amount': format(
-            { type: 'money', value: dollars(d.amount) },
-            engine.getState().campaign?.currency,
-            localeOf(engine.getState()),
-          ),
-        },
-        SLOT_TOKEN,
-      ),
+      fillTemplate(tpl, {
+        'discount.percentage': discountPercent(d.percentage, localeOf(engine.getState())),
+        'discount.name': d.name ?? '',
+        'discount.amount': format(
+          { type: 'money', value: dollars(d.amount) },
+          engine.getState().campaign?.currency,
+          localeOf(engine.getState()),
+        ),
+      }),
     )
     .join('');
 }
 
 function refreshSlot(engine: Engine, selectorId: string, { el, slot, boxes }: RenderedSlot): void {
-  const { cart, selectors } = engine.getState();
-  const pending = cart.calculating || !!selectors[selectorId]?.quoting;
+  const pending = engine.getState().cart.calculating || !!engine.selectors.get(selectorId)?.quoting;
   for (const entry of boxes) {
     const { box, tpl } = entry;
     const found = discounts(engine, slot.packageId, box.getAttribute('data-next-discounts') ?? 'offer', pending);

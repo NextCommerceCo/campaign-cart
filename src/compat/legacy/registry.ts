@@ -5,10 +5,6 @@ import type { Selector } from '../../engine/events/selectors';
 import type { State } from '../../engine/types';
 import type { WidgetEvents } from '../widgets';
 
-/** A 0.4.x bundle selector's id: `data-next-selector-id`, else the deprecated `data-next-id`, else `default`. */
-export const bundleSelectorId = (el: Element): string =>
-  el.getAttribute('data-next-selector-id') || el.getAttribute('data-next-id') || 'default';
-
 export type From<K extends EventName> = { [N in K]: EngineEvent<N> }[K];
 
 /** The state a 0.4.x payload is made from, and the package each selector had picked before its latest pick. */

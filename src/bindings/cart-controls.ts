@@ -25,8 +25,7 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
         void engine.cart.setQuantity(packageId, Math.min(max, current + step));
       else void engine.cart.setQuantity(packageId, Math.max(min, current - step));
     };
-    document.addEventListener('click', onClick);
-    b.offs.push(() => document.removeEventListener('click', onClick));
+    b.listen(document, 'click', onClick);
   }
 
   b.each(root, 'data-next-coupon', (el) => {

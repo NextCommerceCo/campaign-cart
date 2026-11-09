@@ -1,31 +1,25 @@
-import type { Value } from '../engine/format';
 import type { Tokens } from '../engine/tokens';
-import { showWhen } from './dom';
+import { fill } from './dom';
 
-export const tokenValue =
-  (tokens: Record<string, string>) =>
-  (path: string): Value | undefined => {
-    const raw = tokens[path];
-    if (raw === undefined) return undefined;
-    if (raw === 'true' || raw === 'show') return { type: 'bool', value: true };
-    if (raw === 'false' || raw === 'hide') return { type: 'bool', value: false };
-    return { type: 'text', value: raw };
-  };
-
-const TOKEN = /\{([\w.]+)\}/g;
-
-export function fillTokens(root: ParentNode, tokens: Tokens): void {
-  const replace = (text: string) => text.replace(TOKEN, (_, key: string) => tokens[key] ?? '');
+/** Calls `found` with each text and attribute under `root` that has a `{`, and a write that touches only a change. */
+export function eachTokenText(root: ParentNode, found: (raw: string, write: (text: string) => void) => void): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (node.nodeType === Node.TEXT_NODE) {
-      if (node.nodeValue?.includes('{')) node.nodeValue = replace(node.nodeValue);
-    } else {
-      for (const attr of [...(node as Element).attributes]) {
-        if (attr.value.includes('{')) attr.value = replace(attr.value);
-      }
+      const text = node as Text;
+      if (text.data.includes('{')) found(text.data, (next) => void (text.data !== next && (text.data = next)));
+      continue;
+    }
+    const el = node as Element;
+    for (const { name, value } of [...el.attributes]) {
+      if (value.includes('{'))
+        found(value, (next) => void (el.getAttribute(name) !== next && el.setAttribute(name, next)));
     }
   }
+}
+
+export function fillTokens(root: ParentNode, tokens: Tokens): void {
+  eachTokenText(root, (raw, write) => write(fill(raw, tokens)));
 }
 
 export function stamp<T>(
@@ -47,41 +41,4 @@ export function stamp<T>(
   container.classList.toggle('next-summary-has-items', items.length > 0);
   container.classList.toggle('next-discounts-empty', !items.length);
   container.classList.toggle('next-discounts-has-items', items.length > 0);
-}
-
-const SLOT_TOKEN = /\{((?:slot|item)\.\w+)\}/g;
-
-/** Binds every `{slot.*}` / `{item.*}` token in `root` once; the returned patch rewrites only what changed. */
-export function bindTokens(root: ParentNode): (values: Tokens) => void {
-  const writes: Array<(values: Tokens) => void> = [];
-  const filled = (raw: string, values: Tokens) => raw.replace(SLOT_TOKEN, (t, key: string) => values[key] ?? t);
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node as Text;
-      const raw = text.data;
-      if (raw.match(SLOT_TOKEN))
-        writes.push((v) => {
-          const next = filled(raw, v);
-          if (text.data !== next) text.data = next;
-        });
-      continue;
-    }
-    const el = node as Element;
-    for (const { name, value: raw } of [...el.attributes]) {
-      if (raw.match(SLOT_TOKEN))
-        writes.push((v) => {
-          const next = filled(raw, v);
-          if (el.getAttribute(name) !== next) el.setAttribute(name, next);
-        });
-    }
-  }
-  const toggles = (['data-next-show', 'data-next-hide'] as const).flatMap((attr) =>
-    [...root.querySelectorAll<HTMLElement>(`[${attr}^="item."]`)].map((node) => {
-      const key = node.getAttribute(attr)!;
-      node.removeAttribute(attr);
-      return (v: Tokens) => void showWhen(node, attr, v[key] === 'show');
-    }),
-  );
-  return (values) => [...writes, ...toggles].forEach((write) => write(values));
 }

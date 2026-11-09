@@ -1,3 +1,4 @@
+import { setSource } from '../bindings/dom';
 import type { Engine } from '../engine/engine';
 import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/format';
 
@@ -75,12 +76,8 @@ export function display(field: string, value: unknown, engine: Engine, override?
 export function write(el: HTMLElement, field: string, value: unknown, engine: Engine, override?: string | null): void {
   const empty = el.getAttribute('data-next-empty') ?? '';
   const text = display(field, value, engine, override);
-  if (el instanceof HTMLImageElement || el instanceof HTMLSourceElement) {
-    const src = typeof value === 'string' ? value : '';
-    const attr = el instanceof HTMLSourceElement ? 'srcset' : 'src';
-    if (src && el.getAttribute(attr) !== src) el.setAttribute(attr, src);
-    return;
-  }
+  if (el instanceof HTMLImageElement || el instanceof HTMLSourceElement)
+    return setSource(el, typeof value === 'string' && value);
   if (el instanceof HTMLAnchorElement) {
     if (typeof value === 'string' && value && el.getAttribute('href') !== value) el.setAttribute('href', value);
     return;
