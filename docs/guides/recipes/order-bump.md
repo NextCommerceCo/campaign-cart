@@ -16,24 +16,25 @@ ticks it, the next click takes it out.
   <button data-next-option="two" data-next-items="1x2">2 pairs</button>
 </div>
 
-<button type="button" class="bump" data-next-option="protect" data-next-items="9">
-  <span class="box"></span>
+<label class="bump" data-next-option="protect" data-next-items="9">
+  <input type="checkbox" />
   Add a protection plan for <span data-next-query="price"></span>
-</button>
+</label>
 
 <p data-next-show="selector.protect.in_cart">Your earbuds are protected.</p>
 ```
 
 An option outside any selector is a bump of one package (`"9"`, or `"9x2"` for two). Inside it,
 short paths read the bump (`price`, `total`, `in_cart`); elsewhere it reads as `selector.<its id>`.
-Draw the tick with CSS on `data-next-selected`. Make the bump a `button` or a `div`: clicks on a
-`label`, `input`, `select`, `textarea` or link are left to that control, so a real checkbox does
-not switch it.
+A click on the bump, its text or its checkbox switches it once, and the SDK keeps the checkbox
+ticked while the bump is in the cart. A `button` or `div` without a checkbox works too: draw the
+tick with CSS on `data-next-selected`. A link, `select` or text input inside the bump keeps its
+own clicks.
 
-| Style                            | When                                 |
-| -------------------------------- | ------------------------------------ |
-| `.bump[data-next-selected] .box` | it is in the cart: draw the tick     |
-| `.bump[aria-pressed='true']`     | the same, for screen readers and CSS |
+| Style                        | When                                 |
+| ---------------------------- | ------------------------------------ |
+| `.bump[data-next-selected]`  | it is in the cart                    |
+| `.bump[aria-pressed='true']` | the same, for screen readers and CSS |
 
 **Events**: `selector.selected` when it goes in, `selector.deselected` when it comes out, each with
 `cart.added` / `cart.removed`.

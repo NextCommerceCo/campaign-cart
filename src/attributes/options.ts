@@ -196,11 +196,17 @@ function bindBump(el: HTMLElement, a: AttributeContext): Render[] {
     on,
     preselected(el),
   );
+  const flip = () => void (on() ? engine.cart.setGroup(group, null, { dismiss: true }) : add());
+  const boxes = [...el.querySelectorAll<HTMLInputElement>('input[type=checkbox]:not([data-next-field])')];
+  for (const box of boxes) box.addEventListener('change', () => box.checked !== on() && flip());
+  if (el instanceof HTMLLabelElement && !el.control)
+    el.addEventListener('click', (e) => (e.target as Element).closest('a, label') === el && flip());
   return [
     () => {
       engine.toggles.price(line.packageId, line.quantity);
       const inCart = on();
       showState(el, inCart, inCart, false);
+      for (const box of boxes) box.checked = inCart;
     },
   ];
 }

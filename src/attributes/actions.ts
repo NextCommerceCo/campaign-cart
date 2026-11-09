@@ -32,7 +32,7 @@ const ROLES = new Set([
 ]);
 
 /** The fields an object in scope fills when the element does not name them. */
-const FROM_SCOPE = ['package_id', 'selector_id', 'option_id', 'code', 'shipping_id'];
+const FROM_SCOPE = ['package_id', 'selector_id', 'option_id', 'slot_index', 'code', 'value', 'shipping_id'];
 
 const snake = (name: string) => name.replace(/-/g, '_');
 

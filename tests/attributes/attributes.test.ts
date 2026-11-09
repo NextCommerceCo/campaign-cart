@@ -269,6 +269,57 @@ describe('attributes v2: options', () => {
     expect(engine.getState().cart.dismissed).toContain('toggle:9');
   });
 
+  it.each([
+    [
+      'a label bump, clicking its text',
+      '<label data-next-option="protect" data-next-items="9"><input id="box" type="checkbox"> <b id="hit">Add</b></label>',
+    ],
+    [
+      'a label bump, clicking its checkbox',
+      '<label data-next-option="protect" data-next-items="9"><input id="box" type="checkbox"> Add</label>',
+    ],
+    [
+      'a checkbox inside a bump, clicking the checkbox',
+      '<div data-next-option="protect" data-next-items="9"><input id="box" type="checkbox"><label for="box">Add</label></div>',
+    ],
+    [
+      'a checkbox inside a bump, clicking its label',
+      '<div data-next-option="protect" data-next-items="9"><input id="box" type="checkbox"><label id="hit" for="box">Add</label></div>',
+    ],
+    [
+      'a checkbox inside a bump, clicking the card',
+      '<div data-next-option="protect" data-next-items="9"><input id="box" type="checkbox"><p id="hit">Add</p></div>',
+    ],
+    [
+      'a label bump without a checkbox',
+      '<label data-next-option="protect" data-next-items="9"><b id="hit">Add</b></label>',
+    ],
+  ])('switches %s on and off once per click, the checkbox in step', async (_, html) => {
+    const { engine, $ } = await mount(html);
+    const setGroup = vi.spyOn(engine.cart, 'setGroup');
+    const hit = document.querySelector<HTMLElement>('#hit') ?? $('#box');
+    const box = document.querySelector<HTMLInputElement>('#box');
+    hit.click();
+    await settle(engine);
+    expect(setGroup).toHaveBeenCalledTimes(1);
+    expect(engine.getState().cart.groups['toggle:9']).toBeDefined();
+    if (box) expect(box.checked).toBe(true);
+    hit.click();
+    await settle(engine);
+    expect(setGroup).toHaveBeenCalledTimes(2);
+    expect(engine.getState().cart.groups['toggle:9']).toBeUndefined();
+    if (box) expect(box.checked).toBe(false);
+  });
+
+  it('checks a bump’s checkbox when the bump is preselected', async () => {
+    const { engine, $ } = await mount(
+      '<label data-next-option="protect" data-next-items="9" data-next-selected><input id="box" type="checkbox"> Add</label>',
+    );
+    await settle(engine);
+    expect(engine.getState().cart.groups['toggle:9']).toBeDefined();
+    expect(($('#box') as HTMLInputElement).checked).toBe(true);
+  });
+
   it('sends what the shopper types into an option’s properties with its lines', async () => {
     const { engine, $ } = await mount(`
       <div data-next-selector="engrave"><div data-next-option="one" data-next-items="1" data-next-selected>
@@ -304,6 +355,42 @@ describe('attributes v2: options', () => {
     expect(engine.getState().cart.groups['bundle:tee']!.lines).toEqual([{ packageId: 2, quantity: 1 }]);
     expect($('#name').textContent).toBe('Earbuds ×2');
     expect($('#swatches [data-next-value="white"]')!.hasAttribute('data-next-selected')).toBe(true);
+  });
+
+  it('swaps the option’s package from a selectVariant button in a data-next-each="variants.<code>" row', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-selector="tee">
+        <div data-next-option="tee" data-next-items="1">
+          <div id="rows" data-next-each="variants.color"><template>
+            <button data-next-action="selectVariant"><span data-next-query="name"></span></button>
+          </template></div>
+        </div></div>`);
+    const rows = [...$('#rows').querySelectorAll('button')];
+    expect(rows.map((b) => [b.textContent, b.disabled])).toEqual([
+      ['Black', false],
+      ['White', false],
+    ]);
+    rows[1]!.click();
+    await settle(engine);
+    expect(engine.getState().cart.groups['bundle:tee']!.lines).toEqual([{ packageId: 2, quantity: 1 }]);
+    expect(rows[1]!.hasAttribute('data-next-invalid')).toBe(false);
+  });
+
+  it('moves a cart line to another package from a selectVariant button in its variants row', async () => {
+    const { engine } = await mount(`
+      <div data-next-each="cart.lines"><template><div>
+        <div class="rows" data-next-each="variants.color"><template>
+          <button data-next-action="selectVariant" data-next-query="name"></button>
+        </template></div>
+      </div></template></div>`);
+    await engine.cart.addItem(1);
+    await settle(engine);
+    const white = [...document.querySelectorAll<HTMLButtonElement>('.rows button')].find(
+      (b) => b.textContent === 'White',
+    )!;
+    white.click();
+    await settle(engine);
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
   });
 
   it('prices an option on a page opened with ?ref_id as a post-purchase offer, and leaves the cart alone', async () => {

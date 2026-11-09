@@ -8,15 +8,23 @@ import { PROPERTY_FIELD, propertiesOf } from './options';
 
 type Model = Record<string, unknown>;
 
-/** One value of a variant attribute, as a picker row reads it. */
-export interface VariantValue {
+type Owner = Partial<Record<'selector_id' | 'option_id' | 'slot_index' | 'package_id', string | number>>;
+
+/** One value of a variant attribute, as a picker row reads it: the `selectVariant` arguments that pick it. */
+export interface VariantValue extends Owner {
+  code: string;
   value: string;
   name: string;
   available: boolean;
   selected: boolean;
-  package_id?: number;
   price?: number;
 }
+
+const OWNER = ['selector_id', 'option_id', 'slot_index', 'package_id'] as const;
+
+/** What `selectVariant` changes: an option, a slot of one, or a cart line. */
+const ownerOf = (o: Model): Owner =>
+  Object.fromEntries(OWNER.filter((k) => o[k] !== undefined).map((k) => [k, o[k] as string | number]));
 
 /** The package an object stands for: a line's, or a one-line option's. */
 const packageOf = (o: Model): number | undefined => {
@@ -32,17 +40,19 @@ export function variantsOf(engine: Engine, o: Model): Record<string, VariantValu
   if (!packageId) return undefined;
   const choices = variantChoices(packages, packageId);
   if (!choices.length) return undefined;
+  const owner = ownerOf(o);
   return Object.fromEntries(
     choices.map((c) => [
       c.code,
       c.options.map((option) => {
         const pkg = packages.find((p) => p.ref_id === option.packageId);
         return {
+          ...owner,
+          code: c.code,
           value: option.value,
           name: option.value,
           available: !!option.packageId,
           selected: option.value === c.value,
-          ...(option.packageId && { package_id: option.packageId }),
           ...(pkg && { price: Number(pkg.price_total) }),
         };
       }),
@@ -58,15 +68,10 @@ export function defineVariants(query: Query, engine: Engine): void {
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-function pickArgs(scope: unknown, code: string, value: string) {
-  const o = (scope ?? {}) as Model;
-  const pick = (k: string) => (o[k] === undefined ? {} : { [k]: o[k] as string | number });
-  return { ...pick('selector_id'), ...pick('option_id'), ...pick('slot_index'), ...pick('package_id'), code, value };
-}
-
 function bindPicker(el: HTMLElement, code: string, a: AttributeContext): Render {
   const values = () => ((a.read('variants', el) as Record<string, VariantValue[]> | undefined) ?? {})[code] ?? [];
-  const apply = (value: string) => void a.actions.selectVariant(pickArgs(a.scopeOf(el), code, value));
+  const apply = (value: string) =>
+    void a.actions.selectVariant({ ...ownerOf((a.scopeOf(el) ?? {}) as Model), code, value });
   let drawn = '';
   if (el instanceof HTMLSelectElement) {
     el.addEventListener('change', () => apply(el.value));

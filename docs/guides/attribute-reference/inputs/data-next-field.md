@@ -37,8 +37,9 @@ HTML does the rest: `required`, `type`, `autocomplete`.
 ## Variant pickers
 
 On a `<select>`, the SDK fills one `<option>` per value. On any other element it draws one button
-per value, `data-next-value="<value>"` (lowercase), with `data-next-selected` on the picked one and
-`disabled` on one no package has; style swatches with CSS:
+per value, `data-next-value="<value>"` as a slug (`Light Blue` is `light-blue`), with
+`data-next-selected` on the picked one and `disabled` and `data-next-disabled` on one no package
+has; the element itself gets `data-next-variant="<code>"`. Style swatches with CSS:
 
 ```css
 [data-next-value='black'] {
@@ -47,9 +48,21 @@ per value, `data-next-value="<value>"` (lowercase), with `data-next-selected` on
 }
 ```
 
-For your own markup, repeat the values with `data-next-each="variants.color"` and a button with
-`data-next-action="selectVariant"` in each row (rows have `value`, `name`, `available`,
-`selected`, `price`).
+For your own markup, repeat the values with `data-next-each="variants.<code>"`. Each row is one
+value (`name`, `value`, `available`, `selected`, `price`) and carries `code` and the option, slot
+or line it changes, so a `selectVariant` button in the row needs no other attribute:
+
+```html
+<div data-next-selector="main">
+  <div data-next-option="tee" data-next-items="12">
+    <div data-next-each="variants.color">
+      <template>
+        <button data-next-action="selectVariant" data-next-query="name"></button>
+      </template>
+    </div>
+  </div>
+</div>
+```
 
 ## Set by the SDK
 

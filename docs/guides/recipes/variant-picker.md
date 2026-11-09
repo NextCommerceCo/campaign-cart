@@ -29,12 +29,15 @@ A choice moves the option to the package of the same product with that value and
 option. A value no package has is disabled. It works on an option of one package; a slot or a
 cart line takes the same field.
 
-| Style                                   | When                             |
-| --------------------------------------- | -------------------------------- |
-| `[data-next-variant='color']`           | the button row for `color`       |
-| `[data-next-value='white']`             | the button for White (lowercase) |
-| `[data-next-value][data-next-selected]` | the chosen value                 |
-| `[data-next-value][data-next-disabled]` | no package has this value        |
+| Style                                   | When                                                |
+| --------------------------------------- | --------------------------------------------------- |
+| `[data-next-variant='color']`           | the element that holds the buttons for `color`      |
+| `[data-next-value='light-blue']`        | the button for Light Blue: the value as a slug      |
+| `[data-next-value][data-next-selected]` | the chosen value                                    |
+| `[data-next-value][data-next-disabled]` | no package has this value; the button is `disabled` |
+
+For your own markup, repeat the values with `data-next-each="variants.color"` and a
+`selectVariant` button in each row; see [data-next-field](../attribute-reference/inputs/data-next-field.md#variant-pickers).
 
 **Events**: `cart.removed` and `cart.added` as the line moves to the other package;
 `selector.selected` when the choice also picks the option.
