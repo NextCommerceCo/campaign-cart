@@ -1,5 +1,4 @@
 import type { Engine } from '../engine/engine';
-import { pickedCard } from '../engine/cart/selectors';
 import type { Upsell } from '../engine/events/upsells';
 import { addLegacyEvents, legacyEvent, legacyFire, bundleSelectorId } from './legacy/registry';
 
@@ -64,8 +63,7 @@ function packageOf(engine: Engine, offer: Element): number {
   const own = Number(offer.getAttribute('data-next-package-id'));
   const box = offer.querySelector('[data-next-bundle-selector]');
   const id = box ? bundleSelectorId(box) : legacyOfferSelector(offer);
-  const selector = id ? engine.getState().selectors[id] : undefined;
-  return own || (pickedCard(selector)?.lines[0]?.packageId ?? 0);
+  return own || ((id ? engine.selectors.picked(id) : undefined)?.lines[0]?.packageId ?? 0);
 }
 
 /**

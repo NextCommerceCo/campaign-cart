@@ -966,4 +966,14 @@ describe('cart', () => {
     engine.cart.clearAfterOrder();
     expect(engine.getState().cart).toMatchObject({ summary: undefined, shippingId: undefined, groups: {} });
   });
+
+  it('finds the cart’s line of a package', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(1, 2);
+    await engine.cart.setGroup('toggle:9', { lines: [{ packageId: 9, quantity: 1 }], vouchers: [] });
+    expect(engine.cart.line(1)).toEqual({ package_id: 1, quantity: 2 });
+    expect(engine.cart.line(9)).toEqual({ package_id: 9, quantity: 1 });
+    expect(engine.cart.line(2)).toBeUndefined();
+  });
 });

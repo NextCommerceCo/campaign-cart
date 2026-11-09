@@ -84,7 +84,7 @@ export function bindUpsells(engine: Engine, order: OrderActions, navigate: (url:
         const available = !!state.order?.supports_post_purchase_upsells;
         offer.classList.toggle('next-available', available);
         offer.classList.toggle('next-hidden', !available);
-        const quoting = selectorId && engine.getState().selectors[selectorId]?.quoting;
+        const quoting = selectorId && engine.selectors.get(selectorId)?.quoting;
         if (available && !quoting) show();
       }
       const busy = state?.status === 'accepting' || leaving;

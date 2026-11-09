@@ -1,8 +1,6 @@
 import { Api, failureOf } from './api';
 import { type Attribution, buildAttribution, eventAttribution, type Visit } from './attribution';
 import { type CartActions, createCart, emptyCart } from './cart/cart';
-import type { CheckoutActions } from '../checkout/state/checkout';
-import type { OrderActions } from '../order/state';
 import { type EngineEvent, Events } from './events/bus';
 import type { Browser, EventCampaign, EventContext } from './events/context';
 import type { ErrorAction, Snapshot } from './events/sdk';
@@ -58,28 +56,13 @@ export interface Context {
   attribution(): Attribution;
   saved<T>(slice: keyof State): T | undefined;
   forget(slice: 'checkout'): void;
+  /** Saves a chunk's slice in the session on each change, as `pick` returns it. */
+  persist<K extends Slice>(slice: K, pick: (value: NonNullable<State[K]>) => unknown): void;
   local: StorageAdapter;
   api: Api;
 }
 
 const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
-/** The checkout fields a reload restores. */
-const CHECKOUT_SAVED = [
-  'fields',
-  'phones',
-  'sameAsShipping',
-  'paymentMethod',
-  'step',
-  'steps',
-  'prospectSaved',
-  'user',
-  'shippingAddress',
-  'billingAddress',
-  'pendingRef',
-  'pendingMethod',
-  'id',
-  'reported',
-] as const satisfies ReadonlyArray<keyof NonNullable<State['checkout']>>;
 
 export class Engine {
   readonly log: Logger;
@@ -90,8 +73,6 @@ export class Engine {
   readonly visit: VisitActions;
   readonly debug: boolean;
   readonly sessionId: () => string;
-  checkout?: CheckoutActions;
-  order?: OrderActions;
   private state: State;
   private api: Api;
   private session: StorageAdapter;
@@ -101,6 +82,7 @@ export class Engine {
   private notifying = false;
   private ready = false;
   private context: Context;
+  private persisted: Partial<Record<Slice, (value: never) => unknown>> = {};
 
   constructor(private options: EngineOptions) {
     this.log = new Logger(options.logLevel, options.now);
@@ -150,6 +132,7 @@ export class Engine {
         this.session.remove(slice);
         this.state = { ...this.state, [slice]: undefined };
       },
+      persist: (slice, pick) => void (this.persisted[slice] = pick),
       local: this.local,
       api: this.api,
     };
@@ -283,7 +266,7 @@ export class Engine {
   }
 
   private save(slice: Slice): void {
-    const { cart, visit, campaign, checkout, order, debug } = this.state;
+    const { cart, visit, campaign, order, debug } = this.state;
     if (slice === 'cart') {
       const { groups, coupons, held, dismissed, shippingId, reported, added } = cart;
       this.session.set('cart', { groups, coupons, held, dismissed, shippingId, reported, added });
@@ -295,8 +278,8 @@ export class Engine {
       const { refId, order: saved, loadedAt, accepted, coupon } = order;
       this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
     }
-    if (slice === 'checkout' && checkout)
-      this.session.set('checkout', Object.fromEntries(CHECKOUT_SAVED.map((k) => [k, checkout[k]])));
+    const pick = this.persisted[slice];
+    if (pick && this.state[slice]) this.session.set(slice, pick(this.state[slice] as never));
   }
 
   private campaignKey(): string {

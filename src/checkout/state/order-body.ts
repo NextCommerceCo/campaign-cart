@@ -1,10 +1,10 @@
 import type { Attribution } from '../../engine/attribution';
 import { shippingMethodOf } from '../../engine/cart/public';
 import type { Line } from '../../engine/cart/types';
-import type { ApiAddress, State } from '../../engine/types';
+import type { ApiAddress, OrderBody, OrderUser, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
 import { addressOf } from '../../engine/order';
-import type { CheckoutState, OrderBody, OrderUser } from './types';
+import type { CheckoutState } from './types';
 import { phoneOf } from './phone';
 import { hasField } from './rules';
 

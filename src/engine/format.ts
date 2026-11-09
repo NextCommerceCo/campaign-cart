@@ -18,10 +18,13 @@ export const money = (c: number | undefined): Value => ({
   type: 'money',
   value: c === undefined ? undefined : c / 100,
 });
-export const pct = (part: number, whole: number): Value => ({
-  type: 'percent',
-  value: whole > 0 ? (part / whole) * 100 : 0,
-});
+/** `part` as a fraction of `whole`; 0 when there is no whole. */
+export const share = (part: number, whole: number): number => (whole > 0 ? part / whole : 0);
+/** What paying `paid` saves on `compare`, never below 0. */
+export const savings = (compare: number, paid: number): number => Math.max(0, compare - paid);
+export const pct = (part: number, whole: number): Value => ({ type: 'percent', value: share(part, whole) * 100 });
+/** A percentage with two decimals, as events carry it. */
+export const percentOf = (part: number, whole: number): number => Math.round(share(part, whole) * 10000) / 100;
 export const bool = (value: boolean): Value => ({ type: 'bool', value });
 
 const formatters = new Map<string, Intl.NumberFormat>();

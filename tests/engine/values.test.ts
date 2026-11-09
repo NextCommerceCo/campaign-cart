@@ -33,4 +33,18 @@ describe('display values', () => {
     expect(resolve(engine, 'cart.totl')).toBeUndefined();
     expect(resolve(engine, 'cart.total')).toEqual({ type: 'money', value: undefined });
   });
+
+  it('reads a path by each of its names', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    await engine.cart.addItem(2);
+    for (const names of [
+      ['cart.savingsAmount', 'cart.totalSavingsAmount'],
+      ['cart.discountPercentage', 'cart.totalDiscountPercentage'],
+      ['package.2.price_total', 'package.2.priceTotal', 'package.2.total'],
+      ['shipping.price', 'shipping.cost'],
+    ])
+      expect(new Set(names.map((path) => JSON.stringify(resolve(engine, path))))).toHaveProperty('size', 1);
+    expect(resolve(engine, 'cart.constructor')).toBeUndefined();
+  });
 });

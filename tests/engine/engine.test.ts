@@ -273,4 +273,18 @@ describe('Engine', () => {
       browser: { user_agent: 'test', language: 'en-US', device_type: 'desktop' },
     });
   });
+
+  it('saves a lazy chunk’s slice in the tab only as the chunk picks it', () => {
+    const session = new MemoryStorage();
+    const { engine } = makeEngine({ session });
+    const saved = () =>
+      makeEngine({ session }).engine.attach((ctx) => ctx.saved<{ step?: number; id?: string }>('checkout'));
+    engine.attach((ctx) => ctx.update('checkout', { step: 2 }));
+    expect(saved()).toBeUndefined();
+    engine.attach((ctx) => {
+      ctx.persist('checkout', ({ step }) => ({ step }));
+      ctx.update('checkout', { id: 'c1' });
+    });
+    expect(saved()).toEqual({ step: 2 });
+  });
 });

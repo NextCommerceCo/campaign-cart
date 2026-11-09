@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDollars, cents, dollars, formatCents } from '../../src/engine/format';
+import { addDollars, cents, dollars, formatCents, pct, percentOf, savings } from '../../src/engine/format';
 import type { Campaign } from '../../src/engine/types';
 
 describe('money helpers', () => {
@@ -20,5 +20,12 @@ describe('money helpers', () => {
     expect(formatCents(1999, { campaign })).toBe('€19.99');
     expect(formatCents(1999, { campaign, locale: 'de-DE' })).toBe('19,99 €');
     expect(formatCents(1999, {})).toBe('19.99');
+  });
+
+  it('takes a share of a whole: unrounded for display, to two decimals for events, 0 of nothing', () => {
+    expect(pct(1, 3).value).toBeCloseTo(33.3333333);
+    expect(percentOf(1, 3)).toBe(33.33);
+    expect([pct(5, 0).value, percentOf(5, 0)]).toEqual([0, 0]);
+    expect([savings(12, 10), savings(10, 12)]).toEqual([2, 0]);
   });
 });

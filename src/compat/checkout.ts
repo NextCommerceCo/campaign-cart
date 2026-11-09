@@ -3,7 +3,7 @@ import type { EventMap } from '../engine/events/bus';
 import type { Checkout } from '../engine/events/checkout';
 import type { State } from '../engine/types';
 import type { Scope } from '../checkout/state/rules';
-import type { AddressSuggestion } from '../checkout/state/types';
+import type { AddressSuggestion } from '../engine/types';
 import { addLegacyEvents, type From, legacyEvent, legacyFire } from './legacy/registry';
 import { paymentCode } from '../engine/payment';
 

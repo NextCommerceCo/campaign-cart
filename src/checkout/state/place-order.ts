@@ -46,19 +46,52 @@ interface Steps {
   reset: () => void;
 }
 
+/** What the order checks first: an express button nothing, a wallet picked in the form its `walletChecks`, else the form. */
+const checksOf = (input: PlaceOrder, method: string): Scope | null | undefined =>
+  input.expressMethod ? undefined : isWallet(method) && input.walletChecks !== undefined ? input.walletChecks : 'all';
+
+/** The card's token from payment.js, or why there is none. */
+async function cardToken(ctx: Context, tokenize: PlaceOrder['tokenize']): Promise<string | CheckoutError> {
+  if (!tokenize) {
+    ctx.log.warn('card payment needs cc-number and cvv fields and a campaign payment_env_key');
+    return { code: 'card' };
+  }
+  try {
+    return await tokenize();
+  } catch (err) {
+    return { code: 'card', message: err instanceof Error ? err.message : undefined };
+  }
+}
+
 export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) {
   const state = () => ctx.getState().checkout!;
   const set = (patch: Partial<CheckoutState>) => ctx.update('checkout', patch);
+
+  /** A created order: on to the gateway, or paid, when the cart and the form are cleared without a render. */
+  const created = (order: ApiOrder, method: string, vouchers: string[]): ApiOrder => {
+    const codes = ctx.getState().cart.coupons;
+    if (vouchers.length)
+      ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0], codes } }, { silent: true });
+    const data = publicOrder(order, codes);
+    if (order.payment_complete_url) {
+      set({ status: 'placed', pendingRef: order.ref_id, pendingMethod: method });
+      ctx.emit('order.created', data);
+      ctx.emit('payment.redirected', { method, ref_id: order.ref_id, url: order.payment_complete_url });
+      return order;
+    }
+    ctx.emit('order.created', data);
+    reportPaid(ctx, order, data);
+    ctx.emit('checkout.completed', { ...cart.currentCheckout(), payment_method: method, ref_id: order.ref_id });
+    cart.clearAfterOrder();
+    steps.reset();
+    return order;
+  };
 
   return async (input: PlaceOrder): Promise<ApiOrder | undefined> => {
     if (state().status !== 'idle') return undefined;
     const express = !!input.expressMethod;
     const method = input.expressMethod ? paymentCode(input.expressMethod) : state().paymentMethod;
-    const checks = express
-      ? undefined
-      : isWallet(method) && input.walletChecks !== undefined
-        ? input.walletChecks
-        : 'all';
+    const checks = checksOf(input, method);
     set({ status: 'placing', express });
     cart.freeze(true);
     const fail = (errors: Record<string, CheckoutError>) => {
@@ -80,18 +113,8 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
     if (!cart.lines().length) return stop({ form: { code: 'empty_cart' } });
     await cart.settled();
 
-    let token: string | undefined;
-    if (method === 'card_token') {
-      if (!input.tokenize) {
-        ctx.log.warn('card payment needs cc-number and cvv fields and a campaign payment_env_key');
-        return stop({ form: { code: 'card' } });
-      }
-      try {
-        token = await input.tokenize();
-      } catch (err) {
-        return stop({ form: { code: 'card', message: err instanceof Error ? err.message : undefined } });
-      }
-    }
+    const token = method === 'card_token' ? await cardToken(ctx, input.tokenize) : undefined;
+    if (typeof token === 'object') return stop({ form: token });
 
     ctx.emit('checkout.submitted', { ...cart.currentCheckout(), payment_method: method });
     const vouchers = cart.vouchers();
@@ -117,21 +140,6 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
       }
       return fail({ form: orderError(err) });
     }
-    const codes = ctx.getState().cart.coupons;
-    if (vouchers.length)
-      ctx.update('order', { coupon: { refId: order.ref_id, code: vouchers[0], codes } }, { silent: true });
-    const created = publicOrder(order, codes);
-    if (order.payment_complete_url) {
-      set({ status: 'placed', pendingRef: order.ref_id, pendingMethod: method });
-      ctx.emit('order.created', created);
-      ctx.emit('payment.redirected', { method, ref_id: order.ref_id, url: order.payment_complete_url });
-      return order;
-    }
-    ctx.emit('order.created', created);
-    reportPaid(ctx, order, created);
-    ctx.emit('checkout.completed', { ...cart.currentCheckout(), payment_method: method, ref_id: order.ref_id });
-    cart.clearAfterOrder();
-    steps.reset();
-    return order;
+    return created(order, method, vouchers);
   };
 }

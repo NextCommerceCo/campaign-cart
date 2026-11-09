@@ -3,7 +3,6 @@ import { publicToggle } from './public';
 import type { Context } from '../engine';
 import { keyedLatestWins } from '../flow';
 import type { Quotes } from './quotes';
-import type { CartSummary } from './types';
 import type { Selector } from '../events/selectors';
 
 export { toggleGroup };
@@ -37,30 +36,21 @@ export function createToggles(ctx: Context, quotes: Quotes) {
       };
       const key = quotes.key(body);
       if (toggles[packageId]?.key === key) return;
-      const run = runs.start(packageId);
-      run.dropPrevious();
-      const settle = (summary: CartSummary) => {
-        ctx.update('toggles', {
-          [packageId]: { key, quantity, line: summary.lines.find((l) => l.package_id === packageId) },
-        });
-        ctx.emit('selector.priced', selectorOf(packageId, quantity));
-      };
-      const stored = quotes.stored(body);
-      if (stored) settle(stored);
-      if (quotes.fresh(body)) return run.finish();
-      if (!stored) {
-        ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
-        ctx.emit('selector.pricing', selectorOf(packageId, quantity));
-      }
-      quotes
-        .calculate(body, { signal: run.signal })
-        .then((summary) => {
-          if (!run.stale()) settle(summary);
-        })
-        .catch((err: unknown) => {
-          if (!run.stale()) ctx.fail('selector.price', err);
-        })
-        .finally(run.finish);
+      void quotes.reprice(
+        runs.start(packageId),
+        [body],
+        false,
+        () => {
+          const line = quotes.stored(body)!.lines.find((l) => l.package_id === packageId);
+          ctx.update('toggles', { [packageId]: { key, quantity, line } });
+          ctx.emit('selector.priced', selectorOf(packageId, quantity));
+        },
+        () => {
+          ctx.update('toggles', { [packageId]: { ...toggles[packageId], key, quantity } });
+          ctx.emit('selector.pricing', selectorOf(packageId, quantity));
+        },
+        (err) => ctx.fail('selector.price', err),
+      );
     },
   };
 }

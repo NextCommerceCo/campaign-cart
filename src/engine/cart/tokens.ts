@@ -1,5 +1,5 @@
 import type { Engine } from '../engine';
-import { cents, format, localeOf, money, pct } from '../format';
+import { cents, format, localeOf, money, pct, savings } from '../format';
 import type { Tokens } from '../tokens';
 import type { SummaryLine } from './types';
 
@@ -63,7 +63,7 @@ export function lineTokens(engine: Engine, line: SummaryLine, currency: string |
     unitPrice: m(line.unit_price),
     originalUnitPrice: m(line.original_unit_price),
     discountAmount: m(line.total_discount),
-    discountPercentage: format(pct(Math.max(0, original - unit), original), currency, locale),
+    discountPercentage: format(pct(savings(original, unit), original), currency, locale),
     hasDiscount: cents(line.total_discount) > 0 ? 'show' : 'hide',
     currency: currency ?? '',
     isRecurring: String(!!(line.is_recurring ?? pkg?.is_recurring)),

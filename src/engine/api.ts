@@ -1,7 +1,6 @@
 import type { Logger } from './log';
-import type { AddressSuggestion, OrderBody, ProspectBody } from '../checkout/state/types';
 import type { Line, CartSummary } from './cart/types';
-import type { ApiOrder, CheckoutError, OpenCart, Send } from './types';
+import type { AddressSuggestion, ApiOrder, CheckoutError, OpenCart, OrderBody, ProspectBody, Send } from './types';
 import type { Failure } from './events/sdk';
 
 export class ApiError extends Error {

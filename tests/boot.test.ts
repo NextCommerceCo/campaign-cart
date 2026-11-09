@@ -270,7 +270,10 @@ describe('boot', () => {
     const pending = async (pendingRef: string, pendingMethod: string) => {
       const { engine } = makeEngine({ local: localStorage, session: sessionStorage, storagePrefix });
       await engine.start();
-      engine.attach((ctx) => ctx.update('checkout', { pendingRef, pendingMethod }));
+      engine.attach((ctx) => {
+        ctx.persist('checkout', (saved) => saved);
+        ctx.update('checkout', { pendingRef, pendingMethod });
+      });
     };
     await pending('R1', 'paypal');
     history.replaceState(null, '', '/checkout/?payment_failed=true&payment_method=paypal&utm_source=fb#form');

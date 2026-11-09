@@ -1,8 +1,5 @@
-import type { CheckoutState } from '../checkout/state/types';
-import type { OrderState } from '../order/state';
-import type { DebugState } from '../debug/state';
-import type { Visit } from './attribution';
-import type { CartState, SelectorState, Toggle } from './cart/types';
+import type { Attribution, Visit } from './attribution';
+import type { CartState, Line, SelectorState, Toggle } from './cart/types';
 import type { VisitorGeo } from './geo';
 
 export type Send = (url: string, init: RequestInit) => Promise<Response>;
@@ -140,6 +137,55 @@ export interface OpenCart {
   [field: string]: unknown;
 }
 
+/** The shopper on an order or an Open Cart the SDK sends. */
+export interface OrderUser {
+  email?: string;
+  first_name: string;
+  last_name: string;
+  language: string;
+  phone_number?: string;
+  accepts_marketing: boolean;
+}
+
+/** `POST /orders/`. */
+export interface OrderBody {
+  lines: Line[];
+  shipping_address?: ApiAddress;
+  billing_same_as_shipping_address?: boolean;
+  billing_address?: ApiAddress;
+  shipping_method: number;
+  payment_detail: { payment_method: string; card_token?: string };
+  user?: OrderUser;
+  vouchers: string[];
+  attribution: Attribution;
+  currency: string;
+  success_url: string;
+  payment_failed_url: string;
+}
+
+/** `POST /carts/`: the Open Cart. */
+export interface ProspectBody {
+  lines: Line[];
+  user: OrderUser;
+  currency: string;
+  attribution: Attribution;
+}
+
+/** One answer of `GET /addresses/autocomplete/`. */
+export interface AddressSuggestion {
+  label: string;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    state_code: string;
+    postcode: string;
+    country: string;
+    country_code: string;
+  };
+}
+
 /** An order from the Campaigns API. Prices are decimal strings in `currency`. */
 export interface ApiOrder {
   /** Order reference ID: the `ref_id` in post-purchase page URLs. */
@@ -182,6 +228,7 @@ export interface ApiOrder {
 /** The parts of State an action changes with `update()`. */
 export type Slice = Exclude<keyof State, 'locale'>;
 
+/** The boot slices; a lazy chunk adds its own (`checkout`, `order`, `debug`) with `declare module`. */
 export interface State {
   campaign?: Campaign;
   /** The page's language (0.4.x `nextConfig.locale`), over the campaign's. */
@@ -190,7 +237,4 @@ export interface State {
   selectors: Record<string, SelectorState>;
   toggles: Record<number, Toggle>;
   visit: VisitState;
-  checkout?: CheckoutState;
-  order?: OrderState;
-  debug?: DebugState;
 }

@@ -158,7 +158,8 @@ src/
     index.ts                       bindCheckout: submit, steps, error box, processing overlay
     state/                         headless: checkout.ts (actions), contact.ts (the lead: when the Open Cart is saved),
                                    place-order.ts (placeOrder, redirectFor), order-body.ts (order body),
-                                   rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), types.ts
+                                   rules.ts (i18n-rules API, checks), phone.ts (formatting, phone fields), countries.ts
+                                   (the country list and the visitor's country), types.ts
     address/                       country.ts (the page's fields follow the country), block.ts ([data-next-address]),
                                    autocomplete.ts, billing.ts (same-as-shipping, cloned rows), phone.ts (flag, mask)
     payment/                       methods.ts (payment radios and panels, the method choice widget.ts shares),
@@ -280,15 +281,18 @@ hears the events since it was added once it has; from then on each as it happens
 
 A type used by one domain sits in that domain's `types.ts` (`engine/cart/`, `checkout/state/`) or
 beside its actions (`OrderState` in `order/state.ts`); one that several domains share stays in
-`engine/types.ts`. `import type` is erased at build, so the table does not apply to it: `State`
-names the checkout and order slices without loading their chunks.
+`engine/types.ts`, with the bodies the `Api` sends. The engine imports nothing outside `engine/`,
+types included: a lazy chunk adds its `State` slice and its `Engine` actions with `declare module`
+(`checkout/state/types.ts`, `order/state.ts`, `debug/state.ts`) and saves its slice through
+`ctx.persist`.
 
 `tests/architecture.test.ts` fails on: an import outside this table; a static import of a lazy
 chunk; a static path from `boot.ts` to `checkout/state` or `order/state`; a browser global
 (`document`, `window`, `location`, `navigator`, `history`, `localStorage`, `sessionStorage`,
 `fetch`, `matchMedia`, `CustomEvent`, `requestIdleCallback`) in headless code; a folder deeper
 than three levels; a default export or a re-export barrel; `console` outside `engine/log.ts` and
-`loader.ts`.
+`loader.ts`; an import, type or `declare module`, from `engine/` to anywhere else; a payment method's
+label or alias outside `engine/payment.ts`.
 
 ## Tests
 

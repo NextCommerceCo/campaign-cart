@@ -16,7 +16,7 @@ export function bindCartControls(root: ParentNode, b: BindContext): Render[] {
       const packageId = packageIdOf(el);
       if (!packageId) return b.warn('quantity control without data-package-id');
       e.preventDefault();
-      const current = engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0;
+      const current = engine.cart.line(packageId)?.quantity ?? 0;
       const step = Number(el.getAttribute('data-step') || 1);
       const min = Number(el.getAttribute('data-min') ?? 1);
       const max = Number(el.getAttribute('data-max') || Infinity);

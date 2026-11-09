@@ -558,4 +558,13 @@ describe('selectors', () => {
     expect(errors).toEqual(['selector.price']);
     expect(price(engine, 'bundle.one.price')).toBe('$49.00');
   });
+
+  it('gives a selector and its picked option by id', async () => {
+    const { engine } = makeEngine();
+    await engine.start();
+    expect([engine.selectors.get('main'), engine.selectors.picked('main')]).toEqual([undefined, undefined]);
+    await engine.selectors.register('main', CARDS, 'select', 'two');
+    expect(engine.selectors.get('main')).toMatchObject({ mode: 'select', picked: 'two' });
+    expect(engine.selectors.picked('main')).toEqual(CARDS[1]);
+  });
 });

@@ -1,5 +1,6 @@
 import type { Api } from '../api';
 import type { Context } from '../engine';
+import type { keyedLatestWins } from '../flow';
 import { hash } from '../scope';
 import type { Campaign } from '../types';
 import type { CartSummary } from './types';
@@ -9,6 +10,7 @@ const QUOTE_MAX_AGE = 10 * 60 * 1000;
 const QUOTE_LIMIT = 32;
 
 export type QuoteBody = Parameters<Api['calculate']>[0];
+type Run = ReturnType<ReturnType<typeof keyedLatestWins>['start']>;
 type Saved = Record<string, { at: number; summary: CartSummary }>;
 interface Pending {
   promise: Promise<CartSummary>;
@@ -92,7 +94,39 @@ export function createQuotes(ctx: Context) {
     });
   };
 
-  return { key, fresh, stored, calculate, campaignVersion };
+  /**
+   * One price run of a selector's or a toggle's `bodies`: stored prices settle at once and, when fresh, end the run;
+   * otherwise the unchecked ones are calculated, after `pricing` when nothing was stored. Latest wins.
+   */
+  const reprice = async (
+    run: Run,
+    bodies: QuoteBody[],
+    upsell: boolean,
+    settle: () => void,
+    pricing: () => void,
+    failed: (err: unknown) => void,
+  ): Promise<void> => {
+    const known = bodies.every((body) => stored(body, upsell));
+    const unchecked = bodies.filter((body) => !fresh(body, upsell));
+    if (known) settle();
+    if (!unchecked.length) {
+      run.finish();
+      return run.dropPrevious();
+    }
+    const request = Promise.all(unchecked.map((body) => calculate(body, { signal: run.signal, upsell })));
+    run.dropPrevious();
+    if (!known) pricing();
+    try {
+      await request;
+      if (!run.stale()) settle();
+    } catch (err) {
+      if (!run.stale()) failed(err);
+    } finally {
+      run.finish();
+    }
+  };
+
+  return { key, fresh, stored, calculate, campaignVersion, reprice };
 }
 
 export type Quotes = ReturnType<typeof createQuotes>;

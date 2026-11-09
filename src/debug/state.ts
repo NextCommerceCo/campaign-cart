@@ -51,6 +51,12 @@ export interface DebugState {
   config?: PageConfig;
 }
 
+declare module '../engine/types' {
+  interface State {
+    debug?: DebugState;
+  }
+}
+
 export interface Arrival {
   at: number;
   path: string;

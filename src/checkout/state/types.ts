@@ -1,20 +1,10 @@
-import type { Attribution } from '../../engine/attribution';
-import type { Line } from '../../engine/cart/types';
 import type { Address, User } from '../../engine/events/checkout';
-import type { ApiAddress, CheckoutError, OpenCart } from '../../engine/types';
+import type { CheckoutError, OpenCart } from '../../engine/types';
 
-export interface AddressSuggestion {
-  label: string;
-  address: {
-    line1: string;
-    line2?: string;
-    city: string;
-    state: string;
-    state_code: string;
-    postcode: string;
-    country: string;
-    country_code: string;
-  };
+declare module '../../engine/types' {
+  interface State {
+    checkout?: CheckoutState;
+  }
 }
 
 export interface CountryOption {
@@ -96,35 +86,4 @@ export interface CheckoutState {
   id?: string;
   /** The analytics events already sent for this checkout, such as `add_shipping_info`. */
   reported?: string[];
-}
-
-export interface OrderUser {
-  email?: string;
-  first_name: string;
-  last_name: string;
-  language: string;
-  phone_number?: string;
-  accepts_marketing: boolean;
-}
-
-export interface OrderBody {
-  lines: Line[];
-  shipping_address?: ApiAddress;
-  billing_same_as_shipping_address?: boolean;
-  billing_address?: ApiAddress;
-  shipping_method: number;
-  payment_detail: { payment_method: string; card_token?: string };
-  user?: OrderUser;
-  vouchers: string[];
-  attribution: Attribution;
-  currency: string;
-  success_url: string;
-  payment_failed_url: string;
-}
-
-export interface ProspectBody {
-  lines: Line[];
-  user: OrderUser;
-  currency: string;
-  attribution: Attribution;
 }

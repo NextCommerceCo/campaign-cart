@@ -1,5 +1,5 @@
 import type { CheckoutActions } from '../state/checkout';
-import type { AddressSuggestion } from '../state/types';
+import type { AddressSuggestion } from '../../engine/types';
 import type { Fields } from '../form/fields';
 import { legacyAddressFilled } from '../../compat/checkout';
 

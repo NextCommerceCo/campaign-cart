@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createActions, nextQuantity, parseItems } from '../../src/engine/actions';
+import { createActions, nextQuantity, parseItems, ready as runnable } from '../../src/engine/actions';
 import { flush, makeEngine } from '../fixtures/engine';
 
 async function ready() {
@@ -117,5 +117,65 @@ describe('actions', () => {
     expect(navigate).toHaveBeenCalledWith('https://shop.test/checkout.html?x=1');
     expect(await actions.go({})).toMatchObject({ ok: false });
     await flush();
+  });
+
+  it('says when an action cannot run yet, the same way the action refuses it', async () => {
+    const { engine, actions } = await ready();
+    expect(runnable(engine, 'addItem', { selector_id: 'main' })).toBe(false);
+    expect(runnable(engine, 'acceptUpsell', { selector_id: 'main' })).toBe(false);
+    expect(runnable(engine, 'addItem', {})).toBe(true);
+    expect(runnable(engine, 'select', { selector_id: 'main' })).toBe(false);
+    expect(await actions.select({ selector_id: 'main' })).toMatchObject({
+      ok: false,
+      errors: { option_id: expect.any(String) },
+    });
+    expect(runnable(engine, 'select', { selector_id: 'main', option_id: 'one' })).toBe(true);
+    expect(runnable(engine, 'setQuantity', { package_id: 1, quantity: '-1' })).toBe(false);
+    await engine.cart.addItem(1);
+    expect(runnable(engine, 'setQuantity', { package_id: 1, quantity: '+1' })).toBe(true);
+    expect(runnable(engine, 'setQuantity', { package_id: 1, quantity: '+1', max_quantity: 1 })).toBe(false);
+    expect(runnable(engine, 'setQuantity', { package_id: 1, quantity: '1' })).toBe(false);
+    await engine.selectors.register('main', cards, 'select', 'one');
+    expect(runnable(engine, 'addItem', { selector_id: 'main' })).toBe(true);
+    expect(runnable(engine, 'setQuantity', { selector_id: 'main', quantity: '+1' })).toBe(true);
+    expect(runnable(engine, 'setQuantity', { selector_id: 'main', quantity: '4' })).toBe(false);
+    expect(runnable(engine, 'clear', {})).toBe(true);
+  });
+
+  it('picks a variant in a slot, on a one-line option or on the cart’s own line, and says when it cannot', async () => {
+    const { engine, actions } = await ready();
+    const pair = { id: 'pair', lines: [{ packageId: 1, quantity: 2, configurable: true }], vouchers: [] };
+    await engine.selectors.register('kit', [pair], 'swap');
+    const slot = { code: 'color', selector_id: 'kit', option_id: 'pair', slot_index: 1 };
+    expect(await actions.selectVariant({ ...slot, value: 'White' })).toEqual({ ok: true });
+    expect(engine.getState().cart.groups['bundle:kit']!.lines).toEqual([
+      { packageId: 1, quantity: 1 },
+      { packageId: 2, quantity: 1 },
+    ]);
+    expect(await actions.selectVariant({ ...slot, value: 'Red' })).toEqual({
+      ok: false,
+      errors: { value: 'no package for color Red' },
+    });
+
+    await engine.selectors.register('main', cards, 'select', 'two');
+    expect(
+      await actions.selectVariant({ code: 'color', value: 'White', selector_id: 'main', option_id: 'one' }),
+    ).toEqual({ ok: true });
+    expect(engine.getState().selectors.main).toMatchObject({
+      picked: 'one',
+      cards: [{ id: 'one', lines: [{ packageId: 2, quantity: 1 }] }, { id: 'two' }],
+    });
+
+    await actions.addItem({ package_id: 1 });
+    expect(await actions.selectVariant({ code: 'color', value: 'White', package_id: 1 })).toEqual({ ok: true });
+    expect(engine.getState().cart.groups.items!.lines).toEqual([{ packageId: 2, quantity: 1 }]);
+    expect(await actions.selectVariant({ code: 'color', value: 'Black', package_id: 9 })).toEqual({
+      ok: false,
+      errors: { value: 'this line cannot change its variant' },
+    });
+    expect(await actions.selectVariant({ code: 'color' })).toMatchObject({
+      ok: false,
+      errors: { value: expect.any(String) },
+    });
   });
 });

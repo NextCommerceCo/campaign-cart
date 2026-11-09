@@ -2,7 +2,7 @@ import type { Engine } from './engine';
 import { mergeLines } from './cart/lines';
 import { cardLines } from './cart/selectors';
 import { toggleGroup } from './cart/toggles';
-import { bool, cents, money, pct, type Value } from './format';
+import { bool, cents, money, pct, savings, type Value } from './format';
 import type { CartLine, CartSummary, SelectorState, SelectorCard, SummaryLine } from './cart/types';
 import type { Package, State } from './types';
 
@@ -58,10 +58,10 @@ function packageValue(pkg: Package | undefined, prop: string): Value | undefined
       return money(retail);
     case 'savingsAmount':
     case 'totalSavings':
-      return money(Math.max(0, retail - total));
+      return money(savings(retail, total));
     case 'savingsPercentage':
     case 'totalSavingsPercentage':
-      return pct(Math.max(0, retail - total), retail);
+      return pct(savings(retail, total), retail);
     case 'hasSavings':
     case 'hasTotalSavings':
       return bool(retail > total);
@@ -109,11 +109,11 @@ function linesValue(
       return money(retail);
     case 'discountAmount':
     case 'savings':
-      return money(Math.max(0, retail - total));
+      return money(savings(retail, total));
     case 'discountPercentage':
     case 'savingsPercentage':
     case 'savingsOfferPercentage':
-      return pct(Math.max(0, retail - total), retail);
+      return pct(savings(retail, total), retail);
     case 'hasDiscount':
     case 'hasSavings':
       return bool(retail > total);
@@ -142,8 +142,7 @@ function cartValue(state: State, engine: Engine, prop: string): Value | undefine
     const pkg = engine.getPackage(l.package_id);
     return n + (pkg ? cents(pkg.price_retail_total ?? pkg.price_total) * l.quantity : 0);
   }, 0);
-  const paid = subtotal === undefined ? undefined : subtotal - discount;
-  const savings = paid === undefined ? 0 : Math.max(0, compare - paid);
+  const saved = subtotal === undefined ? 0 : savings(compare, subtotal - discount);
   switch (prop) {
     case 'total':
       return money(summary ? cents(summary.total) : undefined);
@@ -162,10 +161,10 @@ function cartValue(state: State, engine: Engine, prop: string): Value | undefine
       return money(compare);
     case 'totalSavingsAmount':
     case 'savingsAmount':
-      return money(savings);
+      return money(saved);
     case 'totalSavingsPercentage':
     case 'savingsPercentage':
-      return pct(savings, compare);
+      return pct(saved, compare);
     case 'currency':
       return { type: 'text', value: summary?.currency ?? state.campaign?.currency };
     case 'quantity':
@@ -181,7 +180,7 @@ function cartValue(state: State, engine: Engine, prop: string): Value | undefine
     case 'isEmpty':
       return bool(lines.length === 0);
     case 'hasSavings':
-      return bool(savings > 0);
+      return bool(saved > 0);
     case 'hasDiscounts':
       return bool(discount > 0);
     case 'hasCoupon':
@@ -239,7 +238,7 @@ export const repricing = (selector: SelectorState, card: SelectorCard): boolean 
   !!selector.quoting && !!selector.quotes?.[card.id] && !cardQuote(selector, card);
 
 export function resolveCard(engine: Engine, ref: CardRef, prop: string): Value | undefined {
-  const selector = engine.getState().selectors[ref.selectorId];
+  const selector = engine.selectors.get(ref.selectorId);
   const card = selector?.cards.find((c) => c.id === ref.cardId);
   if (!selector || !card) return notLoaded(linesValue(engine, [], prop, false));
   const lines = cardLines(selector, card);

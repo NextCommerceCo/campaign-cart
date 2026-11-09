@@ -1,3 +1,4 @@
+import type { RemoteCheck, RulesApi } from './rules';
 import type { CheckoutState, FieldFormat } from './types';
 
 const MIN_DIGITS = 4;
@@ -96,3 +97,54 @@ export const phoneFieldOf = (countryField: string) =>
 
 export const phoneOf = (checkout: CheckoutState, name: string) =>
   checkout.phones[name]?.value ?? (asciiDigits(checkout.fields[name]?.trim() ?? '') || undefined);
+
+/** Reads a number with i18n-rules once per number and country; a read that failed is asked again next time. */
+export function createPhoneReads(rulesApi: RulesApi) {
+  const asked = new Map<string, Promise<RemoteCheck | undefined>>();
+  return (country: string, typed: string): Promise<RemoteCheck | undefined> => {
+    const key = `${country}|${phoneKey(typed)}`;
+    let check = asked.get(key);
+    if (!check) {
+      check = rulesApi.validate(country, { phone_number: typed }).then(
+        (fields) => fields.phone_number,
+        () => undefined,
+      );
+      asked.set(key, check);
+      void check.then((result) => result || asked.delete(key));
+    }
+    return check;
+  };
+}
+
+/**
+ * What the checkout keeps of the read of `name`, typed as `typed` in `country`: the number in E.164, or with
+ * `warn` its message as a warning. Nothing once the shopper changed the number or its country.
+ */
+export function phoneChecked(
+  checkout: CheckoutState,
+  name: string,
+  country: string,
+  typed: string,
+  result: RemoteCheck | undefined,
+  warn: boolean,
+): Partial<CheckoutState> | undefined {
+  const { fields, phones, errors } = checkout;
+  if (!result || countryOf(fields, name) !== country || phoneKey(fields[name] ?? '') !== phoneKey(typed)) return;
+  if (result.valid && result.value) {
+    const { [name]: error, ...rest } = errors;
+    return {
+      phones: {
+        ...phones,
+        [name]: {
+          value: result.value,
+          country: result.country ?? country,
+          national: result.national,
+          international: result.international,
+        },
+      },
+      ...(error?.code === 'invalid' && { errors: rest }),
+    };
+  }
+  if (warn && result.error && !errors[name])
+    return { errors: { ...errors, [name]: { ...result.error, warning: true } } };
+}

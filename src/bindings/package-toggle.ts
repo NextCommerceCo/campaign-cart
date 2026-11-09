@@ -48,7 +48,7 @@ function bindToggleCard(b: BindContext, el: HTMLElement): Render | undefined {
   const quantity = (): number =>
     sync.length || products.length ? syncedQuantity(engine, group, sync, products) : baseQty;
   const isUpsell = el.getAttribute('data-next-is-upsell') === 'true';
-  const isOn = () => engine.cart.lines().some((l) => l.package_id === packageId);
+  const isOn = () => !!engine.cart.line(packageId);
   const add = () => {
     const properties = { ...pageProperties(el), ...ownProperties(el) };
     return engine.cart.setGroup(group, {

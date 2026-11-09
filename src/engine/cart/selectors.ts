@@ -148,10 +148,10 @@ export function createSelectors(ctx: Context, cart: CartActions) {
 
   const basis = () => [[...ctx.getState().cart.coupons].sort().join(), quotes.campaignVersion()].join('|');
 
-  const quote = async (id: string): Promise<void> => {
+  const quote = (id: string): Promise<void> => {
     const selector = get(id);
     const campaign = ctx.getState().campaign;
-    if (!selector || !campaign) return;
+    if (!selector || !campaign) return Promise.resolve();
     quotedOn.set(id, basis());
     const { currency } = campaign;
     const own = new Set(selector.cards.flatMap((c) => c.vouchers));
@@ -173,31 +173,20 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       set(id, { quotes: Object.fromEntries(priced), quoting: false });
       ctx.emit('selector.priced', publicSelector(id));
     };
-    const unpriced = requests.filter((r) => !quotes.stored(r.body, upsell));
-    const unchecked = requests.filter((r) => !quotes.fresh(r.body, upsell));
-    const run = runs.start(id);
-    if (!unpriced.length) settle();
-    if (!unchecked.length) {
-      run.finish();
-      return run.dropPrevious();
-    }
-    const pricing = Promise.all(unchecked.map((r) => quotes.calculate(r.body, { signal: run.signal, upsell })));
-    run.dropPrevious();
-    if (unpriced.length) {
-      set(id, { quoting: true });
-      ctx.emit('selector.pricing', publicSelector(id));
-    }
-    try {
-      await pricing;
-      if (run.stale()) return;
-      settle();
-    } catch (err) {
-      if (run.stale()) return;
-      set(id, { quoting: false });
-      ctx.fail('selector.price', err);
-    } finally {
-      run.finish();
-    }
+    return quotes.reprice(
+      runs.start(id),
+      requests.map((r) => r.body),
+      upsell,
+      settle,
+      () => {
+        set(id, { quoting: true });
+        ctx.emit('selector.pricing', publicSelector(id));
+      },
+      (err) => {
+        set(id, { quoting: false });
+        ctx.fail('selector.price', err);
+      },
+    );
   };
 
   const updated = (id: string): Promise<void> => {
@@ -242,6 +231,8 @@ export function createSelectors(ctx: Context, cart: CartActions) {
       viewed.add(id);
       ctx.emit('selector.viewed', publicSelector(id));
     },
+    get,
+    picked: (id: string) => pickedCard(get(id)),
     pick,
     addToCart,
     setSlot(id: string, cardId: string, index: number, slot: Partial<Slot>): Promise<void> {

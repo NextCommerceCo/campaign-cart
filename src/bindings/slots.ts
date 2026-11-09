@@ -249,7 +249,7 @@ function renderStage(
 
   for (const input of document.querySelectorAll('[data-next-default-property]')) {
     const onChange = () => {
-      const card = pickedCard(engine.getState().selectors[selectorId]);
+      const card = engine.selectors.picked(selectorId);
       if (card) rendered.forEach(({ el }, i) => void apply(card, i, { properties: properties(card, el) }));
     };
     input.addEventListener('change', onChange);
@@ -257,7 +257,7 @@ function renderStage(
   }
 
   return () => {
-    const selector = engine.getState().selectors[selectorId];
+    const selector = engine.selectors.get(selectorId);
     const card = pickedCard(selector);
     if (!selector || !card) return;
     const slots = cardSlots(selector, card);

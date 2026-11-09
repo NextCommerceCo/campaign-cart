@@ -1,6 +1,7 @@
-import { addDollars, dollars } from '../format';
+import { addDollars, dollars, percentOf } from '../format';
 import type { State } from '../types';
-import type { Cart, CartItem } from '../events/carts';
+import type { Context } from '../engine';
+import type { Cart, CartChange, CartItem } from '../events/carts';
 import type { Checkout } from '../events/checkout';
 import type { Discount } from '../events/coupons';
 import type { OptionPrice, Selector } from '../events/selectors';
@@ -19,8 +20,6 @@ const discountOf = (d: SummaryDiscount, coupons: string[]): Discount => {
     ...(d.percentage !== undefined && { percentage: Number(d.percentage) }),
   };
 };
-
-export const percentOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 10000) / 100 : 0);
 
 const perPackage = (amount: number, quantity: number) =>
   quantity ? Math.round((amount / quantity) * 100) / 100 : amount;
@@ -160,3 +159,31 @@ export function publicCheckout(state: State, summary?: CartSummary): Checkout {
 }
 
 export const shippingMethodOf = (state: State) => state.cart.shippingId ?? state.campaign?.shipping_methods[0]?.ref_id;
+
+/** What `cart.added` and `cart.removed` carry for a change from `before` to `after`, at the prices the cart had. */
+export function changesOf(
+  packageOf: Context['getPackage'],
+  before: Map<number, number>,
+  after: Map<number, number>,
+  priced: SummaryLine[] = [],
+) {
+  const added: CartChange[] = [];
+  const removed: CartChange[] = [];
+  for (const id of new Set([...before.keys(), ...after.keys()])) {
+    const from = before.get(id) ?? 0;
+    const to = after.get(id) ?? 0;
+    if (from === to) continue;
+    const p = packageOf(id);
+    const charged = priced.find((l) => l.package_id === id)?.package_price;
+    (to > from ? added : removed).push({
+      package_id: id,
+      ...(p?.product_id !== undefined && { product_id: p.product_id }),
+      ...(p?.product_variant_id !== undefined && { variant_id: p.product_variant_id }),
+      quantity: Math.abs(to - from),
+      from,
+      to,
+      ...(charged !== undefined && { price: dollars(charged) }),
+    });
+  }
+  return { added, removed };
+}

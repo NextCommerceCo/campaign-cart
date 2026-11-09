@@ -1,5 +1,5 @@
-import type { CartLine } from './cart/types';
-import { cardSlots, pickedCard } from './cart/selectors';
+import type { CartLine, SelectorCard } from './cart/types';
+import { cardSlots } from './cart/selectors';
 import { variantPackage } from './cart/variants';
 import type { Engine } from './engine';
 
@@ -45,7 +45,7 @@ const selectorOf = (args: ActionArgs) => text(args.selector_id);
 /** The selector `args` names, when it has no picked option to act on. */
 const unpicked = (engine: Engine, args: ActionArgs) => {
   const id = selectorOf(args);
-  return id && !engine.getState().selectors[id]?.picked ? id : undefined;
+  return id && !engine.selectors.get(id)?.picked ? id : undefined;
 };
 
 interface QuantityStep {
@@ -60,14 +60,14 @@ interface QuantityStep {
 /** The quantity `setQuantity` moves from and to, and the limits it keeps to. */
 function quantityStep(engine: Engine, args: ActionArgs): QuantityStep | ActionResult {
   const selectorId = selectorOf(args);
-  const selector = selectorId ? engine.getState().selectors[selectorId] : undefined;
-  const card = pickedCard(selector);
+  const selector = selectorId ? engine.selectors.get(selectorId) : undefined;
+  const card = selectorId ? engine.selectors.picked(selectorId) : undefined;
   const packageId = num(args.package_id);
   if (selectorId && !card) return fail('selector_id', `selector "${selectorId}" has no picked option`);
   if (!selectorId && !packageId) return fail('package_id', 'setQuantity needs package_id or selector_id');
   const current = card
     ? (selector!.quantities?.[card.id] ?? card.quantity ?? 1)
-    : (engine.cart.lines().find((l) => l.package_id === packageId)?.quantity ?? 0);
+    : (engine.cart.line(packageId!)?.quantity ?? 0);
   const next = nextQuantity(args.quantity, current);
   if (next === undefined) return fail('quantity', 'quantity must be a number, +n or -n');
   const [min, max] = card
@@ -76,21 +76,78 @@ function quantityStep(engine: Engine, args: ActionArgs): QuantityStep | ActionRe
   return { selectorId, packageId, current, next, min, max };
 }
 
+/** `addItem` and `acceptUpsell`: a selector they name has a picked option. */
+const canAdd = (engine: Engine, args: ActionArgs) => !unpicked(engine, args);
+
+/** `setQuantity`: the step is valid and moves the quantity within its limits. */
+const canStep = (step: QuantityStep | ActionResult) =>
+  !('ok' in step) && step.next !== step.current && step.next >= step.min && step.next <= step.max;
+
+/** `select`: it names a selector and an option. */
+const canSelect = (args: ActionArgs) => !!selectorOf(args) && !!text(args.option_id);
+
 /** Whether `name` can run with `args` now: `data-next-action` disables its element when not. */
 export function ready(engine: Engine, name: ActionName, args: ActionArgs): boolean {
   switch (name) {
     case 'addItem':
     case 'acceptUpsell':
-      return !unpicked(engine, args);
-    case 'setQuantity': {
-      const step = quantityStep(engine, args);
-      return !('ok' in step) && step.next !== step.current && step.next >= step.min && step.next <= step.max;
-    }
+      return canAdd(engine, args);
+    case 'setQuantity':
+      return canStep(quantityStep(engine, args));
     case 'select':
-      return !!selectorOf(args) && !!text(args.option_id);
+      return canSelect(args);
     default:
       return true;
   }
+}
+
+const noVariant = (code: string, value: string) => fail('value', `no package for ${code} ${value}`);
+
+type PackageFor = (current: number) => number | undefined;
+
+/** A slot of a card takes the variant's package. */
+async function slotVariant(
+  engine: Engine,
+  selectorId: string,
+  card: SelectorCard,
+  index: number,
+  packageFor: PackageFor,
+): Promise<boolean> {
+  const slot = cardSlots(engine.selectors.get(selectorId)!, card)[index];
+  const packageId = slot && packageFor(slot.packageId);
+  if (!packageId) return false;
+  await engine.selectors.setSlot(selectorId, card.id, index, { packageId });
+  return true;
+}
+
+/** A card of one line takes the variant's package, and is picked. */
+async function cardVariant(
+  engine: Engine,
+  selectorId: string,
+  card: SelectorCard,
+  packageFor: PackageFor,
+): Promise<boolean> {
+  const selector = engine.selectors.get(selectorId)!;
+  const [line, ...others] = card.lines;
+  const packageId = line && !others.length && packageFor(line.packageId);
+  if (!packageId) return false;
+  const cards = selector.cards.map((c) => (c === card ? { ...c, lines: [{ ...line, packageId }] } : c));
+  await engine.selectors.register(selectorId, cards, selector.mode);
+  if (selector.picked !== card.id) await engine.selectors.pick(selectorId, card.id);
+  return true;
+}
+
+/** The cart's own line of package `current` takes the variant's package. */
+async function lineVariant(engine: Engine, current: number | undefined, packageFor: PackageFor): Promise<boolean> {
+  const items = engine.getState().cart.groups.items;
+  const own = items?.lines.find((l) => l.packageId === current);
+  const packageId = current && packageFor(current);
+  if (!items || !own || !packageId) return false;
+  await engine.cart.setGroup('items', {
+    ...items,
+    lines: items.lines.map((l) => (l === own ? { ...l, packageId } : l)),
+  });
+  return true;
 }
 
 /**
@@ -110,7 +167,7 @@ export function createActions(
         ? [{ packageId: num(args.package_id)!, quantity: num(args.quantity) ?? 1 }]
         : [];
     if (!selectorId && !lines.length) return fail('items', 'nothing to add: items, package_id or selector_id');
-    if (unpicked(engine, args)) return fail('selector_id', `selector "${selectorId}" has no picked option`);
+    if (!canAdd(engine, args)) return fail('selector_id', `selector "${selectorId}" has no picked option`);
     if (args.replace === true || args.replace === 'true' || args.replace === '') await engine.cart.clear();
     if (selectorId) await engine.selectors.addToCart(selectorId);
     else for (const line of lines) await engine.cart.addItem(line.packageId, line.quantity);
@@ -141,10 +198,10 @@ export function createActions(
       return OK;
     },
     async select(args = {}) {
-      const selectorId = selectorOf(args);
-      const optionId = text(args.option_id);
-      if (!selectorId || !optionId) return fail('option_id', 'select needs selector_id and option_id');
-      if (!engine.getState().selectors[selectorId]?.cards.some((c) => c.id === optionId))
+      if (!canSelect(args)) return fail('option_id', 'select needs selector_id and option_id');
+      const selectorId = selectorOf(args)!;
+      const optionId = text(args.option_id)!;
+      if (!engine.selectors.get(selectorId)?.cards.some((c) => c.id === optionId))
         return fail('option_id', `selector "${selectorId}" has no option "${optionId}"`);
       await engine.selectors.pick(selectorId, optionId);
       return OK;
@@ -186,40 +243,19 @@ export function createActions(
       const code = text(args.code);
       const value = text(args.value);
       if (!code || value === undefined) return fail('value', 'selectVariant needs code and value');
-      const state = engine.getState();
-      const packages = state.campaign?.packages ?? [];
+      const packages = engine.getState().campaign?.packages ?? [];
       const packageFor = (current: number) => variantPackage(packages, current, code, value);
       const selectorId = selectorOf(args);
       const optionId = text(args.option_id);
-      const selector = selectorId ? state.selectors[selectorId] : undefined;
-      const card = selector?.cards.find((c) => c.id === optionId);
-      if (selector && card && args.slot_index !== undefined) {
-        const index = Number(args.slot_index);
-        const slot = cardSlots(selector, card)[index];
-        const packageId = slot && packageFor(slot.packageId);
-        if (!packageId) return fail('value', `no package for ${code} ${value}`);
-        await engine.selectors.setSlot(selectorId!, card.id, index, { packageId });
-        return OK;
-      }
-      if (selector && card) {
-        const [line, ...others] = card.lines;
-        const packageId = line && !others.length && packageFor(line.packageId);
-        if (!packageId) return fail('value', `no package for ${code} ${value}`);
-        const cards = selector.cards.map((c) => (c === card ? { ...c, lines: [{ ...line, packageId }] } : c));
-        await engine.selectors.register(selectorId!, cards, selector.mode);
-        if (selector.picked !== card.id) await engine.selectors.pick(selectorId!, card.id);
-        return OK;
-      }
-      const current = num(args.package_id);
-      const items = state.cart.groups.items;
-      const own = items?.lines.find((l) => l.packageId === current);
-      const packageId = current && packageFor(current);
-      if (!items || !own || !packageId) return fail('value', 'this line cannot change its variant');
-      await engine.cart.setGroup('items', {
-        ...items,
-        lines: items.lines.map((l) => (l === own ? { ...l, packageId } : l)),
-      });
-      return OK;
+      const card = selectorId ? engine.selectors.get(selectorId)?.cards.find((c) => c.id === optionId) : undefined;
+      if (card && args.slot_index !== undefined)
+        return (await slotVariant(engine, selectorId!, card, Number(args.slot_index), packageFor))
+          ? OK
+          : noVariant(code, value);
+      if (card) return (await cardVariant(engine, selectorId!, card, packageFor)) ? OK : noVariant(code, value);
+      return (await lineVariant(engine, num(args.package_id), packageFor))
+        ? OK
+        : fail('value', 'this line cannot change its variant');
     },
     async go(args = {}) {
       const url = text(args.url);

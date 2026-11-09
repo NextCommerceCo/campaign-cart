@@ -50,7 +50,7 @@ function priceHolder(engine: Engine, selectorId: string) {
       last.set(key, model);
       return model;
     }
-    const held = engine.getState().selectors[selectorId]?.quoting && last.get(key);
+    const held = engine.selectors.get(selectorId)?.quoting && last.get(key);
     if (held) return { ...model, ...Object.fromEntries(PRICE_FIELDS.map((f) => [f, held[f]])) };
     return offer ? model : withCatalogPrice(engine, model);
   };
@@ -90,7 +90,7 @@ const orderPage = () => {
 
 /** A picked option's slots, one per unit, each a line of its own package. */
 function slotsOf(a: AttributeContext, selectorId: string, optionId: string): Model[] {
-  const selector = a.engine.getState().selectors[selectorId];
+  const selector = a.engine.selectors.get(selectorId);
   const card = selector?.cards.find((c) => c.id === optionId);
   if (!selector || !card) return [];
   return cardSlots(selector, card).map((slot, index) => ({
@@ -127,7 +127,7 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
     const own = [...el.querySelectorAll(PROPERTY_FIELD)].filter((i) => !i.closest('[data-next-each]'));
     for (const input of own)
       input.addEventListener('change', () => {
-        const selector = a.engine.getState().selectors[id];
+        const selector = a.engine.selectors.get(id);
         if (!selector) return;
         const properties = propertiesOf(own);
         const withProperties = selector.cards.map((c) =>
@@ -152,7 +152,7 @@ function bindSelector(selectorEl: HTMLElement, a: AttributeContext): Render[] {
     ...(mode === 'offer' ? [announceOffer(selectorEl, id, a)] : []),
     () => {
       const selector = a.query.get(`selector.${id}`) as { in_cart?: boolean; option_id?: string } | undefined;
-      const quoting = !!a.engine.getState().selectors[id]?.quoting;
+      const quoting = !!a.engine.selectors.get(id)?.quoting;
       els.forEach((el, optionId) => {
         const selected = selector?.option_id === optionId;
         showState(el, selected, selected && !!selector?.in_cart, quoting);

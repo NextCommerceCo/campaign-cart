@@ -56,9 +56,8 @@ function bindStepper(b: BindContext, selectorId: string, els: Map<string, Elemen
       e.preventDefault();
       e.stopPropagation();
       const card = cardOf(el);
-      if (card && b.engine.getState().selectors[selectorId]?.picked !== card)
-        await b.engine.selectors.pick(selectorId, card);
-      const selector = b.engine.getState().selectors[selectorId];
+      if (card && b.engine.selectors.get(selectorId)?.picked !== card) await b.engine.selectors.pick(selectorId, card);
+      const selector = b.engine.selectors.get(selectorId);
       const picked = pickedCard(selector);
       if (selector && picked)
         await b.engine.selectors.setQuantity(selectorId, cardQuantity(selector, picked) + STEP[dir]);
@@ -66,7 +65,7 @@ function bindStepper(b: BindContext, selectorId: string, els: Map<string, Elemen
   }
 
   return () => {
-    const selector = b.engine.getState().selectors[selectorId];
+    const selector = b.engine.selectors.get(selectorId);
     const picked = pickedCard(selector);
     if (!selector || !picked) return;
     const quantity = cardQuantity(selector, picked);
@@ -103,7 +102,7 @@ export function bindBundleSelectors(root: ParentNode, b: BindContext): Render[] 
     renders.push(bindStepper(b, selectorId, els));
 
     renders.push(() => {
-      const selector = b.engine.getState().selectors[selectorId];
+      const selector = b.engine.selectors.get(selectorId);
       selectorEl.setAttribute('data-selected-bundle', selector?.picked ?? '');
       els.forEach((el, id) => {
         setState(el, id === selector?.picked);

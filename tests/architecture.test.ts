@@ -28,7 +28,6 @@ const LAZY_STATE = ['checkout/state', 'order/state'];
 const LINE_LIMIT = 300;
 const SHRINKING: Record<string, number> = {
   'debug/cart.ts': 391,
-  'order/state.ts': 309,
   'compat/checkout.ts': 337,
 };
 const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
@@ -162,6 +161,18 @@ describe('architecture', () => {
       })
       .map(([file]) => file);
     expect(stale).toEqual([]);
+  });
+
+  it('the engine imports nothing outside engine/, types included', () => {
+    const outside = sources
+      .filter((s) => s.top === 'engine')
+      .flatMap(({ file, path, code }) =>
+        [...code.matchAll(/(?:\bfrom|\bimport\(|^import|declare module)\s*'(\.[^']+)'/gm)]
+          .map((m) => relative('src', join(dirname(file), m[1]!)))
+          .filter((target) => !within(target, 'engine'))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(outside).toEqual([]);
   });
 
   it('payment methods are named and aliased only in engine/payment', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import { upsellId } from '../../src/engine/order';
-import { createOrder, orderValue } from '../../src/order/state';
+import { createOrder, ORDER_VALUES, orderValue, pathsOf } from '../../src/order/state';
 import { format } from '../../src/engine/format';
 import { createLedger, publicOrder, purchaseId, REPORTED } from '../../src/engine/order';
 import type { EngineEvent } from '../../src/engine/events/bus';
@@ -37,7 +37,10 @@ async function gatewayPending(session: MemoryStorage, checkout: Partial<Checkout
   const { engine } = makeEngine({ session });
   await engine.start();
   await engine.cart.addItem(1);
-  engine.attach((ctx) => ctx.update('checkout', checkout));
+  engine.attach((ctx) => {
+    ctx.persist('checkout', (saved) => saved);
+    ctx.update('checkout', checkout);
+  });
 }
 
 const PLAIN = { lines: [{ packageId: 2, quantity: 1 }] };
@@ -486,5 +489,45 @@ describe('order', () => {
     expect(show('shippingAddress.city')).toBe('Austin');
     expect(show('billingAddress.name')).toBe('Ann Lee');
     expect(orderValue(engine.getState(), 'nope')).toBeUndefined();
+  });
+
+  it('lists every order path, and reads the customer and addresses by their own fields only', async () => {
+    expect(pathsOf('order', ORDER_VALUES)).toMatchInlineSnapshot(`
+      [
+        "order.number",
+        "order.refId",
+        "order.ref_id",
+        "order.currency",
+        "order.total",
+        "order.totalExclTax",
+        "order.total_excl_tax",
+        "order.tax",
+        "order.shipping",
+        "order.shippingExclTax",
+        "order.discounts",
+        "order.subtotal",
+        "order.hasTax",
+        "order.hasShipping",
+        "order.hasDiscounts",
+        "order.hasItems",
+        "order.isEmpty",
+        "order.hasUpsells",
+        "order.supportsUpsells",
+        "order.itemCount",
+        "order.shippingMethod",
+        "order.paymentMethod",
+        "order.customer",
+        "order.user",
+        "order.shippingAddress",
+        "order.billingAddress",
+      ]
+    `);
+    const { engine, order } = await setup();
+    await order.load('R1');
+    const state = engine.getState();
+    expect(orderValue(state, 'customer.email')).toEqual(orderValue(state, 'user.email'));
+    expect(orderValue(state, 'shippingAddress.zip')).toEqual(orderValue(state, 'shippingAddress.postcode'));
+    expect(orderValue(state, 'customer.constructor')).toBeUndefined();
+    expect(orderValue(state, 'billingAddress.toString')).toBeUndefined();
   });
 });
