@@ -2,7 +2,8 @@ name: Deploy docs
 
 # The site is one folder per release, plus `latest/` and `main/`. A Workers deploy
 # replaces every file, so each run rebuilds the whole site: released folders come from
-# the `docs-site.tar.gz` attached to each GitHub release, `main/` is built fresh.
+# the `docs-site.tar.gz` attached to each GitHub release, `main/` is built fresh. Publishing
+# a release builds its folder, attaches it, and makes it `latest/`.
 on:
   push:
     branches: [main]
@@ -12,15 +13,8 @@ on:
         description: Assemble the site without deploying
         type: boolean
         default: false
-  workflow_call:
-    inputs:
-      release:
-        description: Tag to build a folder for, attach to its release, and serve as latest/
-        type: string
-        required: true
-      dry-run:
-        type: boolean
-        default: false
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -33,7 +27,7 @@ jobs:
       cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE: ${{ inputs.release }}
+      RELEASE: ${{ github.event.release.tag_name }}
       LEGACY_TAG: v0.4.43
     steps:
       - uses: actions/checkout@v4
@@ -62,9 +56,9 @@ jobs:
         run: |
           node scripts/docs-legacy.mjs docs/site
           mkdir -p "$RUNNER_TEMP/legacy"
-          tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" -C docs/site $(cd docs/site && ls -d v0.4.* latest)
+          (cd docs/site && tar czf "$RUNNER_TEMP/legacy/docs-site.tar.gz" v0.4.* latest)
       - name: Attach the 0.4 docs to ${{ env.LEGACY_TAG }}
-        if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        if: ${{ steps.legacy.outputs.missing == 'true' && !inputs.dry-run && (github.ref == 'refs/heads/main' || env.RELEASE) }}
         run: |
           gh release view "$LEGACY_TAG" >/dev/null 2>&1 \
             || gh release create "$LEGACY_TAG" --verify-tag --latest=false --title "$LEGACY_TAG" --notes ""
@@ -81,7 +75,7 @@ jobs:
           done
 
       - name: Build the release folder and latest/
-        if: ${{ inputs.release }}
+        if: ${{ env.RELEASE }}
         run: |
           npm run docs:build -- "$RELEASE"
           rm -rf docs/site/latest
@@ -89,7 +83,7 @@ jobs:
           tar czf "$RUNNER_TEMP/docs-site.tar.gz" -C docs/site "$RELEASE" latest
 
       - name: Attach the docs to the release
-        if: ${{ inputs.release && !inputs.dry-run }}
+        if: ${{ env.RELEASE && !inputs.dry-run }}
         run: gh release upload "$RELEASE" "$RUNNER_TEMP/docs-site.tar.gz" --clobber
 
       - run: npm run docs:build -- main
@@ -98,7 +92,7 @@ jobs:
           DOCS_BASE_URL: ${{ vars.DOCS_BASE_URL }}
 
       - name: Deploy to Cloudflare
-        if: ${{ !inputs.dry-run && github.ref == 'refs/heads/main' }}
+        if: ${{ !inputs.dry-run && (github.ref == 'refs/heads/main' || env.RELEASE) }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

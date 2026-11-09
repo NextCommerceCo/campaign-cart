@@ -31,4 +31,5 @@ publish a public link
   Node. Every bug fix adds a test that fails without it.
 - Log through `engine.log` (`src/engine/log.ts`); only it and `loader.ts`, which runs before an
   Engine exists, touch `console`. Log data never carries payment details.
-- `dist/` is built by CI and never committed.
+- `dist/` is built by CI and never committed to main; CI tags each new `package.json` version on
+  a commit that adds it, for jsDelivr.
