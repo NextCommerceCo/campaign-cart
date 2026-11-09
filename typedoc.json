@@ -1,19 +1,11 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": [
-    "src/index.ts"
-  ],
-  "exclude": [
-    "**/*.test.ts",
-    "**/tests/**"
-  ],
+  "entryPoints": ["src/boot.ts"],
+  "exclude": ["tests/**"],
   "tsconfig": "tsconfig.json",
   "name": "Campaign Cart SDK",
   "readme": "docs/.staged-home.md",
-  "plugin": [
-    "typedoc-plugin-mdn-links",
-    "@clean-jsdoc-theme/typedoc"
-  ],
+  "plugin": ["typedoc-plugin-mdn-links", "@clean-jsdoc-theme/typedoc"],
   "outputs": [
     {
       "name": "clean-jsdoc-theme",
@@ -26,7 +18,11 @@
     "docGroups": [
       "Start Here",
       "Building Pages",
-      "Reference"
+      "Recipes",
+      "Attribute Reference",
+      "Event Reference",
+      "Analytics Reference",
+      "JavaScript API"
     ],
     "fonts": {
       "heading": "Inter",
@@ -37,51 +33,14 @@
     "customCssFile": "docs/assets/clean-theme.css",
     "customJsFile": "docs/assets/site.js",
     "favicon": "docs/assets/favicon.ico",
-    "sectionOrder": [
-      "Cart",
-      "Campaign",
-      "Shipping",
-      "Coupons",
-      "Upsells",
-      "Checkout",
-      "Orders",
-      "Events",
-      "Analytics",
-      "Attribution",
-      "Metadata",
-      "URL Parameters",
-      "Popups",
-      "Utility",
-      "Core"
-    ],
     "footer": "<div class=\"border-t border-(--clean-border) bg-background py-6 text-sm text-muted-foreground\"><div class=\"mx-auto flex w-full max-w-screen-2xl items-center px-4\"><span>NEXT Commerce &copy; 2026</span></div></div>"
   },
   "excludePrivate": true,
   "excludeInternal": true,
   "excludeExternals": true,
-  "sort": [
-    "source-order"
-  ],
+  "sort": ["source-order"],
   "gitRevision": "main",
   "categorizeByGroup": false,
-  "categoryOrder": [
-    "Cart",
-    "Campaign",
-    "Shipping",
-    "Coupons",
-    "Upsells",
-    "Checkout",
-    "Orders",
-    "Events",
-    "Analytics",
-    "Attribution",
-    "Metadata",
-    "URL Parameters",
-    "Popups",
-    "Utility",
-    "Core",
-    "*"
-  ],
   "validation": {
     "invalidLink": true,
     "notExported": false,

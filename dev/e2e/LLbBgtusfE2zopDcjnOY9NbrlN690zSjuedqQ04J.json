@@ -1,0 +1,42 @@
+{
+  "name": "Olympus (SYNTHETIC e2e data, not the real campaign)",
+  "currency": "USD",
+  "language": "en",
+  "payment_env_key": "dev",
+  "packages": [
+    {
+      "ref_id": 1,
+      "external_id": 101,
+      "name": "Olympus x1",
+      "price": "49.00",
+      "price_total": "49.00",
+      "price_retail": "99.00",
+      "price_retail_total": "99.00",
+      "qty": 1,
+      "image": "",
+      "is_recurring": false
+    },
+    {
+      "ref_id": 3,
+      "external_id": 103,
+      "name": "Olympus Case",
+      "price": "40.00",
+      "price_total": "40.00",
+      "price_retail": "80.00",
+      "price_retail_total": "80.00",
+      "qty": 1,
+      "image": "",
+      "is_recurring": false
+    }
+  ],
+  "shipping_methods": [
+    { "ref_id": 1, "code": "standard", "name": "Standard", "price": "0.00" },
+    { "ref_id": 2, "code": "express", "name": "Express", "price": "9.99" }
+  ],
+  "available_shipping_countries": [{ "code": "US", "label": "United States" }],
+  "available_payment_methods": [
+    { "code": "bankcard", "label": "Card" },
+    { "code": "paypal", "label": "PayPal" }
+  ],
+  "available_express_payment_methods": [{ "code": "paypal", "label": "PayPal" }]
+}

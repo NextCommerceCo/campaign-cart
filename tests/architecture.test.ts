@@ -1,0 +1,216 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { PAYMENT_METHODS } from '../src/engine/order/payment';
+
+const LAZY: Record<string, string[]> = {
+  analytics: ['compat/analytics'],
+  attributes: [],
+  checkout: ['compat/checkout'],
+  order: ['compat/order'],
+  debug: [],
+  'bindings/slots': [],
+  'bindings/cart-summary': [],
+  'compat/exit-intent': [],
+  'compat/widgets': [],
+  'compat/legacy/index': [],
+  'compat/legacy/events': ['compat/legacy/index'],
+  'compat/legacy/payloads': ['compat/legacy/index', 'compat/legacy/events'],
+  'compat/checkout': ['checkout'],
+  'compat/order': ['order'],
+  'compat/analytics': ['analytics'],
+  'destinations/ga4': [],
+  'destinations/meta': [],
+  'destinations/rudderstack': [],
+};
+const LAZY_STATE = ['checkout/state', 'order/state'];
+const LINE_LIMIT = 300;
+const SHRINKING: Record<string, number> = {};
+const headless = (path: string) => path.startsWith('engine/') || /^[^/]+\/state(\/|$)/.test(path);
+const within = (path: string, area: string) => path === area || path.startsWith(`${area}/`);
+const BROWSER_GLOBALS =
+  /\b(document|window|location|navigator|history|localStorage|sessionStorage|fetch|matchMedia|CustomEvent|requestIdleCallback)\b/;
+
+const ALLOWED: Record<string, string[]> = {
+  engine: ['engine'],
+  dom: ['engine', 'dom'],
+  bindings: ['engine', 'bindings', 'dom'],
+  checkout: ['engine', 'checkout', 'dom', 'compat/checkout'],
+  order: ['engine', 'order', 'dom', 'compat/order'],
+  analytics: ['engine', 'compat/analytics'],
+  attributes: ['engine', 'attributes', 'dom'],
+  destinations: ['engine'],
+  debug: ['engine', '../vendor/tsugi'],
+  compat: ['engine', 'dom', 'checkout/form/names', 'order/upsell'],
+  boot: ['engine', 'bindings', 'dom', 'compat/legacy'],
+  loader: ['config', 'compat/config'],
+  config: ['compat/config'],
+};
+
+const lines = (code: string) => {
+  const body = code.replace(/^import [\s\S]*?;\n/gm, '');
+  return body.split('\n').length - (body.endsWith('\n') ? 1 : 0);
+};
+
+const files = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? files(join(dir, d.name)) : [join(dir, d.name)],
+  );
+
+const area = (file: string) => {
+  const path = relative('src', file).replace(/\.ts$/, '');
+  const [top] = path.split('/');
+  return { path, top: top! };
+};
+
+const sources = files('src').map((file) => ({ file, ...area(file), code: readFileSync(file, 'utf8') }));
+
+function imports(code: string, from: string) {
+  const resolve = (spec: string) => relative('src', join(dirname(from), spec)).replace(/\/index$/, '');
+  const statics = [...code.matchAll(/^import (?!type )[^;]*? from '(\.[^']+)'/gm)].map((m) => resolve(m[1]!));
+  const dynamics = [...code.matchAll(/import\('(\.[^']+)'\)/g)].map((m) => resolve(m[1]!));
+  return { statics, dynamics };
+}
+
+describe('architecture', () => {
+  it('every file belongs to a known area', () => {
+    expect(sources.map((s) => s.top).filter((top) => !(top in ALLOWED))).toEqual([]);
+  });
+
+  it('imports go one way', () => {
+    const allowed = (top: string, target: string) =>
+      target.split('/')[0] === top || ALLOWED[top]!.some((ok) => target === ok || target.startsWith(`${ok}/`));
+    const wrong = sources.flatMap(({ file, top, code }) =>
+      imports(code, file)
+        .statics.filter((target) => !allowed(top, target))
+        .map((target) => `${top} → ${target}`),
+    );
+    expect(wrong).toEqual([]);
+  });
+
+  it('only entries wire compat in', () => {
+    const entry = (path: string) => ['boot', 'loader', 'config'].includes(path) || /^[^/]+\/index$/.test(path);
+    const wired = sources
+      .filter((s) => s.top !== 'compat' && !entry(s.path))
+      .flatMap(({ file, path, code }) =>
+        imports(code, file)
+          .statics.filter((target) => within(target, 'compat'))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(wired).toEqual([]);
+  });
+
+  it('lazy chunks are only loaded with import()', () => {
+    const unit = (path: string) => Object.keys(LAZY).find((lazy) => path === lazy || path.startsWith(`${lazy}/`));
+    const eager = sources.flatMap(({ file, path, code }) => {
+      const own = unit(path);
+      return imports(code, file)
+        .statics.filter((target) => {
+          const lazy = unit(target);
+          return lazy && lazy !== own && !LAZY[lazy]!.some((owner) => own === owner);
+        })
+        .map((target) => `${path} → ${target}`);
+    });
+    expect(eager).toEqual([]);
+  });
+
+  it("headless code imports only the engine and its own feature's state", () => {
+    const wrong = sources
+      .filter((s) => headless(s.path))
+      .flatMap(({ file, path, top, code }) =>
+        imports(code, file)
+          .statics.filter((target) => !within(target, 'engine') && !within(target, `${top}/state`))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(wrong).toEqual([]);
+  });
+
+  it('landing pages never load checkout or order state', () => {
+    const reach = (path: string, seen = new Set<string>()): Set<string> => {
+      if (seen.has(path)) return seen;
+      seen.add(path);
+      const source = sources.find((s) => s.path === path || s.path === `${path}/index`);
+      if (source) imports(source.code, source.file).statics.forEach((next) => reach(next, seen));
+      return seen;
+    };
+    expect([...reach('boot')].filter((path) => LAZY_STATE.some((area) => within(path, area)))).toEqual([]);
+  });
+
+  it('the engine and every feature state never touch the DOM or browser globals', () => {
+    const dom = sources
+      .filter((s) => headless(s.path))
+      .filter((s) => BROWSER_GLOBALS.test(s.code.replace(/'[^']*'|`[^`]*`/g, '')))
+      .map((s) => s.path);
+    expect(dom).toEqual([]);
+  });
+
+  it('folders are at most three levels deep', () => {
+    expect(sources.filter((s) => s.path.split('/').length > 3).map((s) => s.path)).toEqual([]);
+  });
+
+  it('only the logger writes to the console', () => {
+    const direct = sources
+      .filter((s) => !['engine/runtime/log', 'loader'].includes(s.path) && /\bconsole\./.test(s.code))
+      .map((s) => s.path);
+    expect(direct).toEqual([]);
+  });
+
+  it('no source file grows past its line budget', () => {
+    const over = sources
+      .filter((s) => lines(s.code) > (SHRINKING[`${s.path}.ts`] ?? LINE_LIMIT))
+      .map((s) => `${s.path}: ${lines(s.code)}`);
+    expect(over).toEqual([]);
+  });
+
+  it('a line budget shrinks with its file and goes once the file is under the limit', () => {
+    const stale = Object.entries(SHRINKING)
+      .filter(([file, budget]) => {
+        const source = sources.find((s) => `${s.path}.ts` === file);
+        return !source || lines(source.code) <= LINE_LIMIT || lines(source.code) < budget;
+      })
+      .map(([file]) => file);
+    expect(stale).toEqual([]);
+  });
+
+  it('the engine imports nothing outside engine/, types included', () => {
+    const outside = sources
+      .filter((s) => s.top === 'engine')
+      .flatMap(({ file, path, code }) =>
+        [...code.matchAll(/(?:\bfrom|\bimport\(|^import|declare module)\s*'(\.[^']+)'/gm)]
+          .map((m) => relative('src', join(dirname(file), m[1]!)))
+          .filter((target) => !within(target, 'engine'))
+          .map((target) => `${path} → ${target}`),
+      );
+    expect(outside).toEqual([]);
+  });
+
+  it('the DOM layers read selectors through engine.selectors, not raw state', () => {
+    const reads = /getState\(\)\.selectors\b|\{[^}]*\bselectors\b[^}]*\}\s*=\s*[\w.]*getState\(\)/;
+    const raw = sources.filter((s) => !headless(s.path) && reads.test(s.code)).map((s) => s.path);
+    expect(raw).toEqual([]);
+  });
+
+  it('only the 0.4.x-parity paths guess USD for a currency they do not know', () => {
+    const parity = (path: string) => within(path, 'compat') || within(path, 'destinations/rudderstack');
+    const guessing = sources.filter((s) => !parity(s.path) && /'USD'/.test(s.code)).map((s) => s.path);
+    expect(guessing).toEqual([]);
+  });
+
+  it('payment methods are named and aliased only in engine/order/payment', () => {
+    const words = Object.values(PAYMENT_METHODS).flatMap((m) => [
+      m.label,
+      ...(m.aliases ?? []).filter((a) => a.length > 6),
+    ]);
+    const elsewhere = sources
+      .filter((s) => s.path !== 'engine/order/payment')
+      .flatMap((s) => words.filter((w) => s.code.includes(`'${w}'`)).map((w) => `${s.path}: '${w}'`));
+    expect(elsewhere).toEqual([]);
+  });
+
+  it('no default exports and no re-export barrels', () => {
+    const bad = sources
+      .filter((s) => /^export default|^export \* from|^export \{[^}]*\} from/m.test(s.code))
+      .map((s) => s.path);
+    expect(bad).toEqual([]);
+  });
+});

@@ -1,0 +1,50 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+
+const BUDGETS = [
+  { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
+  { match: /^boot-.*\.js$/, name: 'boot', kb: 25.5 },
+  { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
+  { match: /^ga4-.*\.js$/, name: 'ga4', kb: 2 },
+  { match: /^meta-.*\.js$/, name: 'meta', kb: 2 },
+  { match: /^rudderstack-.*\.js$/, name: 'rudderstack', kb: 3 },
+  { match: /^exit-intent-.*\.js$/, name: 'exit-intent', kb: 3 },
+  { match: /^checkout-.*\.js$/, name: 'checkout', kb: 30 },
+  { match: /^order-.*\.js$/, name: 'order', kb: 10 },
+  { match: /^slots-.*\.js$/, name: 'slots', kb: 6 },
+  { match: /^attributes-.*\.js$/, name: 'attributes', kb: 12 },
+  { match: /^variants-.*\.js$/, name: 'variants', kb: 1 },
+  { match: /^query-.*\.js$/, name: 'query', kb: 2 },
+  { match: /^cart-summary-.*\.js$/, name: 'cart summary', kb: 3 },
+  { match: /^widgets-.*\.js$/, name: 'widgets', kb: 3 },
+  { match: /^i18n-.*\.js$/, name: 'i18n', kb: 1 },
+  { match: /^legacy-.*\.js$/, name: 'legacy', kb: 3.5 },
+  { match: /^debug-.*\.js$/, name: 'debug', kb: 56.5 },
+  { match: /^payment-icons.*\.js$/, name: 'debug icons', kb: 16 },
+  { match: /^geo-.*\.js$/, name: 'geo', kb: 1 },
+  { match: /^payment-(?!icons).*\.js$/, name: 'payment', kb: 1 },
+  { match: /^address-line-.*\.js$/, name: 'address', kb: 0.5 },
+  { match: /^campaign-cart\.css$/, name: 'css (0.4.x)', kb: 6 },
+];
+
+const files = readdirSync('dist');
+let failed = false;
+for (const budget of BUDGETS) {
+  const matches = files.filter((f) => budget.match.test(f));
+  if (matches.length !== 1) {
+    console.log(`MISSING ${budget.name}: expected one file, found ${matches.length}`);
+    failed = true;
+    continue;
+  }
+  const kb = gzipSync(readFileSync(`dist/${matches[0]}`)).length / 1024;
+  const ok = kb <= budget.kb;
+  failed ||= !ok;
+  console.log(`${ok ? 'ok  ' : 'OVER'} ${budget.name.padEnd(11)} ${kb.toFixed(1)} KB / ${budget.kb} KB  ${matches[0]}`);
+}
+for (const file of files.filter((f) => f.endsWith('.js') && !BUDGETS.some((b) => b.match.test(f)))) {
+  console.log(
+    `UNBUDGETED ${file}: a chunk with no budget, often a module two lazy chunks share; give it a home or a budget`,
+  );
+  failed = true;
+}
+process.exit(failed ? 1 : 0);

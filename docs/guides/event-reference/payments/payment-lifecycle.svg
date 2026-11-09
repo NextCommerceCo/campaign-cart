@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 408" width="720" height="408" role="img" aria-labelledby="payments-lifecycle-title payments-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="payments-lifecycle-title">Payment lifecycle</title>
+  <desc id="payments-lifecycle-desc">On the checkout, an order created with a payment_complete_url sends order.created, then payment.redirected, and the shopper is redirected there to pay. Paid, the gateway redirects the shopper to the next page, which loads the order (order.loaded, then order.paid once and checkout.completed) and empties the cart kept for it. Not paid, the gateway redirects the shopper back to the checkout with payment_failed=true: payment.failed, once per order, with the cart kept and the same checkout. A card declined on the checkout sends payment.failed too. A shopper who comes back without paying, such as with the Back button, gets the checkout again without events.</desc>
+  <defs>
+    <marker id="payments-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="270" y="6" width="120" height="27" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="24" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the checkout</text>
+    <path d="M330 33 V118" marker-end="url(#payments-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="48" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">created with a</text>
+    <text x="344" y="64" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment_complete_url</text>
+    <text x="344" y="83" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.created</text>
+    <text x="344" y="100" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.redirected</text>
+    <path d="M330 182 V298" marker-end="url(#payments-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="240" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">paid: redirected</text>
+    <text x="344" y="254" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">to the next page</text>
+    <rect x="540" y="6" width="160" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="24" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the checkout:</text>
+    <text x="620" y="39" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a card declined</text>
+    <path d="M620 48 V298" marker-end="url(#payments-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <path d="M440 153 H500 V333 H534" marker-end="url(#payments-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="512" y="206" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">not paid:</text>
+    <text x="512" y="222" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">redirected back</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="124" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+    <text x="330" y="149" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">at the gateway</text>
+    <text x="330" y="169" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the shopper pays</text>
+    <rect x="220" y="304" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="329" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">paid</text>
+    <text x="330" y="349" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
+    <text x="330" y="364" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
+    <text x="330" y="379" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.completed</text>
+    <rect x="540" y="304" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <text x="620" y="329" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">not paid</text>
+    <text x="620" y="349" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.failed</text>
+    <text x="620" y="364" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">back on the checkout</text>
+  </g>
+</svg>

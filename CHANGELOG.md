@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.5.0] — Unreleased — A New Campaign SDK, and Events Named Like Webhooks
+
+The SDK is rebuilt around one engine that holds the campaign, cart, checkout and order. Pages built for 0.4.x keep working; what changes for a page builder is in [Migrating from 0.4.x](docs/guides/migrating-from-0.4.md). Events now share one naming scheme, `namespace.action`, shaped like Next Commerce webhooks, and tracking events have a listener of their own. Read Before you upgrade first if your page listens with `next.on` or reads `window.dataLayer`.
+
+### Before you upgrade
+
+- **0.4.x event names still work, with the payload they had.** `cart:updated`, `shipping:method-changed`, `exit-intent:*` and the rest fire as before, each only at the moment it meant. New code should use the names in [Events](docs/guides/events.md). Four are no longer sent, and a listener on one logs a warning: `cart:package-swapped`, `order:redirect-missing`, `address:messages-loaded`, and `upsell:accepted` (offers send `upsell:added`).
+- **A few 0.4.x features are removed**, each listed under Removed in [Migrating from 0.4.x](docs/guides/migrating-from-0.4.md#removed): `data-next-action="accept-upsell"` with `data-next-upsell-option`, `-select` and `-quantity`, `nextConfig.googleMaps`, `dl_package_swapped`, and `token` and `pmData` on `payment:tokenized`. `dl_purchase` no longer carries the customer's email, name and address in `user_properties`.
+- **Upsell pages built from the 0.4.x starter templates keep working.** `data-next-upsell-quantity-toggle` sets the quantity an offer adds, and `next.addUpsell`, `canAddUpsells`, `getCompletedUpsells`, `isUpsellAlreadyAdded`, `getAvailableVariantAttributes` and `getPackageByVariantSelection` are on `window.next` on a post-purchase page. All are deprecated. An offer button with nothing to add keeps the shopper on the page, as in 0.4.x.
+- **An event name the SDK does not know logs a warning and never fires.** `fomo:*` and `profile:*`, features the SDK no longer has, are accepted and never fire.
+- **The shopper's language sent with the Open Cart and the order is the campaign's.** It was always `en`, so a campaign set to another language saved its shoppers as English. The store now gets the campaign's language, such as `fr`.
+- **Lead capture is set with `data-next-lead` on the checkout form**: `email` (the default, as before), `phone`, `email+phone` or `off`. The lead is saved, and `user.created` fires, once the shopper's name and those are valid. `data-trigger-on` and `data-auto-create="false"` still work and are deprecated. `data-prospect-config`, `data-min-phone-digits`, `data-email-field` and `data-phone-field` are no longer read, and a warning names any the page still sets. See [Checkout](docs/guides/attribute-reference/objects/checkout.md).
+- **`dl_*` events are deprecated, and still sent.** Listen with `next.analytics.on(name, fn)` to get the same moments as tracking events: `product_added_to_cart`, `checkout_started`, `checkout_completed`, … with the SDK's own objects as `data`.
+- **The exit-intent popup now also pushes `dl_view_promotion` and `dl_select_promotion`**, next to the `dl_exit_intent_*` events it always sent. A GTM trigger on `dl_exit_intent_shown` keeps working; a new GA4 tag can use the promotion events instead.
+
+### Attributes v2
+
+- **A new attribute set, beside the old one.** Every attribute a page writes has one role: objects (`data-next-selector`, `data-next-option`, `data-next-checkout`, `data-next-promotion`), display (`data-next-query`, `data-next-show`, `data-next-hide`, `data-next-each`, `data-next-for`), actions (`data-next-action`), inputs (`data-next-field`) and widgets (`data-next-address`, `data-next-payment`, `data-next-express`). Every other attribute is a parameter named after a field of the model: `data-next-shipping-id` is `shipping_id`. See [Attributes](docs/guides/attributes.md).
+- **Attributes, scripts and events read the same objects.** `data-next-query="cart.total"`, `await next.query('cart.total')` and a `cart.calculated` event's `total` are one value, with the events' snake_case names. `next.query` loads its code on the first call, so boot stays within its 25.5 KB budget. `next.watch(path, fn)` follows a value, and `next.define(type, name, fn)` adds a field a page computes, read like the SDK's own.
+- **`data-next-action` runs `next.actions`, under the same names.** Actions take one object of field names (`next.actions.addItem({ package_id: 42, quantity: 2 })`), resolve `{ ok, errors }` and never throw. The 0.5 positional calls (`addItem(42, 2)`) still work.
+- **Options, order bumps and post-purchase offers are one attribute.** `data-next-option` inside a `data-next-selector` is one of several; on its own it is an order bump; on a page opened with `?ref_id` it is an offer. Lines are `data-next-items="1x3, 5"`, without JSON. A variant picker (`data-next-field="variants.size"`) works on any option of one line, not only in bundle slots.
+- **Every option, selector and line has the cart's price fields**: `price` and `original_price` for one package, `subtotal`, `total_discount`, `total` (`total = subtotal − total_discount`) and `discount_percentage`; a discount keeps the offer's `percentage`. These are new fields on the `cart.*` and `selector.*` events too.
+- **`node scripts/migrate.mjs page.html` converts a page.** It rewrites the attributes that have a new form, leaves the rest of the file as it was, and lists what it kept on the earlier attributes; `--write` saves it.
+- **Boot is 25.5 KB.** The code that makes 0.4.x `next.on` names from the events is a chunk of its own, loaded at boot on any page without attributes v2 and on a page built only with attributes v2 by its first 0.4.x name. A 0.4.x listener added in the moment before it has loaded hears those events once it has.
+- **Pages built with the earlier attributes keep working, and load the new code only when a script calls `next.actions`.** Attributes v2 is a chunk of its own, loaded by a page that uses it or by the first `next.actions` call. [Legacy attributes](docs/guides/attribute-reference/legacy/legacy-attributes.md) maps each earlier attribute to its new name, and the debug panel's Elements tab names it beside each one.
+
+### Events
+
+- **`window.nextReady` is how a script that runs before the SDK reaches `window.next`**: `(window.nextReady ||= []).push((next) => …)`, before or after the loader's tag. It is no longer deprecated, and works as in 0.4.x: each callback gets `window.next` once the page is ready, and a later push runs at once.
+- **Every event is named `namespace.action`, with one dot**: the thing that changed, then what happened to it, as in Next Commerce webhooks: `cart.added`, `checkout.started`, `order.created`. See [Events](docs/guides/events.md).
+- **Each event has its own page in the Event Reference**, like the webhook reference: when it fires, every field of its data, and an example recorded from a real checkout.
+- **A listener gets the data and a webhook-style envelope.** In `next.on('order.created', (data, event) => …)`, `event` has `event_id` (a UUID v4 as 32 hex digits), `event_type`, `object`, `data`, `created_at`, `session_id` and `sdk_version`. Tracking events use the same envelope; their `event_id` is the order number on `checkout_completed` and `<ref_id>-US<n>` on `upsell_completed`.
+- **Each tracking event carries a short `context`**: `page_location`, `page_title`, `page_referrer`, the `campaign` (`id`, `name`, `currency`, `language`), the campaign `session_id`, the `attribution` (UTM parameters, affiliate and click ids, `landing_page`, `fbp`, `fbc`) and the `browser` (`user_agent`, `language`, `device_type`). `next.context()` returns the same object, for a script that sends `next.on` events on.
+- **Every event carries the campaign session as `session_id`**, in the envelope and in each tracking event's `context`, and as `campaign_session_id` in each `dl_*` push, as before. It is the `ncsid` the NEXT analytics script keeps; the SDK makes one (a UUID v4 as 32 hex digits) when there is none yet, keeps it the same way, and sends it on every Campaigns API call as `X-Next-Campaign-Session-Id`.
+- **A listener added late first gets the events the page already sent**, in order, then each new one once. So `sdk.ready` reaches a listener added after it fired; `ready` is the same event.
+- **Every `cart.*` event carries the same cart**: its lines with the product, variant and image, the coupons, the currency and the shipping method; once the server priced it, each line's `price`, `original_price` and `total`, and the cart's `subtotal`, `total_discount`, `total` and `discounts` (one per offer, `coupon` or `offer`). Prices are numbers, and `total = subtotal − total_discount + shipping_method.price`. `cart.calculating` and `cart.calculated` frame each price run, once for a burst of clicks. `cart.updated` fires once per change, before the server prices it, and `cart.added` or `cart.removed` right after it with `changes`: each line's `package_id`, `quantity`, `from` and `to`, with the product, and its price when the server has already priced it.
+- **Bundle cards, upsell offer cards and toggles share the `selector.*` events**: `selector.viewed` (once, when half of it is on screen), `selector.selected`, `selector.updated` (the picked option's quantity or a slot changed), `selector.deselected`, `selector.pricing` and `selector.priced`, with `type` set to `bundle`, `offer` or `toggle`. Each carries the same selector: its `selector_id` and `type`, the picked option (`option_id`, the card's `data-next-bundle-id`) and that option's `lines`, with the product, variant and image like the cart's lines, and their prices once the option has one, as on `selector.priced`.
+- **Coupons send `coupon.applied`, `coupon.removed` and `coupon.denied`.**
+- **`user.created` fires when the store saves the shopper with a new Open Cart**, from a valid email and a first and last name, so the store can reach them for marketing as `accepts_marketing` allows; and `user.updated` when the shopper's details change after that. The Open Cart keeps the first ones.
+- **`address.entered` and `address.updated` fire only for a valid address**, with `type: 'shipping'` or `'billing'`: every field its country requires is filled and passes its check, and so does each optional field the shopper filled. They are checked when the shopper leaves a field, not on every key. `address.autofilled` fires when the shopper picks an address suggestion, with the fields it filled.
+- **`shipping.selected`, `payment.selected`, `checkout.continued`, `checkout.submitted`, `checkout.invalid`, `checkout.failed` and `checkout.completed`** follow the rest of the checkout. `checkout.continued` is a step of a multi-step checkout that passed its checks; `checkout.submitted` a submit that passed them and is being sent; `checkout.invalid` one that did not, with `errors` by field name; `checkout.failed` an order the server refused or a request that failed; `checkout.completed` the checkout's order paid, once.
+- **Each checkout event carries the object its namespace names**: `checkout.started` and `checkout.submitted` the checkout (the same cart as `cart.*`, as `cart`, next to the `user`, `shipping_address`, `billing_same_as_shipping`, `billing_address` and `payment_method` once each is entered and valid), `user.*` the user (with `accepts_marketing`, and the `language`, `ip` and `user_agent` the store recorded with the Open Cart), `address.*` the address with its `type`, `shipping.selected` the shipping method and `payment.selected` the payment. Addresses use `city` and `phone`.
+- **Orders and upsells send `order.created`, `order.loaded`, `order.paid`, `order.updated`, `upsell.viewed`, `upsell.accepted`, `upsell.skipped` and `upsell.failed`.** `order.paid` comes once per order; `order.updated` when an upsell is added to it.
+- **Payments send `payment.redirected` and `payment.failed`.** `payment.redirected` comes as the shopper leaves for a gateway (PayPal, 3-D Secure, …); `payment.failed` when a card is declined, the shopper comes back from a gateway unpaid, or an upsell is declined, with `error.code` `declined` or `payment_failed`.
+- **The exit-intent popup and `data-next-promotion` elements send `promotion.viewed`, `promotion.clicked` and `promotion.closed`**, with `type: 'exit_intent'` or `'banner'`.
+- **`sdk.error` says which step failed and why.** `action` names the step, like the events (`cart.calculate`, `order.create`, `user.save`, …), `code` the reason (`network`, `timeout`, `server`, `rejected`, `declined`, `payment_failed`, `auth`, `too_many_requests`, `unavailable`), and `status` the HTTP status when the API answered. Each group's lifecycle page lists its errors and what the SDK does next.
+
+### Tracking
+
+- **Tracking events are the SDK's own contract**, named in the storefront style: `page_viewed`, `product_viewed`, `product_list_viewed`, `product_added_to_cart`, `product_removed_from_cart`, `cart_updated`, `checkout_started`, `checkout_contact_info_submitted`, `checkout_shipping_address_submitted`, `checkout_shipping_method_submitted`, `checkout_payment_info_submitted`, `checkout_completed`, `upsell_completed`, `upsell_viewed`, `upsell_skipped`, `promotion_viewed` and `promotion_selected`. Each carries the same object the `next.on` events carry (a CartItem, the Cart, the Checkout, the Order, the Upsell, the Promotion) as `data`, in the `next.on` envelope plus `context`. Each [destination](docs/guides/analytics-reference/destinations/overview.md) remaps them, and the `dl_*` pushes keep their 0.4.x shape.
+- **`next.analytics.on('product_added_to_cart', fn)` listens to one tracking event by name.** `'*'` gets every one. Either way, a listener first gets the events sent before it was added.
+- **`product_added_to_cart` comes once per line added**, with `first_in_session` on the first of the tab; `dl_add_to_cart` is still one push per burst of added lines.
+- **`checkout_contact_info_submitted` is sent once, when the contact details create the Open Cart**, and pushed as `dl_generate_lead` with `currency`, `value` and `lead_source`.
+- **`promotion_viewed` and `promotion_selected` are sent when the exit-intent popup opens and when it is clicked**, and pushed as `dl_view_promotion` and `dl_select_promotion`.
+- **`checkout_shipping_address_submitted` waits for a valid shipping address, and `checkout_shipping_method_submitted` for a shipping method to be picked**; the first of them pushes `dl_add_shipping_info`, once per checkout.
+- **Tracking events go to destinations, each loaded only when it is on.** GTM, the 0.4.x `dl_*` pushes, is on by default. GA4 (`gtag`) and the Meta pixel (`fbq`) are built in and off until `nextConfig.analytics.destinations.ga4` or `.meta` turns them on; each loads a chunk of about 2 KB, and the SDK never loads the vendor's tag. See [Destinations](docs/guides/analytics-reference/destinations/overview.md).
+- **RudderStack is a built-in destination again**, off until `nextConfig.analytics.destinations.rudderstack` or the 0.4.x `providers.rudderstack.enabled: true` turns it on. It makes the calls 0.4.x made, with the same event names and properties (`page()` with a `<Page type> Page View` track, `identify()` at the lead and before each `Order Completed`, `Product Added`, `Checkout Started`, `Order Completed`, …), so RudderStack destinations and warehouse tables keep working. It loads a chunk of about 3 KB and waits for the snippet's `ready()`.
+- **A custom analytics endpoint is not built in.** `providers.custom` logs a warning; a listener sends each event: `next.analytics.on('*', (event) => fetch(url, { method: 'POST', keepalive: true, body: JSON.stringify(event) }))`.
+- **`providers.facebook.enabled: true` sends to the Meta pixel again**, as in 0.4.x: with `storeName`, an order's `Purchase` has `eventID: '<storeName>-<order number>'`, the id the store's server-side events use.
+- **`?ignore=true` turns tracking off for the rest of the tab, as in 0.4.x**: nothing reaches `next.analytics.on`, the `dataLayer` or any destination. New: `?ignore=false` turns it back on, and so does `?reset=1`.
+- **Each destination has a page in the Analytics Reference**: every vendor event it sends, its fields, a link to the vendor's docs and an example recorded from the SDK.
+- **GA4 and Meta purchase prices are before tax**: each order line and the shipping, from the `tax` that `OrderItem` and `shipping_method` now carry. `dl_*` pushes and RudderStack keep 0.4.x's prices, so their totals can differ from GA4's and Meta's when the price includes tax.
+- **GA4 `items` and Meta `contents` count units of product**: a package of 3 units, bought twice, is quantity 6 at a third of the package price.
+- **A GA4 or Meta purchase in a currency the SDK cannot tell leaves `currency` out** instead of sending `USD`.
+- **The order's attribution records `ttclid`, `msclkid`, `gbraid` and `wbraid`** next to `fbclid` and `clickid`, and so does each `dl_*` push's `attribution`.
+- **The SDK sends the shopper's IP**, from the geo lookup it already makes, as `user_ip` in the order's attribution and as the Open Cart's `ip` when the store recorded none.
+
 ## [0.4.43] — 2026-10-20 — Shop Pay Support
 
 Shoppers can now pay with Shop Pay, either from the payment options on the checkout form or from the express buttons at the top of the page.
@@ -191,12 +258,12 @@ One feature removed and one long-standing bug fixed. The removal only concerns a
 
   Four things go with them:
 
-  | Removed | Description |
-  |---|---|
-  | `next.fomo(config)` | Started and configured the popup |
-  | `next.stopFomo()` | Stopped it |
-  | `fomo:shown` | Fired once per popup shown |
-  | `next-fomo-show` | Class on the popup while on screen |
+  | Removed             | Description                        |
+  | ------------------- | ---------------------------------- |
+  | `next.fomo(config)` | Started and configured the popup   |
+  | `next.stopFomo()`   | Stopped it                         |
+  | `fomo:shown`        | Fired once per popup shown         |
+  | `next-fomo-show`    | Class on the popup while on screen |
 
   The exit-intent popup is untouched. `next.exitIntent()` and `next.disableExitIntent()` behave exactly as before, and exit intent is now the only entry under On-page popups in the JavaScript API reference.
 
@@ -210,9 +277,7 @@ One feature removed and one long-standing bug fixed. The removal only concerns a
 
   ```js
   const { cartLines } = next.getCartData();
-  cartLines.forEach(line =>
-    console.log(line.packageId, line.quantity, line.price.excl_tax.formatted)
-  );
+  cartLines.forEach((line) => console.log(line.packageId, line.quantity, line.price.excl_tax.formatted));
   ```
 
   A line carries its package, quantity and product details, plus whether it came from an upsell (`is_upsell`) and whether it repeats on a subscription (`is_recurring`). Its prices come as `excl_tax`, `incl_tax`, `original` and `savings`, each one a raw `value` and a `formatted` string. Two things to expect from those amounts:
@@ -293,22 +358,22 @@ Three things a shopper sees during checkout, all of them wrong in `0.4.35`. Noth
 
   Every method the SDK supports, and the value to give `data-next-payment-method`:
 
-  | Method | Value | Express button |
-  |---|---|---|
-  | Card | `credit` | no |
-  | PayPal | `paypal` | yes |
-  | Apple Pay | `apple_pay` | yes |
-  | Google Pay | `google_pay` | yes |
-  | Klarna | `klarna` | no |
-  | Link **(new)** | `link` | yes **(new)** |
-  | iDEAL **(new)** | `ideal` | no |
-  | Bancontact **(new)** | `bancontact` | no |
-  | SEPA Direct Debit **(new)** | `sepa_debit` | no |
-  | TWINT **(new)** | `twint` | no |
-  | Swish **(new)** | `swish` | no |
-  | Affirm **(new)** | `affirm` | no |
-  | Giropay **(new)** | `giropay` | no |
-  | Sofort **(new)** | `sofort` | no |
+  | Method                      | Value        | Express button |
+  | --------------------------- | ------------ | -------------- |
+  | Card                        | `credit`     | no             |
+  | PayPal                      | `paypal`     | yes            |
+  | Apple Pay                   | `apple_pay`  | yes            |
+  | Google Pay                  | `google_pay` | yes            |
+  | Klarna                      | `klarna`     | no             |
+  | Link **(new)**              | `link`       | yes **(new)**  |
+  | iDEAL **(new)**             | `ideal`      | no             |
+  | Bancontact **(new)**        | `bancontact` | no             |
+  | SEPA Direct Debit **(new)** | `sepa_debit` | no             |
+  | TWINT **(new)**             | `twint`      | no             |
+  | Swish **(new)**             | `swish`      | no             |
+  | Affirm **(new)**            | `affirm`     | no             |
+  | Giropay **(new)**           | `giropay`    | no             |
+  | Sofort **(new)**            | `sofort`     | no             |
 
   The card also answers to `card_token`, and it is the one method whose name changes on the way out: the order carries `card_token`. Every other method goes on the order under the same name you write. Apple Pay's button is left out on Android. A method the SDK does not list is sent to the API anyway, so this is what it names, not the limit of what it can charge.
 
@@ -507,17 +572,17 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
 - **`data-next-exclude-property` — per-slot/card property exclusion** — prevents specific properties from being sent to the API for a given line item without removing the inputs from the page.
 
-  | Value | Effect |
-  |---|---|
-  | `"team"` | Excludes the `team` property key from this line |
-  | `"team, number"` | Excludes multiple keys |
-  | `"*"` | Excludes all properties from this line |
+  | Value            | Effect                                          |
+  | ---------------- | ----------------------------------------------- |
+  | `"team"`         | Excludes the `team` property key from this line |
+  | `"team, number"` | Excludes multiple keys                          |
+  | `"*"`            | Excludes all properties from this line          |
 
   For BundleSelector, set `excludeProperties` inside the bundle item JSON. For PackageToggle, set the attribute on the card element, its state container, or via `data-next-packages` JSON.
 
   ```html
   <!-- PackageToggle — HTML attribute -->
-  <div data-next-toggle-card data-next-exclude-property="team, number">
+  <div data-next-toggle-card data-next-exclude-property="team, number"></div>
   ```
 
   ```json
@@ -534,9 +599,9 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
 - **`data-next-property` / `data-next-default-property` attribute names** — renamed from `data-next-property-key` / `data-next-default-property-key` for cleaner, more readable templates.
 
-  | Old | New |
-  |---|---|
-  | `data-next-property-key` | `data-next-property` |
+  | Old                              | New                          |
+  | -------------------------------- | ---------------------------- |
+  | `data-next-property-key`         | `data-next-property`         |
   | `data-next-default-property-key` | `data-next-default-property` |
 
 ---
@@ -599,8 +664,11 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
   ```html
   <!-- Workaround (brittle): list every variant package ID by hand -->
-  <div data-next-toggle-card data-next-package-id="200"
-       data-next-package-sync="1,2,3,4,5,6,7,8,9,66,67,68,69,70,71,72,73,74">
+  <div
+    data-next-toggle-card
+    data-next-package-id="200"
+    data-next-package-sync="1,2,3,4,5,6,7,8,9,66,67,68,69,70,71,72,73,74"
+  >
     Extended Warranty
   </div>
   ```
@@ -609,10 +677,7 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
   ```html
   <!-- Fixed: one ID covers every variant, present and future -->
-  <div data-next-toggle-card data-next-package-id="200"
-       data-next-product-sync="400">
-    Extended Warranty
-  </div>
+  <div data-next-toggle-card data-next-package-id="200" data-next-product-sync="400">Extended Warranty</div>
   ```
 
   Find the `product_id` in the campaign API response under `packages[].product_id` — it is the same value for every variant of the same product.
@@ -648,7 +713,7 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
 - **Show the discount percentage in cart and bundle templates** — discount lists rendered by `CartSummaryEnhancer`, `BundleSelectorEnhancer`, and `PackageToggleEnhancer` now support a new template token: `{discount.percentage}`.
 
-  Use it alongside the existing tokens to display things like *"Save 15% — Spring Sale"* without hard-coding the number in your HTML:
+  Use it alongside the existing tokens to display things like _"Save 15% — Spring Sale"_ without hard-coding the number in your HTML:
 
   ```html
   <template>
@@ -695,26 +760,26 @@ The RudderStack integration now sends complete, correct data that matches the [R
 
 Pick when the prospect cart is created by setting `data-trigger-on` on the prospect cart element:
 
-| `data-trigger-on` | Fires when… | Email required | Phone required |
-|---|---|---|---|
-| `formStart` | The shopper first interacts with the form | yes | no |
-| `emailEntry` *(default)* | A valid email is entered (blur or change) | yes | no |
-| `phoneEntry` **(new)** | A valid phone is entered (blur or change) | no | yes |
-| `emailAndPhone` **(new)** | Both email and phone are valid — fires once both are filled | yes | yes |
-| `manual` | Never automatically — only via `window.next.createProspectCart()` | yes | no |
+| `data-trigger-on`         | Fires when…                                                       | Email required | Phone required |
+| ------------------------- | ----------------------------------------------------------------- | -------------- | -------------- |
+| `formStart`               | The shopper first interacts with the form                         | yes            | no             |
+| `emailEntry` _(default)_  | A valid email is entered (blur or change)                         | yes            | no             |
+| `phoneEntry` **(new)**    | A valid phone is entered (blur or change)                         | no             | yes            |
+| `emailAndPhone` **(new)** | Both email and phone are valid — fires once both are filled       | yes            | yes            |
+| `manual`                  | Never automatically — only via `window.next.createProspectCart()` | yes            | no             |
 
 First name and last name are always required, regardless of the trigger mode.
 
-A field marked "not required" is still validated when the shopper *does* type into it — half-typed input is never sent to the API.
+A field marked "not required" is still validated when the shopper _does_ type into it — half-typed input is never sent to the API.
 
 ### Phone field configuration
 
 Two new attributes for tuning phone detection and validation:
 
-| Attribute | Default | What it does |
-|---|---|---|
-| `data-phone-field` | `phone` | The input `name` to locate when no `data-next-checkout-field="phone"` element is present. Mirrors the existing `data-email-field`. |
-| `data-min-phone-digits` | `7` | Minimum digit count for the fallback validator used when `intlTelInput` is not initialized on the page. Set higher or lower for markets with different valid-number lengths. Also available as `minPhoneDigits` in `ProspectCartConfig`. |
+| Attribute               | Default | What it does                                                                                                                                                                                                                             |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-phone-field`      | `phone` | The input `name` to locate when no `data-next-checkout-field="phone"` element is present. Mirrors the existing `data-email-field`.                                                                                                       |
+| `data-min-phone-digits` | `7`     | Minimum digit count for the fallback validator used when `intlTelInput` is not initialized on the page. Set higher or lower for markets with different valid-number lengths. Also available as `minPhoneDigits` in `ProspectCartConfig`. |
 
 ### Fixed
 
@@ -760,7 +825,6 @@ Two new attributes for tuning phone detection and validation:
 
 - **Inline templates for bundles** — you can now drop a `<template>` directly inside the bundle container instead of referencing one by ID. Makes simple setups quicker — no need to give every template a unique `id` just to hook it up.
 
-
 ## [0.4.17] — 2026-04-17 — Reset Cart & Vouchers After Checkout
 
 ### Fixed
@@ -797,32 +861,32 @@ Two new attributes for tuning phone detection and validation:
 
 - **Expanded card state attributes** — `ToggleCard` now carries the full set of product and price fields directly on the card object. All fields are available as `{toggle.*}` template placeholders and via `PackageToggleDisplayEnhancer` display paths (`toggle.{packageId}.{property}`):
 
-  | Variable | Description |
-  |---|---|
-  | `{toggle.packageId}` | Package `ref_id` |
-  | `{toggle.name}` | Package name |
-  | `{toggle.image}` | Package image URL |
-  | `{toggle.quantity}` | Package quantity |
-  | `{toggle.productId}` | Product ID |
-  | `{toggle.variantId}` | Product variant ID |
-  | `{toggle.variantName}` | Variant display name |
-  | `{toggle.productName}` | Product display name |
-  | `{toggle.sku}` | Product SKU |
-  | `{toggle.price}` | Formatted total price |
-  | `{toggle.unitPrice}` | Formatted per-unit price |
-  | `{toggle.originalPrice}` | Retail / compare-at total price |
-  | `{toggle.originalUnitPrice}` | Retail / compare-at per-unit price |
-  | `{toggle.discountAmount}` | Savings amount (empty when no discount) |
-  | `{toggle.discountPercentage}` | Discount percentage (e.g. `20.00%`) |
-  | `{toggle.hasDiscount}` | `"true"` / `"false"` |
-  | `{toggle.recurringPrice}` | Recurring charge total |
-  | `{toggle.originalRecurringPrice}` | Original recurring price before discounts |
-  | `{toggle.isRecurring}` | `"true"` / `"false"` |
-  | `{toggle.interval}` | Billing interval: `"day"` or `"month"` |
-  | `{toggle.intervalCount}` | Number of intervals between billing cycles |
-  | `{toggle.frequency}` | Human-readable cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
-  | `{toggle.currency}` | ISO 4217 currency code |
-  | `{toggle.isSelected}` | `"true"` / `"false"` — whether the card is in the cart |
+  | Variable                          | Description                                                             |
+  | --------------------------------- | ----------------------------------------------------------------------- |
+  | `{toggle.packageId}`              | Package `ref_id`                                                        |
+  | `{toggle.name}`                   | Package name                                                            |
+  | `{toggle.image}`                  | Package image URL                                                       |
+  | `{toggle.quantity}`               | Package quantity                                                        |
+  | `{toggle.productId}`              | Product ID                                                              |
+  | `{toggle.variantId}`              | Product variant ID                                                      |
+  | `{toggle.variantName}`            | Variant display name                                                    |
+  | `{toggle.productName}`            | Product display name                                                    |
+  | `{toggle.sku}`                    | Product SKU                                                             |
+  | `{toggle.price}`                  | Formatted total price                                                   |
+  | `{toggle.unitPrice}`              | Formatted per-unit price                                                |
+  | `{toggle.originalPrice}`          | Retail / compare-at total price                                         |
+  | `{toggle.originalUnitPrice}`      | Retail / compare-at per-unit price                                      |
+  | `{toggle.discountAmount}`         | Savings amount (empty when no discount)                                 |
+  | `{toggle.discountPercentage}`     | Discount percentage (e.g. `20.00%`)                                     |
+  | `{toggle.hasDiscount}`            | `"true"` / `"false"`                                                    |
+  | `{toggle.recurringPrice}`         | Recurring charge total                                                  |
+  | `{toggle.originalRecurringPrice}` | Original recurring price before discounts                               |
+  | `{toggle.isRecurring}`            | `"true"` / `"false"`                                                    |
+  | `{toggle.interval}`               | Billing interval: `"day"` or `"month"`                                  |
+  | `{toggle.intervalCount}`          | Number of intervals between billing cycles                              |
+  | `{toggle.frequency}`              | Human-readable cadence: `"Per month"`, `"Every 3 months"`, `"One time"` |
+  | `{toggle.currency}`               | ISO 4217 currency code                                                  |
+  | `{toggle.isSelected}`             | `"true"` / `"false"` — whether the card is in the cart                  |
 
 - **`data-next-show` / `data-next-hide` conditionals in PackageToggle templates** — toggle card templates now support conditional visibility against card-local variables (e.g. `hasDiscount`, `isRecurring`, `isSelected`). Shared `applySlotConditionals` utility extracted to `src/shared/utils/slotConditionals.ts` for reuse across BundleSelector and PackageToggle.
 
@@ -830,9 +894,7 @@ Two new attributes for tuning phone detection and validation:
   <template id="toggle-tpl">
     <div>
       <span>{toggle.name} — {toggle.price}</span>
-      <div data-next-show="hasDiscount">
-        Save {toggle.discountPercentage}! <del>{toggle.originalPrice}</del>
-      </div>
+      <div data-next-show="hasDiscount">Save {toggle.discountPercentage}! <del>{toggle.originalPrice}</del></div>
       <div data-next-show="isRecurring">Billed {toggle.frequency}</div>
     </div>
   </template>
@@ -841,10 +903,12 @@ Two new attributes for tuning phone detection and validation:
 - **`data-next-package-sync` on auto-rendered toggle cards** — when `packageSync` is provided in the `data-next-packages` JSON definition, the sync attribute is automatically rendered onto the generated card element. Cards with quantity sync now also update `card.quantity` to reflect the actual synced total on every cart change.
 
   ```html
-  <div data-next-package-toggle
-       data-next-packages='[
+  <div
+    data-next-package-toggle
+    data-next-packages='[
          {"packageId": 5, "packageSync": "2,4,9"}
-       ]'>
+       ]'
+  >
     <template>...</template>
   </div>
   ```
@@ -892,9 +956,7 @@ Two new attributes for tuning phone detection and validation:
   <template id="slot-tpl">
     <div class="slot-row">
       <span>{item.name} — {item.price}</span>
-      <div data-next-show="item.hasDiscount">
-        Save {item.discountPercentage}! <del>{item.originalPrice}</del>
-      </div>
+      <div data-next-show="item.hasDiscount">Save {item.discountPercentage}! <del>{item.originalPrice}</del></div>
       <div data-next-hide="item.isRecurring">One-time purchase</div>
       <div data-next-show="item.isRecurring">Billed {item.frequency}</div>
     </div>
@@ -920,20 +982,24 @@ Two new attributes for tuning phone detection and validation:
 - **`data-next-shipping-id` attribute on bundle cards** — when set on a bundle card (or provided as `shippingId` in the `data-next-bundles` JSON), the specified shipping method is automatically applied via `cartStore.setShippingMethod()` after the bundle items are written to the cart in swap mode. Not applied in select mode or upsell context.
 
   **Manual card:**
+
   ```html
-  <div data-next-bundle-card
-       data-next-bundle-id="premium"
-       data-next-bundle-items='[{"packageId":101,"quantity":1}]'
-       data-next-shipping-id="2">
-  </div>
+  <div
+    data-next-bundle-card
+    data-next-bundle-id="premium"
+    data-next-bundle-items='[{"packageId":101,"quantity":1}]'
+    data-next-shipping-id="2"
+  ></div>
   ```
 
   **Auto-rendered via JSON:**
+
   ```html
-  <div data-next-bundle-selector
-       data-next-selector-id="skincare"
-       data-next-selection-mode="swap"
-       data-next-bundles='[
+  <div
+    data-next-bundle-selector
+    data-next-selector-id="skincare"
+    data-next-selection-mode="swap"
+    data-next-bundles='[
          {
            "id": "basic-set",
            "shippingId": "2",
@@ -945,8 +1011,8 @@ Two new attributes for tuning phone detection and validation:
            "shippingId": "5",
            "items": [{"packageId":1,"quantity":3}]
          }
-       ]'>
-  </div>
+       ]'
+  ></div>
   ```
 
 - **`shippingId` field in `BundleDef` object** — auto-rendered bundles (`data-next-bundles`) now accept `shippingId` as an optional string field. The value is rendered as `data-next-shipping-id` on the card element.
@@ -975,21 +1041,21 @@ Two new attributes for tuning phone detection and validation:
 
 - **More cart summary template variables** — the following `{token}` placeholders are now available inside custom cart summary `<template>` markup:
 
-  | Token | Description |
-  |---|---|
-  | `{currency}` | Active currency code (e.g. `"USD"`) |
-  | `{shippingName}` | Display name of the selected shipping method |
-  | `{shippingCode}` | Code of the selected shipping method |
-  | `{shippingDiscountAmount}` | Absolute discount applied to shipping |
-  | `{shippingDiscountPercentage}` | Shipping discount as a formatted percentage |
-  | `{totalDiscount}` | Combined offer and voucher discount amount (canonical name; `{discounts}` kept as alias) |
-  | `{totalDiscountPercentage}` | Combined discount as a formatted percentage of subtotal |
-  | `{totalQuantity}` | Total unit quantity across all cart lines |
-  | `{isCalculating}` | `"true"` / `"false"` — totals recalculation in progress |
-  | `{isEmpty}` | `"true"` / `"false"` — cart has no items |
-  | `{isFreeShipping}` | `"true"` / `"false"` — shipping cost is zero |
-  | `{hasShippingDiscount}` | `"true"` / `"false"` — a shipping discount is applied |
-  | `{hasDiscounts}` | `"true"` / `"false"` — any discount is applied |
+  | Token                          | Description                                                                              |
+  | ------------------------------ | ---------------------------------------------------------------------------------------- |
+  | `{currency}`                   | Active currency code (e.g. `"USD"`)                                                      |
+  | `{shippingName}`               | Display name of the selected shipping method                                             |
+  | `{shippingCode}`               | Code of the selected shipping method                                                     |
+  | `{shippingDiscountAmount}`     | Absolute discount applied to shipping                                                    |
+  | `{shippingDiscountPercentage}` | Shipping discount as a formatted percentage                                              |
+  | `{totalDiscount}`              | Combined offer and voucher discount amount (canonical name; `{discounts}` kept as alias) |
+  | `{totalDiscountPercentage}`    | Combined discount as a formatted percentage of subtotal                                  |
+  | `{totalQuantity}`              | Total unit quantity across all cart lines                                                |
+  | `{isCalculating}`              | `"true"` / `"false"` — totals recalculation in progress                                  |
+  | `{isEmpty}`                    | `"true"` / `"false"` — cart has no items                                                 |
+  | `{isFreeShipping}`             | `"true"` / `"false"` — shipping cost is zero                                             |
+  | `{hasShippingDiscount}`        | `"true"` / `"false"` — a shipping discount is applied                                    |
+  | `{hasDiscounts}`               | `"true"` / `"false"` — any discount is applied                                           |
 
 - **Currency-aware price formatting** — every monetary token is now formatted using the active currency. The currency is resolved from the campaign currency first, then the user-selected currency, then the auto-detected currency, falling back to `"USD"`. Previously prices were formatted without an explicit currency.
 
@@ -1051,9 +1117,7 @@ Two new attributes for tuning phone detection and validation:
         <div class="line-details">
           <span class="name">{item.name}</span>
           <span class="qty">{item.quantity} × {item.unitPrice}</span>
-          <span class="qty-original" data-next-show="item.hasDiscount">
-            was {item.originalUnitPrice} per unit
-          </span>
+          <span class="qty-original" data-next-show="item.hasDiscount"> was {item.originalUnitPrice} per unit </span>
         </div>
 
         <div class="line-pricing">
@@ -1083,9 +1147,7 @@ Two new attributes for tuning phone detection and validation:
           <span class="recurring-badge" data-next-show="item.isRecurring">
             🔁 {item.frequency} · then {item.recurringPrice}
           </span>
-          <span class="one-time-badge" data-next-hide="item.isRecurring">
-            One-time purchase
-          </span>
+          <span class="one-time-badge" data-next-hide="item.isRecurring"> One-time purchase </span>
         </div>
 
         <span class="line-total">{item.price}</span>
@@ -1096,7 +1158,7 @@ Two new attributes for tuning phone detection and validation:
 
   `{item.frequency}` resolves to `"Daily"`, `"Monthly"`, `"Every 7 days"`, `"Every 3 months"`, etc. `{item.recurringPrice}` is currency-formatted and empty when the line is not recurring. The two badges are mutually exclusive — `data-next-show="item.isRecurring"` and `data-next-hide="item.isRecurring"` are evaluated independently per line, so exactly one renders.
 
-  Conditions referencing other namespaces (e.g. `cart.hasItems`) are passed through untouched and processed by the global conditional display flow. Cart-wide conditions are best placed *outside* the line template to avoid thrashing on cart re-renders. Function-call conditions (`item.hasFlag(x)`) are not handled locally.
+  Conditions referencing other namespaces (e.g. `cart.hasItems`) are passed through untouched and processed by the global conditional display flow. Cart-wide conditions are best placed _outside_ the line template to avoid thrashing on cart re-renders. Function-call conditions (`item.hasFlag(x)`) are not handled locally.
 
 - **Raw `item.*` and `discount.*` condition contexts** — both expose unformatted fields (real numbers, real booleans). `item.hasDiscount` is a boolean here (not the `'show'` / `'hide'` string used by the matching text token); `discount.amount` is a number while `discount.amountFormatted` keeps the original currency-formatted string. Full field reference: [reference/object-attributes.md](src/enhancers/cart/CartSummary/guide/reference/object-attributes.md).
 
@@ -1118,12 +1180,12 @@ Two new attributes for tuning phone detection and validation:
 
 - **`PackageToggleDisplayEnhancer` property names changed** — the set of properties available on `data-next-display="toggle.{packageId}.{property}"` has been renamed to align with the `TogglePriceSummary` shape:
 
-  | Old property | New property |
-  |---|---|
-  | `isInCart` | `isSelected` |
-  | `hasSavings` | `hasDiscount` |
-  | `compare` | `originalPrice` |
-  | `savings` | `discountAmount` |
+  | Old property        | New property         |
+  | ------------------- | -------------------- |
+  | `isInCart`          | `isSelected`         |
+  | `hasSavings`        | `hasDiscount`        |
+  | `compare`           | `originalPrice`      |
+  | `savings`           | `discountAmount`     |
   | `savingsPercentage` | `discountPercentage` |
 
   Any `data-next-display` bindings using the old names must be updated.
@@ -1134,12 +1196,12 @@ Two new attributes for tuning phone detection and validation:
 
 - **`data-next-toggle-display` attribute** — new primary display slot attribute for toggle cards. Replaces `data-next-toggle-price`. Accepts the same field names plus the following additions:
 
-  | Value | Effect |
-  |---|---|
-  | `"name"` | Package display name from the campaign store |
-  | `"isSelected"` | Shown (`display: ""`) when `data-next-selected` was `"true"` at last price update; hidden (`display: none`) otherwise |
-  | `"hasDiscount"` | Shown when a discount applies; hidden otherwise |
-  | `"isRecurring"` | Shown when the package bills on a recurring schedule; hidden otherwise |
+  | Value           | Effect                                                                                                                |
+  | --------------- | --------------------------------------------------------------------------------------------------------------------- |
+  | `"name"`        | Package display name from the campaign store                                                                          |
+  | `"isSelected"`  | Shown (`display: ""`) when `data-next-selected` was `"true"` at last price update; hidden (`display: none`) otherwise |
+  | `"hasDiscount"` | Shown when a discount applies; hidden otherwise                                                                       |
+  | `"isRecurring"` | Shown when the package bills on a recurring schedule; hidden otherwise                                                |
 
   All price values are formatted using the currency stored in `TogglePriceSummary` (set from `campaignStore.currency`, updated by the price fetch response). `discountPercentage` now uses `formatPercentage` for consistent formatting.
 
@@ -1167,11 +1229,11 @@ Two new attributes for tuning phone detection and validation:
 
 - **`BundlePriceSummary` fields renamed and typed as `Decimal`** — all numeric price fields on the summary object returned by `fetchAndUpdateBundlePrice` are now `Decimal` instances (from `decimal.js`) and have been renamed for consistency:
 
-  | Old field | New field |
-  |---|---|
-  | `total` | `price` |
-  | `subtotal` | `originalPrice` |
-  | `totalDiscount` | `discountAmount` |
+  | Old field                 | New field            |
+  | ------------------------- | -------------------- |
+  | `total`                   | `price`              |
+  | `subtotal`                | `originalPrice`      |
+  | `totalDiscount`           | `discountAmount`     |
   | `totalDiscountPercentage` | `discountPercentage` |
 
   Any code that reads these fields directly must call `.toNumber()` to get a plain number, and update field names accordingly.
@@ -1192,20 +1254,20 @@ Two new attributes for tuning phone detection and validation:
 
 - **New slot template variables** — available inside `{curly.brace}` syntax in bundle slot templates:
 
-  | Variable | Description |
-  |---|---|
-  | `{item.price}` | `unitPrice × slot.quantity`, formatted with currency |
-  | `{item.originalPrice}` | `originalUnitPrice × slot.quantity`, formatted with currency |
-  | `{item.unitPrice}` | Per-unit price, formatted with currency |
-  | `{item.originalUnitPrice}` | Per-unit original price, formatted with currency |
-  | `{item.discountAmount}` | `(originalUnitPrice − unitPrice) × slot.quantity`, formatted |
-  | `{item.discountPercentage}` | Discount percentage, formatted |
-  | `{item.recurringPrice}` | Recurring price, formatted with currency |
-  | `{item.originalRecurringPrice}` | Original recurring price, formatted with currency |
-  | `{item.currency}` | ISO 4217 currency code |
-  | `{item.interval}` | Billing interval (`day`, `month`) |
-  | `{item.intervalCount}` | Billing interval count |
-  | `{item.frequency}` | Human-readable frequency string, e.g. `Per month`, `Every 3 months`, `One time` |
+  | Variable                        | Description                                                                     |
+  | ------------------------------- | ------------------------------------------------------------------------------- |
+  | `{item.price}`                  | `unitPrice × slot.quantity`, formatted with currency                            |
+  | `{item.originalPrice}`          | `originalUnitPrice × slot.quantity`, formatted with currency                    |
+  | `{item.unitPrice}`              | Per-unit price, formatted with currency                                         |
+  | `{item.originalUnitPrice}`      | Per-unit original price, formatted with currency                                |
+  | `{item.discountAmount}`         | `(originalUnitPrice − unitPrice) × slot.quantity`, formatted                    |
+  | `{item.discountPercentage}`     | Discount percentage, formatted                                                  |
+  | `{item.recurringPrice}`         | Recurring price, formatted with currency                                        |
+  | `{item.originalRecurringPrice}` | Original recurring price, formatted with currency                               |
+  | `{item.currency}`               | ISO 4217 currency code                                                          |
+  | `{item.interval}`               | Billing interval (`day`, `month`)                                               |
+  | `{item.intervalCount}`          | Billing interval count                                                          |
+  | `{item.frequency}`              | Human-readable frequency string, e.g. `Per month`, `Every 3 months`, `One time` |
 
 - **`currency` bundle display key** — `data-next-bundle-display="bundle.{selectorId}.currency"` renders the ISO 4217 currency code for the selected bundle.
 

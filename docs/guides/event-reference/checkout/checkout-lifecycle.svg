@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 638" width="720" height="638" role="img" aria-labelledby="checkout-lifecycle-title checkout-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="checkout-lifecycle-title">Checkout lifecycle</title>
+  <desc id="checkout-lifecycle-desc">On each checkout page. idle: the shopper fills the form; checkout.started comes once per checkout, when the cart has lines. On a multi-step form, a step whose checks fail sends checkout.invalid; one that passes sends checkout.continued and loads the next step page. A submit, or an express button, moves to placing: the cart is frozen, the form, the cart and the card are checked, then checkout.submitted is sent and the order is created. A check that fails (checkout.invalid), an order not created (sdk.error, checkout.failed) or a declined card (payment.failed) go back to idle. A created order (order.created) is placed and the page redirects: paid at once (order.paid, checkout.completed), to the next page, which loads the order; else (payment.redirected) to the gateway. A checkout page loaded after an unpaid return from the gateway sends payment.failed.</desc>
+  <defs>
+    <marker id="checkout-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="215" y="8" width="230" height="57" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a checkout page loads:</text>
+    <text x="330" y="41" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the first page, a step, a reload,</text>
+    <text x="330" y="56" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or back from the gateway</text>
+    <path d="M330 65 V114" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="84" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">back from the gateway unpaid</text>
+    <text x="344" y="104" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.failed</text>
+    <path d="M440 126 H470 V142 H446" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">a step fails</text>
+    <text x="482" y="149" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.invalid</text>
+    <path d="M440 192 H620 V224" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="446" y="184" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">a step passes</text>
+    <text x="446" y="209" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.continued</text>
+    <rect x="540" y="230" width="160" height="27" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="248" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the next step page</text>
+    <path d="M330 208 V264" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="236" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">submit, or an express button</text>
+    <path d="M220 314 H150 V164 H214" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="138" y="180" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">a check fails</text>
+    <text x="138" y="197" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.invalid</text>
+    <text x="138" y="222" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">order not placed</text>
+    <text x="138" y="239" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
+    <text x="138" y="256" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.failed</text>
+    <text x="138" y="281" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">card declined</text>
+    <text x="138" y="298" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.failed</text>
+    <path d="M330 358 V424" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="382.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the order is created</text>
+    <text x="344" y="402.5" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.created</text>
+    <path d="M440 459 H620 V494" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="446" y="451" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">to a gateway</text>
+    <text x="446" y="476" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.redirected</text>
+    <rect x="540" y="500" width="160" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="518" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the gateway</text>
+    <text x="620" y="533" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">payment lifecycle</text>
+    <path d="M330 488 V574" marker-end="url(#checkout-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="505" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">paid at once</text>
+    <text x="344" y="525" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
+    <text x="344" y="542" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.completed</text>
+    <rect x="230" y="580" width="200" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="598" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the next page</text>
+    <text x="330" y="613" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">loads the order</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="120" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="145" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">idle</text>
+    <text x="330" y="165" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the shopper fills the form</text>
+    <text x="330" y="180" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.started</text>
+    <text x="330" y="195" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once per checkout</text>
+    <rect x="220" y="270" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+    <text x="330" y="295" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">placing</text>
+    <text x="330" y="315" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the cart is frozen</text>
+    <text x="330" y="330" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.submitted</text>
+    <text x="330" y="345" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once the checks pass</text>
+    <rect x="220" y="430" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="455" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">placed</text>
+    <text x="330" y="475" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the page redirects</text>
+  </g>
+</svg>

@@ -17,29 +17,20 @@
  * Sources are never modified: `docs/guides` is the input, `docs/.staged` the output.
  */
 
-import {
-  readFile,
-  writeFile,
-  copyFile,
-  mkdir,
-  rm,
-  readdir,
-  rename,
-} from 'node:fs/promises';
+import { readFile, writeFile, copyFile, mkdir, rm, readdir, rename } from 'node:fs/promises';
 import { join, dirname, relative, posix } from 'node:path';
 import { slugifyHeading } from '@clean-jsdoc-theme/utils';
+import { stageEventReference } from './docs-events.mjs';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'docs/guides');
 const OUT = join(ROOT, 'docs/.staged');
-const SDK_VERSION = JSON.parse(
-  await readFile(join(ROOT, 'package.json'), 'utf8')
-).version;
+const SDK_VERSION = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')).version;
 
 function stripGroupPrefix(text) {
-  const group = /^title:\s*"([^"/]+)\/(.+)"\s*$/m;
-  return text.replace(group, (line, prefix, page) =>
-    text.includes(`group: "${prefix}"`) ? `title: "${page}"` : line
+  const group = /^title:\s*(["'])([^"'/]+)\/(.+)\1\s*$/m;
+  return text.replace(group, (line, quote, prefix, page) =>
+    new RegExp(`^group:\\s*["']${prefix}["']`, 'm').test(text) ? `title: ${quote}${page}${quote}` : line,
   );
 }
 
@@ -76,10 +67,8 @@ for (const file of await walk(SRC)) {
   // comes out corrupted.
   if (file.endsWith('.md')) {
     const text = rewriteLinks(
-      stripGroupPrefix(
-        (await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)
-      ),
-      relative(SRC, dirname(file)) || '.'
+      stripGroupPrefix((await readFile(file, 'utf8')).replaceAll('{{SDK_VERSION}}', SDK_VERSION)),
+      relative(SRC, dirname(file)) || '.',
     );
     await writeFile(temporary, text);
   } else {
@@ -110,9 +99,13 @@ await writeFile(
       .replaceAll('{{SDK_VERSION}}', SDK_VERSION)
       .replace(/\{@link index!(\w+)\}/g, '{@link $1}')
       .replace(/\]\(\.?\/?guides\//g, '](./'),
-    '.'
-  )
+    '.',
+  ),
 );
 await rename(temporaryHome, stagedHome);
 
-console.log(`docs: staged ${count} guide file(s) into docs/.staged`);
+const { events, analytics } = await stageEventReference(ROOT, OUT);
+
+console.log(
+  `docs: staged ${count} guide file(s), ${events} event page(s) and ${analytics} analytics page(s) into docs/.staged`,
+);

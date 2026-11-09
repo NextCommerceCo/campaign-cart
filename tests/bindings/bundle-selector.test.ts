@@ -1,0 +1,203 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mount, SELECTOR } from '../fixtures/pages';
+
+afterEach(() => {
+  document.body.innerHTML = '';
+  vi.restoreAllMocks();
+});
+import { fakeApi, heldApi } from '../fixtures/api';
+import { flush } from '../fixtures/engine';
+import { MemoryStorage } from '../fixtures/storage';
+import { FakeObserver, visible } from './observer';
+
+async function mountWithApi(html: string) {
+  const api = fakeApi();
+  const mounted = await mount(html, { fetch: api.fetch });
+  return { ...mounted, api };
+}
+
+describe('bundle selector', () => {
+  it('puts the pre-selected card in the cart', async () => {
+    const { engine, $ } = await mount(SELECTOR);
+    expect(engine.getState().selectors.main?.picked).toBe('two');
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+    expect($('[data-next-bundle-id="two"]').classList.contains('next-selected')).toBe(true);
+    expect($('#total').textContent).toBe('$89.00');
+    expect($('#pick').textContent).toBe('$89.00');
+    expect($('#by-card').textContent).toBe('$49.00');
+  });
+
+  it('keeps a card’s price, badge and discounts while a quantity change is being priced', async () => {
+    const api = heldApi({ offers: { 2: 0.5 } });
+    const html = SELECTOR.replace(
+      'data-next-selected="true"',
+      'data-next-selected="true" data-next-max-quantity="5"',
+    ).replace(
+      '<div id="two-badge"',
+      '<span id="two-price" data-next-bundle-display="price"></span><span id="two-qty" data-next-bundle-display="quantity"></span>' +
+        '<div id="two-vouchers" data-next-discounts="voucher"><template>{discount.name}</template></div><div id="two-badge"',
+    );
+    const { engine, $ } = await mount(html, { fetch: api.fetch });
+    await engine.cart.applyCoupon('SAVE10');
+    await flush();
+    const shown = () => [$('#two-price').textContent, $('#two-badge').textContent, $('#two-vouchers').textContent];
+    const before = shown();
+    expect(before[2]).toBe('SAVE10');
+    api.hold();
+    void engine.selectors.setQuantity('main', 2);
+    await flush();
+    expect(engine.getState().selectors.main?.quoting).toBe(true);
+    expect(shown()).toEqual(before);
+    expect($('#two-qty').textContent).toBe('4');
+    api.release();
+    await flush();
+    await flush();
+    expect(shown()[0]).not.toBe(before[0]);
+  });
+
+  it('swaps the bundle without touching the order bump', async () => {
+    const { engine, $ } = await mount(SELECTOR);
+    const badge = $('#two-badge').style.display;
+    $('#bump').click();
+    await flush();
+    $('[data-next-bundle-id="one"]').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([
+      { package_id: 1, quantity: 1 },
+      { package_id: 9, quantity: 1 },
+    ]);
+    expect($('#total').textContent).toBe('$58.00');
+    expect($('#two-badge').style.display).toBe(badge);
+  });
+
+  it('does not re-send a cart that already matches the restored pick', async () => {
+    const session = new MemoryStorage();
+    await mount(SELECTOR, { session });
+    const api = fakeApi();
+    await mount(SELECTOR, { session, fetch: api.fetch });
+    const sent = api.calls.map((c) => JSON.stringify(c.body.lines)).sort();
+    expect(sent).toEqual([
+      '[{"package_id":1,"quantity":1}]',
+      '[{"package_id":2,"quantity":1},{"package_id":9,"quantity":1}]',
+      '[{"package_id":2,"quantity":1}]',
+      '[{"package_id":2,"quantity":1}]',
+    ]);
+  });
+
+  it('shows offer cards at their upsell price and keeps them out of the cart', async () => {
+    const { engine, $ } = await mount(
+      SELECTOR.replace('data-next-selector-id="main"', 'data-next-selector-id="main" data-next-upsell-context'),
+    );
+    expect($('#one-price').textContent).toBe('$24.50');
+    expect($('#pick').textContent).toBe('$44.50');
+    expect($('[data-next-bundle-id="two"]').classList.contains('next-loading')).toBe(false);
+    expect(engine.cart.lines()).toEqual([]);
+  });
+
+  it('binds a selector whose id has quotes and brackets', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id='a"[b]'>
+        <div data-next-bundle-card data-next-bundle-id="b" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-selected="true" data-next-max-quantity="3"></div>
+      </div>
+      <div data-next-bundle-qty-for='a"[b]'><button id="up" data-next-quantity-increase>+</button></div>
+      <div data-next-bundle-slots-for='a"[b]'></div>`);
+    $('#up').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+  });
+
+  it('steps the quantity from a row outside the selector and from inside the card', async () => {
+    const { engine, $ } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="b" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-quantity="1" data-next-min-quantity="1" data-next-max-quantity="3">
+          <div data-next-bundle-qty-for="main">
+            <button id="inner-up" data-next-quantity-increase>+</button>
+          </div>
+        </div>
+      </div>
+      <div data-next-bundle-qty-for="main">
+        <button id="down" data-next-quantity-decrease>-</button>
+        <span id="qty" data-next-quantity-display></span>
+        <button id="up" data-next-quantity-increase>+</button>
+      </div>`);
+    expect($('#qty').textContent).toBe('1');
+    expect(($('#down') as HTMLButtonElement).disabled).toBe(true);
+    $('#inner-up').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect($('#qty').textContent).toBe('2');
+    $('#up').click();
+    await flush();
+    expect($('#up').classList.contains('next-disabled')).toBe(true);
+    $('#down').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+  });
+
+  it('fills a card’s own discount badge from that card’s server price', async () => {
+    const { $, api } = await mountWithApi(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="one" data-next-bundle-items='[{"packageId":1,"quantity":1}]'
+             data-next-bundle-vouchers='["SAVE10"]'>
+          <span id="pill" data-next-discounts="voucher"><template><b>SAVE {discount.percentage}</b></template></span>
+        </div>
+      </div>`);
+    await flush();
+    expect($('#pill b').textContent).toBe('SAVE 10%');
+    expect(api.calls.some((c) => c.url.endsWith('/carts/calculate/') && c.body.vouchers.includes('SAVE10'))).toBe(true);
+  });
+
+  it('skips a card whose items are not a JSON list, and reads vouchers only from a list of codes', async () => {
+    const { engine } = await mount(`
+      <div data-next-bundle-selector data-next-selector-id="main">
+        <div data-next-bundle-card data-next-bundle-id="object" data-next-bundle-items='{"packageId":1}'></div>
+        <div data-next-bundle-card data-next-bundle-id="nulls" data-next-bundle-items='[null]'></div>
+        <div data-next-bundle-card data-next-bundle-id="ok" data-next-bundle-items='[{"packageId":2}]'
+             data-next-bundle-vouchers='{"code":"SAVE10"}'></div>
+      </div>`);
+    expect(engine.getState().selectors.main?.cards.map((c) => [c.id, c.vouchers])).toEqual([['ok', []]]);
+    expect(engine.cart.lines()).toEqual([{ package_id: 2, quantity: 1 }]);
+  });
+
+  it('only records the pick in select mode and on upsell pages', async () => {
+    const select = await mount(
+      SELECTOR.replace(
+        'data-next-selector-id="main"',
+        'data-next-selector-id="main" data-next-selection-mode="select"',
+      ),
+    );
+    expect(select.engine.cart.lines()).toEqual([]);
+    expect(select.engine.getState().selectors.main?.picked).toBe('two');
+    const upsell = await mount(
+      `<div data-next-upsell="offer"></div>${SELECTOR.replace(/<div data-next-toggle-container>[\s\S]*?<\/div>\s*<\/div>/, '')}`,
+    );
+    expect(upsell.engine.cart.lines()).toEqual([]);
+  });
+});
+
+describe('bundle selector visibility', () => {
+  beforeEach(() => {
+    FakeObserver.all = [];
+    vi.stubGlobal('IntersectionObserver', FakeObserver);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('sends selector.viewed once half of the selector is on screen, once a page however often its id is bound', async () => {
+    const { engine, bindings } = await mount(SELECTOR);
+    const seen: string[] = [];
+    engine.on('selector.viewed', (e) => seen.push(`${e.data.selector_id}:${e.data.option_id}`));
+    const [first] = document.querySelectorAll('[data-next-bundle-selector]');
+    visible(first!, 0.4);
+    expect(seen).toEqual([]);
+    visible(first!, 0.5);
+    visible(first!, 1);
+    const again = document.createElement('div');
+    again.innerHTML = SELECTOR;
+    document.body.append(again);
+    bindings.bind(again);
+    visible(again.querySelector('[data-next-bundle-selector]')!, 1);
+    expect(seen).toEqual(['main:two']);
+  });
+});

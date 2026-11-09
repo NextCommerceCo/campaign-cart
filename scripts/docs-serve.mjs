@@ -111,7 +111,7 @@ if (process.argv.includes('--watch')) {
   // typedoc's build log scrolls the startup URL away; re-print it after each build.
   // The theme's writer signs off with `clean-jsdoc-theme generated at <dir>`, which is
   // also the cue to re-inject the overrides the build just overwrote.
-  watchProcess.stdout.on('data', chunk => {
+  watchProcess.stdout.on('data', (chunk) => {
     process.stdout.write(chunk);
     if (chunk.toString().includes('generated at')) {
       spawnSync('node', ['scripts/docs-versions.mjs', '--local'], {

@@ -1,0 +1,104 @@
+import { matching, showWhen } from '../dom/dom';
+import type { Render } from '../dom/context';
+import { evaluate, parseExpression } from './expression';
+import type { AttributeContext } from './context';
+import { write } from './value';
+
+/** `data-next-for="path"`: the object its children read short paths from. */
+export function bindFor(root: ParentNode, a: AttributeContext): Render[] {
+  a.b.each(root, 'data-next-for', (el) => {
+    const path = el.getAttribute('data-next-for') ?? '';
+    a.setScope(el, () => a.readIn(path, a.outerScopeOf(el), el, 'data-next-for'));
+  });
+  return [];
+}
+
+/** `data-next-query="path"`: writes the value into the element by its kind. */
+export function bindQuery(root: ParentNode, a: AttributeContext): Render[] {
+  return matching(root, '[data-next-query]')
+    .filter((el) => a.b.claim(el, 'data-next-query'))
+    .map((el) => {
+      const path = el.getAttribute('data-next-query') ?? '';
+      return () => {
+        const { value, parent, field } = a.readField(path, el, 'data-next-query');
+        const override = el.getAttribute('data-next-format') ?? a.query.formatOf(parent, field);
+        write(el, field, value, a.engine, override);
+      };
+    });
+}
+
+/** `data-next-show` / `data-next-hide`: shown or hidden while the condition holds. */
+export function bindShow(root: ParentNode, a: AttributeContext, only?: Set<Element>): Render[] {
+  const renders: Render[] = [];
+  for (const attr of ['data-next-show', 'data-next-hide'] as const) {
+    for (const el of matching(root, `[${attr}]`)) {
+      if (only && !only.has(el)) continue;
+      if (!a.b.claim(el, attr)) continue;
+      const source = el.getAttribute(attr) ?? '';
+      const expression = parseExpression(source);
+      if (!expression) {
+        a.warn(el, attr, 'cannot read the condition');
+        continue;
+      }
+      renders.push(() => {
+        const met = evaluate(expression, (path) => a.read(path, el, attr));
+        el.hidden = !showWhen(el, attr, met);
+      });
+    }
+  }
+  return renders;
+}
+
+const IDS = ['package_id', 'option_id', 'selector_id', 'slot_index', 'id', 'code', 'value'];
+
+/** What makes an item the same row across renders: its ids, else the item itself. */
+const identity = (item: unknown) => {
+  if (!item || typeof item !== 'object') return item;
+  const ids = IDS.filter((k) => k in item).map((k) => (item as Record<string, unknown>)[k]);
+  return ids.length ? ids : item;
+};
+
+/**
+ * `data-next-each="list"`: one copy of the first child `<template>` per item; each copy reads that
+ * item. Copies are drawn again only when the items change, not their values, so an input in a row
+ * keeps its focus and text while prices update.
+ */
+export function bindEach(root: ParentNode, a: AttributeContext): Render[] {
+  return matching(root, '[data-next-each]')
+    .filter((el) => a.b.claim(el, 'data-next-each'))
+    .flatMap((container) => {
+      const template = container.querySelector<HTMLTemplateElement>(':scope > template');
+      const path = container.getAttribute('data-next-each') ?? '';
+      if (!template) {
+        a.b.warn(`data-next-each="${path}" needs a <template> child`);
+        return [];
+      }
+      let shown: string | undefined;
+      let items: unknown[] = [];
+      let rows: Render[] = [];
+      return [
+        () => {
+          const list = a.read(path, container, 'data-next-each');
+          const next = Array.isArray(list) ? list : [];
+          const key = JSON.stringify(next.map(identity));
+          items = next;
+          if (key !== shown) {
+            shown = key;
+            container.replaceChildren(template);
+            rows = [];
+            items.forEach((_, i) => {
+              const copy = template.content.cloneNode(true) as DocumentFragment;
+              const nodes = [...copy.children];
+              container.append(copy);
+              for (const node of nodes) {
+                a.setScope(node, () => items[i]);
+                rows.push(...a.bindTree(node));
+              }
+            });
+            container.toggleAttribute('data-next-empty', !items.length);
+          }
+          rows.forEach((r) => r());
+        },
+      ];
+    });
+}

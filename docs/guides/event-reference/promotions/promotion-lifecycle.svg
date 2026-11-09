@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" width="720" height="450" role="img" aria-labelledby="promotions-lifecycle-title promotions-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="promotions-lifecycle-title">Promotion lifecycle</title>
+  <desc id="promotions-lifecycle-desc">Starts when the page calls next.exitIntent({ image | template }). The popup waits: on a desktop until the mouse leaves through the top of the window; on a touch screen, with mobileScrollTrigger (or disableOnMobile false), until the shopper scrolls past 30% of a screen and back up more than 100px. It opens (promotion.viewed). A click on its image or a data-exit-intent-action button sends promotion.clicked, runs its action, and closes it (promotion.closed, reason clicked); apply-coupon does not wait for its code. Esc or the overlay sends promotion.closed with reason dismissed; the × of showCloseButton with reason close_button. It waits again while it has opened fewer than maxTriggers times this tab session (default 1).</desc>
+  <defs>
+    <marker id="promotions-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <path d="M330 74 V190" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">mouse out the top, or scroll back up</text>
+    <path d="M330 254 V370" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="303.5" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">image or button clicked</text>
+    <text x="344" y="323.5" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.clicked</text>
+    <path d="M440 225 H530 V405 H446" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="542" y="300" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">Esc, the overlay,</text>
+    <text x="542" y="316" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">or the × button</text>
+    <path d="M220 405 H170 V45 H214" marker-end="url(#promotions-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="158" y="225" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">under maxTriggers</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">waiting</text>
+    <text x="330" y="61" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">for the shopper to leave</text>
+    <rect x="220" y="196" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="221" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">open</text>
+    <text x="330" y="241" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.viewed</text>
+    <rect x="220" y="376" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="401" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">closed</text>
+    <text x="330" y="421" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.closed</text>
+  </g>
+</svg>

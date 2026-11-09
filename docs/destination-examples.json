@@ -1,0 +1,1724 @@
+{
+  "ga4": {
+    "view_item": {
+      "from": [
+        "product_viewed"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "view_item_list": {
+      "from": [
+        "product_list_viewed"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 138,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          },
+          {
+            "item_id": "2",
+            "item_name": "Earbuds ×2",
+            "price": 44.5,
+            "discount": 54.5,
+            "quantity": 2,
+            "index": 1
+          }
+        ],
+        "item_list_id": "product_list",
+        "item_list_name": "Product List"
+      }
+    },
+    "add_to_cart": {
+      "from": [
+        "product_added_to_cart"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "remove_from_cart": {
+      "from": [
+        "product_removed_from_cart"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "update_cart": {
+      "from": [
+        "cart_updated"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "begin_checkout": {
+      "from": [
+        "checkout_started"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "generate_lead": {
+      "from": [
+        "checkout_contact_info_submitted"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "lead_source": "checkout"
+      }
+    },
+    "add_shipping_info": {
+      "from": [
+        "checkout_shipping_address_submitted",
+        "checkout_shipping_method_submitted"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ],
+        "shipping_tier": "Standard"
+      }
+    },
+    "add_payment_info": {
+      "from": [
+        "checkout_payment_info_submitted"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 49,
+        "items": [
+          {
+            "item_id": "1",
+            "item_name": "Earbuds ×1",
+            "price": 49,
+            "discount": 50,
+            "quantity": 1,
+            "index": 0
+          }
+        ],
+        "payment_type": "Credit Card"
+      }
+    },
+    "purchase": {
+      "from": [
+        "checkout_completed",
+        "upsell_completed"
+      ],
+      "params": {
+        "currency": "USD",
+        "value": 89,
+        "items": [
+          {
+            "item_id": "EB-2",
+            "item_name": "Earbuds",
+            "price": 44.5,
+            "discount": 47.17,
+            "quantity": 2,
+            "index": 0
+          }
+        ],
+        "transaction_id": "1001",
+        "shipping": 9.99,
+        "tax": 7.12
+      }
+    },
+    "view_upsell": {
+      "from": [
+        "upsell_viewed"
+      ],
+      "params": {
+        "order_id": "R1",
+        "currency": "USD",
+        "items": []
+      }
+    },
+    "skip_upsell": {
+      "from": [
+        "upsell_skipped"
+      ],
+      "params": {
+        "order_id": "R1",
+        "currency": "USD",
+        "items": [
+          {
+            "item_id": "3",
+            "quantity": 1,
+            "index": 0
+          }
+        ]
+      }
+    },
+    "view_promotion": {
+      "from": [
+        "promotion_viewed"
+      ],
+      "params": {
+        "promotion_id": "exit_intent",
+        "promotion_name": "Exit offer",
+        "creative_name": "exit-offer"
+      }
+    },
+    "select_promotion": {
+      "from": [
+        "promotion_selected"
+      ],
+      "params": {
+        "promotion_id": "exit_intent",
+        "promotion_name": "Exit offer",
+        "creative_name": "exit-offer"
+      }
+    }
+  },
+  "meta": {
+    "ViewContent": {
+      "from": [
+        "product_viewed"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {
+        "content_ids": [
+          "1"
+        ],
+        "contents": [
+          {
+            "id": "1",
+            "quantity": 1,
+            "item_price": 49
+          }
+        ],
+        "content_type": "product",
+        "content_name": "Earbuds ×1",
+        "value": 49,
+        "currency": "USD"
+      }
+    },
+    "AddToCart": {
+      "from": [
+        "product_added_to_cart"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {
+        "content_ids": [
+          "1"
+        ],
+        "contents": [
+          {
+            "id": "1",
+            "quantity": 1,
+            "item_price": 49
+          }
+        ],
+        "content_type": "product",
+        "content_name": "Earbuds ×1",
+        "value": 49,
+        "currency": "USD"
+      }
+    },
+    "InitiateCheckout": {
+      "from": [
+        "checkout_started"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {
+        "content_ids": [
+          "1"
+        ],
+        "contents": [
+          {
+            "id": "1",
+            "quantity": 1,
+            "item_price": 49
+          }
+        ],
+        "content_type": "product",
+        "content_name": "Earbuds ×1",
+        "value": 49,
+        "currency": "USD",
+        "num_items": 1
+      }
+    },
+    "Lead": {
+      "from": [
+        "checkout_contact_info_submitted"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {
+        "value": 49,
+        "currency": "USD"
+      }
+    },
+    "AddPaymentInfo": {
+      "from": [
+        "checkout_payment_info_submitted"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {
+        "content_ids": [
+          "1"
+        ],
+        "contents": [
+          {
+            "id": "1",
+            "quantity": 1,
+            "item_price": 49
+          }
+        ],
+        "content_type": "product",
+        "content_name": "Earbuds ×1",
+        "value": 49,
+        "currency": "USD"
+      }
+    },
+    "Purchase": {
+      "from": [
+        "checkout_completed",
+        "upsell_completed"
+      ],
+      "event_id": "1001",
+      "params": {
+        "content_ids": [
+          "EB-2"
+        ],
+        "contents": [
+          {
+            "id": "EB-2",
+            "quantity": 2,
+            "item_price": 44.5
+          }
+        ],
+        "content_type": "product",
+        "content_name": "Earbuds",
+        "value": 89,
+        "currency": "USD"
+      },
+      "storeName_event_id": "shop-1001"
+    }
+  },
+  "gtm": {
+    "dl_user_data": {
+      "from": [
+        "page_viewed"
+      ],
+      "push": {
+        "event": "dl_user_data",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "cart_total": "0",
+        "ecommerce": {
+          "currency": "USD",
+          "value": 0,
+          "items": []
+        }
+      }
+    },
+    "dl_view_item": {
+      "from": [
+        "product_viewed"
+      ],
+      "push": {
+        "event": "dl_view_item",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ]
+        }
+      }
+    },
+    "dl_view_item_list": {
+      "from": [
+        "product_list_viewed"
+      ],
+      "push": {
+        "event": "dl_view_item_list",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            },
+            {
+              "item_id": "12",
+              "item_name": "Earbuds ×2",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/2.png",
+              "price": 44.5,
+              "discount": 54.5,
+              "quantity": 2,
+              "currency": "USD",
+              "index": 1
+            }
+          ],
+          "item_list_id": "product_list",
+          "item_list_name": "Product List"
+        }
+      }
+    },
+    "dl_add_to_cart": {
+      "from": [
+        "product_added_to_cart"
+      ],
+      "push": {
+        "event": "dl_add_to_cart",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ]
+        },
+        "first_in_session": true
+      }
+    },
+    "dl_remove_from_cart": {
+      "from": [
+        "product_removed_from_cart"
+      ],
+      "push": {
+        "event": "dl_remove_from_cart",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ]
+        }
+      }
+    },
+    "dl_cart_updated": {
+      "from": [
+        "cart_updated"
+      ],
+      "push": {
+        "event": "dl_cart_updated",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "cart_total": "49.00",
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ],
+          "shipping": 0
+        },
+        "cart": {
+          "currency": "USD",
+          "items": [
+            {
+              "package_id": 1,
+              "quantity": 1,
+              "price": 49
+            }
+          ],
+          "total_items": 1,
+          "total_value": 49
+        }
+      }
+    },
+    "dl_begin_checkout": {
+      "from": [
+        "checkout_started"
+      ],
+      "push": {
+        "event": "dl_begin_checkout",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "cart_total": "49.00",
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ],
+          "shipping": 0
+        }
+      }
+    },
+    "dl_generate_lead": {
+      "from": [
+        "checkout_contact_info_submitted"
+      ],
+      "push": {
+        "event": "dl_generate_lead",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "currency": "USD",
+        "value": 49,
+        "lead_source": "checkout"
+      }
+    },
+    "dl_add_shipping_info": {
+      "from": [
+        "checkout_shipping_address_submitted",
+        "checkout_shipping_method_submitted"
+      ],
+      "push": {
+        "event": "dl_add_shipping_info",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ],
+          "shipping": 0,
+          "currencyCode": "USD",
+          "shipping_tier": "Standard"
+        },
+        "event_category": "ecommerce",
+        "event_value": 49,
+        "shipping_tier": "Standard"
+      }
+    },
+    "dl_add_payment_info": {
+      "from": [
+        "checkout_payment_info_submitted"
+      ],
+      "push": {
+        "event": "dl_add_payment_info",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "currency": "USD",
+          "value": 49,
+          "items": [
+            {
+              "item_id": "11",
+              "item_name": "Earbuds ×1",
+              "item_category": "Olympus",
+              "item_product_id": "400",
+              "item_image": "https://cdn.test/1.png",
+              "price": 49,
+              "discount": 50,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ],
+          "shipping": 0,
+          "payment_type": "Credit Card"
+        },
+        "event_category": "ecommerce",
+        "event_value": 49,
+        "payment_type": "Credit Card"
+      }
+    },
+    "dl_purchase": {
+      "from": [
+        "checkout_completed"
+      ],
+      "push": {
+        "event": "dl_purchase",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "pageType": "purchase",
+        "ecommerce": {
+          "currency": "USD",
+          "transaction_id": "1001",
+          "value": 89,
+          "tax": 7.12,
+          "shipping": 9.99,
+          "affiliation": "Online Store",
+          "items": [
+            {
+              "item_id": "EB-2",
+              "item_name": "Earbuds",
+              "item_brand": "Olympus",
+              "item_category": "Olympus",
+              "item_sku": "EB-2",
+              "item_image": "https://img.test/eb.png",
+              "price": 44.5,
+              "quantity": 2,
+              "currency": "USD",
+              "index": 0
+            }
+          ]
+        }
+      }
+    },
+    "dl_upsell_purchase": {
+      "from": [
+        "upsell_completed"
+      ],
+      "push": {
+        "event": "dl_upsell_purchase",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "pageType": "upsell",
+        "ecommerce": {
+          "currency": "USD",
+          "transaction_id": "R1-US1",
+          "value": 20,
+          "tax": 0,
+          "shipping": 0,
+          "affiliation": "Upsell",
+          "items": [
+            {
+              "item_id": "SKU-99",
+              "item_name": "Bump",
+              "item_brand": "Olympus",
+              "item_category": "Olympus",
+              "price": 20,
+              "quantity": 1,
+              "currency": "USD",
+              "index": 0
+            }
+          ]
+        },
+        "upsell_metadata": {
+          "original_order_id": "R1",
+          "upsell_number": 1,
+          "package_id": "99",
+          "package_name": "Bump"
+        }
+      }
+    },
+    "dl_viewed_upsell": {
+      "from": [
+        "upsell_viewed"
+      ],
+      "push": {
+        "event": "dl_viewed_upsell",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "order_id": "R1",
+        "page_path": "/upsell/",
+        "upsell": {
+          "package_id": "page_view",
+          "package_name": "Upsell Page View",
+          "currency": "USD"
+        }
+      }
+    },
+    "dl_skipped_upsell": {
+      "from": [
+        "upsell_skipped"
+      ],
+      "push": {
+        "event": "dl_skipped_upsell",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "order_id": "R1",
+        "upsell": {
+          "package_id": "3",
+          "package_name": "Earbuds case"
+        }
+      }
+    },
+    "dl_view_promotion": {
+      "from": [
+        "promotion_viewed"
+      ],
+      "push": {
+        "event": "dl_view_promotion",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "promotion_id": "exit_intent",
+          "promotion_name": "Exit offer",
+          "creative_name": "exit-offer"
+        }
+      }
+    },
+    "dl_select_promotion": {
+      "from": [
+        "promotion_selected"
+      ],
+      "push": {
+        "event": "dl_select_promotion",
+        "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+        "event_time": "2026-11-04T08:30:00.000Z",
+        "user_properties": {
+          "visitor_type": "guest"
+        },
+        "page_location": "http://localhost:3000/",
+        "page_title": "Olympus Earbuds",
+        "page_referrer": "",
+        "campaign_id": "1310",
+        "campaign_name": "Olympus",
+        "campaign_currency": "USD",
+        "campaign_language": "en",
+        "campaign_api_key": "pk_test",
+        "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+        "attribution": {
+          "funnel": "Olympus",
+          "metadata": {
+            "landing_page": "",
+            "referrer": "",
+            "device": "",
+            "device_type": "desktop",
+            "fb_fbp": "",
+            "fb_fbc": "",
+            "domain": "",
+            "fb_pixel_id": "",
+            "sdk_version": "1.0.0",
+            "conversion_timestamp": 1793781000000
+          }
+        },
+        "_metadata": {
+          "source": "NextDataLayer",
+          "version": "1.0.0"
+        },
+        "ecommerce": {
+          "promotion_id": "exit_intent",
+          "promotion_name": "Exit offer",
+          "creative_name": "exit-offer"
+        }
+      }
+    }
+  },
+  "rudderstack": {
+    "page": {
+      "from": [
+        "page_viewed"
+      ],
+      "calls": [
+        {
+          "call": "page",
+          "category": "product",
+          "name": "Olympus Earbuds",
+          "properties": {
+            "path": "/checkout/",
+            "url": "https://shop.test/checkout/",
+            "title": "Olympus Earbuds",
+            "referrer": "",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        },
+        {
+          "call": "track",
+          "name": "Product Page View",
+          "properties": {
+            "page_name": "Olympus Earbuds",
+            "path": "/checkout/",
+            "url": "https://shop.test/checkout/",
+            "title": "Olympus Earbuds",
+            "referrer": "",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Product Viewed": {
+      "from": [
+        "product_viewed"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Product Viewed",
+          "properties": {
+            "product_id": "400",
+            "sku": "11",
+            "name": "Earbuds ×1",
+            "price": 49,
+            "quantity": 1,
+            "url": "https://shop.test/checkout/",
+            "position": 0,
+            "category": "Olympus",
+            "image_url": "https://cdn.test/1.png",
+            "currency": "USD",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Product List Viewed": {
+      "from": [
+        "product_list_viewed"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Product List Viewed",
+          "properties": {
+            "products": [
+              {
+                "product_id": "400",
+                "sku": "11",
+                "name": "Earbuds ×1",
+                "price": 49,
+                "quantity": 1,
+                "url": "https://shop.test/checkout/",
+                "position": 0,
+                "category": "Olympus",
+                "image_url": "https://cdn.test/1.png"
+              },
+              {
+                "product_id": "400",
+                "sku": "12",
+                "name": "Earbuds ×2",
+                "price": 44.5,
+                "quantity": 2,
+                "url": "https://shop.test/checkout/",
+                "position": 1,
+                "category": "Olympus",
+                "image_url": "https://cdn.test/2.png"
+              }
+            ],
+            "currency": "USD",
+            "list_id": "product_list",
+            "category": "Product List",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Product Added": {
+      "from": [
+        "product_added_to_cart"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Product Added",
+          "properties": {
+            "cart_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "product_id": "400",
+            "sku": "11",
+            "name": "Earbuds ×1",
+            "price": 49,
+            "quantity": 1,
+            "url": "https://shop.test/checkout/",
+            "position": 0,
+            "category": "Olympus",
+            "image_url": "https://cdn.test/1.png",
+            "currency": "USD",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Product Removed": {
+      "from": [
+        "product_removed_from_cart"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Product Removed",
+          "properties": {
+            "cart_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "product_id": "400",
+            "sku": "11",
+            "name": "Earbuds ×1",
+            "price": 49,
+            "quantity": 1,
+            "url": "https://shop.test/checkout/",
+            "position": 0,
+            "category": "Olympus",
+            "image_url": "https://cdn.test/1.png",
+            "currency": "USD",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Cart Viewed": {
+      "from": [
+        "cart_updated"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Cart Viewed",
+          "properties": {
+            "cart_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "products": [
+              {
+                "product_id": "400",
+                "sku": "11",
+                "name": "Earbuds ×1",
+                "price": 49,
+                "quantity": 1,
+                "url": "https://shop.test/checkout/",
+                "position": 0,
+                "category": "Olympus",
+                "image_url": "https://cdn.test/1.png"
+              }
+            ],
+            "currency": "USD",
+            "value": 49,
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Checkout Started": {
+      "from": [
+        "checkout_started"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Checkout Started",
+          "properties": {
+            "value": 49,
+            "revenue": 49,
+            "currency": "USD",
+            "affiliation": "Olympus",
+            "products": [
+              {
+                "product_id": "400",
+                "sku": "11",
+                "name": "Earbuds ×1",
+                "price": 49,
+                "quantity": 1,
+                "url": "https://shop.test/checkout/",
+                "position": 0,
+                "category": "Olympus",
+                "image_url": "https://cdn.test/1.png"
+              }
+            ],
+            "shipping": 0,
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "identify": {
+      "from": [
+        "checkout_contact_info_submitted",
+        "checkout_completed",
+        "upsell_completed"
+      ],
+      "calls": [
+        {
+          "call": "identify",
+          "userId": "jane@example.com",
+          "traits": {
+            "email": "jane@example.com",
+            "firstName": "Jane",
+            "lastName": "Doe"
+          }
+        }
+      ]
+    },
+    "Checkout Step Completed": {
+      "from": [
+        "checkout_shipping_address_submitted",
+        "checkout_shipping_method_submitted"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Checkout Step Completed",
+          "properties": {
+            "checkout_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "step": 2,
+            "shipping_method": "Standard",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Payment Info Entered": {
+      "from": [
+        "checkout_payment_info_submitted"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Payment Info Entered",
+          "properties": {
+            "checkout_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "step": 3,
+            "payment_method": "Credit Card",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Order Completed": {
+      "from": [
+        "checkout_completed",
+        "upsell_completed"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Order Completed",
+          "properties": {
+            "checkout_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d",
+            "order_id": "1001",
+            "affiliation": "Online Store",
+            "subtotal": 89,
+            "revenue": 89,
+            "total": 106.11,
+            "shipping": 9.99,
+            "tax": 7.12,
+            "currency": "USD",
+            "products": [
+              {
+                "product_id": "EB-2",
+                "sku": "EB-2",
+                "name": "Earbuds",
+                "price": 44.5,
+                "quantity": 2,
+                "url": "https://shop.test/checkout/",
+                "position": 0,
+                "category": "Olympus",
+                "brand": "Olympus",
+                "image_url": "https://img.test/eb.png"
+              }
+            ],
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Upsell Viewed": {
+      "from": [
+        "upsell_viewed"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Upsell Viewed",
+          "properties": {
+            "order_id": "R1",
+            "product_id": "page_view",
+            "name": "Upsell Page View",
+            "quantity": 1,
+            "currency": "USD",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    },
+    "Upsell Skipped": {
+      "from": [
+        "upsell_skipped"
+      ],
+      "calls": [
+        {
+          "call": "track",
+          "name": "Upsell Skipped",
+          "properties": {
+            "order_id": "R1",
+            "product_id": "3",
+            "name": "Earbuds case",
+            "quantity": 1,
+            "currency": "USD",
+            "page_type": "product",
+            "page_name": "Olympus Earbuds",
+            "campaign_name": "Olympus",
+            "campaign_api_key": "pk_test",
+            "campaign_currency": "USD",
+            "campaign_language": "en",
+            "campaign_id": "1310",
+            "campaign_session_id": "0b8f3c2d1e4a4f6b9c7d5e3f2a1b0c9d"
+          }
+        }
+      ]
+    }
+  }
+}

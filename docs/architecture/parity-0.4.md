@@ -1,0 +1,368 @@
+# Parity with Campaign Cart 0.4.43
+
+October 2026. Every attribute, `window.next` member, event, config key, meta tag, URL
+parameter, display path and `dl_*` event the 0.4.43 source reads or writes, checked against
+this SDK and against two sets of pages, HTML comments stripped and page scripts included: the
+live pages in `my-campaigns/_site` (74 pages) and
+[campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)
+(82 pages at `ba5604c`), which every new campaign is copied from and `bun dev` serves. The
+"Live pages" column counts `my-campaigns`; a note names starter use. Limos still pins 0.4.28;
+its only extra feature, FOMO, left in 0.4.37 and its pages never reach the call.
+
+How to read the status column:
+
+- **Supported**: same markup, same result.
+- **Removed (documented)**: listed in [migrating-from-0.4.md](../guides/migrating-from-0.4.md).
+- **Removed (no live use)**: neither `my-campaigns` nor the starter templates use it; it is not
+  coming back unless a page needs it.
+- **Deprecated**: still read, from `src/compat/<chunk>.ts`; the note says what replaces it.
+- **Ignored**: read by 0.4.x, harmless to leave on a page.
+
+## Found by this check and fixed
+
+| Gap on live pages                                                                                                                                                                                              | Pages                                      | Fix        |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ---------- |
+| `data-next-component="scroll-hint"` never hid                                                                                                                                                                  | 9 receipts                                 | `a2a5a606` |
+| `dl_exit_intent_*` not pushed; purchase `event_id` random instead of the transaction id; item ids, sku and discount missing on cart events; skipped upsell without package                                     | 8 checkouts, all post-purchase             | `ee186235` |
+| Floating labels (`label.label-checkout.has-value`) never shown                                                                                                                                                 | 10 checkouts                               | `9c0214b2` |
+| Express buttons asked for email and name first; 0.4.x placed the express order straight away                                                                                                                   | 9 checkouts                                | `9c0214b2` |
+| Card, bump and slot prices came from package data, so campaign offers and card vouchers did not show (warranty bump $3.00 instead of $1.50, limos card $149.99 instead of $75.00, upsell headers without UP50) | 9 checkouts, 12 upsells, 3 variant pickers | `94fed2cc` |
+| `bundle.<id>` looked for a selector before a card with that id                                                                                                                                                 | 12 upsells                                 | `94fed2cc` |
+| `data-next-package-sync` / `-product-sync` counted lines, not units                                                                                                                                            | 9 checkouts                                | `94fed2cc` |
+| Summary lines: no `item.isRecurring` / `{item.frequency}`; `{shipping}` without "Free" before a method; lines not in package order; `{discount.percentage}` rounded                                            | 11 summaries                               | `90c6d2aa` |
+| NextCommerce address autocomplete (`addressConfig.enableAutocomplete: true` in every config.js) missing                                                                                                        | 15 checkouts                               | `a3363781` |
+| A coupon the server gives nothing for was kept (and `cart.hasCoupon()` turned true); the field was cleared either way                                                                                          | 4 coupon fields, 6 `cart.hasCoupon()`      | `2a515169` |
+| `providers.gtm.enabled: false` ignored; `?debug=true` ignored                                                                                                                                                  | 7 configs                                  | `2a515169` |
+| Starter: `data-next-address` blocks stayed empty, so checkouts had no address fields                                                                                                                           | 9 starter checkouts                        | `2f8cce89` |
+| Starter: `data-next-timer` countdowns never ran                                                                                                                                                                | 16 starter upsells                         | `2f8cce89` |
+| Starter: an offer whose selector sits beside it (`data-next-bundle-selector-id`) was added without the selector's voucher                                                                                      | 5 starter upsells                          | `2f8cce89` |
+| Starter: `data-next-phone-e164` never written, so the forwarder sent no E.164 phone from field entry                                                                                                           | 8 forwarders                               | `2f8cce89` |
+| US territories (AS, GU, MP, PR, VI, UM) offered as states; 0.4.x always hid them                                                                                                                               | every US checkout                          | `ee870a2a` |
+| A bump kept the price quoted for the cart before the bundle changed; 0.4.x quoted it again                                                                                                                     | every checkout with a bump                 | `66641889` |
+| The cart was priced without a shipping method until a card chose one, while the order was sent with the campaign's first method                                                                                | shop checkouts                             | `66641889` |
+| Cart events without `ecommerce.coupon` / `shipping`, `dl_cart_updated` without `cart`, purchase items without `item_brand` and the package's sku, ids and image, purchase without `coupon`                     | every funnel                               | `791533a9` |
+| `attribution.metadata` on orders and events without `domain`, `sdk_version`, `fb_pixel_id`, `conversion_timestamp`                                                                                             | every order                                | `791533a9` |
+| Card errors only after the address passed (0.4.x showed both on the first submit), in other words than 0.4.x; the error box listed hidden fields out of form order                                             | every card checkout                        | `ba8955e1` |
+| A hidden billing country showed the first country, and a submit wrote it to the order state, so unticking “same as shipping” later kept it                                                                     | every checkout with a billing block        | `5b84bd1f` |
+
+`bun run e2e` now also checks the autocomplete and a floating label in Chromium. A sweep of
+all 72 pages in `bun dev` showed no SDK warning other than the one then intended for
+`providers.facebook` / `providers.rudderstack` on apollo-multi-variant (each now turns its
+destination on: Meta, RudderStack). Two page bugs exist in 0.4.43 too:
+`next.fomo()` on shop-single-step/checkout and shop-three-step (FOMO left in 0.4.37), and
+`initBundleQtyToggle()` on olympus-multi-variant-two-step/upsell-mv (its script is not loaded).
+
+The starter templates were swept side by side: each of the 82 pages under 0.4.43 (its own CDN
+tag) and under this SDK, both on the `bun dev` mock with production hosts blocked, comparing
+every display value, shown or hidden element, card class, form field and select. No page logs
+an error or an SDK warning. What still differs is listed under "Kept different on purpose", or
+is the mock campaign lacking package 77 (MV pages). `bun run e2e` runs the olympus funnel on
+the starter pages by default.
+
+The money paths were then compared request by request: the same funnel (bundle change, a bump,
+card order, each upsell accepted or skipped, receipt) in every starter family under both SDKs,
+recording each API request and every `NextDataLayer` / `dataLayer` push. Prospect, order and
+upsell bodies match in every family; a declined card, PayPal chosen in the form and the PayPal
+express button send the same body and land on the same page, and an empty submit shows the same
+errors in the same words. The MV upsell could not be
+compared on the mock (0.4.43 stops there without package 77).
+
+## Open decision
+
+**`nextConfig.currencyBehavior: 'auto'`** (every config.js). 0.4.x looked up the visitor's
+country (i18n-rules, up to 3 s before the campaign loaded) and showed prices in that country's
+currency when the campaign offers it; the live campaign offers USD, AUD, CAD, EUR and GBP. This
+SDK shows the campaign currency unless the URL has `?currency=`. Options: geo lookup after the
+first paint and a re-price (flicker for non-US visitors), server-side currency on the campaign
+GET (backend ask B5), or keep USD.
+
+**Personal data in `user_properties`.** 0.4.x put the shopper's email, names, phone and billing
+address on every event once known (Elevar's format; Elevar and GTM tags read it from
+`dataLayer`), with `visitor_type: 'logged_in'` after the order. This SDK sends
+`{ visitor_type: 'guest' }` only. Options: send the 0.4.x fields again, or keep them out and give
+those tags another source.
+
+## Kept different on purpose
+
+| 0.4.x                                                                                                                                                                                                                                                         | Now                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `page_location` with the query string; `session_id`, `user_agent`, `campaign_id`, `campaign_api_key` on every event                                                                                                                                           | Origin + path; those fields are not sent                                                                                                                 |
+| `window.ElevarDataLayer`                                                                                                                                                                                                                                      | Not written (no reader on live pages)                                                                                                                    |
+| `dl_view_item_list` rescanned on DOM changes and carried the list into add-to-cart                                                                                                                                                                            | Sent once on ready                                                                                                                                       |
+| No `dl_add_to_cart` for a cart filled by the default bundle, `forcePackageId`, `forceBundleId` or a redirecting add-to-cart button; a bundle change sent `dl_package_swapped` or nothing ([#126](https://github.com/NextCommerceCo/campaign-cart/issues/126)) | `dl_add_to_cart` / `dl_remove_from_cart` for every change at the cart price, once per tab, with `first_in_session` on the first add                      |
+| 0.4.x storage keys (`next-cart-state__…`)                                                                                                                                                                                                                     | Not migrated: a cart open at the switch is lost, a receipt reloaded right after it may report the purchase again                                         |
+| `link` express button                                                                                                                                                                                                                                         | Not drawn (the live campaign offers PayPal and Apple Pay only)                                                                                           |
+| Upsell offer marked `next-hidden` without `ref_id`                                                                                                                                                                                                            | Left as written (no CSS reads it)                                                                                                                        |
+| Bump items in events looked up by `ref_id` or `external_id` (package 7 reported as the camera lens)                                                                                                                                                           | The package the card names                                                                                                                               |
+| `dl_cart_updated` for an empty cart on upsell and receipt pages                                                                                                                                                                                               | Not sent                                                                                                                                                 |
+| `dl_user_data` on a checkout reported an empty cart before the selector filled it                                                                                                                                                                             | The pre-selected bundle                                                                                                                                  |
+| `is_upsell: false` on every main line of calculate and order requests                                                                                                                                                                                         | Left out (the API's default)                                                                                                                             |
+| `dl_upsell_purchase` items without `item_brand`                                                                                                                                                                                                               | With it, as on `dl_purchase`                                                                                                                             |
+| `shipping_tier`: the shipping radio's code, else `Standard`                                                                                                                                                                                                   | The method name the API returns                                                                                                                          |
+| `dl_begin_checkout` on every checkout page load; `dl_add_shipping_info` on the information and billing steps of a three-step checkout                                                                                                                         | `dl_begin_checkout`, `dl_add_shipping_info` and `dl_add_payment_info` once per checkout: its steps, a reload and a return from a payment gateway keep it |
+| Cart quantity `decrease` could reach 0                                                                                                                                                                                                                        | Stops at 1; use `data-next-remove-item`                                                                                                                  |
+| Coupon applied-code list and messages (`[data-next-coupon="display"]`, `.coupon-messages`)                                                                                                                                                                    | Not drawn (no live page has the hosts); `coupon.denied` fires instead, with its `reason`                                                                 |
+| Bundle selectors on upsell pages written into the (finished) cart                                                                                                                                                                                             | Recorded only                                                                                                                                            |
+| MOCK mode in `bun dev`                                                                                                                                                                                                                                        | Applies no campaign offers; check offer prices with `--api live`                                                                                         |
+| `order.number` with a thousands separator (`1,003`)                                                                                                                                                                                                           | As the API sends it (`1003`)                                                                                                                             |
+| Phone placeholder replaced with `Phone*` / `Phone (Optional)`                                                                                                                                                                                                 | The page's own placeholder; the flag, mask and E.164 number work as in 0.4.43                                                                            |
+| Postcode label always marked required (` *`), billing labels prefixed `Billing`                                                                                                                                                                               | State, postcode and city labels from the country's rules, required marker only where required, no prefix                                                 |
+| City required everywhere; a state `<select>` left empty where the country asks for a typed region (HK)                                                                                                                                                        | City, state and postcode follow the country's rules; the state select becomes a text field there                                                         |
+| Expiry selects relabelled `Month` / `Year`                                                                                                                                                                                                                    | The page's own first option (`Exp. Month`)                                                                                                               |
+| Bundle cards on upsell pages without `next-in-cart`                                                                                                                                                                                                           | `next-in-cart` set (no page CSS or script reads it there)                                                                                                |
+
+## Attributes (145 names in the 0.4.43 source)
+
+| Attribute                                | Live pages | Status                | Note                                                                                        |
+| ---------------------------------------- | ---------: | --------------------- | ------------------------------------------------------------------------------------------- |
+| `data-next-accordion`                    |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-panel`              |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-text`               |         14 | Deprecated            |                                                                                             |
+| `data-next-accordion-trigger`            |         14 | Deprecated            |                                                                                             |
+| `data-next-action`                       |          1 | Supported             |                                                                                             |
+| `data-next-active`                       |          0 | Supported             |                                                                                             |
+| `data-next-address`                      |          1 | Supported             | fields built per country (`checkout/address-form.ts`); 9 starter checkouts                  |
+| `data-next-address-api`                  |          0 | Ignored               | the rules host is fixed; no page sets it                                                    |
+| `data-next-address-field`                |          0 | Supported             | written on each built field                                                                 |
+| `data-next-address-lang`                 |          0 | Ignored               | the campaign language is used; no page sets it                                              |
+| `data-next-address-row`                  |          0 | Supported             | written on each built row                                                                   |
+| `data-next-address-state`                |          0 | Supported             | `loading` until the country’s rules arrive, then `ready`                                    |
+| `data-next-bump`                         |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
+| `data-next-bump-section`                 |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
+| `data-next-bundle-card`                  |         40 | Supported             |                                                                                             |
+| `data-next-bundle-display`               |         16 | Supported             | server-priced for every card (fixed in this pass)                                           |
+| `data-next-bundle-id`                    |         40 | Supported             |                                                                                             |
+| `data-next-bundle-items`                 |         40 | Supported             |                                                                                             |
+| `data-next-bundle-name`                  |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-bundle-price`                 |          0 | Removed (no live use) | old alias of `data-next-bundle-display`                                                     |
+| `data-next-bundle-qty-for`               |         10 | Supported             |                                                                                             |
+| `data-next-bundle-selector`              |         40 | Supported             |                                                                                             |
+| `data-next-bundle-selector-id`           |          0 | Deprecated            | selector beside the offer (5 starter upsells); put it inside                                |
+| `data-next-bundle-slot-template`         |          0 | Supported             |                                                                                             |
+| `data-next-bundle-slot-template-id`      |          6 | Supported             |                                                                                             |
+| `data-next-bundle-slots`                 |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-bundle-slots-for`             |          9 | Supported             |                                                                                             |
+| `data-next-bundle-template`              |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-bundle-template-id`           |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-bundle-vouchers`              |         30 | Supported             | JSON array only (0.4.x also took `A,B`)                                                     |
+| `data-next-bundles`                      |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-button-text`                  |          0 | Removed (no live use) | toggle button text                                                                          |
+| `data-next-cart-item-id`                 |          0 | Removed (no live use) |                                                                                             |
+| `data-next-cart-items`                   |          0 | Removed (no live use) | cart item list; use `data-next-cart-summary` + `[data-summary-lines]`                       |
+| `data-next-cart-selector`                |          0 | Removed (no live use) |                                                                                             |
+| `data-next-cart-summary`                 |         11 | Supported             |                                                                                             |
+| `data-next-checkout`                     |         11 | Supported             |                                                                                             |
+| `data-next-checkout-field`               |         10 | Supported             | API names and 0.4.x names; floating labels (fixed in this pass)                             |
+| `data-next-checkout-payment`             |          0 | Removed (no live use) | old field-scan alias                                                                        |
+| `data-next-checkout-review`              |          2 | Supported             |                                                                                             |
+| `data-next-checkout-step`                |          2 | Supported             |                                                                                             |
+| `data-next-checkout-submit`              |          0 | Supported             |                                                                                             |
+| `data-next-class-`                       |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-clear-cart`                   |          0 | Supported             |                                                                                             |
+| `data-next-component`                    |         21 | Supported             | shipping-field-row, location, `<method>-error`, scroll-hint (fixed), express boxes          |
+| `data-next-component-location`           |          0 | Supported             |                                                                                             |
+| `data-next-confirm`                      |          0 | Removed (no live use) | remove-item confirm dialog                                                                  |
+| `data-next-confirm-message`              |          0 | Removed (no live use) | remove-item confirm dialog                                                                  |
+| `data-next-coupon`                       |          4 | Supported             | refused codes stay in the field and are not kept (fixed in this pass); no applied-code list |
+| `data-next-default-property`             |          2 | Supported             |                                                                                             |
+| `data-next-discounts`                    |         12 | Supported             |                                                                                             |
+| `data-next-display`                      |         50 | Supported             |                                                                                             |
+| `data-next-enhancer`                     |          2 | Supported             | wrapper not needed: `data-next-checkout-review` works anywhere                              |
+| `data-next-error-for`                    |          0 | Supported             |                                                                                             |
+| `data-next-exclude-property`             |          2 | Supported             |                                                                                             |
+| `data-next-express-checkout`             |          9 | Supported             | paypal, apple_pay, google_pay, shop_pay buttons; not `link`                                 |
+| `data-next-fallback`                     |          0 | Supported             |                                                                                             |
+| `data-next-format`                       |         38 | Supported             |                                                                                             |
+| `data-next-hide`                         |         21 | Supported             |                                                                                             |
+| `data-next-i18n`                         |          1 | Supported             | `attributes/i18n.ts`                                                                        |
+| `data-next-id`                           |          0 | Supported             | 0.4.x alias of `data-next-selector-id`                                                      |
+| `data-next-in-cart`                      |          0 | Supported             |                                                                                             |
+| `data-next-include-shipping`             |          4 | Ignored (documented)  | 0.4.x never sent it                                                                         |
+| `data-next-is-upsell`                    |          9 | Supported             |                                                                                             |
+| `data-next-item-properties`              |         10 | Supported             |                                                                                             |
+| `data-next-loading`                      |          0 | Not set               | the `next-loading` class is set instead; no live CSS reads the attribute                    |
+| `data-next-max-quantity`                 |         10 | Supported             |                                                                                             |
+| `data-next-min-quantity`                 |         10 | Supported             |                                                                                             |
+| `data-next-multiply-quantity`            |          0 | Removed (no live use) |                                                                                             |
+| `data-next-next-url`                     |          0 | Supported             | upsell buttons                                                                              |
+| `data-next-order-items`                  |          9 | Supported             |                                                                                             |
+| `data-next-package`                      |          0 | Removed (no live use) | alias of `data-next-package-id` for display context                                         |
+| `data-next-package-id`                   |         21 | Supported             |                                                                                             |
+| `data-next-package-price`                |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-package-selector`             |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-package-selector-id`          |          0 | Removed (no live use) | offer pointing at a selector by id; offers use the selector inside them                     |
+| `data-next-package-sync`                 |          6 | Supported             | counts units, like 0.4.x (fixed in this pass)                                               |
+| `data-next-package-template`             |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-package-template-id`          |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-package-toggle`               |          9 | Supported             | container not needed: toggle cards bind on their own                                        |
+| `data-next-packages`                     |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-payment-form`                 |          9 | Supported             |                                                                                             |
+| `data-next-payment-method`               |          9 | Supported             |                                                                                             |
+| `data-next-payment-state`                |          0 | Supported             |                                                                                             |
+| `data-next-phone-country`                |          0 | Supported             | set by the SDK: the flag's country                                                          |
+| `data-next-phone-e164`                   |          0 | Supported             | set from the i18n-rules check; the starter forwarder reads it                               |
+| `data-next-product-sync`                 |          3 | Supported             | counts units, like 0.4.x (fixed in this pass)                                               |
+| `data-next-property`                     |          4 | Supported             |                                                                                             |
+| `data-next-property-container`           |          0 | Removed (no live use) |                                                                                             |
+| `data-next-quantity`                     |         19 | Supported             | card / bump / offer quantity; `increase` / `decrease` in summaries (min is now 1, was 0)    |
+| `data-next-quantity-decrease`            |         10 | Supported             | bundle quantity stepper                                                                     |
+| `data-next-quantity-display`             |         10 | Supported             |                                                                                             |
+| `data-next-quantity-increase`            |         10 | Supported             | bundle quantity stepper                                                                     |
+| `data-next-quantity-selector-id`         |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-quantity-text`                |          0 | Removed (no live use) |                                                                                             |
+| `data-next-remove-item`                  |          0 | Supported             |                                                                                             |
+| `data-next-required`                     |          0 | Supported             |                                                                                             |
+| `data-next-scroll-target`                |          0 | Supported             | scroll hint (fixed in this pass)                                                            |
+| `data-next-scroll-threshold`             |          0 | Supported             | scroll hint (fixed in this pass)                                                            |
+| `data-next-sdk-loading`                  |          0 | Not set               | `html[data-next-ready]` / `next-display-ready` instead; no live CSS reads it                |
+| `data-next-selected`                     |         40 | Supported             |                                                                                             |
+| `data-next-selection-mode`               |         10 | Supported             | forced to `select` on upsell pages (0.4.x wrote the pick into the cart there)               |
+| `data-next-selector-card`                |          0 | Removed (no live use) | package selector; the bundle selector replaces it                                           |
+| `data-next-selector-id`                  |         40 | Supported             |                                                                                             |
+| `data-next-shipping-id`                  |         10 | Supported             |                                                                                             |
+| `data-next-show`                         |         20 | Supported             |                                                                                             |
+| `data-next-slot-index`                   |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-step-number`                  |          2 | Supported             |                                                                                             |
+| `data-next-timer`                        |          0 | Deprecated            | countdown, widgets chunk; 16 starter upsells                                                |
+| `data-next-timer-display`                |          0 | Deprecated            | countdown, widgets chunk                                                                    |
+| `data-next-timer-expired`                |          0 | Deprecated            | countdown, widgets chunk                                                                    |
+| `data-next-toggle`                       |          2 | n/a                   | only the 0.4.x debug overlay read it                                                        |
+| `data-next-toggle-card`                  |          9 | Supported             |                                                                                             |
+| `data-next-toggle-container`             |          0 | Supported             |                                                                                             |
+| `data-next-toggle-display`               |          9 | Supported             | server-priced (fixed in this pass)                                                          |
+| `data-next-toggle-image`                 |          9 | Supported             |                                                                                             |
+| `data-next-toggle-price`                 |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
+| `data-next-toggle-template`              |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
+| `data-next-toggle-template-id`           |          0 | Removed (no live use) | toggle cards drawn from JSON / templates                                                    |
+| `data-next-tooltip`                      |          9 | Deprecated            | `-placement` ignored                                                                        |
+| `data-next-tooltip-class`                |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-delay`                |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-max-width`            |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-offset`               |          0 | Deprecated            |                                                                                             |
+| `data-next-tooltip-placement`            |          0 | Ignored (documented)  | tooltip goes above, or below when there is no room                                          |
+| `data-next-tracking-tag`                 |          0 | Removed (no live use) | `<meta name="data-next-tracking-tag">` attribution tags                                     |
+| `data-next-upsell`                       |         30 | Supported             |                                                                                             |
+| `data-next-upsell-action`                |         30 | Supported             |                                                                                             |
+| `data-next-upsell-action-for`            |          0 | Removed (no live use) | old upsell selector UI; use a bundle selector with `data-next-upsell-context`               |
+| `data-next-upsell-context`               |         30 | Supported             |                                                                                             |
+| `data-next-upsell-item`                  |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
+| `data-next-upsell-option`                |          0 | Removed (documented)  | old upsell selector UI                                                                      |
+| `data-next-upsell-quantity`              |          0 | Removed (documented)  | old upsell selector UI                                                                      |
+| `data-next-upsell-quantity-toggle`       |          0 | Deprecated            | starter v3 upsell pages; sets the offer's `data-next-quantity`                              |
+| `data-next-upsell-section`               |          0 | Removed (no live use) | implicit "is upsell" markers; live bumps use `data-next-is-upsell`                          |
+| `data-next-upsell-select`                |          0 | Removed (documented)  | old upsell selector UI                                                                      |
+| `data-next-upsell-selector`              |          0 | Removed (no live use) | old upsell selector UI; use a bundle selector with `data-next-upsell-context`               |
+| `data-next-url`                          |          0 | Supported             |                                                                                             |
+| `data-next-validate`                     |          0 | n/a                   | only the 0.4.x DOM observer watched it                                                      |
+| `data-next-variant-code`                 |          0 | Supported             |                                                                                             |
+| `data-next-variant-option`               |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-variant-option-template-id`   |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-variant-options`              |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-variant-selector-template-id` |          0 | Removed (no live use) | cards drawn from JSON / templates; live pages write cards in HTML                           |
+| `data-next-variant-selectors`            |          6 | Supported             |                                                                                             |
+
+Attributes live pages use that 0.4.43 never read either (page kit, page scripts or CSS):
+`data-next-await` (42 pages, CSS waits for `next-display-ready`), `data-next-skeleton` (9,
+shipped CSS), `data-next-catalog-component` (54), `data-next-content` (9), `data-next-bind` (3),
+`data-next-element="timer"` (2, page timer), `data-next-modal-close` (2, page modal),
+`data-os-cart-summary` (6), `data-os-component="location"` (7).
+
+## `window.next`
+
+| 0.4.x member                                                                                                                                                                                                        | Live uses | Status                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `on`                                                                                                                                                                                                                |        97 | Supported: new names plus the 0.4.x aliases below                                                                                                            |
+| `exitIntent`                                                                                                                                                                                                        |        18 | Supported; resolves a function that removes it (was `disableExitIntent`); `id` and `name` name it on `promotion.*` and the `promotion_viewed/selected` event |
+| `applyCoupon`                                                                                                                                                                                                       |         8 | Supported; resolves `false` for a refused code (was `{ success, message }`), and `true` at once on an empty cart, whose first price then checks the code     |
+| `addItem`, `clearCart`, `swapCart`, `getCartData`, `getPackage`                                                                                                                                                     |    6 each | Supported (variant picker)                                                                                                                                   |
+| `getShippingMethods`, `setShippingMethod`, `getSelectedShippingMethod`                                                                                                                                              |         3 | Supported (shop-three-step shipping script)                                                                                                                  |
+| `getCampaignData`                                                                                                                                                                                                   |         0 | Supported                                                                                                                                                    |
+| `cart` (store: `clear`, `addPackage`, …), `NextCommerce.getInstance()`                                                                                                                                              |        12 | Removed; every live use is a fallback after `swapCart` / `window.next`, never reached                                                                        |
+| `fomo`                                                                                                                                                                                                              |        11 | Removed in 0.4.37; 9 calls sit after a `return`                                                                                                              |
+| `removeItem`, `updateQuantity`, `removeCoupon` (top level)                                                                                                                                                          |         0 | Removed: `next.actions.removeItem` / `setQuantity` / `removeCoupon`                                                                                          |
+| `hasItemInCart`, `getCartTotals`, `getCartCount`, `getCoupons`                                                                                                                                                      |         0 | Removed: `next.snapshot().cart`                                                                                                                              |
+| `getAvailableVariantAttributes`, `getPackageByVariantSelection`                                                                                                                                                     |         0 | Deprecated: on post-purchase pages (the order chunk), for the v3 starter MV upsell scripts; `campaign.packages[].product_variant_attribute_values`           |
+| `getVariantsByProductId`, `createVariantKey`                                                                                                                                                                        |         0 | Removed: `campaign.packages[].product_variant_attribute_values`                                                                                              |
+| `addUpsell`, `canAddUpsells`, `getCompletedUpsells`, `isUpsellAlreadyAdded`                                                                                                                                         |         0 | Deprecated: on post-purchase pages (the order chunk), as the v3 starter MV upsell scripts call them; `next.actions.acceptUpsell`                             |
+| `off`                                                                                                                                                                                                               |         0 | Removed: `next.on` returns the unsubscribe function                                                                                                          |
+| `registerCallback`, `unregisterCallback`, `triggerCallback`                                                                                                                                                         |         0 | Removed (0.4.43 never triggered them)                                                                                                                        |
+| `trackViewItemList`, `trackViewItem`, `trackAddToCart`, `trackRemoveFromCart`, `trackBeginCheckout`, `trackPurchase`, `trackCustomEvent`, `trackSignUp`, `trackLogin`, `setDebugMode`, `invalidateAnalyticsContext` |         0 | Removed: events are sent from the engine; page events go to `dataLayer`                                                                                      |
+| `addMetadata`, `setMetadata`, `clearMetadata`, `getMetadata`, `setAttribution`, `getAttribution`, `debugAttribution`                                                                                                |         0 | Removed: attribution is captured on entry (`next.context().attribution`)                                                                                     |
+| `setParam`, `setParams`, `getParam`, `getAllParams`, `hasParam`, `clearParam`, `clearAllParams`, `mergeParams`                                                                                                      |         0 | Removed: `next.getState().visit.params`                                                                                                                      |
+| `getVersion`, `formatPrice`, `validateCheckout`                                                                                                                                                                     |         0 | Removed: `next.version`; formatting and validation stay inside the SDK                                                                                       |
+| `window.nextReady`, `next:initialized`, `next:ready`, `html.next-display-ready`                                                                                                                                     |   26 / 72 | Supported                                                                                                                                                    |
+| `window.NextDataLayer`, `NextDataLayerTransformFn`                                                                                                                                                                  | forwarder | Supported                                                                                                                                                    |
+
+## Events
+
+`next.on` takes 59 of the 75 0.4.43 `EventMap` keys, each made from the new events at the moment
+0.4.43 sent it, with its 0.4.x payload: `src/compat/legacy/events.ts` (the legacy chunk) has the
+core ones, and
+`compat/checkout.ts` and `compat/order.ts` add the checkout's and the order's when those chunks
+load. Page moments no event marks (`checkout:form-initialized`, `checkout:payment-ready`,
+`address:fields-rendered`, `upsell:initialized`, `timer:expired`, `accordion:*`,
+`scroll-hint:updated`, …) are sent by the code that sees them. Live pages listen to
+`bundle:selection-changed` (7 pages), `cart:updated`, `coupon:validation-failed`,
+`shipping:method-changed` and `exit-intent:*`. A 0.4.x name reaches only listeners added before
+it, except the ones 0.4.x pages listen for late (`campaign:loaded`, `currency:fallback`,
+`sdk:url-parameters-processed`, `error:occurred`, `checkout:started`,
+`checkout:payment-ready`, `checkout:spreedly-ready`). `checkout:started` comes once a page, as in
+0.4.x, while `checkout.started` is once per checkout.
+
+No longer sent, with a warning that names what to listen for: `cart:package-swapped`,
+`order:redirect-missing`, `address:messages-loaded`, `upsell:accepted` (0.4.43 sent it only for
+`data-next-action="accept-upsell"`, which is not bound; offers send `upsell:added`).
+`payment:tokenized` no longer carries `token` or `pmData`, and says so once a page. The cart item
+names come once per operation (`cart:item-added`, `cart:quantity-changed`, `cart:item-removed`);
+0.4.43's buttons also sent a second copy from their enhancer, which is not repeated. 0.4.43 declared the other 11 (`selector:action-completed`,
+`checkout:express-started`, `express-checkout:redirect-missing`, `address:location-fields-shown`,
+`config:updated`, `message:displayed`, `offer:*`, `*:price-updated`) but never sent them through
+`next.on`; they log a warning too. An unknown name logs a warning. DOM events kept:
+`next:initialized`, `next:ready`, `next:prospect-cart-created`. Gone: `next:display-ready`,
+`next:prospect-cart-abandoned`, `next:*:price-updated`.
+
+## Config, meta tags and URL parameters
+
+| 0.4.x                                                                                                                                                       | Status                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`, `addressConfig.countries` / `dontShowStates` / `enableAutocomplete`, `paymentConfig.expressCheckout.methodOrder`                                  | Supported                                                                                                                                                                                                                                                                                                         |
+| `analytics.enabled`, `providers.nextCampaign`, `providers.gtm.enabled`                                                                                      | Supported (a missing block now means on)                                                                                                                                                                                                                                                                          |
+| `paymentConfig.expressCheckout.requireValidation` / `requiredFields`                                                                                        | Supported: PayPal, Apple Pay or Google Pay picked in the form checks the `requiredFields` listed (page or API names), the whole form when none are listed, nothing when `false`; unset, the whole form. An express button never checks the form. Klarna picked in the form gets the form's checks, as a card does |
+| `currencyBehavior`                                                                                                                                          | **Open** (see above)                                                                                                                                                                                                                                                                                              |
+| `googleMaps`                                                                                                                                                | Removed (documented; every key is empty)                                                                                                                                                                                                                                                                          |
+| `providers.facebook.enabled`, `storeName`                                                                                                                   | Supported: the Meta destination, `storeName` in an order's `Purchase` `eventID`                                                                                                                                                                                                                                   |
+| `providers.rudderstack.enabled`                                                                                                                             | Supported: the RudderStack destination, with the 0.4.x calls, event names and properties                                                                                                                                                                                                                          |
+| `providers.custom`                                                                                                                                          | Not built in: the SDK logs a warning; a listener on `next.analytics.on('*', fn)` sends to the endpoint                                                                                                                                                                                                            |
+| `utmTransfer`, `analytics.mode`                                                                                                                             | Ignored; same-site links always carry attribution                                                                                                                                                                                                                                                                 |
+| `locale`, `translations`                                                                                                                                    | Supported: `locale` is the price and checkout language, over the campaign's (0.4.x: the browser's for prices, English for the checkout); `translations` word field labels and errors, card errors, declines, the `coupon:validation-failed` message and `data-next-i18n`                                          |
+| `debug`, `discounts`, `tracking`, `cardInputConfig`, `storageScope`, `productTitleMap`                                                                      | Removed (no live use)                                                                                                                                                                                                                                                                                             |
+| `next-funnel`, `next-success-url`, `next-next-url`, `os-next-page`, `next-failure-url`, `next-upsell-accept-url`, `next-upsell-decline-url`, `next-api-key` | Supported                                                                                                                                                                                                                                                                                                         |
+| `next-page-type`                                                                                                                                            | Not needed: offers mark the upsell page themselves. The RudderStack destination reads it as `page_type` and the `page()` category                                                                                                                                                                                 |
+| `next-campaign-id`, `next-debug`, `next-clear-cart`, `next-storage-scope`, `os-tracking-tag`, `next-analytics-*`                                            | Removed (no live use)                                                                                                                                                                                                                                                                                             |
+| `?ref_id`, `?forcePackageId`, `?forceBundleId`, `?payment_failed`, `?currency`, `?funnel`, `utm_*` and click ids, `param.*` conditions                      | Supported                                                                                                                                                                                                                                                                                                         |
+| `?debug=true`, `?debugger=true`, `?reset=true`                                                                                                              | Supported (also `?debug=1`, `?reset=1`)                                                                                                                                                                                                                                                                           |
+| `?country`                                                                                                                                                  | Sets the checkout country; no currency switch                                                                                                                                                                                                                                                                     |
+| `?ignore=true`                                                                                                                                              | Supported: no tracking for the rest of the tab. New: `?ignore=false` turns it back on                                                                                                                                                                                                                             |
+| `?forceShippingId`, `?test`                                                                                                                                 | Removed (no live use)                                                                                                                                                                                                                                                                                             |
+
+## Display paths and conditions
+
+Every path, token and condition a live page uses resolves. By namespace:
+
+- **`cart.*`**: all live paths. Gone: `cart-summary.*`, `shippingName` / `shippingCode` (use
+  `shipping.name` / `.code`), shipping-discount fields, coupon lists. `totalQuantity` counts units.
+- **`package.*`, `campaign.*`**: all live paths. Gone: raw API fields, `unit*` savings, `*.raw`,
+  `interval`, `isBundle`.
+- **`bundle.*`, `data-next-bundle-display`, `toggle.*`, `data-next-toggle-display`**: all props,
+  server-priced. Gone: `currency`, and the toggle's ids, names and recurring fields.
+- **`order.*` and `{item.*}` order tokens**: all live paths. Gone: `statusUrl`, `createdAt`,
+  `lines[N].*`, `attribution.*`, `isTest`, tax and discount per line.
+- **`shipping.*`**: the selected method, not the one next to a `[data-next-shipping-id]` row.
+- **`selection.*`, `selector.*`, `[data-next-package-price]`, `[data-next-cart-items]` tokens,
+  JSON card and toggle templates**: gone (no live use).
+- **Formats**: `currency`, `percentage` (whole numbers; 0.4.x multiplied values up to 1 by 100),
+  `address`, `phone`. Gone: `number`, `boolean`, `date`, `text`, `data-hide-if-zero`,
+  `data-divide-by`, `data-multiply-by`.
+- **Conditions**: `path`, `!path`, `path()`, `== 'x'`, `!= 'x'`. Gone: `&&`, `||`, parentheses,
+  `>` / `<`, `cart.hasItem(id)`, `param.has()`. An unknown path leaves the element as written
+  and logs a warning.

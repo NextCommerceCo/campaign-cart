@@ -6,21 +6,15 @@ The shortest page that works:
 
 ```html
 <head>
-  <meta name="next-api-key" content="{YOUR_CAMPAIGN_API_KEY}">
-  <meta name="next-page-type" content="product">
-  <script
-    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
-    defer
-  ></script>
+  <script type="module" src=".../loader.js" data-campaign="{YOUR_CAMPAIGN_API_KEY}" data-funnel="my-funnel"></script>
 </head>
 
 <body>
-  <button data-next-action="add-to-cart" data-next-package-id="42">
-    Add to cart <span data-next-display="package.price">$0.00</span>
+  <button data-next-action="addItem" data-next-package-id="42">
+    Add to cart <span data-next-query="package.42.price"></span>
   </button>
 
-  <span data-next-display="cart.totalQuantity">0</span> items,
-  total <span data-next-display="cart.total">$0.00</span>
+  <span data-next-query="cart.quantity"></span> items, total <span data-next-query="cart.total"></span>
 </body>
 ```
 
@@ -28,17 +22,21 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 ## Where to go next
 
-**[Getting Started](./guides/start-here/getting-started.md)**: from an empty file to a booted page: the head every funnel page carries, the page types, and how pages chain into a funnel. Then **[How It Works](./guides/start-here/how-it-works.md)** for the mental model behind the attributes.
+**[Quickstart](./guides/quickstart.md)**: a whole landing page to copy, line by line. **[Recipes](./guides/recipes/bundle-tiers.md)**: one common task per page: bundle tiers, order bumps, variants, coupons, upsells, the receipt.
 
-**[Building Pages](./guides/pages/checkout-page.md)**: one guide per funnel page, with markup condensed from the production starter templates: [Checkout](./guides/pages/checkout-page.md), [Upsell](./guides/pages/upsell-page.md), [Receipt](./guides/pages/receipt-page.md), and [Landing & Presell](./guides/pages/landing-presell.md).
+**[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 5× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
 
-**Reference**: [Data Attributes](./guides/reference/data-attributes.md) for every `data-next-*` attribute real funnels use, [JavaScript API](./guides/reference/javascript-api.md) for every `window.next` method, and [Analytics Events](./guides/reference/analytics-events.md) for what the SDK reports and the configuration mistakes that produce wrong numbers.
+**[Migrating from 0.4.x](./guides/migrating-from-0.4.md)**: pages built for 0.4.x keep working. This lists what changes for a page builder.
 
-**API types**: the objects you receive in events and read from the stores, generated from the source so they always match the shipped code: {@link index!CartItem}, {@link index!Package}, {@link index!OrderData}, and {@link index!EventMap}. Every export is listed in the left sidebar under **Classes**, **Interfaces** and **Type Aliases**.
+**Building Pages**: one page per step of a funnel: [Landing and Presell](./guides/building-pages/landing-and-presell.md), [Checkout](./guides/building-pages/checkout-page.md), [Upsell](./guides/building-pages/upsell-page.md) and [Receipt](./guides/building-pages/receipt-page.md).
+
+**Reference**: [Attributes](./guides/attributes.md) for everything the SDK reads from a page, [JavaScript API](./guides/javascript-api.md) for `window.next`, and [Events](./guides/events.md) for what `next.on` and `next.analytics.on` receive.
+
+**[Event Reference](./guides/events.md#event-reference)**: every event `next.on` receives, with its fields and an example. [`window.next`](/nextapi) and the [event envelope](/sdkevent) are generated from the source.
 
 ## Reading this site
 
-- [**Start Here**](./guides/start-here/getting-started.md) and [**Building Pages**](./guides/pages/checkout-page.md) are the tutorials. Read them in order the first time.
-- [**Reference**](./guides/reference/data-attributes.md) is for looking things up mid-build: an [attribute](./guides/reference/data-attributes.md) you found in markup, a [method](./guides/reference/javascript-api.md), an [analytics event](./guides/reference/analytics-events.md).
-- Pages under **Classes**, **Interfaces** and **Type Aliases** are generated from the source: the exact fields and signatures. The sidebar lists every export on its own page.
+- [**Start Here**](./guides/migrating-from-0.4.md) is for a page moving from 0.4.x.
+- **Attributes**, **Events** and **JavaScript API**, picked with the switcher above the sidebar, are for looking things up mid-build: an [attribute](./guides/attributes.md) you found in markup, a [method](./guides/javascript-api.md), an [event](./guides/events.md).
+- The **Event Reference** is generated from the SDK's types, so its fields always match the shipped code.
 - The version selector at the top of the page switches between released SDK versions. A page pinned to an older version documents that version, not this one.

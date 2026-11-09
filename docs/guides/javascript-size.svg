@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 372" width="720" height="372" role="img" aria-labelledby="javascript-size-title javascript-size-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="javascript-size-title">JavaScript a page downloads, 0.4.x and 0.5</title>
+  <desc id="javascript-size-desc">Gzip sizes on one scale. A 0.4.x landing page downloads 215 KB: 77 KB before it shows prices, 32 KB of tracking, and 106 KB of checkout and upsell code preloaded on every page. A 0.5 landing page downloads 43 KB: 36 KB before prices and 7 KB of tracking once the page is idle. A 0.5 checkout page adds its 29 KB checkout chunk, 72 KB in all.</desc>
+  <text x="50" y="30" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">JavaScript a page downloads (gzip, one scale)</text>
+
+  <text x="50" y="68" style="fill: var(--color-amber-500, #f59e0b); font-size: 14px; font-weight: 600">0.4.x landing page</text>
+  <text x="670" y="68" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px; font-family: var(--clean-font-mono, ui-monospace, monospace)">215 KB</text>
+  <rect x="50" y="78" width="222" height="44" rx="6" style="fill: var(--color-amber-500, #f59e0b); fill-opacity: 0.45; stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+  <rect x="274" y="78" width="90" height="44" rx="6" style="fill: var(--color-amber-500, #f59e0b); fill-opacity: 0.28; stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+  <rect x="366" y="78" width="304" height="44" rx="6" style="fill: var(--color-amber-500, #f59e0b); fill-opacity: 0.14; stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+  <text x="62" y="105" style="fill: var(--clean-fg, #111827); font-size: 13px; font-weight: 600">Before prices · 77 KB</text>
+  <text x="319" y="105" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">Tracking · 32</text>
+  <text x="378" y="105" style="fill: var(--clean-fg, #111827); font-size: 13px">Checkout + upsell, on every page · 106</text>
+  <text x="50" y="142" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">The 77 KB carried zustand, decimal.js, and the debug overlay's highlight.js and FontAwesome.</text>
+
+  <text x="50" y="184" style="fill: var(--clean-accent, #2563eb); font-size: 14px; font-weight: 600">0.5 landing page</text>
+  <text x="670" y="184" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px; font-family: var(--clean-font-mono, ui-monospace, monospace)">43 KB · 5× less</text>
+  <rect x="50" y="194" width="104" height="44" rx="6" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.45; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+  <rect x="156" y="194" width="20" height="44" rx="4" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.2; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+  <text x="62" y="221" style="fill: var(--clean-fg, #111827); font-size: 13px; font-weight: 600">36 KB</text>
+  <text x="190" y="214" style="fill: var(--clean-fg, #111827); font-size: 13px">before prices: loader 1 KB + core 25 KB + attributes 9 KB</text>
+  <text x="190" y="232" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">then tracking, 7 KB, once the page is idle</text>
+
+  <text x="50" y="280" style="fill: var(--clean-accent, #2563eb); font-size: 14px; font-weight: 600">0.5 checkout page</text>
+  <text x="670" y="280" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px; font-family: var(--clean-font-mono, ui-monospace, monospace)">72 KB</text>
+  <rect x="50" y="290" width="104" height="44" rx="6" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.45; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+  <rect x="156" y="290" width="84" height="44" rx="6" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.3; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+  <rect x="242" y="290" width="20" height="44" rx="4" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.2; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+  <text x="62" y="317" style="fill: var(--clean-fg, #111827); font-size: 13px; font-weight: 600">36</text>
+  <text x="198" y="317" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">checkout</text>
+  <text x="276" y="310" style="fill: var(--clean-fg, #111827); font-size: 13px">+ the checkout chunk, 29 KB, only with a checkout form</text>
+  <text x="276" y="328" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">a third of what every 0.4.x landing page downloaded</text>
+
+  <text x="50" y="362" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">0.4.x measured from its build; 0.5 from npm run build, where each chunk has a size budget.</text>
+</svg>

@@ -1,0 +1,294 @@
+import { Api, failureOf } from './runtime/api';
+import { type Attribution, buildAttribution, eventAttribution, type Visit } from './visit/attribution';
+import { type CartActions, createCart, emptyCart } from './cart/cart';
+import { type EngineEvent, Events } from './events/bus';
+import type { Browser, EventCampaign, EventContext } from './events/context';
+import type { ErrorAction, Snapshot } from './events/sdk';
+import { type LogLevel, Logger } from './runtime/log';
+import { appliedCodes, publicOrder } from './order/order';
+import { keptParams, parseForcePackages } from './visit/params';
+import { createSelectors, type SelectorActions } from './cart/selectors';
+import { campaignSession, type Cookies } from './runtime/session';
+import { StorageAdapter } from './runtime/storage';
+import { createToggles, type ToggleActions } from './cart/toggles';
+import { createVisit, type VisitActions } from './visit/visit';
+import type { EventMap, EventName } from './events/bus';
+import type { Campaign, Package, Send, Slice, State } from './types';
+
+/** The page and the browser now; supplied by the page, since the engine has no DOM. */
+export interface Environment {
+  page_location: string;
+  page_title: string;
+  page_referrer: string;
+  browser: Browser;
+}
+
+export interface EngineOptions {
+  environment: () => Environment;
+  apiKey: string;
+  apiBase: string;
+  send: Send;
+  campaign: Promise<Campaign>;
+  storagePrefix: string;
+  storage: { local: Storage | null; session: Storage | null };
+  currency?: string;
+  locale?: string;
+  params?: Record<string, string>;
+  visit?: Visit;
+  funnel?: string;
+  reset?: boolean;
+  now?: () => number;
+  logLevel?: LogLevel;
+  debug?: boolean;
+  cookies?: Cookies;
+}
+
+export interface Context {
+  getState(): State;
+  update<K extends Slice>(slice: K, patch: Partial<NonNullable<State[K]>>, options?: { silent?: boolean }): void;
+  emit<K extends EventName>(name: K, data: EventMap[K]): void;
+  batch(fn: () => void): void;
+  on<K extends EventName>(name: K, fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }): () => void;
+  fail(action: ErrorAction, err: unknown): void;
+  now(): number;
+  log: Logger;
+  getPackage(id: number): Package | undefined;
+  attribution(): Attribution;
+  saved<T>(slice: keyof State): T | undefined;
+  forget(slice: 'checkout'): void;
+  /** Saves a chunk's slice in the session on each change, as `pick` returns it. */
+  persist<K extends Slice>(slice: K, pick: (value: NonNullable<State[K]>) => unknown): void;
+  local: StorageAdapter;
+  api: Api;
+}
+
+const SNAPSHOT_MAX_AGE = 10 * 60 * 1000;
+
+export class Engine {
+  readonly log: Logger;
+  readonly events: Events;
+  readonly cart: CartActions;
+  readonly selectors: SelectorActions;
+  readonly toggles: ToggleActions;
+  readonly visit: VisitActions;
+  readonly debug: boolean;
+  readonly sessionId: () => string;
+  private state: State;
+  private api: Api;
+  private session: StorageAdapter;
+  private local: StorageAdapter;
+  private debugStore: StorageAdapter;
+  private listeners = new Set<() => void>();
+  private notifying = false;
+  private ready = false;
+  private context: Context;
+  private persisted: Partial<Record<Slice, (value: never) => unknown>> = {};
+
+  constructor(private options: EngineOptions) {
+    this.log = new Logger(options.logLevel, options.now);
+    this.events = new Events(this.log);
+    this.sessionId = campaignSession(options.cookies, options.storage.local);
+    this.api = new Api(options.apiKey, options.send, options.apiBase, this.log, this.sessionId);
+    const adapter = (name: string, backends: Array<Storage | null>) =>
+      new StorageAdapter({
+        prefix: options.storagePrefix,
+        version: 1,
+        backends,
+        now: options.now,
+        onDegrade: (reason) =>
+          this.events.emit('sdk.error', {
+            action: 'storage.write',
+            code: 'unavailable',
+            message: `${name}: ${reason}`,
+          }),
+      });
+    this.session = adapter('session', [options.storage.session]);
+    this.local = adapter('local', [options.storage.local, options.storage.session]);
+    this.debugStore = new StorageAdapter({ prefix: 'next', version: 1, backends: [options.storage.session] });
+    if (options.debug) this.debugStore.set('debugging', true);
+    if (options.debug === false) for (const name of ['debugging', 'debug']) this.debugStore.remove(name);
+    this.debug = this.debugStore.get<boolean>('debugging') === true;
+    if (this.debug) this.log.level = 'debug';
+    this.state = {
+      locale: options.locale,
+      cart: emptyCart(),
+      selectors: {},
+      toggles: {},
+      visit: { params: options.params ?? {}, landing: options.visit, exitIntentShown: 0, timers: {} },
+    };
+    this.context = {
+      getState: () => this.state,
+      update: (slice, patch, opts) => this.update(slice, patch, opts),
+      emit: (name, data) => this.events.emit(name, data),
+      batch: (fn) => this.events.batch(fn),
+      on: (name, fn, options) => this.events.on(name, fn, options),
+      fail: (action, err) => this.fail(action, err),
+      now: () => (this.options.now ?? Date.now)(),
+      log: this.log,
+      getPackage: (id) => this.getPackage(id),
+      attribution: () => this.attribution(),
+      saved: (slice) => (slice === 'debug' ? this.debugStore : this.session).get(slice),
+      forget: (slice) => {
+        this.session.remove(slice);
+        this.state = { ...this.state, [slice]: undefined };
+      },
+      persist: (slice, pick) => void (this.persisted[slice] = pick),
+      local: this.local,
+      api: this.api,
+    };
+    this.cart = createCart(this.context);
+    this.selectors = createSelectors(this.context, this.cart);
+    this.toggles = createToggles(this.context, this.cart.quotes);
+    this.visit = createVisit(this.context, this.context.now);
+
+    if (options.reset) for (const store of [this.session, this.local]) store.clear();
+    this.restore();
+    const forced = parseForcePackages(options.params?.forcePackageId);
+    if (forced.length) {
+      void this.cart.clear();
+      void this.cart.setGroup('items', { lines: forced, vouchers: [] });
+    }
+  }
+
+  async start(): Promise<void> {
+    this.markReady();
+    await this.load();
+    this.markReady();
+  }
+
+  attach<T>(create: (ctx: Context) => T): T {
+    return create(this.context);
+  }
+
+  getState(): Readonly<State> {
+    return this.state;
+  }
+
+  subscribe(fn: () => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  on<K extends EventName>(name: K | '*', fn: (event: EngineEvent<K>) => void, options?: { replay?: boolean }) {
+    return this.events.on(name, fn, options);
+  }
+
+  getPackage(id: number): Package | undefined {
+    return this.state.campaign?.packages.find((p) => p.ref_id === id);
+  }
+
+  eventCampaign(): EventCampaign | undefined {
+    const c = this.state.campaign;
+    return c && { id: c.id, name: c.name, currency: c.currency, language: c.language };
+  }
+
+  snapshot(): Snapshot {
+    const { checkout, order } = this.state;
+    const campaign = this.eventCampaign();
+    const placed = order?.order;
+    return {
+      ...(campaign && { campaign }),
+      cart: this.cart.current(),
+      ...(checkout && { checkout: this.cart.currentCheckout() }),
+      ...(placed && { order: publicOrder(placed, appliedCodes(placed, order.coupon)) }),
+      selectors: this.selectors.list(),
+    };
+  }
+
+  eventContext(): EventContext {
+    const { browser, ...page } = this.options.environment();
+    const campaign = this.eventCampaign();
+    return {
+      ...page,
+      ...(campaign && { campaign }),
+      session_id: this.sessionId(),
+      attribution: eventAttribution(this.attribution()),
+      browser,
+    };
+  }
+
+  attribution(): Attribution {
+    const { visit, campaign } = this.state;
+    return buildAttribution(visit, this.options.funnel || campaign?.name, this.context.now());
+  }
+
+  private restore(): void {
+    const cart = this.session.get<Partial<State['cart']>>('cart');
+    const visit = this.session.get<Partial<State['visit']>>('visit');
+    const campaign = this.local.get<Campaign>(this.campaignKey(), SNAPSHOT_MAX_AGE);
+    this.state = { ...this.state, cart: { ...this.state.cart, ...cart }, ...(campaign && { campaign }) };
+    this.update('visit', {
+      ...visit,
+      params: { ...visit?.params, ...this.state.visit.params },
+      landing: visit?.landing ?? this.state.visit.landing,
+    });
+    if (campaign) this.events.emit('campaign.loaded', { campaign, fromCache: true });
+  }
+
+  private async load(): Promise<void> {
+    let campaign: Campaign;
+    try {
+      campaign = await this.options.campaign;
+    } catch (err) {
+      this.fail('campaign.load', err);
+      if (this.state.campaign) this.price();
+      return;
+    }
+    this.update('campaign', campaign);
+    this.events.emit('campaign.loaded', { campaign, fromCache: false });
+    this.price();
+  }
+
+  private price(): void {
+    void this.cart.campaignLoaded();
+    this.selectors.campaignLoaded();
+  }
+
+  private markReady(): void {
+    if (this.ready || !this.state.campaign) return;
+    this.ready = true;
+    this.events.emit('sdk.ready', this.snapshot());
+  }
+
+  private update<K extends Slice>(
+    slice: K,
+    patch: Partial<NonNullable<State[K]>>,
+    { silent = false }: { silent?: boolean } = {},
+  ): void {
+    this.state = { ...this.state, [slice]: { ...this.state[slice], ...patch } };
+    this.save(slice);
+    if (silent || this.notifying) return;
+    this.notifying = true;
+    queueMicrotask(() => {
+      this.notifying = false;
+      this.listeners.forEach((fn) => fn());
+    });
+  }
+
+  private save(slice: Slice): void {
+    const { cart, visit, campaign, order, debug } = this.state;
+    if (slice === 'cart') {
+      const { groups, coupons, held, dismissed, shippingId, reported, added } = cart;
+      this.session.set('cart', { groups, coupons, held, dismissed, shippingId, reported, added });
+    }
+    if (slice === 'visit') this.session.set('visit', { ...visit, params: keptParams(visit.params) });
+    if (slice === 'campaign') this.local.set(this.campaignKey(), campaign);
+    if (slice === 'debug' && debug) this.debugStore.set('debug', debug);
+    if (slice === 'order' && order) {
+      const { refId, order: saved, loadedAt, accepted, coupon } = order;
+      this.session.set('order', { refId, order: saved, loadedAt, accepted, coupon });
+    }
+    const pick = this.persisted[slice];
+    if (pick && this.state[slice]) this.session.set(slice, pick(this.state[slice] as never));
+  }
+
+  private campaignKey(): string {
+    return `campaign:${this.options.currency ?? 'default'}`;
+  }
+
+  private fail(action: ErrorAction, err: unknown): void {
+    const failure = failureOf(err);
+    this.log.info(`${action} failed (${failure.code}): ${failure.message}`);
+    this.events.emit('sdk.error', { action, ...failure });
+  }
+}

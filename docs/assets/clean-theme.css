@@ -87,8 +87,12 @@ main h4 {
   line-height: 1.5;
 }
 
-/* `loading="lazy"` is what the theme puts on a Markdown image, so header logos are not caught. */
-main img[loading='lazy'] {
+/*
+ * `loading="lazy"` is what the theme puts on a Markdown image, so header logos are not caught.
+ * A Markdown `.svg` image is inlined instead, as `span[role='img'] > svg`.
+ */
+main img[loading='lazy'],
+main span[role='img'] > svg {
   display: block;
   margin-inline: auto;
 }
@@ -145,11 +149,7 @@ main nav[aria-label='Pagination'] a > span:nth-child(3) {
  */
 main nav[aria-label='Pagination'] a:hover {
   border-color: var(--clean-border) !important;
-  background-color: color-mix(
-    in oklab,
-    var(--cc-accent) 80%,
-    transparent
-  ) !important;
+  background-color: color-mix(in oklab, var(--cc-accent) 80%, transparent) !important;
 }
 
 main nav[aria-label='Pagination'] a:hover > span:nth-child(2) {
@@ -192,11 +192,7 @@ nav[aria-label='Documentation navigation'] li a {
 }
 
 nav[aria-label='Documentation navigation'] li a:hover {
-  background-color: color-mix(
-    in oklab,
-    var(--cc-accent) 50%,
-    transparent
-  ) !important;
+  background-color: color-mix(in oklab, var(--cc-accent) 50%, transparent) !important;
   color: color-mix(in oklab, var(--cc-accent-fg) 80%, transparent) !important;
 }
 
@@ -309,11 +305,7 @@ main blockquote[role='note'] {
   overflow: visible;
   border-color: color-mix(in oklch, var(--cc-callout-color) 40%, transparent);
   border-radius: 0.75rem;
-  background-color: color-mix(
-    in oklch,
-    var(--cc-callout-color) 12%,
-    transparent
-  );
+  background-color: color-mix(in oklch, var(--cc-callout-color) 12%, transparent);
   box-shadow: none;
   padding: 0.75rem 1.25rem;
   color: var(--clean-fg);
@@ -325,10 +317,7 @@ main blockquote[role='note']:has(> svg.lucide-triangle-alert) {
   --cc-callout-color: var(--cc-callout-warning);
 }
 
-main
-  blockquote[role='note']:has(
-    > svg:is(.lucide-circle-alert, .lucide-circle-x)
-  ) {
+main blockquote[role='note']:has(> svg:is(.lucide-circle-alert, .lucide-circle-x)) {
   --cc-callout-color: var(--cc-callout-error);
 }
 

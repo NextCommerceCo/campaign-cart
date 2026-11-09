@@ -24,13 +24,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -85,14 +79,13 @@ export function compareDesc(a, b) {
 
 /** All release tags in the repo, newest first. */
 export function listReleaseTags(cwd = REPO) {
-  const out = execFileSync(
-    'git',
-    ['for-each-ref', '--format=%(refname:short)', 'refs/tags'],
-    { cwd, encoding: 'utf8' }
-  );
+  const out = execFileSync('git', ['for-each-ref', '--format=%(refname:short)', 'refs/tags'], {
+    cwd,
+    encoding: 'utf8',
+  });
   return out
     .split('\n')
-    .map(line => line.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
     .map(parseTag)
     .filter(Boolean)
@@ -126,9 +119,7 @@ export function buildVersionIndex({
   const pkg = packageVersion(cwd);
   if (local) {
     return {
-      versions: [
-        { version: pkg, tag: `v${pkg}`, path: 'latest', current: true },
-      ],
+      versions: [{ version: pkg, tag: `v${pkg}`, path: 'latest', current: true }],
       floor,
       packageVersion: pkg,
       eligible: [],
@@ -140,10 +131,8 @@ export function buildVersionIndex({
   const floorTag = parseTag(floor);
   if (!floorTag) throw new Error(`Not a release tag: ${floor}`);
 
-  const eligible = listReleaseTags(cwd).filter(
-    t => compareDesc(t, floorTag) <= 0
-  );
-  const built = t => {
+  const eligible = listReleaseTags(cwd).filter((t) => compareDesc(t, floorTag) <= 0);
+  const built = (t) => {
     const dir = join(root, t.tag);
     return existsSync(dir) && statSync(dir).isDirectory();
   };
@@ -159,9 +148,9 @@ export function buildVersionIndex({
     versions,
     floor: floorTag.tag,
     packageVersion: pkg,
-    eligible: eligible.map(t => t.tag),
-    skipped: all ? [] : eligible.filter(t => !built(t)).map(t => t.tag),
-    unreleased: eligible.some(t => t.version === pkg) ? null : pkg,
+    eligible: eligible.map((t) => t.tag),
+    skipped: all ? [] : eligible.filter((t) => !built(t)).map((t) => t.tag),
+    unreleased: eligible.some((t) => t.version === pkg) ? null : pkg,
   };
 }
 
@@ -247,8 +236,7 @@ function main(argv) {
 
   if (index.versions.length === 0) {
     process.stderr.write(
-      `No built version folders found under ${root}.\n` +
-        `Build one first, or pass --local after building latest/.\n`
+      `No built version folders found under ${root}.\n` + `Build one first, or pass --local after building latest/.\n`,
     );
     return 1;
   }
@@ -256,8 +244,7 @@ function main(argv) {
   const latest = join(root, 'latest');
   if (!existsSync(latest) || !statSync(latest).isDirectory()) {
     process.stderr.write(
-      `No latest docs build found at ${latest}.\n` +
-        `Build it before generating the version index.\n`
+      `No latest docs build found at ${latest}.\n` + `Build it before generating the version index.\n`,
     );
     return 1;
   }
@@ -269,32 +256,24 @@ function main(argv) {
   const current = index.versions[0];
   process.stdout.write(
     `versions.json: ${index.versions.length} version(s), current ${current.tag}\n` +
-      `index.html: redirect to latest/\n`
+      `index.html: redirect to latest/\n`,
   );
   if (index.skipped.length > 0) {
     process.stdout.write(
-      `not built, omitted: ${index.skipped.join(', ')}\n` +
-        `  build them with: npm run docs:version -- <tag>\n`
+      `not built, omitted: ${index.skipped.join(', ')}\n` + `  build them with: npm run docs:version -- <tag>\n`,
     );
   }
   if (index.unreleased) {
-    process.stdout.write(
-      `package.json is at ${index.unreleased}, which has no tag yet — not listed.\n`
-    );
+    process.stdout.write(`package.json is at ${index.unreleased}, which has no tag yet — not listed.\n`);
   }
   return 0;
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
-) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   try {
     process.exit(main(process.argv.slice(2)));
   } catch (error) {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(1);
   }
 }

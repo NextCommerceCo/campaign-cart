@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 504" width="720" height="504" role="img" aria-labelledby="checkout-address-lifecycle-title checkout-address-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="checkout-address-lifecycle-title">Address lifecycle</title>
+  <desc id="checkout-address-lifecycle-desc">For each type, shipping and billing while it is separate from shipping. When the form is bound the country list and the chosen country's rules load (sdk.error if they cannot: the campaign's countries, a built-in layout and simpler checks). A country change loads its rules again. With addressConfig.enableAutocomplete, two words in line 1 show suggestions; picking one sends address.autofilled and fills the fields. Fields are checked when the shopper leaves one they changed. Once the checkout is open, an address whose every required field is valid, and each optional field filled, sends address.entered, once per type per checkout. A later valid change, the name and the phone included, sends address.updated; an invalid change sends nothing and the last valid address is kept.</desc>
+  <defs>
+    <marker id="checkout-address-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="250" y="4" width="160" height="27" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="22" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the form is bound</text>
+    <path d="M330 31 V64" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M330 128 V244" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="186" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">rules in</text>
+    <text x="344" y="206" style="fill: var(--clean-fg, #111827); font-size: 13px">or <tspan style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</tspan>: simpler checks</text>
+    <path d="M220 279 H170 V99 H214" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="158" y="189" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">the country changes</text>
+    <path d="M440 266 H534" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="490" y="258" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">line 1 typed</text>
+    <path d="M540 294 H446" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="620" y="332" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">picked: fields filled</text>
+    <text x="620" y="350" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.autofilled</text>
+    <path d="M330 308 V424" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="366" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">every field is valid</text>
+    <text x="344" y="386" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">once the checkout is open</text>
+    <path d="M440 448 H470 V472 H446" marker-end="url(#checkout-address-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="482" y="454" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">changes, still valid</text>
+    <text x="482" y="471" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.updated</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="70" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+    <text x="330" y="95" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">loading rules</text>
+    <text x="330" y="115" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the countries and their fields</text>
+    <rect x="220" y="250" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="275" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">incomplete</text>
+    <text x="330" y="295" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">a field is missing or wrong</text>
+    <rect x="220" y="430" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="455" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">entered</text>
+    <text x="330" y="475" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">address.entered</text>
+    <rect x="540" y="250" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="620" y="275" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">suggesting</text>
+    <text x="620" y="295" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">a list under line 1</text>
+  </g>
+</svg>

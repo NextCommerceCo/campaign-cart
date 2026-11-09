@@ -1,0 +1,1997 @@
+<!-- my-campaigns/_site/olympus/landing/index.html, built 2026-10-20 (SDK 0.4.43) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Product] — Fall Asleep Faster, Stay Asleep Longer</title>
+
+  <!-- Social share meta -->
+  <meta property="og:type" content="website">
+<meta property="og:title" content="[Product] — Fall Asleep Faster, Stay Asleep Longer">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="[Product] — Fall Asleep Faster, Stay Asleep Longer">
+
+
+<meta property="og:description" content="Olympus checkout funnel">
+<meta name="twitter:description" content="Olympus checkout funnel">
+
+
+
+
+<meta property="og:site_name" content="Next Commerce">
+
+
+
+  <!-- Resource hints: SDK CDN + campaign API -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="//campaigns.apps.29next.com">
+  <link rel="dns-prefetch" href="//cdn-countries.muddy-wind-c7ca.workers.dev">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+  <!-- Swiper -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+
+  <!-- Tailwind CDN + design token color aliases -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            'brand-primary':   'var(--brand-primary)',
+            'brand-secondary': 'var(--brand-secondary)',
+            'brand-accent':    'var(--brand-accent)',
+            'surface-bg':      'var(--surface-bg)',
+            'surface-card':    'var(--surface-card)',
+            'surface-alt':     'var(--surface-alt)',
+            'text-primary':    'var(--text-primary)',
+            'text-secondary':  'var(--text-secondary)',
+            'text-inverse':    'var(--text-inverse)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Design tokens + any page-level styles -->
+  <link rel="stylesheet" href="/olympus/css/landing/tokens.css">
+  
+
+  <script src="/olympus/config.js"></script>
+  
+  <meta name="next-funnel" content="Olympus">
+  <meta name="next-page-type" content="product">
+  
+  <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.4.43/dist/loader.js" type="module"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+<body class="font-sans bg-white text-[var(--text-primary)]">
+  
+
+
+
+
+
+  
+<style>
+  .cta-1-sticky {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+  .cta-1-sticky.is-visible {
+    transform: translateY(0);
+  }
+  @media (min-width: 768px) {
+    .cta-1-sticky { display: none; }
+  }
+</style>
+
+<div class="cta-1-sticky bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.12)]" data-cta-1-sticky>
+  <div class="px-[15px] py-[12px] flex flex-col items-center gap-[8px]">
+    <a
+      href="/olympus/checkout/"
+      class="w-full max-w-[345px] bg-[var(--brand-primary)] rounded-[6px] px-[24px] py-[16px] flex items-center justify-center gap-[16px] no-underline"
+    >
+      <span class="font-bold text-[18px] leading-[1.5] tracking-[-0.09px] text-white text-center whitespace-nowrap">Claim Your 60% Discount</span>
+      <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[12px] h-[16px] object-contain shrink-0">
+    </a>
+    <div class="flex items-center justify-center gap-[8px] text-[var(--text-primary)]">
+      <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[18px] h-[17px] object-contain shrink-0">
+      <p class="font-semibold text-[14px] leading-[1.5] tracking-[-0.07px] text-center whitespace-nowrap">30-Day Money-Back Guarantee</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var el = document.querySelector('[data-cta-1-sticky]');
+    if (!el) return;
+    function update() {
+      var scrolled = window.scrollY > 300;
+      var nearBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 80);
+      el.classList.toggle('is-visible', scrolled && !nearBottom);
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+
+<style>
+  .nav1-link {
+    transition: color 0.2s ease;
+  }
+  .nav1-link:hover {
+    color: var(--brand-primary);
+  }
+  .nav1-link.is-active {
+    color: var(--text-primary);
+  }
+  .nav1-link-indicator {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .nav1-link.is-active .nav1-link-indicator {
+    opacity: 1;
+  }
+
+  .nav1-drawer {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.28s ease, opacity 0.2s ease;
+  }
+  .nav1-drawer.is-open {
+    max-height: 320px;
+    opacity: 1;
+  }
+  @media (max-width: 767px) {
+    .nav1-mobile-link {
+      font-size: 14px;
+      letter-spacing: -0.07px;
+      line-height: 1;
+    }
+    .nav1-mobile-link.is-active {
+      color: var(--brand-primary);
+    }
+    .nav1-mobile-link .nav1-link-indicator {
+      display: none;
+    }
+  }
+</style>
+
+<section class="bg-white py-[12px] md:py-[16px] lg:py-[20px] border-b border-[var(--border-default)]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px]">
+    <div class="flex items-center justify-between">
+      <img
+        src="/olympus/images/next-dark.svg"
+        alt="[Product]"
+        class="w-[120px] md:w-[150px] h-auto object-contain shrink-0"
+      >
+
+      <div class="hidden md:flex items-end gap-[60px] lg:gap-[140px]">
+        <nav class="flex items-center gap-[32px] lg:gap-[40px]">
+          <a href="#benefits" class="nav1-link is-active relative font-bold text-[14px] lg:text-[16px] leading-none tracking-[-0.07px] lg:tracking-[-0.08px] text-[var(--text-primary)] pb-[8px]" data-nav1-link>
+            Benefits
+            <span class="nav1-link-indicator absolute left-0 right-0 -bottom-[4px] h-[4px] bg-[var(--brand-primary)]"></span>
+          </a>
+          <a href="#ingredients" class="nav1-link relative font-bold text-[14px] lg:text-[16px] leading-none tracking-[-0.07px] lg:tracking-[-0.08px] text-[var(--text-primary)] pb-[8px]" data-nav1-link>Ingredients<span class="nav1-link-indicator absolute left-0 right-0 -bottom-[4px] h-[4px] bg-[var(--brand-primary)]"></span></a>
+          <a href="#reviews" class="nav1-link relative font-bold text-[14px] lg:text-[16px] leading-none tracking-[-0.07px] lg:tracking-[-0.08px] text-[var(--text-primary)] pb-[8px]" data-nav1-link>Reviews<span class="nav1-link-indicator absolute left-0 right-0 -bottom-[4px] h-[4px] bg-[var(--brand-primary)]"></span></a>
+        </nav>
+
+        <a href="/olympus/checkout/" class="flex items-center gap-[12px]">
+          <span class="font-extrabold text-[18px] leading-none tracking-[-0.09px] text-[var(--text-primary)] underline">Claim Offer</span>
+          <img src="/olympus/images/landing/nav-1/flag-us.png" alt="US flag" class="w-[28px] h-[16px] lg:w-[32px] lg:h-[18px] object-cover">
+        </a>
+      </div>
+
+      <button
+        type="button"
+        class="md:hidden w-[34px] h-[20px] flex items-center justify-center"
+        aria-expanded="false"
+        aria-controls="nav1-mobile-menu"
+        data-nav1-toggle
+      >
+        <span class="relative block w-[34px] h-[20px]">
+          <span class="absolute left-0 top-1/2 block h-[3px] w-[28px] rounded-[20px] bg-[var(--text-primary)] -translate-y-[8px] transition-transform duration-200 ease-out" data-nav1-line-top></span>
+          <span class="absolute left-0 top-1/2 block h-[3px] w-[28px] rounded-[20px] bg-[var(--text-primary)] transition-opacity duration-150 ease-out" data-nav1-line-mid></span>
+          <span class="absolute left-0 top-1/2 block h-[3px] w-[28px] rounded-[20px] bg-[var(--text-primary)] translate-y-[8px] transition-transform duration-200 ease-out" data-nav1-line-bot></span>
+        </span>
+      </button>
+    </div>
+
+    <div id="nav1-mobile-menu" class="nav1-drawer md:hidden" data-nav1-menu>
+      <nav class="flex flex-col">
+        <a href="#benefits" class="nav1-link nav1-mobile-link is-active relative px-[0] py-[20px] font-bold text-[14px] leading-none tracking-[-0.07px] text-[var(--text-primary)]" data-nav1-link>
+          Benefits
+          <span class="nav1-link-indicator absolute left-0 right-auto bottom-0 h-[4px] w-[68px] bg-[var(--brand-primary)]"></span>
+        </a>
+        <a href="#ingredients" class="nav1-link nav1-mobile-link relative px-[0] py-[20px] font-bold text-[14px] leading-none tracking-[-0.07px] text-[var(--text-primary)] border-t border-[var(--border-default)]" data-nav1-link>
+          Ingredients
+          <span class="nav1-link-indicator absolute left-0 right-auto bottom-0 h-[4px] w-[92px] bg-[var(--brand-primary)]"></span>
+        </a>
+        <a href="#reviews" class="nav1-link nav1-mobile-link relative px-[0] py-[20px] font-bold text-[14px] leading-none tracking-[-0.07px] text-[var(--text-primary)] border-t border-[var(--border-default)]" data-nav1-link>
+          Reviews
+          <span class="nav1-link-indicator absolute left-0 right-auto bottom-0 h-[4px] w-[62px] bg-[var(--brand-primary)]"></span>
+        </a>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.currentScript && document.currentScript.previousElementSibling;
+    if (!root) return;
+    var toggle = root.querySelector("[data-nav1-toggle]");
+    var menu = root.querySelector("[data-nav1-menu]");
+    var topLine = root.querySelector("[data-nav1-line-top]");
+    var midLine = root.querySelector("[data-nav1-line-mid]");
+    var botLine = root.querySelector("[data-nav1-line-bot]");
+    var links = root.querySelectorAll("[data-nav1-link]");
+    if (!toggle || !menu) return;
+
+    function setOpen(open) {
+      menu.classList.toggle("is-open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (topLine && midLine && botLine) {
+        topLine.style.transform = open ? "translateY(0) rotate(45deg)" : "translateY(-8px) rotate(0deg)";
+        midLine.style.opacity = open ? "0" : "1";
+        botLine.style.transform = open ? "translateY(0) rotate(-45deg)" : "translateY(8px) rotate(0deg)";
+      }
+    }
+
+    toggle.addEventListener("click", function () {
+      var isOpen = menu.classList.contains("is-open");
+      setOpen(!isOpen);
+    });
+
+    links.forEach(function (link) {
+      link.addEventListener("click", function () {
+        links.forEach(function (x) { x.classList.remove("is-active"); });
+        link.classList.add("is-active");
+        if (window.matchMedia("(max-width: 767px)").matches) {
+          setOpen(false);
+        }
+      });
+    });
+  })();
+</script>
+
+<section class="bg-white overflow-hidden w-full">
+  <div class="max-w-[1440px] mx-auto md:pr-[26px] lg:pr-[60px] xl:pr-[120px]">
+    <div class="flex flex-col gap-[20px] md:flex-row md:gap-[32px] lg:gap-[60px] md:items-center">
+
+      <!-- ── MOBILE ONLY: stars + headline above image ── -->
+      <div class="md:hidden flex flex-col gap-[8px] items-center text-center px-[15px] pt-[24px]">
+        <div class="flex items-center gap-[16px] justify-center">
+          <div class="flex gap-[2px]">
+            <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[20px] h-[20px]">
+            <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[20px] h-[20px]">
+            <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[20px] h-[20px]">
+            <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[20px] h-[20px]">
+            <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[20px] h-[20px]">
+          </div>
+          <span class="text-[18px] font-medium text-[var(--text-primary)] tracking-[-0.09px]">48,312+ 5-Star Reviews</span>
+        </div>
+        <h1 class="text-[32px] font-bold leading-[1.2] text-[var(--text-primary)] tracking-[-0.16px]">Fall Asleep in Minutes — Wake Up Refreshed</h1>
+      </div>
+
+      <!-- ── IMAGE COLUMN — bleeds left edge, full height on desktop ── -->
+      <div class="md:flex-1 md:self-stretch overflow-hidden">
+        <img src="/olympus/images/landing/_shared/1x1_1.svg"
+             alt="Woman sleeping peacefully"
+             class="w-full h-[300px] md:h-full object-cover object-center md:object-bottom">
+      </div>
+
+      <!-- ── CONTENT COLUMN ── -->
+      <div class="md:flex-1 flex flex-col gap-[20px] md:gap-[26px] lg:gap-[32px] px-[15px] md:px-0 pb-[24px] md:py-[32px] lg:py-[40px]">
+
+        <!-- Stars + headline + body — desktop/tablet only -->
+        <div class="hidden md:flex flex-col md:gap-[12px] lg:gap-[20px]">
+          <div class="flex items-center gap-[16px]">
+            <div class="flex md:gap-[2.2px] lg:gap-[2px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="md:w-[22px] md:h-[22px] lg:w-[28px] lg:h-[28px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="md:w-[22px] md:h-[22px] lg:w-[28px] lg:h-[28px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="md:w-[22px] md:h-[22px] lg:w-[28px] lg:h-[28px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="md:w-[22px] md:h-[22px] lg:w-[28px] lg:h-[28px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="md:w-[22px] md:h-[22px] lg:w-[28px] lg:h-[28px]">
+            </div>
+            <span class="md:text-[20px] font-medium text-[var(--text-primary)] tracking-[-0.1px]">48,312+ 5-Star Reviews</span>
+          </div>
+          <h1 class="md:text-[36px] lg:text-[44px] font-bold leading-[1.2] text-[var(--text-primary)] tracking-[-0.22px]">Fall Asleep in Minutes — Wake Up Refreshed</h1>
+          <p class="md:text-[20px] text-[var(--text-secondary)] leading-[1.5] tracking-[-0.1px]">Clinically formulated with Ashwagandha, Magnesium Glycinate & L-Theanine to silence your racing mind and deliver deep, restorative sleep.</p>
+        </div>
+
+        <!-- Body — mobile only (centered) -->
+        <p class="md:hidden text-[18px] text-[var(--text-primary)] text-center leading-[1.5] tracking-[-0.09px]">Clinically formulated with Ashwagandha, Magnesium Glycinate & L-Theanine to silence your racing mind and deliver deep, restorative sleep.</p>
+
+        <!-- Benefit bullets -->
+        <div class="flex flex-col gap-[8px]">
+          <div class="flex items-center gap-[12px]">
+            <img src="/olympus/images/landing/hero-1/icon-check.svg" alt="" class="w-[24px] h-[24px] shrink-0">
+            <span class="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.1px]">Fall Asleep Up To 3x Faster</span>
+          </div>
+          <div class="flex items-center gap-[12px]">
+            <img src="/olympus/images/landing/hero-1/icon-check.svg" alt="" class="w-[24px] h-[24px] shrink-0">
+            <span class="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.1px]">Stay Asleep Through the Night</span>
+          </div>
+          <div class="flex items-center gap-[12px]">
+            <img src="/olympus/images/landing/hero-1/icon-check.svg" alt="" class="w-[24px] h-[24px] shrink-0">
+            <span class="text-[16px] md:text-[18px] font-bold text-[var(--text-primary)] tracking-[-0.1px]">Wake Up Without Grogginess</span>
+          </div>
+        </div>
+
+        <!-- CTA block -->
+        <div class="w-full md:max-w-[440px]">
+          <div class="w-full flex flex-col items-center gap-[12px]">
+            <a href="/olympus/checkout/"
+               class="w-full bg-[var(--brand-primary)] rounded-[6px] py-[20px] px-[24px] flex items-center justify-center gap-[20px] no-underline">
+              <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5] whitespace-nowrap">Claim Your 60% Discount</span>
+              <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0" aria-hidden="true">
+            </a>
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] shrink-0 object-contain" aria-hidden="true">
+              <p class="font-semibold text-[16px] text-[var(--text-primary)] text-center tracking-[-0.08px] leading-[1.5]">30-Day Money-Back Guarantee</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Testimonial -->
+        <div class="flex gap-[12px] items-start mt-[20px] md:mt-0">
+          <div class="shrink-0 w-[60px] h-[60px] rounded-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                 alt="Sandra M."
+                 class="w-full h-full object-cover object-top">
+          </div>
+          <div class="flex-1 flex flex-col gap-[8px]">
+            <div class="flex gap-[2px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[18px] h-[18px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[18px] h-[18px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[18px] h-[18px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[18px] h-[18px]">
+              <img src="/olympus/images/landing/hero-1/icon-star.svg" alt="" class="w-[18px] h-[18px]">
+            </div>
+            <p class="text-[18px] md:text-[20px] font-bold text-[var(--text-primary)] leading-[1.5] tracking-[-0.1px]">"Best sleep I've had in years — nothing else comes close."</p>
+            <p class="text-[14px] lg:text-[16px] text-[var(--text-primary)] leading-[1.5] tracking-[-0.08px]">I've struggled with sleep for over a decade. After two weeks on [Product] I sleep through the night and wake up feeling genuinely rested. It has changed my life.</p>
+            <div class="flex items-center justify-between">
+              <span class="text-[16px] font-bold text-[var(--text-primary)] tracking-[-0.08px]">Sandra M.</span>
+              <div class="flex items-center gap-[2px] bg-[var(--brand-secondary)] border border-[var(--brand-primary)] rounded-full pl-[8px] pr-[10px] py-[6px]">
+                <img src="/olympus/images/landing/hero-1/icon-verified.svg" alt="" class="w-[16px] h-[16px] shrink-0">
+                <span class="text-[12px] font-medium text-[var(--brand-primary)] tracking-[-0.06px] whitespace-nowrap">Verified Review</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content column -->
+    </div><!-- /flex wrapper -->
+  </div><!-- /container -->
+</section>
+
+<style>
+  @keyframes icons5-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .icons5-track {
+    animation: icons5-scroll 40s linear infinite;
+    will-change: transform;
+  }
+  .icons5-track:hover {
+    animation-play-state: paused;
+  }
+</style>
+
+<section class="bg-white py-6 md:py-8 lg:py-10 overflow-hidden">
+  <div class="icons5-track flex items-center gap-[48px] w-max">
+
+    <!-- Set 1 -->
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-cuff-checking.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Non-Habit Forming</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-movement-error.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Made in the USA</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-heartbeat.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Third-Party Tested</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-wrist-comfort.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">No Morning Grogginess</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-fda-cleared.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">60-Day Guarantee</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-lcd-display.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Vegan & Gluten Free</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-reading-memory.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">GMP Certified Facility</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-dual-user.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Clinically Studied Ingredients</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-batteries.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">No Sedatives</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-portable.png" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Doctor Recommended</span>
+    </div>
+
+    <!-- Set 2 — duplicate for seamless loop -->
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-cuff-checking.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Non-Habit Forming</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-movement-error.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Made in the USA</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-heartbeat.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Third-Party Tested</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-wrist-comfort.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">No Morning Grogginess</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-fda-cleared.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">60-Day Guarantee</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-lcd-display.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Vegan & Gluten Free</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-reading-memory.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">GMP Certified Facility</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-dual-user.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Clinically Studied Ingredients</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-batteries.svg" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">No Sedatives</span>
+    </div>
+    <div class="flex items-center gap-[15px] md:gap-[20px] shrink-0">
+      <img src="/olympus/images/landing/icons-5/icon-portable.png" alt="" class="w-8 h-8 object-contain shrink-0">
+      <span class="font-bold text-[16px] md:text-[18px] text-[color:var(--text-primary)] tracking-[-0.08px] md:tracking-[-0.09px] leading-[1.5] whitespace-nowrap">Doctor Recommended</span>
+    </div>
+
+  </div>
+</section>
+
+<section class="bg-[var(--brand-tint,#edf2ff)] py-10 md:py-12 lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px]">
+    <div class="flex flex-col items-center gap-8 md:gap-10 lg:gap-12">
+
+      <!-- Row 1: Problem -->
+      <div class="flex flex-col md:flex-row items-start gap-5 md:gap-12 lg:gap-[60px] w-full">
+
+        <!-- Image -->
+        <div class="w-full md:w-[320px] lg:w-[560px] shrink-0 overflow-hidden rounded-[16px] md:rounded-[20px] lg:rounded-[24px]" style="aspect-ratio: 560/320;">
+          <img
+            src="/olympus/images/landing/_shared/1x1_1.svg"
+            alt="Person lying awake staring at ceiling"
+            class="w-full h-full object-cover"
+          >
+        </div>
+
+        <!-- Content -->
+        <div class="flex flex-col gap-3 md:gap-4 lg:gap-5 items-start justify-center flex-1 self-stretch">
+          <div class="flex flex-col gap-2 md:gap-[10px] lg:gap-3 items-start w-full">
+            <p class="text-[20px] lg:text-[24px] font-bold leading-[1.4] tracking-[-0.1px] lg:tracking-[-0.12px] text-[#b70101]">
+              The Problem
+            </p>
+            <h2 class="text-[28px] md:text-[32px] lg:text-[40px] font-bold leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] lg:tracking-[-0.2px] text-[var(--text-primary)]">
+              Poor Sleep Is Draining Your Life
+            </h2>
+          </div>
+          <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-secondary)]">
+            Lying awake at 2am, staring at the ceiling with a mind that won't slow down. Day after day of exhaustion, brain fog, and irritability — and the harder you try to sleep, the worse it gets. Melatonin stopped working. Prescription sleep aids leave you groggy. You're stuck in a cycle you can't break.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Row 2: Solution -->
+      <div class="flex flex-col md:flex-row items-start gap-5 md:gap-12 lg:gap-[60px] w-full">
+
+        <!-- Image -->
+        <div class="w-full md:w-[320px] lg:w-[560px] shrink-0 overflow-hidden rounded-[16px] md:rounded-[20px] lg:rounded-[24px]" style="aspect-ratio: 560/320;">
+          <img
+            src="/olympus/images/landing/_shared/1x1_1.svg"
+            alt="Person waking up refreshed and energized"
+            class="w-full h-full object-cover object-right"
+          >
+        </div>
+
+        <!-- Content -->
+        <div class="flex flex-col gap-3 md:gap-4 lg:gap-5 items-start justify-center flex-1 self-stretch">
+          <div class="flex flex-col gap-2 md:gap-[10px] lg:gap-3 items-start w-full">
+            <p class="text-[20px] lg:text-[24px] font-bold leading-[1.4] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--brand-primary)]">
+              The Solution
+            </p>
+            <h2 class="text-[28px] md:text-[32px] lg:text-[40px] font-bold leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] lg:tracking-[-0.2px] text-[var(--text-primary)]">
+              Deep Sleep, Naturally Restored
+            </h2>
+          </div>
+          <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-secondary)]">
+            Our formula works with your body's own sleep systems — not against them. Our synergistic blend lowers cortisol, calms the nervous system, and supports every stage of your sleep cycle. No dependency. No grogginess. Just the deep, natural sleep your body has been craving.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- CTA -->
+      <div class="w-[345px] md:w-[440px] flex flex-col items-center gap-[8px] md:gap-[10px] lg:gap-[12px]">
+        <a href="/olympus/checkout/" class="w-full rounded-[6px] bg-[var(--brand-primary)] px-[24px] py-[20px] flex items-center justify-center gap-[20px]">
+          <span class="text-[20px] leading-[1.5] tracking-[-0.1px] font-bold text-white text-center">
+            Claim Your 60% Discount
+          </span>
+          <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0" aria-hidden="true">
+        </a>
+        <div class="flex items-center gap-[8px]">
+          <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] object-contain" aria-hidden="true">
+          <p class="text-[16px] leading-[1.5] tracking-[-0.08px] font-semibold text-[var(--text-primary)] whitespace-nowrap">
+            30-Day Money-Back Guarantee
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="bg-[#edf2ff] py-[40px] md:py-[48px] lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px]">
+    <div class="flex flex-col gap-[32px] md:gap-[40px] lg:gap-[48px]">
+
+      <!-- Heading -->
+      <h2 class="font-bold text-[32px] md:text-[36px] lg:text-[44px] tracking-[-0.16px] md:tracking-[-0.19px] lg:tracking-[-0.22px] text-[var(--text-primary)] leading-[1.2] text-center lg:text-left">
+        Why 48,000+ Sleepers Choose [Product]
+      </h2>
+
+      <!-- Main content: image left, benefits + review right -->
+      <div class="flex flex-col md:flex-row gap-[32px] md:gap-[40px] lg:gap-[48px] md:items-start lg:items-center">
+
+        <!-- Product image — square -->
+        <div class="w-full md:w-[45%] shrink-0 aspect-square rounded-[16px] overflow-hidden">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg"
+               alt="[Product] bottle"
+               class="w-full h-full object-cover">
+        </div>
+
+        <!-- Benefits + review -->
+        <div class="flex flex-col gap-[20px] md:gap-[26px] lg:gap-[32px] md:flex-1">
+
+          <!-- Benefits grid: 1-col mobile/tablet, 2-col desktop -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-[24px] md:gap-[20px] lg:gap-x-[20px] lg:gap-y-[40px]">
+
+            <!-- Benefit 1 -->
+            <div class="flex flex-col items-center gap-[8px] md:flex-row md:items-center md:gap-[16px] lg:flex-col lg:items-center lg:gap-[8px]">
+              <div class="flex flex-col items-center gap-[16px] shrink-0">
+                <img src="/olympus/images/landing/benefits-2/benefits-2-icon-1.svg" alt="" class="w-[50px] h-[50px]">
+                <h3 class="font-bold text-[20px] lg:text-[24px] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--text-primary)] leading-[1.4] text-center md:hidden lg:block">
+                  Quiets Racing Thoughts
+                </h3>
+              </div>
+              <div class="flex flex-col gap-[8px] w-full">
+                <h3 class="font-bold text-[20px] tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4] hidden md:block lg:hidden">
+                  Quiets Racing Thoughts
+                </h3>
+                <p class="font-normal text-[18px] tracking-[-0.09px] text-[var(--text-secondary)] leading-[1.5] text-center md:text-left lg:text-center">
+                  Ashwagandha and L-Theanine lower cortisol and promote alpha brainwave activity — your brain finally gets the off switch it needs.
+                </p>
+              </div>
+            </div>
+
+            <!-- Benefit 2 -->
+            <div class="flex flex-col items-center gap-[8px] md:flex-row md:items-center md:gap-[16px] lg:flex-col lg:items-center lg:gap-[8px]">
+              <div class="flex flex-col items-center gap-[16px] shrink-0">
+                <img src="/olympus/images/landing/benefits-2/benefits-2-icon-2.svg" alt="" class="w-[50px] h-[50px]">
+                <h3 class="font-bold text-[20px] lg:text-[24px] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--text-primary)] leading-[1.4] text-center md:hidden lg:block">
+                  Deeper Sleep Cycles
+                </h3>
+              </div>
+              <div class="flex flex-col gap-[8px] w-full">
+                <h3 class="font-bold text-[20px] tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4] hidden md:block lg:hidden">
+                  Deeper Sleep Cycles
+                </h3>
+                <p class="font-normal text-[18px] tracking-[-0.09px] text-[var(--text-secondary)] leading-[1.5] text-center md:text-left lg:text-center">
+                  Magnesium Glycinate supports the nervous system relaxation needed to cycle through all stages of restorative sleep.
+                </p>
+              </div>
+            </div>
+
+            <!-- Benefit 3 -->
+            <div class="flex flex-col items-center gap-[8px] md:flex-row md:items-center md:gap-[16px] lg:flex-col lg:items-center lg:gap-[8px]">
+              <div class="flex flex-col items-center gap-[16px] shrink-0">
+                <img src="/olympus/images/landing/benefits-2/benefits-2-icon-3.svg" alt="" class="w-[50px] h-[50px]">
+                <h3 class="font-bold text-[20px] lg:text-[24px] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--text-primary)] leading-[1.4] text-center md:hidden lg:block">
+                  Zero Next-Day Fog
+                </h3>
+              </div>
+              <div class="flex flex-col gap-[8px] w-full">
+                <h3 class="font-bold text-[20px] tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4] hidden md:block lg:hidden">
+                  Zero Next-Day Fog
+                </h3>
+                <p class="font-normal text-[18px] tracking-[-0.09px] text-[var(--text-secondary)] leading-[1.5] text-center md:text-left lg:text-center">
+                  Unlike prescription sleep aids, this formula contains no sedatives. You wake up clear-headed and ready to go.
+                </p>
+              </div>
+            </div>
+
+            <!-- Benefit 4 -->
+            <div class="flex flex-col items-center gap-[8px] md:flex-row md:items-center md:gap-[16px] lg:flex-col lg:items-center lg:gap-[8px]">
+              <div class="flex flex-col items-center gap-[16px] shrink-0">
+                <img src="/olympus/images/landing/benefits-2/benefits-2-icon-4.svg" alt="" class="w-[50px] h-[50px]">
+                <h3 class="font-bold text-[20px] lg:text-[24px] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--text-primary)] leading-[1.4] text-center md:hidden lg:block">
+                  Non-Habit Forming
+                </h3>
+              </div>
+              <div class="flex flex-col gap-[8px] w-full">
+                <h3 class="font-bold text-[20px] tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4] hidden md:block lg:hidden">
+                  Non-Habit Forming
+                </h3>
+                <p class="font-normal text-[18px] tracking-[-0.09px] text-[var(--text-secondary)] leading-[1.5] text-center md:text-left lg:text-center">
+                  Natural adaptogens and minerals — not chemicals. Use it nightly without worrying about dependency.
+                </p>
+              </div>
+            </div>
+
+          </div><!-- /.grid -->
+
+          <!-- Review card -->
+          <div class="bg-white border border-[var(--brand-primary)] rounded-[8px] flex gap-[16px] items-start px-[12px] pt-[12px] pb-[16px]">
+            <img src="/olympus/images/landing/benefits-2/benefits-2-quote.svg" alt="" class="w-[32px] h-[32px] shrink-0">
+            <div class="flex flex-col gap-[16px] flex-1 min-w-0">
+              <div class="flex flex-col gap-[4px]">
+                <p class="text-[20px] text-[#ffb800] tracking-[2px] leading-[1.5]">★★★★★</p>
+                <p class="font-normal text-[18px] tracking-[-0.09px] text-[var(--text-primary)] leading-[1.5]">
+                  "Two capsules before bed and I'm out within 20 minutes. I've cancelled three doctor's appointments since starting this."
+                </p>
+              </div>
+              <div class="flex items-center gap-[8px]">
+                <span class="font-bold text-[14px] tracking-[-0.07px] text-[var(--text-primary)] leading-[1.4]">
+                  Derek H.
+                </span>
+                <img src="/olympus/images/landing/benefits-2/benefits-2-verified.svg" alt="" class="w-[12px] h-[12px] shrink-0">
+                <span class="font-semibold text-[14px] tracking-[-0.07px] text-[var(--brand-primary)] leading-[1.4]">Verified Buyer</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.benefits + review -->
+      </div><!-- /.main content -->
+
+    </div>
+  </div>
+</section>
+
+<section class="bg-[var(--brand-secondary,#edf2ff)] py-[40px] md:py-[48px] lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px]">
+    <div class="flex flex-col items-center gap-[32px] md:gap-[40px] lg:gap-[48px]">
+
+      <!-- Heading -->
+      <h2 class="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[var(--text-primary)] text-center tracking-[-0.16px] md:tracking-[-0.19px] lg:tracking-[-0.22px] leading-[1.2] max-w-[720px]">
+        [Product] Works In Phases
+      </h2>
+
+      <!-- Mobile: landscape product image (hidden md+) -->
+      <div class="md:hidden w-full aspect-[374/233] relative overflow-hidden rounded-[8px]">
+        <img src="/olympus/images/landing/_shared/1x1_1.svg"
+             alt="[Product] bottle"
+             class="absolute inset-0 w-full h-full object-cover">
+      </div>
+
+      <!-- Content row: portrait image (md+) + timeline -->
+      <div class="flex gap-[20px] lg:gap-[40px] items-start w-full">
+
+        <!-- Portrait image: hidden on mobile -->
+        <div class="hidden md:block flex-1 aspect-[412/480] relative self-start">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg"
+               alt="[Product] bottle"
+               class="absolute inset-0 w-full h-full object-contain">
+        </div>
+
+        <!-- Timeline -->
+        <div class="flex-1 flex flex-col">
+
+          <!-- Phase 1 -->
+          <div class="flex gap-[20px] lg:gap-[40px] items-start">
+            <div class="flex flex-col items-center self-stretch shrink-0">
+              <div class="w-[16px] h-[16px] rounded-[8px] bg-white border-4 border-[var(--brand-primary)] shadow-[0_0_0_5px_#d5ddf3] shrink-0"></div>
+              <div class="w-[2px] flex-1 min-h-[1px] border-l-2 border-dashed border-[var(--text-primary)]"></div>
+            </div>
+            <div class="flex-1 pb-[20px]">
+              <div class="bg-white rounded-[16px] px-[16px] md:px-[20px] lg:px-[24px] py-[12px] md:py-[14px] lg:py-[16px] flex flex-col gap-[4px] md:gap-[8px]">
+                <div class="flex flex-col gap-[2px]">
+                  <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Days 1–7</p>
+                  <p class="font-bold text-[18px] md:text-[20px] text-[var(--text-primary)] tracking-[-0.09px] lg:tracking-[-0.1px] leading-[1.5]">Foundation Phase</p>
+                </div>
+                <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">The adaptogenic compounds begin absorbing into your system. Most customers notice it's easier to wind down at night and wake up feeling less groggy.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase 2 -->
+          <div class="flex gap-[20px] lg:gap-[40px] items-start">
+            <div class="flex flex-col items-center self-stretch shrink-0">
+              <div class="w-[16px] h-[16px] rounded-[8px] bg-white border-4 border-[var(--brand-primary)] shadow-[0_0_0_5px_#d5ddf3] shrink-0"></div>
+              <div class="w-[2px] flex-1 min-h-[1px] border-l-2 border-dashed border-[var(--text-primary)]"></div>
+            </div>
+            <div class="flex-1 pb-[20px]">
+              <div class="bg-white rounded-[16px] px-[16px] md:px-[20px] lg:px-[24px] py-[12px] md:py-[14px] lg:py-[16px] flex flex-col gap-[4px] md:gap-[8px]">
+                <div class="flex flex-col gap-[2px]">
+                  <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Days 8–21</p>
+                  <p class="font-bold text-[18px] md:text-[20px] text-[var(--text-primary)] tracking-[-0.09px] lg:tracking-[-0.1px] leading-[1.5]">Regulation Phase</p>
+                </div>
+                <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Cortisol levels stabilise and your nervous system settles into a consistent rhythm. Falling asleep feels easier and staying asleep through the night becomes the norm.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase 3 -->
+          <div class="flex gap-[20px] lg:gap-[40px] items-start">
+            <div class="flex flex-col items-center self-stretch shrink-0">
+              <div class="w-[16px] h-[16px] rounded-[8px] bg-white border-4 border-[var(--brand-primary)] shadow-[0_0_0_5px_#d5ddf3] shrink-0"></div>
+              <div class="w-[2px] flex-1 min-h-[1px] border-l-2 border-dashed border-[var(--text-primary)]"></div>
+            </div>
+            <div class="flex-1 pb-[20px]">
+              <div class="bg-white rounded-[16px] px-[16px] md:px-[20px] lg:px-[24px] py-[12px] md:py-[14px] lg:py-[16px] flex flex-col gap-[4px] md:gap-[8px]">
+                <div class="flex flex-col gap-[2px]">
+                  <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Days 22–45</p>
+                  <p class="font-bold text-[18px] md:text-[20px] text-[var(--text-primary)] tracking-[-0.09px] lg:tracking-[-0.1px] leading-[1.5]">Transformation Phase</p>
+                </div>
+                <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Deep, restorative sleep becomes reliable. Energy is noticeably higher during the day, brain fog lifts, and mood stabilises without the afternoon crash.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase 4 (last — no line) -->
+          <div class="flex gap-[20px] lg:gap-[40px] items-start">
+            <div class="flex flex-col items-center shrink-0">
+              <div class="w-[16px] h-[16px] rounded-[8px] bg-white border-4 border-[var(--brand-primary)] shadow-[0_0_0_5px_#d5ddf3] shrink-0"></div>
+            </div>
+            <div class="flex-1">
+              <div class="bg-white rounded-[16px] px-[16px] md:px-[20px] lg:px-[24px] py-[12px] md:py-[14px] lg:py-[16px] flex flex-col gap-[4px] md:gap-[8px]">
+                <div class="flex flex-col gap-[2px]">
+                  <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">Day 45+</p>
+                  <p class="font-bold text-[18px] md:text-[20px] text-[var(--text-primary)] tracking-[-0.09px] lg:tracking-[-0.1px] leading-[1.5]">Peak Rest</p>
+                </div>
+                <p class="font-medium text-[16px] lg:text-[18px] text-[var(--text-primary)] tracking-[-0.08px] lg:tracking-[-0.09px] leading-[1.5]">The compounding effect reaches its peak. Consistent deep sleep every night, sustained daytime energy, and a calmer baseline that stays with you long term.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- end timeline -->
+
+      </div>
+      <!-- end content row -->
+
+      <!-- CTA -->
+      <div class="flex flex-col items-center gap-[8px] md:gap-[10px] lg:gap-[12px] w-full max-w-[440px]">
+        <a href="/olympus/checkout/"
+          class="w-full bg-[var(--brand-primary)] rounded-[6px] py-[20px] px-[24px] flex items-center justify-center gap-[20px] no-underline">
+            <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5] whitespace-nowrap">Claim Your 60% Discount</span>
+            <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0">
+        </a>
+        <div class="flex items-center gap-[8px]">
+            <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] shrink-0">
+            <p class="font-semibold text-[16px] text-[var(--text-primary)] text-center tracking-[-0.08px] leading-[1.5] whitespace-nowrap">30 Day Money Back Guarantee</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<style>
+  .ingredients3-extra {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+</style>
+
+<section class="bg-[#f4f5f4] py-[40px] md:py-[48px] lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px]">
+    <div class="flex flex-col items-center gap-[32px] md:gap-[40px] lg:gap-[48px]">
+      <div class="w-full max-w-[800px] text-center flex flex-col gap-[12px] md:gap-[20px]">
+        <h2 class="font-bold text-[28px] md:text-[32px] lg:text-[40px] leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] lg:tracking-[-0.2px] text-[var(--text-primary)]">
+          What's Inside Every Capsule
+        </h2>
+        <p class="font-normal text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.1px] text-[var(--text-primary)]">
+          Six clinically studied ingredients, each chosen for a specific role in your sleep cycle. Nothing filler, nothing redundant.
+        </p>
+      </div>
+
+      <div class="w-full flex flex-col items-center gap-[24px] md:gap-[32px] lg:gap-[40px]">
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[12px] md:gap-[16px] lg:gap-[20px]">
+          <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-1.jpg" alt="Ashwagandha KSM-66" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+            <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+              <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Ashwagandha KSM-66</h3>
+                <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Stress & Cortisol Control</p>
+              </div>
+              <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+              <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                The gold-standard ashwagandha extract. Clinically shown to reduce cortisol by up to 28%, making it easier for your brain to transition into sleep mode.
+              </p>
+            </div>
+          </div>
+
+          <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-2.jpg" alt="Magnesium Glycinate" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+            <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+              <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Magnesium Glycinate</h3>
+                <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Deep Muscle Relaxation</p>
+              </div>
+              <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+              <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                The most bioavailable form of magnesium. Relaxes muscles, calms the nervous system, and supports the GABA receptors that regulate sleep.
+              </p>
+            </div>
+          </div>
+
+          <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-3.jpg" alt="L-Theanine" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+            <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+              <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">L-Theanine</h3>
+                <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Alpha Brainwave Activity</p>
+              </div>
+              <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+              <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                Found naturally in green tea. Promotes alpha brainwave states — the relaxed-but-alert baseline your brain needs to transition into sleep without sedation.
+              </p>
+            </div>
+          </div>
+
+          <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-4.jpg" alt="Rhodiola Rosea" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+            <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+              <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Rhodiola Rosea</h3>
+                <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Stress Adaptation</p>
+              </div>
+              <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+              <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                A Scandinavian adaptogen shown to reduce stress-related fatigue and improve sleep quality in people with high stress load.
+              </p>
+            </div>
+          </div>
+        </div>  
+
+        <div class="ingredients3-extra w-full" data-ingredients3-extra>
+          <div class="pt-[12px] md:pt-[16px] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[12px] md:gap-[16px] lg:gap-[20px]">
+            <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+              <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-1.jpg" alt="B-Complex" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+              <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+                <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                  <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">B-Complex</h3>
+                  <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Mood & Nervous System</p>
+                </div>
+                <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+                <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                  Full-spectrum B vitamins support serotonin production and regulate the nervous system signals that control your sleep-wake cycle.
+                </p>
+              </div>
+            </div>
+
+            <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+              <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-2.jpg" alt="Zinc Bisglycinate" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+              <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+                <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                  <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Zinc Bisglycinate</h3>
+                  <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Hormonal Balance</p>
+                </div>
+                <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+                <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                  Chelated zinc with superior absorption. Supports melatonin production and hormonal balance for consistent, predictable sleep.
+                </p>
+              </div>
+            </div>
+
+            <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+              <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-3.jpg" alt="Ashwagandha KSM-66" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+              <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+                <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                  <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Ashwagandha KSM-66</h3>
+                  <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Stress & Cortisol Control</p>
+                </div>
+                <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+                <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                  The gold-standard ashwagandha extract. Clinically shown to reduce cortisol by up to 28%, making it easier for your brain to transition into sleep mode.
+                </p>
+              </div>
+            </div>
+
+            <div class="relative border-2 border-[var(--brand-primary)] rounded-[10px] bg-white px-[12px] py-[24px] md:px-[16px] md:py-[32px] lg:px-[20px] lg:py-[40px]">
+              <img src="/olympus/images/landing/ingredients-3/ingredients-3-card-4.jpg" alt="Magnesium Glycinate" class="absolute top-[20px] right-[10px] w-[80px] h-[64px] object-contain md:static md:w-[150px] md:h-[80px] md:mx-auto md:mb-[12px] lg:mb-[12px]">
+              <div class="pr-[92px] md:pr-0 flex flex-col gap-[12px] md:gap-[16px] items-start md:items-center">
+                <div class="w-full flex flex-col gap-[4px] text-left md:text-center">
+                  <h3 class="font-extrabold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] md:tracking-[-0.12px] text-[var(--text-primary)]">Magnesium Glycinate</h3>
+                  <p class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Deep Muscle Relaxation</p>
+                </div>
+                <div class="w-[40px] h-[3px] bg-[var(--brand-primary)]"></div>
+                <p class="font-normal text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] text-left md:text-center">
+                  The most bioavailable form of magnesium. Relaxes muscles, calms the nervous system, and supports the GABA receptors that regulate sleep.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          data-ingredients3-toggle
+          class="font-medium text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.1px] text-[var(--text-primary)] underline bg-transparent border-0 p-0 cursor-pointer"
+        >
+          <span
+            data-ingredients3-label
+            data-label-open="View Full Supplement Facts"
+            data-label-close="Hide Supplement Facts"
+          >View Full Supplement Facts</span>
+        </button>
+      </div>
+
+      <div class="w-full flex flex-col items-center gap-[12px] md:gap-[16px] lg:gap-[20px]">
+        <div class="w-full flex items-center gap-[20px]">
+          <div class="h-px bg-[var(--border-default)] flex-1"></div>
+          <h3 class="font-bold text-[20px] md:text-[20px] lg:text-[24px] leading-[1.5] tracking-[-0.1px] lg:tracking-[-0.12px] text-[var(--text-primary)]">Our Promise to You</h3>
+          <div class="h-px bg-[var(--border-default)] flex-1"></div>
+        </div>
+
+        <div class="w-full grid grid-cols-3 gap-x-[12px] gap-y-[14px] md:hidden">
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-1.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">All Natural</p>
+          </div>
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-2.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Non-GMO</p>
+          </div>
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-3.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Gluten Free</p>
+          </div>
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-4.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Made In USA</p>
+          </div>
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-5.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">No Fillers</p>
+          </div>
+          <div class="flex flex-col items-center gap-[8px] text-center">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-6.png" alt="" class="w-[48px] h-[48px] object-contain">
+            <p class="font-normal text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Sugar Free</p>
+          </div>
+        </div>
+
+        <div class="hidden md:flex w-full items-center">
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-1.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">All Natural</p>
+          </div>
+          <div class="w-px h-[70px] bg-[var(--border-default)]"></div>
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-2.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">Non-GMO</p>
+          </div>
+          <div class="w-px h-[70px] bg-[var(--border-default)]"></div>
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-3.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">Gluten Free</p>
+          </div>
+          <div class="w-px h-[70px] bg-[var(--border-default)]"></div>
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-4.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">Made In USA</p>
+          </div>
+          <div class="w-px h-[70px] bg-[var(--border-default)]"></div>
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-5.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">No Fillers</p>
+          </div>
+          <div class="w-px h-[70px] bg-[var(--border-default)]"></div>
+          <div class="flex-1 flex flex-col items-center gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/ingredients-3/ingredients-3-promise-6.png" alt="" class="w-[60px] h-[60px] object-contain">
+            <p class="font-normal text-[18px] leading-[1.5] tracking-[-0.09px] text-[var(--text-primary)] text-center">Sugar Free</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-[345px] md:w-[440px] flex flex-col items-center gap-[8px] md:gap-[10px] lg:gap-[12px]">
+        <a href="/olympus/checkout/" class="w-full bg-[var(--brand-primary)] rounded-[6px] px-[24px] py-[20px] flex items-center justify-center gap-[20px] no-underline">
+          <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5]">Claim Your 60% Discount</span>
+          <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[12px] h-[16px] object-contain">
+        </a>
+        <div class="flex items-center gap-[8px]">
+          <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] object-contain">
+          <p class="font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center whitespace-nowrap">30-Day Money-Back Guarantee</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var toggle = document.querySelector("[data-ingredients3-toggle]");
+    var extra = document.querySelector("[data-ingredients3-extra]");
+    if (!toggle || !extra) return;
+
+    var label = toggle.querySelector("[data-ingredients3-label]");
+    var open = false;
+
+    toggle.addEventListener("click", function () {
+      open = !open;
+      extra.style.maxHeight = open ? extra.scrollHeight + "px" : "0";
+
+      if (label) {
+        label.textContent = open
+          ? (label.dataset.labelClose || "Hide the Full Ingredients List")
+          : (label.dataset.labelOpen || "View the Full Ingredients List");
+      }
+    });
+  })();
+</script>
+
+<section class="w-full overflow-hidden bg-white">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px] py-[40px] md:py-[48px] lg:py-[60px]">
+    <div class="w-full flex flex-col gap-[32px] md:gap-[40px] lg:gap-[48px] items-center">
+      <div class="w-full max-w-[800px] flex flex-col gap-[12px] md:gap-[16px] lg:gap-[20px] items-center text-center text-[var(--text-primary)]">
+        <h2 class="font-bold leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] lg:tracking-[-0.2px] text-[28px] md:text-[32px] lg:text-[40px]">
+          The Science Behind [Product]
+        </h2>
+        <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-normal">
+          Most sleep supplements throw melatonin at the problem and call it done. Our formula works differently. Our formula targets the three root causes of poor sleep — elevated cortisol, nervous system dysregulation, and micronutrient depletion — using adaptogens and minerals that have been clinically studied for this exact purpose.
+        </p>
+      </div>
+
+      <div class="w-full flex flex-col lg:flex-row lg:items-stretch gap-[12px] md:gap-[16px] lg:gap-[20px] lg:min-h-[522px]">
+        <article class="flex flex-1 flex-col border border-[var(--border-default)] px-[8px] md:px-[10px] lg:px-[12px] py-[12px] md:py-[16px] lg:py-[20px] gap-[12px] md:gap-[16px] lg:gap-[20px]">
+          <div class="w-full h-[200px] md:h-[220px] overflow-hidden shrink-0">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Cortisol regulation diagram" class="w-full h-full object-cover">
+          </div>
+          <div class="flex flex-col gap-[8px] items-start text-left text-[var(--text-primary)] w-full">
+            <h3 class="text-[20px] lg:text-[24px] leading-[1.4] tracking-[-0.1px] lg:tracking-[-0.12px] font-bold w-full">
+              Lower Cortisol, Fall Asleep Faster
+            </h3>
+            <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-normal w-full">
+              Cortisol is the #1 reason people lie awake at night. KSM-66 Ashwagandha has been shown in multiple trials to reduce serum cortisol by up to 28% — creating the chemical environment your brain needs to wind down.
+            </p>
+          </div>
+        </article>
+
+        <article class="flex flex-1 flex-col border border-[var(--border-default)] px-[8px] md:px-[10px] lg:px-[12px] py-[12px] md:py-[16px] lg:py-[20px] gap-[12px] md:gap-[16px] lg:gap-[20px]">
+          <div class="w-full h-[200px] md:h-[220px] overflow-hidden shrink-0">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="GABA receptor nervous system diagram" class="w-full h-full object-cover">
+          </div>
+          <div class="flex flex-col gap-[8px] items-start text-left text-[var(--text-primary)] w-full">
+            <h3 class="text-[20px] lg:text-[24px] leading-[1.4] tracking-[-0.1px] lg:tracking-[-0.12px] font-bold w-full">
+              Activate Your Body's Off Switch
+            </h3>
+            <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-normal w-full">
+              Magnesium Glycinate activates GABA receptors — the neurological brakes that slow down brain activity. Combined with L-Theanine's alpha brainwave promotion, your mind genuinely slows down instead of just feeling tired.
+            </p>
+          </div>
+        </article>
+
+        <article class="flex flex-1 flex-col border border-[var(--border-default)] px-[8px] md:px-[10px] lg:px-[12px] py-[12px] md:py-[16px] lg:py-[20px] gap-[12px] md:gap-[16px] lg:gap-[20px]">
+          <div class="w-full h-[200px] md:h-[220px] overflow-hidden shrink-0">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Sleep cycle stages diagram" class="w-full h-full object-cover">
+          </div>
+          <div class="flex flex-col gap-[8px] items-start text-left text-[var(--text-primary)] w-full">
+            <h3 class="text-[20px] lg:text-[24px] leading-[1.4] tracking-[-0.1px] lg:tracking-[-0.12px] font-bold w-full">
+              Stay in Deep Sleep Longer
+            </h3>
+            <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-normal w-full">
+              The B-Complex and Zinc Bisglycinate in our formula support serotonin and melatonin production from the inside out, helping your body regulate its own sleep architecture naturally — so you cycle through all stages of restorative sleep.
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-[var(--brand-secondary)] py-[40px] md:py-[48px] lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[80px] xl:px-[160px]">
+    <div class="flex flex-col items-center gap-[32px] md:gap-[40px] lg:gap-[48px]">
+
+      <!-- Heading: stacked on mobile, inline on tablet/desktop -->
+      <div class="flex flex-col items-center gap-[4px] md:flex-row md:gap-[12px] md:justify-center">
+        <p class="font-bold text-[32px] md:text-[36px] lg:text-[44px] tracking-[-0.16px] md:tracking-[-0.18px] lg:tracking-[-0.22px] text-[var(--text-primary)] leading-[1.2] text-center">
+          Trusted by
+        </p>
+        <div class="bg-[var(--brand-primary)] rounded-[4px] md:rounded-[8px] px-[9px] py-[2px]">
+          <p class="font-bold text-[32px] md:text-[36px] lg:text-[44px] tracking-[-0.16px] md:tracking-[-0.18px] lg:tracking-[-0.22px] text-white leading-[1.2] whitespace-nowrap">
+            48,000+
+          </p>
+        </div>
+        <p class="font-bold text-[32px] md:text-[36px] lg:text-[44px] tracking-[-0.16px] md:tracking-[-0.18px] lg:tracking-[-0.22px] text-[var(--text-primary)] leading-[1.2] text-center">
+          Better Sleepers
+        </p>
+      </div>
+
+      <!-- Cards — stacked mobile, 3-col tablet/desktop -->
+      <div class="flex flex-col md:flex-row md:items-start gap-[16px] md:gap-[24px] lg:gap-[32px] w-full">
+
+        <!-- Card 1: Sarah Swanson -->
+        <div class="flex-1 flex flex-col gap-[16px] md:gap-[20px]">
+          <div class="flex items-center gap-[16px]">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                 alt="Sarah Swanson"
+                 class="w-[56px] h-[56px] rounded-full object-cover shrink-0">
+            <p class="font-bold text-[18px] md:text-[20px] tracking-[-0.09px] md:tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4]">
+              Sandra M.
+            </p>
+          </div>
+          <div class="bg-white rounded-[12px] p-[20px] flex flex-col items-end gap-[16px]">
+            <div class="flex flex-col gap-[16px] w-full">
+              <div class="flex gap-[2px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+              </div>
+              <p class="font-normal text-[16px] md:text-[18px] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] leading-[1.5]">
+                I've tried melatonin, magnesium spray, sleep apps — nothing worked. Two weeks in and I'm sleeping through the night for the first time in years. This is the real deal.
+              </p>
+              <div class="w-full overflow-hidden rounded-[4px]">
+                <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                     alt="Customer photo"
+                     class="w-full aspect-square object-cover">
+              </div>
+            </div>
+            <div class="bg-white rounded-full px-[8px] py-[4px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] flex items-center gap-[2px] shrink-0">
+              <img src="/olympus/images/landing/testimonials-2/testimonials-2-reactions.svg" alt="" class="w-[39px] h-[24px]">
+              <p class="font-medium text-[14px] text-[var(--text-primary)] leading-[20px] whitespace-nowrap">3.1k people liked this</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Kelly Peterson -->
+        <div class="flex-1 flex flex-col gap-[16px] md:gap-[20px]">
+          <div class="flex items-center gap-[16px]">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                 alt="Kelly Peterson"
+                 class="w-[56px] h-[56px] rounded-full object-cover shrink-0">
+            <p class="font-bold text-[18px] md:text-[20px] tracking-[-0.09px] md:tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4]">
+              Kevin R.
+            </p>
+          </div>
+          <div class="bg-white rounded-[12px] p-[20px] flex flex-col items-end gap-[16px]">
+            <div class="flex flex-col gap-[16px] w-full">
+              <div class="flex gap-[2px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+              </div>
+              <p class="font-normal text-[16px] md:text-[18px] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] leading-[1.5]">
+                The difference is dramatic. No grogginess in the morning, no dependency feeling, just genuinely better sleep. My doctor even commented that my stress markers improved at my last checkup.
+              </p>
+              <div class="w-full overflow-hidden rounded-[4px]">
+                <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                     alt="Customer photo"
+                     class="w-full aspect-square object-cover">
+              </div>
+            </div>
+            <div class="bg-white rounded-full px-[8px] py-[4px] shadow-[0px_2px_8px_0px_rgba(0,0,0,0.08)] flex items-center gap-[2px] shrink-0">
+              <img src="/olympus/images/landing/testimonials-2/testimonials-2-reactions.svg" alt="" class="w-[39px] h-[24px]">
+              <p class="font-medium text-[14px] text-[var(--text-primary)] leading-[20px] whitespace-nowrap">2.4k people liked this</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Amanda L. -->
+        <div class="flex-1 flex flex-col gap-[16px] md:gap-[20px]">
+          <div class="flex items-center gap-[16px]">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                 alt="Amanda L."
+                 class="w-[56px] h-[56px] rounded-full object-cover shrink-0">
+            <p class="font-bold text-[18px] md:text-[20px] tracking-[-0.09px] md:tracking-[-0.1px] text-[var(--text-primary)] leading-[1.4]">
+              Priya L.
+            </p>
+          </div>
+          <div class="bg-white rounded-[12px] p-[20px] flex flex-col items-end gap-[16px]">
+            <div class="flex flex-col gap-[16px] w-full">
+              <div class="flex gap-[2px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+                <img src="/olympus/images/landing/testimonials-2/testimonials-2-stars.svg" alt="" class="w-[28px] h-[28px]">
+              </div>
+              <p class="font-normal text-[16px] md:text-[18px] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] leading-[1.5]">
+                As someone who's dealt with anxiety-driven insomnia for 5 years, I was skeptical. I ordered on a whim and I'm so glad I did. I wish I'd found this sooner.
+              </p>
+              <div class="w-full overflow-hidden rounded-[4px]">
+                <img src="/olympus/images/landing/_shared/1x1_1.svg"
+                     alt="Customer photo"
+                     class="w-full aspect-square object-cover">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CTA -->
+      <div class="flex flex-col items-center gap-[8px] md:gap-[10px] lg:gap-[12px] w-full max-w-[440px]">
+        <a href="/olympus/checkout/"
+          class="w-full bg-[var(--brand-primary)] rounded-[6px] py-[20px] px-[24px] flex items-center justify-center gap-[20px] no-underline">
+            <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5] whitespace-nowrap">Claim Your 60% Discount</span>
+            <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0">
+        </a>
+        <div class="flex items-center gap-[8px]">
+            <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] shrink-0">
+            <p class="font-semibold text-[16px] text-[var(--text-primary)] text-center tracking-[-0.08px] leading-[1.5] whitespace-nowrap">30-Day Money-Back Guarantee</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="bg-white py-[40px] md:py-[48px] lg:py-[60px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[80px] xl:px-[160px]">
+    <div class="flex flex-col items-center gap-[32px] md:gap-[40px] lg:gap-[48px]">
+
+      <div class="flex flex-col items-center gap-[12px] text-center">
+        <p class="font-bold text-[16px] md:text-[18px] md:text-[20px] leading-[1.4] tracking-[-0.08px] md:tracking-[-0.09px] lg:tracking-[-0.1px] text-[var(--brand-primary)]">96% of Users Would Recommend</p>
+        <h2 class="font-bold text-[32px] md:text-[36px] lg:text-[44px] leading-[1.2] tracking-[-0.16px] md:tracking-[-0.19px] lg:tracking-[-0.22px] text-[var(--text-primary)]">What Our Users Are Saying</h2>
+      </div>
+
+      <div class="w-full flex flex-col lg:flex-row items-center lg:items-center gap-[32px] md:gap-[40px]">
+
+        <div class="hidden lg:flex flex-1 flex-col gap-[2px]">
+          <div class="flex items-center gap-[20px] px-[16px] py-[8px]">
+            <p class="flex-1 font-semibold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Sleep Quality</p>
+            <div class="flex items-center gap-[3px]">
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-gradient-to-r from-[#1bba85] from-[80%] to-[#909090] to-[80%] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="w-[40px] font-bold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+          </div>
+          <div class="h-px bg-[var(--border-default)]"></div>
+          <div class="flex items-center gap-[20px] px-[16px] py-[8px]">
+            <p class="flex-1 font-semibold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Ease of Use</p>
+            <div class="flex items-center gap-[3px]">
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-gradient-to-r from-[#1bba85] from-[70%] to-[#909090] to-[70%] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="w-[40px] font-bold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+          </div>
+          <div class="h-px bg-[var(--border-default)]"></div>
+          <div class="flex items-center gap-[20px] px-[16px] py-[8px]">
+            <p class="flex-1 font-semibold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Value for Money</p>
+            <div class="flex items-center gap-[3px]">
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-gradient-to-r from-[#1bba85] from-[90%] to-[#909090] to-[90%] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="w-[40px] font-bold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)] text-center">4.8</p>
+          </div>
+          <div class="h-px bg-[var(--border-default)]"></div>
+          <div class="flex items-center gap-[20px] px-[16px] py-[8px]">
+            <p class="flex-1 font-semibold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Speed of Results</p>
+            <div class="flex items-center gap-[3px]">
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-gradient-to-r from-[#1bba85] from-[80%] to-[#909090] to-[80%] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="w-[40px] font-bold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)] text-center">4.7</p>
+          </div>
+          <div class="h-px bg-[var(--border-default)]"></div>
+          <div class="flex items-center gap-[20px] px-[16px] py-[8px]">
+            <p class="flex-1 font-semibold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)]">Overall Score</p>
+            <div class="flex items-center gap-[3px]">
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-[#1bba85] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[26px] h-[26px] bg-gradient-to-r from-[#1bba85] from-[90%] to-[#909090] to-[90%] rounded-[3px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="w-[40px] font-bold text-[16px] leading-[1.5] tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+          </div>
+          <div class="h-px bg-[var(--border-default)]"></div>
+        </div>
+
+        <div class="flex flex-col md:flex-row lg:flex-col items-center gap-[20px] md:gap-[32px] lg:gap-[8px] w-full md:w-auto lg:w-[200px] shrink-0">
+          <div class="flex flex-col items-center gap-[8px]">
+            <p class="font-extrabold text-[48px] md:text-[60px] leading-[1.2] tracking-[-0.24px] md:tracking-[-0.3px] text-[var(--text-primary)]">4.9</p>
+            <div class="flex items-center gap-[4px]">
+              <span class="inline-block w-[36px] h-[36px] bg-[#1bba85] rounded-[4px] p-[4px]"><img src="/olympus/images/landing/reviews-3/star-lg.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[36px] h-[36px] bg-[#1bba85] rounded-[4px] p-[4px]"><img src="/olympus/images/landing/reviews-3/star-lg.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[36px] h-[36px] bg-[#1bba85] rounded-[4px] p-[4px]"><img src="/olympus/images/landing/reviews-3/star-lg.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[36px] h-[36px] bg-[#1bba85] rounded-[4px] p-[4px]"><img src="/olympus/images/landing/reviews-3/star-lg.svg" alt="" class="w-full h-full"></span>
+              <span class="inline-block w-[36px] h-[36px] bg-gradient-to-r from-[#1bba85] from-[90%] to-[#909090] to-[90%] rounded-[4px] p-[3px]"><img src="/olympus/images/landing/reviews-3/star-lg.svg" alt="" class="w-full h-full"></span>
+            </div>
+            <p class="font-medium text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">Based on reviews from 48,312 verified customers</p>
+          </div>
+
+          <div class="lg:hidden flex flex-col gap-[2px] w-full md:flex-1">
+            <div class="flex items-center gap-[12px] md:gap-[20px] px-[8px] md:px-[16px] py-[6px] md:py-[8px]">
+              <p class="flex-1 font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Sleep Quality</p>
+              <div class="flex items-center gap-[2px] md:gap-[3px]">
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-gradient-to-r from-[#1bba85] from-[80%] to-[#909090] to-[80%] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="w-[32px] md:w-[40px] font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[12px] md:gap-[20px] px-[8px] md:px-[16px] py-[6px] md:py-[8px]">
+              <p class="flex-1 font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Ease of Use</p>
+              <div class="flex items-center gap-[2px] md:gap-[3px]">
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-gradient-to-r from-[#1bba85] from-[70%] to-[#909090] to-[70%] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="w-[32px] md:w-[40px] font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[12px] md:gap-[20px] px-[8px] md:px-[16px] py-[6px] md:py-[8px]">
+              <p class="flex-1 font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Value for Money</p>
+              <div class="flex items-center gap-[2px] md:gap-[3px]">
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-gradient-to-r from-[#1bba85] from-[90%] to-[#909090] to-[90%] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="w-[32px] md:w-[40px] font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">4.8</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[12px] md:gap-[20px] px-[8px] md:px-[16px] py-[6px] md:py-[8px]">
+              <p class="flex-1 font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Speed of Results</p>
+              <div class="flex items-center gap-[2px] md:gap-[3px]">
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-gradient-to-r from-[#1bba85] from-[80%] to-[#909090] to-[80%] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="w-[32px] md:w-[40px] font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">4.7</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[12px] md:gap-[20px] px-[8px] md:px-[16px] py-[6px] md:py-[8px]">
+              <p class="flex-1 font-semibold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Overall Score</p>
+              <div class="flex items-center gap-[2px] md:gap-[3px]">
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-[#1bba85] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[20px] h-[20px] md:w-[26px] md:h-[26px] bg-gradient-to-r from-[#1bba85] from-[90%] to-[#909090] to-[90%] rounded-[2px] md:rounded-[3px] p-[2px] md:p-[3px]"><img src="/olympus/images/landing/reviews-3/star-sm.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="w-[32px] md:w-[40px] font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)] text-center">4.9</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+          </div>
+        </div>
+
+        <div class="hidden lg:grid flex-1 grid-cols-4 grid-rows-2 gap-[10px]">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-full aspect-square object-cover">
+        </div>
+
+      </div>
+
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[16px] md:gap-[16px] lg:gap-[20px]">
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Sandra M." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Sandra M.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Today</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Finally sleeping through the night</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">I was skeptical after trying so many things. Two weeks in and I sleep 7–8 solid hours. Zero grogginess in the morning. This is genuinely life-changing.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Kevin R." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Kevin R.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Today</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Replaced my prescription</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">My doctor helped me wean off my prescription sleep med and transition to our formula. It works just as well without the dependency. I can't recommend it enough.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Priya L." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Priya L.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Yesterday</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Anxiety insomnia is gone</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">My mind used to race the second I got into bed. Now I take two capsules, read for 20 minutes, and I'm asleep. This is the only supplement I've reordered.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Tom B." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Tom B.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Yesterday</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Husband uses it too now</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">I ordered for myself and my husband started stealing my capsules. We both sleep so much better. Just ordered a two-pack and not looking back.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Michelle D." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Michelle D.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Yesterday</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">No grogginess whatsoever</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">The fact that I wake up clear-headed is the biggest difference from everything else I've tried. Real sleep, real energy, no fog. Worth every penny.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Anita K." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Anita K.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Last Week</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Works within the first night</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">I felt a difference on night one. Subtle but real — I just felt calmer getting into bed and didn't wake up at 3am like usual. By week two I was sleeping like I did in my 20s.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Derek H." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Derek H.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Last Week</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Cancelled three doctor appointments</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">I was going to see a sleep specialist. Decided to try this first. Haven't needed the appointment. Sleeping 7.5 hours a night now. My productivity at work has been incredible.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="border border-[var(--border-default)] rounded-[12px] md:rounded-[16px] overflow-hidden flex flex-col">
+          <div class="aspect-[168/216] w-full overflow-hidden">
+            <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Lena J." class="w-full h-full object-cover">
+          </div>
+          <div class="px-[12px] md:px-[16px] pt-[10px] pb-[16px] md:pb-[20px] flex flex-col gap-[12px]">
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="" class="w-[36px] h-[36px] md:w-[45px] md:h-[45px] rounded-full object-cover">
+              <p class="font-bold text-[14px] lg:text-[16px] leading-[1.4] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">Lena J.</p>
+              <span class="flex items-center gap-[6px]"><img src="/olympus/images/landing/reviews-3/verified.svg" alt="" class="w-[14px] h-[14px]"><span class="font-medium text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[#1bba85]">Verified</span></span>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex items-center gap-[10px]">
+              <div class="flex items-center gap-[2px]">
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+                <span class="inline-block w-[16px] h-[16px] bg-[#1bba85] rounded-[2px] p-[2px]"><img src="/olympus/images/landing/reviews-3/star-card.svg" alt="" class="w-full h-full"></span>
+              </div>
+              <p class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px] text-[var(--text-primary)]">Posted Last Week</p>
+            </div>
+            <div class="h-px bg-[var(--border-default)]"></div>
+            <div class="flex flex-col gap-[8px]">
+              <p class="font-bold text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">Best thing I've bought this year</p>
+              <p class="font-normal text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] text-[var(--text-primary)]">I don't write reviews but this earned one. Three months in and still going strong. No tolerance build-up, no side effects. Just great sleep, every single night.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="w-full overflow-hidden bg-[var(--brand-secondary)]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[80px] xl:px-[160px] py-[40px] md:py-[48px] lg:py-[60px]">
+    <div class="w-full max-w-[1120px] mx-auto rounded-[16px] md:rounded-[20px] lg:rounded-[24px] overflow-hidden bg-white">
+      <div class="w-full hidden md:flex items-center min-h-[290px] relative">
+        <div class="absolute top-0 right-0 h-full w-[261px] md:w-[179px] lg:w-[261px]">
+          <img src="/olympus/images/landing/_shared/4x3.svg" alt="Woman waking up refreshed" class="w-full h-full object-cover">
+          <div class="absolute inset-y-0 left-0 w-[99px] md:w-[68px] bg-gradient-to-r from-white to-transparent"></div>
+        </div>
+
+        <div class="relative z-[1] w-full px-[27px] lg:px-[40px]">
+          <div class="w-full flex items-center gap-[26px] lg:gap-[32px]">
+            <div class="relative w-[170px] h-[170px] shrink-0">
+              <img src="/olympus/images/landing/guarantee-1/guarantee-1-badge.svg" alt="60 day money-back guarantee badge" class="w-full h-full object-contain">
+            </div>
+
+            <div class="w-full max-w-[647px] text-[var(--text-primary)]">
+              <h2 class="font-bold leading-[1.2] tracking-[-0.16px] lg:tracking-[-0.2px] text-[32px] lg:text-[40px]">
+                Try [Product] Completely Risk-Free
+              </h2>
+              <p class="mt-[16px] lg:mt-[20px] text-[18px] leading-[1.5] tracking-[-0.09px]">
+                We're so confident in what our formula can do that we back every order with a 60-day money-back guarantee. Take the full two months to try it. If you don't sleep better — for any reason — contact us for a full refund. No forms, no hoops, no questions asked.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full md:hidden p-[20px_10px]">
+        <div class="w-full rounded-[16px] bg-white overflow-hidden">
+          <div class="px-[20px] pt-[20px] pb-[20px] flex flex-col items-center text-center gap-[20px]">
+            <div class="relative w-[140px] h-[140px] shrink-0">
+              <img src="/olympus/images/landing/guarantee-1/guarantee-1-badge.svg" alt="60 day money-back guarantee badge" class="w-full h-full object-contain">
+            </div>
+
+            <div class="w-full text-[var(--text-primary)]">
+              <h2 class="font-bold leading-[1.2] tracking-[-0.14px] text-[28px]">
+                Try [Product] Completely Risk-Free
+              </h2>
+              <p class="mt-[12px] text-[16px] leading-[1.5] tracking-[-0.08px]">
+                We're so confident in what our formula can do that we back every order with a 60-day money-back guarantee. Take the full two months to try it. If you don't sleep better — for any reason — contact us for a full refund. No forms, no hoops, no questions asked.
+              </p>
+            </div>
+          </div>
+
+          <div class="relative h-[261px]">
+            <img src="/olympus/images/landing/_shared/4x3.svg" alt="Woman waking up refreshed" class="w-full h-full object-cover object-bottom">
+            <div class="absolute top-0 left-0 right-0 h-[160px] bg-gradient-to-b from-white to-transparent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="w-full overflow-hidden bg-[var(--brand-secondary)]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px] py-[40px] md:py-[48px] lg:py-[60px]">
+    <div class="w-full flex flex-col lg:flex-row items-start gap-[32px] md:gap-[40px] lg:gap-[48px]">
+      <div class="w-full lg:w-[470px] lg:shrink-0 flex flex-col items-center lg:items-start gap-[32px] md:gap-[40px]">
+        <h2 class="hidden lg:block text-[40px] leading-[1.2] tracking-[-0.2px] font-bold text-[var(--text-primary)]">
+          Frequently Asked Questions
+        </h2>
+
+        <div class="hidden lg:block w-[420px] h-[420px] mx-auto">
+          <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="[Product] bottle" class="w-full h-full object-contain">
+        </div>
+
+        <div class="hidden lg:flex w-[440px] flex-col items-center">
+          <div class="w-full flex flex-col items-center gap-[12px]">
+            <a href="/olympus/checkout/"
+               class="w-full bg-[var(--brand-primary)] rounded-[6px] py-[20px] px-[24px] flex items-center justify-center gap-[20px] no-underline">
+              <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5] whitespace-nowrap">Claim Your 60% Discount</span>
+              <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0" aria-hidden="true">
+            </a>
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] shrink-0 object-contain" aria-hidden="true">
+              <p class="font-semibold text-[16px] text-[var(--text-primary)] text-center tracking-[-0.08px] leading-[1.5]">30-Day Money-Back Guarantee</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full flex flex-col items-center gap-[32px] md:gap-[40px] lg:gap-[20px]">
+        <h2 class="lg:hidden text-center text-[28px] md:text-[32px] leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] font-bold text-[var(--text-primary)]">
+          Frequently Asked Questions
+        </h2>
+
+        <div class="w-full flex flex-col border-t border-[rgba(0,0,0,0.16)]" data-accordion data-allow-multiple="false">
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="true">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">
+                How long before I see results?
+              </span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300 rotate-180" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-100 pt-[12px] md:pt-[14px] lg:pt-[16px]" data-accordion-panel>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)]">
+                Many customers notice a difference within the first 1–3 nights. Full results — improved sleep architecture and daytime energy — typically develop over 2–4 weeks of consistent use.
+              </p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">Is [Product] safe to take every night?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">Yes. This formula is formulated with natural adaptogens and minerals that are safe for nightly use. It's non-habit forming and contains no sedatives or synthetic compounds.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">Can I take this with other supplements?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">This supplement is designed to complement your existing supplement stack. If you're on prescription medication, we recommend checking with your doctor before starting any new supplement.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">When should I take it?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">Take two capsules with water 30–60 minutes before your intended bedtime for best results.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">What if it doesn't work for me?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">We offer a 60-day money-back guarantee. If you're not completely satisfied for any reason, contact our team for a full refund — no questions asked.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">Is [Product] vegan and gluten-free?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">Yes. This product is 100% vegan, gluten-free, and free from artificial colors, flavors, and preservatives.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">How long does one bottle last?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">One bottle contains a 30-day supply (60 capsules at 2 capsules per night). Subscribe and save for the best price.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">Where is [Product] manufactured?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">Our product is manufactured in the USA in an FDA-registered, GMP-certified facility. Every batch is third-party tested for purity and potency.</p>
+            </div>
+          </div>
+
+          <div class="border-b border-[rgba(0,0,0,0.16)] py-[14px] md:py-[16px] lg:py-[20px]" data-accordion-item data-open="false">
+            <button type="button" class="grid w-full grid-cols-[1fr_auto] items-center gap-x-[20px] md:gap-x-[26px] lg:gap-x-[32px] m-0 p-0 border-0 bg-transparent text-left cursor-pointer" data-accordion-toggle>
+              <span class="min-w-0 text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] font-bold text-[var(--text-primary)]">Is this different from melatonin?</span>
+              <span class="inline-flex h-[24px] w-[24px] lg:h-[32px] lg:w-[32px] shrink-0 items-center justify-center" aria-hidden="true">
+                <img src="/olympus/images/landing/faq-1/faq-chevron.svg" alt="" class="block h-full w-full max-h-full max-w-full object-contain transition-transform duration-300" data-accordion-icon>
+              </span>
+            </button>
+            <div class="overflow-hidden transition-all duration-300 opacity-0" data-accordion-panel hidden>
+              <p class="text-[16px] md:text-[18px] leading-[1.5] tracking-[-0.08px] md:tracking-[-0.09px] text-[var(--text-primary)] pt-[12px] md:pt-[14px] lg:pt-[16px]">Very different. Melatonin only signals your body to sleep — it doesn't address the cortisol and nervous system issues that prevent you from actually falling or staying asleep. [Product] targets the root causes.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-[345px] md:w-[440px] flex flex-col items-center lg:hidden">
+          <div class="w-full flex flex-col items-center gap-[12px]">
+            <a href="/olympus/checkout/"
+               class="w-full bg-[var(--brand-primary)] rounded-[6px] py-[20px] px-[24px] flex items-center justify-center gap-[20px] no-underline">
+              <span class="font-bold text-[20px] text-white text-center tracking-[-0.1px] leading-[1.5] whitespace-nowrap">Claim Your 60% Discount</span>
+              <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[16px] h-[12px] shrink-0" aria-hidden="true">
+            </a>
+            <div class="flex items-center gap-[8px]">
+              <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] shrink-0 object-contain" aria-hidden="true">
+              <p class="font-semibold text-[16px] text-[var(--text-primary)] text-center tracking-[-0.08px] leading-[1.5]">30-Day Money-Back Guarantee</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bg-white">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px] lg:px-[60px] xl:px-[120px] py-[40px] md:py-[48px] lg:py-[60px]">
+    <div class="flex flex-col lg:flex-row items-start gap-[32px] md:gap-[40px] lg:gap-[48px]">
+      <div class="w-full lg:flex-1">
+        <img src="/olympus/images/landing/_shared/1x1_1.svg" alt="Woman sleeping soundly" class="w-full h-auto object-cover md:aspect-[128/128] lg:aspect-auto">
+      </div>
+
+      <div class="w-full lg:w-[580px] flex flex-col gap-[20px] md:gap-[26px] lg:gap-[32px] text-[var(--text-primary)]">
+        <div class="flex flex-col gap-[12px] md:gap-[16px] lg:gap-[20px]">
+          <div class="flex flex-wrap items-center gap-[8px] md:gap-[12px]">
+            <p class="font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] lg:tracking-[-0.09px]">
+              Excellent
+            </p>
+            <p class="font-bold text-[14px] lg:text-[16px] leading-[1.5] tracking-[2px] text-white bg-[#1FB67C] px-[4px]">
+              ★★★★★
+            </p>
+            <p class="text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] md:tracking-[-0.08px] lg:tracking-[-0.09px]">
+              <strong>4.9</strong> out of <strong>48312</strong> reviews
+            </p>
+          </div>
+
+          <h2 class="font-bold text-[42px] md:text-[53px] lg:text-[55px] leading-[1.2] tracking-[-0.14px] md:tracking-[-0.16px] lg:tracking-[-0.2px]">
+            Start Sleeping Better Tonight — 60% Off Limited Time
+          </h2>
+
+          <p class="font-normal text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.1px]">
+            Join over 48,000 customers who've transformed their sleep with [Product]. Backed by our 60-day money-back guarantee — you risk absolutely nothing.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-[8px] md:gap-[10px] lg:gap-[12px]">
+          <div class="flex items-start gap-[8px] md:gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/bottomcta-1/check-bullet.svg" alt="" class="w-[30px] h-[30px] object-contain shrink-0" aria-hidden="true">
+            <p class="font-bold text-[18px] md:text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.09px] lg:tracking-[-0.1px]">Free shipping on all orders</p>
+          </div>
+          <div class="flex items-start gap-[8px] md:gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/bottomcta-1/check-bullet.svg" alt="" class="w-[30px] h-[30px] object-contain shrink-0" aria-hidden="true">
+            <p class="font-bold text-[18px] md:text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.09px] lg:tracking-[-0.1px]">60-Day Money-Back Guarantee</p>
+          </div>
+          <div class="flex items-start gap-[8px] md:gap-[10px] lg:gap-[12px]">
+            <img src="/olympus/images/landing/bottomcta-1/check-bullet.svg" alt="" class="w-[30px] h-[30px] object-contain shrink-0" aria-hidden="true">
+            <p class="font-bold text-[18px] md:text-[18px] md:text-[20px] leading-[1.5] tracking-[-0.09px] md:tracking-[-0.09px] lg:tracking-[-0.1px]">Made in USA in GMP-certified facility</p>
+          </div>
+        </div>
+
+        <div class="w-full max-w-none md:max-w-[440px] flex flex-col items-center gap-[8px] md:gap-[10px] lg:gap-[12px]">
+          <a href="/olympus/checkout/" class="w-full rounded-[6px] bg-[var(--brand-primary)] px-[24px] py-[20px] flex items-center justify-center gap-[20px]">
+            <span class="text-[20px] leading-[1.5] tracking-[-0.1px] font-bold text-white text-center">
+              Claim Your 60% Discount
+            </span>
+            <img src="/olympus/images/landing/_shared/arrow-right.svg" alt="" class="w-[12px] h-[12px] shrink-0" aria-hidden="true">
+          </a>
+          <div class="flex items-center justify-center gap-[8px]">
+            <img src="/olympus/images/landing/_shared/cta-guarantee-icon.png" alt="" class="w-[20px] h-[19px] object-contain shrink-0" aria-hidden="true">
+            <p class="text-[16px] leading-[1.5] tracking-[-0.08px] font-semibold text-[var(--text-primary)] whitespace-nowrap">
+              30-Day Money-Back Guarantee
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="bg-white py-[24px] md:py-[32px] lg:py-[40px]">
+  <div class="max-w-[1440px] mx-auto px-[15px] md:px-[26px]">
+    <div class="flex flex-col items-center gap-[12px] md:gap-[16px] lg:gap-[20px]">
+      <img src="/olympus/images/landing/footer-1/footer-logo.png" alt="[Product]" class="w-[112px] h-[48px] md:w-[131px] md:h-[56px] lg:w-[140px] lg:h-[60px] object-cover">
+
+      <div class="flex flex-wrap items-center justify-center gap-x-[8px] gap-y-[2px] md:gap-x-[10px] lg:gap-x-[12px] text-[var(--text-primary)] text-center">
+        <a href="#" class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] lg:tracking-[-0.08px]">Terms of Use</a>
+        <span class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px]">|</span>
+        <a href="#" class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] lg:tracking-[-0.08px]">Privacy Policy</a>
+        <span class="font-normal text-[12px] md:text-[14px] leading-[1.5] tracking-[-0.06px] md:tracking-[-0.07px]">|</span>
+        <a href="#" class="font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] lg:tracking-[-0.08px]">Contact Us</a>
+      </div>
+
+      <p class="text-center font-normal text-[14px] md:text-[14px] lg:text-[16px] leading-[1.5] tracking-[-0.07px] lg:tracking-[-0.08px] text-[var(--text-primary)]">© 2026 [Product]. All Rights Reserved.</p>
+    </div>
+  </div>
+</footer>
+
+
+
+  <!-- Swiper JS -->
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+  <!-- Unified section behaviors -->
+  <script src="/olympus/js/landing/landing.js"></script>
+
+  <!-- Optional page-level scripts -->
+  
+</body>
+</html>

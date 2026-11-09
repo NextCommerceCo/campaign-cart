@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 698" width="720" height="698" role="img" aria-labelledby="orders-lifecycle-title orders-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="orders-lifecycle-title">Order lifecycle</title>
+  <desc id="orders-lifecycle-desc">On each page after the checkout. idle: the page has no order yet; the checkout back from the gateway unpaid sends payment.failed. A URL with ref_id or order_ref_id loads the order: ready at once from a copy this tab loaded in the last 15 minutes, else loading from the API, 10 seconds at most, and failed (sdk.error) if it cannot. ready sends order.loaded, then order.paid the first time this browser has the order paid, then checkout.completed when this tab's checkout sent it to the gateway. Accepting an upsell moves to accepting: added, upsell.accepted then order.updated, back in ready; not added, back in ready without an order event. The next page has ref_id in its URL and loads the order again.</desc>
+  <defs>
+    <marker id="orders-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="215" y="8" width="230" height="57" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a page loads: the next page</text>
+    <text x="330" y="41" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">after the checkout or the gateway,</text>
+    <text x="330" y="56" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or the checkout, back unpaid</text>
+    <path d="M330 65 V118" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="84" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">back unpaid</text>
+    <text x="344" y="104" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">payment.failed</text>
+    <path d="M330 182 V268" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="225" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">no copy from the last 15 minutes</text>
+    <path d="M220 153 H170 V448 H214" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="158" y="290" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">a copy from this tab,</text>
+    <text x="158" y="308" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">under 15 minutes old</text>
+    <path d="M440 292 H534" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="490" y="284" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">cannot load</text>
+    <path d="M330 332 V418" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="375" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">the order arrives</text>
+    <path d="M440 453 H534" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="490" y="445" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">moves on</text>
+    <rect x="540" y="432" width="160" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="450" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the next page:</text>
+    <text x="620" y="465" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">ref_id in the URL</text>
+    <path d="M330 542 V618" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="580" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">accept an upsell</text>
+    <path d="M220 653 H150 V484 H214" marker-end="url(#orders-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="138" y="520" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">added</text>
+    <text x="138" y="537" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.accepted</text>
+    <text x="138" y="554" text-anchor="end" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.updated</text>
+    <text x="138" y="580" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">not added</text>
+    <text x="138" y="597" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">upsell lifecycle</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="124" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="330" y="149" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">idle</text>
+    <text x="330" y="169" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the page has no order yet</text>
+    <rect x="220" y="274" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-amber-500, #f59e0b); stroke-width: 1.5" />
+    <text x="330" y="299" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">loading</text>
+    <text x="330" y="319" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the API, 10 seconds at most</text>
+    <rect x="220" y="424" width="220" height="118" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="449" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">ready</text>
+    <text x="330" y="469" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
+    <text x="330" y="484" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
+    <text x="330" y="499" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once per order in this browser</text>
+    <text x="330" y="514" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout.completed</text>
+    <text x="330" y="529" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">after a gateway</text>
+    <rect x="220" y="624" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
+    <text x="330" y="649" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">accepting</text>
+    <text x="330" y="669" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">the upsell is sent</text>
+    <rect x="540" y="274" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-rose-500, #e11d48); stroke-width: 1.5" />
+    <text x="620" y="299" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">failed</text>
+    <text x="620" y="319" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.error</text>
+  </g>
+</svg>

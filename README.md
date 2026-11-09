@@ -1,21 +1,75 @@
-# Next Commerce Cart SDK
+# NEXT Campaign SDK
 
-TypeScript SDK for building campaign pages on [NextCommerce](https://nextcommerce.com). Provides cart management, checkout flows, upsell sequences, and analytics through a data-attribute-driven HTML API.
+One headless **Engine** owns all campaign state (Action → State → Event). DOM bindings,
+analytics and debug tools subscribe to its events. Design:
+[docs/architecture/design.md](docs/architecture/design.md).
 
-## Links
+```html
+<script type="module" src=".../loader.js" data-campaign="pk_live_…" data-funnel="my-funnel"></script>
+```
 
-- **Docs**: [developers.nextcommerce.com/docs/campaigns](https://developers.nextcommerce.com/docs/campaigns)
-- **Starter templates**: [github.com/NextCommerceCo/campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates)
+**Status:** landing, cart, checkout, upsell and receipt pages are built and run on the live 0.4.x
+template markup (see [migrating-from-0.4.md](docs/guides/migrating-from-0.4.md)), plus analytics
+and attribution.
 
-## Development
+**Reading the code for the first time:** run `bun dev`, open a campaign page with `?debug=1`
+and watch the panel's state and events while you click. Then read
+[structure.md](docs/architecture/structure.md) (where code goes, and a glossary) and
+[walkthrough.md](docs/architecture/walkthrough.md) (one click followed through the code).
 
-| Task | Command |
-|---|---|
-| Dev server | `npm run dev` |
-| Build | `npm run build` |
-| Type check | `npm run type-check` |
-| Lint | `npm run lint` |
-| Unit tests | `npm run test` |
-| E2E tests | `npm run test:e2e` |
+| Command              |                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `npm test`           | unit tests (the Engine suite runs in plain Node)                                  |
+| `npm run typecheck`  | TypeScript                                                                        |
+| `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
+| `bun dev`            | the real campaign pages with this SDK from source; see below                      |
+| `bun run e2e`        | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
+| `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |
+| `npm run docs`       | build the docs site from `docs/guides` and the public types into `docs/site/`     |
+| `npm run docs:serve` | serve `docs/site` on http://localhost:3500 and rebuild it on changes              |
 
-See [CLAUDE.md](CLAUDE.md) for architecture overview and contribution guidelines.
+## Local development
+
+`bun dev` serves the campaign pages of
+[campaign-cart-starter-templates](https://github.com/NextCommerceCo/campaign-cart-starter-templates),
+cloned and built into `.campaigns/` on the first run (`--update` pulls and rebuilds; the clone
+cannot push), or any built site with `SITE=/path/to/_site`, with their `loader.js` tag swapped for this repo's SDK. Open http://localhost:5173/ for a list
+of every campaign page. Every page shows a badge with the mode it runs in.
+
+| Command                               | API                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `bun dev`                             | **MOCK** — nothing leaves your machine                                          |
+| `bun dev --api live`                  | **LIVE** — real campaign data and prices; orders, prospects and payment.js fake |
+| `bun dev --api full --key pk_…`       | **FULL** — the real API: real orders and real payment.js. Use a test campaign   |
+| `bun dev --api http://localhost:8000` | **LOCAL API** — everything goes to your local backend                           |
+
+Options: `--key pk_…` uses that campaign key on every page instead of the page's own;
+`--dist` serves the built SDK (`bun run build` first) instead of the source; `--port 5180`.
+
+In MOCK and LIVE:
+
+- the Campaigns API is a local mock: cart totals from the campaign's prices, prospect carts
+  and orders logged in the terminal;
+- payment.js is a fake card form: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` declines;
+  express and redirect methods go to a local gateway page with Approve / Fail.
+
+In every mode i18n-rules is the live service, so geo resolves as it does for a shopper, the
+NextCampaign analytics script is a stub, and page scripts (GTM, page JS) run as they
+are. MOCK needs each campaign's JSON once in `dev/campaigns/` (not committed): `bun dev --api
+live` saves it, or run the `curl` command the terminal prints.
+
+### Sharing with QA on another network
+
+`bun run qa` builds the SDK, serves the pages with the built files (fast on phones), and opens
+a Cloudflare quick tunnel ([`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+installed once, no account). It prints a link with a passcode, for example
+`https://random-words.trycloudflare.com/?qa=…`. The link opens the page list; without the
+passcode the server answers "Ask for the full link". It works only while the command runs.
+Every request from QA goes through your machine, so QA never needs your network or your local
+backend. Takes the same `--api` / `--key` options, e.g. `bun run qa --api full --key pk_test_…`;
+`--no-tunnel` serves on this machine only.
+
+`bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
+receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production
+host, and fails on a console error. It needs the campaign pages above and a Chromium
+(`bunx playwright-core install chromium`, or `CHROME=/path/to/chrome`).

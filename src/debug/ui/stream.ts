@@ -1,0 +1,238 @@
+import { icon } from './icons';
+import { badge, button, type Child, empty, h, modal, nodes, rows, stamp, tab, tablist, toned, tree } from './view';
+
+/** One line of the Events, Analytics and Logs tabs: the same columns in all three. */
+export interface Line {
+  /** When it happened, or a time relative to its group (`+12 ms`). */
+  at: number | string;
+  /** Where it belongs: `cart`, `api`, `GA4`; the same value has the same colour in every tab. */
+  tag: string;
+  name?: string;
+  detail?: Child[];
+  /** The outcome on the right: a status, a time, a warning. */
+  meta?: Child[];
+  level?: string;
+  title?: string;
+  open?: () => void;
+}
+
+const tagged = (className: string, value: string, text?: string) => {
+  const el = h('span', className, text ?? '');
+  el.dataset.tag = value;
+  return el;
+};
+
+export const lineText = (l: { product_title?: unknown; package_id?: unknown; quantity?: unknown }) =>
+  `${l.product_title ?? `#${l.package_id}`} ×${l.quantity}`;
+
+export const firstItems = (items: string[] = []) =>
+  items.length ? `${items.slice(0, 2).join(', ')}${items.length > 2 ? ` +${items.length - 2}` : ''}` : '';
+
+export const pill = (text: string, tone: 'ok' | 'bad' | 'off' | 'warn') => toned(h('span', 'spill', text), tone);
+
+export function line(l: Line): HTMLElement {
+  const cells = [
+    typeof l.at === 'number' ? stamp(l.at) : h('span', 'time', l.at),
+    tagged('stag', l.tag, l.tag),
+    h('span', 'sdesc', l.name && h('code', 'sname', l.name), ...(l.detail ?? [])),
+    h('span', 'smeta', ...(l.meta ?? [])),
+    h('span', 'sgo', l.open && icon('chevron')),
+  ];
+  const el = l.open
+    ? h('button', { type: 'button', className: 'srow', onclick: l.open }, ...cells)
+    : h('div', 'srow', ...cells);
+  if (l.level) el.dataset.level = l.level;
+  if (l.title) el.title = l.title;
+  return el;
+}
+
+/** How many items each key has, in the order the keys first appear. */
+export const tally = <T>(items: T[], key: (item: T) => string): Array<[string, number]> => {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(key(item), (counts.get(key(item)) ?? 0) + 1);
+  return [...counts];
+};
+
+/** The chips, then the lines the filter keeps, or a note that it keeps none. */
+export const listed = (head: Child, lines: Child[], none: string): Child[] => [
+  head,
+  ...(lines.length ? lines : [empty('Nothing matches', none)]),
+];
+
+/** `All N` and one chip per tag, several at once; `extra` (a mode switch) sits at the end. */
+export function chips(counts: Array<[string, number]>, picked: Set<string>, render: () => void, ...extra: Child[]) {
+  const chip = (label: string, n: number, tag?: string) => {
+    const el = button(
+      `${label} ${n}`,
+      () => {
+        if (!tag) picked.clear();
+        else if (!picked.delete(tag)) picked.add(tag);
+        render();
+      },
+      { variant: 'outline', size: 'xs' },
+    );
+    if (tag) el.prepend(tagged('sdot', tag));
+    el.setAttribute('aria-pressed', String(tag ? picked.has(tag) : !picked.size));
+    return el;
+  };
+  const total = counts.reduce((n, [, c]) => n + c, 0);
+  return h(
+    'div',
+    'schips',
+    chip('All', total),
+    ...counts.map(([tag, n]) => chip(tag, n, tag)),
+    ...extra.map((x) => x && h('span', 'sextra', x)),
+  );
+}
+
+/** What a line's modal shows: a header, its own sections, the plain fields, and the payloads on request. */
+export interface Detail {
+  title: string;
+  badge?: [string, string];
+  subtitle: string;
+  sections?: Array<[heading: string, body: Child[]]>;
+  /** Scalar fields, shown as a list. */
+  fields?: object;
+  payloads: Array<[string, unknown]>;
+}
+
+const scalar = (v: unknown) => v === null || ['string', 'number', 'boolean'].includes(typeof v);
+
+/** A cart, order or tracking event's money, as the modals show it. */
+export interface Priced {
+  lines?: Array<{
+    package_id?: number;
+    product_title?: string;
+    variant_title?: string;
+    quantity?: number;
+    price?: number;
+    original_price?: number;
+    total?: number;
+  }>;
+  subtotal?: number;
+  total_discount?: number;
+  discount_percentage?: number;
+  coupons?: string[];
+  shipping_method?: { name?: string; code?: string; price?: number };
+  tax?: number;
+  total?: number;
+}
+
+/** The variant without the product's name it repeats: `Extended Warranty - 1 Year` → `1 Year`. */
+const variant = (title = '', name = '') =>
+  title && name.startsWith(title) ? name.slice(title.length).replace(/^[\s\-–—/:|·]+/, '') : name;
+
+/** Its lines, then totals that add up: `total = subtotal − discount + shipping + tax`. */
+export function carried(p: Priced, money: (value: number) => string, lead: Array<[string, string]> = []): Child[] {
+  const m = (v: unknown) => (typeof v === 'number' ? money(v) : '');
+  const lines = p.lines ?? [];
+  const ship = p.shipping_method;
+  const totals = (
+    [
+      ...lead,
+      ['Subtotal', m(p.subtotal)],
+      [
+        'Discount',
+        p.total_discount ? `−${m(p.total_discount)}${p.discount_percentage ? ` (${p.discount_percentage}%)` : ''}` : '',
+      ],
+      ['Coupons', p.coupons?.join(', ') ?? ''],
+      [
+        'Shipping',
+        ship ? [ship.name ?? ship.code, ship.price === 0 ? 'Free' : m(ship.price)].filter(Boolean).join(' · ') : '',
+      ],
+      ['Tax', p.tax ? m(p.tax) : ''],
+      ['Total', m(p.total)],
+    ] as Array<[string, string]>
+  ).filter(([, v]) => v);
+  return [
+    lines.length > 0 &&
+      h(
+        'table',
+        'sitems',
+        h('tr', {}, ...['Item', 'Qty', 'Each', 'Total'].map((t) => h('th', {}, t))),
+        ...lines.map((l) =>
+          h(
+            'tr',
+            {},
+            h(
+              'td',
+              {},
+              l.product_title ?? `#${l.package_id}`,
+              variant(l.product_title, l.variant_title) && h('small', {}, variant(l.product_title, l.variant_title)),
+            ),
+            h('td', {}, String(l.quantity ?? '')),
+            h(
+              'td',
+              {},
+              typeof l.original_price === 'number' &&
+                typeof l.price === 'number' &&
+                l.original_price > l.price &&
+                h('s', {}, m(l.original_price)),
+              m(l.price),
+            ),
+            h('td', {}, m(l.total ?? (typeof l.price === 'number' && l.quantity ? l.price * l.quantity : undefined))),
+          ),
+        ),
+      ),
+    totals.length > 0 && rows('stotals', totals),
+  ];
+}
+
+export function detailModal(open: Set<string>) {
+  const head = h('header', {});
+  const body = h('div', 'smbody');
+  const dialog = modal('smodal', 'lg', head, body);
+  dialog.tabIndex = -1;
+
+  const payloads = (sources: Detail['payloads']) => {
+    const pane = h('div', 'spane');
+    const tabs = tablist({ size: 'sm' }, 'Payload');
+    const pick = (i: number) => {
+      const [label, value] = sources[i]!;
+      tabs.replaceChildren(...sources.map(([l], j) => tab(i === j, () => pick(j), l)));
+      const copy = button(icon('copy'), () => void navigator.clipboard?.writeText(JSON.stringify(value, null, 2)), {
+        variant: 'outline',
+        size: 'xs',
+      });
+      copy.append('Copy JSON');
+      const entries: Array<[string, unknown]> =
+        value && typeof value === 'object' ? Object.entries(value) : [['value', value]];
+      pane.replaceChildren(copy, ...entries.map(([k, v]) => tree(h('span', 'key', k), v, `sp.${label}.${k}`, open)));
+    };
+    pick(0);
+    return [h('div', 'tabs', tabs), pane];
+  };
+
+  const show = (d: Detail) => {
+    head.replaceChildren(h('h2', {}, d.title, d.badge && badge(...d.badge)), h('p', {}, d.subtitle));
+    const fields = Object.entries(d.fields ?? {}).filter(([, v]) => scalar(v));
+    const shown = h('div', {});
+    const reveal = button(
+      icon('code'),
+      () => {
+        shown.replaceChildren(...payloads(d.payloads));
+        reveal.remove();
+      },
+      { variant: 'outline', size: 'sm' },
+    );
+    reveal.append(d.payloads.length > 1 ? 'Show payloads' : 'Show payload');
+    body.replaceChildren(
+      ...nodes([
+        ...(d.sections ?? []).flatMap(([heading, children]) => [h('h3', 'shead', heading), ...nodes(children)]),
+        fields.length > 0 && h('h3', 'shead', 'Details'),
+        fields.length > 0 &&
+          rows(
+            'sfields',
+            fields.map(([k, v]) => [k, String(v)]),
+          ),
+        d.payloads.length > 0 && h('div', 'spay', shown, reveal),
+      ]),
+    );
+    if (!dialog.open) dialog.showModal();
+    dialog.focus();
+  };
+
+  return { dialog, show };
+}
+
+export type DetailModal = ReturnType<typeof detailModal>;
