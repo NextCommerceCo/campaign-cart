@@ -1,19 +1,18 @@
 import type { Engine } from '../engine/engine';
-import {
-  defined,
-  trackingCurrency,
-  trackingLineId,
-  trackingLines,
-  trackingValue,
-  type Packages,
-  perUnit,
-  startDestination,
-  type TrackingEvent,
-  type TrackingLine,
-  type TrackingName,
-} from '../engine/events/analytics';
+import { trackingLines, type TrackingEvent, type TrackingLine, type TrackingName } from '../engine/events/analytics';
 import { addDollars } from '../engine/format';
 import { paymentType } from '../engine/payment';
+import {
+  defined,
+  type Packages,
+  perUnit,
+  PRODUCT_LIST,
+  promotionFields,
+  startDestination,
+  trackingCurrency,
+  trackingLineId,
+  trackingValue,
+} from '../engine/tracking';
 
 /**
  * One product of a GA4 event's `items`.
@@ -134,7 +133,7 @@ export type Ga4Event<K extends Ga4Name = Ga4Name> = {
 }[K];
 
 /** The GA4 event each tracking event is sent as. `page_viewed` is not: `gtag('config')` sends GA4's own. */
-export const GA4: Partial<Record<TrackingName, Ga4Name>> = {
+export const GA4 = {
   product_viewed: 'view_item',
   product_list_viewed: 'view_item_list',
   product_added_to_cart: 'add_to_cart',
@@ -151,7 +150,7 @@ export const GA4: Partial<Record<TrackingName, Ga4Name>> = {
   upsell_skipped: 'skip_upsell',
   promotion_viewed: 'view_promotion',
   promotion_selected: 'select_promotion',
-};
+} as const satisfies Partial<Record<TrackingName, Ga4Name>>;
 
 type Win = Window & { gtag?: (...args: unknown[]) => void };
 
@@ -181,25 +180,24 @@ const ecommerce = (e: TrackingEvent, packages?: Packages, lines = trackingLines(
 /** The `gtag` call a tracking event becomes, if any; `items` count units of product, looked up in `packages`. */
 export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | undefined {
   switch (e.event_type) {
-    case 'checkout_contact_info_submitted':
-      return {
-        name: 'generate_lead',
-        params: defined({
-          currency: trackingCurrency(e),
-          value: trackingValue(trackingLines(e)),
-          lead_source: 'checkout' as const,
-        }),
+    case 'page_viewed':
+      return undefined;
+    case 'checkout_contact_info_submitted': {
+      const lead = {
+        currency: trackingCurrency(e),
+        value: trackingValue(trackingLines(e)),
+        lead_source: 'checkout' as const,
       };
+      return { name: GA4[e.event_type], params: defined(lead) };
+    }
     case 'checkout_shipping_address_submitted':
-    case 'checkout_shipping_method_submitted':
-      return {
-        name: 'add_shipping_info',
-        params: defined({ ...ecommerce(e, packages), shipping_tier: e.data.cart.shipping_method?.name }),
-      };
+    case 'checkout_shipping_method_submitted': {
+      const shipping_tier = e.data.cart.shipping_method?.name;
+      return { name: GA4[e.event_type], params: defined({ ...ecommerce(e, packages), shipping_tier }) };
+    }
     case 'checkout_payment_info_submitted': {
-      const method = e.data.payment_method;
-      const payment_type = paymentType(method);
-      return { name: 'add_payment_info', params: defined({ ...ecommerce(e, packages), payment_type }) };
+      const payment_type = paymentType(e.data.payment_method);
+      return { name: GA4[e.event_type], params: defined({ ...ecommerce(e, packages), payment_type }) };
     }
     case 'checkout_completed': {
       const base = ecommerce(e, packages);
@@ -211,33 +209,26 @@ export function ga4Event(e: TrackingEvent, packages?: Packages): Ga4Event | unde
         shipping: method?.price === undefined ? undefined : addDollars([method.price, -(method.tax ?? 0)]),
         tax: e.data.tax,
       });
-      return { name: 'purchase', params };
+      return { name: GA4[e.event_type], params };
     }
     case 'upsell_completed': {
       const { items, value = 0, currency } = ecommerce(e, packages);
-      return { name: 'purchase', params: defined({ transaction_id: e.event_id, value, currency, items }) };
+      return { name: GA4[e.event_type], params: defined({ transaction_id: e.event_id, value, currency, items }) };
     }
-    case 'product_list_viewed':
-      return {
-        name: 'view_item_list',
-        params: { ...ecommerce(e, packages), item_list_id: 'product_list', item_list_name: 'Product List' },
-      };
+    case 'product_list_viewed': {
+      const list = { item_list_id: PRODUCT_LIST.id, item_list_name: PRODUCT_LIST.name };
+      return { name: GA4[e.event_type], params: { ...ecommerce(e, packages), ...list } };
+    }
     case 'upsell_viewed':
     case 'upsell_skipped': {
       const { items, value, currency } = ecommerce(e, packages);
-      const name = e.event_type === 'upsell_viewed' ? 'view_upsell' : 'skip_upsell';
-      return { name, params: defined({ order_id: e.data.ref_id, currency, value, items }) };
+      return { name: GA4[e.event_type], params: defined({ order_id: e.data.ref_id, currency, value, items }) };
     }
     case 'promotion_viewed':
-    case 'promotion_selected': {
-      const { id, name, creative } = e.data;
-      const params = defined({ promotion_id: id, promotion_name: name, creative_name: creative });
-      return { name: e.event_type === 'promotion_viewed' ? 'view_promotion' : 'select_promotion', params };
-    }
-    case 'page_viewed':
-      return undefined;
+    case 'promotion_selected':
+      return { name: GA4[e.event_type], params: defined(promotionFields(e.data)) };
     default:
-      return { name: GA4[e.event_type] as 'view_item', params: ecommerce(e, packages) };
+      return { name: GA4[e.event_type], params: ecommerce(e, packages) };
   }
 }
 

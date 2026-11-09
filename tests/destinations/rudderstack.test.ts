@@ -424,12 +424,13 @@ describe('rudderStackCalls', () => {
   });
 
   describe('parity with 0.4.x', () => {
-    const tracked = (Object.keys(RUDDERSTACK) as TrackingName[]).filter(
-      (name) => RUDDERSTACK[name] !== 'page' && RUDDERSTACK[name] !== 'identify',
+    const names: Partial<Record<TrackingName, string>> = RUDDERSTACK;
+    const tracked = (Object.keys(names) as TrackingName[]).filter(
+      (name) => names[name] !== 'page' && names[name] !== 'identify',
     );
 
     it.each(tracked)('%s sends the properties 0.4.x built from its dl_* push', (name) => {
-      const rudder = RUDDERSTACK[name]!;
+      const rudder = names[name]!;
       const push = { ...EXAMPLES[name].dataLayer, _metadata: { session_id: SESSION } };
       const track = calls(name).filter((c) => c.call === 'track');
       expect(track).toEqual([{ call: 'track', name: rudder, properties: legacy.build(push, rudder) }]);
@@ -570,5 +571,16 @@ describe('startRudderStack', () => {
     engine.events.emit('analytics', event('checkout_shipping_method_submitted'));
     engine.events.emit('analytics', event('checkout_payment_info_submitted'));
     expect(ra.track.mock.calls.map((c) => c[0])).toEqual(['Checkout Step Completed', 'Payment Info Entered']);
+  });
+
+  it('sends Checkout Step Completed for the method when the address came while the page had no rudderanalytics', () => {
+    const engine = quietEngine();
+    engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+    startRudderStack(engine);
+    engine.events.emit('analytics', event('checkout_shipping_address_submitted'));
+    const ra = sdk();
+    win.rudderanalytics = ra;
+    engine.events.emit('analytics', event('checkout_shipping_method_submitted'));
+    expect(ra.track.mock.calls.map((c) => c[0])).toEqual(['Checkout Step Completed']);
   });
 });

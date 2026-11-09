@@ -51,10 +51,15 @@ export interface SdkEvent<K extends EventName = EventName> extends Envelope {
   data: EventMap[K];
 }
 
-export const envelope = <K extends EventName>(e: EngineEvent<K>, sessionId: string): SdkEvent<K> => ({
+/** An event in its envelope; `object` is the event's group (`cart` for `cart.updated`) unless given. */
+export const envelope = <N extends string, D>(
+  e: { id: string; name: N; data: D; at: number },
+  sessionId: string,
+  object = e.name.split('.')[0]!,
+) => ({
   event_id: e.id,
   event_type: e.name,
-  object: e.name.split('.')[0]!,
+  object,
   data: e.data,
   created_at: new Date(e.at).toISOString(),
   session_id: sessionId,

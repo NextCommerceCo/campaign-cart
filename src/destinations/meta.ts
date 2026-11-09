@@ -1,17 +1,14 @@
 import type { Engine } from '../engine/engine';
+import { trackingLines, type TrackingEvent, type TrackingLine, type TrackingName } from '../engine/events/analytics';
 import {
   defined,
-  trackingCurrency,
-  trackingLineId,
-  trackingLines,
-  trackingValue,
   type Packages,
   perUnit,
   startDestination,
-  type TrackingEvent,
-  type TrackingLine,
-  type TrackingName,
-} from '../engine/events/analytics';
+  trackingCurrency,
+  trackingLineId,
+  trackingValue,
+} from '../engine/tracking';
 
 /** One product of a Meta event's `contents`. */
 export interface MetaContent {

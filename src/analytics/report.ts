@@ -6,10 +6,8 @@ import {
   type TrackingMap,
   type TrackingName,
 } from '../engine/events/analytics';
-import type { EngineEvent, EventMap, EventName } from '../engine/events/bus';
+import { envelope, type EngineEvent, type EventMap, type EventName } from '../engine/events/bus';
 import { newId } from '../engine/id';
-
-declare const __VERSION__: string;
 
 export interface Why {
   trigger: EventName;
@@ -28,19 +26,10 @@ export function createReport(engine: Engine) {
   const skip = (trigger: EventName, name: TrackingName, reason: string) => trace(trigger, name, false, reason);
 
   const emit = <K extends TrackingName>(name: K, data: TrackingMap[K], why: Why) => {
-    const event_id = why.id ?? newId();
-    const event = {
-      event_id,
-      event_type: name,
-      object: OBJECTS[name],
-      data,
-      created_at: new Date().toISOString(),
-      session_id: engine.sessionId(),
-      sdk_version: __VERSION__,
-      context: engine.eventContext(),
-    } as TrackingEvent;
+    const sealed = envelope({ id: why.id ?? newId(), name, data, at: Date.now() }, engine.sessionId(), OBJECTS[name]);
+    const event = { ...sealed, context: engine.eventContext() } as TrackingEvent;
     engine.events.emit('analytics', event);
-    trace(why.trigger, name, true, why.reason, event_id);
+    trace(why.trigger, name, true, why.reason, event.event_id);
   };
 
   return { engine, skip, emit };

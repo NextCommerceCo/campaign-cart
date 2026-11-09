@@ -1,6 +1,7 @@
 import type { Engine } from '../../engine/engine';
 import type { Cart, CartItem } from '../../engine/events/carts';
 import { dollars } from '../../engine/format';
+import { orderLineProduct, paidUnit, perUnit, taxIncluded, trackingValue } from '../../engine/tracking';
 import type { ApiOrder, ApiOrderLine } from '../../engine/types';
 
 export const currency = (engine: Engine) =>
@@ -11,17 +12,15 @@ const ids = (product?: number, variant?: number) => ({
   ...(variant != null && { item_variant_id: String(variant) }),
 });
 
-export const valueOf = (items: Array<{ price: number; quantity: number }>) =>
-  dollars(items.reduce((n, i) => n + i.price * i.quantity, 0));
+export const valueOf = (items: Array<{ price: number; quantity: number }>) => trackingValue(items) ?? 0;
 
 /** A GA4 item from a cart line: unit prices, `quantity` in units. */
 const item = (engine: Engine, line: CartItem, index: number) => {
   const pkg = engine.getPackage(line.package_id);
   if (!pkg) return undefined;
-  const units = pkg.qty || 1;
-  const price = line.price === undefined ? Number(pkg.price) : dollars(line.price / units);
-  const before =
-    (line.original_price === undefined ? 0 : dollars(line.original_price / units)) || Number(pkg.price_retail) || 0;
+  const [unit] = perUnit([line], engine);
+  const price = unit!.price ?? Number(pkg.price);
+  const before = (unit!.original_price ?? 0) || Number(pkg.price_retail) || 0;
   return {
     item_id: pkg.product_sku || String(pkg.external_id),
     item_name: pkg.product_name || pkg.name,
@@ -32,7 +31,7 @@ const item = (engine: Engine, line: CartItem, index: number) => {
     item_image: pkg.image,
     price,
     ...(before > price && { discount: dollars(before - price) }),
-    quantity: units * line.quantity,
+    quantity: unit!.quantity,
     currency: currency(engine),
     index,
   };
@@ -53,41 +52,22 @@ export const cartEcommerce = (engine: Engine, cart: Cart) => {
   };
 };
 
-/**
- * @deprecated 0.4.x tax basis of the `dl_*` prices: tax included when a line's price before
- * discounts with tax is nearer its package's price than the one without. The `order.*` events
- * carry `tax` on each line and shipping instead.
- */
-export const taxIncluded = (engine: Engine, order: ApiOrder) => {
-  for (const line of order.lines ?? []) {
-    const catalog = Number(engine.getPackage(line.package ?? 0)?.price);
-    const qty = line.quantity || 1;
-    const incl = Number(line.price_incl_tax_excl_discounts) / qty;
-    const excl = Number(line.price_excl_tax_excl_discounts) / qty;
-    if (!(catalog > 0) || !Number.isFinite(incl) || !Number.isFinite(excl) || Math.abs(incl - excl) <= 0.02) continue;
-    return Math.abs(incl - catalog) < Math.abs(excl - catalog);
-  }
-  return false;
-};
-
 export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, index: number, incl: boolean) => {
-  const qty = line.quantity || 1;
-  const paid = Number(incl ? line.price_incl_tax : line.price_excl_tax) / qty;
-  const listed = Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / qty;
+  const paid = paidUnit(line, incl);
+  const listed =
+    Number(incl ? line.price_incl_tax_excl_discounts : line.price_excl_tax_excl_discounts) / (line.quantity || 1);
   const pkg = line.package ? engine.getPackage(line.package) : undefined;
   const campaign = engine.getState().campaign?.name;
-  const sku = line.product_sku || pkg?.product_sku;
-  const variant = line.variant_title || pkg?.product_variant_name;
-  const image = line.image || pkg?.image;
+  const product = orderLineProduct(line, line.product_sku, pkg, campaign);
   return {
-    item_id: sku || `SKU-${line.product_id || line.id}`,
+    item_id: product.id,
     item_name: line.product_title,
-    item_brand: pkg?.product_name || campaign,
+    item_brand: product.brand,
     item_category: campaign,
-    ...(variant && { item_variant: variant }),
-    ...ids(line.product_id ?? pkg?.product_id, line.variant_id ?? pkg?.product_variant_id),
-    ...(sku && { item_sku: sku }),
-    ...(image && { item_image: image }),
+    ...(product.variant && { item_variant: product.variant }),
+    ...ids(product.product_id, line.variant_id ?? pkg?.product_variant_id),
+    ...(product.sku && { item_sku: product.sku }),
+    ...(product.image && { item_image: product.image }),
     price: dollars(paid),
     ...(listed > paid && { discount: dollars(listed - paid) }),
     quantity: line.quantity,

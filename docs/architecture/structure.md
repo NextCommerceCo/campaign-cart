@@ -123,6 +123,8 @@ src/
     visit.ts                                    the visit's timers and exit-intent count (engine.visit)
     attribution.ts params.ts scope.ts           visit attribution, kept URL params, storage scope
     order.ts                                    the Order every order.* event and snapshot() carry, from the API's order
+    tracking.ts                                 what every destination shares: units, value, currency, line ids,
+                                                startDestination; the 0.4.x order product and tax-basis guess (@deprecated)
     payment.ts                                  payment methods: codes and their aliases, labels, wallets, express buttons;
                                                 a chunk the lazy chunks share, kept out of boot
     id.ts session.ts                            event ids, the campaign session the NEXT analytics script shares
@@ -217,8 +219,8 @@ src/
                                    the 0.4.x Open Cart DOM event, the checkout's 0.4.x event names
     order.ts           order       accept / decline words, old next-url and offer attributes, the order's 0.4.x event names
     analytics/         analytics   index.ts: dl_* events (Elevar format) into NextDataLayer / dataLayer, built from the
-                                   tracking events; ga4.ts: their GA4-style ecommerce payloads (items, value, purchase);
-                                   burst.ts: one dl_add_to_cart / dl_remove_from_cart push per burst of line events;
+                                   tracking events; pushes.ts: each event's dl_* fields; exit-intent.ts: dl_exit_intent_*;
+                                   ga4.ts: their GA4-style ecommerce payloads (items, value, purchase); burst.ts: one dl_add_to_cart / dl_remove_from_cart push per burst of line events;
                                    schema.ts: DataLayerEventMap, the type of every dl_* push (types only, for the docs)
 ```
 

@@ -5,8 +5,6 @@ import type { EventContext } from './context';
 import type { Order, OrderItem } from './orders';
 import type { Promotion, PromotionEvents } from './promotions';
 import type { Upsell } from './upsells';
-import type { Engine } from '../engine';
-import { addDollars, dollars } from '../format';
 import { untaxed } from '../order';
 
 /**
@@ -207,99 +205,4 @@ export function trackingLines(e: TrackingEvent): TrackingLine[] {
     default:
       return [];
   }
-}
-
-/** Where a destination looks up a cart line's package. */
-export type Packages = Pick<Engine, 'getPackage'>;
-
-/**
- * Lines counted in units of product, as order lines already are: a cart line of a package of `qty` units is
- * `quantity × qty` units at `price ÷ qty`.
- */
-export const perUnit = (lines: TrackingLine[], packages?: Packages): TrackingLine[] =>
-  lines.map((l) => {
-    const units = ('package_id' in l && packages?.getPackage(l.package_id)?.qty) || 1;
-    if (units === 1) return l;
-    return {
-      ...l,
-      quantity: l.quantity * units,
-      ...(l.price !== undefined && { price: dollars(l.price / units) }),
-      ...(l.original_price !== undefined && { original_price: dollars(l.original_price / units) }),
-    };
-  });
-
-/** `Σ price × quantity` of the priced lines; none when no line is priced. */
-export const trackingValue = (lines: TrackingLine[]): number | undefined => {
-  const priced = lines.filter((l) => l.price !== undefined);
-  return priced.length ? addDollars(priced.map((l) => l.price! * l.quantity)) : undefined;
-};
-
-export const trackingCurrency = (e: TrackingEvent): string | undefined => {
-  const data = e.data as { currency?: string; cart?: { currency?: string } };
-  return data.currency ?? data.cart?.currency ?? e.context.campaign?.currency;
-};
-
-/** A line's SKU, else its package id (a cart line) or product id, else its order line id. */
-export const trackingLineId = (l: TrackingLine): string =>
-  l.sku || String('package_id' in l ? l.package_id : (l.product_id ?? l.id));
-
-/** The object without its `undefined` fields, as vendor payloads are sent. */
-export const defined = <T extends object>(o: T): T =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
-
-/** How one destination turns tracking events into calls on a vendor's page script. */
-export interface Destination<V, C> {
-  destination: DestinationTrace['destination'];
-  /** The vendor's page script, when the page has one that can take calls. */
-  vendor: () => V | undefined;
-  /** Logged once while `vendor` returns nothing. */
-  missing: string;
-  /** Logged with the error of a call that throws. */
-  failed: string;
-  /** The vendor calls a tracking event becomes; none skips it. */
-  calls: (e: TrackingEvent) => C[];
-  send: (vendor: V, call: C) => void;
-  /** What a sent call logs: `destination <destination> <label ?? name> sent`. */
-  trace: (call: C) => { name: string; label?: string; payload: unknown };
-  /** Runs `flush` now or once the vendor's script is ready; the default runs it now. */
-  ready?: (vendor: V, flush: (vendor: V) => void) => void;
-}
-
-/** Sends every tracking event of this page, and each later one, through a destination. */
-export function startDestination<V, C>(engine: Engine, d: Destination<V, C>): void {
-  let warned = false;
-  engine.on(
-    'analytics',
-    ({ data: e }) => {
-      const calls = d.calls(e);
-      if (!calls.length) return;
-      const vendor = d.vendor();
-      if (vendor === undefined) {
-        if (!warned) engine.log.warn(d.missing);
-        warned = true;
-        return;
-      }
-      const flush = (v: V) => {
-        for (const call of calls) {
-          try {
-            d.send(v, call);
-            const { name, label = name, payload } = d.trace(call);
-            engine.log.debug(`destination ${d.destination} ${label} sent`, {
-              trace: 'destination',
-              destination: d.destination,
-              name,
-              tracking: e.event_type,
-              event_id: e.event_id,
-              payload,
-            } satisfies DestinationTrace);
-          } catch (err) {
-            engine.log.error(d.failed, err);
-          }
-        }
-      };
-      if (d.ready) d.ready(vendor, flush);
-      else flush(vendor);
-    },
-    { replay: true },
-  );
 }

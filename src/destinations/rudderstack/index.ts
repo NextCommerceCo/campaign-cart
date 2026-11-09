@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { startDestination } from '../../engine/events/analytics';
+import { startDestination } from '../../engine/tracking';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -24,19 +24,20 @@ export function startRudderStack(engine: Engine, options: Pick<RudderStackOption
     pageType: meta('next-page-type') || win.nextConfig?.pageType,
     pageName: meta('next-page-name'),
   };
+  const vendor = () => {
+    const ra = win.rudderanalytics;
+    return typeof ra?.track === 'function' || typeof ra?.ready === 'function' ? ra : undefined;
+  };
   const firstStep = (call: RudderStackCall) => {
     const checkout = engine.checkout;
     if (call.call !== 'track' || call.name !== 'Checkout Step Completed' || !checkout) return true;
     if (checkout.reported(STEP)) return false;
-    checkout.markReported(STEP);
+    if (vendor()) checkout.markReported(STEP);
     return true;
   };
   startDestination(engine, {
     destination: 'rudderstack',
-    vendor: () => {
-      const ra = win.rudderanalytics;
-      return typeof ra?.track === 'function' || typeof ra?.ready === 'function' ? ra : undefined;
-    },
+    vendor,
     missing:
       "RudderStack destination is on but the page has no rudderanalytics; add RudderStack's JS SDK snippet. Events before it loads are not sent",
     failed: 'RudderStack destination failed',
