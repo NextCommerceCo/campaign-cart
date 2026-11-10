@@ -50,6 +50,8 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - **Coupon on an empty cart** is checked once the cart is first priced. `next.applyCoupon` still
   answers `true` at once.
 - **Phone placeholder**: the page's own is kept (0.4.43 replaced it with `Phone*`).
+- **Card expiry selects**: an empty `exp-month` select is filled with months named in the page's
+  language (0.4.43 wrote them in English); a list the page wrote is kept.
 - **`data-next-address`**: `-lang` and `-api` are not read.
 - **`addressConfig.countries` / `dontShowStates`**: only the campaign's shipping countries that
   are also in the list are offered.

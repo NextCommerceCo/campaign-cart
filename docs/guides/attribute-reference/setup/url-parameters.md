@@ -33,9 +33,9 @@ landing.html?utm_source=fb&forceBundleId=three&currency=EUR
 
 ## Carried to the next page
 
-A same-site link, an add-to-cart `data-next-url`, a checkout step, the redirect after paying and
-the upsell buttons all add the visit's parameters to the next URL, unless that URL sets them
-itself. A link to another site gets only the attribution ones (`utm_*`, `gclid`, `gbraid`,
+A same-site link, an add-to-cart `data-next-url`, a checkout step, the redirect after paying (the
+return from PayPal, Apple Pay or 3-D Secure too) and the upsell buttons all add the visit's
+parameters to the next URL, unless that URL sets them itself. A link to another site gets only the attribution ones (`utm_*`, `gclid`, `gbraid`,
 `wbraid`, `fbclid`, `ttclid`, `msclkid`, `clickid`, `evclid`, `affid`, `aff`, `sub1`…,
 `subaffiliate1`…, `funnel`, `currency`).
 

@@ -159,7 +159,8 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
 - **Attribution:** UTM, gclid, gbraid, wbraid, fbclid, ttclid, msclkid, affiliate, sub1–5, clickid,
   evclid, `_fbp`/`_fbc` and the funnel are kept for the tab session, with the first landing page and
   the metadata a page sets with `next.actions.setMetadata`. The same object goes on every event and
-  on the order.
+  on the order. `_fbp`/`_fbc` are read when it is built, so a cookie the pixel writes after boot is
+  in it, and each `metadata` value is cut to 2000 code points, the most the platform takes.
 - **Links:** same-site links carry the session's params (this replaces `utmTransfer`). A page
   whose visit has no attribution params takes them from a same-origin referrer: a link followed
   before the SDK loaded.
