@@ -1,8 +1,8 @@
 import { setSource } from '../dom/dom';
 import type { Engine } from '../engine/engine';
-import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/display/format';
+import { format, localeOf, type Value, type ValueType } from '../engine/display/format';
 import type { Address } from '../engine/events/checkout';
-import { formatAddress, LINE_LAYOUT } from '../engine/order/address-line';
+import { formatAddress, LINE_LAYOUT, phoneText } from '../engine/order/address-line';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 

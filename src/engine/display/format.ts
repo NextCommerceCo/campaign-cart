@@ -75,12 +75,6 @@ export function discountPercent(value: string | undefined, locale?: string): str
   return formatter(locale, { style: 'percent', maximumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n / 100);
 }
 
-/** A 10-digit number as `(555) 123-4567`; anything else as typed. */
-export const phoneText = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '');
-  return digits.length === 10 ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : raw;
-};
-
 /** Truthiness of a shown value: an empty list, `0`, `''`, `'false'` and `'0'` are false. */
 export function truthyValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;

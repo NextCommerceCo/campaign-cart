@@ -126,8 +126,8 @@ src/
                                    debug-config.ts (a nextConfig tried from the debug panel)
     order/                         order.ts (the Order every order.* event and snapshot() carry, the reported ledger),
                                    address.ts (an API address as the public Address), address-line.ts (form fields
-                                   as an API address; an address on one line by a named layout; a chunk checkout, order
-                                   and attributes v2 share),
+                                   as an API address; an address on one line by a named layout; a 10-digit phone
+                                   as text; a chunk checkout, order and attributes v2 share),
                                    payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
                                    chunks share, kept out of boot)
     display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;

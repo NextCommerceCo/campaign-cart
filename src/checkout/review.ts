@@ -1,8 +1,7 @@
 import type { Engine } from '../engine/engine';
 import type { CheckoutState } from './state/types';
 import { toApi } from './form/names';
-import { phoneText } from '../engine/display/format';
-import { formatAddress, REVIEW_LAYOUT } from '../engine/order/address-line';
+import { formatAddress, phoneText, REVIEW_LAYOUT } from '../engine/order/address-line';
 
 function address(checkout: CheckoutState, prefix: '' | 'billing_'): string {
   const f = (name: string) => checkout.fields[prefix + name]?.trim() ?? '';

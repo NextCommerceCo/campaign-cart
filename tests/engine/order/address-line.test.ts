@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { display } from '../../../src/attributes/value';
-import { formatAddress, LINE_LAYOUT, ORDER_LAYOUT, REVIEW_LAYOUT } from '../../../src/engine/order/address-line';
+import {
+  formatAddress,
+  LINE_LAYOUT,
+  ORDER_LAYOUT,
+  phoneText,
+  REVIEW_LAYOUT,
+} from '../../../src/engine/order/address-line';
 import { makeEngine } from '../../fixtures/engine';
 
 const ADDRESS = { line1: '1 Main St', city: 'Austin', state: 'TX', postcode: '73301', country: 'US' };
@@ -16,5 +22,10 @@ describe('address lines', () => {
     const { engine } = makeEngine();
     expect(display('shipping_address', ADDRESS, engine)).toBe('1 Main St, Austin, TX 73301, US');
     expect(display('shipping_address', { line1: '1 Main St', country: 'US' }, engine)).toBe('1 Main St, US');
+  });
+
+  it('writes a 10-digit phone number in groups and leaves any other as typed', () => {
+    expect(phoneText('555-123 4567')).toBe('(555) 123-4567');
+    expect(phoneText('+66 81 234 5678')).toBe('+66 81 234 5678');
   });
 });
