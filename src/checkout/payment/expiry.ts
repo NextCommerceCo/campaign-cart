@@ -2,20 +2,17 @@ import { showField } from '../form/errors';
 import { fieldControl, option } from '../form/fields';
 import { cardText } from '../form/texts';
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+function monthNames(locale: string): string[] {
+  const names = (tag: string) => {
+    const format = new Intl.DateTimeFormat(tag, { month: 'long', timeZone: 'UTC' });
+    return Array.from({ length: 12 }, (_, i) => format.format(new Date(Date.UTC(2000, i, 1))));
+  };
+  try {
+    return names(locale);
+  } catch {
+    return names('en');
+  }
+}
 
 /** `card.expiry` as typed: "MM/YY", "MM / YY" or "MM/YYYY". */
 export function parseExpiry(text: string): { month: string; year: string } | undefined {
@@ -25,10 +22,12 @@ export function parseExpiry(text: string): { month: string; year: string } | und
   return { month: String(month).padStart(2, '0'), year: match[2]!.length === 2 ? `20${match[2]}` : match[2]! };
 }
 
-function fillSelects(month: HTMLSelectElement | null, year: HTMLSelectElement | null): void {
+function fillSelects(month: HTMLSelectElement | null, year: HTMLSelectElement | null, locale: string): void {
   if (month && month.options.length <= 1) {
     month.append(
-      ...MONTHS.map((m, i) => option(`(${String(i + 1).padStart(2, '0')}) ${m}`, String(i + 1).padStart(2, '0'))),
+      ...monthNames(locale).map((m, i) =>
+        option(`(${String(i + 1).padStart(2, '0')}) ${m}`, String(i + 1).padStart(2, '0')),
+      ),
     );
   }
   if (year && year.options.length <= 1) {
@@ -48,11 +47,11 @@ export interface Expiry {
 }
 
 /** The card's expiry: the `exp-month` + `exp-year` selects, or one `card.expiry` text input. */
-export function bindExpiry(form: HTMLFormElement): Expiry {
+export function bindExpiry(form: HTMLFormElement, locale = 'en'): Expiry {
   const text = fieldControl<HTMLInputElement>(form, 'cc-expiry');
   const month = text ? null : fieldControl<HTMLSelectElement>(form, 'exp-month', 'cc-month');
   const year = text ? null : fieldControl<HTMLSelectElement>(form, 'exp-year', 'cc-year');
-  fillSelects(month, year);
+  fillSelects(month, year, locale);
   const typed = () => (text ? parseExpiry(text.value) : undefined);
   const monthOf = () => (text ? (typed()?.month ?? '') : (month?.value ?? ''));
   const yearOf = () => (text ? (typed()?.year ?? '') : (year?.value ?? ''));

@@ -1,4 +1,5 @@
 import type { CheckoutActions } from '../state/checkout';
+import { localeOf } from '../../engine/display/format';
 import type { Engine } from '../../engine/engine';
 import { showField } from '../form/errors';
 import { fieldControl } from '../form/fields';
@@ -239,7 +240,7 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     [cvv, 'cvv'],
   ] as const;
   markHostedFields(hosts);
-  const expiry = bindExpiry(form);
+  const expiry = bindExpiry(form, localeOf(engine.getState()));
   const view = cardView(hosts, expiry, checkout);
   const { errors, render } = view;
   const paymentJs = connect(envKey, form, view);

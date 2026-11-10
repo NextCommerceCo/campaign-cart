@@ -153,6 +153,26 @@ afterEach(() => {
 });
 
 describe('checkout page (olympus, 0.4.43 markup)', () => {
+  it('names the months it fills in the page language, and keeps a month list the page wrote', async () => {
+    const texts = () =>
+      [...document.querySelector<HTMLSelectElement>('[data-next-checkout-field="exp-month"]')!.options].map(
+        (o) => o.text,
+      );
+    await mount('olympus/checkout.html', { locale: 'fr' });
+    expect(texts().slice(1, 3)).toEqual(['(01) janvier', '(02) février']);
+
+    document.body.innerHTML = '';
+    await mount('olympus/checkout.html', {
+      locale: 'fr',
+      markup: (body) => {
+        const month = body.querySelector<HTMLSelectElement>('[data-next-checkout-field="exp-month"]')!;
+        month.innerHTML =
+          '<option value="">Mois</option><option value="01">01 - Jan</option><option value="02">02 - Fév</option>';
+      },
+    });
+    expect(texts()).toEqual(['Mois', '01 - Jan', '02 - Fév']);
+  });
+
   it('fills the selects, payment panels and express buttons the page leaves empty', async () => {
     const warn = vi.spyOn(console, 'warn');
     const { $, field, type } = await mount('olympus/checkout.html');
