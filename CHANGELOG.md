@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.5.1] — Unreleased — Purchases, Attribution and Currency Symbols as in 0.4.x
+
+Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase reports, attribution that reaches the order, and prices that say which dollar they are in. Read Before you upgrade first if your campaign is priced in CAD, AUD, NZD, HKD or MXN, or sends to the Meta pixel.
+
+### Before you upgrade
+
+- **CAD, AUD, NZD, HKD and MXN prices show which dollar they are.** A page in `en` shows `CA$49.90`, `A$49.90`, `NZ$49.90`, `HK$49.90` and `MX$49.90` where 0.5.0 showed `$49.90`. A page whose language is the currency's home locale (`nextConfig.locale: 'en-CA'`, `'en-AU'`, `'en-NZ'`, `'es-MX'`) keeps the bare `$`; HKD shows `HK$` in every locale. SGD and every other currency are unchanged. See [Language and currency](docs/guides/recipes/language-and-currency.md). ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
+- **The Meta destination sends `PageView` on every page load**, as 0.4.x did, with the tracking event's id as `eventID`. Remove `fbq('track', 'PageView')` from the page's pixel base code so it is not sent twice. ([#139](https://github.com/NextCommerceCo/campaign-cart/issues/139))
+- **The Meta destination sends `AddToCart` only for the first add of a session.** GA4, RudderStack and the `dl_*` pushes still get every add. ([#126](https://github.com/NextCommerceCo/campaign-cart/issues/126))
+- **`dl_add_shipping_info` waits for a valid shipping address and always follows `dl_begin_checkout`.** A shipping method priced earlier, such as a bundle card with `data-next-shipping-id` or the checkout loading, no longer sends it. ([#140](https://github.com/NextCommerceCo/campaign-cart/issues/140))
+- **`dl_purchase` and `dl_upsell_purchase` carry the customer in `user_properties` again**, with the 0.4.x field names: `customer_email`, `customer_first_name`, `customer_last_name`, `customer_phone` and the billing address as `customer_address_1`, `customer_city`, `customer_province`, `customer_zip`, `customer_country`. Every other `dl_*` push keeps `visitor_type` only. ([#134](https://github.com/NextCommerceCo/campaign-cart/issues/134), [#131](https://github.com/NextCommerceCo/campaign-cart/issues/131))
+- **A 0.4.x page is shown once its 0.4.x `window.next` methods have loaded**, so `next.setMetadata` is there for its ready callbacks.
+
+### Tracking
+
+- **An order bump flagged `data-next-is-upsell="true"` is part of the purchase again.** A line that was in the order when it was paid is in `dl_purchase` and in `checkout_completed` (GA4, Meta, RudderStack); `dl_upsell_purchase` and `upsell_completed` are sent only for an upsell accepted after payment, numbered from `-US1`. ([#141](https://github.com/NextCommerceCo/campaign-cart/issues/141))
+
+### Attribution
+
+- **`next.actions.setMetadata({ key: value })` sets attribution metadata after the page has loaded.** It stays through cart changes and the tab's next pages, and is sent with the cart and the order. The 0.4.x `next.setMetadata`, `addMetadata`, `getMetadata` and `clearMetadata` work again on 0.4.x pages and are deprecated, and `localStorage.evclid` is read again for the Everflow transaction id. See [JavaScript API](docs/guides/javascript-api.md). ([#130](https://github.com/NextCommerceCo/campaign-cart/issues/130))
+- **The Meta browser ids reach the order on a first visit.** `_fbp` and `_fbc` are read when the cart and the order are sent, so a cookie the pixel writes after the SDK started is included. ([#132](https://github.com/NextCommerceCo/campaign-cart/issues/132))
+- **The shopper comes back from PayPal, Apple Pay or 3-D Secure with the visit's parameters.** The `success_url` sent with an order carries the affiliate and `utm_*` parameters, as the card path already did. ([#113](https://github.com/NextCommerceCo/campaign-cart/issues/113))
+- **A page opened without attribution parameters takes them from a same-site referrer**, so a link followed before the SDK loaded keeps the visit's attribution. ([#122](https://github.com/NextCommerceCo/campaign-cart/issues/122))
+- **Each attribution metadata value is cut to 2000 characters**, the most the platform takes, so a long landing page or referrer URL no longer has the order refused. ([#142](https://github.com/NextCommerceCo/campaign-cart/issues/142))
+
+### Checkout
+
+- **An order the API refuses by field shows a message for that field.** An out-of-stock `lines` refusal, for example, shows a text of its own on express and card orders, translatable as `order.errors.<field>` with `order.errors.generic` for the rest, and the API's own text is in the log and in the `sdk.error` and `checkout.failed` message. ([#28](https://github.com/NextCommerceCo/campaign-cart/issues/28))
+- **The card expiry months the SDK fills are named in the page's language.** A month list the page wrote itself is kept. ([#60](https://github.com/NextCommerceCo/campaign-cart/issues/60))
+
+### Display
+
+- **`formats.currency.<code>` in `nextConfig.translations` sets how a currency is written**: `narrowSymbol`, `symbol` or `code`, or a pattern of `{amount}`, `{symbol}`, `{narrowSymbol}` and `{code}` such as `C${amount}`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
+- **`data-next-format="amount"` writes an amount in the currency's own decimals, without a symbol**: `49.90`, where `number` writes `49.9`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
+- **Boot is 26 KB**, up from 25.5 KB.
+
 ## [0.5.0] — Unreleased — A New Campaign SDK, and Events Named Like Webhooks
 
 The SDK is rebuilt around one engine that holds the campaign, cart, checkout and order. Pages built for 0.4.x keep working; what changes for a page builder is in [Migrating from 0.4.x](docs/guides/migrating-from-0.4.md). Events now share one naming scheme, `namespace.action`, shaped like Next Commerce webhooks, and tracking events have a listener of their own. Read Before you upgrade first if your page listens with `next.on` or reads `window.dataLayer`.
