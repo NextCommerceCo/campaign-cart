@@ -63,6 +63,8 @@ export interface CheckoutError {
   message?: string;
   /** The gateway's decline code, for a declined card. */
   decline?: string;
+  /** The request field the API refused (`lines`, `shipping_address`, …), for an order it refused by field. */
+  field?: string;
   /** `true` when the address service only warns: the order can still be sent. */
   warning?: boolean;
 }

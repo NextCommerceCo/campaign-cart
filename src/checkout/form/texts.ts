@@ -54,6 +54,15 @@ const FORM: Record<string, string> = {
   express: '{message}. Please try a different payment method.',
 };
 
+const REFUSED: Record<string, string> = {
+  lines: 'An item in your order isn’t available right now. Please contact support.',
+  shipping_address: 'Please check your shipping address and try again.',
+  billing_address: 'Please check your billing address and try again.',
+  user: 'Please check your contact details and try again.',
+  payment_detail: 'We couldn’t process that payment method. Please try another.',
+  generic: 'We couldn’t place your order. Please try again or contact support.',
+};
+
 const CARD_KEYS: Record<string, string> = {
   number: 'payment.card.number.errors.invalid',
   cvv: 'payment.card.cvv.errors.invalid',
@@ -109,11 +118,16 @@ export function fieldText(name: string, error: CheckoutError, rules?: CountryRul
 const declineText = (error: CheckoutError) =>
   textOf(error.decline && `payment.errors.${error.decline}`, textOf('payment.errors.generic', FORM.declined!));
 
+const refusedOrder = (field: string) =>
+  textOf(`order.errors.${field}`, REFUSED[field] ?? textOf('order.errors.generic', REFUSED.generic!));
+
 export function formText(error: CheckoutError, fill: Record<string, string> = {}): string {
   const text =
     error.code === 'declined'
       ? declineText(error)
-      : (error.message ?? textOf(FORM_KEYS[error.code], FORM[error.code] ?? FORM.failed!));
+      : error.field
+        ? refusedOrder(error.field)
+        : (error.message ?? textOf(FORM_KEYS[error.code], FORM[error.code] ?? FORM.failed!));
   return Object.entries(fill).reduce((t, [k, v]) => t.replace(`{${k}}`, v), text);
 }
 

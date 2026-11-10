@@ -143,7 +143,8 @@ function errorText(state: CheckoutState, fields: Fields, box: string): string {
   const parts = [];
   if (state.errors.form) parts.push(formText(state.errors.form));
   if (unshown.length) parts.push(formText({ code: 'unshown' }, { fields: unshown.map((n) => label(n)).join(', ') }));
-  return box === 'express' && parts.length ? expressText(parts.join(' ')) : parts.join(' ');
+  const text = parts.join(' ');
+  return box === 'express' && text && !state.errors.form?.field ? expressText(text) : text;
 }
 
 function renderErrorBoxes(form: HTMLFormElement, box: string, text: string): void {

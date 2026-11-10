@@ -635,6 +635,53 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('[data-next-component="credit-error"]').style.display).toBe('none');
   });
 
+  it('words an order the API refused by its field, for an express order and a card order', async () => {
+    const refuse = () => json({ lines: ['Don’t have enough stock for Red Light Therapy'] }, 400);
+    const item = 'An item in your order isn’t available right now. Please contact support.';
+    const express = await mount('olympus/checkout.html', { order: refuse });
+    express.type('email', 'jane@example.com');
+    express.type('fname', 'Jane');
+    express.type('lname', 'Doe');
+    document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
+    await flush();
+    await flush();
+    expect(express.$('[data-next-component="express-error"]').style.display).toBe('flex');
+    expect(express.$('[data-next-component="express-error-text"]').textContent).toBe(item);
+
+    sessionStorage.clear();
+    const card = await mount('olympus/checkout.html', { order: refuse });
+    card.fill(SHIPPING);
+    card.card();
+    await card.submit();
+    await flush();
+    expect(card.$('[data-next-component="credit-error-text"]').textContent).toBe(item);
+    expect(card.engine.log.entries().map((entry) => entry.message)).toContain(
+      'order.create failed (rejected): POST /api/v1/orders/ → 400: lines: Don’t have enough stock for Red Light Therapy',
+    );
+  });
+
+  it('words a refused order in the page’s translations, and one without a text of its own as the general one', async () => {
+    const answers = [json({ lines: ['Out of stock'] }, 400), json({ non_field_errors: ['Try later'] }, 400)];
+    const { fill, card, submit, $ } = await mount('olympus/checkout.html', {
+      order: () => answers.shift()!,
+      locale: 'th-TH',
+      translations: {
+        th: {
+          'order.errors.lines': 'สินค้าในคำสั่งซื้อไม่พร้อมจำหน่าย',
+          'order.errors.generic': 'ไม่สามารถสั่งซื้อได้',
+        },
+      },
+    });
+    fill(SHIPPING);
+    card();
+    await submit();
+    await flush();
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe('สินค้าในคำสั่งซื้อไม่พร้อมจำหน่าย');
+    await submit();
+    await flush();
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe('ไม่สามารถสั่งซื้อได้');
+  });
+
   it('puts the phone in E.164 on its field for page forwarders while the number checks out', async () => {
     const { type, field } = await mount('olympus/checkout.html');
     type('phone', '(415) 555-2671');

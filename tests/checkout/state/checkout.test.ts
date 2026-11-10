@@ -862,6 +862,51 @@ describe('checkout', () => {
       message: 'Address is incomplete. Try again',
     });
   });
+
+  it('names the field of an order the API refused, with the API’s text in the log and the events', async () => {
+    const stock = 'Don’t have enough stock for Red Light Therapy - location unavailable';
+    const answers = [
+      json({ lines: [stock] }, 400),
+      json(
+        { ref_id: 'R1', shipping_address: { postcode: ['Enter a valid postcode'] }, non_field_errors: ['Try later'] },
+        400,
+      ),
+      json({ message: [{ shipping_method: ['Shipping Option not found in this Campaign.'] }] }, 400),
+      json({ payment_detail: { card_token: ['tok_1 is not a valid token'] } }, 400),
+    ];
+    const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });
+    const failed: unknown[] = [];
+    const reported: unknown[] = [];
+    engine.on('checkout.failed', (e) => failed.push(e.data.error));
+    engine.on('sdk.error', (e) => reported.push(e.data));
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    const errors = [];
+    for (let i = 0; i < 4; i++) {
+      await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' });
+      errors.push(engine.getState().checkout!.errors.form);
+    }
+    expect(errors).toEqual([
+      { code: 'invalid_order', field: 'lines' },
+      { code: 'invalid_order', field: 'shipping_address' },
+      { code: 'invalid_order', field: 'shipping_method' },
+      { code: 'invalid_order', field: 'payment_detail' },
+    ]);
+    const messages = [
+      `POST /api/v1/orders/ → 400: lines: ${stock}`,
+      'POST /api/v1/orders/ → 400: shipping_address.postcode: Enter a valid postcode; non_field_errors: Try later',
+      'POST /api/v1/orders/ → 400: shipping_method: Shipping Option not found in this Campaign.',
+      'POST /api/v1/orders/ → 400',
+    ];
+    expect(failed).toEqual(messages.map((message) => ({ code: 'rejected', status: 400, message })));
+    expect(reported).toEqual(
+      messages.map((message) => ({ action: 'order.create', code: 'rejected', status: 400, message })),
+    );
+    const logged = engine.log.entries().map((entry) => entry.message);
+    expect(logged).toContain(`order.create failed (rejected): ${messages[0]}`);
+    expect(logged.join('\n')).not.toContain('tok_1');
+  });
 });
 
 describe('one checkout per tab', () => {

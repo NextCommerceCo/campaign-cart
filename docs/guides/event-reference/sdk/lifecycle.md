@@ -61,6 +61,10 @@ back/forward cache reloads and starts again.
   API answered, and `message` is for developers and logs, never for shoppers.
 - A failure the shopper sees gets a second event: `checkout.failed` and `upsell.failed` carry it as
   `error`; `coupon.check`'s is followed by `coupon.denied` (`reason: 'check_failed'`).
+- An order the API refuses by request field (HTTP 400 `{"lines": ["…"]}`) carries the API's text in
+  `message`, on `sdk.error`, `checkout.failed` and in the log:
+  `POST /api/v1/orders/ → 400: lines: Don't have enough stock…`. Payment fields are left out. The
+  shopper reads `order.errors.<field>` instead ([Language](../../attribute-reference/setup/language.md)).
 - A payment not taken is no SDK failure: a decline, or a return from the gateway unpaid, sends only
   `payment.failed`, `code: 'declined'` (and the gateway's `decline_code`) or `'payment_failed'`.
 - The 0.4.x `error:occurred` gets every `sdk.error`, as `message`, `code` and `details`.
