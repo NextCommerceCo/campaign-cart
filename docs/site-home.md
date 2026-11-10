@@ -30,7 +30,7 @@ That page adds package 42 to a cart, shows its price in the campaign's currency,
 
 **[What 0.5 improves](./guides/whats-new-in-0.5.md)**: about 5× less JavaScript on a landing page, prices sooner, events shaped like webhooks.
 
-**[What 0.5.1 changes](./guides/whats-new-in-0.5.1.md)**: prices that say which dollar, purchases and attribution as tags expect them.
+**[What's new in 0.5.1](./guides/whats-new-in-0.5.1.md)**: prices that show which dollar, and fixes for purchases and tracking.
 
 **[Migrating from 0.4.x](./guides/migrating-from-0.4.md)**: pages built for 0.4.x keep working. This lists what changes for a page builder.
 
