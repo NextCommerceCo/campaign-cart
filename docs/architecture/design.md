@@ -45,7 +45,9 @@ Every page starts the same way:
 
 1. Load `loader.js`.
 2. Read `data-campaign`.
-3. Fetch the campaign from Campaign App and restore the cart from storage.
+3. Fetch the campaign from Campaign App and restore the cart from storage. With the core, the
+   loader fetches the feature chunks the page's markup calls for (`<link rel="modulepreload">`), so
+   they arrive together, not one after another.
 4. Bind the HTML.
 5. Mark the page ready (`html[data-next-ready]`).
 

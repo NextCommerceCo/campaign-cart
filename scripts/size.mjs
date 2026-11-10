@@ -47,4 +47,14 @@ for (const file of files.filter((f) => f.endsWith('.js') && !BUDGETS.some((b) =>
   );
   failed = true;
 }
+// The loader's list of chunks to fetch beside boot must name files this build wrote.
+const loader = readFileSync('dist/loader.js', 'utf8');
+const preloads = [...loader.matchAll(/[\w-]+-[\w-]{8}\.js/g)].map(([file]) => file);
+const missing = preloads.filter((file) => !files.includes(file));
+if (loader.includes('%PRELOAD%') || !preloads.length || missing.length) {
+  console.log(
+    `PRELOAD loader.js: ${missing.length ? `names ${missing.join(', ')}, not in dist/` : 'has no chunk list'}`,
+  );
+  failed = true;
+}
 process.exit(failed ? 1 : 0);

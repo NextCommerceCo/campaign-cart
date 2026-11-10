@@ -32,3 +32,23 @@ export function readConfig(doc: Document, win: Window): BootConfig {
 export function campaignUrl(base: string, currency?: string): string {
   return `${base}/api/v1/campaigns/${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`;
 }
+
+/**
+ * The chunk files a parsed page will import after boot, to fetch beside it: `map` is the build's
+ * `name:file,file|name:file` list of each lazy chunk with the chunks it imports.
+ */
+export function pagePreloads(map: string, doc: Document, search: string): string[] {
+  const v2 = doc.querySelector('[data-next-selector],[data-next-option],[data-next-query]');
+  const names = [
+    v2 ? 'attributes' : 'legacy',
+    doc.querySelector('form[data-next-checkout]') && 'checkout',
+    doc.querySelector('[data-next-cart-summary],[data-next-discounts]') && 'cart-summary',
+    doc.querySelector('[data-next-bundle-slot-template-id],[data-next-bundle-slot-template]') && 'slots',
+    /[?&](order_)?ref_id=/.test(search) && 'order',
+  ];
+  const files = map.split('|').flatMap((entry) => {
+    const [name, list] = entry.split(':');
+    return names.includes(name!) && list ? list.split(',') : [];
+  });
+  return [...new Set(files)];
+}

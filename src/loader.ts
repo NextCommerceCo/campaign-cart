@@ -1,5 +1,5 @@
 import { announceLegacyLoaded, legacyGlobals } from './compat/config';
-import { campaignUrl, readConfig } from './config';
+import { campaignUrl, pagePreloads, readConfig } from './config';
 
 const STYLESHEET = 'campaign-cart.css';
 
@@ -27,6 +27,17 @@ if (!config.apiKey) {
     document.readyState === 'loading'
       ? new Promise((done) => document.addEventListener('DOMContentLoaded', done, { once: true }))
       : undefined;
+
+  if (!parsed) {
+    for (const file of pagePreloads('%PRELOAD%', document, location.search)) {
+      document.head.append(
+        Object.assign(document.createElement('link'), {
+          rel: 'modulepreload',
+          href: new URL(file, import.meta.url).href,
+        }),
+      );
+    }
+  }
 
   import('./boot')
     .then(async ({ boot }) => {

@@ -100,3 +100,9 @@ export const scenario: Scenario = async (t) => {
 | A Meta Pixel on the page          | `t.pixel()`, read with `t.fbq()`                                              |
 | A page the starter templates lack | a folder in `dev/e2e/pages/`, served where the campaign pages have none       |
 | What the page sent                | `t.events()`, `t.tracking()`, `t.requests()`, `t.orderBody()`, `t.cartBody()` |
+
+### Load time
+
+`npm run build && bun run perf` times the built SDK on the Olympus landing and checkout pages under
+Chrome's Slow 4G, for a first and a second visit: when `html[data-next-ready]` was set, and each SDK
+request before it with its start, end and size.
