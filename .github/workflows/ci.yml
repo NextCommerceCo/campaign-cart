@@ -2,6 +2,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,33 +24,32 @@ jobs:
           path: dist
 
   # jsDelivr serves cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v<version>/dist from
-  # the tagged tree, and main does not carry dist/. When main reaches a package.json
-  # version with no tag yet, this tags a commit off main that adds the dist/ built above.
-  # The GitHub release is then created by hand from that tag.
+  # the tagged tree, and main does not carry dist/. Running this workflow by hand on main
+  # (Actions > CI > Run workflow) tags a commit off main that adds the dist/ built above,
+  # named after the package.json version. A version that is already tagged fails the run;
+  # a tag is never moved. The GitHub release is then created by hand from that tag.
   tag:
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Find an untagged version
+      - name: Stop when the version is already tagged
         id: version
         run: |
           tag="v$(node -p "require('./package.json').version")"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
-            echo "$tag is already tagged"
-          else
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "::error::$tag is already tagged. Bump the version in package.json first."
+            exit 1
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
-        if: ${{ steps.version.outputs.tag }}
         with:
           name: dist
           path: dist
       - name: Tag a commit that carries dist/
-        if: ${{ steps.version.outputs.tag }}
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
