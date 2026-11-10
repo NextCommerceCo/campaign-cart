@@ -29,6 +29,9 @@ GA4, the Meta pixel and RudderStack can be turned on, and your own code can list
 | Accepts it, or declines it                | `upsell_completed`, `upsell_skipped`                 | `dl_upsell_purchase`, `dl_skipped_upsell` |
 
 Each event has a page in the [Analytics Reference](/analytics) with what it carries and an example.
+Each group has a diagram of when its events are sent: [pages](pages/lifecycle.md),
+[carts](carts/lifecycle.md), [checkout](checkout/lifecycle.md), [orders](orders/lifecycle.md),
+[upsells](upsells/lifecycle.md) and [promotions](promotions/lifecycle.md).
 
 ## Listen to an event
 

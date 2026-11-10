@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 455" width="720" height="455" role="img" aria-labelledby="upsells-tracking-lifecycle-title upsells-tracking-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="upsells-tracking-lifecycle-title">Upsell tracking</title>
+  <desc id="upsells-tracking-lifecycle-desc">On an upsell page, upsell.viewed sends upsell_viewed (dl_viewed_upsell), once per upsell page. upsell.skipped sends upsell_skipped (dl_skipped_upsell), every time. An accepted offer sends nothing on its page: the next page loads the order, and its order.loaded sends upsell_completed (dl_upsell_purchase), one per line an upsell added after payment, once per line in this browser. A line paid with the order is part of checkout_completed instead.</desc>
+  <defs>
+    <marker id="upsells-tracking-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="215" y="8" width="230" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">half of an offer is on screen,</text>
+    <text x="330" y="41" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">on an upsell page</text>
+    <path d="M330 50 V70" marker-end="url(#upsells-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="67" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.viewed</text>
+    <path d="M440 120 H490 V238 H534" marker-end="url(#upsells-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="502" y="170" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">the shopper skips</text>
+    <text x="502" y="188" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell.skipped</text>
+    <path d="M330 164 V330" marker-end="url(#upsells-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="262" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">accepted: the next</text>
+    <text x="344" y="278" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">page loads the order</text>
+    <text x="344" y="298" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="76" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="101" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">viewed</text>
+    <text x="330" y="121" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell_viewed</text>
+    <text x="330" y="136" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once per upsell page</text>
+    <text x="330" y="151" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_viewed_upsell</text>
+    <rect x="220" y="336" width="220" height="103" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="361" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">completed</text>
+    <text x="330" y="381" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell_completed</text>
+    <text x="330" y="396" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">one per line an upsell added</text>
+    <text x="330" y="411" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">after payment, once per browser</text>
+    <text x="330" y="426" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_upsell_purchase</text>
+    <rect x="540" y="220" width="160" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="620" y="245" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">skipped</text>
+    <text x="620" y="265" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">upsell_skipped</text>
+    <text x="620" y="280" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every skip</text>
+    <text x="620" y="295" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_skipped_upsell</text>
+  </g>
+</svg>

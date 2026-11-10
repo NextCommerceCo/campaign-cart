@@ -6,7 +6,8 @@
  * types' TSDoc. A field tagged `@priced` or `@campaign`, or optional, says so in the Present column.
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
- * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
+ * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event,
+ * in both references.
  * The Analytics Reference is the same for `TrackingMap`: a page per tracking event under
  * `docs/.staged/analytics-reference/`, its triggers, its `data` (the same objects, with the same
  * tables) and its `dataLayer` push from `docs/analytics-examples.json`
@@ -328,8 +329,9 @@ carries the same object the SDK's [events](/events) carry (the Cart, a CartItem,
 Order), in one envelope: \`{ event_id, event_type, object, data, created_at, session_id,
 sdk_version, context }\`. Each [destination](${DESTINATIONS}/overview) remaps them to its own format.
 \`next.analytics.on(name, (event) => …)\` receives one, \`'*'\` every one.
-[How analytics works](/analytics-reference/how-it-works) says how each is sent; each event's page has
-what triggers it, its \`data\`, and what each destination gets.
+[How analytics works](/analytics-reference/how-it-works) says how each is sent; each group starts
+with a diagram of when its events are sent; each event's page has what triggers it, its \`data\`, and
+what each destination gets.
 
 ${index(events, ANALYTICS)}
 `;
@@ -591,6 +593,16 @@ function index(events, root = GROUP) {
     .join('\n\n');
 }
 
+/** Orders each group's hand-written `lifecycle.md` under `root` just before the group's first page. */
+async function orderLifecycles(out, root, pages) {
+  for (const group of new Set(pages.map((e) => e.group))) {
+    const lifecycle = join(out, slugifyPath([root, group]), 'lifecycle.md');
+    const text = await readFile(lifecycle, 'utf8').catch(() => undefined);
+    const first = pages.findIndex((e) => e.group === group) + 1;
+    if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
+  }
+}
+
 /** @param {string} root  @param {string} out  staged docs root */
 export async function stageEventReference(root, out) {
   const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
@@ -616,12 +628,7 @@ export async function stageEventReference(root, out) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, page(event, i + 1, examples[event.name], version));
   }
-  for (const group of new Set(events.map((e) => e.group))) {
-    const lifecycle = join(out, slugifyPath([GROUP, group]), 'lifecycle.md');
-    const text = await readFile(lifecycle, 'utf8').catch(() => undefined);
-    const first = events.findIndex((e) => e.group === group) + 1;
-    if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
-  }
+  await orderLifecycles(out, GROUP, events);
   const linkTo = (name) => {
     const event = events.find((e) => e.name === name);
     if (event) return `[\`${name}\`](${linkOf(event)})`;
@@ -651,6 +658,7 @@ export async function stageEventReference(root, out) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, trackingPage(event, i + 1, trackingExamples[event.name], linkTo, version, sentTo));
   }
+  await orderLifecycles(out, ANALYTICS, tracked);
   await writeFile(join(out, 'analytics.md'), trackingOverview(tracked));
   for (const d of DESTINATION_PAGES) {
     const file = join(out, slugifyPath([ANALYTICS]), 'destinations', `${d.key}.md`);

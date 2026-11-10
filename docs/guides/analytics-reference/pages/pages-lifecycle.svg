@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 419" width="720" height="419" role="img" aria-labelledby="pages-tracking-lifecycle-title pages-tracking-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="pages-tracking-lifecycle-title">Page tracking</title>
+  <desc id="pages-tracking-lifecycle-desc">On every page, sdk.ready sends page_viewed (dl_user_data); the Meta pixel, when on, gets PageView for it. Then by the packages the page shows: exactly one sends product_viewed (dl_view_item), more than one sends product_list_viewed (dl_view_item_list), none sends neither.</desc>
+  <defs>
+    <marker id="pages-tracking-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="250" y="8" width="160" height="27" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the SDK is ready</text>
+    <path d="M330 35 V70" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="60" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">sdk.ready</text>
+    <path d="M440 94 H534" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="490" y="86" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">when it is on</text>
+    <path d="M330 164 V218" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M330 224 L342 236 L330 248 L318 236 Z" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="186" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">the packages</text>
+    <text x="344" y="202" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 12px">the page shows</text>
+    <path d="M342 236 H534" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="441" y="228" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">more than one</text>
+    <path d="M330 248 V324" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="292" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">exactly one</text>
+    <rect x="16" y="215" width="150" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="91" y="233" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">no package:</text>
+    <text x="91" y="248" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">neither is sent</text>
+    <path d="M318 236 H172" marker-end="url(#pages-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="76" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="101" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">page viewed</text>
+    <text x="330" y="121" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">page_viewed</text>
+    <text x="330" y="136" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every page load</text>
+    <text x="330" y="151" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_user_data</text>
+    <rect x="220" y="330" width="220" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="355" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">product viewed</text>
+    <text x="330" y="375" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">product_viewed</text>
+    <text x="330" y="390" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_view_item</text>
+    <rect x="540" y="76" width="160" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+    <text x="620" y="101" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">Meta pixel</text>
+    <text x="620" y="121" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">PageView</text>
+    <rect x="540" y="200" width="160" height="73" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="620" y="225" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">list viewed</text>
+    <text x="620" y="245" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">product_list_viewed</text>
+    <text x="620" y="260" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_view_item_list</text>
+  </g>
+</svg>

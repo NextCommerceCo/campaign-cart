@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 244" width="720" height="244" role="img" aria-labelledby="promotions-tracking-lifecycle-title promotions-tracking-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="promotions-tracking-lifecycle-title">Promotion tracking</title>
+  <desc id="promotions-tracking-lifecycle-desc">promotion.viewed, a banner half in view or the exit-intent popup opening, sends promotion_viewed (dl_view_promotion). promotion.clicked, a click on a banner or in the popup, sends promotion_selected (dl_select_promotion). Each is sent every time; a click does not wait for a view.</desc>
+  <defs>
+    <marker id="promotions-tracking-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="8" y="39" width="180" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="98" y="57" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a banner is half in view,</text>
+    <text x="98" y="72" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or the popup opens</text>
+    <text x="98" y="97" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.viewed</text>
+    <path d="M188 60 H214" marker-end="url(#promotions-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <rect x="8" y="163" width="180" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="98" y="181" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a banner or the popup</text>
+    <text x="98" y="196" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">is clicked</text>
+    <text x="98" y="221" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion.clicked</text>
+    <path d="M188 184 H214" marker-end="url(#promotions-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+  </g>
+  <g text-anchor="middle">
+    <rect x="220" y="16" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="41" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">viewed</text>
+    <text x="330" y="61" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion_viewed</text>
+    <text x="330" y="76" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every time</text>
+    <text x="330" y="91" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_view_promotion</text>
+    <rect x="220" y="140" width="220" height="88" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="165" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">selected</text>
+    <text x="330" y="185" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">promotion_selected</text>
+    <text x="330" y="200" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">every click</text>
+    <text x="330" y="215" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_select_promotion</text>
+  </g>
+</svg>
