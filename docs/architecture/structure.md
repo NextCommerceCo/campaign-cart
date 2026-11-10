@@ -131,7 +131,7 @@ src/
                                    payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
                                    chunks share, kept out of boot)
     display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;
-                                   localeOf), tokens.ts (template tokens), condition.ts (the 0.4.x condition parser and
+                                   localeOf; a currency's format by the page's formats.currency.<code>), tokens.ts (template tokens), condition.ts (the 0.4.x condition parser and
                                    compare, the one meaning of == != > < >= <=), texts.ts (texts by key: i18n-rules'
                                    /v1/locales, the page's translations), query.ts (next.query / data-next-query: paths
                                    over the objects events carry, fields a page defines; a chunk of its own)

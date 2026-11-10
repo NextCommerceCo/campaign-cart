@@ -75,6 +75,31 @@ describe('boot', () => {
     }
   });
 
+  it('writes a price by the page’s formats.currency.<code> from its first render, on a landing page', async () => {
+    (window as { nextConfig?: unknown }).nextConfig = {
+      translations: { en: { formats: { currency: { CAD: 'C${amount}' } } } },
+    };
+    const page = '<span data-next-package-id="2"><i id="price" data-next-display="package.price_total"></i></span>';
+    document.body.innerHTML = page;
+    const price = document.getElementById('price')!;
+    const written: string[] = [];
+    const observer = new MutationObserver(() => written.push(price.textContent));
+    observer.observe(price, { childList: true, characterData: true, subtree: true });
+    try {
+      boot(config, Promise.resolve({ ...campaign, currency: 'CAD' }));
+      await vi.waitFor(() => expect(price.textContent).toBe('C$89.00'));
+      await flush();
+      expect(written.filter(Boolean)).toEqual(['C$89.00']);
+      delete (window as { nextConfig?: unknown }).nextConfig;
+      document.body.innerHTML = page;
+      boot(config, Promise.resolve({ ...campaign, currency: 'CAD' }));
+      await vi.waitFor(() => expect(document.getElementById('price')!.textContent).toBe('CA$89.00'));
+    } finally {
+      observer.disconnect();
+      delete (window as { nextConfig?: unknown }).nextConfig;
+    }
+  });
+
   it('runs with the nextConfig the debug panel tries on this tab, before anything reads it, only in debug mode', async () => {
     const page = { locale: 'en-US', apiKey: 'pk_page' };
     const tried = JSON.stringify({

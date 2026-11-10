@@ -80,7 +80,8 @@ campaigns already use are kept, so templates need no edits.
 | Upsell, receipt                 | `data-next-upsell` · `data-next-upsell-action` · `order.*`                                                  | next   |
 
 - Values have types. Money is formatted as money in the campaign's currency and
-  language; booleans show or hide the element. `data-next-display` paths carry their type;
+  language: by the page's `formats.currency.<code>` text, else `Intl` with the prefixed symbol
+  for CAD, AUD, NZD, HKD and MXN and the narrow one for the rest. Booleans show or hide the element. `data-next-display` paths carry their type;
   `data-next-query` reads plain objects, so a number's format follows its field's name
   (`price`, `*_total`, `*percentage`, as its guide lists) unless `data-next-format` says otherwise.
 - Values are written as text, never as HTML.

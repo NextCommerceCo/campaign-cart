@@ -16,9 +16,11 @@ describe('display values', () => {
     expect(resolve(engine, 'campaign.name')).toEqual({ type: 'text', value: 'Olympus' });
   });
 
-  it('shows the local dollar sign, not CA$ or A$', () => {
-    expect(format({ type: 'money', value: 10 }, 'CAD', 'en')).toBe('$10.00');
-    expect(format({ type: 'money', value: 10 }, 'AUD', 'en')).toBe('$10.00');
+  it('tells CAD and AUD from USD, and leaves USD and every unlisted currency on the narrow symbol', () => {
+    expect(format({ type: 'money', value: 10 }, 'CAD', 'en')).toBe('CA$10.00');
+    expect(format({ type: 'money', value: 10 }, 'AUD', 'en')).toBe('A$10.00');
+    expect(format({ type: 'money', value: 10 }, 'USD', 'en')).toBe('$10.00');
+    expect(format({ type: 'money', value: 10 }, 'SGD', 'en')).toBe('$10.00');
   });
 
   it('keeps the decimals of a discount percentage the way 0.4.x did', () => {

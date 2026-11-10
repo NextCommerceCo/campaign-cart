@@ -24,7 +24,7 @@ import {
   removeLegacyPersonalData,
 } from './compat/legacy/globals';
 import { triedConfig, withTried } from './engine/visit/debug-config';
-import { localeOf } from './engine/display/format';
+import { localeOf, useCurrencyFormats } from './engine/display/format';
 import { trackingIgnored } from './engine/visit/params';
 import { rulesSend, textsIn, type Texts } from './engine/display/texts';
 
@@ -88,6 +88,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   );
   if (tried) Object.assign(window, { nextConfig: withTried(page, tried) });
   const i18n = readLegacyI18n();
+  useCurrencyFormats(i18n.translations);
   const send = window.fetch.bind(window);
   const rules = rulesSend(send, config.apiKey);
 

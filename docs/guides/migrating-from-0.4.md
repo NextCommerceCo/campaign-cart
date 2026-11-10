@@ -119,6 +119,9 @@ Still works. Use the right column on new pages.
 `data-next-i18n`, `nextConfig.locale` and `nextConfig.translations` work as in 0.4.x, by the same
 keys; see [Language](attribute-reference/setup/language.md). Without `locale`, prices and the
 checkout follow the campaign's language (0.4.x: the browser's for prices, English for the checkout).
+CAD, AUD, NZD, HKD and MXN prices carry their prefix (`CA$49.90`) unless the page's language is
+their own market's (0.4.x: a bare `$` everywhere); `formats.currency.<code>` in `translations` sets
+it ([Language and currency](recipes/language-and-currency.md)).
 
 The page widgets (timer, accordion, tooltip, scroll hint) load in a small chunk only on pages that
 use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordion:*`,

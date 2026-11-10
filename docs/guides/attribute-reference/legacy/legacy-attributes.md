@@ -57,7 +57,7 @@ and any path with no new field. A page can mix both sets, so the result works as
 | `<meta name="next-success-url">`, `data-next-checkout-step="<url>"`                                        | `data-next-go` on the form, `data-next-step`                                                                                   |
 | `data-next-required`                                                                                       | `required`                                                                                                                     |
 | `label.label-checkout`, `data-label-behavior` (floating labels)                                            | — (CSS `:placeholder-shown`, `:focus-within`)                                                                                  |
-| `data-next-format="currency"`, `"percentage"`                                                              | the same, and `currency_code`, `currency_rounded`, `number`                                                                    |
+| `data-next-format="currency"`, `"percentage"`                                                              | the same, and `currency_code`, `currency_rounded`, `number`, `amount`                                                          |
 
 ## Paths
 

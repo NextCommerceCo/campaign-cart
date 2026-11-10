@@ -1,4 +1,5 @@
 import type { State } from '../types';
+import { textsIn, type Texts } from './texts';
 
 export type ValueType = 'money' | 'percent' | 'int' | 'text' | 'bool' | 'url';
 
@@ -43,15 +44,49 @@ function formatter(locale: string | undefined, options: Intl.NumberFormatOptions
   return f;
 }
 
+type TextsByLanguage = Readonly<Record<string, Texts>>;
+
+const FORMAT = /^(narrowSymbol|symbol|code)$|\{amount\}/;
+let sources: TextsByLanguage[] = [];
+
+/** Where `formats.currency.<code>` is read, the first source with a format first: texts by language. */
+export const useCurrencyFormats = (...texts: TextsByLanguage[]): void => {
+  sources = texts;
+};
+
+/**
+ * `n` in `currency` as `as` says: an Intl `currencyDisplay`, or a pattern of `{amount}`, `{symbol}`,
+ * `{narrowSymbol}` and `{code}`. Without `as`: the page's `formats.currency.<code>`, else `symbol` for
+ * CAD, AUD, NZD, HKD and MXN and `narrowSymbol` for every other currency.
+ */
+export function moneyText(
+  n: number,
+  currency: string,
+  locale?: string,
+  options?: Intl.NumberFormatOptions,
+  as = sources
+    .map((texts) => textsIn(texts, locale || 'en')[`formats.currency.${currency}`])
+    .find((text) => FORMAT.test(text!)) ?? (/^(CA|AU|NZ|HK)D$|^MXN$/.test(currency) ? 'symbol' : 'narrowSymbol'),
+): string {
+  const money = (currencyDisplay: string) =>
+    formatter(locale, { ...options, style: 'currency', currency, currencyDisplay: currencyDisplay as never });
+  return as.includes('{')
+    ? as.replace(/\{(amount|narrowSymbol|symbol|code)\}/g, (_, name: string) =>
+        money(name === 'amount' ? 'code' : name)
+          .formatToParts(n)
+          .map((p) => (p.type !== 'literal' && (p.type === 'currency') === (name !== 'amount') ? p.value : ''))
+          .join(''),
+      )
+    : money(as).format(n);
+}
+
 export function format(v: Value, currency: string | undefined, locale?: string, override?: string | null): string {
   if (v.value === undefined || v.value === null) return '';
   const type = override === 'currency' ? 'money' : override === 'percentage' ? 'percent' : v.type;
   const n = Number(v.value);
   switch (type) {
     case 'money':
-      return currency
-        ? formatter(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(n)
-        : n.toFixed(2);
+      return currency ? moneyText(n, currency, locale) : n.toFixed(2);
     case 'percent':
       return formatter(locale, { style: 'percent', maximumFractionDigits: 0 }).format(n / 100);
     case 'int':

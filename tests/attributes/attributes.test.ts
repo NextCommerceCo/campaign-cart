@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAttributes } from '../../src/attributes';
+import { display } from '../../src/attributes/value';
 import { bindAll } from '../../src/bindings';
+import { useCurrencyFormats } from '../../src/engine/display/format';
 import { Query } from '../../src/engine/display/query';
 import { heldApi } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { FakeObserver } from '../bindings/observer';
 
@@ -70,6 +73,27 @@ describe('attributes v2: reading values', () => {
     await engine.cart.addItem(1);
     await settle(engine);
     expect($('#per-day').textContent).toBe('$1.50');
+  });
+
+  it('writes every money format by the currency’s rule, currency_code with the narrow symbol, amount without one', async () => {
+    const shown = async (currency: string, locale?: string) => {
+      const { engine } = makeEngine({ campaign: Promise.resolve({ ...campaign, currency }), locale });
+      await engine.start();
+      return (format: string | null, n = 49.9) => display('price', n, engine, format);
+    };
+    const cad = await shown('CAD');
+    expect([cad(null), cad('currency'), cad('currency_rounded', 49)]).toEqual(['CA$49.90', 'CA$49.90', 'CA$49']);
+    expect([cad('currency_code'), cad('amount'), cad('number')]).toEqual(['$49.90 CAD', '49.90', '49.9']);
+    expect([(await shown('USD'))('amount'), (await shown('JPY'))('amount', 5000)]).toEqual(['49.90', '5,000']);
+    expect((await shown('EUR', 'de'))('amount', 1234.5)).toBe('1.234,50');
+    expect((await shown(''))('amount')).toBe('49.90');
+    try {
+      useCurrencyFormats({ en: { 'formats.currency.CAD': 'C${amount}' } });
+      expect([cad(null), cad('currency_rounded', 49)]).toEqual(['C$49.90', 'C$49']);
+      expect([cad('currency_code'), cad('amount')]).toEqual(['$49.90 CAD', '49.90']);
+    } finally {
+      useCurrencyFormats();
+    }
   });
 
   it('binds a later subtree’s 0.4.x condition once, through the 0.4.x bindings only', async () => {

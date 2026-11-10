@@ -13,7 +13,9 @@ The page's own words in the shopper's language, and prices in the currency the l
 <script>
   window.nextConfig = {
     locale: 'fr-FR',
-    translations: { fr: { 'page.title': 'Écouteurs Olympus', 'page.cta': 'Commander' } },
+    translations: {
+      fr: { 'page.title': 'Écouteurs Olympus', 'page.cta': 'Commander', 'formats.currency.CAD': '{amount} $ CA' },
+    },
   };
 </script>
 
@@ -29,6 +31,40 @@ Texts are in `?lang=`, else `locale`, else the campaign's language; a `data-next
 neither the page's `translations` nor the address service has keeps the words written in the
 page. `?currency=EUR` loads the campaign priced in euros, and prices are written in the page's
 language (`49,00 €` in `fr-FR`). Links to the site's other pages carry both parameters.
+
+## Currencies that share `$`
+
+CAD, AUD, NZD, HKD and MXN are written with their prefix in a language without a region, and with
+the sign their own market uses in that market's language. A store that sells in its home market sets
+`nextConfig.locale` to it (`en-CA`, `en-AU`, `es-MX`). SGD, like every other currency, keeps its
+narrow symbol.
+
+| Currency | `en`       | Home locale        |
+| -------- | ---------- | ------------------ |
+| USD      | `$49.90`   | `en-US` `$49.90`   |
+| CAD      | `CA$49.90` | `en-CA` `$49.90`   |
+| AUD      | `A$49.90`  | `en-AU` `$49.90`   |
+| NZD      | `NZ$49.90` | `en-NZ` `$49.90`   |
+| HKD      | `HK$49.90` | `en-HK` `HK$49.90` |
+| MXN      | `MX$49.90` | `es-MX` `$49.90`   |
+| SGD      | `$49.90`   | `en-SG` `$49.90`   |
+
+A page writes a currency its own way with the text `formats.currency.<code>` in its
+`translations`, in the page's language. It applies to every price the SDK writes, from the first
+one.
+
+| `formats.currency.CAD`          | Writes       |
+| ------------------------------- | ------------ |
+| `narrowSymbol`                  | `$49.90`     |
+| `symbol`                        | `CA$49.90`   |
+| `code`                          | `CAD 49.90`  |
+| `C${amount}`                    | `C$49.90`    |
+| `{narrowSymbol}{amount} {code}` | `$49.90 CAD` |
+
+A pattern has `{amount}` (the number in the page's language, with the currency's own decimals) and
+may have `{symbol}`, `{narrowSymbol}` and `{code}`. Any other value is left out and the SDK's own
+format is used. To write the symbol in the page itself, read the number with
+[`data-next-format="amount"`](../attribute-reference/display/data-next-query.md).
 
 | Style                              | When                                 |
 | ---------------------------------- | ------------------------------------ |
