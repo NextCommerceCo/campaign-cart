@@ -209,13 +209,7 @@ export class Engine {
 
   attribution(): Attribution {
     const { visit, campaign } = this.state;
-    const cookie = (name: string, kept?: string) => this.options.cookies?.get(name) || kept;
-    const landing = visit.landing && {
-      ...visit.landing,
-      fbp: cookie('_fbp', visit.landing.fbp),
-      fbc: cookie('_fbc', visit.landing.fbc),
-    };
-    return buildAttribution({ ...visit, landing }, this.options.funnel || campaign?.name, this.context.now());
+    return buildAttribution(visit, this.options.funnel || campaign?.name, this.context.now(), this.options.cookies);
   }
 
   private restore(): void {

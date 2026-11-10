@@ -1,4 +1,5 @@
 import type { EventAttribution } from '../events/context';
+import type { Cookies } from '../runtime/session';
 
 declare const __VERSION__: string;
 
@@ -45,12 +46,13 @@ const CLICK_IDS = ['fbclid', 'clickid', 'ttclid', 'msclkid', 'gbraid', 'wbraid']
 /** The platform's limit for one metadata value, in code points; an order with a longer one is refused. */
 const METADATA_MAX = 2000;
 const capped = (value: string | number) =>
-  typeof value === 'string' && value.length > METADATA_MAX ? [...value].slice(0, METADATA_MAX).join('') : value;
+  typeof value === 'string' ? [...value].slice(0, METADATA_MAX).join('') : value;
 
 export function buildAttribution(
   { params, landing: visit, geo }: { params: Record<string, string>; landing?: Visit; geo?: { ip: string | null } },
   funnel: string | undefined,
   now: number,
+  cookies?: Pick<Cookies, 'get'>,
 ): Attribution {
   const pick = (...keys: string[]) => keys.map((k) => params[k]).find(Boolean);
   const sub = (n: number) => pick(`subaffiliate${n}`, `sub${n}`)?.slice(0, 225);
@@ -76,8 +78,8 @@ export function buildAttribution(
         referrer: visit?.referrer ?? '',
         device: visit?.device ?? '',
         device_type: visit?.deviceType ?? 'desktop',
-        fb_fbp: visit?.fbp ?? '',
-        fb_fbc: visit?.fbc ?? '',
+        fb_fbp: cookies?.get('_fbp') || visit?.fbp || '',
+        fb_fbc: cookies?.get('_fbc') || visit?.fbc || '',
         domain: visit?.domain ?? '',
         fb_pixel_id: visit?.pixelId ?? '',
         sdk_version: __VERSION__,
