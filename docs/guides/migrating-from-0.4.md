@@ -71,6 +71,8 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 - `dl_begin_checkout`, `dl_add_shipping_info`, `dl_add_payment_info`: once per checkout. A later
   step, a reload or a return from the payment gateway does not send them again.
+  `dl_add_shipping_info` is sent when the shipping address is valid, after `dl_begin_checkout`; a
+  shipping method priced before that (a bundle card with `data-next-shipping-id`) does not send it.
 - `dl_add_to_cart` is now sent for a cart filled before the page loaded (default bundle,
   `forcePackageId`, `forceBundleId`, a redirecting add-to-cart button), at the cart price.
   Filter on `first_in_session` to send one AddToCart per tab. The Meta destination does this itself.

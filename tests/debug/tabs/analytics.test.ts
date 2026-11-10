@@ -206,6 +206,10 @@ describe('the workflows match the analytics code', () => {
     await engine.cart.addItem(1);
     engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
     engine.checkout.begin();
+    const shippingAddress = { first_name: 'Jane', last_name: 'Doe', line1: '1 Main St', country: 'US' };
+    engine.attach((ctx) => ctx.update('checkout', { shippingAddress }));
+    engine.events.emit('address.entered', { ...shippingAddress, type: 'shipping' });
+    engine.events.emit('shipping.settled', { id: 1, code: 'standard' });
     await engine.cart.removeItem(1);
     engine.events.emit('user.created', {
       email: 'jane@example.com',
@@ -215,14 +219,6 @@ describe('the workflows match the analytics code', () => {
       language: 'en',
       user_agent: 'test',
     });
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'shipping',
-    });
-    engine.events.emit('shipping.settled', { id: 1, code: 'standard' });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',

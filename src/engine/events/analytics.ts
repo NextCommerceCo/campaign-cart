@@ -61,7 +61,8 @@ export interface TrackingMap {
    */
   checkout_shipping_address_submitted: Checkout;
   /**
-   * Once per checkout, when a shipping method is picked and the cart is priced with it.
+   * Once per checkout, when the shipping address is valid and the cart is priced with a shipping
+   * method: after `checkout_shipping_address_submitted`, never before `checkout_started`.
    * @group Checkout
    */
   checkout_shipping_method_submitted: Checkout;

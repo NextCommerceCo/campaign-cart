@@ -35,6 +35,12 @@ const SHIPPING: Address & { type: 'shipping' } = {
 };
 const EXIT: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'https://cdn.test/exit.png' };
 
+function enterShipping(engine: Engine) {
+  const { type: _, ...shippingAddress } = SHIPPING;
+  engine.attach((ctx) => ctx.update('checkout', { shippingAddress }));
+  engine.events.emit('address.entered', SHIPPING);
+}
+
 function startCheckout(engine: Engine) {
   engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
   engine.checkout.begin();
@@ -242,7 +248,7 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     await flush();
     startCheckout(engine);
-    engine.events.emit('address.entered', SHIPPING);
+    enterShipping(engine);
     submitted(engine);
     const [begin, shipping, payment] = win.NextDataLayer!.slice(-3);
     expect(begin).toMatchObject({ event: 'dl_begin_checkout', cart_total: '89.00', ecommerce: { value: 89 } });
@@ -266,7 +272,7 @@ describe('analytics', () => {
       startAnalytics(engine, options);
       startCheckout(engine);
       await flush();
-      engine.events.emit('address.entered', SHIPPING);
+      enterShipping(engine);
       submitted(engine, 'paypal');
       return { engine, sent: names().filter((n) => steps.includes(n)) };
     };
@@ -281,6 +287,7 @@ describe('analytics', () => {
         .map((d) => [d!.name, d!.reason]),
     ).toEqual([
       ['checkout_shipping_address_submitted', 'Already sent for this checkout'],
+      ['checkout_shipping_method_submitted', 'Already sent for this checkout'],
       ['checkout_payment_info_submitted', 'Already sent for this checkout'],
     ]);
     back.engine.attach((ctx) => ctx.forget('checkout'));
@@ -294,7 +301,7 @@ describe('analytics', () => {
     const reported = ['checkout_started', 'checkout_shipping_address_submitted', 'dl_add_shipping_info'];
     checkout.attach((ctx) => ctx.update('checkout', { reported }));
     startAnalytics(checkout, options);
-    checkout.events.emit('address.entered', SHIPPING);
+    enterShipping(checkout);
     await flush();
     expect(names()).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
 
@@ -345,6 +352,7 @@ describe('analytics', () => {
     startCheckout(engine);
     await engine.cart.setShipping(2);
     await flush();
+    enterShipping(engine);
     expect(win.NextDataLayer!.find((e) => e.event === 'dl_add_shipping_info')).toMatchObject({
       shipping_tier: 'Express',
       ecommerce: { shipping: 9.99, shipping_tier: 'Express' },
@@ -838,7 +846,7 @@ describe('tracking events', () => {
     await engine.cart.setGroup('bundle:main', { lines: [{ packageId: 1, quantity: 1 }], vouchers: [] });
     await flush();
     startCheckout(engine);
-    engine.events.emit('address.entered', SHIPPING);
+    enterShipping(engine);
     submitted(engine);
     expect(seen.map((e) => e.event_type)).toEqual([
       'page_viewed',
@@ -846,6 +854,7 @@ describe('tracking events', () => {
       'cart_updated',
       'checkout_started',
       'checkout_shipping_address_submitted',
+      'checkout_shipping_method_submitted',
       'checkout_payment_info_submitted',
     ]);
     expect(names()).toEqual([
@@ -856,7 +865,9 @@ describe('tracking events', () => {
       'dl_add_shipping_info',
       'dl_add_payment_info',
     ]);
-    expect(win.NextDataLayer!.map((e) => e.event_id)).toEqual(seen.map((e) => e.event_id));
+    expect(win.NextDataLayer!.map((e) => e.event_id)).toEqual(
+      seen.filter((e) => e.event_type !== 'checkout_shipping_method_submitted').map((e) => e.event_id),
+    );
     const add = seen.find((e) => e.event_type === 'product_added_to_cart')!;
     expect(add).toMatchObject({
       event_id: expect.stringMatching(/^[0-9a-f]{32}$/),
@@ -887,8 +898,8 @@ describe('tracking events', () => {
     });
     const checkoutId = engine.getState().checkout!.id;
     expect(seen.find((e) => e.event_type === 'cart_updated')!.data).toEqual(engine.cart.current());
-    expect(seen.slice(-3).map((e) => e.object)).toEqual(['checkout', 'checkout', 'checkout']);
-    expect(seen.at(-2)!.data).toMatchObject({ id: checkoutId, cart: { lines: [{ package_id: 1, total: 49 }] } });
+    expect(seen.slice(-4).map((e) => e.object)).toEqual(['checkout', 'checkout', 'checkout', 'checkout']);
+    expect(seen.at(-3)!.data).toMatchObject({ id: checkoutId, cart: { lines: [{ package_id: 1, total: 49 }] } });
     expect(seen.at(-1)!.data).toMatchObject({ id: checkoutId, payment_method: 'card_token' });
   });
 
@@ -956,16 +967,37 @@ describe('tracking events', () => {
     ]);
   });
 
-  it('sends the shipping address and the shipping method each once per checkout', async () => {
+  it('sends no shipping step for a priced shipping method while the shipping address is not valid', async () => {
+    const engine = await ready('', {}, (e) => void e.cart.addItem(2));
+    const seen = listen(engine);
+    startAnalytics(engine, options);
+    await flush();
+    startCheckout(engine);
+    await engine.cart.setShipping(1);
+    await flush();
+    expect(engine.cart.current().shipping_method).toBeTruthy();
+    expect(seen.map((e) => e.event_type).filter((n) => n.startsWith('checkout_'))).toEqual(['checkout_started']);
+    expect(names()).not.toContain('dl_add_shipping_info');
+    expect(
+      engine.log
+        .entries()
+        .map((e) => e.data as AnalyticsTrace | undefined)
+        .filter((d) => d?.trigger === 'shipping.settled')
+        .map((d) => [d!.name, d!.sent, d!.reason]),
+    ).toEqual([['checkout_shipping_method_submitted', false, 'The shipping address is not valid yet']]);
+  });
+
+  it('sends the shipping address and the shipping method each once per checkout, once the address is valid', async () => {
     const engine = await ready('', {}, (e) => void e.cart.addItem(2));
     const seen = listen(engine);
     startAnalytics(engine, options);
     await flush();
     startCheckout(engine);
     const method = { id: 1, code: 'standard', name: 'Standard', price: 0 };
-    engine.events.emit('address.entered', SHIPPING);
     engine.events.emit('shipping.settled', method);
-    engine.events.emit('address.entered', SHIPPING);
+    enterShipping(engine);
+    engine.events.emit('shipping.settled', method);
+    enterShipping(engine);
     engine.events.emit('shipping.settled', method);
     const shipping = seen.filter((e) => e.event_type.startsWith('checkout_shipping'));
     expect(shipping.map((e) => e.event_type)).toEqual([
@@ -973,6 +1005,32 @@ describe('tracking events', () => {
       'checkout_shipping_method_submitted',
     ]);
     for (const e of shipping) expect(e.data).toMatchObject({ id: engine.getState().checkout!.id, cart: { total: 89 } });
+    expect(names().filter((n) => n === 'dl_add_shipping_info')).toHaveLength(1);
+  });
+
+  it('sends checkout_started before the shipping steps when it starts after the checkout and replays the log', async () => {
+    const engine = await ready();
+    const seen = listen(engine);
+    await engine.cart.addItem(2);
+    await engine.cart.setShipping(1);
+    await flush();
+    startCheckout(engine);
+    enterShipping(engine);
+    const logged: string[] = [];
+    engine.on('*', (e) => logged.push(e.name), { replay: true })();
+    expect(logged.indexOf('shipping.settled')).toBeGreaterThan(-1);
+    expect(logged.indexOf('shipping.settled')).toBeLessThan(logged.indexOf('checkout.started'));
+    startAnalytics(engine, options);
+    await flush();
+    expect(seen.map((e) => e.event_type).filter((n) => n.startsWith('checkout_'))).toEqual([
+      'checkout_started',
+      'checkout_shipping_address_submitted',
+      'checkout_shipping_method_submitted',
+    ]);
+    expect(names().filter((n) => n.startsWith('dl_begin') || n.startsWith('dl_add_shipping'))).toEqual([
+      'dl_begin_checkout',
+      'dl_add_shipping_info',
+    ]);
   });
 
   it('reports a lead and promotions, and the shipping address for the shipping address only', async () => {
@@ -993,12 +1051,13 @@ describe('tracking events', () => {
     const template: Promotion = { id: 'exit_intent', type: 'exit_intent', creative: 'exit' };
     engine.events.emit('promotion.viewed', template);
     engine.events.emit('promotion.clicked', { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' });
-    engine.events.emit('address.entered', SHIPPING);
-    expect(seen.slice(-4)).toMatchObject([
+    enterShipping(engine);
+    expect(seen.slice(-5)).toMatchObject([
       { event_type: 'checkout_contact_info_submitted', object: 'checkout', data: { cart: { total: 89 } } },
       { event_type: 'promotion_viewed', data: template },
       { event_type: 'promotion_selected', data: { ...template, action: 'apply-coupon', coupon_code: 'EXIT10' } },
       { event_type: 'checkout_shipping_address_submitted', data: { cart: { total: 89 } } },
+      { event_type: 'checkout_shipping_method_submitted', data: { cart: { total: 89 } } },
     ]);
     expect(names().slice(-6)).toEqual([
       'dl_generate_lead',

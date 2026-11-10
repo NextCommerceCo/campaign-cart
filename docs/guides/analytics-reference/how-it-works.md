@@ -66,14 +66,15 @@ does.
 A funnel spans several pages, and a shopper can leave a page before analytics loaded on it. The
 SDK keeps track of what it already sent, so each event comes once:
 
-| Event                                                                                                                              | Sent                                                                                                        |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `checkout_started`, `checkout_shipping_address_submitted`, `checkout_shipping_method_submitted`, `checkout_payment_info_submitted` | Once per checkout. `checkout_started` not sent on the page that started the checkout comes on its next page |
-| `checkout_contact_info_submitted`                                                                                                  | Once, when the contact details save an Open Cart (`user.created`)                                           |
-| `checkout_completed`                                                                                                               | Once per order in this browser: a reload of the receipt does not send it again                              |
-| `checkout_completed` owed                                                                                                          | When the checkout page was left before analytics sent it, on the next page's `order.loaded`                 |
-| `upsell_completed`                                                                                                                 | Once per accepted upsell, on the `order.loaded` of the page after the upsell                                |
-| `upsell_viewed`                                                                                                                    | Once per upsell page                                                                                        |
+| Event                                                                       | Sent                                                                                                                                                          |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout_started`, `checkout_payment_info_submitted`                       | Once per checkout. `checkout_started` not sent on the page that started the checkout comes on its next page                                                   |
+| `checkout_shipping_address_submitted`, `checkout_shipping_method_submitted` | Once per checkout, when the shipping address is valid, after `checkout_started`. The method event also waits for the cart to be priced with a shipping method |
+| `checkout_contact_info_submitted`                                           | Once, when the contact details save an Open Cart (`user.created`)                                                                                             |
+| `checkout_completed`                                                        | Once per order in this browser: a reload of the receipt does not send it again                                                                                |
+| `checkout_completed` owed                                                   | When the checkout page was left before analytics sent it, on the next page's `order.loaded`                                                                   |
+| `upsell_completed`                                                          | Once per accepted upsell, on the `order.loaded` of the page after the upsell                                                                                  |
+| `upsell_viewed`                                                             | Once per upsell page                                                                                                                                          |
 
 `product_added_to_cart` and `product_removed_from_cart` compare the priced cart with what earlier
 events in the tab already reported, on `sdk.ready` and after each price update, one event per

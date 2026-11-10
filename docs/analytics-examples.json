@@ -673,7 +673,8 @@
   },
   "checkout_shipping_address_submitted": {
     "triggers": [
-      "address.entered"
+      "address.entered",
+      "checkout.started"
     ],
     "object": "checkout",
     "data": {
@@ -711,6 +712,12 @@
         "total": 49,
         "discounts": [],
         "discount_percentage": 0
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
       },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
@@ -778,7 +785,9 @@
   },
   "checkout_shipping_method_submitted": {
     "triggers": [
-      "shipping.settled"
+      "address.entered",
+      "shipping.settled",
+      "checkout.started"
     ],
     "object": "checkout",
     "data": {
@@ -816,6 +825,12 @@
         "total": 49,
         "discounts": [],
         "discount_percentage": 0
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
       },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
@@ -921,6 +936,12 @@
         "total": 49,
         "discounts": [],
         "discount_percentage": 0
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
       },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
