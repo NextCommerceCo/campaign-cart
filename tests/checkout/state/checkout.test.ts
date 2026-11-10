@@ -122,6 +122,20 @@ describe('checkout', () => {
     );
   });
 
+  it('sends a success_url that keeps the visit params, so a gateway return lands on them', async () => {
+    const { engine } = await setup({ params: { affid: 'A1', sub1: 'S1', utm_source: 'fb', ref_id: 'OLD' } });
+    await engine.cart.addItem(2);
+    const body = orderBody(engine.getState(), {
+      method: 'paypal',
+      express: true,
+      lines: engine.cart.lines(),
+      vouchers: [],
+      attribution: engine.attribution(),
+      urls: { ...URLS, successUrl: '/upsell?step=1' },
+    });
+    expect(body.success_url).toBe('https://shop.test/upsell?step=1&affid=A1&sub1=S1&utm_source=fb');
+  });
+
   it('sends the shopper to the gateway as given, else the success page with ref_id and their params', () => {
     const here = new URL('https://shop.test/checkout');
     const params = { utm_source: 'fb', ref_id: 'OLD' };

@@ -1,5 +1,6 @@
 import type { Attribution } from '../../engine/visit/attribution';
 import { shippingMethodOf } from '../../engine/cart/public';
+import { nextUrl } from '../../engine/visit/params';
 import type { Line } from '../../engine/cart/types';
 import type { ApiAddress, OrderBody, OrderUser, State } from '../../engine/types';
 import type { Address } from '../../engine/events/checkout';
@@ -55,7 +56,7 @@ export function orderBody(
     currency: campaign.currency,
     shipping_method: shippingMethodOf(state) ?? 1,
     payment_detail: { payment_method: method, ...(token && { card_token: token }) },
-    success_url: new URL(urls.successUrl ?? '/success', urls.pageUrl).href,
+    success_url: nextUrl(urls.successUrl ?? '/success', new URL(urls.pageUrl), state.visit.params),
     payment_failed_url: urls.failureUrl,
   };
   if (order.express) return body;
