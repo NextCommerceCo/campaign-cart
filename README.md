@@ -23,7 +23,7 @@ and watch the panel's state and events while you click. Then read
 | `npm run typecheck`  | TypeScript                                                                        |
 | `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
 | `bun dev`            | the real campaign pages with this SDK from source; see below                      |
-| `bun run e2e`        | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
+| `bun run e2e`        | the browser scenarios in headless Chromium against `bun dev`, all mocked          |
 | `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |
 | `npm run docs`       | build the docs site from `docs/guides` and the public types into `docs/site/`     |
 | `npm run docs:serve` | serve `docs/site` on http://localhost:3500 and rebuild it on changes              |
@@ -69,7 +69,34 @@ Every request from QA goes through your machine, so QA never needs your network 
 backend. Takes the same `--api` / `--key` options, e.g. `bun run qa --api full --key pk_test_…`;
 `--no-tunnel` serves on this machine only.
 
-`bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
-receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production
+### Browser scenarios
+
+`bun run e2e` runs every scenario in `dev/e2e/scenarios/`, each in a browser of its own against
+`bun dev` in MOCK with the synthetic campaigns in `dev/e2e/campaigns/`; `bun run e2e -- currency`
+runs one. It prints `ok` or `FAIL` per check with the value seen, saves
+`test-results/e2e-<scenario>.png` for a scenario that failed, aborts any request to a production
 host, and fails on a console error. It needs the campaign pages above and a Chromium
 (`bunx playwright-core install chromium`, or `CHROME=/path/to/chrome`).
+
+A scenario is a file there that exports `scenario`; its file name is its name:
+
+```ts
+import type { Scenario } from '../harness';
+
+export const scenario: Scenario = async (t) => {
+  await t.open('/olympus/checkout/', { affid: 'A1' });
+  await t.fillCheckout();
+  await t.pay();
+  await t.arrive(/upsell-bundle-stepper/);
+  t.check(t.orderBody()?.attribution?.affiliate === 'A1', 'the order keeps the affiliate', t.orderBody()?.attribution);
+};
+```
+
+| To set up                         | In the scenario                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| What the page's `nextConfig` says | `t.config({ locale: 'en-CA' })`                                               |
+| Another campaign, such as CAD     | a JSON in `dev/e2e/campaigns/`, then `t.config({ apiKey: 'e2e-cad' })`        |
+| An answer of the API              | `t.api('/api/v1/orders/', 400, { lines: ['…'] })`                             |
+| A Meta Pixel on the page          | `t.pixel()`, read with `t.fbq()`                                              |
+| A page the starter templates lack | a folder in `dev/e2e/pages/`, served where the campaign pages have none       |
+| What the page sent                | `t.events()`, `t.tracking()`, `t.requests()`, `t.orderBody()`, `t.cartBody()` |
