@@ -10,13 +10,14 @@ import type { Package } from '../../src/engine/types';
 async function mount(
   fetch?: typeof globalThis.fetch,
   packages?: Package[],
-  { locale, slot = '' }: { locale?: string; slot?: string } = {},
+  { locale, slot = '', customText }: { locale?: string; slot?: string; customText?: string } = {},
 ) {
   const file = 'tests/fixtures/pages/olympus-multi-variant/checkout.html';
   const doc = new DOMParser().parseFromString(readFileSync(file, 'utf8'), 'text/html');
   doc
     .querySelector<HTMLTemplateElement>('#mv-slot-template')!
     .content.firstElementChild!.insertAdjacentHTML('beforeend', slot);
+  if (customText) doc.querySelector('[data-next-default-property="custom_text"]')!.setAttribute('value', customText);
   document.body.innerHTML = doc.body.innerHTML;
   const { engine } = makeEngine({
     fetch,
@@ -104,6 +105,32 @@ describe('bundle slots (olympus multi-variant, 0.4.43 markup)', () => {
       properties: { bump_custom_text: 'Jane' },
     });
   });
+  it('keeps the page default on every unit when another bundle is picked', async () => {
+    const { $, slots, engine, change } = await mount();
+    await change($<HTMLInputElement>('[data-next-default-property="custom_text"]'), 'Eagles');
+    await change(slots()[0]!.querySelector<HTMLInputElement>('input[data-next-property="number"]')!, '23');
+    $('[data-next-bundle-id="buy2"]').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2, properties: { custom_text: 'Eagles' } }]);
+    await change($<HTMLInputElement>('[data-next-default-property="custom_text"]'), 'Hawks');
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2, properties: { custom_text: 'Hawks' } }]);
+    $('[data-next-bundle-id="buy1"]').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([
+      { package_id: 1, quantity: 1, properties: { custom_text: 'Hawks', number: '23' } },
+    ]);
+    await change($<HTMLInputElement>('[data-next-default-property="custom_text"]'), '');
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1, properties: { number: '23' } }]);
+  });
+
+  it('sends a page default the page loaded with, before the shopper changes it', async () => {
+    const { $, engine } = await mount(undefined, undefined, { customText: 'Eagles' });
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 1, properties: { custom_text: 'Eagles' } }]);
+    $('[data-next-bundle-id="buy2"]').click();
+    await flush();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2, properties: { custom_text: 'Eagles' } }]);
+  });
+
   it('fills a slot’s discount row once the coupon is priced, without redrawing the slot', async () => {
     const { slots, engine } = await mount();
     const slot = slots()[0]!;

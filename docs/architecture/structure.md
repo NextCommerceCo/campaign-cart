@@ -157,6 +157,7 @@ src/
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
+    slot-properties.ts             slots chunk: the page's default properties and a unit's own, on every unit
   attributes/          attributes  attributes v2, loaded when a page has one or a script calls a new action; legacy pages never load it
     index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
     context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
