@@ -73,7 +73,7 @@ Every 0.4.43 attribute, method, event and config key is listed in
   step, a reload or a return from the payment gateway does not send them again.
 - `dl_add_to_cart` is now sent for a cart filled before the page loaded (default bundle,
   `forcePackageId`, `forceBundleId`, a redirecting add-to-cart button), at the cart price.
-  Filter on `first_in_session` to send one AddToCart per tab.
+  Filter on `first_in_session` to send one AddToCart per tab. The Meta destination does this itself.
 - The Meta destination sends `PageView` itself, as 0.4.x did: a page whose pixel base code keeps
   `fbq('track', 'PageView')` sends it twice, so remove that line.
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in

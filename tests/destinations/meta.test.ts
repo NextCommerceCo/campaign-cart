@@ -145,6 +145,13 @@ describe('metaEvent', () => {
     expect(metaEvent(event('page_viewed'))).toEqual({ name: 'PageView', params: {}, event_id: 'ev-page_viewed' });
   });
 
+  it('sends AddToCart for the first add of the session only', () => {
+    const add = (first_in_session: boolean) =>
+      event('product_added_to_cart', { ...(EXAMPLES.product_added_to_cart.data as object), first_in_session });
+    expect(metaEvent(add(true))?.name).toBe('AddToCart');
+    expect(metaEvent(add(false))).toBeUndefined();
+  });
+
   it.each([
     'product_list_viewed',
     'product_removed_from_cart',

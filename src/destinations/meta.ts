@@ -53,7 +53,7 @@ export interface MetaEventMap {
    */
   ViewContent: MetaContents;
   /**
-   * A product added to the cart.
+   * A product added to the cart, for the first add of the session only.
    * @see https://developers.facebook.com/docs/meta-pixel/reference#standard-events
    */
   AddToCart: MetaContents;
@@ -127,6 +127,7 @@ export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?
   const name = META[e.event_type];
   if (!name) return undefined;
   if (name === 'PageView') return { name, params: {}, event_id: e.event_id };
+  if (e.event_type === 'product_added_to_cart' && !e.data.first_in_session) return undefined;
   const lines = trackingLines(e);
   const units = perUnit(lines, packages);
   const event_id = e.event_id;

@@ -469,7 +469,10 @@ The 0.4.x \`analytics.providers.facebook.enabled: true\` turns it on too, and \`
 is read when \`storeName\` is not set.`,
     loads: `\`meta-*.js\` (about 2 KB), only when it is on. The SDK never loads the pixel: the page has its
 base code, without its \`fbq('track', 'PageView')\` line. Without \`fbq\` the SDK logs one warning and sends nothing.`,
-    notes: `\`eventID\` is the tracking event's \`event_id\`, so a
+    notes: `\`AddToCart\` is sent for the first add of the session only, the \`product_added_to_cart\` whose
+\`first_in_session\` is \`true\`; later adds and bundle changes are not sent.
+
+\`eventID\` is the tracking event's \`event_id\`, so a
 [Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events)
 event with the same id is counted once. With \`storeName\`, an order's \`Purchase\` has
 \`eventID: '<storeName>-<order number>'\`, the id the store's server-side events use.`,

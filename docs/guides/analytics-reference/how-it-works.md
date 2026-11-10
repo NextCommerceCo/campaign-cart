@@ -82,7 +82,9 @@ cart filled before the page loaded (a default bundle, `forcePackageId`, `forceBu
 from an add-to-cart button) sends `product_added_to_cart` at the cart price. A bundle change sends
 `product_removed_from_cart` for the old lines, at the price they were added, and
 `product_added_to_cart` for the new ones. `first_in_session` is `true` on the first
-`product_added_to_cart` of the tab, for tags that should send only one AddToCart.
+`product_added_to_cart` of the tab, for tags that should send only one AddToCart. The Meta
+destination does this itself: it sends `AddToCart` for that one only. GA4 and RudderStack get every
+add.
 
 ## Turning parts off
 
