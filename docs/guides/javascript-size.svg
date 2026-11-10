@@ -18,7 +18,7 @@
   <rect x="50" y="194" width="104" height="44" rx="6" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.45; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
   <rect x="156" y="194" width="20" height="44" rx="4" style="fill: var(--clean-accent, #2563eb); fill-opacity: 0.2; stroke: var(--clean-accent, #2563eb); stroke-width: 1.5" />
   <text x="62" y="221" style="fill: var(--clean-fg, #111827); font-size: 13px; font-weight: 600">36 KB</text>
-  <text x="190" y="214" style="fill: var(--clean-fg, #111827); font-size: 13px">before prices: loader 1 KB + core 25 KB + attributes 9 KB</text>
+  <text x="190" y="214" style="fill: var(--clean-fg, #111827); font-size: 13px">before prices: loader 1 KB + core 26 KB + attributes 9 KB</text>
   <text x="190" y="232" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">then tracking, 7 KB, once the page is idle</text>
 
   <text x="50" y="280" style="fill: var(--clean-accent, #2563eb); font-size: 14px; font-weight: 600">0.5 checkout page</text>
