@@ -4,6 +4,27 @@ import { makeEngine } from '../../fixtures/engine';
 import { MemoryStorage } from '../../fixtures/storage';
 
 describe('attribution', () => {
+  it('cuts a metadata value to 2000 code points, the most the platform takes', () => {
+    const visit = (landingPage: string, referrer = '') => ({
+      landingPage,
+      referrer,
+      device: 'UA',
+      deviceType: 'desktop' as const,
+    });
+    const metadata = (landing: ReturnType<typeof visit>, params: Record<string, string> = {}) =>
+      buildAttribution({ params, landing }, 'Olympus', 1000).metadata;
+    const url = (length: number) => 'https://shop.test/?q='.padEnd(length, 'a');
+
+    expect(metadata(visit(url(1999))).landing_page).toBe(url(1999));
+    expect(metadata(visit(url(2000))).landing_page).toBe(url(2000));
+    expect(metadata(visit(url(2001))).landing_page).toBe(url(2000));
+
+    const emoji = '😀'.repeat(2001);
+    expect(metadata(visit('https://shop.test/', emoji)).referrer).toBe('😀'.repeat(2000));
+    expect(metadata(visit(url(10)), { fbclid: 'f'.repeat(2500) }).fbclid).toBe('f'.repeat(2000));
+    expect(metadata(visit(url(3000))).conversion_timestamp).toBe(1000);
+  });
+
   it('builds the object orders and events carry', () => {
     const visit = {
       landingPage: 'https://shop.test/lp',

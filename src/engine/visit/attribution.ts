@@ -42,6 +42,11 @@ export interface Attribution {
 
 const CLICK_IDS = ['fbclid', 'clickid', 'ttclid', 'msclkid', 'gbraid', 'wbraid'];
 
+/** The platform's limit for one metadata value, in code points; an order with a longer one is refused. */
+const METADATA_MAX = 2000;
+const capped = (value: string | number) =>
+  typeof value === 'string' && value.length > METADATA_MAX ? [...value].slice(0, METADATA_MAX).join('') : value;
+
 export function buildAttribution(
   { params, landing: visit, geo }: { params: Record<string, string>; landing?: Visit; geo?: { ip: string | null } },
   funnel: string | undefined,
@@ -65,21 +70,23 @@ export function buildAttribution(
     subaffiliate4: sub(4),
     subaffiliate5: sub(5),
     everflow_transaction_id: evclid,
-    metadata: {
-      landing_page: visit?.landingPage ?? '',
-      referrer: visit?.referrer ?? '',
-      device: visit?.device ?? '',
-      device_type: visit?.deviceType ?? 'desktop',
-      fb_fbp: visit?.fbp ?? '',
-      fb_fbc: visit?.fbc ?? '',
-      domain: visit?.domain ?? '',
-      fb_pixel_id: visit?.pixelId ?? '',
-      sdk_version: __VERSION__,
-      conversion_timestamp: now,
-      ...(geo?.ip && { user_ip: geo.ip }),
-      ...Object.fromEntries(CLICK_IDS.filter((k) => params[k]).map((k) => [k, params[k]!])),
-      ...(evclid && { everflow_transaction_id: evclid }),
-    },
+    metadata: Object.fromEntries(
+      Object.entries({
+        landing_page: visit?.landingPage ?? '',
+        referrer: visit?.referrer ?? '',
+        device: visit?.device ?? '',
+        device_type: visit?.deviceType ?? 'desktop',
+        fb_fbp: visit?.fbp ?? '',
+        fb_fbc: visit?.fbc ?? '',
+        domain: visit?.domain ?? '',
+        fb_pixel_id: visit?.pixelId ?? '',
+        sdk_version: __VERSION__,
+        conversion_timestamp: now,
+        ...(geo?.ip && { user_ip: geo.ip }),
+        ...Object.fromEntries(CLICK_IDS.filter((k) => params[k]).map((k) => [k, params[k]!])),
+        ...(evclid && { everflow_transaction_id: evclid }),
+      }).map(([key, value]) => [key, capped(value)]),
+    ),
   };
   return Object.fromEntries(
     Object.entries(result).filter(([, v]) => v !== undefined && v !== ''),
