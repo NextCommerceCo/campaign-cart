@@ -11,7 +11,11 @@ stylesheet (`campaign-cart.css`) to the page, and fetches the campaign while the
 being parsed.
 
 ```html
-<script type="module" src=".../loader.js" data-campaign="pk_…"></script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
+  data-campaign="pk_…"
+></script>
 ```
 
 ## Attributes

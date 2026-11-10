@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -36,5 +36,23 @@ describe('docs sidebar sections', () => {
       ([, list]) => [...list!.matchAll(/'([^']+)'/g)].map(([, name]) => name),
     );
     expect(docGroups.filter((group: string) => !sectioned.includes(group))).toEqual([]);
+  });
+});
+
+describe('docs loader examples', () => {
+  it('load the SDK from the CDN at the version the docs are built for', () => {
+    const pages = [
+      'docs/site-home.md',
+      ...readdirSync('docs/guides', { recursive: true, encoding: 'utf8' })
+        .filter((name) => name.endsWith('.md'))
+        .map((name) => join('docs/guides', name)),
+    ];
+    const sources = pages.flatMap((page) =>
+      [...readFileSync(page, 'utf8').matchAll(/<script[^>]*src="([^"]*loader\.js)"/g)].map(([, src]) => src),
+    );
+    expect(sources.length).toBeGreaterThan(0);
+    expect([...new Set(sources)]).toEqual([
+      'https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js',
+    ]);
   });
 });

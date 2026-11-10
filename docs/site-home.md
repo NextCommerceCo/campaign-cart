@@ -6,7 +6,11 @@ The shortest page that works:
 
 ```html
 <head>
-  <script type="module" src=".../loader.js" data-campaign="{YOUR_CAMPAIGN_API_KEY}"></script>
+  <script
+    type="module"
+    src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
+    data-campaign="{YOUR_CAMPAIGN_API_KEY}"
+  ></script>
 </head>
 
 <body>

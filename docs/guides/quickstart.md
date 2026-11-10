@@ -14,7 +14,11 @@ total, and goes on to checkout. Copy it, put your campaign key and package ids i
 <!doctype html>
 <html>
   <head>
-    <script type="module" src=".../loader.js" data-campaign="pk_…"></script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v{{SDK_VERSION}}/dist/loader.js"
+      data-campaign="pk_…"
+    ></script>
     <style>
       html:not([data-next-ready]) .price {
         visibility: hidden;
