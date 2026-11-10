@@ -20,11 +20,6 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 ## Fixed
 
 - Order bumps count in the purchase again.
-- Purchase events carry the customer's details for your tags.
 - Affiliate and ad tracking reaches the order: on a first visit, after PayPal, Apple Pay or 3-D
   Secure, and when a shopper taps a link early.
-- `next.setMetadata` works again. [JavaScript API](javascript-api.md)
 - Checkout tells the shopper why an order could not be placed.
-
-Every change is in the
-[changelog](https://github.com/NextCommerceCo/campaign-cart/blob/main/CHANGELOG.md).
