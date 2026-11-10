@@ -237,7 +237,7 @@ src/
 | Chunk        | Loaded when                                                                                         | Budget (gzip) |
 | ------------ | --------------------------------------------------------------------------------------------------- | ------------- |
 | loader       | always, inline                                                                                      | 2.5 KB        |
-| boot         | always                                                                                              | 25.6 KB       |
+| boot         | always                                                                                              | 26 KB         |
 | checkout     | `form[data-next-checkout]`                                                                          | 30 KB         |
 | order        | `[data-next-upsell]` or `order.*`                                                                   | 10 KB         |
 | analytics    | idle after ready                                                                                    | 8 KB          |
