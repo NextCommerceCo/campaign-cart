@@ -1,6 +1,7 @@
 import { pageEnvironment } from '../../src/dom/environment';
 import { Engine, type Environment } from '../../src/engine/engine';
 import type { Visit } from '../../src/engine/visit/attribution';
+import type { Cookies } from '../../src/engine/runtime/session';
 import type { Campaign } from '../../src/engine/types';
 import { fakeApi } from './api';
 import { campaign } from './campaign';
@@ -20,6 +21,7 @@ export interface MakeEngine {
   campaign?: Promise<Campaign>;
   params?: Record<string, string>;
   visit?: Visit;
+  cookies?: Cookies;
   now?: () => number;
   reset?: boolean;
   debug?: boolean;
@@ -41,6 +43,7 @@ export function makeEngine(opts: MakeEngine = {}) {
     storage: { local, session },
     params: opts.params,
     visit: opts.visit,
+    cookies: opts.cookies,
     now: opts.now,
     reset: opts.reset,
     debug: opts.debug,
