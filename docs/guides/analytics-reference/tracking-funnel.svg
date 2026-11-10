@@ -1,66 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 482" width="1080" height="482" role="img" aria-labelledby="tracking-funnel-title tracking-funnel-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
-  <title id="tracking-funnel-title">Tracking events through a funnel</title>
-  <desc id="tracking-funnel-desc">Tracking events and the engine events that send them, across a funnel. On every page: page_viewed on sdk.ready; product_added_to_cart, product_removed_from_cart and cart_updated on cart.calculated; promotion_viewed on promotion.viewed and promotion_selected on promotion.clicked. Landing: product_viewed for one package on the page, product_list_viewed for several, on sdk.ready. Checkout: checkout_started on checkout.started, checkout_contact_info_submitted on user.created, checkout_shipping_address_submitted on address.entered, checkout_shipping_method_submitted on shipping.selected, checkout_payment_info_submitted on checkout.submitted, checkout_completed on order.paid. Upsell: upsell_viewed on upsell.viewed, upsell_skipped on upsell.skipped, upsell_completed on order.loaded for the upsell accepted on the page before. Receipt: upsell_completed on order.loaded, and checkout_completed on order.loaded only when the checkout page was left before it was sent.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 606" width="760" height="606" role="img" aria-labelledby="tracking-funnel-title tracking-funnel-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="tracking-funnel-title">What the shopper does, and the event the SDK sends</title>
+  <desc id="tracking-funnel-desc">What a shopper does on each page and the tracking event the SDK sends. Landing page: opens the page, page_viewed; sees a product, product_viewed; adds it to the cart, product_added_to_cart. Checkout page: opens the checkout, checkout_started; enters contact details, checkout_contact_info_submitted; enters a shipping address, checkout_shipping_address_submitted; gets a shipping method, checkout_shipping_method_submitted; submits the payment, checkout_payment_info_submitted; pays, checkout_completed. Upsell page: sees an offer, upsell_viewed; accepts it, upsell_completed; declines it, upsell_skipped.</desc>
   <defs>
-    <marker id="funnel-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <marker id="funnel-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
     </marker>
   </defs>
-  <text x="10" y="24" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">Tracking events through a funnel</text>
-  <rect x="10" y="40" width="1060" height="92" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
-  <text x="26" y="62" style="fill: var(--clean-fg, #111827); font-size: 13px; font-weight: 600">Every page</text>
-  <text x="26" y="84"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">page_viewed</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> ← sdk.ready</tspan></text>
-  <text x="26" y="104"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">product_added_to_cart</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> · </tspan><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">product_removed_from_cart</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> · </tspan><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">cart_updated</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> ← cart.calculated</tspan></text>
-  <text x="26" y="124"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">promotion_viewed</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> ← promotion.viewed · </tspan><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">promotion_selected</tspan><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px"> ← promotion.clicked</tspan></text>
-  <rect x="10" y="152" width="250" height="290" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
-  <text x="135" y="176" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Landing</text>
-  <path d="M10 190 H260" style="stroke: var(--clean-border, #d7dce5); stroke-width: 1" />
-  <text x="24" y="214"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">product_viewed</tspan></text>
-  <text x="24" y="230"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← sdk.ready</tspan></text>
-  <text x="24" y="252"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">product_list_viewed</tspan></text>
-  <text x="24" y="268"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← sdk.ready</tspan></text>
-  <text x="24" y="296" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">product_viewed when one</text>
-  <text x="24" y="311" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">package is on the page,</text>
-  <text x="24" y="326" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">product_list_viewed for more</text>
-  <path d="M263 171 H275" marker-end="url(#funnel-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-  <rect x="280" y="152" width="250" height="290" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
-  <text x="405" y="176" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Checkout</text>
-  <path d="M280 190 H530" style="stroke: var(--clean-border, #d7dce5); stroke-width: 1" />
-  <text x="294" y="214"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_started</tspan></text>
-  <text x="294" y="230"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← checkout.started</tspan></text>
-  <text x="294" y="252"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_contact_info_submitted</tspan></text>
-  <text x="294" y="268"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← user.created</tspan></text>
-  <text x="294" y="290"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_shipping_address_submitted</tspan></text>
-  <text x="294" y="306"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← address.entered</tspan></text>
-  <text x="294" y="328"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_shipping_method_submitted</tspan></text>
-  <text x="294" y="344"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← shipping.selected</tspan></text>
-  <text x="294" y="366"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_payment_info_submitted</tspan></text>
-  <text x="294" y="382"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← checkout.submitted</tspan></text>
-  <text x="294" y="404"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_completed</tspan></text>
-  <text x="294" y="420"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← order.paid</tspan></text>
-  <path d="M533 171 H545" marker-end="url(#funnel-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-  <rect x="550" y="152" width="250" height="290" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
-  <text x="675" y="176" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Upsell</text>
-  <path d="M550 190 H800" style="stroke: var(--clean-border, #d7dce5); stroke-width: 1" />
-  <text x="564" y="214"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">upsell_viewed</tspan></text>
-  <text x="564" y="230"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← upsell.viewed</tspan></text>
-  <text x="564" y="252"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">upsell_skipped</tspan></text>
-  <text x="564" y="268"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← upsell.skipped</tspan></text>
-  <text x="564" y="290"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">upsell_completed</tspan></text>
-  <text x="564" y="306"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← order.loaded</tspan></text>
-  <text x="564" y="334" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">upsell_completed is for</text>
-  <text x="564" y="349" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">the upsell accepted</text>
-  <text x="564" y="364" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">on the page before</text>
-  <path d="M803 171 H815" marker-end="url(#funnel-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
-  <rect x="820" y="152" width="250" height="290" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
-  <text x="945" y="176" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Receipt</text>
-  <path d="M820 190 H1070" style="stroke: var(--clean-border, #d7dce5); stroke-width: 1" />
-  <text x="834" y="214"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">upsell_completed</tspan></text>
-  <text x="834" y="230"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← order.loaded</tspan></text>
-  <text x="834" y="252"><tspan style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 12px">checkout_completed</tspan></text>
-  <text x="834" y="268"><tspan style="fill: var(--clean-fg-muted, #6b7280); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 11px">← order.loaded</tspan></text>
-  <text x="834" y="296" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">checkout_completed only when</text>
-  <text x="834" y="311" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">the checkout page was left</text>
-  <text x="834" y="326" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">before it was sent</text>
-  <text x="10" y="470" style="fill: var(--clean-fg-muted, #6b7280); font-size: 11px">The checkout events come once per checkout, checkout_completed once per order, upsell_completed once per upsell.</text>
+  <text x="190" y="28" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px; font-weight: 600; letter-spacing: 0.04em">THE SHOPPER</text>
+  <text x="436" y="28" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px; font-weight: 600; letter-spacing: 0.04em">THE SDK SENDS</text>
+  <rect x="10" y="44" width="740" height="120" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+  <text x="28" y="74" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Landing page</text>
+  <text x="190" y="74" style="fill: var(--clean-fg, #111827); font-size: 13px">Opens the page</text>
+  <path d="M388 70 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="74" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">page_viewed</text>
+  <text x="190" y="106" style="fill: var(--clean-fg, #111827); font-size: 13px">Sees a product</text>
+  <path d="M388 102 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="106" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">product_viewed</text>
+  <text x="190" y="138" style="fill: var(--clean-fg, #111827); font-size: 13px">Adds it to the cart</text>
+  <path d="M388 134 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="138" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">product_added_to_cart</text>
+  <path d="M380 169 V191" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; fill: none" />
+  <rect x="10" y="198" width="740" height="216" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+  <text x="28" y="228" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Checkout page</text>
+  <text x="190" y="228" style="fill: var(--clean-fg, #111827); font-size: 13px">Opens the checkout</text>
+  <path d="M388 224 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="228" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_started</text>
+  <text x="190" y="260" style="fill: var(--clean-fg, #111827); font-size: 13px">Enters contact details</text>
+  <path d="M388 256 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="260" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_contact_info_submitted</text>
+  <text x="190" y="292" style="fill: var(--clean-fg, #111827); font-size: 13px">Enters a shipping address</text>
+  <path d="M388 288 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="292" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_shipping_address_submitted</text>
+  <text x="190" y="324" style="fill: var(--clean-fg, #111827); font-size: 13px">Gets a shipping method</text>
+  <path d="M388 320 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="324" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_shipping_method_submitted</text>
+  <text x="190" y="356" style="fill: var(--clean-fg, #111827); font-size: 13px">Submits the payment</text>
+  <path d="M388 352 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="356" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_payment_info_submitted</text>
+  <text x="190" y="388" style="fill: var(--clean-fg, #111827); font-size: 13px">Pays</text>
+  <path d="M388 384 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="388" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">checkout_completed</text>
+  <path d="M380 419 V441" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; fill: none" />
+  <rect x="10" y="448" width="740" height="120" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />
+  <text x="28" y="478" style="fill: var(--clean-fg, #111827); font-size: 14px; font-weight: 600">Upsell page</text>
+  <text x="190" y="478" style="fill: var(--clean-fg, #111827); font-size: 13px">Sees an offer</text>
+  <path d="M388 474 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="478" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">upsell_viewed</text>
+  <text x="190" y="510" style="fill: var(--clean-fg, #111827); font-size: 13px">Accepts it</text>
+  <path d="M388 506 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="510" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">upsell_completed</text>
+  <text x="190" y="542" style="fill: var(--clean-fg, #111827); font-size: 13px">Declines it</text>
+  <path d="M388 538 H424" marker-end="url(#funnel-arrow)" style="stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; fill: none" />
+  <text x="436" y="542" style="fill: var(--clean-accent, #2563eb); font-family: var(--clean-font-mono, ui-monospace, monospace); font-size: 13px">upsell_skipped</text>
+  <text x="10" y="594" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">Each event is sent once, also when the shopper reloads or moves between the pages of a checkout.</text>
 </svg>

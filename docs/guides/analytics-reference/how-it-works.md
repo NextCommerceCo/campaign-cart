@@ -6,105 +6,77 @@ order: 0.1
 
 # How analytics works
 
-The SDK turns what happens on a page into [tracking events](/analytics): `product_added_to_cart`,
-`checkout_started`, `checkout_completed`. They are the SDK's own contract, named in the storefront
-style, and each carries the same object the SDK's [events](/events) carry. It builds them from
-those events, so they come at the same moments, and hands each one to `next.analytics.on` and to
-the [destinations](destinations/overview.md) that are on: GTM, GA4 and the Meta pixel are built in;
-any other vendor remaps them from a listener.
+When a shopper does something that matters (sees a product, adds it to the cart, starts the
+checkout, pays), the SDK sends a **tracking event**. Your tags receive it: GTM is on by default,
+GA4, the Meta pixel and RudderStack can be turned on, and your own code can listen too.
 
-![Tracking events across a funnel: the landing page sends page_viewed, product_viewed or product_list_viewed, and the cart events; the checkout sends checkout_started, checkout_contact_info_submitted, checkout_shipping_address_submitted, checkout_shipping_method_submitted, checkout_payment_info_submitted and checkout_completed; an upsell page sends upsell_viewed, upsell_skipped and upsell_completed for the page before; the receipt sends upsell_completed and any checkout_completed still owed](tracking-funnel.svg)
+![What the shopper does on each page and the tracking event the SDK sends: on the landing page page_viewed, product_viewed and product_added_to_cart; on the checkout page checkout_started, checkout_contact_info_submitted, checkout_shipping_address_submitted, checkout_shipping_method_submitted, checkout_payment_info_submitted and checkout_completed; on an upsell page upsell_viewed, upsell_completed and upsell_skipped](tracking-funnel.svg)
 
-## When it loads
+## The events
 
-Analytics is its own 5 KB chunk, loaded when the browser is idle after `sdk.ready`, so it never
-holds up the first price. Events the page sent before it loaded are not lost: it reads them back
-in order, then follows new ones.
+| When the shopper                          | Tracking event                                       | GTM gets                                  |
+| ----------------------------------------- | ---------------------------------------------------- | ----------------------------------------- |
+| Opens a page                              | `page_viewed`                                        | `dl_user_data`                            |
+| Sees one product, or a list               | `product_viewed`, `product_list_viewed`              | `dl_view_item`, `dl_view_item_list`       |
+| Adds a product, or removes one            | `product_added_to_cart`, `product_removed_from_cart` | `dl_add_to_cart`, `dl_remove_from_cart`   |
+| Opens the checkout with a cart            | `checkout_started`                                   | `dl_begin_checkout`                       |
+| Enters contact details                    | `checkout_contact_info_submitted`                    | `dl_generate_lead`                        |
+| Enters a valid shipping address           | `checkout_shipping_address_submitted`                | `dl_add_shipping_info`                    |
+| Gets a shipping method, after the address | `checkout_shipping_method_submitted`                 | none: the address already sent it         |
+| Submits the payment                       | `checkout_payment_info_submitted`                    | `dl_add_payment_info`                     |
+| Pays                                      | `checkout_completed`                                 | `dl_purchase`                             |
+| Sees an upsell offer                      | `upsell_viewed`                                      | `dl_viewed_upsell`                        |
+| Accepts it, or declines it                | `upsell_completed`, `upsell_skipped`                 | `dl_upsell_purchase`, `dl_skipped_upsell` |
+
+Each event has a page in the [Analytics Reference](/analytics) with what it carries and an example.
+
+## Listen to an event
 
 ```js
-next.analytics.on('checkout_completed', (event) => {});
-next.analytics.on('*', (event) => {});
-```
-
-A listener gets every event of its name this page has sent, then each new one, whether it was
-added before analytics loaded or long after. `next.analytics.on` returns a function that removes
-the listener.
-
-## The event
-
-```js
-next.analytics.on('product_added_to_cart', (event) => {
-  event.event_type; // 'product_added_to_cart'
-  event.object; // 'cart_line'
-  event.data; // the CartItem: package_id, product_title, sku, price, quantity, …
-  event.context; // the page, campaign, session, attribution and browser
+next.analytics.on('checkout_completed', (event) => {
+  event.event_type; // 'checkout_completed'
+  event.data; // the order: lines, total, currency, …
+  event.context; // the page, campaign, session and attribution
 });
+
+next.analytics.on('*', (event) => {}); // every event
 ```
 
-The envelope is the one `next.on` hands out, plus `context`:
+A listener added late still gets the events this page already sent, in order.
 
-| Field         | Value                                                                                                                                           |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `event_id`    | Unique, a UUID v4 as 32 hex digits; the order number on `checkout_completed` and `ref_id-US1` on `upsell_completed`, so a tag can drop a repeat |
-| `event_type`  | The name, such as `'checkout_completed'`                                                                                                        |
-| `object`      | What `data` is: `cart_line`, `cart`, `checkout`, `order`, `upsell`, `promotion`, `product`, `products`, `page`                                  |
-| `data`        | The event's object, on its page in the [Analytics Reference](/analytics): a Cart, a CartItem, the Checkout, the Order, …                        |
-| `created_at`  | ISO time                                                                                                                                        |
-| `session_id`  | The campaign session, a UUID v4 as 32 hex digits                                                                                                |
-| `sdk_version` | The SDK version                                                                                                                                 |
-| `context`     | The same on every event, and what [`next.context()`](../javascript-api.md) returns                                                              |
+| Field        | What it is                                                                     |
+| ------------ | ------------------------------------------------------------------------------ |
+| `event_type` | The name, such as `'checkout_completed'`                                       |
+| `data`       | The cart, cart line, checkout, order or upsell the event is about              |
+| `context`    | The same on every event: page, campaign, session, attribution (UTM, click ids) |
+| `event_id`   | Unique. The order number on `checkout_completed`, so a tag can drop a repeat   |
 
-`context` has `page_location` and `page_referrer` (without their query string), `page_title`, the
-`campaign` (`id`, `name`, `currency`, `language`), the campaign `session_id`, the `attribution`
-(UTM parameters, affiliate and click ids, `landing_page`, `fbp`, `fbc`) and the `browser`
-(`user_agent`, `language`, `device_type`). The shopper's details are not in `context`: the
-`checkout_*` events carry them in their Checkout and `checkout_completed` in its Order, as `next.on`
-does.
+`event.object`, `created_at`, `session_id` and `sdk_version` are there too, as on
+[`next.on`](/events) events.
 
-## Once, even across pages
+## Each event comes once
 
-A funnel spans several pages, and a shopper can leave a page before analytics loaded on it. The
-SDK keeps track of what it already sent, so each event comes once:
+- **Checkout events** come once per checkout, also across the steps of a multi-step checkout and
+  after a reload.
+- **`checkout_completed`** comes once per order. Reloading the receipt does not send it again.
+- **`upsell_completed`** comes once per accepted upsell, on the page after it.
+- **A page left early loses nothing.** Analytics loads when the browser is idle, so it never slows
+  the first price; an event it had no time to send goes out on the next page.
+- **`product_added_to_cart`** comes once per product added. A bundle change sends a remove for the
+  old products and an add for the new ones. `first_in_session` is `true` on the first add of the
+  tab; the Meta destination sends `AddToCart` for that one only.
 
-| Event                                                                       | Sent                                                                                                                                                          |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checkout_started`, `checkout_payment_info_submitted`                       | Once per checkout. `checkout_started` not sent on the page that started the checkout comes on its next page                                                   |
-| `checkout_shipping_address_submitted`, `checkout_shipping_method_submitted` | Once per checkout, when the shipping address is valid, after `checkout_started`. The method event also waits for the cart to be priced with a shipping method |
-| `checkout_contact_info_submitted`                                           | Once, when the contact details save an Open Cart (`user.created`)                                                                                             |
-| `checkout_completed`                                                        | Once per order in this browser: a reload of the receipt does not send it again                                                                                |
-| `checkout_completed` owed                                                   | When the checkout page was left before analytics sent it, on the next page's `order.loaded`                                                                   |
-| `upsell_completed`                                                          | Once per accepted upsell, on the `order.loaded` of the page after the upsell                                                                                  |
-| `upsell_viewed`                                                             | Once per upsell page                                                                                                                                          |
+## Turn it on or off
 
-`product_added_to_cart` and `product_removed_from_cart` compare the priced cart with what earlier
-events in the tab already reported, on `sdk.ready` and after each price update, one event per
-line. An add on a page that was left before analytics loaded is still sent on the next page. A
-cart filled before the page loaded (a default bundle, `forcePackageId`, `forceBundleId`, a redirect
-from an add-to-cart button) sends `product_added_to_cart` at the cart price. A bundle change sends
-`product_removed_from_cart` for the old lines, at the price they were added, and
-`product_added_to_cart` for the new ones. `first_in_session` is `true` on the first
-`product_added_to_cart` of the tab, for tags that should send only one AddToCart. The Meta
-destination does this itself: it sends `AddToCart` for that one only. GA4 and RudderStack get every
-add.
+GTM is on by default; GA4, the Meta pixel and RudderStack are off until `nextConfig.analytics`
+turns them on. See [Destinations](destinations/overview.md#config).
 
-## Turning parts off
+## See what was sent
 
-Analytics and GTM are on by default, GA4, the Meta pixel and RudderStack off; `nextConfig.analytics` turns
-analytics off or one destination on or off, and nothing for a destination that is off loads. See
-[Destinations](destinations/overview.md#config).
-
-## Debugging
-
-`?debug=1` opens the debug panel. Its Analytics tab lists each tracking event this page sent, newest
-first, with what it carried and ⚠ when something is off; click one for where it went (GTM, GA4,
-Meta, RudderStack: received, off, or missing its tag), the items and total it carried, and each
-payload. **Page config** in the panel's settings tries another `nextConfig.analytics` on the tab.
-
-Every event, and every one the SDK chose not to send, is also a debug log line with its reason:
+Open the page with `?debug=1`. The Analytics tab lists each event, what it carried and where it
+went, and says why an event was not sent.
 
 ```js
 next.log.level = 'debug';
-// analytics product_added_to_cart sent: Added since the last report: Starter ×1
 // analytics checkout_started not sent: Already sent for this checkout
-next.log.entries().filter((entry) => entry.message.startsWith('analytics '));
 ```
