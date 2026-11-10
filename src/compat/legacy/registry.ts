@@ -253,7 +253,7 @@ export function legacyEvents(engine: Engine, load: Load): LegacyEvents {
     },
     preload: () =>
       Promise.resolve(translator()).then(
-        () => {},
+        (m) => m.legacyMetadata(engine),
         (err) => engine.log.error('the 0.4.x event names failed to load', err),
       ),
     checkoutStarted: (checkout) => fire('checkout:started', checkout, true),

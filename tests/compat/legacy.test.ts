@@ -109,6 +109,44 @@ describe('shipping methods (shop-three-step page script)', () => {
   });
 });
 
+describe('attribution metadata (0.4.x)', () => {
+  type Metadata = {
+    setMetadata(values: Record<string, unknown>): void;
+    addMetadata(key: string, value: unknown): void;
+    getMetadata(): Record<string, unknown>;
+    clearMetadata(): void;
+  };
+
+  it('has setMetadata, addMetadata, getMetadata and clearMetadata for the page’s ready callbacks', async () => {
+    const ready = vi.fn((next: NextApi & Metadata) => next.addMetadata('quiz_result', 'dry'));
+    (window as { nextReady?: unknown }).nextReady = [ready];
+    const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;
+    await flush();
+    expect(ready).toHaveBeenCalled();
+    expect(next.getMetadata()).toMatchObject({ quiz_result: 'dry', device_type: 'desktop', domain: location.hostname });
+
+    next.setMetadata({ quiz_version: '3', fb_test_code: 'TEST123' });
+    expect(next.getMetadata()).toMatchObject({ quiz_result: 'dry', quiz_version: '3', fb_test_code: 'TEST123' });
+
+    next.clearMetadata();
+    const cleared = next.getMetadata();
+    expect(cleared).not.toHaveProperty('quiz_result');
+    expect(cleared).not.toHaveProperty('fb_test_code');
+    expect(cleared).toMatchObject({ device_type: 'desktop', domain: location.hostname });
+  });
+
+  it('keeps an Everflow id set after load over localStorage.evclid when the cart changes', async () => {
+    localStorage.setItem('evclid', 'OLD-ID');
+    const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;
+    await flush();
+    expect(next.getMetadata().everflow_transaction_id).toBe('OLD-ID');
+    next.setMetadata({ everflow_transaction_id: 'NEW-ID', my_custom_key: 'set-after-load' });
+    await next.addItem({ packageId: 2 });
+    expect(next.getMetadata()).toMatchObject({ everflow_transaction_id: 'NEW-ID', my_custom_key: 'set-after-load' });
+    expect(next.context().attribution.everflow_transaction_id).toBe('NEW-ID');
+  });
+});
+
 describe('0.4.x event names', () => {
   it('cart:updated carries the priced cart in the 0.4.x shape, and the emptied cart', async () => {
     const next = boot(config, Promise.resolve(campaign));

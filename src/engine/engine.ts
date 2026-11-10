@@ -209,7 +209,13 @@ export class Engine {
 
   attribution(): Attribution {
     const { visit, campaign } = this.state;
-    return buildAttribution(visit, this.options.funnel || campaign?.name, this.context.now(), this.options.cookies);
+    return buildAttribution(
+      visit,
+      this.options.funnel || campaign?.name,
+      this.context.now(),
+      this.options.cookies,
+      this.options.storage.local?.getItem('evclid'),
+    );
   }
 
   private restore(): void {

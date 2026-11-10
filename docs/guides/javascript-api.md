@@ -42,8 +42,9 @@ Kept for 0.4.x page scripts, each marked `@deprecated` with its replacement:
 `addItem({ packageId, quantity })`, `clearCart()`, `swapCart(items)`, `applyCoupon(code)`,
 `getPackage(id)`, `getCampaignData()`, `getCartData()` (0.4.x shape), `exitIntent(options)` (its
 `id` and `name` options name the popup on its `promotion.*` events),
-`getShippingMethods()`, `setShippingMethod(id)`, `getSelectedShippingMethod()`, and the
-`next:ready` / `next:initialized` window events.
+`getShippingMethods()`, `setShippingMethod(id)`, `getSelectedShippingMethod()`,
+`setMetadata(values)`, `addMetadata(key, value)`, `getMetadata()`, `clearMetadata()` (on a page with
+0.4.x attributes, from its ready callbacks on), and the `next:ready` / `next:initialized` window events.
 
 The other 0.4.x members are gone; no live page calls them. [parity-0.4.md](../architecture/parity-0.4.md)
 lists each one with what to use instead.
@@ -61,11 +62,23 @@ lists each one with what to use instead.
 | `setShipping`                  | `shipping_id`                                                                                                                  |
 | `acceptUpsell` / `skipUpsell`  | `selector_id` or `items`: what the offer adds to the order, on a page opened with `?ref_id`                                    |
 | `go`                           | `url`: opens it with the visit's parameters                                                                                    |
+| `setMetadata`                  | Any keys: each is set on the order's attribution `metadata`; `undefined` or `''` removes one                                   |
 
 ```js
 await next.actions.addItem({ package_id: 42, quantity: 2 }); // { ok: true }
 await next.actions.applyCoupon({ code: 'nope' }); // { ok: false, errors: { code: 'code "NOPE" was not applied' } }
 ```
+
+`setMetadata` is for a value the page learns after it loaded, such as a click id or a quiz answer:
+
+```js
+await next.actions.setMetadata({ everflow_transaction_id: 'abc123', quiz_result: 'dry' }); // { ok: true }
+```
+
+A value is a string or a number, kept to 2000 characters. It stays for the rest of the browser tab
+and is sent with the cart and the order, after the SDK's own keys (`landing_page`, `referrer`,
+`fb_fbp`, …), so a key of the same name takes the page's value. `everflow_transaction_id` is also
+the order's Everflow id, ahead of `?evclid` and `localStorage.evclid`.
 
 The 0.5 calls `addItem(packageId, qty)`, `removeItem(packageId)`, `setQuantity(packageId, qty)`,
 `applyCoupon(code)`, `removeCoupon(code)` and `setShipping(id)` still work, with their old results.

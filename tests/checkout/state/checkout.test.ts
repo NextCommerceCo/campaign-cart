@@ -136,6 +136,33 @@ describe('checkout', () => {
     expect(body.success_url).toBe('https://shop.test/upsell?step=1&affid=A1&sub1=S1&utm_source=fb');
   });
 
+  it('sends metadata the page set after load with the cart and the order, through a cart change and on the next page', async () => {
+    const session = new MemoryStorage();
+    const local = new MemoryStorage();
+    local.setItem('evclid', 'OLD');
+    const { engine, checkout, fill, posts } = await setup({ session, local });
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    engine.visit.setMetadata({ everflow_transaction_id: 'NEW', fb_test_code: 'TEST123' });
+    const sent = {
+      everflow_transaction_id: 'NEW',
+      metadata: { everflow_transaction_id: 'NEW', fb_test_code: 'TEST123' },
+    };
+
+    checkout.begin();
+    fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
+    await checkout.leave('last_name');
+    expect(posts('/carts/')[0]!.body.attribution).toMatchObject(sent);
+    fill(SHIPPING);
+
+    await engine.cart.addItem(2);
+    expect(await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' })).toMatchObject({ ref_id: 'R1' });
+    expect(posts('/orders/')[0]!.body.attribution).toMatchObject(sent);
+
+    const next = makeEngine({ session, local }).engine;
+    expect(next.attribution()).toMatchObject(sent);
+  });
+
   it('sends the shopper to the gateway as given, else the success page with ref_id and their params', () => {
     const here = new URL('https://shop.test/checkout');
     const params = { utm_source: 'fb', ref_id: 'OLD' };

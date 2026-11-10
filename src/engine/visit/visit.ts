@@ -3,6 +3,9 @@ import type { Context } from '../engine';
 export function createVisit(ctx: Context, now: () => number) {
   const visit = () => ctx.getState().visit;
   return {
+    setMetadata(metadata: Record<string, string | number>): void {
+      ctx.update('visit', { metadata });
+    },
     noteExitIntentShown(): void {
       ctx.update('visit', { exitIntentShown: visit().exitIntentShown + 1 });
     },

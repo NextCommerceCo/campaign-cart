@@ -183,6 +183,7 @@ describe('boot', () => {
     document.documentElement.removeAttribute('data-next-ready');
     let resolve!: (c: Campaign) => void;
     boot(config, new Promise((r) => (resolve = r)));
+    await flush();
     expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true);
     resolve(campaign);
   });

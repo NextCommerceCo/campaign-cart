@@ -1,6 +1,7 @@
 import type { Engine } from '../../engine/engine';
 import type { EngineEvent, EventName } from '../../engine/events/bus';
 import { LATER, LEGACY_EVENTS } from './events';
+import { legacyMetadataApi } from './metadata';
 import { type From, legacyRegistry, type LegacyState } from './registry';
 
 /** @deprecated One 0.4.x `next.on` listener: `handle` calls it for each event its name is made from, and says when it is done. */
@@ -31,4 +32,9 @@ export function legacyHandler(
       return !!alias.once;
     },
   };
+}
+
+/** @deprecated Adds the 0.4.x metadata methods to `window.next` once this chunk has loaded. */
+export function legacyMetadata(engine: Engine): void {
+  Object.assign((window as { next?: object }).next ?? {}, legacyMetadataApi(engine));
 }

@@ -87,4 +87,48 @@ describe('attribution', () => {
     }).engine;
     expect(second.attribution().metadata.landing_page).toBe('https://shop.test/lp');
   });
+
+  it('adds the metadata the page set after the SDK’s own keys, cut to 2000 code points', () => {
+    const built = buildAttribution(
+      {
+        params: { fbclid: 'F' },
+        metadata: { fb_test_code: 'TEST123', fb_external_id: 'v-1', fbclid: 'PAGE', quiz: 'q'.repeat(2500), n: 7 },
+      },
+      undefined,
+      0,
+    );
+    expect(built.metadata).toMatchObject({
+      fb_test_code: 'TEST123',
+      fb_external_id: 'v-1',
+      fbclid: 'PAGE',
+      quiz: 'q'.repeat(2000),
+      n: 7,
+      device_type: 'desktop',
+    });
+  });
+
+  it('takes the Everflow id from the page, else ?evclid, else localStorage.evclid as 0.4.x did', () => {
+    const everflow = (params: Record<string, string>, metadata?: Record<string, string | number>, stored?: string) => {
+      const built = buildAttribution({ params, metadata }, undefined, 0, undefined, stored);
+      return [built.everflow_transaction_id, built.metadata.everflow_transaction_id];
+    };
+    expect(everflow({}, undefined, 'STORED')).toEqual(['STORED', 'STORED']);
+    expect(everflow({ evclid: 'URL' }, undefined, 'STORED')).toEqual(['URL', 'URL']);
+    expect(everflow({ evclid: 'URL' }, { everflow_transaction_id: 'PAGE' }, 'STORED')).toEqual(['PAGE', 'PAGE']);
+    expect(everflow({}, { everflow_transaction_id: 42 })).toEqual(['42', '42']);
+    expect(buildAttribution({ params: {} }, undefined, 0, undefined, null)).not.toHaveProperty(
+      'everflow_transaction_id',
+    );
+  });
+
+  it('reads localStorage.evclid through the storage it was given, each time it is asked', () => {
+    const local = new MemoryStorage();
+    const { engine } = makeEngine({ local });
+    expect(engine.attribution()).not.toHaveProperty('everflow_transaction_id');
+    local.setItem('evclid', 'LATER');
+    expect(engine.attribution()).toMatchObject({
+      everflow_transaction_id: 'LATER',
+      metadata: { everflow_transaction_id: 'LATER' },
+    });
+  });
 });
