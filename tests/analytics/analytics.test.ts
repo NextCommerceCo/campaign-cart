@@ -515,7 +515,7 @@ describe('analytics', () => {
     expect(names()).not.toContain('dl_remove_from_cart');
   });
 
-  it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
+  it('reports a paid order and its upsells once, in the 0.4.x shape, with the customer', async () => {
     const local = new MemoryStorage();
     await loadOrder(ORDER, { local });
     const run = async () => {
@@ -539,7 +539,9 @@ describe('analytics', () => {
       ecommerce: { transaction_id: 'R1-US1', affiliation: 'Upsell', value: 20 },
       upsell_metadata: { original_order_id: 'R1', upsell_number: 1 },
     });
-    expect(JSON.stringify(purchase)).not.toContain('jane@example.com');
+    const customer = { visitor_type: 'logged_in', customer_email: 'jane@example.com', customer_first_name: 'Ann' };
+    expect(purchase.user_properties).toMatchObject(customer);
+    expect(upsell.user_properties).toMatchObject(customer);
     expect(await run()).toEqual(['dl_user_data']);
   });
 

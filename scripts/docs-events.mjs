@@ -31,6 +31,7 @@ const SOURCES = [
   'src/engine/cart/types.ts',
   'src/engine/types.ts',
   'src/compat/analytics/schema.ts',
+  'src/compat/analytics/customer.ts',
   'src/destinations/ga4.ts',
   'src/destinations/meta.ts',
   'src/destinations/rudderstack/types.ts',
@@ -366,7 +367,11 @@ const COMMON = [
   'attribution',
   '_metadata',
 ];
-const ownFields = (push) => Object.fromEntries(Object.entries(push).filter(([k]) => !COMMON.includes(k)));
+const withCustomer = (push) => Object.keys(push.user_properties ?? {}).length > 1;
+const ownFields = (push) =>
+  Object.fromEntries(
+    Object.entries(push).filter(([k]) => !COMMON.includes(k) || (k === 'user_properties' && withCustomer(push))),
+  );
 
 const config = (destinations) => `\`\`\`html
 <script>
@@ -425,7 +430,8 @@ like any promotion, and the five \`dl_exit_intent_*\` pushes below, which have n
 close after a click, or the page removing the popup, sends neither \`_dismissed\` nor \`_closed\`.
 
 Every push carries the fields of [\`DataLayerPush\`](#datalayerpush). The examples show them on
-\`dl_user_data\`; the others leave them out but \`event\` and \`event_id\`.`,
+\`dl_user_data\`; the others leave them out but \`event\` and \`event_id\`, and \`user_properties\` on
+\`dl_purchase\` and \`dl_upsell_purchase\`, which carry the order's customer in it.`,
     call: (name, e) =>
       `\`\`\`json\n${JSON.stringify(name === 'dl_user_data' ? e.push : ownFields(e.push), null, 2)}\n\`\`\``,
   },

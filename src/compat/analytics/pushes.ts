@@ -3,13 +3,16 @@ import type { TrackingEvent, TrackingName } from '../../engine/events/analytics'
 import { paymentType } from '../../engine/order/payment';
 import { apiOrder, PRODUCT_LIST, promotionFields, shippingTier, upsellPackage } from '../../engine/tracking';
 import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ecommerce';
+import { customer } from './customer';
 import type { DataLayerEcommerce, DataLayerEventMap, DataLayerName, DataLayerPush } from './schema';
 import type { NAMES } from '.';
 
 /** The fields of a `dl_*` push after the ones every push carries. */
 export type Fields<N extends DataLayerName> = N extends DataLayerName
-  ? Omit<DataLayerEventMap[N], keyof DataLayerPush>
+  ? Omit<DataLayerEventMap[N], Exclude<keyof DataLayerPush, OwnKey<N>>>
   : never;
+
+type OwnKey<N extends DataLayerName> = N extends 'dl_purchase' | 'dl_upsell_purchase' ? 'user_properties' : never;
 
 type Of<K extends TrackingName> = Fields<(typeof NAMES)[K]>;
 
@@ -62,7 +65,11 @@ const purchasePush = (engine: Engine, e: TrackingEvent<'checkout_completed'>): O
   const code = coupon?.refId === order.ref_id ? coupon.code : undefined;
   const paid = new Set(e.data.lines.map((l) => l.id));
   const lines = (order.lines ?? []).filter((l) => paid.has(String(l.id)));
-  return { pageType: 'purchase', ecommerce: purchase(engine, order, lines, e.event_id, code) };
+  return {
+    user_properties: customer(order),
+    pageType: 'purchase',
+    ecommerce: purchase(engine, order, lines, e.event_id, code),
+  };
 };
 
 const upsellPurchasePush = (
@@ -73,6 +80,7 @@ const upsellPurchasePush = (
   const line = order?.lines?.find((l) => String(l.id) === e.data.upsell.line.id);
   if (!order || !line) return undefined;
   return {
+    user_properties: customer(order),
     pageType: 'upsell',
     ecommerce: upsellPurchase(engine, order, line, e.event_id),
     upsell_metadata: {

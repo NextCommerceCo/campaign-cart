@@ -992,7 +992,17 @@
         "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
         "event_time": "2026-11-04T08:30:00.000Z",
         "user_properties": {
-          "visitor_type": "guest"
+          "visitor_type": "logged_in",
+          "customer_email": "jane@example.com",
+          "customer_first_name": "Ann",
+          "customer_last_name": "Lee",
+          "customer_address_1": "2 Side St",
+          "customer_address_2": "",
+          "customer_city": "Reno",
+          "customer_province": "NV",
+          "customer_province_code": "NV",
+          "customer_zip": "",
+          "customer_country": "US"
         },
         "page_location": "http://localhost:3000/",
         "page_title": "Olympus Earbuds",
@@ -1056,7 +1066,17 @@
         "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
         "event_time": "2026-11-04T08:30:00.000Z",
         "user_properties": {
-          "visitor_type": "guest"
+          "visitor_type": "logged_in",
+          "customer_email": "jane@example.com",
+          "customer_first_name": "Ann",
+          "customer_last_name": "Lee",
+          "customer_address_1": "2 Side St",
+          "customer_address_2": "",
+          "customer_city": "Reno",
+          "customer_province": "NV",
+          "customer_province_code": "NV",
+          "customer_zip": "",
+          "customer_country": "US"
         },
         "page_location": "http://localhost:3000/",
         "page_title": "Olympus Earbuds",

@@ -143,8 +143,11 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
-  `page_location` has no query string. The one exception is the RudderStack destination's
-  `identify()`, which sends the shopper's email, name, phone and address as 0.4.x did.
+  `page_location` has no query string. The two exceptions, both as 0.4.x sent them: `dl_purchase`
+  and `dl_upsell_purchase` carry the order's customer in `user_properties` (email, name, phone and
+  billing address, with `visitor_type: 'logged_in'`), and the RudderStack destination's
+  `identify()` sends the shopper's email, name, phone and address. The destination trace in the
+  log keeps `visitor_type` only.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.
 - **Destinations:** GTM (the `dl_*` pushes, on by default), GA4 (`gtag`), the Meta pixel
   (`fbq`) and RudderStack (`rudderanalytics`, the 0.4.x calls and properties) are built in, GA4

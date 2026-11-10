@@ -190,7 +190,105 @@ describe('0.4.x data layer from tracking events', () => {
       },
     ]);
     expect(pushes('dl_purchase')[0].ecommerce).not.toHaveProperty('discount');
-    expect(JSON.stringify(win.NextDataLayer)).not.toContain('jane@example.com');
+  });
+
+  const CUSTOMER = {
+    visitor_type: 'logged_in',
+    customer_email: 'jane@example.com',
+    customer_first_name: 'Ann',
+    customer_last_name: 'Lee',
+    customer_address_1: '2 Side St',
+    customer_address_2: '',
+    customer_city: 'Reno',
+    customer_province: 'NV',
+    customer_province_code: 'NV',
+    customer_zip: '',
+    customer_country: 'US',
+  };
+
+  it('sends the order’s customer in user_properties of dl_purchase and dl_upsell_purchase, as 0.4.x did', async () => {
+    const engine = await started();
+    const order = withUpsell(ORDER, 99, 1, { package: 9 });
+    engine.attach((ctx) => ctx.update('order', { order }));
+    const paid = publicOrder({ ...order, lines: order.lines!.slice(0, 1) });
+    track(engine, 'checkout_completed', paid, '1001');
+    const upsell = publicOrder(order).lines.find((l) => l.upsell)!;
+    track(engine, 'upsell_completed', { ...publicOrder(order), upsell: { number: 1, line: upsell } }, 'R1-US1');
+    expect(pushes('dl_purchase')[0].user_properties).toEqual(CUSTOMER);
+    expect(pushes('dl_upsell_purchase')[0].user_properties).toEqual(CUSTOMER);
+    expect(win.dataLayer!.filter((e) => e.event).map((e) => e.user_properties)).toEqual([CUSTOMER, CUSTOMER]);
+  });
+
+  it('takes the name and phone from the customer when the billing address has none, and the phone from the address first', async () => {
+    const engine = await started();
+    const user = { ...ORDER.user, phone_number: '+14155550100' };
+    engine.attach((ctx) => ctx.update('order', { order: { ...ORDER, user, billing_address: undefined } }));
+    track(engine, 'checkout_completed', publicOrder(ORDER), '1001');
+    expect(pushes('dl_purchase')[0].user_properties).toEqual({
+      visitor_type: 'logged_in',
+      customer_email: 'jane@example.com',
+      customer_first_name: 'Jane',
+      customer_last_name: 'Doe',
+      customer_phone: '+14155550100',
+    });
+
+    const billing_address = { line1: '2 Side St', line2: 'Apt 4', postcode: '89501', phone_number: '+14155550199' };
+    engine.attach((ctx) => ctx.update('order', { order: { ...ORDER, ref_id: 'R2', user, billing_address } }));
+    track(engine, 'checkout_completed', publicOrder({ ...ORDER, ref_id: 'R2' }), '1002');
+    expect(pushes('dl_purchase')[1].user_properties).toEqual({
+      visitor_type: 'logged_in',
+      customer_email: 'jane@example.com',
+      customer_first_name: 'Jane',
+      customer_last_name: 'Doe',
+      customer_phone: '+14155550199',
+      customer_address_1: '2 Side St',
+      customer_address_2: 'Apt 4',
+      customer_city: '',
+      customer_province: '',
+      customer_province_code: '',
+      customer_zip: '89501',
+      customer_country: '',
+    });
+  });
+
+  it('sends a guest in user_properties of dl_purchase for an order without a customer', async () => {
+    const engine = await started();
+    engine.attach((ctx) => ctx.update('order', { order: { ...ORDER, user: undefined, billing_address: undefined } }));
+    track(engine, 'checkout_completed', publicOrder(ORDER), '1001');
+    expect(pushes('dl_purchase')[0].user_properties).toEqual({ visitor_type: 'guest' });
+  });
+
+  it('sends only visitor_type in user_properties of every other push, with the order loaded', async () => {
+    const engine = await started();
+    engine.attach((ctx) => ctx.update('order', { order: ORDER }));
+    track(engine, 'checkout_started', { id: 'c1', step: 1, cart: emptyCart } as TrackingMap['checkout_started']);
+    track(engine, 'upsell_viewed', {
+      ...publicOrder(ORDER),
+      page: '/upsell',
+      lines: [],
+    } as TrackingMap['upsell_viewed']);
+    expect(win.NextDataLayer!.map((e) => [e.event, e.user_properties])).toEqual([
+      ['dl_begin_checkout', { visitor_type: 'guest' }],
+      ['dl_viewed_upsell', { visitor_type: 'guest' }],
+    ]);
+  });
+
+  it('logs dl_purchase and dl_upsell_purchase with visitor_type only in user_properties', async () => {
+    const engine = await started();
+    const logged: unknown[] = [];
+    engine.log.stream((entry) => logged.push(entry));
+    const order = withUpsell(ORDER, 99, 1, { package: 9 });
+    engine.attach((ctx) => ctx.update('order', { order }));
+    track(engine, 'checkout_completed', publicOrder({ ...order, lines: order.lines!.slice(0, 1) }), '1001');
+    const upsell = publicOrder(order).lines.find((l) => l.upsell)!;
+    track(engine, 'upsell_completed', { ...publicOrder(order), upsell: { number: 1, line: upsell } }, 'R1-US1');
+    expect(logged).toHaveLength(2);
+    expect(logged).toMatchObject([
+      { data: { name: 'dl_purchase', payload: { user_properties: { visitor_type: 'logged_in' } } } },
+      { data: { name: 'dl_upsell_purchase', payload: { user_properties: { visitor_type: 'logged_in' } } } },
+    ]);
+    for (const text of ['jane@example.com', 'Ann', 'Lee', '2 Side St', 'Reno', 'customer_'])
+      expect(JSON.stringify(logged)).not.toContain(text);
   });
 
   it('builds dl_purchase from the lines of checkout_completed, is_upsell or not', async () => {

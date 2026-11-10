@@ -81,8 +81,10 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in
   sessionStorage. As in 0.4.x, a line the order was paid with (an order bump with
   `data-next-is-upsell="true"`) is in `dl_purchase`, not a `dl_upsell_purchase`.
+- `user_properties` carries the customer's email, name, phone and billing address on `dl_purchase`
+  and `dl_upsell_purchase` only, from the order. Every other `dl_*` event has
+  `{ visitor_type: 'guest' }`.
 - `dl_purchase`:
-  - `user_properties` without the customer's email, name and address.
   - No URL query strings in `page_referrer` / `attribution.metadata`.
   - Same `transaction_id`, value, tax basis (picked per order, as 0.4.x did), `item_sku`, per-item
     `discount`, `item_brand` and `coupon`.

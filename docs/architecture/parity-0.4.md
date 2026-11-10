@@ -76,17 +76,12 @@ SDK shows the campaign currency unless the URL has `?currency=`. Options: geo lo
 first paint and a re-price (flicker for non-US visitors), server-side currency on the campaign
 GET (backend ask B5), or keep USD.
 
-**Personal data in `user_properties`.** 0.4.x put the shopper's email, names, phone and billing
-address on every event once known (Elevar's format; Elevar and GTM tags read it from
-`dataLayer`), with `visitor_type: 'logged_in'` after the order. This SDK sends
-`{ visitor_type: 'guest' }` only. Options: send the 0.4.x fields again, or keep them out and give
-those tags another source.
-
 ## Kept different on purpose
 
 | 0.4.x                                                                                                                                                                                                                                                         | Now                                                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `page_location` with the query string; `session_id`, `user_agent`, `campaign_id`, `campaign_api_key` on every event                                                                                                                                           | Origin + path; those fields are not sent                                                                                                                 |
+| `user_properties` with the shopper's email, names, phone and billing address on every event once known, `visitor_type: 'logged_in'` after the order                                                                                                           | On `dl_purchase` and `dl_upsell_purchase` only, from the order (#134, #131); `{ visitor_type: 'guest' }` on every other event                            |
 | `window.ElevarDataLayer`                                                                                                                                                                                                                                      | Not written (no reader on live pages)                                                                                                                    |
 | `dl_view_item_list` rescanned on DOM changes and carried the list into add-to-cart                                                                                                                                                                            | Sent once on ready                                                                                                                                       |
 | No `dl_add_to_cart` for a cart filled by the default bundle, `forcePackageId`, `forceBundleId` or a redirecting add-to-cart button; a bundle change sent `dl_package_swapped` or nothing ([#126](https://github.com/NextCommerceCo/campaign-cart/issues/126)) | `dl_add_to_cart` / `dl_remove_from_cart` for every change at the cart price, once per tab, with `first_in_session` on the first add                      |
