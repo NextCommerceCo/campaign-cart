@@ -1,3 +1,5 @@
+import type { Visit } from './attribution';
+
 export const ONE_SHOT_PARAMS = [
   'reset',
   'forcePackageId',
@@ -14,6 +16,19 @@ const ATTRIBUTION =
   /^(utm_\w+|gclid|gbraid|wbraid|fbclid|ttclid|msclkid|clickid|evclid|affid|aff|sub\d|subaffiliate\d|funnel|currency)$/;
 
 export const isAttributionParam = (key: string) => ATTRIBUTION.test(key);
+
+/**
+ * `params`, with the attribution ones of a same-origin `referrer` when the visit has none of its own: a link
+ * followed before the SDK could add them to it.
+ */
+export function withReferrerParams(params: Record<string, string>, visit?: Visit): Record<string, string> {
+  try {
+    const from = new URL(visit?.referrer ?? '');
+    if (from.origin === new URL(visit!.landingPage).origin && !Object.keys(params).some(isAttributionParam))
+      return { ...Object.fromEntries([...from.searchParams].filter(([key]) => isAttributionParam(key))), ...params };
+  } catch {}
+  return params;
+}
 
 /** `?ignore=true`: no tracking for the rest of the tab, until `?ignore=false`. Kept params carry it. */
 export const trackingIgnored = (params: Record<string, string>): boolean => params.ignore === 'true';

@@ -6,7 +6,7 @@ import type { Browser, EventCampaign, EventContext } from './events/context';
 import type { ErrorAction, Snapshot } from './events/sdk';
 import { type LogLevel, Logger } from './runtime/log';
 import { appliedCodes, publicOrder } from './order/order';
-import { keptParams, parseForcePackages } from './visit/params';
+import { keptParams, parseForcePackages, withReferrerParams } from './visit/params';
 import { createSelectors, type SelectorActions } from './cart/selectors';
 import { campaignSession, type Cookies } from './runtime/session';
 import { StorageAdapter } from './runtime/storage';
@@ -225,7 +225,7 @@ export class Engine {
     this.state = { ...this.state, cart: { ...this.state.cart, ...cart }, ...(campaign && { campaign }) };
     this.update('visit', {
       ...visit,
-      params: { ...visit?.params, ...this.state.visit.params },
+      params: withReferrerParams({ ...visit?.params, ...this.state.visit.params }, this.options.visit),
       landing: visit?.landing ?? this.state.visit.landing,
     });
     if (campaign) this.events.emit('campaign.loaded', { campaign, fromCache: true });

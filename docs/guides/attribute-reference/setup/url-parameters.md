@@ -39,6 +39,10 @@ itself. A link to another site gets only the attribution ones (`utm_*`, `gclid`,
 `wbraid`, `fbclid`, `ttclid`, `msclkid`, `clickid`, `evclid`, `affid`, `aff`, `sub1`…,
 `subaffiliate1`…, `funnel`, `currency`).
 
+A link followed before the SDK had loaded opens the next page without them. That page, when
+its visit has no attribution parameter of its own, takes the attribution ones from the page it
+came from, if that page is on the same site.
+
 These stay on the page they were opened with and are never carried: `reset`, `forcePackageId`,
 `forceBundleId`, `debug`, `debugger`, `payment_failed`, `payment_method`, `ref_id`,
 `order_ref_id` (the next order page gets its `ref_id` from the SDK).

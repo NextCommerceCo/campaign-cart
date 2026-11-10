@@ -159,7 +159,9 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   evclid, `_fbp`/`_fbc` and the funnel are kept for the tab session, with the first landing page and
   the metadata a page sets with `next.actions.setMetadata`. The same object goes on every event and
   on the order.
-- **Links:** same-site links carry the session's params (this replaces `utmTransfer`).
+- **Links:** same-site links carry the session's params (this replaces `utmTransfer`). A page
+  whose visit has no attribution params takes them from a same-origin referrer: a link followed
+  before the SDK loaded.
 
 ## 8. Errors and debugging
 
