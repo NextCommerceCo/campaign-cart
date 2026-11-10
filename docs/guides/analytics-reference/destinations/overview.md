@@ -24,6 +24,9 @@ The SDK never loads a vendor's tag: GTM, `gtag`, the Meta pixel's base code and 
 JavaScript SDK snippet are the page's own. A destination that is on without its tag logs one
 warning.
 
+The Meta destination sends `PageView` itself, as 0.4.x did. A page that keeps
+`fbq('track', 'PageView')` in its pixel base code sends it twice: remove that line.
+
 The `checkout_*` events carry the Checkout and `checkout_completed` the Order as `next.on` does,
 with the shopper's `user` and addresses. GTM, GA4 and Meta leave them out; RudderStack sends the
 `identify()` 0.4.x sent, with the email, name, phone and address; a listener picks what its vendor

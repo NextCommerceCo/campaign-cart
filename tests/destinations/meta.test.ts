@@ -141,8 +141,11 @@ describe('metaEvent', () => {
     });
   });
 
+  it('sends a page view as PageView without parameters, under the event id', () => {
+    expect(metaEvent(event('page_viewed'))).toEqual({ name: 'PageView', params: {}, event_id: 'ev-page_viewed' });
+  });
+
   it.each([
-    'page_viewed',
     'product_list_viewed',
     'product_removed_from_cart',
     'cart_updated',
@@ -180,6 +183,7 @@ describe('startMeta', () => {
 
     expect(fbq.mock.calls).toEqual([
       ['track', 'ViewContent', metaEvent(event('product_viewed'))!.params, { eventID: 'ev-product_viewed' }],
+      ['track', 'PageView', {}, { eventID: 'ev-page_viewed' }],
       ['track', 'Purchase', metaEvent(event('checkout_completed'))!.params, { eventID: 'shop-1001' }],
     ]);
     expect(logged(engine, 'debug').filter((e) => e.message.startsWith('destination meta'))).toEqual([
@@ -194,6 +198,7 @@ describe('startMeta', () => {
           payload: { params: metaEvent(event('product_viewed'))!.params, eventID: 'ev-product_viewed' },
         },
       }),
+      expect.objectContaining({ message: 'destination meta PageView sent' }),
       expect.objectContaining({
         message: 'destination meta Purchase sent',
         data: expect.objectContaining({

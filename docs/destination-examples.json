@@ -246,6 +246,13 @@
     }
   },
   "meta": {
+    "PageView": {
+      "from": [
+        "page_viewed"
+      ],
+      "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
+      "params": {}
+    },
     "ViewContent": {
       "from": [
         "product_viewed"

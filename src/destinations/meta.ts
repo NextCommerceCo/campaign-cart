@@ -43,6 +43,11 @@ export interface MetaContents {
  */
 export interface MetaEventMap {
   /**
+   * A page load.
+   * @see https://developers.facebook.com/docs/meta-pixel/reference#standard-events
+   */
+  PageView: Record<never, never>;
+  /**
    * A product the shopper sees.
    * @see https://developers.facebook.com/docs/meta-pixel/reference#standard-events
    */
@@ -90,6 +95,7 @@ export type MetaEvent<K extends MetaName = MetaName> = {
 
 /** The Meta event each tracking event is sent as; the others are not sent. */
 export const META: Partial<Record<TrackingName, MetaName>> = {
+  page_viewed: 'PageView',
   product_viewed: 'ViewContent',
   product_added_to_cart: 'AddToCart',
   checkout_started: 'InitiateCheckout',
@@ -120,6 +126,7 @@ const contents = (e: TrackingEvent, lines: TrackingLine[], units: TrackingLine[]
 export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?: Packages): MetaEvent | undefined {
   const name = META[e.event_type];
   if (!name) return undefined;
+  if (name === 'PageView') return { name, params: {}, event_id: e.event_id };
   const lines = trackingLines(e);
   const units = perUnit(lines, packages);
   const event_id = e.event_id;

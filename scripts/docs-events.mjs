@@ -458,8 +458,9 @@ and each \`upsell_completed\` are a \`purchase\` of their own, with the tracking
     vendor: 'Meta Pixel standard events',
     reference: 'Meta reference',
     as: 'Meta event',
-    intro: `Sends six tracking events to the page's \`fbq\` as Meta Pixel standard events,
-\`fbq('track', name, params, { eventID })\`. The pixel's base code sends \`PageView\` itself.`,
+    intro: `Sends tracking events to the page's \`fbq\` as Meta Pixel standard events,
+\`fbq('track', name, params, { eventID })\`. \`PageView\` is one of them, as in 0.4.x: remove
+\`fbq('track', 'PageView')\` from the pixel's base code on the page, or Meta gets it twice.`,
     config: `Off by default. On, with the store's name:
 
 ${config("{ meta: { enabled: true, storeName: 'shop' } }")}
@@ -467,7 +468,7 @@ ${config("{ meta: { enabled: true, storeName: 'shop' } }")}
 The 0.4.x \`analytics.providers.facebook.enabled: true\` turns it on too, and \`nextConfig.storeName\`
 is read when \`storeName\` is not set.`,
     loads: `\`meta-*.js\` (about 2 KB), only when it is on. The SDK never loads the pixel: the page has its
-base code. Without \`fbq\` the SDK logs one warning and sends nothing.`,
+base code, without its \`fbq('track', 'PageView')\` line. Without \`fbq\` the SDK logs one warning and sends nothing.`,
     notes: `\`eventID\` is the tracking event's \`event_id\`, so a
 [Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events)
 event with the same id is counted once. With \`storeName\`, an order's \`Purchase\` has
