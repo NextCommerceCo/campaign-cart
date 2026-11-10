@@ -184,6 +184,16 @@ describe('architecture', () => {
     expect(outside).toEqual([]);
   });
 
+  it('nothing in src/ imports dev tooling or tests', () => {
+    const outside = sources.flatMap(({ file, path, code }) =>
+      [...code.matchAll(/(?:\bfrom|\bimport\(|^import|declare module)\s*'([^']+)'/gm)]
+        .map((m) => (m[1]!.startsWith('.') ? join(dirname(file), m[1]!) : m[1]!))
+        .filter((target) => within(target, 'dev') || within(target, 'tests'))
+        .map((target) => `${path} → ${target}`),
+    );
+    expect(outside).toEqual([]);
+  });
+
   it('the DOM layers read selectors through engine.selectors, not raw state', () => {
     const reads = /getState\(\)\.selectors\b|\{[^}]*\bselectors\b[^}]*\}\s*=\s*[\w.]*getState\(\)/;
     const raw = sources.filter((s) => !headless(s.path) && reads.test(s.code)).map((s) => s.path);
