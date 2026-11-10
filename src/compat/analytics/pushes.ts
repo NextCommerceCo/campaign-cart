@@ -60,7 +60,9 @@ const purchasePush = (engine: Engine, e: TrackingEvent<'checkout_completed'>): O
   if (!order) return undefined;
   const coupon = engine.getState().order?.coupon;
   const code = coupon?.refId === order.ref_id ? coupon.code : undefined;
-  return { pageType: 'purchase', ecommerce: purchase(engine, order, e.event_id, code) };
+  const paid = new Set(e.data.lines.map((l) => l.id));
+  const lines = (order.lines ?? []).filter((l) => paid.has(String(l.id)));
+  return { pageType: 'purchase', ecommerce: purchase(engine, order, lines, e.event_id, code) };
 };
 
 const upsellPurchasePush = (

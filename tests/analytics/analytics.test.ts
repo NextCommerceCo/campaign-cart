@@ -3,10 +3,10 @@ import { startAnalytics } from '../../src/analytics';
 import { exitIntent } from '../../src/compat/exit-intent';
 import { createCheckout } from '../../src/checkout/state/checkout';
 import type { Engine } from '../../src/engine/engine';
-import type { AnalyticsTrace, TrackingEvent } from '../../src/engine/events/analytics';
+import { trackingLines, type AnalyticsTrace, type TrackingEvent } from '../../src/engine/events/analytics';
 import type { Address } from '../../src/engine/events/checkout';
 import type { Promotion } from '../../src/engine/events/promotions';
-import { publicOrder, purchaseId, REPORTED } from '../../src/engine/order/order';
+import { paidLineId, publicOrder, purchaseId, REPORTED } from '../../src/engine/order/order';
 import type { ApiOrder } from '../../src/engine/types';
 import { upsellId } from '../../src/engine/order/order';
 import { createOrder, type OrderState } from '../../src/order/state';
@@ -509,18 +509,14 @@ describe('analytics', () => {
 
   it('reports a paid order and its upsells once, in the 0.4.x shape, without personal data', async () => {
     const local = new MemoryStorage();
+    await loadOrder(ORDER, { local });
     const run = async () => {
       delete win.NextDataLayer;
-      const fetch = fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch;
-      const { engine } = makeEngine({ local, fetch });
-      await engine.start();
-      engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
-      await engine.order.load('R1');
-      startAnalytics(engine, options);
+      startAnalytics(await loadOrder(withUpsell(ORDER, 99, 1), { local }), options);
       return names();
     };
-    expect(await run()).toEqual(['dl_user_data', 'dl_upsell_purchase', 'dl_purchase']);
-    const [, upsell, purchase] = win.NextDataLayer!;
+    expect(await run()).toEqual(['dl_user_data', 'dl_purchase', 'dl_upsell_purchase']);
+    const [, purchase, upsell] = win.NextDataLayer!;
     expect(purchase.event_id).toBe('1001');
     expect(upsell.event_id).toBe('R1-US1');
     expect(purchase.ecommerce).toMatchObject({
@@ -612,17 +608,71 @@ describe('analytics', () => {
       const sent = win.NextDataLayer!.filter((e) => e.event === 'dl_upsell_purchase').map((e) => e.event_id);
       return { engine, sent };
     };
+    expect((await run(ORDER)).sent).toEqual([]);
     const one = withUpsell(ORDER, 99, 1);
     const first = await run(one);
     expect(first.sent).toEqual(['R1-US1']);
     expect(first.engine.attach((ctx) => ctx.local.get(REPORTED))).toEqual([
       '1001',
-      upsellId(one, one.lines!.at(-1)!),
       'purchase:1001',
+      upsellId(one, one.lines!.at(-1)!),
     ]);
     const two = withUpsell(one, 100, 2);
     expect((await run(two)).sent).toEqual(['R1-US2']);
     expect((await run(two)).sent).toEqual([]);
+  });
+
+  describe('an is_upsell line that was in the order when it was paid', () => {
+    const bumped = withUpsell(ORDER, 99, 1);
+    const page = async (order: ApiOrder, local: Storage, analytics = true) => {
+      delete win.NextDataLayer;
+      const engine = await loadOrder(order, { local });
+      const seen: TrackingEvent[] = [];
+      engine.on('analytics', (e) => void seen.push(e.data));
+      if (analytics) startAnalytics(engine, options);
+      const lines = (type: TrackingEvent['event_type']) =>
+        seen.filter((e) => e.event_type === type).map((e) => trackingLines(e).map((l) => 'id' in l && l.id));
+      const pushes: any[] = win.NextDataLayer ?? [];
+      return { names: names().filter((n) => n !== 'dl_user_data'), lines, pushes };
+    };
+
+    it('is in the purchase and sends no upsell purchase', async () => {
+      const local = new MemoryStorage();
+      const paid = await page(bumped, local);
+      expect(paid.names).toEqual(['dl_purchase']);
+      expect(paid.pushes.at(-1).ecommerce).toMatchObject({
+        transaction_id: '1001',
+        value: 109,
+        items: [{ item_id: 'EB-2' }, { item_name: 'Bump', price: 20, quantity: 1, index: 1 }],
+      });
+      expect(paid.lines('checkout_completed')).toEqual([['11', '99']]);
+      expect(makeEngine({ local }).engine.attach((ctx) => ctx.local.get(REPORTED))).toContain(
+        paidLineId(bumped, bumped.lines![1]!),
+      );
+      expect((await page(bumped, local)).names).toEqual([]);
+    });
+
+    it('leaves a later accepted upsell as upsell 1, out of the purchase', async () => {
+      const local = new MemoryStorage();
+      await page(bumped, local);
+      const upsold = await page(withUpsell(bumped, 100, 2), local);
+      expect(upsold.names).toEqual(['dl_upsell_purchase']);
+      expect(upsold.pushes.at(-1)).toMatchObject({ event_id: 'R1-US1', ecommerce: { items: [{ quantity: 2 }] } });
+      expect(upsold.lines('upsell_completed')).toEqual([['100']]);
+    });
+
+    it('is in a purchase sent on a later page, which leaves out the upsell accepted since', async () => {
+      const local = new MemoryStorage();
+      expect((await page(bumped, local, false)).names).toEqual([]);
+      const later = await page(withUpsell(bumped, 100, 2), local);
+      expect(later.names).toEqual(['dl_purchase', 'dl_upsell_purchase']);
+      const [purchase, upsell] = later.pushes.slice(-2);
+      expect(purchase.ecommerce).toMatchObject({ transaction_id: '1001', value: 109 });
+      expect(purchase.ecommerce.items.map((i: { item_name: string }) => i.item_name)).toEqual(['Earbuds', 'Bump']);
+      expect(upsell).toMatchObject({ event_id: 'R1-US1', ecommerce: { value: 20, items: [{ quantity: 2 }] } });
+      expect(later.lines('checkout_completed')).toEqual([['11', '99']]);
+      expect(later.lines('upsell_completed')).toEqual([['100']]);
+    });
   });
 
   describe('exit-intent popup (0.4.x data layer)', () => {
@@ -969,14 +1019,12 @@ describe('tracking events', () => {
   });
 
   it('keys a purchase and an upsell by their transaction ids, with the upsell details nested', async () => {
-    const fetch = fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch;
-    const { engine } = makeEngine({ local: new MemoryStorage(), fetch });
-    await engine.start();
-    engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
-    await engine.order.load('R1');
+    const local = new MemoryStorage();
+    await loadOrder(ORDER, { local });
+    const engine = await loadOrder(withUpsell(ORDER, 99, 1), { local });
     const seen = listen(engine);
     startAnalytics(engine, options);
-    const [, upsell, purchase] = seen;
+    const [, purchase, upsell] = seen;
     expect(purchase).toMatchObject({
       event_type: 'checkout_completed',
       event_id: '1001',

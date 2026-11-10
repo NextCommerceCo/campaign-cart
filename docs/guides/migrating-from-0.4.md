@@ -75,7 +75,8 @@ Every 0.4.43 attribute, method, event and config key is listed in
   `forcePackageId`, `forceBundleId`, a redirecting add-to-cart button), at the cart price.
   Filter on `first_in_session` to send one AddToCart per tab.
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in
-  sessionStorage.
+  sessionStorage. As in 0.4.x, a line the order was paid with (an order bump with
+  `data-next-is-upsell="true"`) is in `dl_purchase`, not a `dl_upsell_purchase`.
 - `dl_purchase`:
   - `user_properties` without the customer's email, name and address.
   - No URL query strings in `page_referrer` / `attribution.metadata`.

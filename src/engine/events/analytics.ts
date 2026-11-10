@@ -72,11 +72,12 @@ export interface TrackingMap {
   checkout_payment_info_submitted: Checkout;
   /**
    * Once per order, when it is paid; on a later page when the paying page was left before it was sent.
+   * Its `lines` are the order's when it was paid, without the lines an upsell added later.
    * @group Orders
    */
   checkout_completed: Order;
   /**
-   * Once per accepted upsell, when the order is loaded with it.
+   * Once per upsell accepted after the order was paid, when the order is loaded with it.
    * @group Upsells
    */
   upsell_completed: Order & {
@@ -176,7 +177,7 @@ export interface AnalyticsEvents {
 /** A product line of a tracking event: a cart line, or an order line before tax. */
 export type TrackingLine = CartItem | OrderItem;
 
-/** The product lines a tracking event is about; an order's without its upsell lines. */
+/** The product lines a tracking event is about. */
 export function trackingLines(e: TrackingEvent): TrackingLine[] {
   switch (e.event_type) {
     case 'product_viewed':
@@ -196,7 +197,7 @@ export function trackingLines(e: TrackingEvent): TrackingLine[] {
     case 'checkout_payment_info_submitted':
       return e.data.cart.lines;
     case 'checkout_completed':
-      return e.data.lines.filter((l) => !l.upsell).map(untaxed);
+      return e.data.lines.map(untaxed);
     case 'upsell_completed':
       return [untaxed(e.data.upsell.line)];
     default:

@@ -1009,16 +1009,6 @@
           "total": 96.12,
           "tax": 7.12,
           "upsell": false
-        },
-        {
-          "id": "99",
-          "product_title": "Bump",
-          "quantity": 1,
-          "price": 20,
-          "original_price": 20,
-          "total": 20,
-          "tax": 0,
-          "upsell": true
         }
       ],
       "coupons": [],

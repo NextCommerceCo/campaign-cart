@@ -199,7 +199,8 @@ describe('the workflows match the analytics code', () => {
 
   it('lists every trigger that sends each event, and nothing the code does not send', async () => {
     document.body.innerHTML = '<div data-next-package-id="1"></div>';
-    const { engine } = makeEngine({ fetch: fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch });
+    const orders = [ORDER, withUpsell(ORDER, 99, 1)];
+    const { engine } = makeEngine({ fetch: fakeApi({ getOrder: () => json(orders.shift()) }).fetch });
     startAnalytics(engine, { apiKey: 'pk_test', version: '1', nextCampaign: false });
     await engine.start();
     await engine.cart.addItem(1);
@@ -227,6 +228,8 @@ describe('the workflows match the analytics code', () => {
       payment_method: 'card_token',
     });
     engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    await engine.order.load('R1');
+    engine.attach((ctx) => ctx.update('order', { loadedAt: 0 }));
     await engine.order.load('R1');
     engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/upsell', lines: [] });
     engine.events.emit('upsell.skipped', { ref_id: 'R1', page: '/upsell', lines: [] });

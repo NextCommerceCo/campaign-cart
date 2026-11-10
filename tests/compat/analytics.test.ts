@@ -193,6 +193,22 @@ describe('0.4.x data layer from tracking events', () => {
     expect(JSON.stringify(win.NextDataLayer)).not.toContain('jane@example.com');
   });
 
+  it('builds dl_purchase from the lines of checkout_completed, is_upsell or not', async () => {
+    const engine = await started();
+    const order = withUpsell(withUpsell(ORDER, 99, 1), 100, 2);
+    engine.attach((ctx) => ctx.update('order', { order }));
+    const paid = publicOrder({ ...order, lines: order.lines!.slice(0, 2) });
+    track(engine, 'checkout_completed', paid, '1001');
+    expect(pushes('dl_purchase')[0].ecommerce).toMatchObject({
+      value: 109,
+      items: [
+        { item_name: 'Earbuds', index: 0 },
+        { item_name: 'Bump', price: 20, quantity: 1, index: 1 },
+      ],
+    });
+    expect(pushes('dl_purchase')[0].ecommerce.items).toHaveLength(2);
+  });
+
   it('sends no dl_purchase for an order that is not in the state', async () => {
     const engine = await started();
     track(engine, 'checkout_completed', publicOrder({ ...ORDER, ref_id: 'R2' }), '1002');

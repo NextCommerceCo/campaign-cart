@@ -151,10 +151,12 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
 
 `order.load` sends `order.paid` only when the order has no `payment_complete_url` and its id is
 not in the reported list (localStorage, last 50), and adds the id as it sends it; analytics
-replays it within the page as `checkout_completed`. Upsell purchases are the order's `is_upsell`
-lines not in the list: analytics sends `upsell_completed` for each on `order.loaded` and marks it
-with `once('browser', …)` as it does, so a late or missing analytics chunk never uses them up. Nothing is
-queued across a redirect.
+replays it within the page as `checkout_completed`. With the id it adds each `is_upsell` line the
+order has then (`paid:<ref>:<line>`), such as an order bump: those lines were paid with the order,
+so they are part of `checkout_completed`, also when it is sent on a later page. Upsell purchases
+are the other `is_upsell` lines, added after payment: analytics sends `upsell_completed` for each
+on `order.loaded` and marks it with `once('browser', …)` as it does, so a late or missing analytics
+chunk never uses them up. Nothing is queued across a redirect.
 
 ### 3.4.1 Order details
 

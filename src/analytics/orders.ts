@@ -1,7 +1,7 @@
 import type { EventName } from '../engine/events/bus';
 import type { Order } from '../engine/events/orders';
-import { appliedCodes, publicOrder, purchaseId, upsellId } from '../engine/order/order';
-import type { ApiOrder } from '../engine/types';
+import { appliedCodes, paidLineId, publicOrder, purchaseId, upsellId } from '../engine/order/order';
+import type { ApiOrder, ApiOrderLine } from '../engine/types';
 import type { Handlers, Report } from './report';
 
 export function orderReports({ engine, emit, skip, once }: Report): Handlers {
@@ -15,8 +15,14 @@ export function orderReports({ engine, emit, skip, once }: Report): Handlers {
   /** True the first time for this order in this browser. */
   const firstPurchase = (raw: ApiOrder) => once('browser', `purchase:${purchaseId(raw)}`);
 
-  const sendPurchase = (raw: ApiOrder, why: { trigger: EventName; reason: string }) =>
-    emit('checkout_completed', orderOf(raw), { ...why, id: purchaseId(raw) });
+  /** The line was in the order when it was paid: `order.paid` keeps its `is_upsell` lines of then in the ledger. */
+  const paidWith = (raw: ApiOrder, line: ApiOrderLine) =>
+    !line.is_upsell || !once.sent('browser', purchaseId(raw)) || once.sent('browser', paidLineId(raw, line));
+
+  const sendPurchase = (raw: ApiOrder, why: { trigger: EventName; reason: string }) => {
+    const paid = { ...raw, lines: (raw.lines ?? []).filter((l) => paidWith(raw, l)) };
+    emit('checkout_completed', orderOf(paid), { ...why, id: purchaseId(raw) });
+  };
 
   /** order.paid came on an earlier page, such as the checkout, that was left before checkout_completed was sent. */
   const purchaseOwed = (raw: ApiOrder) => {
@@ -43,8 +49,8 @@ export function orderReports({ engine, emit, skip, once }: Report): Handlers {
       purchaseOwed(raw);
       const order = orderOf(raw);
       const upsells = (raw.lines ?? [])
-        .map((line, i) => ({ id: upsellId(raw, line), line: order.lines[i]! }))
-        .filter((u) => u.line.upsell)
+        .map((line, i) => ({ id: upsellId(raw, line), line: order.lines[i]!, paid: paidWith(raw, line) }))
+        .filter((u) => !u.paid)
         .map((u, i) => ({ ...u, number: i + 1 }))
         .filter((u) => once('browser', u.id));
       if (!upsells.length) return skip('order.loaded', 'upsell_completed', 'No new accepted upsell');

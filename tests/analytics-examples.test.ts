@@ -113,8 +113,13 @@ describe('analytics examples', () => {
     await shop.cart.clear();
     await flush();
 
+    const local = new MemoryStorage();
+    const { engine: paid } = makeEngine({ local, fetch: fakeApi({ getOrder: () => json(ORDER) }).fetch });
+    await paid.start();
+    await paid.attach((ctx) => createOrder(ctx, paid.cart)).load('R1');
+
     const fetch = fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch;
-    const { engine: upsell } = makeEngine({ local: new MemoryStorage(), fetch });
+    const { engine: upsell } = makeEngine({ local, fetch });
     record(upsell);
     await upsell.start();
     upsell.order = upsell.attach((ctx) => createOrder(ctx, upsell.cart));
