@@ -1,5 +1,5 @@
 import type { CheckoutError } from '../types';
-import type { Cart } from './carts';
+import type { Cart, ShippingMethod } from './carts';
 import type { Payment } from './payments';
 import type { Failure } from './sdk';
 
@@ -103,6 +103,12 @@ export interface CheckoutEvents {
    * @group Checkout
    */
   'address.autofilled': Partial<Address> & { type: AddressType };
+  /**
+   * The shipping method changed, right after the change's `cart.updated`, without prices; they
+   * come with `cart.calculated` as `shipping_method`. A bundle card can set it on the landing page too.
+   * @group Checkout
+   */
+  'shipping.selected': ShippingMethod;
   /**
    * The shopper changed the payment method, after `checkout.started`. The method the form starts
    * with is the Checkout's `payment_method`.

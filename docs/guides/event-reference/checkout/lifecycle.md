@@ -5,7 +5,7 @@ group: 'Event Reference/Checkout'
 
 # Checkout lifecycle
 
-Events: `checkout.*`, `user.*`, `address.*` and `payment.selected`, with the order's
+Events: `checkout.*`, `user.*`, `address.*`, `shipping.selected` and `payment.selected`, with the order's
 `order.created` and `order.paid` and the gateway's `payment.redirected` and `payment.failed`.
 
 ![Checkout lifecycle: idle, placing and placed on one checkout page, with the events each step sends and the pages it leaves for](checkout-lifecycle.svg)
@@ -60,7 +60,8 @@ wallet's details:
 - A paid order empties it without cart events; `checkout.completed` ends the checkout.
 - While the shopper is at a gateway it is kept until the paid order loads, so a shopper whose
   payment fails comes back to the same cart.
-- `shipping.selected` is in the cart lifecycle.
+- `shipping.selected` comes when the cart's shipping method changes, right after that change's
+  `cart.updated`: the [cart lifecycle](../carts/lifecycle.md) has its place among the cart events.
 
 ## The next page
 
