@@ -28,6 +28,7 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 ### Checkout
 
 - **An order the API refuses by field shows a message for that field.** An out-of-stock `lines` refusal, for example, shows a text of its own on express and card orders, translatable as `order.errors.<field>` with `order.errors.generic` for the rest, and the API's own text is in the log and in the `sdk.error` and `checkout.failed` message. ([#28](https://github.com/NextCommerceCo/campaign-cart/issues/28))
+- **A page's default property stays when the shopper picks another bundle.** A `data-next-default-property` value is on every unit of every bundle of a selector with slots, also one the page loaded with; it was lost on the next bundle picked, and a value already in the field was never sent.
 - **The card expiry months the SDK fills are named in the page's language.** A month list the page wrote itself is kept. ([#60](https://github.com/NextCommerceCo/campaign-cart/issues/60))
 
 ### Display

@@ -159,7 +159,7 @@ GET (backend ask B5), or keep USD.
 | `data-next-confirm`                      |          0 | Removed (no live use) | remove-item confirm dialog                                                                  |
 | `data-next-confirm-message`              |          0 | Removed (no live use) | remove-item confirm dialog                                                                  |
 | `data-next-coupon`                       |          4 | Supported             | refused codes stay in the field and are not kept (fixed in this pass); no applied-code list |
-| `data-next-default-property`             |          2 | Supported             |                                                                                             |
+| `data-next-default-property`             |          2 | Supported             | On bundle slots and order bumps; not read by add-to-cart buttons or post-purchase upsells   |
 | `data-next-discounts`                    |         12 | Supported             |                                                                                             |
 | `data-next-display`                      |         50 | Supported             |                                                                                             |
 | `data-next-enhancer`                     |          2 | Supported             | wrapper not needed: `data-next-checkout-review` works anywhere                              |

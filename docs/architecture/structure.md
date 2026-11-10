@@ -94,7 +94,7 @@ scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
 vendor/tsugi/payment-icons.css  tsugi's payment icons the payment step shows, inlined; a chunk of its own
-dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
+dev/                       bun dev, bun run e2e, bun run perf, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
 README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .prettierrc.json
@@ -323,7 +323,9 @@ tests/
     pages/starter/<campaign>-<page>.html   starter-template pages, copied verbatim, source commit on line 1
 ```
 
-The Playwright run on the built `dist/` is `bun run e2e` in `dev/`, not part of `npm test`.
+The Playwright scenarios (`bun run e2e`, the SDK from source, one file per concern in
+`dev/e2e/scenarios/`) and the load-time run on the built `dist/` (`bun run perf`) are in `dev/`,
+not part of `npm test`.
 
 A test file mirrors the module it covers, and a chunk entry's test is named after the chunk
 (`tests/checkout/checkout.test.ts` covers `src/checkout/index.ts`). Checkout's DOM parts

@@ -23,3 +23,5 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 - Affiliate and ad tracking reaches the order: on a first visit, after PayPal, Apple Pay or 3-D
   Secure, and when a shopper taps a link early.
 - Checkout tells the shopper why an order could not be placed.
+- A personalisation typed once for the whole order stays when the shopper picks another bundle.
+- Pages are ready sooner on a slow connection: about a second sooner on a checkout page.
