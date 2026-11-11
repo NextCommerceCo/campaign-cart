@@ -40,7 +40,10 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    on why.
 9. **Build output is never committed to main.** CI builds `dist/`. Running the CI
    workflow by hand on main tags the `package.json` version on a commit off main that adds it,
-   which jsDelivr serves; an existing tag is never moved.
+   which jsDelivr serves; an existing tag is never moved. A release is tried first as a beta:
+   set the version to `<version>-beta.<n>` (`0.5.1-beta.1`), tag it the same way and load
+   `@v<version>-beta.<n>` on a page, then set the final version and tag again. A beta tag gets
+   no GitHub release: publishing one makes its docs `latest/`.
 10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
     attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
     skeleton, button spinners, `.hide` utilities, radio and validation styles), so
