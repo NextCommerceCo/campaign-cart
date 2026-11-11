@@ -673,7 +673,8 @@
   },
   "checkout_shipping_address_submitted": {
     "triggers": [
-      "address.entered"
+      "address.entered",
+      "checkout.started"
     ],
     "object": "checkout",
     "data": {
@@ -711,6 +712,12 @@
         "total": 49,
         "discounts": [],
         "discount_percentage": 0
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
       },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
@@ -778,7 +785,9 @@
   },
   "checkout_shipping_method_submitted": {
     "triggers": [
-      "shipping.settled"
+      "address.entered",
+      "shipping.settled",
+      "checkout.started"
     ],
     "object": "checkout",
     "data": {
@@ -816,6 +825,12 @@
         "total": 49,
         "discounts": [],
         "discount_percentage": 0
+      },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
       },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
@@ -922,6 +937,12 @@
         "discounts": [],
         "discount_percentage": 0
       },
+      "shipping_address": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "line1": "1 Main St",
+        "country": "US"
+      },
       "billing_same_as_shipping": true,
       "payment_method": "card_token"
     },
@@ -1009,16 +1030,6 @@
           "total": 96.12,
           "tax": 7.12,
           "upsell": false
-        },
-        {
-          "id": "99",
-          "product_title": "Bump",
-          "quantity": 1,
-          "price": 20,
-          "original_price": 20,
-          "total": 20,
-          "tax": 0,
-          "upsell": true
         }
       ],
       "coupons": [],
@@ -1060,7 +1071,17 @@
       "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
       "event_time": "2026-11-04T08:30:00.000Z",
       "user_properties": {
-        "visitor_type": "guest"
+        "visitor_type": "logged_in",
+        "customer_email": "jane@example.com",
+        "customer_first_name": "Ann",
+        "customer_last_name": "Lee",
+        "customer_address_1": "2 Side St",
+        "customer_address_2": "",
+        "customer_city": "Reno",
+        "customer_province": "NV",
+        "customer_province_code": "NV",
+        "customer_zip": "",
+        "customer_country": "US"
       },
       "page_location": "http://localhost:3000/",
       "page_title": "Olympus Earbuds",
@@ -1202,7 +1223,17 @@
       "event_id": "3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e",
       "event_time": "2026-11-04T08:30:00.000Z",
       "user_properties": {
-        "visitor_type": "guest"
+        "visitor_type": "logged_in",
+        "customer_email": "jane@example.com",
+        "customer_first_name": "Ann",
+        "customer_last_name": "Lee",
+        "customer_address_1": "2 Side St",
+        "customer_address_2": "",
+        "customer_city": "Reno",
+        "customer_province": "NV",
+        "customer_province_code": "NV",
+        "customer_zip": "",
+        "customer_country": "US"
       },
       "page_location": "http://localhost:3000/",
       "page_title": "Olympus Earbuds",

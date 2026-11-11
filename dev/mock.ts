@@ -126,7 +126,7 @@ function suggestAddresses(query: URLSearchParams) {
 
 const placed = new Map<string, Record<string, unknown>>();
 
-type Line = { package_id: number; quantity: number };
+type Line = { package_id: number; quantity: number; is_upsell?: boolean };
 
 function orderLines(campaign: Campaign | undefined, lines: Line[], upsell = false) {
   return lines.map((l, i) => {
@@ -147,7 +147,7 @@ function orderLines(campaign: Campaign | undefined, lines: Line[], upsell = fals
       price_incl_tax: total,
       price_excl_tax_excl_discounts: Number(listed) > Number(total) ? listed : total,
       price_incl_tax_excl_discounts: Number(listed) > Number(total) ? listed : total,
-      is_upsell: upsell,
+      is_upsell: upsell || l.is_upsell === true,
     };
   });
 }

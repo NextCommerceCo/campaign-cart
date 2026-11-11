@@ -2,6 +2,7 @@ import type { CartLine, SelectorCard } from './cart/types';
 import { cardSlots } from './cart/selectors';
 import { variantPackage } from './cart/variants';
 import type { Engine } from './engine';
+import { mergeMetadata } from './visit/metadata';
 
 /** What every action resolves to: it never throws. */
 export interface ActionResult {
@@ -259,6 +260,10 @@ export function createActions(
       return OK;
     },
     selectVariant: (args = {}) => selectVariant(engine, args),
+    async setMetadata(args = {}) {
+      const refused = mergeMetadata(engine, args);
+      return refused ? fail(refused, 'a metadata value is a string or a number') : OK;
+    },
     async go(args = {}) {
       const url = text(args.url);
       if (!url) return fail('url', 'go needs url');

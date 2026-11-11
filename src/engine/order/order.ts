@@ -41,7 +41,10 @@ export function untaxed<L extends Priced>(line: L): L {
 export const REPORTED = 'reported';
 const REPORTED_KEEP = 50;
 
-/** The browser's ledger of what was reported once: paid orders (`purchaseId`), upsell lines (`upsellId`), `failed:<ref_id>`. */
+/**
+ * The browser's ledger of what was reported once: paid orders (`purchaseId`) with their `is_upsell` lines
+ * (`paidLineId`), upsell lines (`upsellId`), `failed:<ref_id>`.
+ */
 export function createLedger(ctx: Pick<Context, 'local'>) {
   const reported = () => ctx.local.get<string[]>(REPORTED) ?? [];
   return {
@@ -58,7 +61,8 @@ export type Ledger = ReturnType<typeof createLedger>;
 export function reportPaid(ctx: Pick<Context, 'local' | 'update' | 'emit'>, raw: ApiOrder, order: Order): void {
   const ledger = createLedger(ctx);
   if (ledger.has(purchaseId(raw))) return;
-  ledger.mark([purchaseId(raw)]);
+  const paidLines = (raw.lines ?? []).filter((l) => l.is_upsell).map((l) => paidLineId(raw, l));
+  ledger.mark([purchaseId(raw), ...paidLines]);
   ctx.update('order', { paidOrder: raw }, { silent: true });
   ctx.emit('order.paid', order);
 }
@@ -70,7 +74,10 @@ export const paymentMethodCode = (method: ApiOrder['payment_method']): string =>
 /** The ledger key of a paid order: `order.paid` and `purchase` come once per key. */
 export const purchaseId = (order: ApiOrder) => String(order.number ?? order.ref_id);
 
-/** The ledger key of an upsell line, reported once per browser. */
+/** The ledger key of an `is_upsell` line that was in the order when it was paid, such as an order bump. */
+export const paidLineId = (order: ApiOrder, line: ApiOrderLine) => `paid:${order.ref_id}:${line.id}`;
+
+/** The ledger key of a line an upsell added after the order was paid, reported once per browser. */
 export const upsellId = (order: ApiOrder, line: ApiOrderLine) => `${order.ref_id}:${line.id}`;
 
 /** The codes the shopper applied at this tab's checkout of the order, kept in order state as `coupon`. */

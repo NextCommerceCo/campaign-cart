@@ -274,6 +274,28 @@ describe('Engine', () => {
     });
   });
 
+  it('reads the Meta cookies when attribution is built, so one written after boot is sent', async () => {
+    const visit = { landingPage: 'https://shop.test/', referrer: '', device: 'test', deviceType: 'desktop' as const };
+    const jar = new Map<string, string>();
+    const cookies = {
+      get: (name: string) => jar.get(name),
+      set: (name: string, value: string) => jar.set(name, value),
+    };
+    const session = new MemoryStorage();
+    const { engine } = makeEngine({ visit, cookies, session });
+    await engine.start();
+    expect(engine.attribution().metadata.fb_fbp).toBe('');
+
+    jar.set('_fbp', 'fb.1.1.123');
+    jar.set('_fbc', 'fb.1.1.IwAR0');
+    expect(engine.attribution().metadata).toMatchObject({ fb_fbp: 'fb.1.1.123', fb_fbc: 'fb.1.1.IwAR0' });
+
+    const next = makeEngine({ visit, cookies, session }).engine;
+    await next.start();
+    expect(next.attribution().metadata).toMatchObject({ fb_fbp: 'fb.1.1.123', fb_fbc: 'fb.1.1.IwAR0' });
+    expect(next.eventContext().attribution.fbp).toBe('fb.1.1.123');
+  });
+
   it('saves a lazy chunk’s slice in the tab only as the chunk picks it', () => {
     const session = new MemoryStorage();
     const { engine } = makeEngine({ session });

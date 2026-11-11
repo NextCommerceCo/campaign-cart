@@ -22,6 +22,8 @@ export interface DevOptions {
   port?: number;
   quiet?: boolean;
   update?: boolean;
+  /** One more folder of pages, served where the campaign pages have none. */
+  pages?: string;
 }
 
 const TYPES: Record<string, string> = {
@@ -57,17 +59,19 @@ export function describe(api: string): { label: string; detail: string } {
   return { label: 'MOCK', detail: 'nothing leaves this machine; prices from saved campaigns' };
 }
 
-function pageFile(pathname: string): string | undefined {
+function pageFile(pathname: string, roots: string[]): string | undefined {
   let decoded: string;
   try {
     decoded = decodeURIComponent(pathname);
   } catch {
     return undefined;
   }
-  const base = resolve(SITE, `.${decoded}`);
-  if (base !== SITE && !base.startsWith(SITE + sep)) return undefined;
-  for (const file of [base, join(base, 'index.html'), `${base}.html`]) {
-    if (existsSync(file) && statSync(file).isFile()) return file;
+  for (const root of roots) {
+    const base = resolve(root, `.${decoded}`);
+    if (base !== root && !base.startsWith(root + sep)) continue;
+    for (const file of [base, join(base, 'index.html'), `${base}.html`]) {
+      if (existsSync(file) && statSync(file).isFile()) return file;
+    }
   }
   return undefined;
 }
@@ -164,6 +168,7 @@ function passcode(token: string | undefined) {
 
 function sitePages(server: () => ViteDevServer, options: DevOptions): Plugin {
   const api = options.api ?? 'mock';
+  const roots = [SITE, ...(options.pages ? [resolve(options.pages)] : [])];
   const sendFile = (res: ServerResponse, file: string) => {
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
     res.end(readFileSync(file));
@@ -190,7 +195,7 @@ function sitePages(server: () => ViteDevServer, options: DevOptions): Plugin {
     if (pathname === '/src/campaign-cart.css')
       return sendFile(res, join(import.meta.dirname, '../public/campaign-cart.css'));
     if (/^\/(src|dev|node_modules|@)/.test(pathname)) return next();
-    const file = pageFile(pathname);
+    const file = pageFile(pathname, roots);
     if (!file) return next();
     if (extname(file) !== '.html') return sendFile(res, file);
     const page = withLocalSdk(readFileSync(file, 'utf8'), options);

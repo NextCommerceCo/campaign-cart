@@ -76,10 +76,16 @@ export const orderItem = (engine: Engine, order: ApiOrder, line: ApiOrderLine, i
   };
 };
 
-/** GA4's `purchase` params from the order as the Campaigns API returned it, without its upsell lines. */
-export const purchase = (engine: Engine, order: ApiOrder, transaction: string, coupon?: string) => {
+/** GA4's `purchase` params from the order as the Campaigns API returned it, for the lines it was paid with. */
+export const purchase = (
+  engine: Engine,
+  order: ApiOrder,
+  lines: ApiOrderLine[],
+  transaction: string,
+  coupon?: string,
+) => {
   const incl = taxIncluded(engine, order);
-  const items = (order.lines ?? []).filter((l) => !l.is_upsell).map((l, i) => orderItem(engine, order, l, i, incl));
+  const items = lines.map((l, i) => orderItem(engine, order, l, i, incl));
   const discount = Number(order.total_discounts ?? 0);
   return {
     currency: order.currency ?? currency(engine),

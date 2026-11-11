@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>e2e shop</title>
+    <meta name="next-page-type" content="product" />
+    <script>
+      window.nextConfig = { apiKey: 'LLbBgtusfE2zopDcjnOY9NbrlN690zSjuedqQ04J' };
+    </script>
+    <script src="https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.5.1/dist/loader.js" type="module"></script>
+  </head>
+  <body>
+    <h1>e2e shop</h1>
+    <p>Price <span id="price" data-next-query="package.1.price"></span></p>
+    <p>Legacy price <span id="legacy" data-next-display="package.1.price"></span></p>
+    <p>Amount <span id="amount" data-next-query="package.1.price" data-next-format="amount"></span></p>
+    <p>With code <span id="code" data-next-query="package.1.price" data-next-format="currency_code"></span></p>
+    <p>Currency <span id="currency" data-next-query="campaign.currency"></span></p>
+    <button id="add-1" data-next-action="add-to-cart" data-next-package-id="1">Add Olympus</button>
+    <button id="add-3" data-next-action="add-to-cart" data-next-package-id="3">Add the case</button>
+  </body>
+</html>

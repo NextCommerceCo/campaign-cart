@@ -45,7 +45,9 @@ Every page starts the same way:
 
 1. Load `loader.js`.
 2. Read `data-campaign`.
-3. Fetch the campaign from Campaign App and restore the cart from storage.
+3. Fetch the campaign from Campaign App and restore the cart from storage. With the core, the
+   loader fetches the feature chunks the page's markup calls for (`<link rel="modulepreload">`), so
+   they arrive together, not one after another.
 4. Bind the HTML.
 5. Mark the page ready (`html[data-next-ready]`).
 
@@ -80,7 +82,8 @@ campaigns already use are kept, so templates need no edits.
 | Upsell, receipt                 | `data-next-upsell` · `data-next-upsell-action` · `order.*`                                                  | next   |
 
 - Values have types. Money is formatted as money in the campaign's currency and
-  language; booleans show or hide the element. `data-next-display` paths carry their type;
+  language: by the page's `formats.currency.<code>` text, else `Intl` with the prefixed symbol
+  for CAD, AUD, NZD, HKD and MXN and the narrow one for the rest. Booleans show or hide the element. `data-next-display` paths carry their type;
   `data-next-query` reads plain objects, so a number's format follows its field's name
   (`price`, `*_total`, `*percentage`, as its guide lists) unless `data-next-format` says otherwise.
 - Values are written as text, never as HTML.
@@ -143,8 +146,11 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
-  `page_location` has no query string. The one exception is the RudderStack destination's
-  `identify()`, which sends the shopper's email, name, phone and address as 0.4.x did.
+  `page_location` has no query string. The two exceptions, both as 0.4.x sent them: `dl_purchase`
+  and `dl_upsell_purchase` carry the order's customer in `user_properties` (email, name, phone and
+  billing address, with `visitor_type: 'logged_in'`), and the RudderStack destination's
+  `identify()` sends the shopper's email, name, phone and address. The destination trace in the
+  log keeps `visitor_type` only.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.
 - **Destinations:** GTM (the `dl_*` pushes, on by default), GA4 (`gtag`), the Meta pixel
   (`fbq`) and RudderStack (`rudderanalytics`, the 0.4.x calls and properties) are built in, GA4
@@ -153,9 +159,13 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   loads a vendor's tag. Other vendors (TikTok, …) go through GTM or a `next.analytics.on`
   listener; `providers.custom` is not rebuilt, and enabling it in `nextConfig` prints a warning.
 - **Attribution:** UTM, gclid, gbraid, wbraid, fbclid, ttclid, msclkid, affiliate, sub1–5, clickid,
-  evclid, `_fbp`/`_fbc` and the funnel are kept for the tab session, with the first landing page. The same
-  object goes on every event and on the order.
-- **Links:** same-site links carry the session's params (this replaces `utmTransfer`).
+  evclid, `_fbp`/`_fbc` and the funnel are kept for the tab session, with the first landing page and
+  the metadata a page sets with `next.actions.setMetadata`. The same object goes on every event and
+  on the order. `_fbp`/`_fbc` are read when it is built, so a cookie the pixel writes after boot is
+  in it, and each `metadata` value is cut to 2000 code points, the most the platform takes.
+- **Links:** same-site links carry the session's params (this replaces `utmTransfer`). A page
+  whose visit has no attribution params takes them from a same-origin referrer: a link followed
+  before the SDK loaded.
 
 ## 8. Errors and debugging
 

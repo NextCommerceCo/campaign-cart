@@ -74,7 +74,7 @@ export function compareDesc(a, b) {
   if (a.prerelease === b.prerelease) return 0;
   if (a.prerelease === null) return -1;
   if (b.prerelease === null) return 1;
-  return b.prerelease.localeCompare(a.prerelease);
+  return b.prerelease.localeCompare(a.prerelease, undefined, { numeric: true });
 }
 
 /** All release tags in the repo, newest first. */
@@ -100,8 +100,8 @@ export function packageVersion(cwd = REPO) {
 /**
  * Builds the version index.
  *
- * `current: true` marks the newest release, which `latest/` aliases on the published
- * site. Local mode indexes only the `latest/` folder built from the working tree.
+ * `current: true` marks the newest release that is not a prerelease, which `latest/`
+ * aliases on the published site. Local mode indexes only the `latest/` folder built from the working tree.
  *
  * @param options.floor      oldest tag to include (default {@link VERSION_FLOOR})
  * @param options.root       absolute site root; entries without a built folder there are
@@ -138,11 +138,12 @@ export function buildVersionIndex({
   };
   const included = all ? eligible : eligible.filter(built);
 
-  const versions = included.map((t, i) => ({
+  const newestRelease = included.find((t) => t.prerelease === null);
+  const versions = included.map((t) => ({
     version: t.version,
     tag: t.tag,
     path: t.tag,
-    current: i === 0,
+    current: t === newestRelease,
   }));
   return {
     versions,
@@ -253,7 +254,7 @@ function main(argv) {
   writeFileSync(join(root, 'index.html'), renderRootRedirect());
   writeFileSync(join(root, 'versions.json'), json);
 
-  const current = index.versions[0];
+  const current = index.versions.find((v) => v.current) ?? index.versions[0];
   process.stdout.write(
     `versions.json: ${index.versions.length} version(s), current ${current.tag}\n` +
       `index.html: redirect to latest/\n`,

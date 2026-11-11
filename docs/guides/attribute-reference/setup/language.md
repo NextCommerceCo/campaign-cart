@@ -26,9 +26,10 @@ A text comes from the page's `translations` (`fr-FR`, then `fr`), then the addre
 English. Every key, its default in each language and how to override it:
 [Languages](https://i18n-rules-docs.next-commerce.workers.dev/languages/index/).
 
-| Text                     | Key                                                                                                                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A field's message        | `fields.<field>.errors.<error>`                                                                                                                        |
-| City, state and postcode | `fields.<field>.label`; other labels the page writes with [data-next-i18n](../display/data-next-i18n.md)                                               |
-| Card fields              | `payment.card.*`                                                                                                                                       |
-| A declined payment       | `payment.errors.<code>`, else `payment.errors.generic` ([Payment errors](https://i18n-rules-docs.next-commerce.workers.dev/reference/payment-errors/)) |
+| Text                              | Key                                                                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A field's message                 | `fields.<field>.errors.<error>`                                                                                                                        |
+| City, state and postcode          | `fields.<field>.label`; other labels the page writes with [data-next-i18n](../display/data-next-i18n.md)                                               |
+| Card fields                       | `payment.card.*`                                                                                                                                       |
+| A declined payment                | `payment.errors.<code>`, else `payment.errors.generic` ([Payment errors](https://i18n-rules-docs.next-commerce.workers.dev/reference/payment-errors/)) |
+| An order the API refused by field | `order.errors.<field>` (`lines`, `shipping_address`, `billing_address`, `user`, `payment_detail`), else `order.errors.generic`                         |

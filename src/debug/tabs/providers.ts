@@ -90,14 +90,14 @@ export const WIRING: Wire[] = [
     dl: 'dl_generate_lead',
   },
   {
-    from: ['address.entered'],
+    from: ['address.entered', 'checkout.started'],
     tracking: 'checkout_shipping_address_submitted',
     object: 'checkout',
     ga4: 'add_shipping_info',
     dl: 'dl_add_shipping_info',
   },
   {
-    from: ['shipping.settled'],
+    from: ['address.entered', 'shipping.settled', 'checkout.started'],
     tracking: 'checkout_shipping_method_submitted',
     object: 'checkout',
     ga4: 'add_shipping_info',

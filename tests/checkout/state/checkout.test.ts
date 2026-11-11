@@ -122,6 +122,47 @@ describe('checkout', () => {
     );
   });
 
+  it('sends a success_url that keeps the visit params, so a gateway return lands on them', async () => {
+    const { engine } = await setup({ params: { affid: 'A1', sub1: 'S1', utm_source: 'fb', ref_id: 'OLD' } });
+    await engine.cart.addItem(2);
+    const body = orderBody(engine.getState(), {
+      method: 'paypal',
+      express: true,
+      lines: engine.cart.lines(),
+      vouchers: [],
+      attribution: engine.attribution(),
+      urls: { ...URLS, successUrl: '/upsell?step=1' },
+    });
+    expect(body.success_url).toBe('https://shop.test/upsell?step=1&affid=A1&sub1=S1&utm_source=fb');
+  });
+
+  it('sends metadata the page set after load with the cart and the order, through a cart change and on the next page', async () => {
+    const session = new MemoryStorage();
+    const local = new MemoryStorage();
+    local.setItem('evclid', 'OLD');
+    const { engine, checkout, fill, posts } = await setup({ session, local });
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    engine.visit.setMetadata({ everflow_transaction_id: 'NEW', fb_test_code: 'TEST123' });
+    const sent = {
+      everflow_transaction_id: 'NEW',
+      metadata: { everflow_transaction_id: 'NEW', fb_test_code: 'TEST123' },
+    };
+
+    checkout.begin();
+    fill({ email: 'jane@example.com', first_name: 'Jane', last_name: 'Doe' });
+    await checkout.leave('last_name');
+    expect(posts('/carts/')[0]!.body.attribution).toMatchObject(sent);
+    fill(SHIPPING);
+
+    await engine.cart.addItem(2);
+    expect(await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' })).toMatchObject({ ref_id: 'R1' });
+    expect(posts('/orders/')[0]!.body.attribution).toMatchObject(sent);
+
+    const next = makeEngine({ session, local }).engine;
+    expect(next.attribution()).toMatchObject(sent);
+  });
+
   it('sends the shopper to the gateway as given, else the success page with ref_id and their params', () => {
     const here = new URL('https://shop.test/checkout');
     const params = { utm_source: 'fb', ref_id: 'OLD' };
@@ -847,6 +888,51 @@ describe('checkout', () => {
       code: 'rejected',
       message: 'Address is incomplete. Try again',
     });
+  });
+
+  it('names the field of an order the API refused, with the API’s text in the log and the events', async () => {
+    const stock = 'Don’t have enough stock for Red Light Therapy - location unavailable';
+    const answers = [
+      json({ lines: [stock] }, 400),
+      json(
+        { ref_id: 'R1', shipping_address: { postcode: ['Enter a valid postcode'] }, non_field_errors: ['Try later'] },
+        400,
+      ),
+      json({ message: [{ shipping_method: ['Shipping Option not found in this Campaign.'] }] }, 400),
+      json({ payment_detail: { card_token: ['tok_1 is not a valid token'] } }, 400),
+    ];
+    const { engine, checkout, fill } = await setup({ api: { order: () => answers.shift()! } });
+    const failed: unknown[] = [];
+    const reported: unknown[] = [];
+    engine.on('checkout.failed', (e) => failed.push(e.data.error));
+    engine.on('sdk.error', (e) => reported.push(e.data));
+    await engine.cart.addItem(1);
+    await checkout.loadCountries();
+    fill(SHIPPING);
+    const errors = [];
+    for (let i = 0; i < 4; i++) {
+      await checkout.placeOrder({ ...URLS, tokenize: async () => 'tok_1' });
+      errors.push(engine.getState().checkout!.errors.form);
+    }
+    expect(errors).toEqual([
+      { code: 'invalid_order', field: 'lines' },
+      { code: 'invalid_order', field: 'shipping_address' },
+      { code: 'invalid_order', field: 'shipping_method' },
+      { code: 'invalid_order', field: 'payment_detail' },
+    ]);
+    const messages = [
+      `POST /api/v1/orders/ → 400: lines: ${stock}`,
+      'POST /api/v1/orders/ → 400: shipping_address.postcode: Enter a valid postcode; non_field_errors: Try later',
+      'POST /api/v1/orders/ → 400: shipping_method: Shipping Option not found in this Campaign.',
+      'POST /api/v1/orders/ → 400',
+    ];
+    expect(failed).toEqual(messages.map((message) => ({ code: 'rejected', status: 400, message })));
+    expect(reported).toEqual(
+      messages.map((message) => ({ action: 'order.create', code: 'rejected', status: 400, message })),
+    );
+    const logged = engine.log.entries().map((entry) => entry.message);
+    expect(logged).toContain(`order.create failed (rejected): ${messages[0]}`);
+    expect(logged.join('\n')).not.toContain('tok_1');
   });
 });
 

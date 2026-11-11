@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" width="720" height="230" role="img" aria-labelledby="orders-tracking-lifecycle-title orders-tracking-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
+  <title id="orders-tracking-lifecycle-title">Order tracking</title>
+  <desc id="orders-tracking-lifecycle-desc">order.paid sends checkout_completed (dl_purchase), once per order in this browser: on the checkout for an order paid at once, on the page after a gateway otherwise. When the paying page was left before it was sent, the order.loaded of a later page sends it. Its lines are the ones paid with the order, an is_upsell line among them; a line an upsell adds after payment is not in it and sends upsell_completed.</desc>
+  <defs>
+    <marker id="orders-tracking-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
+    </marker>
+  </defs>
+  <g>
+    <rect x="205" y="8" width="250" height="42" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="330" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the order is paid: on the checkout,</text>
+    <text x="330" y="41" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">or on the page after a gateway</text>
+    <path d="M330 50 V90" marker-end="url(#orders-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <text x="344" y="76" text-anchor="start" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.paid</text>
+    <rect x="8" y="119" width="150" height="72" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="83" y="137" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a later page loads</text>
+    <text x="83" y="152" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">the order: the paying</text>
+    <text x="83" y="167" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">page was left before</text>
+    <text x="83" y="182" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">it was sent</text>
+    <text x="83" y="207" text-anchor="middle" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">order.loaded</text>
+    <path d="M158 155 H184" marker-end="url(#orders-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5" />
+    <path d="M470 155 H534" marker-end="url(#orders-tracking-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="505" y="147" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">not in it</text>
+    <rect x="540" y="126.5" width="160" height="57" rx="8" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.2; stroke-dasharray: 4 3" />
+    <text x="620" y="144.5" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">a line an upsell adds</text>
+    <text x="620" y="159.5" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">after payment:</text>
+    <text x="620" y="174.5" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">upsell_completed</text>
+  </g>
+  <g text-anchor="middle">
+    <rect x="190" y="96" width="280" height="118" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--color-emerald-500, #10b981); stroke-width: 1.5" />
+    <text x="330" y="121" style="fill: var(--clean-fg, #111827); font-size: 16px; font-weight: 600">completed</text>
+    <text x="330" y="141" style="fill: var(--clean-accent, #2563eb); font-size: 12px; font-family: var(--clean-font-mono, ui-monospace, monospace)">checkout_completed</text>
+    <text x="330" y="156" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">once per order in this browser</text>
+    <text x="330" y="171" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">lines: those paid with the order,</text>
+    <text x="330" y="186" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">an is_upsell line among them</text>
+    <text x="330" y="201" style="fill: var(--clean-fg-muted, #6b7280); font-size: 12px">as dl_purchase</text>
+  </g>
+</svg>

@@ -38,14 +38,14 @@ JavaScript a landing page downloads, gzip:
 | **Total**                               | **215 KB** | **43 KB**                   |
 
 About **5× less** in all, and half as much before the first price. The 36 KB is the 1 KB
-loader, the 25 KB core and 9 KB for the page's attributes. The 0.4.x core carried zustand,
+loader, the 26 KB core and 9 KB for the page's attributes. The 0.4.x core carried zustand,
 decimal.js, and the debug overlay's highlight.js and FontAwesome; 0.5 has no runtime
 dependencies. The rest loads only on the page that uses it:
 
 | Code     | Loaded when                                     | gzip  |
 | -------- | ----------------------------------------------- | ----- |
 | checkout | the page has `form[data-next-checkout]`         | 29 KB |
-| order    | an upsell or receipt page (`ref_id`, `order.*`) | 5 KB  |
+| order    | an upsell or receipt page (`ref_id`, `order.*`) | 6 KB  |
 | slots    | a bundle selector with variant slots            | 3 KB  |
 | debug    | `?debug=1`                                      | 70 KB |
 
@@ -57,6 +57,10 @@ did. Each chunk has a size budget, and `npm run build` fails when one is passed.
 - **The campaign is the first request.** The 1 KB loader sends it while the rest of the SDK is
   still downloading. 0.4.x asked a geo service first and waited up to 3 seconds for it; 0.5 looks
   a country up only where checkout needs it.
+- **The page's code arrives together.** The loader fetches the checkout, the cart summary and the
+  other code the page's markup calls for beside the core, not after it. On a slow connection each
+  request waits about half a second before any byte arrives, so a chain of small files costs more
+  than their size.
 - **The campaign is kept for 10 minutes.** The next page, a reload or a new tab shows prices at
   once and updates them when the fresh campaign arrives.
 - **A priced option is kept for 10 minutes too.** The next page, or a quantity the shopper

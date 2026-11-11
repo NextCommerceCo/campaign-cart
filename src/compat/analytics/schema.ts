@@ -1,4 +1,5 @@
 import type { Attribution } from '../../engine/visit/attribution';
+import type { DataLayerCustomer } from './customer';
 
 /**
  * The fields every `dl_*` push carries, in the 0.4.x Elevar format.
@@ -11,7 +12,7 @@ export interface DataLayerPush {
   event_id: string;
   /** Its ISO time. */
   event_time: string;
-  /** In the Elevar format. */
+  /** In the Elevar format; `dl_purchase` and `dl_upsell_purchase` carry the order's customer in it. */
   user_properties: { visitor_type: 'guest' };
   /** The page, without the query string. */
   page_location: string;
@@ -30,6 +31,9 @@ export interface DataLayerPush {
   attribution: Attribution;
   _metadata: { source: 'NextDataLayer'; version: string };
 }
+
+/** A purchase push: every field of a push, with the customer in `user_properties`. */
+export type DataLayerPurchasePush = Omit<DataLayerPush, 'user_properties'> & { user_properties: DataLayerCustomer };
 
 /** One product of a push's `ecommerce.items`, GA4-style. */
 export interface DataLayerItem {
@@ -210,12 +214,12 @@ export interface DataLayerEventMap {
    * An order was paid, without its upsells.
    * @see https://docs.getelevar.com/docs/view-all-event-triggers-and-data-layer-variables
    */
-  dl_purchase: DataLayerPush & { pageType: 'purchase'; ecommerce: DataLayerPurchase };
+  dl_purchase: DataLayerPurchasePush & { pageType: 'purchase'; ecommerce: DataLayerPurchase };
   /**
    * One upsell was accepted. Not an Elevar event.
    * @see https://docs.getelevar.com/docs/data-layer-overview
    */
-  dl_upsell_purchase: DataLayerPush & {
+  dl_upsell_purchase: DataLayerPurchasePush & {
     pageType: 'upsell';
     ecommerce: DataLayerPurchase;
     upsell_metadata: {

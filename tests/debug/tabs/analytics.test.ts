@@ -199,12 +199,17 @@ describe('the workflows match the analytics code', () => {
 
   it('lists every trigger that sends each event, and nothing the code does not send', async () => {
     document.body.innerHTML = '<div data-next-package-id="1"></div>';
-    const { engine } = makeEngine({ fetch: fakeApi({ getOrder: () => json(withUpsell(ORDER, 99, 1)) }).fetch });
+    const orders = [ORDER, withUpsell(ORDER, 99, 1)];
+    const { engine } = makeEngine({ fetch: fakeApi({ getOrder: () => json(orders.shift()) }).fetch });
     startAnalytics(engine, { apiKey: 'pk_test', version: '1', nextCampaign: false });
     await engine.start();
     await engine.cart.addItem(1);
     engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
     engine.checkout.begin();
+    const shippingAddress = { first_name: 'Jane', last_name: 'Doe', line1: '1 Main St', country: 'US' };
+    engine.attach((ctx) => ctx.update('checkout', { shippingAddress }));
+    engine.events.emit('address.entered', { ...shippingAddress, type: 'shipping' });
+    engine.events.emit('shipping.settled', { id: 1, code: 'standard' });
     await engine.cart.removeItem(1);
     engine.events.emit('user.created', {
       email: 'jane@example.com',
@@ -214,19 +219,13 @@ describe('the workflows match the analytics code', () => {
       language: 'en',
       user_agent: 'test',
     });
-    engine.events.emit('address.entered', {
-      first_name: 'Jane',
-      last_name: 'Doe',
-      line1: '1 Main St',
-      country: 'US',
-      type: 'shipping',
-    });
-    engine.events.emit('shipping.settled', { id: 1, code: 'standard' });
     engine.events.emit('checkout.submitted', {
       ...engine.cart.currentCheckout(),
       payment_method: 'card_token',
     });
     engine.order = engine.attach((ctx) => createOrder(ctx, engine.cart));
+    await engine.order.load('R1');
+    engine.attach((ctx) => ctx.update('order', { loadedAt: 0 }));
     await engine.order.load('R1');
     engine.events.emit('upsell.viewed', { ref_id: 'R1', page: '/upsell', lines: [] });
     engine.events.emit('upsell.skipped', { ref_id: 'R1', page: '/upsell', lines: [] });

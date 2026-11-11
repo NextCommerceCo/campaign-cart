@@ -112,6 +112,12 @@ runs the same checks without showing them, for the debug panel.
    checkout **silently** (no `cart.updated`), return the order. A declined card: `payment.failed`
    (`declined`) without `sdk.error`. Other failures: `sdk.error` (`order.create`) and
    `checkout.failed`. Either way write `checkout.errors`, unfreeze, return `undefined`.
+   A 400 keyed by request field (`{"lines": ["…"]}`, or the same under `message`) writes
+   `errors.form = { code: 'invalid_order', field }` with the first field named; the page words it
+   from `order.errors.<field>`, else `order.errors.generic`, and an express order shows it without
+   "try a different payment method". The API's text goes after the route in the failure's `message`
+   (`POST /api/v1/orders/ → 400: lines: …`), on `sdk.error`, `checkout.failed` and the log, at most
+   300 characters and without `payment*` and `card*` fields (`checkout/state/refusal.ts`).
 
 `Idempotency-Key` is **not** sent until backend ask B1 ships (a custom header fails the API's
 CORS preflight today). When it does, one key per order attempt is reused for retries after an
@@ -144,17 +150,19 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
   sends an unpaid shopper to the failure URL without a `ref_id`; the order chunk then sends
   `payment.failed` for the checkout's `pendingRef`, once per order.
 - **Unchanged from 0.4.x on purpose:** `user.language: 'en'`, `accepts_marketing` is the
-  checkbox as the page left it (true when the page has none), 400 `errors{}` are joined into
-  the general message rather than mapped to fields.
+  checkbox as the page left it (true when the page has none), 400 `errors{}` and a
+  `message` text are shown as the general message rather than mapped to fields.
 
 ### 3.4 Purchases (once, and only when paid)
 
 `order.load` sends `order.paid` only when the order has no `payment_complete_url` and its id is
 not in the reported list (localStorage, last 50), and adds the id as it sends it; analytics
-replays it within the page as `checkout_completed`. Upsell purchases are the order's `is_upsell`
-lines not in the list: analytics sends `upsell_completed` for each on `order.loaded` and marks it
-with `once('browser', …)` as it does, so a late or missing analytics chunk never uses them up. Nothing is
-queued across a redirect.
+replays it within the page as `checkout_completed`. With the id it adds each `is_upsell` line the
+order has then (`paid:<ref>:<line>`), such as an order bump: those lines were paid with the order,
+so they are part of `checkout_completed`, also when it is sent on a later page. Upsell purchases
+are the other `is_upsell` lines, added after payment: analytics sends `upsell_completed` for each
+on `order.loaded` and marks it with `once('browser', …)` as it does, so a late or missing analytics
+chunk never uses them up. Nothing is queued across a redirect.
 
 ### 3.4.1 Order details
 

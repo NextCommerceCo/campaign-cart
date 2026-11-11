@@ -5,7 +5,7 @@ group: 'Event Reference/Carts'
 
 # Cart lifecycle
 
-Events: `cart.*`, `shipping.selected`, and with a change `coupon.applied`, `coupon.removed` and a toggle's `selector.selected` or `selector.deselected`.
+Events: `cart.*`, the Checkout group's `shipping.selected`, and with a change `coupon.applied`, `coupon.removed` and a toggle's `selector.selected` or `selector.deselected`.
 
 ![Cart lifecycle: empty, calculating, priced and unpriced on one page, with the events each step sends](cart-lifecycle.svg)
 

@@ -194,7 +194,7 @@ const buyerTraits = ({ user, billing_address: b }: Order): RudderStackTraits =>
 
 const orderCalls = (e: TrackingEvent<'checkout_completed' | 'upsell_completed'>, r: Remap): RudderStackCall[] => {
   const order = e.event_type === 'checkout_completed';
-  const lines = order ? e.data.lines.filter((l) => !l.upsell) : [e.data.upsell.line];
+  const lines = order ? e.data.lines : [e.data.upsell.line];
   const { raw, incl, products } = orderProducts(r, e.data.ref_id, lines);
   const subtotal = total(products);
   const tax = order ? e.data.tax : 0;

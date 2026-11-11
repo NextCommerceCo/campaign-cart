@@ -21,6 +21,7 @@ Every action, as `data-next-action="<name>"` and `next.actions.<name>({ … })`.
 | `acceptUpsell`                | `selector_id` or `items`: what the offer adds to the order (on a page opened with `?ref_id`)                              | `upsell.accepted`, `order.updated`                                  |
 | `skipUpsell`                  | the same                                                                                                                  | `upsell.skipped`                                                    |
 | `go`                          | `url`                                                                                                                     | —                                                                   |
+| `setMetadata`                 | any keys: each is set on the order's attribution `metadata` ([JavaScript API](../../javascript-api.md#actions))           | —                                                                   |
 
 `acceptUpsell` is its own action because it charges the order; `addItem` on an order page fills a
 new cart.

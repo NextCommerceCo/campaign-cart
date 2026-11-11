@@ -1,8 +1,8 @@
 import { setSource } from '../dom/dom';
 import type { Engine } from '../engine/engine';
-import { format, localeOf, phoneText, type Value, type ValueType } from '../engine/display/format';
+import { format, localeOf, moneyText, type Value, type ValueType } from '../engine/display/format';
 import type { Address } from '../engine/events/checkout';
-import { formatAddress, LINE_LAYOUT } from '../engine/order/address-line';
+import { formatAddress, LINE_LAYOUT, phoneText } from '../engine/order/address-line';
 
 const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
 
@@ -39,16 +39,13 @@ export function display(field: string, value: unknown, engine: Engine, override?
   const n = Number(value);
   switch (override) {
     case 'currency_code':
-      return currency ? `${format({ type: 'money', value: n }, currency, locale)} ${currency}` : n.toFixed(2);
+      return currency ? `${moneyText(n, currency, locale, {}, 'narrowSymbol')} ${currency}` : n.toFixed(2);
     case 'currency_rounded':
       return currency
-        ? number(n, locale, {
-            style: 'currency',
-            currency,
-            currencyDisplay: 'narrowSymbol',
-            maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
-          })
+        ? moneyText(n, currency, locale, { maximumFractionDigits: Number.isInteger(n) ? 0 : 2 })
         : String(n);
+    case 'amount':
+      return currency ? moneyText(n, currency, locale, {}, '{amount}') : n.toFixed(2);
     case 'number':
       return number(n, locale, { maximumFractionDigits: 2 });
     case 'phone':

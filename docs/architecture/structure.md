@@ -40,7 +40,10 @@ go, and the rules that keep it that way. Read with [engine.md](engine.md).
    on why.
 9. **Build output is never committed to main.** CI builds `dist/`. Running the CI
    workflow by hand on main tags the `package.json` version on a commit off main that adds it,
-   which jsDelivr serves; an existing tag is never moved.
+   which jsDelivr serves; an existing tag is never moved. A release is tried first as a beta:
+   set the version to `<version>-beta.<n>` (`0.5.1-beta.1`), tag it the same way and load
+   `@v<version>-beta.<n>` on a page, then set the final version and tag again. A beta's GitHub
+   release is marked pre-release, so its docs get their own folder and `latest/` stays.
 10. **Pages own their CSS; 0.4.x's stylesheet ships unchanged.** The SDK sets classes and
     attributes. The 0.4.x loader linked `campaign-cart.css`, and live pages rely on it (receipt
     skeleton, button spinners, `.hide` utilities, radio and validation styles), so
@@ -94,7 +97,7 @@ scripts/docs-*.mjs         npm run docs: the guides staged for TypeDoc, an Event
 vendor/tsugi/tsugi.css     Tailwind preflight, tsugi base and the components the debug panel uses, for its shadow root;
                            generated, never edited
 vendor/tsugi/payment-icons.css  tsugi's payment icons the payment step shows, inlined; a chunk of its own
-dev/                       bun dev, bun run e2e, bun run qa: campaign pages + the SDK + mock or proxied API
+dev/                       bun dev, bun run e2e, bun run perf, bun run qa: campaign pages + the SDK + mock or proxied API
 src/  tests/               below
 CLAUDE.md                  these rules, short, for AI-assisted maintenance
 README.md · package.json · tsconfig.json · vite.config.ts (build + test) · .prettierrc.json
@@ -126,12 +129,12 @@ src/
                                    debug-config.ts (a nextConfig tried from the debug panel)
     order/                         order.ts (the Order every order.* event and snapshot() carry, the reported ledger),
                                    address.ts (an API address as the public Address), address-line.ts (form fields
-                                   as an API address; an address on one line by a named layout; a chunk checkout, order
-                                   and attributes v2 share),
+                                   as an API address; an address on one line by a named layout; a 10-digit phone
+                                   as text; a chunk checkout, order and attributes v2 share),
                                    payment.ts (codes and aliases, labels, wallets, express buttons; a chunk the lazy
                                    chunks share, kept out of boot)
     display/                       what pages read: values.ts (display paths), format.ts (money, percent, savings;
-                                   localeOf), tokens.ts (template tokens), condition.ts (the 0.4.x condition parser and
+                                   localeOf; a currency's format by the page's formats.currency.<code>), tokens.ts (template tokens), condition.ts (the 0.4.x condition parser and
                                    compare, the one meaning of == != > < >= <=), texts.ts (texts by key: i18n-rules'
                                    /v1/locales, the page's translations), query.ts (next.query / data-next-query: paths
                                    over the objects events carry, fields a page defines; a chunk of its own)
@@ -157,6 +160,7 @@ src/
     cart-summary.ts                cart summary chunk: [data-next-cart-summary], cart-level [data-next-discounts]
     promotion.ts                   [data-next-promotion]: promotion.viewed once half of it is on screen, promotion.clicked
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
+    slot-properties.ts             slots chunk: the page's default properties and a unit's own, on every unit
   attributes/          attributes  attributes v2, loaded when a page has one or a script calls a new action; legacy pages never load it
     index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
     context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
@@ -237,7 +241,7 @@ src/
 | Chunk        | Loaded when                                                                                         | Budget (gzip) |
 | ------------ | --------------------------------------------------------------------------------------------------- | ------------- |
 | loader       | always, inline                                                                                      | 2.5 KB        |
-| boot         | always                                                                                              | 25.5 KB       |
+| boot         | always                                                                                              | 26 KB         |
 | checkout     | `form[data-next-checkout]`                                                                          | 30 KB         |
 | order        | `[data-next-upsell]` or `order.*`                                                                   | 10 KB         |
 | analytics    | idle after ready                                                                                    | 8 KB          |
@@ -322,7 +326,9 @@ tests/
     pages/starter/<campaign>-<page>.html   starter-template pages, copied verbatim, source commit on line 1
 ```
 
-The Playwright run on the built `dist/` is `bun run e2e` in `dev/`, not part of `npm test`.
+The Playwright scenarios (`bun run e2e`, the SDK from source, one file per concern in
+`dev/e2e/scenarios/`) and the load-time run on the built `dist/` (`bun run perf`) are in `dev/`,
+not part of `npm test`.
 
 A test file mirrors the module it covers, and a chunk entry's test is named after the chunk
 (`tests/checkout/checkout.test.ts` covers `src/checkout/index.ts`). Checkout's DOM parts

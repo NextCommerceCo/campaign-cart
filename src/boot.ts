@@ -24,7 +24,7 @@ import {
   removeLegacyPersonalData,
 } from './compat/legacy/globals';
 import { triedConfig, withTried } from './engine/visit/debug-config';
-import { localeOf } from './engine/display/format';
+import { localeOf, useCurrencyFormats } from './engine/display/format';
 import { trackingIgnored } from './engine/visit/params';
 import { rulesSend, textsIn, type Texts } from './engine/display/texts';
 
@@ -88,6 +88,7 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   );
   if (tried) Object.assign(window, { nextConfig: withTried(page, tried) });
   const i18n = readLegacyI18n();
+  useCurrencyFormats(i18n.translations);
   const send = window.fetch.bind(window);
   const rules = rulesSend(send, config.apiKey);
 
@@ -134,11 +135,11 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
 
   const legacy = legacyEvents(engine, () => import('./compat/legacy'));
   const bindings = bindAll(document, engine);
-  if (bindings.legacy || !v2In(document) || document.querySelector(LEGACY_FORMS)) void legacy.preload();
+  const legacyLoaded = (bindings.legacy || !v2In(document) || document.querySelector(LEGACY_FORMS)) && legacy.preload();
   const [next, queried, bindV2] = nextApi(engine, legacy, bindings);
   (window as unknown as { next: NextApi }).next = next;
   const orderParams = params.has('ref_id') || params.has('order_ref_id') || paymentFailed;
-  const bindChunks = pageChunks(engine, legacy, queried, orderParams, rules, i18n.translations);
+  const bindChunks = pageChunks(engine, legacy, queried, orderParams, rules, i18n.translations, legacyLoaded);
   revealWhenBound(engine, bindings, next, bindChunks, bindV2, config.apiKey);
   engine.on('sdk.error', (e) => {
     if (e.data.action === 'campaign.load') document.documentElement.setAttribute('data-next-error', 'campaign');
@@ -153,7 +154,10 @@ export function boot(config: BootConfig, campaign: Promise<Campaign>): NextApi {
   return next;
 }
 
-/** Loads the lazy chunks the page's markup needs; the function it returns binds them once the campaign has loaded. */
+/**
+ * Loads the lazy chunks the page's markup needs; the function it returns binds them once the campaign has loaded.
+ * A 0.4.x page is shown once `legacyLoaded`: the chunk's `window.next` methods are there for its ready callbacks.
+ */
 function pageChunks(
   engine: Engine,
   legacy: LegacyEvents,
@@ -161,6 +165,7 @@ function pageChunks(
   orderParams: boolean,
   rules: Send,
   translations: Record<string, Texts>,
+  legacyLoaded: unknown,
 ): (v2Page: boolean) => unknown[] {
   const form = document.querySelector<HTMLFormElement>('form[data-next-checkout]');
   const checkout = form ? import('./checkout') : undefined;
@@ -186,6 +191,7 @@ function pageChunks(
     ? import('./bindings/slots')
     : undefined;
   return (v2Page) => [
+    legacyLoaded,
     form &&
       Promise.all([checkout!, v2Page && queried()]).then(([m, q]) =>
         m.bindCheckout(engine, form, {

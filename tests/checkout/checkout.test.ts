@@ -153,6 +153,26 @@ afterEach(() => {
 });
 
 describe('checkout page (olympus, 0.4.43 markup)', () => {
+  it('names the months it fills in the page language, and keeps a month list the page wrote', async () => {
+    const texts = () =>
+      [...document.querySelector<HTMLSelectElement>('[data-next-checkout-field="exp-month"]')!.options].map(
+        (o) => o.text,
+      );
+    await mount('olympus/checkout.html', { locale: 'fr' });
+    expect(texts().slice(1, 3)).toEqual(['(01) janvier', '(02) février']);
+
+    document.body.innerHTML = '';
+    await mount('olympus/checkout.html', {
+      locale: 'fr',
+      markup: (body) => {
+        const month = body.querySelector<HTMLSelectElement>('[data-next-checkout-field="exp-month"]')!;
+        month.innerHTML =
+          '<option value="">Mois</option><option value="01">01 - Jan</option><option value="02">02 - Fév</option>';
+      },
+    });
+    expect(texts()).toEqual(['Mois', '01 - Jan', '02 - Fév']);
+  });
+
   it('fills the selects, payment panels and express buttons the page leaves empty', async () => {
     const warn = vi.spyOn(console, 'warn');
     const { $, field, type } = await mount('olympus/checkout.html');
@@ -613,6 +633,53 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(express.style.display).toBe('flex');
     expect(express.textContent).toContain('PayPal is unavailable. Please try a different payment method.');
     expect($('[data-next-component="credit-error"]').style.display).toBe('none');
+  });
+
+  it('words an order the API refused by its field, for an express order and a card order', async () => {
+    const refuse = () => json({ lines: ['Don’t have enough stock for Red Light Therapy'] }, 400);
+    const item = 'An item in your order isn’t available right now. Please contact support.';
+    const express = await mount('olympus/checkout.html', { order: refuse });
+    express.type('email', 'jane@example.com');
+    express.type('fname', 'Jane');
+    express.type('lname', 'Doe');
+    document.querySelector<HTMLButtonElement>('button[data-next-express-checkout="paypal"]')!.click();
+    await flush();
+    await flush();
+    expect(express.$('[data-next-component="express-error"]').style.display).toBe('flex');
+    expect(express.$('[data-next-component="express-error-text"]').textContent).toBe(item);
+
+    sessionStorage.clear();
+    const card = await mount('olympus/checkout.html', { order: refuse });
+    card.fill(SHIPPING);
+    card.card();
+    await card.submit();
+    await flush();
+    expect(card.$('[data-next-component="credit-error-text"]').textContent).toBe(item);
+    expect(card.engine.log.entries().map((entry) => entry.message)).toContain(
+      'order.create failed (rejected): POST /api/v1/orders/ → 400: lines: Don’t have enough stock for Red Light Therapy',
+    );
+  });
+
+  it('words a refused order in the page’s translations, and one without a text of its own as the general one', async () => {
+    const answers = [json({ lines: ['Out of stock'] }, 400), json({ non_field_errors: ['Try later'] }, 400)];
+    const { fill, card, submit, $ } = await mount('olympus/checkout.html', {
+      order: () => answers.shift()!,
+      locale: 'th-TH',
+      translations: {
+        th: {
+          'order.errors.lines': 'สินค้าในคำสั่งซื้อไม่พร้อมจำหน่าย',
+          'order.errors.generic': 'ไม่สามารถสั่งซื้อได้',
+        },
+      },
+    });
+    fill(SHIPPING);
+    card();
+    await submit();
+    await flush();
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe('สินค้าในคำสั่งซื้อไม่พร้อมจำหน่าย');
+    await submit();
+    await flush();
+    expect($('[data-next-component="credit-error-text"]').textContent).toBe('ไม่สามารถสั่งซื้อได้');
   });
 
   it('puts the phone in E.164 on its field for page forwarders while the number checks out', async () => {

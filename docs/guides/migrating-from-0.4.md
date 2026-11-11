@@ -2,7 +2,7 @@
 title: 'Start Here/Migrating from 0.4.x'
 group: 'Start Here'
 category: 'Start Here'
-order: 2
+order: 3
 ---
 
 # Migrating from 0.4.x
@@ -50,6 +50,8 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - **Coupon on an empty cart** is checked once the cart is first priced. `next.applyCoupon` still
   answers `true` at once.
 - **Phone placeholder**: the page's own is kept (0.4.43 replaced it with `Phone*`).
+- **Card expiry selects**: an empty `exp-month` select is filled with months named in the page's
+  language (0.4.43 wrote them in English); a list the page wrote is kept.
 - **`data-next-address`**: `-lang` and `-api` are not read.
 - **`addressConfig.countries` / `dontShowStates`**: only the campaign's shipping countries that
   are also in the list are offered.
@@ -71,13 +73,20 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 - `dl_begin_checkout`, `dl_add_shipping_info`, `dl_add_payment_info`: once per checkout. A later
   step, a reload or a return from the payment gateway does not send them again.
+  `dl_add_shipping_info` is sent when the shipping address is valid, after `dl_begin_checkout`; a
+  shipping method priced before that (a bundle card with `data-next-shipping-id`) does not send it.
 - `dl_add_to_cart` is now sent for a cart filled before the page loaded (default bundle,
   `forcePackageId`, `forceBundleId`, a redirecting add-to-cart button), at the cart price.
-  Filter on `first_in_session` to send one AddToCart per tab.
+  Filter on `first_in_session` to send one AddToCart per tab. The Meta destination does this itself.
+- The Meta destination sends `PageView` itself, as 0.4.x did: a page whose pixel base code keeps
+  `fbq('track', 'PageView')` sends it twice, so remove that line.
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in
-  sessionStorage.
+  sessionStorage. As in 0.4.x, a line the order was paid with (an order bump with
+  `data-next-is-upsell="true"`) is in `dl_purchase`, not a `dl_upsell_purchase`.
+- `user_properties` carries the customer's email, name, phone and billing address on `dl_purchase`
+  and `dl_upsell_purchase` only, from the order. Every other `dl_*` event has
+  `{ visitor_type: 'guest' }`.
 - `dl_purchase`:
-  - `user_properties` without the customer's email, name and address.
   - No URL query strings in `page_referrer` / `attribution.metadata`.
   - Same `transaction_id`, value, tax basis (picked per order, as 0.4.x did), `item_sku`, per-item
     `discount`, `item_brand` and `coupon`.
@@ -100,6 +109,7 @@ Still works. Use the right column on new pages.
 | `next.getShippingMethods / setShippingMethod / getSelectedShippingMethod`                                                                                                  | Read `next.snapshot().cart.shipping_method`; set with `next.actions.setShipping(id)`                                                                                                                                                                                      |
 | `data-next-upsell-quantity-toggle` on the offer                                                                                                                            | `data-next-quantity` on the offer, or a bundle selector inside it                                                                                                                                                                                                         |
 | `next.addUpsell`, `canAddUpsells`, `getCompletedUpsells`, `isUpsellAlreadyAdded`, `getAvailableVariantAttributes`, `getPackageByVariantSelection` (on post-purchase pages) | `data-next-upsell-action="add"` on an offer, or `next.actions.acceptUpsell({ items: '12x2' })`                                                                                                                                                                            |
+| `next.setMetadata`, `addMetadata`, `getMetadata`, `clearMetadata`                                                                                                          | `next.actions.setMetadata({ key: value })`; read `next.context().attribution`                                                                                                                                                                                             |
 | `data-next-bundle-selector-id` on the offer                                                                                                                                | Put the `[data-next-bundle-selector]` inside `[data-next-upsell]`                                                                                                                                                                                                         |
 | `next.on('cart:updated')` and the other 0.4.x event names                                                                                                                  | The [Event Reference](events.md) names. The old ones still fire with their 0.4.43 payloads                                                                                                                                                                                |
 | `dl_*` in `window.dataLayer` / `NextDataLayer`, `NextDataLayerTransformFn`                                                                                                 | `next.analytics.on(name, fn)` with the [tracking names](/analytics): `dl_add_to_cart` → `product_added_to_cart`, `dl_purchase` → `checkout_completed`, `dl_user_data` → `page_viewed`, …                                                                                  |
@@ -111,6 +121,9 @@ Still works. Use the right column on new pages.
 `data-next-i18n`, `nextConfig.locale` and `nextConfig.translations` work as in 0.4.x, by the same
 keys; see [Language](attribute-reference/setup/language.md). Without `locale`, prices and the
 checkout follow the campaign's language (0.4.x: the browser's for prices, English for the checkout).
+CAD, AUD, NZD, HKD and MXN prices carry their prefix (`CA$49.90`) unless the page's language is
+their own market's (0.4.x: a bare `$` everywhere); `formats.currency.<code>` in `translations` sets
+it ([Language and currency](recipes/language-and-currency.md)).
 
 The page widgets (timer, accordion, tooltip, scroll hint) load in a small chunk only on pages that
 use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordion:*`,

@@ -6,7 +6,8 @@
  * types' TSDoc. A field tagged `@priced` or `@campaign`, or optional, says so in the Present column.
  * Examples are the payloads `tests/event-examples.test.ts` recorded in `docs/event-examples.json`.
  * Pages land in `docs/.staged/event-reference/`, and the index replaces `<!-- event-index -->` in the
- * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event.
+ * staged `events.md`. A group's hand-written `lifecycle.md` is ordered just before its first event,
+ * in both references.
  * The Analytics Reference is the same for `TrackingMap`: a page per tracking event under
  * `docs/.staged/analytics-reference/`, its triggers, its `data` (the same objects, with the same
  * tables) and its `dataLayer` push from `docs/analytics-examples.json`
@@ -31,6 +32,7 @@ const SOURCES = [
   'src/engine/cart/types.ts',
   'src/engine/types.ts',
   'src/compat/analytics/schema.ts',
+  'src/compat/analytics/customer.ts',
   'src/destinations/ga4.ts',
   'src/destinations/meta.ts',
   'src/destinations/rudderstack/types.ts',
@@ -327,8 +329,9 @@ carries the same object the SDK's [events](/events) carry (the Cart, a CartItem,
 Order), in one envelope: \`{ event_id, event_type, object, data, created_at, session_id,
 sdk_version, context }\`. Each [destination](${DESTINATIONS}/overview) remaps them to its own format.
 \`next.analytics.on(name, (event) => …)\` receives one, \`'*'\` every one.
-[How analytics works](/analytics-reference/how-it-works) says how each is sent; each event's page has
-what triggers it, its \`data\`, and what each destination gets.
+[How analytics works](/analytics-reference/how-it-works) says how each is sent; each group starts
+with a diagram of when its events are sent; each event's page has what triggers it, its \`data\`, and
+what each destination gets.
 
 ${index(events, ANALYTICS)}
 `;
@@ -366,7 +369,11 @@ const COMMON = [
   'attribution',
   '_metadata',
 ];
-const ownFields = (push) => Object.fromEntries(Object.entries(push).filter(([k]) => !COMMON.includes(k)));
+const withCustomer = (push) => Object.keys(push.user_properties ?? {}).length > 1;
+const ownFields = (push) =>
+  Object.fromEntries(
+    Object.entries(push).filter(([k]) => !COMMON.includes(k) || (k === 'user_properties' && withCustomer(push))),
+  );
 
 const config = (destinations) => `\`\`\`html
 <script>
@@ -425,7 +432,8 @@ like any promotion, and the five \`dl_exit_intent_*\` pushes below, which have n
 close after a click, or the page removing the popup, sends neither \`_dismissed\` nor \`_closed\`.
 
 Every push carries the fields of [\`DataLayerPush\`](#datalayerpush). The examples show them on
-\`dl_user_data\`; the others leave them out but \`event\` and \`event_id\`.`,
+\`dl_user_data\`; the others leave them out but \`event\` and \`event_id\`, and \`user_properties\` on
+\`dl_purchase\` and \`dl_upsell_purchase\`, which carry the order's customer in it.`,
     call: (name, e) =>
       `\`\`\`json\n${JSON.stringify(name === 'dl_user_data' ? e.push : ownFields(e.push), null, 2)}\n\`\`\``,
   },
@@ -458,8 +466,9 @@ and each \`upsell_completed\` are a \`purchase\` of their own, with the tracking
     vendor: 'Meta Pixel standard events',
     reference: 'Meta reference',
     as: 'Meta event',
-    intro: `Sends six tracking events to the page's \`fbq\` as Meta Pixel standard events,
-\`fbq('track', name, params, { eventID })\`. The pixel's base code sends \`PageView\` itself.`,
+    intro: `Sends tracking events to the page's \`fbq\` as Meta Pixel standard events,
+\`fbq('track', name, params, { eventID })\`. \`PageView\` is one of them, as in 0.4.x: remove
+\`fbq('track', 'PageView')\` from the pixel's base code on the page, or Meta gets it twice.`,
     config: `Off by default. On, with the store's name:
 
 ${config("{ meta: { enabled: true, storeName: 'shop' } }")}
@@ -467,8 +476,11 @@ ${config("{ meta: { enabled: true, storeName: 'shop' } }")}
 The 0.4.x \`analytics.providers.facebook.enabled: true\` turns it on too, and \`nextConfig.storeName\`
 is read when \`storeName\` is not set.`,
     loads: `\`meta-*.js\` (about 2 KB), only when it is on. The SDK never loads the pixel: the page has its
-base code. Without \`fbq\` the SDK logs one warning and sends nothing.`,
-    notes: `\`eventID\` is the tracking event's \`event_id\`, so a
+base code, without its \`fbq('track', 'PageView')\` line. Without \`fbq\` the SDK logs one warning and sends nothing.`,
+    notes: `\`AddToCart\` is sent for the first add of the session only, the \`product_added_to_cart\` whose
+\`first_in_session\` is \`true\`; later adds and bundle changes are not sent.
+
+\`eventID\` is the tracking event's \`event_id\`, so a
 [Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events)
 event with the same id is counted once. With \`storeName\`, an order's \`Purchase\` has
 \`eventID: '<storeName>-<order number>'\`, the id the store's server-side events use.`,
@@ -581,6 +593,16 @@ function index(events, root = GROUP) {
     .join('\n\n');
 }
 
+/** Orders each group's hand-written `lifecycle.md` under `root` just before the group's first page. */
+async function orderLifecycles(out, root, pages) {
+  for (const group of new Set(pages.map((e) => e.group))) {
+    const lifecycle = join(out, slugifyPath([root, group]), 'lifecycle.md');
+    const text = await readFile(lifecycle, 'utf8').catch(() => undefined);
+    const first = pages.findIndex((e) => e.group === group) + 1;
+    if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
+  }
+}
+
 /** @param {string} root  @param {string} out  staged docs root */
 export async function stageEventReference(root, out) {
   const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
@@ -606,12 +628,7 @@ export async function stageEventReference(root, out) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, page(event, i + 1, examples[event.name], version));
   }
-  for (const group of new Set(events.map((e) => e.group))) {
-    const lifecycle = join(out, slugifyPath([GROUP, group]), 'lifecycle.md');
-    const text = await readFile(lifecycle, 'utf8').catch(() => undefined);
-    const first = events.findIndex((e) => e.group === group) + 1;
-    if (text) await writeFile(lifecycle, text.replace(/^---\n/, `---\norder: ${first - 0.5}\n`));
-  }
+  await orderLifecycles(out, GROUP, events);
   const linkTo = (name) => {
     const event = events.find((e) => e.name === name);
     if (event) return `[\`${name}\`](${linkOf(event)})`;
@@ -641,6 +658,7 @@ export async function stageEventReference(root, out) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, trackingPage(event, i + 1, trackingExamples[event.name], linkTo, version, sentTo));
   }
+  await orderLifecycles(out, ANALYTICS, tracked);
   await writeFile(join(out, 'analytics.md'), trackingOverview(tracked));
   for (const d of DESTINATION_PAGES) {
     const file = join(out, slugifyPath([ANALYTICS]), 'destinations', `${d.key}.md`);

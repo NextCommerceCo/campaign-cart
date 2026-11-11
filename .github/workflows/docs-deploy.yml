@@ -3,7 +3,8 @@ name: Deploy docs
 # The site is one folder per release, plus `latest/` and `main/`. A Workers deploy
 # replaces every file, so each run rebuilds the whole site: released folders come from
 # the `docs-site.tar.gz` attached to each GitHub release, `main/` is built fresh. Publishing
-# a release builds its folder, attaches it, and makes it `latest/`.
+# a release builds its folder, attaches it, and makes it `latest/`. A pre-release gets its
+# folder only.
 on:
   push:
     branches: [main]
@@ -28,6 +29,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE: ${{ github.event.release.tag_name }}
+      PRERELEASE: ${{ github.event.release.prerelease }}
       LEGACY_TAG: v0.4.43
     steps:
       - uses: actions/checkout@v4
@@ -67,20 +69,24 @@ jobs:
       - name: Unpack released docs, oldest first so the newest latest/ wins
         run: |
           mkdir -p docs/site
-          gh release list --limit 1000 --json tagName --jq '.[].tagName' | sort -V | while read -r tag; do
+          gh release list --limit 1000 --json tagName,isPrerelease --jq '.[] | "\(.tagName) \(.isPrerelease)"' | sort -V | while read -r tag prerelease; do
             if gh release view "$tag" --json assets --jq '.assets[].name' | grep -qx docs-site.tar.gz; then
-              rm -rf docs/site/latest
+              [ "$prerelease" = true ] || rm -rf docs/site/latest
               gh release download "$tag" --pattern docs-site.tar.gz --output - | tar xz -C docs/site
             fi
           done
 
-      - name: Build the release folder and latest/
+      - name: Build the release folder, and latest/ for a full release
         if: ${{ env.RELEASE }}
         run: |
           npm run docs:build -- "$RELEASE"
-          rm -rf docs/site/latest
-          npm run docs:build -- latest
-          tar czf "$RUNNER_TEMP/docs-site.tar.gz" -C docs/site "$RELEASE" latest
+          if [ "$PRERELEASE" = true ]; then
+            tar czf "$RUNNER_TEMP/docs-site.tar.gz" -C docs/site "$RELEASE"
+          else
+            rm -rf docs/site/latest
+            npm run docs:build -- latest
+            tar czf "$RUNNER_TEMP/docs-site.tar.gz" -C docs/site "$RELEASE" latest
+          fi
 
       - name: Attach the docs to the release
         if: ${{ env.RELEASE && !inputs.dry-run }}

@@ -1,8 +1,10 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { countFiles, render404, renderRobots } from '../scripts/docs-site.mjs';
+import { buildVersionIndex } from '../scripts/docs-versions.mjs';
 
 describe('docs site root files', () => {
   it('blocks crawlers until a public domain is set, then indexes only latest/', () => {
@@ -26,6 +28,30 @@ describe('docs site root files', () => {
     writeFileSync(join(root, 'index.html'), '');
     writeFileSync(join(root, 'latest/a/page.html'), '');
     expect(countFiles(root)).toBe(2);
+  });
+});
+
+describe('docs version index', () => {
+  it('keeps current on the newest full release when a beta is newer', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'docs-versions-'));
+    const git = (...args: string[]) =>
+      execFileSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.com', ...args], { cwd: repo });
+    writeFileSync(join(repo, 'package.json'), '{"version":"0.5.1-beta.10"}');
+    git('init', '--quiet');
+    git('add', 'package.json');
+    git('commit', '--quiet', '--no-gpg-sign', '-m', 'init');
+    const tags = ['v0.5.0', 'v0.5.1-beta.2', 'v0.5.1-beta.10'];
+    for (const tag of tags) {
+      git('tag', tag);
+      mkdirSync(join(repo, 'site', tag), { recursive: true });
+    }
+
+    const { versions } = buildVersionIndex({ cwd: repo, root: join(repo, 'site') });
+    expect(versions.map((v) => [v.tag, v.current])).toEqual([
+      ['v0.5.1-beta.10', false],
+      ['v0.5.1-beta.2', false],
+      ['v0.5.0', true],
+    ]);
   });
 });
 

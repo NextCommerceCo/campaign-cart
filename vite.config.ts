@@ -18,6 +18,31 @@ export default defineConfig({
         }
       },
     },
+    {
+      // The loader fetches a page's lazy chunks beside boot: each name with its file and the chunks it imports.
+      name: 'preload-map',
+      enforce: 'post',
+      generateBundle(_, bundle) {
+        const chunks = Object.values(bundle).flatMap((c) => (c.type === 'chunk' ? [c] : []));
+        const file = (name: string) => chunks.find((c) => c.fileName.startsWith(`${name}-`));
+        const boot = file('boot')?.fileName;
+        const withImports = (name: string): string[] => {
+          const seen = new Set<string>();
+          const add = (fileName?: string) => {
+            if (!fileName || fileName === boot || seen.has(fileName)) return;
+            seen.add(fileName);
+            chunks.find((c) => c.fileName === fileName)?.imports.forEach(add);
+          };
+          add(file(name)?.fileName);
+          return [...seen];
+        };
+        const map = ['legacy', 'attributes', 'checkout', 'order', 'cart-summary', 'slots']
+          .map((n) => `${n}:${withImports(n)}`)
+          .join('|');
+        const loader = chunks.find((c) => c.fileName === 'loader.js');
+        if (loader) loader.code = loader.code.replace('%PRELOAD%', map);
+      },
+    },
   ],
   build: {
     target: 'es2020',

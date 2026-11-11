@@ -1,14 +1,16 @@
 // @ts-check
 /**
- * Draws each Event Reference group's lifecycle as a top-down SVG next to its `lifecycle.md`, in
- * the docs site's own colors so it follows the light and dark theme. The flows are written below;
- * run `npm run docs:lifecycles` after changing one and commit the SVGs. The tables in each
+ * Draws each Event Reference group's lifecycle, and each Analytics Reference group's tracking
+ * events, as a top-down SVG next to its `lifecycle.md`, in the docs site's own colors so it follows
+ * the light and dark theme. The flows are written below (`LIFECYCLES`, `TRACKING`); run
+ * `npm run docs:lifecycles` after changing one and commit the SVGs. The tables in each
  * `lifecycle.md` say the same in text.
  */
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(process.cwd(), 'docs/guides/event-reference');
+const TRACKING_ROOT = join(process.cwd(), 'docs/guides/analytics-reference');
 const C = {
   fg: 'var(--clean-fg, #111827)',
   muted: 'var(--clean-fg-muted, #6b7280)',
@@ -29,8 +31,9 @@ let ROWS;
 const rowY = (i) => ROWS?.[i] ?? 16 + i * 180;
 const H = 58;
 
-function box({ col = 'main', row, title, sub = [], tone = 'neutral' }) {
-  const c = col === 'main' ? MAIN : SIDE;
+function box({ col = 'main', row, title, sub = [], tone = 'neutral', w }) {
+  const column = col === 'main' ? MAIN : SIDE;
+  const c = w ? { x: column.cx - w / 2, w, cx: column.cx } : column;
   const y = rowY(row);
   const h = H + Math.max(0, sub.length - 1) * 15;
   const lines = sub
@@ -151,6 +154,18 @@ const loopRight = (row, title, events = [], { y = 18, h = 24 } = {}) => {
     arrow(`M${right} ${top} H470 V${top + h} H${right + 6}`),
     label(482, top + 6, title, { size: 12 }),
     ...events.map((e, i) => label(482, top + 23 + i * 17, e, { code: true })),
+  ];
+};
+
+/** What sends a tracking event: a dashed box left of main box `row` saying when, the engine event under it, and an arrow in. */
+const trigger = (row, lines, event, { boxH = H, w = 150, to = MAIN.x } = {}) => {
+  const h = 12 + lines.length * 15;
+  const mid = rowY(row) + boxH / 2;
+  const e = entry(8, mid - h / 2, w, lines);
+  return [
+    ...e.svg,
+    label(8 + w / 2, e.bottom + 16, event, { anchor: 'middle', code: true }),
+    arrow(`M${e.right} ${mid} H${to - 6}`),
   ];
 };
 
@@ -623,9 +638,325 @@ const LIFECYCLES = {
   },
 };
 
+/** The tracking events of each Analytics Reference group: what sends each, and the `dl_*` push it becomes. */
+const TRACKING = {
+  pages: {
+    title: 'Page tracking',
+    desc: 'On every page, sdk.ready sends page_viewed (dl_user_data); the Meta pixel, when on, gets PageView for it. Then by the packages the page shows: exactly one sends product_viewed (dl_view_item), more than one sends product_list_viewed (dl_view_item_list), none sends neither.',
+    rowYs: [76, 200, 330],
+    boxes: [
+      {
+        row: 0,
+        title: 'page viewed',
+        sub: [code('page_viewed'), 'every page load', 'as dl_user_data'],
+        tone: 'success',
+      },
+      { row: 2, title: 'product viewed', sub: [code('product_viewed'), 'as dl_view_item'], tone: 'success' },
+      { col: 'side', row: 0, title: 'Meta pixel', sub: [code('PageView')] },
+      {
+        col: 'side',
+        row: 1,
+        title: 'list viewed',
+        sub: [code('product_list_viewed'), 'as dl_view_item_list'],
+        tone: 'success',
+      },
+    ],
+    parts: () => {
+      const fork = rowY(1) + 36;
+      const none = entry(16, fork - 21, 150, ['no package:', 'neither is sent']);
+      return [
+        (() => {
+          const e = entry(MAIN.cx - 80, 8, 160, ['the SDK is ready']);
+          return [
+            ...e.svg,
+            arrow(`M${MAIN.cx} ${e.bottom} V${rowY(0) - 6}`),
+            label(MAIN.cx + 14, 60, 'sdk.ready', { code: true }),
+          ];
+        })(),
+        toSide(0, 'when it is on', { dashed: true }),
+        [
+          arrow(`M${MAIN.cx} ${rowY(0) + 88} V${fork - 18}`),
+          choice(MAIN.cx, fork),
+          label(MAIN.cx + 14, 186, 'the packages', { size: 12 }),
+          label(MAIN.cx + 14, 202, 'the page shows', { size: 12 }),
+        ],
+        [
+          arrow(`M${MAIN.cx + 12} ${fork} H${SIDE.x - 6}`),
+          label((MAIN.cx + 12 + SIDE.x) / 2, fork - 8, 'more than one', { anchor: 'middle', size: 12 }),
+        ],
+        [arrow(`M${MAIN.cx} ${fork + 12} V${rowY(2) - 6}`), label(MAIN.cx + 14, fork + 56, 'exactly one')],
+        [...none.svg, arrow(`M${MAIN.cx - 12} ${fork} H${none.right + 6}`, { dashed: true })],
+      ];
+    },
+  },
+  carts: {
+    title: 'Cart tracking',
+    desc: 'The cart is compared with the lines already reported in this tab: after every price update (cart.calculated), when the last line is removed (cart.updated), and on sdk.ready when the page opens with a priced or an empty cart. In order: product_removed_from_cart for each line the cart lost (dl_remove_from_cart), product_added_to_cart for each line it gained (dl_add_to_cart), then, on cart.calculated only, cart_updated (dl_cart_updated). The Meta pixel gets AddToCart for the first add of the tab only, the one whose first_in_session is true.',
+    rowYs: [76, 216, 370, 524],
+    boxes: [
+      {
+        row: 0,
+        title: 'compared',
+        sub: ['the cart, with the lines', 'already reported in this tab'],
+        tone: 'active',
+      },
+      {
+        row: 1,
+        title: 'line removed',
+        sub: [code('product_removed_from_cart'), 'one per line', 'as dl_remove_from_cart'],
+        tone: 'success',
+      },
+      {
+        row: 2,
+        title: 'line added',
+        sub: [code('product_added_to_cart'), 'one per line', 'as dl_add_to_cart'],
+        tone: 'success',
+      },
+      {
+        row: 3,
+        title: 'cart updated',
+        sub: [code('cart_updated'), 'every price update', 'as dl_cart_updated'],
+        tone: 'success',
+      },
+      { col: 'side', row: 2, title: 'Meta pixel', sub: [code('AddToCart'), 'first add of the tab'] },
+    ],
+    parts: () => {
+      const mid = rowY(0) + 36;
+      const opens = entry(SIDE.x, mid - 21, SIDE.w, ['the page opens with a', 'priced or empty cart']);
+      return [
+        (() => {
+          const e = entry(MAIN.cx - 80, 8, 160, ['the cart is priced']);
+          return [
+            ...e.svg,
+            arrow(`M${MAIN.cx} ${e.bottom} V${rowY(0) - 6}`),
+            label(MAIN.cx + 14, 60, 'cart.calculated', { code: true }),
+          ];
+        })(),
+        trigger(0, ['the last line', 'is removed'], 'cart.updated', { boxH: 73 }),
+        [
+          ...opens.svg,
+          label(SIDE.cx, opens.bottom + 16, 'sdk.ready', { anchor: 'middle', code: true }),
+          arrow(`M${SIDE.x} ${mid} H${MAIN.x + MAIN.w + 6}`),
+        ],
+        down(0, 1, 'first, each line the cart lost', [], { boxH: 73 }),
+        down(1, 2, 'then each line it gained', [], { boxH: 88 }),
+        down(2, 3, 'then, on a price update', ['cart.calculated'], { boxH: 88 }),
+        toSide(2, 'the first add', { dashed: true }),
+      ];
+    },
+  },
+  checkout: {
+    title: 'Checkout tracking',
+    desc: 'Each event comes once per checkout. checkout.started sends checkout_started (dl_begin_checkout); when the page that started the checkout was left before it was sent, the next checkout page sends it. user.created sends checkout_contact_info_submitted (dl_generate_lead). The other three wait for checkout_started. A valid shipping address (address.entered) sends checkout_shipping_address_submitted, and checkout_shipping_method_submitted follows when the cart is priced with a shipping method: at once when it already is, else when a method picked later is priced (shipping.selected). The first of the two is sent as dl_add_shipping_info. checkout.submitted, a submit that passes its checks, sends checkout_payment_info_submitted (dl_add_payment_info).',
+    rowYs: [16, 144, 272, 425, 538],
+    boxes: [
+      {
+        row: 0,
+        w: 280,
+        title: 'started',
+        sub: [code('checkout_started'), 'once per checkout', 'as dl_begin_checkout'],
+        tone: 'success',
+      },
+      {
+        row: 1,
+        w: 280,
+        title: 'contact',
+        sub: [code('checkout_contact_info_submitted'), 'once per checkout', 'as dl_generate_lead'],
+        tone: 'success',
+      },
+      {
+        row: 2,
+        w: 280,
+        title: 'shipping address',
+        sub: [code('checkout_shipping_address_submitted'), 'once per checkout'],
+        tone: 'success',
+      },
+      {
+        row: 3,
+        w: 280,
+        title: 'shipping method',
+        sub: [code('checkout_shipping_method_submitted'), 'once per checkout'],
+        tone: 'success',
+      },
+      {
+        row: 4,
+        w: 280,
+        title: 'payment',
+        sub: [code('checkout_payment_info_submitted'), 'once per checkout', 'as dl_add_payment_info'],
+        tone: 'success',
+      },
+    ],
+    parts: () => {
+      const left = MAIN.cx - 140;
+      const right = MAIN.cx + 140;
+      const lane = right + 36;
+      const note = lane + 12;
+      const mid = (row, h) => rowY(row) + h / 2;
+      return [
+        trigger(0, ['the checkout starts,', 'or its next page when', 'this one was left'], 'checkout.started', {
+          boxH: 88,
+          to: left,
+        }),
+        trigger(1, ['the contact details', 'save an Open Cart'], 'user.created', { boxH: 88, to: left }),
+        trigger(2, ['the shipping address', 'is valid'], 'address.entered', { boxH: 73, to: left }),
+        trigger(3, ['a method picked', 'later is priced'], 'shipping.selected', { boxH: 73, to: left }),
+        trigger(4, ['a submit passes', 'its checks'], 'checkout.submitted', { boxH: 88, to: left }),
+        [
+          arrow(`M${right} ${mid(0, 88)} H${lane} V${mid(4, 88)} H${right + 6}`),
+          arrow(`M${lane} ${mid(2, 73)} H${right + 6}`),
+          arrow(`M${lane} ${mid(3, 73)} H${right + 6}`),
+          label(note, 124, 'each waits for', { size: 12 }),
+          label(note, 141, 'checkout_started', { code: true }),
+        ],
+        [
+          arrow(`M${MAIN.cx} ${rowY(2) + 73} V${rowY(3) - 6}`),
+          label(MAIN.cx + 14, 380, 'the cart already has', { size: 12 }),
+          label(MAIN.cx + 14, 396, 'a priced shipping method', { size: 12 }),
+          label(note, 372, 'the first of these two', { size: 12 }),
+          label(note, 388, 'is sent as', { size: 12 }),
+          label(note, 405, 'dl_add_shipping_info', { code: true }),
+        ],
+      ];
+    },
+  },
+  orders: {
+    title: 'Order tracking',
+    desc: 'order.paid sends checkout_completed (dl_purchase), once per order in this browser: on the checkout for an order paid at once, on the page after a gateway otherwise. When the paying page was left before it was sent, the order.loaded of a later page sends it. Its lines are the ones paid with the order, an is_upsell line among them; a line an upsell adds after payment is not in it and sends upsell_completed.',
+    rowYs: [96],
+    boxes: [
+      {
+        row: 0,
+        w: 280,
+        title: 'completed',
+        sub: [
+          code('checkout_completed'),
+          'once per order in this browser',
+          'lines: those paid with the order,',
+          'an is_upsell line among them',
+          'as dl_purchase',
+        ],
+        tone: 'success',
+      },
+    ],
+    parts: () => {
+      const right = MAIN.cx + 140;
+      const y = rowY(0) + 59;
+      const later = entry(SIDE.x, y - 28.5, SIDE.w, ['a line an upsell adds', 'after payment:', 'upsell_completed']);
+      return [
+        (() => {
+          const e = entry(MAIN.cx - 125, 8, 250, [
+            'the order is paid: on the checkout,',
+            'or on the page after a gateway',
+          ]);
+          return [
+            ...e.svg,
+            arrow(`M${MAIN.cx} ${e.bottom} V${rowY(0) - 6}`),
+            label(MAIN.cx + 14, 76, 'order.paid', { code: true }),
+          ];
+        })(),
+        trigger(
+          0,
+          ['a later page loads', 'the order: the paying', 'page was left before', 'it was sent'],
+          'order.loaded',
+          {
+            boxH: 118,
+            to: MAIN.cx - 140,
+          },
+        ),
+        [
+          arrow(`M${right} ${y} H${SIDE.x - 6}`, { dashed: true }),
+          label((right + SIDE.x) / 2, y - 8, 'not in it', { anchor: 'middle', size: 12 }),
+          ...later.svg,
+        ],
+      ];
+    },
+  },
+  upsells: {
+    title: 'Upsell tracking',
+    desc: 'On an upsell page, upsell.viewed sends upsell_viewed (dl_viewed_upsell), once per upsell page. upsell.skipped sends upsell_skipped (dl_skipped_upsell), every time. An accepted offer sends nothing on its page: the next page loads the order, and its order.loaded sends upsell_completed (dl_upsell_purchase), one per line an upsell added after payment, once per line in this browser. A line paid with the order is part of checkout_completed instead.',
+    rowYs: [76, 220, 336],
+    boxes: [
+      {
+        row: 0,
+        title: 'viewed',
+        sub: [code('upsell_viewed'), 'once per upsell page', 'as dl_viewed_upsell'],
+        tone: 'success',
+      },
+      {
+        row: 2,
+        title: 'completed',
+        sub: [
+          code('upsell_completed'),
+          'one per line an upsell added',
+          'after payment, once per browser',
+          'as dl_upsell_purchase',
+        ],
+        tone: 'success',
+      },
+      {
+        col: 'side',
+        row: 1,
+        title: 'skipped',
+        sub: [code('upsell_skipped'), 'every skip', 'as dl_skipped_upsell'],
+        tone: 'success',
+      },
+    ],
+    parts: () => [
+      (() => {
+        const e = entry(MAIN.cx - 115, 8, 230, ['half of an offer is on screen,', 'on an upsell page']);
+        return [
+          ...e.svg,
+          arrow(`M${MAIN.cx} ${e.bottom} V${rowY(0) - 6}`),
+          label(MAIN.cx + 14, 67, 'upsell.viewed', { code: true }),
+        ];
+      })(),
+      [
+        arrow(`M${MAIN.x + MAIN.w} ${rowY(0) + 44} H490 V${rowY(1) + 18} H${SIDE.x - 6}`),
+        label(502, 170, 'the shopper skips', { size: 12 }),
+        label(502, 188, 'upsell.skipped', { code: true }),
+      ],
+      [
+        arrow(`M${MAIN.cx} ${rowY(0) + 88} V${rowY(2) - 6}`),
+        label(MAIN.cx + 14, 262, 'accepted: the next', { size: 12 }),
+        label(MAIN.cx + 14, 278, 'page loads the order', { size: 12 }),
+        label(MAIN.cx + 14, 298, 'order.loaded', { code: true }),
+      ],
+    ],
+  },
+  promotions: {
+    title: 'Promotion tracking',
+    desc: 'promotion.viewed, a banner half in view or the exit-intent popup opening, sends promotion_viewed (dl_view_promotion). promotion.clicked, a click on a banner or in the popup, sends promotion_selected (dl_select_promotion). Each is sent every time; a click does not wait for a view.',
+    rowYs: [16, 140],
+    boxes: [
+      {
+        row: 0,
+        title: 'viewed',
+        sub: [code('promotion_viewed'), 'every time', 'as dl_view_promotion'],
+        tone: 'success',
+      },
+      {
+        row: 1,
+        title: 'selected',
+        sub: [code('promotion_selected'), 'every click', 'as dl_select_promotion'],
+        tone: 'success',
+      },
+    ],
+    parts: () => [
+      trigger(0, ['a banner is half in view,', 'or the popup opens'], 'promotion.viewed', { boxH: 88, w: 180 }),
+      trigger(1, ['a banner or the popup', 'is clicked'], 'promotion.clicked', { boxH: 88, w: 180 }),
+    ],
+  },
+};
+
 for (const [name, spec] of Object.entries(LIFECYCLES)) {
   ROWS = spec.rowYs;
   const [group, part] = name.split('/');
   const stem = part ?? (group === 'carts' ? 'cart' : group.replace(/s$/, ''));
   writeFileSync(`${ROOT}/${group}/${stem}-lifecycle.svg`, svg(name.replace('/', '-'), spec));
+}
+
+for (const [group, spec] of Object.entries(TRACKING)) {
+  ROWS = spec.rowYs;
+  mkdirSync(`${TRACKING_ROOT}/${group}`, { recursive: true });
+  writeFileSync(`${TRACKING_ROOT}/${group}/${group}-lifecycle.svg`, svg(`${group}-tracking`, spec));
 }

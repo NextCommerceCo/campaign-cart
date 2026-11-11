@@ -8,6 +8,7 @@ import { isWallet, paymentCode } from '../../engine/order/payment';
 import { orderBody, type OrderUrls } from './order-body';
 import { PHONES } from './phone';
 import { formErrors, type Scope } from './rules';
+import { refusalOf } from './refusal';
 import type { CheckoutState } from './types';
 
 const PHONE_WAIT = 2000;
@@ -131,14 +132,16 @@ export function createPlaceOrder(ctx: Context, cart: CartActions, steps: Steps) 
           urls: input,
         }),
       );
-    } catch (err) {
+    } catch (thrown) {
+      const refused = refusalOf(thrown);
+      const err = refused?.err ?? thrown;
       const error = orderFailure(err);
       if (error.code === 'declined') ctx.emit('payment.failed', { method, error });
       else {
         ctx.fail('order.create', err);
         ctx.emit('checkout.failed', { ...cart.currentCheckout(), payment_method: method, error });
       }
-      return fail({ form: orderError(err) });
+      return fail({ form: refused ? { code: 'invalid_order', field: refused.field } : orderError(err) });
     }
     return created(order, method, vouchers);
   };

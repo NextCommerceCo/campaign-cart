@@ -51,9 +51,13 @@ a price arrives) is written as `data-next-empty`, or empty.
 | `currency_code`    | `$39.00 USD`                          |
 | `currency_rounded` | `$39` (no cents when they are `.00`)  |
 | `percentage`       | `25%`                                 |
-| `number`           | `39`                                  |
+| `number`           | `39` (`49.90` as `49.9`)              |
+| `amount`           | `39.00` (no symbol; `5,000` in JPY)   |
 | `phone`            | a 10-digit number as `(555) 123-4567` |
 | `address`          | the value as is                       |
+
+Money follows the campaign's currency and the page's language; `currency_code` always has the
+narrow symbol. See [Currencies that share `$`](../../recipes/language-and-currency.md).
 
 A field a page adds with `next.define(type, name, fn, { format })` reads like the SDK's own, in
 that format (see the [JavaScript API](../../javascript-api.md)).

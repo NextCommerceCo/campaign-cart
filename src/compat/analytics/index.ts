@@ -134,7 +134,10 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
       w.dataLayer!.push({ ecommerce: null });
       w.dataLayer!.push(out);
     },
-    trace: (event) => ({ name: event.event, payload: event }),
+    trace: (event) => ({
+      name: event.event,
+      payload: { ...event, user_properties: { visitor_type: event.user_properties.visitor_type } },
+    }),
     replay: false,
   });
 

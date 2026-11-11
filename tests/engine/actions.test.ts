@@ -178,4 +178,24 @@ describe('actions', () => {
       errors: { value: expect.any(String) },
     });
   });
+
+  it('sets, changes and removes the page’s attribution metadata, and refuses a value that is not text or a number', async () => {
+    const { engine, actions } = await ready();
+    const page = () => engine.getState().visit.metadata;
+    expect(await actions.setMetadata({ fb_test_code: 'TEST123', fb_external_id: 'v-1', step: 2, vip: true })).toEqual({
+      ok: true,
+    });
+    expect(page()).toEqual({ fb_test_code: 'TEST123', fb_external_id: 'v-1', step: 2, vip: 'true' });
+    expect(engine.attribution().metadata).toMatchObject({ fb_test_code: 'TEST123', fb_external_id: 'v-1', step: 2 });
+
+    expect(await actions.setMetadata({ step: 3, fb_test_code: undefined, vip: '' })).toEqual({ ok: true });
+    expect(page()).toEqual({ fb_external_id: 'v-1', step: 3 });
+
+    expect(await actions.setMetadata({ step: 4, quiz: { a: 1 } } as never)).toEqual({
+      ok: false,
+      errors: { quiz: 'a metadata value is a string or a number' },
+    });
+    expect(page()).toEqual({ fb_external_id: 'v-1', step: 3 });
+    expect(await actions.setMetadata()).toEqual({ ok: true });
+  });
 });

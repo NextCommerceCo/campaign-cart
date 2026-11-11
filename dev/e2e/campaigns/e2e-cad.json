@@ -1,6 +1,6 @@
 {
-  "name": "Olympus (SYNTHETIC e2e data, not the real campaign)",
-  "currency": "USD",
+  "name": "Olympus in CAD (SYNTHETIC e2e data, not a real campaign)",
+  "currency": "CAD",
   "language": "en",
   "payment_env_key": "dev",
   "packages": [
@@ -8,8 +8,8 @@
       "ref_id": 1,
       "external_id": 101,
       "name": "Olympus x1",
-      "price": "49.00",
-      "price_total": "49.00",
+      "price": "49.90",
+      "price_total": "49.90",
       "price_retail": "99.00",
       "price_retail_total": "99.00",
       "qty": 1,
@@ -30,13 +30,24 @@
     }
   ],
   "shipping_methods": [
-    { "ref_id": 1, "code": "standard", "name": "Standard", "price": "0.00" },
-    { "ref_id": 2, "code": "express", "name": "Express", "price": "9.99" }
+    {
+      "ref_id": 1,
+      "code": "standard",
+      "name": "Standard",
+      "price": "0.00"
+    }
   ],
-  "available_shipping_countries": [{ "code": "US", "label": "United States" }],
+  "available_shipping_countries": [
+    {
+      "code": "CA",
+      "label": "Canada"
+    }
+  ],
   "available_payment_methods": [
-    { "code": "bankcard", "label": "Card" },
-    { "code": "paypal", "label": "PayPal" }
+    {
+      "code": "bankcard",
+      "label": "Card"
+    }
   ],
-  "available_express_payment_methods": [{ "code": "paypal", "label": "PayPal" }]
+  "available_express_payment_methods": []
 }

@@ -33,11 +33,15 @@ landing.html?utm_source=fb&forceBundleId=three&currency=EUR
 
 ## Carried to the next page
 
-A same-site link, an add-to-cart `data-next-url`, a checkout step, the redirect after paying and
-the upsell buttons all add the visit's parameters to the next URL, unless that URL sets them
-itself. A link to another site gets only the attribution ones (`utm_*`, `gclid`, `gbraid`,
+A same-site link, an add-to-cart `data-next-url`, a checkout step, the redirect after paying (the
+return from PayPal, Apple Pay or 3-D Secure too) and the upsell buttons all add the visit's
+parameters to the next URL, unless that URL sets them itself. A link to another site gets only the attribution ones (`utm_*`, `gclid`, `gbraid`,
 `wbraid`, `fbclid`, `ttclid`, `msclkid`, `clickid`, `evclid`, `affid`, `aff`, `sub1`…,
 `subaffiliate1`…, `funnel`, `currency`).
+
+A link followed before the SDK had loaded opens the next page without them. That page, when
+its visit has no attribution parameter of its own, takes the attribution ones from the page it
+came from, if that page is on the same site.
 
 These stay on the page they were opened with and are never carried: `reset`, `forcePackageId`,
 `forceBundleId`, `debug`, `debugger`, `payment_failed`, `payment_method`, `ref_id`,

@@ -1,12 +1,13 @@
 {
   "name": "@nextcommerce/campaign-sdk",
-  "version": "0.5.0",
+  "version": "0.5.1-beta.1",
   "private": true,
   "description": "NEXT Campaign SDK: one headless Engine, everything else subscribes",
   "type": "module",
   "scripts": {
     "dev": "bun dev/server.ts",
     "e2e": "bun dev/e2e.ts",
+    "perf": "bun dev/perf.ts",
     "qa": "bun dev/qa.ts",
     "build": "vite build && node scripts/size.mjs",
     "test": "vitest run",

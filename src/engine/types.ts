@@ -51,6 +51,8 @@ export interface VisitState {
   params: Record<string, string>;
   landing?: Visit;
   geo?: VisitorGeo;
+  /** What the page set with `setMetadata`, sent in the attribution's `metadata`. */
+  metadata?: Record<string, string | number>;
   exitIntentShown: number;
   timers: Record<string, number>;
 }
@@ -63,6 +65,8 @@ export interface CheckoutError {
   message?: string;
   /** The gateway's decline code, for a declined card. */
   decline?: string;
+  /** The request field the API refused (`lines`, `shipping_address`, …), for an order it refused by field. */
+  field?: string;
   /** `true` when the address service only warns: the order can still be sent. */
   warning?: boolean;
 }

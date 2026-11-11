@@ -5,7 +5,8 @@ import type { SummaryDiscount, SelectorState, SelectorCard, Slot, SummaryLine } 
 import type { Package } from '../engine/types';
 import { cents, discountPercent, dollars, format, formatCents, localeOf, pct } from '../engine/display/format';
 import { cardQuote } from '../engine/display/values';
-import { bundleCardId, ownProperties, pageProperties } from './cards';
+import { bundleCardId } from './cards';
+import { slotProperties } from './slot-properties';
 import type { Render } from '../dom/context';
 import { applyValues } from './display';
 import { fill, fillTemplate, selectorIdOf, showWhen, withAttribute } from '../dom/dom';
@@ -228,10 +229,7 @@ function renderStage(
   const apply = (card: SelectorCard, index: number, patch: Partial<Slot>) =>
     engine.selectors.setSlot(selectorId, card.id, index, patch);
 
-  const properties = (card: SelectorCard, el: Element) => ({
-    ...pageProperties(cards.get(card.id)),
-    ...ownProperties(el),
-  });
+  const properties = slotProperties(engine, selectorId, cards, (index) => rendered[index]?.el);
 
   const renderSlot = (card: SelectorCard, slot: Slot, index: number, { values, prices }: SlotValues): RenderedSlot => {
     const { el, patch } = slotElement(card.id, index, template, values);
@@ -248,19 +246,15 @@ function renderStage(
     for (const input of el.querySelectorAll<HTMLInputElement>('[data-next-property]')) {
       const name = input.getAttribute('data-next-property')!;
       input.value = slot.properties?.[name] ?? '';
-      input.addEventListener('change', () => void apply(card, index, { properties: properties(card, el) }));
+      input.addEventListener('change', () => void apply(card, index, { properties: properties.of(card, el) }));
     }
     refreshSlot(engine, selectorId, entry);
     return entry;
   };
 
-  for (const input of document.querySelectorAll('[data-next-default-property]')) {
-    const onChange = () => {
-      const card = engine.selectors.picked(selectorId);
-      if (card) rendered.forEach(({ el }, i) => void apply(card, i, { properties: properties(card, el) }));
-    };
-    input.addEventListener('change', onChange);
-    offs.push(() => input.removeEventListener('change', onChange));
+  for (const input of properties.defaults) {
+    input.addEventListener('change', properties.sync);
+    offs.push(() => input.removeEventListener('change', properties.sync));
   }
 
   return () => {
@@ -277,6 +271,7 @@ function renderStage(
         ...slots.map((slot, i) => renderSlot(card, slot, i, slotValues(engine, selector, card, slot, i))),
       );
       stage.replaceChildren(...rendered.map((r) => r.el));
+      if (properties.defaults.length) properties.sync();
       return;
     }
     slots.forEach((slot, i) => {

@@ -23,7 +23,8 @@ and watch the panel's state and events while you click. Then read
 | `npm run typecheck`  | TypeScript                                                                        |
 | `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
 | `bun dev`            | the real campaign pages with this SDK from source; see below                      |
-| `bun run e2e`        | checkout → upsells → receipt in headless Chromium against `bun dev`, all mocked   |
+| `bun run e2e`        | the browser scenarios in headless Chromium against `bun dev`, all mocked          |
+| `bun run perf`       | after a build: load time of the built SDK on Slow 4G, all mocked                  |
 | `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |
 | `npm run docs`       | build the docs site from `docs/guides` and the public types into `docs/site/`     |
 | `npm run docs:serve` | serve `docs/site` on http://localhost:3500 and rebuild it on changes              |
@@ -69,7 +70,56 @@ Every request from QA goes through your machine, so QA never needs your network 
 backend. Takes the same `--api` / `--key` options, e.g. `bun run qa --api full --key pk_test_…`;
 `--no-tunnel` serves on this machine only.
 
-`bun run e2e` drives the olympus funnel (card order, stepped upsell, skip, tier upsell,
-receipt) with a synthetic test campaign in `dev/e2e/`, aborts any request to a production
+### Browser scenarios
+
+`bun run e2e` runs every scenario in `dev/e2e/scenarios/`, each in a browser of its own against
+`bun dev` in MOCK with the synthetic campaigns in `dev/e2e/campaigns/`; `bun run e2e -- currency`
+runs one. It prints `ok` or `FAIL` per check with the value seen, saves
+`test-results/e2e-<scenario>.png` for a scenario that failed, aborts any request to a production
 host, and fails on a console error. It needs the campaign pages above and a Chromium
 (`bunx playwright-core install chromium`, or `CHROME=/path/to/chrome`).
+
+A scenario is a file there that exports `scenario`; its file name is its name:
+
+```ts
+import type { Scenario } from '../harness';
+
+export const scenario: Scenario = async (t) => {
+  await t.open('/olympus/checkout/', { affid: 'A1' });
+  await t.fillCheckout();
+  await t.pay();
+  await t.arrive(/upsell-bundle-stepper/);
+  t.check(t.orderBody()?.attribution?.affiliate === 'A1', 'the order keeps the affiliate', t.orderBody()?.attribution);
+};
+```
+
+| To set up                         | In the scenario                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| What the page's `nextConfig` says | `t.config({ locale: 'en-CA' })`                                               |
+| Another campaign, such as CAD     | a JSON in `dev/e2e/campaigns/`, then `t.config({ apiKey: 'e2e-cad' })`        |
+| An answer of the API              | `t.api('/api/v1/orders/', 400, { lines: ['…'] })`                             |
+| A Meta Pixel on the page          | `t.pixel()`, read with `t.fbq()`                                              |
+| A page the starter templates lack | a folder in `dev/e2e/pages/`, served where the campaign pages have none       |
+| What the page sent                | `t.events()`, `t.tracking()`, `t.requests()`, `t.orderBody()`, `t.cartBody()` |
+
+### Load time
+
+`npm run build && bun run perf` times the built SDK on the Olympus landing and checkout pages under
+Chrome's Slow 4G, for a first and a second visit: when `html[data-next-ready]` was set, and each SDK
+request before it with its start, end and size.
+
+## Releasing
+
+A release is a git tag that carries `dist/`; jsDelivr serves it. Try each release as a beta first.
+
+1. On main, set `version` in `package.json` to the beta, such as `0.5.1-beta.1`.
+2. In GitHub, open Actions > CI > Run workflow on main. It builds `dist/` and tags `v0.5.1-beta.1`.
+3. Test a page that loads
+   `https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.5.1-beta.1/dist/loader.js`.
+4. Optional: create a GitHub release from the tag and tick **Set as a pre-release** before
+   publishing. Its docs go to their own folder and `latest/` stays on the last full release.
+5. When the beta is good, set `version` to `0.5.1` and run the workflow again.
+6. Create the GitHub release from `v0.5.1`. Publishing it makes its docs `latest/`.
+
+A tag is never moved: to fix a beta, go to `beta.2`. Write `beta.1`, not `beta1`, so `beta.10`
+sorts after `beta.2`.

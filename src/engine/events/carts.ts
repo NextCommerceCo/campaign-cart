@@ -138,12 +138,6 @@ export interface CartEvents {
     /** What the change removed. */
     changes: CartChange[];
   };
-  /**
-   * The shipping method changed, right after the change's `cart.updated`, without prices; they
-   * come with `cart.calculated` as `shipping_method`. A bundle card can set it on the landing page too.
-   * @group Carts
-   */
-  'shipping.selected': ShippingMethod;
   /** @internal The shipping method a change selected, once the cart was priced with it or could not be: the moment of 0.4.x shipping events. */
   'shipping.settled': ShippingMethod;
 }
