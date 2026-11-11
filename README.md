@@ -106,3 +106,19 @@ export const scenario: Scenario = async (t) => {
 `npm run build && bun run perf` times the built SDK on the Olympus landing and checkout pages under
 Chrome's Slow 4G, for a first and a second visit: when `html[data-next-ready]` was set, and each SDK
 request before it with its start, end and size.
+
+## Releasing
+
+A release is a git tag that carries `dist/`; jsDelivr serves it. Try each release as a beta first.
+
+1. On main, set `version` in `package.json` to the beta, such as `0.5.1-beta.1`.
+2. In GitHub, open Actions > CI > Run workflow on main. It builds `dist/` and tags `v0.5.1-beta.1`.
+3. Test a page that loads
+   `https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.5.1-beta.1/dist/loader.js`.
+4. Optional: create a GitHub release from the tag and tick **Set as a pre-release** before
+   publishing. Its docs go to their own folder and `latest/` stays on the last full release.
+5. When the beta is good, set `version` to `0.5.1` and run the workflow again.
+6. Create the GitHub release from `v0.5.1`. Publishing it makes its docs `latest/`.
+
+A tag is never moved: to fix a beta, go to `beta.2`. Write `beta.1`, not `beta1`, so `beta.10`
+sorts after `beta.2`.
