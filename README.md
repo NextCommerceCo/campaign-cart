@@ -116,10 +116,15 @@ A release is a git tag that carries `dist/`; jsDelivr serves it. Try each releas
 2. In GitHub, open Actions > CI > Run workflow on main. It builds `dist/` and tags `v0.5.1-beta.1`.
 3. Test a page that loads
    `https://cdn.jsdelivr.net/gh/NextCommerceCo/campaign-cart@v0.5.1-beta.1/dist/loader.js`.
-4. Optional: create a GitHub release from the tag and tick **Set as a pre-release** before
-   publishing. Its docs go to their own folder and `latest/` stays on the last full release.
-5. When the beta is good, set `version` to `0.5.1` and run the workflow again.
-6. Create the GitHub release from `v0.5.1`. Publishing it makes its docs `latest/`.
+4. When the beta is good, set `version` to `0.5.1` and run the workflow again.
+5. Create the GitHub release from `v0.5.1`. Publishing it makes its docs `latest/`.
+
+A beta gets no GitHub release, so it stays out of the docs site. Its changes go in the
+`Unreleased` section of [CHANGELOG.md](CHANGELOG.md); to see what changed between two betas:
+
+```sh
+git log --oneline v0.5.1-beta.1..v0.5.1-beta.2
+```
 
 A tag is never moved: to fix a beta, go to `beta.2`. Write `beta.1`, not `beta1`, so `beta.10`
 sorts after `beta.2`.
