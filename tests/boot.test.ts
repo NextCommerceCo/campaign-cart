@@ -181,7 +181,7 @@ describe('boot', () => {
     expect(document.documentElement.hasAttribute('data-next-ready')).toBe(true);
     expect(onWindow).toHaveBeenCalledTimes(1);
     expect(queued).toHaveBeenCalledWith(next);
-    expect(next.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(next.version).toMatch(/^\d+\.\d+\.\d+(-[a-z]+\.\d+)?$/);
     window.removeEventListener('next:initialized', onWindow);
   });
 
