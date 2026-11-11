@@ -24,6 +24,7 @@ and watch the panel's state and events while you click. Then read
 | `npm run build`      | build `dist/` (CI only, not committed) and fail if a file is over its gzip budget |
 | `bun dev`            | the real campaign pages with this SDK from source; see below                      |
 | `bun run e2e`        | the browser scenarios in headless Chromium against `bun dev`, all mocked          |
+| `bun run perf`       | after a build: load time of the built SDK on Slow 4G, all mocked                  |
 | `bun run qa`         | a passcode link for QA on another network (Cloudflare quick tunnel)               |
 | `npm run docs`       | build the docs site from `docs/guides` and the public types into `docs/site/`     |
 | `npm run docs:serve` | serve `docs/site` on http://localhost:3500 and rebuild it on changes              |
