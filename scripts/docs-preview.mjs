@@ -2,19 +2,25 @@
 /**
  * Assembles the docs site the way `.github/workflows/docs-deploy.yml` does and serves it
  * on :3500. The 0.4 folders are built from their tags once and cached in `docs/.legacy`;
- * delete that folder to rebuild them.
+ * a cache without `latest/index.html` is rebuilt, and deleting the folder rebuilds it too.
  *
  *   node scripts/docs-preview.mjs
  */
 
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, renameSync, rmSync } from 'node:fs';
 
 const LEGACY = 'docs/.legacy';
 const SITE = 'docs/site';
 const node = (...args) => execFileSync('node', args, { stdio: 'inherit' });
 
-if (!existsSync(LEGACY)) node('scripts/docs-legacy.mjs', LEGACY);
+if (!existsSync(`${LEGACY}/latest/index.html`)) {
+  const building = `${LEGACY}.building`;
+  rmSync(building, { recursive: true, force: true });
+  node('scripts/docs-legacy.mjs', building);
+  rmSync(LEGACY, { recursive: true, force: true });
+  renameSync(building, LEGACY);
+}
 
 rmSync(SITE, { recursive: true, force: true });
 cpSync(LEGACY, SITE, { recursive: true });
