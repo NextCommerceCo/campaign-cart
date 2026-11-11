@@ -53,7 +53,7 @@ export function bindLabels(form: HTMLFormElement): () => void {
   }
   const all = () => pairs.forEach(([label, field]) => update(label, field));
   if (pairs.length) {
-    const timer = setInterval(all, 500);
+    const timer = setInterval(() => (form.isConnected ? all() : clearInterval(timer)), 500);
     setTimeout(() => clearInterval(timer), AUTOFILL_WATCH);
   }
   all();
