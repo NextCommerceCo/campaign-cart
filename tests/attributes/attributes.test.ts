@@ -313,6 +313,55 @@ describe('attributes v2: unknown fields', () => {
   });
 });
 
+describe('attributes v2: data-next-define', () => {
+  const warnings = (engine: { log: { entries(): Array<{ level: string; message: string }> } }) =>
+    engine.log
+      .entries()
+      .filter((e) => e.level === 'warn')
+      .map((e) => e.message);
+
+  it('names a sum as a field of the cart, read by a query and a condition and written as its first path', async () => {
+    const { engine, $ } = await mount(`
+      <template data-next-define="cart.free_shipping_left = 150 - total"></template>
+      <p id="spend" data-next-show="cart.free_shipping_left > 0">
+        Spend <b id="left" data-next-query="cart.free_shipping_left" data-next-empty="…"></b> more</p>
+      <p id="free" data-next-show="cart.free_shipping_left <= 0">Free shipping</p>`);
+    expect($('#left').textContent).toBe('…');
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#left').textContent).toBe('$52.00');
+    expect([$('#spend').hidden, $('#free').hidden]).toEqual([false, true]);
+    await engine.cart.addItem(2);
+    await settle(engine);
+    expect([$('#spend').hidden, $('#free').hidden]).toEqual([true, false]);
+    expect(warnings(engine)).toEqual([]);
+  });
+
+  it('defines a field for every option, its sum reading the option, in the format the element names', async () => {
+    const { engine, $ } = await mount(`
+      <template data-next-define="Option.per_day = total / 30" data-next-format="number"></template>
+      <div data-next-selector="main">
+        <div data-next-option="one" data-next-items="1"><i id="one" data-next-query="per_day"></i></div>
+        <div data-next-option="two" data-next-items="2"><i id="two" data-next-query="per_day"></i></div>
+      </div>`);
+    await settle(engine);
+    expect([$('#one').textContent, $('#two').textContent]).toEqual(['1.63', '2.97']);
+    expect(warnings(engine)).toEqual([]);
+  });
+
+  it('warns about a definition it cannot read or a type there is not', async () => {
+    const { engine } = await mount(`
+      <template data-next-define="cart.left 150 - total"></template>
+      <template data-next-define="cart.left = 150 -"></template>
+      <template data-next-define="basket.left = 150 - total"></template>`);
+    expect(warnings(engine)).toEqual([
+      'cannot read the definition in data-next-define="cart.left 150 - total"',
+      'cannot read the definition in data-next-define="cart.left = 150 -"',
+      'unknown type "basket" in data-next-define="basket.left = 150 - total"',
+    ]);
+  });
+});
+
 describe('attributes v2: options', () => {
   const SELECTOR = `
     <div id="sel" data-next-selector="main">

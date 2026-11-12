@@ -8,6 +8,7 @@ import type { AttributeContext } from './context';
 /** Attributes with their own role: never an action argument. */
 const ROLES = new Set([
   'action',
+  'define',
   'go',
   'query',
   'show',

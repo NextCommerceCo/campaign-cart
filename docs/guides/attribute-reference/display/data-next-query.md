@@ -38,8 +38,8 @@ parentheses. Put a space on each side of an operator: a `-` inside a path is par
 The result is written as its first path's field is: `cart.total - …` is money, `quantity * 2` a
 number; `data-next-format` says otherwise. While a value in it is not known yet, and for a division
 by 0, the element shows `data-next-empty`. A sum that cannot be read logs a warning once
-(`cannot read the sum in data-next-query="cart.total +"`). For anything more, define a field with
-[`next.define`](../../javascript-api.md).
+(`cannot read the sum in data-next-query="cart.total +"`). To read a sum in more than one place, name it with
+[data-next-define](data-next-define.md).
 
 ## How a value is written
 
