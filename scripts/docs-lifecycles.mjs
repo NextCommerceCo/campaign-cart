@@ -204,14 +204,18 @@ const LIFECYCLES = {
   },
   sdk: {
     title: 'SDK lifecycle',
-    desc: 'starting, then ready (sdk.ready, once a page, with what the page shows) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready.',
+    desc: 'starting, then ready (sdk.ready, once a page, with what the page shows) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready. A page that loads again, as after the setCurrency action or a link with ?currency=, starts again at starting, with no event for leaving.',
     rows: 2,
     boxes: [
       { row: 0, title: 'starting', sub: ['loading the campaign'] },
       { row: 1, title: 'ready', sub: [code('sdk.ready')], tone: 'success' },
       { col: 'side', row: 0, title: 'failed', sub: [code('sdk.error')], tone: 'failure' },
     ],
-    parts: () => [down(0, 1, 'a saved copy, or the API answers'), toSide(0, 'fails, no copy', { dashed: true })],
+    parts: () => [
+      down(0, 1, 'a saved copy, or the API answers'),
+      toSide(0, 'fails, no copy', { dashed: true }),
+      loopUp(1, 0, 'the page loads again'),
+    ],
   },
   selectors: {
     title: 'Selector lifecycle',
