@@ -4,7 +4,7 @@ import { format, localeOf, moneyText, type Value, type ValueType } from '../engi
 import type { Address } from '../engine/events/checkout';
 import { formatAddress, LINE_LAYOUT, phoneText } from '../engine/order/address-line';
 
-const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_discount$/;
+const MONEY = /(^|_)(price|total|subtotal|tax|amount)$|^total_(discount|before_shipping)$/;
 
 /** A field's display type from its name: `price`, `*_total`, `subtotal`, `tax`, `amount` are money, `*percentage` a percentage. */
 export function fieldType(field: string, value: unknown): ValueType {

@@ -17,6 +17,8 @@ export interface FakeApiOptions {
   upsell?: (ref: string, body: any) => Response;
   offers?: Record<number, number>;
   openCart?: (cart: typeof OPEN_CART) => unknown;
+  /** What the priced shipping method costs; `0` when left out. */
+  shipping?: number;
 }
 
 export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -100,6 +102,7 @@ export function fakeApi(options: FakeApiOptions = {}) {
       0,
     );
     const discount = (body.vouchers as string[]).includes('SAVE10') ? 10 : 0;
+    const shipping = (options.shipping ?? 0).toFixed(2);
     const summary: CartSummary = {
       lines: lines.map((l) => {
         const p = campaign.packages.find((x) => x.ref_id === l.package_id)!;
@@ -125,9 +128,9 @@ export function fakeApi(options: FakeApiOptions = {}) {
         : [],
       subtotal: subtotal.toFixed(2),
       total_discount: discount.toFixed(2),
-      total: (subtotal - discount).toFixed(2),
+      total: (subtotal - discount + Number(shipping)).toFixed(2),
       currency: 'USD',
-      shipping_method: { id: 1, name: 'Standard', code: 'standard', price: '0.00', original_price: '0.00' },
+      shipping_method: { id: 1, name: 'Standard', code: 'standard', price: shipping, original_price: shipping },
     };
     return new Response(JSON.stringify(summary));
   }) as typeof fetch;

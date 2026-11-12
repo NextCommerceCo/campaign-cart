@@ -11,7 +11,7 @@ const PRICES = `price original_price ${TOTALS}`;
 
 /** Each model type's fields, as its interface in `engine/events` lists them. */
 export const FIELDS: Record<ModelType, string> = {
-  Cart: `${TOTALS} lines coupons currency shipping_method discounts quantity`,
+  Cart: `${TOTALS} total_before_shipping lines coupons currency shipping_method discounts quantity`,
   CartItem: `${PRICES} package_id quantity is_upsell properties product_id product_title variant_id variant_title sku image discounts subscription`,
   Selector: `${PRICES} selector_id type option_id lines currency quantity in_cart options`,
   Option: `${PRICES} option_id lines quantity selected original_total`,

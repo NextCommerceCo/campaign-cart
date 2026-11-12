@@ -414,6 +414,7 @@
       "subtotal": 49,
       "total_discount": 0,
       "total": 49,
+      "total_before_shipping": 49,
       "discounts": [],
       "discount_percentage": 0
     },
@@ -524,6 +525,7 @@
         "subtotal": 49,
         "total_discount": 0,
         "total": 49,
+        "total_before_shipping": 49,
         "discounts": [],
         "discount_percentage": 0
       },
@@ -625,6 +627,7 @@
         "subtotal": 49,
         "total_discount": 0,
         "total": 49,
+        "total_before_shipping": 49,
         "discounts": [],
         "discount_percentage": 0
       },
@@ -710,6 +713,7 @@
         "subtotal": 49,
         "total_discount": 0,
         "total": 49,
+        "total_before_shipping": 49,
         "discounts": [],
         "discount_percentage": 0
       },
@@ -823,6 +827,7 @@
         "subtotal": 49,
         "total_discount": 0,
         "total": 49,
+        "total_before_shipping": 49,
         "discounts": [],
         "discount_percentage": 0
       },
@@ -934,6 +939,7 @@
         "subtotal": 49,
         "total_discount": 0,
         "total": 49,
+        "total_before_shipping": 49,
         "discounts": [],
         "discount_percentage": 0
       },

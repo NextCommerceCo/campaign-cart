@@ -16,6 +16,7 @@ export function cartTokens(engine: Engine): Tokens {
   return {
     subtotal: m(s?.subtotal),
     total: m(s?.total),
+    totalBeforeShipping: s ? format(money(cents(s.total) - cents(shipping?.price)), currency, locale) : '',
     shipping: free ? 'Free' : m(shipping?.price),
     shippingName: shipping?.name ?? '',
     shippingCode: shipping?.code ?? '',

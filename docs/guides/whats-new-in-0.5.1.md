@@ -19,6 +19,9 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 
 ## New
 
+- **A total before shipping.** `cart.total_before_shipping` is the total without the shipping
+  price, for a checkout that shows shipping on a later step.
+  [Cart](attribute-reference/objects/cart.md)
 - **A currency switch for your page.** `data-next-action="setCurrency"` opens the page again in
   the currency the shopper picks. [Language and currency](recipes/language-and-currency.md)
 
