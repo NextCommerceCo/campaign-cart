@@ -33,6 +33,7 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 
 ### Display
 
+- **`setCurrency` lets the shopper switch currency on a live page.** `data-next-action="setCurrency"` and `next.actions.setCurrency({ code })` open the page again with `?currency=<code>`, for a currency the campaign sells in; `campaign.available_currencies` lists them for `data-next-each`. See [Language and currency](docs/guides/recipes/language-and-currency.md). ([#124](https://github.com/NextCommerceCo/campaign-cart/issues/124))
 - **`formats.currency.<code>` in `nextConfig.translations` sets how a currency is written**: `narrowSymbol`, `symbol` or `code`, or a pattern of `{amount}`, `{symbol}`, `{narrowSymbol}` and `{code}` such as `C${amount}`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **`data-next-format="amount"` writes an amount in the currency's own decimals, without a symbol**: `49.90`, where `number` writes `49.9`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **`cart.total_before_shipping` is the total without the shipping method's price**, for a checkout that shows shipping on a later step: `<span data-next-query="cart.total_before_shipping"></span>`. A 0.4.x `data-next-cart-summary` reads it as `{totalBeforeShipping}`. ([#144](https://github.com/NextCommerceCo/campaign-cart/issues/144))

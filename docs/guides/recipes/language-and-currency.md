@@ -24,6 +24,10 @@ The page's own words in the shopper's language, and prices in the currency the l
 <a href="checkout.html" data-next-i18n="page.cta">Order now</a>
 
 <a href="?currency=EUR">Prices in euros</a> · <a href="?lang=en">English</a>
+
+<div data-next-each="campaign.available_currencies">
+  <template><button data-next-action="setCurrency" data-next-query="label"></button></template>
+</div>
 ```
 
 Set `window.nextConfig` before the [loader script](../attribute-reference/setup/loader-script.md).
@@ -31,6 +35,17 @@ Texts are in `?lang=`, else `locale`, else the campaign's language; a `data-next
 neither the page's `translations` nor the address service has keeps the words written in the
 page. `?currency=EUR` loads the campaign priced in euros, and prices are written in the page's
 language (`49,00 €` in `fr-FR`). Links to the site's other pages carry both parameters.
+
+`setCurrency` opens the page again with `?currency=<code>`, for a currency the campaign sells in;
+the cart keeps its lines and is priced again. The button of the currency in use is disabled. A
+`<select>` calls the same action:
+
+```html
+<select data-next-query="campaign.currency" onchange="next.actions.setCurrency({ code: this.value })">
+  <option value="USD">USD</option>
+  <option value="EUR">EUR</option>
+</select>
+```
 
 ## Currencies that share `$`
 

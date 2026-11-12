@@ -86,7 +86,12 @@ export class Query {
       case 'order':
         return engine.snapshot().order;
       case 'campaign':
-        return engine.eventCampaign();
+        return (
+          state.campaign && {
+            ...engine.eventCampaign(),
+            available_currencies: state.campaign.available_currencies ?? [],
+          }
+        );
       case 'param':
         return state.visit.params;
       default:

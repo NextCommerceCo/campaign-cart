@@ -124,6 +124,19 @@ describe('cart', () => {
     ]);
   });
 
+  it('prices the cart again in the currency the page was opened in, with the lines it had', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.cart.addItem(1, 2);
+    await first.cart.settled();
+    const { engine, api } = makeEngine({ session, campaign: Promise.resolve({ ...campaign, currency: 'EUR' }) });
+    await engine.start();
+    await engine.cart.settled();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(api.calls.at(-1)!.body).toMatchObject({ currency: 'EUR', lines: [{ package_id: 1, quantity: 2 }] });
+  });
+
   it('keeps a held code in this tab, and checks and announces it at the first price on the next page', async () => {
     const session = new MemoryStorage();
     const first = makeEngine({ session }).engine;
