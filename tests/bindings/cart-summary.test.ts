@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bindAll } from '../../src/bindings';
+import { fakeApi } from '../fixtures/api';
 import { flush, makeEngine } from '../fixtures/engine';
 
 const SUMMARY = `
@@ -25,9 +26,9 @@ const SUMMARY = `
   </template>
 </div>`;
 
-async function setup(html: string) {
+async function setup(html: string, fetch?: typeof globalThis.fetch) {
   document.body.innerHTML = html;
-  const { engine } = makeEngine();
+  const { engine } = makeEngine({ fetch });
   await engine.start();
   await bindAll(document, engine, vi.fn()).ready;
   return {
@@ -59,6 +60,22 @@ describe('cart summary', () => {
     expect($('[data-next-discounts] li').textContent).toBe('SAVE10 - Save 10%: −$10.00');
     expect($('#summary').classList.contains('next-cart-has-items')).toBe(true);
     expect($('[data-next-item-properties]').classList.contains('next-summary-empty')).toBe(true);
+  });
+
+  it('fills {totalBeforeShipping} with the total without shipping', async () => {
+    const { engine, $ } = await setup(
+      `<div data-next-cart-summary><template>
+        <b class="before">{totalBeforeShipping}</b><b class="shipping">{shipping}</b><b class="total">{total}</b>
+      </template></div>`,
+      fakeApi({ shipping: 9.99 }).fetch,
+    );
+    expect($('.before').textContent).toBe('');
+    await engine.cart.addItem(2);
+    await engine.cart.applyCoupon('save10');
+    await flush();
+    expect($('.before').textContent).toBe('$79.00');
+    expect($('.shipping').textContent).toBe('$9.99');
+    expect($('.total').textContent).toBe('$88.99');
   });
 
   it('writes server text as text, never as HTML', async () => {

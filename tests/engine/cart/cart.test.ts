@@ -124,6 +124,19 @@ describe('cart', () => {
     ]);
   });
 
+  it('prices the cart again in the currency the page was opened in, with the lines it had', async () => {
+    const session = new MemoryStorage();
+    const first = makeEngine({ session }).engine;
+    await first.start();
+    await first.cart.addItem(1, 2);
+    await first.cart.settled();
+    const { engine, api } = makeEngine({ session, campaign: Promise.resolve({ ...campaign, currency: 'EUR' }) });
+    await engine.start();
+    await engine.cart.settled();
+    expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    expect(api.calls.at(-1)!.body).toMatchObject({ currency: 'EUR', lines: [{ package_id: 1, quantity: 2 }] });
+  });
+
   it('keeps a held code in this tab, and checks and announces it at the first price on the next page', async () => {
     const session = new MemoryStorage();
     const first = makeEngine({ session }).engine;
@@ -878,6 +891,17 @@ describe('cart', () => {
     expect(cart).not.toHaveProperty('total');
     expect(cart).not.toHaveProperty('subtotal');
     expect(publicCart(engine.getState(), engine.getState().cart.summary)).toMatchObject({ subtotal: 138, total: 138 });
+  });
+
+  it('gives the total before shipping: the total without the shipping method’s price', async () => {
+    const { engine } = makeEngine({ fetch: fakeApi({ shipping: 9.99 }).fetch });
+    await engine.start();
+    await engine.cart.addItem(2);
+    await engine.cart.applyCoupon('save10');
+    await engine.cart.settled();
+    const cart = publicCart(engine.getState(), engine.getState().cart.summary);
+    expect(cart).toMatchObject({ subtotal: 89, total: 88.99, total_before_shipping: 79 });
+    expect(cart.shipping_method?.price).toBe(9.99);
   });
 
   it('checks codes one at a time, so two codes that do not stack are not both applied', async () => {

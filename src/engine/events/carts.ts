@@ -80,6 +80,8 @@ export interface Cart {
   total_discount?: number;
   /** What the shopper pays. @priced */
   total?: number;
+  /** `total − shipping_method.price`: the products after discounts, without shipping. @priced */
+  total_before_shipping?: number;
   /** The discounts on the products, one per offer. @priced */
   discounts?: Discount[];
   /** `total_discount ÷ subtotal × 100`, to two decimals; `0` without a discount. @priced */

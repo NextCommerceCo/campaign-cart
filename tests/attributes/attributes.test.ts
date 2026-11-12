@@ -4,7 +4,7 @@ import { display } from '../../src/attributes/value';
 import { bindAll } from '../../src/bindings';
 import { useCurrencyFormats } from '../../src/engine/display/format';
 import { Query } from '../../src/engine/display/query';
-import { heldApi } from '../fixtures/api';
+import { fakeApi, heldApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { FakeObserver } from '../bindings/observer';
@@ -77,6 +77,20 @@ describe('attributes v2: reading values', () => {
     expect(engine.log.entries().map((e) => e.message)).toContain(
       'cannot read the sum in data-next-query="cart.total +"',
     );
+  });
+
+  it('writes cart.total_before_shipping as money, a field of the cart', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { engine, $ } = await mount(
+      '<span id="before" data-next-query="cart.total_before_shipping"></span>',
+      undefined,
+      fakeApi({ shipping: 9.99 }).fetch,
+    );
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#before').textContent).toBe('$98.00');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('writes in the format the page asks for, or the one a defined field gave', async () => {
@@ -173,6 +187,35 @@ describe('attributes v2: reading values', () => {
     document.querySelectorAll<HTMLElement>('.remove')[1]!.click();
     await settle(engine);
     expect(titles()).toEqual(['Earbuds ×1']);
+  });
+
+  it('lists the campaign’s currencies, each row switching to its own and the one in use disabled', async () => {
+    const assign = vi.spyOn(location, 'assign').mockImplementation(() => {});
+    document.body.innerHTML = `
+      <select id="now" data-next-query="campaign.currency"><option>USD</option><option>EUR</option></select>
+      <div data-next-each="campaign.available_currencies"><template>
+        <button class="currency" data-next-action="setCurrency" data-next-query="label"></button>
+      </template></div>`;
+    const { engine } = makeEngine({
+      campaign: Promise.resolve({
+        ...campaign,
+        available_currencies: [
+          { code: 'USD', label: 'US Dollar' },
+          { code: 'EUR', label: 'Euro' },
+        ],
+      }),
+    });
+    await engine.start();
+    bindAttributes(document, engine, new Query(engine));
+    await settle(engine);
+    const [usd, eur] = [...document.querySelectorAll<HTMLButtonElement>('.currency')];
+    expect([usd!.textContent, eur!.textContent]).toEqual(['US Dollar', 'Euro']);
+    expect(document.querySelector<HTMLSelectElement>('#now')!.value).toBe('USD');
+    expect([usd!.disabled, eur!.disabled]).toEqual([true, false]);
+    eur!.click();
+    await settle(engine);
+    expect(new URL(assign.mock.calls[0]![0] as string).searchParams.get('currency')).toBe('EUR');
+    assign.mockRestore();
   });
 
   it('keeps a row, and the input in it, while only its values change', async () => {

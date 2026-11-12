@@ -25,7 +25,8 @@ same object.
 </div>
 ```
 
-Totals add up: `total = subtotal − total_discount + shipping_method.price`. A line's own:
+Totals add up: `total = subtotal − total_discount + shipping_method.price`, and
+`total_before_shipping = total − shipping_method.price`. A line's own:
 `total = subtotal − total_discount`, with `price` and `original_price` for one package.
 
 ## Fields

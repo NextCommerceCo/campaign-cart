@@ -128,6 +128,7 @@ export function publicCart(state: State, priced?: CartSummary): Cart {
   }
   const subtotal = summary && dollars(summary.subtotal);
   const totalDiscount = summary && addDollars(lines.map((l) => l.total_discount ?? 0));
+  const total = summary && dollars(summary.total);
   return {
     lines,
     coupons,
@@ -137,7 +138,8 @@ export function publicCart(state: State, priced?: CartSummary): Cart {
     ...(summary && {
       subtotal,
       total_discount: totalDiscount,
-      total: dollars(summary.total),
+      total,
+      total_before_shipping: addDollars([total!, -dollars(method?.price ?? '0')]),
       discounts: [...byOffer.values()],
       discount_percentage: percentOf(totalDiscount!, subtotal!),
     }),
