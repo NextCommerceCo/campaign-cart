@@ -37,8 +37,8 @@ page. `?currency=EUR` loads the campaign priced in euros, and prices are written
 language (`49,00 €` in `fr-FR`). Links to the site's other pages carry both parameters.
 
 `setCurrency` opens the page again with `?currency=<code>`, for a currency the campaign sells in;
-the cart keeps its lines and is priced again. The button of the currency in use is disabled. A
-`<select>` calls the same action:
+the cart keeps its lines and is priced again. The page loads again, so its page view is sent again.
+The button of the currency in use is disabled. A `<select>` calls the same action:
 
 ```html
 <select data-next-query="campaign.currency" onchange="next.actions.setCurrency({ code: this.value })">
@@ -85,7 +85,8 @@ format is used. To write the symbol in the page itself, read the number with
 | ---------------------------------- | ------------------------------------ |
 | `html:not([data-next-ready]) span` | prices are not loaded yet: hide them |
 
-**Events**: `campaign.loaded`, with the campaign in the currency it was loaded in.
+**Events**: `sdk.ready` carries the campaign and `cart.calculated` the cart, both in the currency the
+page was loaded in. A switch has no event of its own: the page it opens starts again.
 
 **See also**: [Language](../attribute-reference/setup/language.md),
 [URL parameters](../attribute-reference/setup/url-parameters.md),

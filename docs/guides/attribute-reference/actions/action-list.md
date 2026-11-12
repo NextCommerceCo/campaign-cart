@@ -20,7 +20,7 @@ Every action, as `data-next-action="<name>"` and `next.actions.<name>({ … })`.
 | `setShipping`                 | `shipping_id`                                                                                                             | `shipping.selected`                                                 |
 | `acceptUpsell`                | `selector_id` or `items`: what the offer adds to the order (on a page opened with `?ref_id`)                              | `upsell.accepted`, `order.updated`                                  |
 | `skipUpsell`                  | the same                                                                                                                  | `upsell.skipped`                                                    |
-| `setCurrency`                 | `code`: a currency of `campaign.available_currencies`; opens the page again with `?currency=<code>`                       | `campaign.loaded` on the page it opens                              |
+| `setCurrency`                 | `code`: a currency of `campaign.available_currencies`; opens the page again with `?currency=<code>`                       | None: the page it opens starts again with `sdk.ready`               |
 | `go`                          | `url`                                                                                                                     | —                                                                   |
 | `setMetadata`                 | any keys: each is set on the order's attribution `metadata` ([JavaScript API](../../javascript-api.md#actions))           | —                                                                   |
 
