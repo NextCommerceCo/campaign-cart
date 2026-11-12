@@ -1,5 +1,5 @@
-import type { CartLine, SelectorCard } from './cart/types';
-import { cardSlots } from './cart/selectors';
+import type { CartLine } from './cart/types';
+import { cardVariant, lineVariant, slotVariant } from './cart/variant-swap';
 import { variantPackage } from './cart/variants';
 import type { Engine } from './engine';
 import { mergeMetadata } from './visit/metadata';
@@ -84,6 +84,15 @@ const canAdd = (engine: Engine, args: ActionArgs) => !unpicked(engine, args);
 const canStep = (step: QuantityStep | ActionResult) =>
   !('ok' in step) && step.next !== step.current && step.next >= step.min && step.next <= step.max;
 
+const currencyOf = (args: ActionArgs) => text(args.code)?.trim().toUpperCase();
+
+/** `setCurrency`: the campaign sells in the code, and is not in it already. */
+const canSwitch = (engine: Engine, args: ActionArgs) => {
+  const campaign = engine.getState().campaign;
+  const code = currencyOf(args);
+  return code !== campaign?.currency && !!campaign?.available_currencies?.some((c) => c.code === code);
+};
+
 /** `select`: it names a selector and an option. */
 const canSelect = (args: ActionArgs) => !!selectorOf(args) && !!text(args.option_id);
 
@@ -97,59 +106,14 @@ export function ready(engine: Engine, name: ActionName, args: ActionArgs): boole
       return canStep(quantityStep(engine, args));
     case 'select':
       return canSelect(args);
+    case 'setCurrency':
+      return canSwitch(engine, args);
     default:
       return true;
   }
 }
 
 const noVariant = (code: string, value: string) => fail('value', `no package for ${code} ${value}`);
-
-type PackageFor = (current: number) => number | undefined;
-
-/** A slot of a card takes the variant's package. */
-async function slotVariant(
-  engine: Engine,
-  selectorId: string,
-  card: SelectorCard,
-  index: number,
-  packageFor: PackageFor,
-): Promise<boolean> {
-  const slot = cardSlots(engine.selectors.get(selectorId)!, card)[index];
-  const packageId = slot && packageFor(slot.packageId);
-  if (!packageId) return false;
-  await engine.selectors.setSlot(selectorId, card.id, index, { packageId });
-  return true;
-}
-
-/** A card of one line takes the variant's package, and is picked. */
-async function cardVariant(
-  engine: Engine,
-  selectorId: string,
-  card: SelectorCard,
-  packageFor: PackageFor,
-): Promise<boolean> {
-  const selector = engine.selectors.get(selectorId)!;
-  const [line, ...others] = card.lines;
-  const packageId = line && !others.length && packageFor(line.packageId);
-  if (!packageId) return false;
-  const cards = selector.cards.map((c) => (c === card ? { ...c, lines: [{ ...line, packageId }] } : c));
-  await engine.selectors.register(selectorId, cards, selector.mode);
-  if (selector.picked !== card.id) await engine.selectors.pick(selectorId, card.id);
-  return true;
-}
-
-/** The cart's own line of package `current` takes the variant's package. */
-async function lineVariant(engine: Engine, current: number | undefined, packageFor: PackageFor): Promise<boolean> {
-  const items = engine.cart.group('items');
-  const own = items?.lines.find((l) => l.packageId === current);
-  const packageId = current && packageFor(current);
-  if (!items || !own || !packageId) return false;
-  await engine.cart.setGroup('items', {
-    ...items,
-    lines: items.lines.map((l) => (l === own ? { ...l, packageId } : l)),
-  });
-  return true;
-}
 
 async function addItem(engine: Engine, args: ActionArgs): Promise<ActionResult> {
   const selectorId = selectorOf(args);
@@ -263,6 +227,16 @@ export function createActions(
     async setMetadata(args = {}) {
       const refused = mergeMetadata(engine, args);
       return refused ? fail(refused, 'a metadata value is a string or a number') : OK;
+    },
+    async setCurrency(args = {}) {
+      const code = currencyOf(args);
+      if (!code) return fail('code', 'setCurrency needs code');
+      if (code === engine.getState().campaign?.currency) return OK;
+      if (!canSwitch(engine, args)) return fail('code', `this campaign has no prices in "${code}"`);
+      const url = new URL(host.url(''));
+      url.searchParams.set('currency', code);
+      host.navigate(url.toString());
+      return OK;
     },
     async go(args = {}) {
       const url = text(args.url);

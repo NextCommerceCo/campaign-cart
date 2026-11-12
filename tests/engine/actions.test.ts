@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createActions, nextQuantity, parseItems, ready as runnable } from '../../src/engine/actions';
+import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
+
+const CURRENCIES = [
+  { code: 'USD', label: 'US Dollar' },
+  { code: 'EUR', label: 'Euro' },
+];
 
 async function ready() {
   const { engine } = makeEngine();
@@ -117,6 +123,25 @@ describe('actions', () => {
     expect(navigate).toHaveBeenCalledWith('https://shop.test/checkout.html?x=1');
     expect(await actions.go({})).toMatchObject({ ok: false });
     await flush();
+  });
+
+  it('switches currency by opening the page again with ?currency=, for a currency the campaign sells in', async () => {
+    const { engine } = makeEngine({ campaign: Promise.resolve({ ...campaign, available_currencies: CURRENCIES }) });
+    await engine.start();
+    const navigate = vi.fn();
+    const actions = createActions(engine, { page: () => '/', navigate, url: (t) => `https://shop.test/${t}?x=1` });
+    expect(await actions.setCurrency({ code: 'GBP' })).toEqual({
+      ok: false,
+      errors: { code: 'this campaign has no prices in "GBP"' },
+    });
+    expect(await actions.setCurrency({})).toMatchObject({ ok: false });
+    expect(await actions.setCurrency({ code: 'USD' })).toEqual({ ok: true });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(await actions.setCurrency({ code: ' eur ' })).toEqual({ ok: true });
+    expect(navigate).toHaveBeenCalledWith('https://shop.test/?x=1&currency=EUR');
+    expect(runnable(engine, 'setCurrency', { code: 'EUR' })).toBe(true);
+    expect(runnable(engine, 'setCurrency', { code: 'USD' })).toBe(false);
+    expect(runnable(engine, 'setCurrency', { code: 'GBP' })).toBe(false);
   });
 
   it('says when an action cannot run yet, the same way the action refuses it', async () => {

@@ -61,6 +61,7 @@ lists each one with what to use instead.
 | `applyCoupon` / `removeCoupon` | `code`                                                                                                                         |
 | `setShipping`                  | `shipping_id`                                                                                                                  |
 | `acceptUpsell` / `skipUpsell`  | `selector_id` or `items`: what the offer adds to the order, on a page opened with `?ref_id`                                    |
+| `setCurrency`                  | `code`: opens the page again priced in that currency, when the campaign sells in it                                            |
 | `go`                           | `url`: opens it with the visit's parameters                                                                                    |
 | `setMetadata`                  | Any keys: each is set on the order's attribution `metadata`; `undefined` or `''` removes one                                   |
 

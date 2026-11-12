@@ -7,7 +7,8 @@ order: 207
 # Campaign and params
 
 `campaign.*` is the campaign the loader names: `campaign.name`, `campaign.currency`,
-`campaign.language`. `param.<name>` is a URL parameter of this visit, kept for the rest of the tab
+`campaign.language`, and `campaign.available_currencies`, the currencies it sells in, each a
+`code` and a `label`. `param.<name>` is a URL parameter of this visit, kept for the rest of the tab
 (see [URL parameters](../setup/url-parameters.md)).
 
 ```html
