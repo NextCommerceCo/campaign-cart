@@ -17,6 +17,12 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 - **Meta gets PageView from the SDK.** Remove `fbq('track', 'PageView')` from your pixel code, or
   it is counted twice.
 
+## New
+
+- **A total before shipping.** `cart.total_before_shipping` is the total without the shipping
+  price, for a checkout that shows shipping on a later step.
+  [Cart](attribute-reference/objects/cart.md)
+
 ## Fixed
 
 - Order bumps count in the purchase again.
