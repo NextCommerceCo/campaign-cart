@@ -59,6 +59,26 @@ describe('attributes v2: reading values', () => {
     expect($('#currency').innerHTML).toBe('USD');
   });
 
+  it('writes a sum of paths and numbers, as its first path’s field is written', async () => {
+    const { engine, $ } = await mount(`
+      <span id="each" data-next-query="cart.total / cart.quantity" data-next-empty="…"></span>
+      <span id="units" data-next-query="cart.quantity * 3"></span>
+      <span id="plain" data-next-query="cart.total / 3" data-next-format="number"></span>
+      <div data-next-each="cart.lines"><template><b class="half" data-next-query="total / 2"></b></template></div>
+      <span id="bad" data-next-query="cart.total +"></span>`);
+    expect($('#each').textContent).toBe('…');
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#each').textContent).toBe('$49.00');
+    expect($('#units').textContent).toBe('6');
+    expect($('#plain').textContent).toBe('32.67');
+    expect(document.querySelector('.half')!.textContent).toBe('$49.00');
+    expect($('#bad').textContent).toBe('');
+    expect(engine.log.entries().map((e) => e.message)).toContain(
+      'cannot read the sum in data-next-query="cart.total +"',
+    );
+  });
+
   it('writes in the format the page asks for, or the one a defined field gave', async () => {
     const { engine, query, bindings, $ } = await mount(`
       <span id="code" data-next-query="package.2.price" data-next-format="currency_code"></span>

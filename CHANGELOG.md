@@ -34,6 +34,7 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 ### Display
 
 - **`formats.currency.<code>` in `nextConfig.translations` sets how a currency is written**: `narrowSymbol`, `symbol` or `code`, or a pattern of `{amount}`, `{symbol}`, `{narrowSymbol}` and `{code}` such as `C${amount}`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
+- **`data-next-query` adds, subtracts, multiplies and divides**: `data-next-query="cart.total - cart.shipping_method.price"`, `"total / 30"`. The result is written as its first path's field is, and `data-next-show` compares a sum the same way (`cart.total - total_discount > 50`). See [data-next-query](docs/guides/attribute-reference/display/data-next-query.md#sums).
 - **`data-next-format="amount"` writes an amount in the currency's own decimals, without a symbol**: `49.90`, where `number` writes `49.9`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **A first visit is ready sooner on a slow connection.** The loader fetches the chunks a page's markup calls for (the checkout, the cart summary, the 0.4.x names) together with the core, not after it: on Chrome's Slow 4G a starter landing page is ready in 3.9 s where it took 4.7 s, and a checkout page in 3.2 s where it took 4.8 s.
 - **Boot is 26 KB**, up from 25.5 KB.

@@ -1,6 +1,6 @@
 import { matching, showWhen } from '../dom/dom';
 import type { Render } from '../dom/context';
-import { evaluate, parseExpression } from './expression';
+import { evaluate, parseExpression, pathsOf, valueOf } from './expression';
 import type { AttributeContext } from './context';
 import { write } from './value';
 
@@ -13,14 +13,32 @@ export function bindFor(root: ParentNode, a: AttributeContext): Render[] {
   return [];
 }
 
+const QUERY = 'data-next-query';
+
+/** `data-next-query="a - b"`: the sum's number, written as its first path's field is. */
+function querySum(el: HTMLElement, source: string, a: AttributeContext): Render {
+  const sum = parseExpression(source);
+  if (sum?.kind !== 'math') {
+    a.warn(el, QUERY, 'cannot read the sum');
+    return () => {};
+  }
+  const first = pathsOf(sum)[0];
+  return () => {
+    const { parent, field } = first ? a.readField(first, el, QUERY) : { parent: undefined, field: '' };
+    const value = valueOf(sum, (path) => a.read(path, el, QUERY));
+    write(el, field, value, a.engine, el.getAttribute('data-next-format') ?? a.query.formatOf(parent, field));
+  };
+}
+
 /** `data-next-query="path"`: writes the value into the element by its kind. */
 export function bindQuery(root: ParentNode, a: AttributeContext): Render[] {
-  return matching(root, '[data-next-query]')
-    .filter((el) => a.b.claim(el, 'data-next-query'))
+  return matching(root, `[${QUERY}]`)
+    .filter((el) => a.b.claim(el, QUERY))
     .map((el) => {
-      const path = el.getAttribute('data-next-query') ?? '';
+      const path = (el.getAttribute(QUERY) ?? '').trim();
+      if (!/^[\w.-]*$/.test(path)) return querySum(el, path, a);
       return () => {
-        const { value, parent, field } = a.readField(path, el, 'data-next-query');
+        const { value, parent, field } = a.readField(path, el, QUERY);
         const override = el.getAttribute('data-next-format') ?? a.query.formatOf(parent, field);
         write(el, field, value, a.engine, override);
       };

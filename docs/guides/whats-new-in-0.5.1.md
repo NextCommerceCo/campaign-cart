@@ -17,6 +17,11 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 - **Meta gets PageView from the SDK.** Remove `fbq('track', 'PageView')` from your pixel code, or
   it is counted twice.
 
+## New
+
+- **Sums in `data-next-query`.** `data-next-query="total / 30"` writes a price per day, with no
+  script. [data-next-query](attribute-reference/display/data-next-query.md#sums)
+
 ## Fixed
 
 - Order bumps count in the purchase again.
