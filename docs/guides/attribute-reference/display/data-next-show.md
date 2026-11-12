@@ -21,6 +21,7 @@ Shows the element while the condition holds. [data-next-hide](data-next-hide.md)
 | `!path`                       | It is not                                                                                          |
 | `path == x`, `path != x`      | The value, as text, is `x` or not; quotes optional                                                 |
 | `path > n`, `<`, `>=`, `<=`   | A number compared with a number or another path                                                    |
+| `a - b > n`, `+`, `*`, `/`    | A [sum](data-next-query.md#sums) compared the same way; alone, it holds when it is not 0           |
 | `a && b`, `a \|\| b`, `( … )` | Both, either; `&&` before `\|\|`                                                                   |
 
 There are no booleans to remember: `total_discount > 0`, not `hasDiscount`; `cart.lines`, not

@@ -23,6 +23,24 @@ A field its object does not have, such as `cart.totl`, logs a warning once
 Elements tab, for `data-next-show`, `-hide`, `-each` and `-for` too. A field not known yet, such as
 `cart.total` before the price arrives, and one the page defines are not.
 
+## Sums
+
+A query adds, subtracts, multiplies and divides paths and numbers, `*` and `/` first, with
+parentheses. Put a space on each side of an operator: a `-` inside a path is part of an id
+(`options.bundle-1x`).
+
+```html
+<p><span data-next-query="total / 30"></span> a day</p>
+<p><span data-next-query="cart.total / cart.quantity"></span> each</p>
+<p><span data-next-query="total - tax"></span> before tax</p>
+```
+
+The result is written as its first path's field is: `cart.total - …` is money, `quantity * 2` a
+number; `data-next-format` says otherwise. While a value in it is not known yet, and for a division
+by 0, the element shows `data-next-empty`. A sum that cannot be read logs a warning once
+(`cannot read the sum in data-next-query="cart.total +"`). To read a sum in more than one place, name it with
+[data-next-define](data-next-define.md).
+
 ## How a value is written
 
 | Element                       | Gets                                                                  |

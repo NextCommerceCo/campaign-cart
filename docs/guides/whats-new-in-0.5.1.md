@@ -7,7 +7,8 @@ order: 2
 
 # What's new in 0.5.1
 
-Fixes for pages that moved to 0.5.0. Your page works without changes.
+Fixes for pages that moved to 0.5.0, and four things a page can now do. Your page works without
+changes.
 
 ## You will notice
 
@@ -19,11 +20,16 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 
 ## New
 
+- **A currency switch for your page.** `data-next-action="setCurrency"` opens the page again in
+  the currency the shopper picks. [Language and currency](recipes/language-and-currency.md)
 - **A total before shipping.** `cart.total_before_shipping` is the total without the shipping
   price, for a checkout that shows shipping on a later step.
   [Cart](attribute-reference/objects/cart.md)
-- **A currency switch for your page.** `data-next-action="setCurrency"` opens the page again in
-  the currency the shopper picks. [Language and currency](recipes/language-and-currency.md)
+- **Sums in `data-next-query`.** `data-next-query="total / 30"` writes a price per day, with no
+  script. [data-next-query](attribute-reference/display/data-next-query.md#sums)
+- **A name for a sum.** `data-next-define="cart.free_shipping_left = 75 - total_before_shipping"`
+  makes it a field every query and condition can read.
+  [data-next-define](attribute-reference/display/data-next-define.md)
 
 ## Fixed
 

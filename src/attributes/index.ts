@@ -7,6 +7,7 @@ import { BindContext, type Render } from '../dom/context';
 import { bindActions } from './actions';
 import { AttributeContext, type Binder } from './context';
 import { bindEach, bindFor, bindQuery, bindShow } from './display';
+import { bindDefine } from './define';
 import { bindFields, defineVariants } from './fields';
 import { bindOptions } from './options';
 
@@ -79,7 +80,7 @@ export function bindAttributes(
 ): AttributeBindings {
   const renders: Render[] = [];
   const render = () => renders.forEach((r) => r());
-  const binders: Binder[] = [bindFor, bindOptions, bindEach, bindQuery, bindShow, bindActions, bindFields];
+  const binders: Binder[] = [bindDefine, bindFor, bindOptions, bindEach, bindQuery, bindShow, bindActions, bindFields];
   const bindTree = (node: ParentNode, shown?: Set<Element>): Render[] =>
     binders.flatMap((binder) => binder(node, a, shown));
   const b = new BindContext(engine);

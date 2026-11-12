@@ -4,6 +4,7 @@ import { display } from '../../src/attributes/value';
 import { bindAll } from '../../src/bindings';
 import { useCurrencyFormats } from '../../src/engine/display/format';
 import { Query } from '../../src/engine/display/query';
+import { bindOrder } from '../../src/order';
 import { fakeApi, heldApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -57,6 +58,39 @@ describe('attributes v2: reading values', () => {
     expect(($('#input') as HTMLInputElement).value).toBe('$89.00');
     expect($('#pct').textContent).toBe('0%');
     expect($('#currency').innerHTML).toBe('USD');
+  });
+
+  it('writes a sum of paths and numbers, as its first path’s field is written', async () => {
+    const { engine, $ } = await mount(`
+      <span id="each" data-next-query="cart.total / cart.quantity" data-next-empty="…"></span>
+      <span id="units" data-next-query="cart.quantity * 3"></span>
+      <span id="plain" data-next-query="cart.total / 3" data-next-format="number"></span>
+      <div data-next-each="cart.lines"><template><b class="half" data-next-query="total / 2"></b></template></div>
+      <span id="bad" data-next-query="cart.total +"></span>`);
+    expect($('#each').textContent).toBe('…');
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#each').textContent).toBe('$49.00');
+    expect($('#units').textContent).toBe('6');
+    expect($('#plain').textContent).toBe('32.67');
+    expect(document.querySelector('.half')!.textContent).toBe('$49.00');
+    expect($('#bad').textContent).toBe('');
+    expect(engine.log.entries().map((e) => e.message)).toContain(
+      'cannot read the sum in data-next-query="cart.total +"',
+    );
+  });
+
+  it('subtracts the tax in a receipt line, as the receipt page guide shows', async () => {
+    const { engine } = await mount(
+      `<div data-next-each="order.lines"><template>
+        <b class="gross" data-next-query="total"></b><b class="net" data-next-query="total - tax"></b>
+      </template></div>`,
+      { ref_id: 'R1' },
+    );
+    await bindOrder(engine, vi.fn());
+    await settle(engine);
+    const text = (s: string) => document.querySelector(s)?.textContent;
+    expect([text('.gross'), text('.net')]).toEqual(['$96.12', '$89.00']);
   });
 
   it('writes cart.total_before_shipping as money, a field of the cart', async () => {
@@ -276,6 +310,55 @@ describe('attributes v2: unknown fields', () => {
     bindings.render();
     await settle(engine);
     expect($('#per-day').textContent).toBe('30');
+  });
+});
+
+describe('attributes v2: data-next-define', () => {
+  const warnings = (engine: { log: { entries(): Array<{ level: string; message: string }> } }) =>
+    engine.log
+      .entries()
+      .filter((e) => e.level === 'warn')
+      .map((e) => e.message);
+
+  it('names a sum as a field of the cart, read by a query and a condition and written as its first path', async () => {
+    const { engine, $ } = await mount(`
+      <template data-next-define="cart.free_shipping_left = 150 - total"></template>
+      <p id="spend" data-next-show="cart.free_shipping_left > 0">
+        Spend <b id="left" data-next-query="cart.free_shipping_left" data-next-empty="…"></b> more</p>
+      <p id="free" data-next-show="cart.free_shipping_left <= 0">Free shipping</p>`);
+    expect($('#left').textContent).toBe('…');
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#left').textContent).toBe('$52.00');
+    expect([$('#spend').hidden, $('#free').hidden]).toEqual([false, true]);
+    await engine.cart.addItem(2);
+    await settle(engine);
+    expect([$('#spend').hidden, $('#free').hidden]).toEqual([true, false]);
+    expect(warnings(engine)).toEqual([]);
+  });
+
+  it('defines a field for every option, its sum reading the option, in the format the element names', async () => {
+    const { engine, $ } = await mount(`
+      <template data-next-define="Option.per_day = total / 30" data-next-format="number"></template>
+      <div data-next-selector="main">
+        <div data-next-option="one" data-next-items="1"><i id="one" data-next-query="per_day"></i></div>
+        <div data-next-option="two" data-next-items="2"><i id="two" data-next-query="per_day"></i></div>
+      </div>`);
+    await settle(engine);
+    expect([$('#one').textContent, $('#two').textContent]).toEqual(['1.63', '2.97']);
+    expect(warnings(engine)).toEqual([]);
+  });
+
+  it('warns about a definition it cannot read or a type there is not', async () => {
+    const { engine } = await mount(`
+      <template data-next-define="cart.left 150 - total"></template>
+      <template data-next-define="cart.left = 150 -"></template>
+      <template data-next-define="basket.left = 150 - total"></template>`);
+    expect(warnings(engine)).toEqual([
+      'cannot read the definition in data-next-define="cart.left 150 - total"',
+      'cannot read the definition in data-next-define="cart.left = 150 -"',
+      'unknown type "basket" in data-next-define="basket.left = 150 - total"',
+    ]);
   });
 });
 

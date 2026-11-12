@@ -1,15 +1,24 @@
 import { compare, type CompareOp } from '../engine/display/condition';
 import { truthyValue } from '../engine/display/format';
 
-/** A `data-next-show` condition, parsed once: paths, literals, `!`, `== != > < >= <=`, `&&`, `||`, parentheses. After `==` and `!=` a bare word is text (`param.banner == off`), as in 0.4.x. */
+export type MathOp = '+' | '-' | '*' | '/';
+
+/**
+ * A `data-next-show` condition or a `data-next-query` sum, parsed once: paths, literals, `!`,
+ * `* /` before `+ -`, `== != > < >= <=`, `&&`, `||`, parentheses. After `==` and `!=` a bare word
+ * is text (`param.banner == off`), as in 0.4.x. `-` between spaces subtracts; inside a path it is
+ * part of an id (`options.bundle-1x`).
+ */
 export type Expression =
   | { kind: 'path'; path: string }
   | { kind: 'literal'; value: string | number | boolean }
   | { kind: 'not'; operand: Expression }
+  | { kind: 'math'; op: MathOp; left: Expression; right: Expression }
   | { kind: 'compare'; op: CompareOp; left: Expression; right: Expression }
   | { kind: 'and' | 'or'; left: Expression; right: Expression };
 
-const LEXEME = /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[A-Za-z_][\w.-]*|[\w.]+)/y;
+const LEXEME =
+  /\s*(\|\||&&|==|!=|>=|<=|[!<>()]|'[^']*'|"[^"]*"|-?\d+(?:\.\d+)?(?![\w.])|[A-Za-z_][\w.-]*|[\w.]+|[-+*/])/y;
 
 function tokenize(source: string): string[] | null {
   const tokens: string[] = [];
@@ -52,15 +61,25 @@ export function parseExpression(source: string): Expression | null {
     if (/^[\w.-]+$/.test(t)) return { kind: 'path', path: t };
     return null;
   };
+  const math = (next: () => Expression | null, ops: string) => (): Expression | null => {
+    let left = next();
+    while (left && ops.includes(peek() ?? ' ')) {
+      const op = tokens[at++] as MathOp;
+      const right = next();
+      left = right && { kind: 'math', op, left, right };
+    }
+    return left;
+  };
+  const sum = math(math(operand, '*/'), '+-');
   const compare = (): Expression | null => {
-    const left = operand();
+    const left = sum();
     const op = peek();
     if (!left || !op || !COMPARE.has(op)) return left;
     at++;
     const next = tokens[at];
     const bare = (op === '==' || op === '!=') && next !== undefined && /^[A-Za-z_][\w-]*$/.test(next);
     const right =
-      bare && !['true', 'false'].includes(next!) ? (at++, { kind: 'literal' as const, value: next! }) : operand();
+      bare && !['true', 'false'].includes(next!) ? (at++, { kind: 'literal' as const, value: next! }) : sum();
     return right && { kind: 'compare', op: op as CompareOp, left, right };
   };
   const and = (): Expression | null => {
@@ -99,12 +118,22 @@ export function pathsOf(e: Expression): string[] {
   }
 }
 
-function value(e: Expression, read: (path: string) => unknown): unknown {
+/** `l op r` for two numbers; nothing when either is not known yet, or for a division by 0. */
+function calculate(op: MathOp, l: unknown, r: unknown): number | undefined {
+  if (typeof l !== 'number' || typeof r !== 'number') return undefined;
+  const n = op === '+' ? l + r : op === '-' ? l - r : op === '*' ? l * r : l / r;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** What the expression comes to: a path's value, a sum's number, a condition's yes or no. */
+export function valueOf(e: Expression, read: (path: string) => unknown): unknown {
   switch (e.kind) {
     case 'path':
       return read(e.path);
     case 'literal':
       return e.value;
+    case 'math':
+      return calculate(e.op, valueOf(e.left, read), valueOf(e.right, read));
     default:
       return evaluate(e, read);
   }
@@ -119,8 +148,10 @@ export function evaluate(e: Expression, read: (path: string) => unknown): boolea
       return truthyValue(e.value);
     case 'not':
       return !evaluate(e.operand, read);
+    case 'math':
+      return truthyValue(valueOf(e, read));
     case 'compare':
-      return compare(e.op, value(e.left, read), value(e.right, read));
+      return compare(e.op, valueOf(e.left, read), valueOf(e.right, read));
     case 'and':
       return evaluate(e.left, read) && evaluate(e.right, read);
     case 'or':
