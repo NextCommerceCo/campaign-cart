@@ -18,15 +18,16 @@ back/forward cache reloads and starts again.
 | `ready`    | The campaign is in; `html[data-next-ready]` is set once the page shows its values                                             |
 | `failed`   | The campaign could not load, and this browser has no copy of it from the last 10 minutes; `html[data-next-ready]` never comes |
 
-| From                  | What happens                                                        | To        | Events, in order                                                                                              |
-| --------------------- | ------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
-| none                  | The loader has no `data-campaign` key, or the SDK code cannot load  | none      | none: `html[data-next-error="config"]` or `"load"`, a `console.error`, and no `window.next`                   |
-| `starting`            | A copy of the campaign saved in this browser in the last 10 minutes | `ready`   | `sdk.ready`, at once; when the API answers, the copy is replaced (no event of its own) and the cart is priced |
-| `starting`            | No copy: the API answers                                            | `ready`   | `sdk.ready`                                                                                                   |
-| `starting`            | No copy: the API fails                                              | `failed`  | `sdk.error` (`campaign.load`); no `sdk.ready` on this page                                                    |
-| `starting` or `ready` | Browser storage is blocked or full                                  | unchanged | `sdk.error` (`storage.write`); before `window.next` exists it still reaches a listener added later            |
-| `ready`               | The API fails after a saved copy made it ready                      | `ready`   | `sdk.error` (`campaign.load`); the copy stays in use and prices the cart                                      |
-| `ready`               | A step fails; see Errors below                                      | `ready`   | `sdk.error`, then the step's own event when it has one                                                        |
+| From                  | What happens                                                        | To         | Events, in order                                                                                              |
+| --------------------- | ------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| none                  | The loader has no `data-campaign` key, or the SDK code cannot load  | none       | none: `html[data-next-error="config"]` or `"load"`, a `console.error`, and no `window.next`                   |
+| `starting`            | A copy of the campaign saved in this browser in the last 10 minutes | `ready`    | `sdk.ready`, at once; when the API answers, the copy is replaced (no event of its own) and the cart is priced |
+| `starting`            | No copy: the API answers                                            | `ready`    | `sdk.ready`                                                                                                   |
+| `starting`            | No copy: the API fails                                              | `failed`   | `sdk.error` (`campaign.load`); no `sdk.ready` on this page                                                    |
+| `starting` or `ready` | Browser storage is blocked or full                                  | unchanged  | `sdk.error` (`storage.write`); before `window.next` exists it still reaches a listener added later            |
+| `ready`               | The API fails after a saved copy made it ready                      | `ready`    | `sdk.error` (`campaign.load`); the copy stays in use and prices the cart                                      |
+| `ready`               | A step fails; see Errors below                                      | `ready`    | `sdk.error`, then the step's own event when it has one                                                        |
+| `ready`               | The page loads again: a reload, a link, the `setCurrency` action    | `starting` | none for leaving; the next page starts again, in the currency its URL asks for                                |
 
 ## Snapshot
 

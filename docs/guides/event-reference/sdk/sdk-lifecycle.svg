@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 270" width="720" height="270" role="img" aria-labelledby="sdk-lifecycle-title sdk-lifecycle-desc" style="font-family: var(--clean-font-body, system-ui, sans-serif)">
   <title id="sdk-lifecycle-title">SDK lifecycle</title>
-  <desc id="sdk-lifecycle-desc">starting, then ready (sdk.ready, once a page, with what the page shows) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready.</desc>
+  <desc id="sdk-lifecycle-desc">starting, then ready (sdk.ready, once a page, with what the page shows) when the campaign is in: at once from a copy this browser saved in the last 10 minutes, else when the API answers. If the API fails and there is no saved copy, the SDK stops at failed (sdk.error, action campaign.load) without sdk.ready; with a copy it stays ready and still sends that sdk.error. Both set html data-next-error="campaign". Once ready, a step that fails sends sdk.error and the SDK stays ready. A page that loads again, as after the setCurrency action or a link with ?currency=, starts again at starting, with no event for leaving.</desc>
   <defs>
     <marker id="sdk-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clean-fg-muted, #6b7280)" />
@@ -11,6 +11,8 @@
     <text x="344" y="132" text-anchor="start" style="fill: var(--clean-fg, #111827); font-size: 13px">a saved copy, or the API answers</text>
     <path d="M440 34 H534" marker-end="url(#sdk-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
     <text x="490" y="26" text-anchor="middle" style="fill: var(--clean-fg, #111827); font-size: 12px">fails, no copy</text>
+    <path d="M220 225 H170 V45 H214" marker-end="url(#sdk-lifecycle-arrow)" style="fill: none; stroke: var(--clean-fg-muted, #6b7280); stroke-width: 1.5; stroke-dasharray: 5 4" />
+    <text x="158" y="135" text-anchor="end" style="fill: var(--clean-fg, #111827); font-size: 13px">the page loads again</text>
   </g>
   <g text-anchor="middle">
     <rect x="220" y="16" width="220" height="58" rx="10" style="fill: var(--clean-bg-muted, #f4f6f9); stroke: var(--clean-border, #d7dce5); stroke-width: 1.5" />

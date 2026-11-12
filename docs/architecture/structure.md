@@ -143,6 +143,7 @@ src/
     cart/                          cart.ts (cart actions), coupons.ts (checking, holding and removing codes), lines.ts
                                    (groups merged into lines), public.ts (the Cart, Checkout and toggle that events
                                    carry), selectors.ts (bundle selectors), variants.ts (a package's variant choices),
+                                   variant-swap.ts (a slot, a card or a cart line takes a variant's package),
                                    summary-tokens.ts (the cart summary's tokens), quotes.ts, toggles.ts, types.ts
   dom/                 boot        the DOM toolkit bindings, attributes v2, checkout and order share
     context.ts                     BindContext (engine, claim, warn, listen, offs: what dispose removes)
@@ -162,11 +163,12 @@ src/
     slots.ts                       slots chunk: a bundle selector with a slot template (multi-variant pages)
     slot-properties.ts             slots chunk: the page's default properties and a unit's own, on every unit
   attributes/          attributes  attributes v2, loaded when a page has one or a script calls a new action; legacy pages never load it
-    index.ts                       bindAttributes: scopes first (for, selectors, options), then each, then query, show, actions, fields
+    index.ts                       bindAttributes: definitions, then scopes (for, selectors, options), then each, query, show, actions, fields
+    define.ts                      data-next-define: a sum named as a field of a type, as next.define adds one
     context.ts                     AttributeContext: the scope each element reads short paths from, errors.<field>
-    display.ts                     data-next-for, -query, -show / -hide, -each
-    expression.ts value.ts         the condition grammar (&&, ||, > <) on engine/display/condition's compare; a value written by its
-                                   field's type or data-next-format
+    display.ts                     data-next-for, -query (a path or a sum), -show / -hide, -each
+    expression.ts value.ts         the condition and sum grammar (+ - * /, &&, ||, > <) on engine/display/condition's compare; a value
+                                   written by its field's type or data-next-format
     options.ts                     data-next-selector / -option: picks, order bumps, offers on ?ref_id pages
     actions.ts                     data-next-action: arguments from the element, its form and its scope; data-next-go
     fields.ts                      data-next-field outside a checkout: variants.<code> pickers, a slot's properties

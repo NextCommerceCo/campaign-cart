@@ -259,7 +259,7 @@ skip → `order.skip(offer, page)` and navigate.
 error mapping, `storage.ts`, `session.ts`, `log.ts`, `flow.ts`, `id.ts`); `visit/` (`visit.ts`, `attribution.ts`,
 `params.ts`, `scope.ts`, `geo.ts`, `debug-config.ts`); `order/` (`order.ts`, the public Order; `payment.ts`); `display/`
 (`values.ts`, `format.ts`, `tokens.ts`, `condition.ts`, `texts.ts`, `query.ts`); `events/` (one file per event group); and
-`cart/` (`cart.ts`, `coupons.ts`, `lines.ts`, `public.ts`, `quotes.ts`, `selectors.ts`, `summary-tokens.ts`, `toggles.ts`,
+`cart/` (`cart.ts`, `coupons.ts`, `lines.ts`, `public.ts`, `quotes.ts`, `selectors.ts`, `summary-tokens.ts`, `toggles.ts`, `variant-swap.ts`,
 `types.ts`, `variants.ts`). Loaded by their chunks: `checkout/state/` (`checkout.ts`, `contact.ts`, `countries.ts`,
 `order-body.ts`, `place-order.ts`, `rules.ts`, `phone.ts`, `types.ts`) and `order/state.ts`. See [structure.md](structure.md).
 
