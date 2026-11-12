@@ -4,6 +4,7 @@ import { display } from '../../src/attributes/value';
 import { bindAll } from '../../src/bindings';
 import { useCurrencyFormats } from '../../src/engine/display/format';
 import { Query } from '../../src/engine/display/query';
+import { bindOrder } from '../../src/order';
 import { fakeApi, heldApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
@@ -77,6 +78,19 @@ describe('attributes v2: reading values', () => {
     expect(engine.log.entries().map((e) => e.message)).toContain(
       'cannot read the sum in data-next-query="cart.total +"',
     );
+  });
+
+  it('subtracts the tax in a receipt line, as the receipt page guide shows', async () => {
+    const { engine } = await mount(
+      `<div data-next-each="order.lines"><template>
+        <b class="gross" data-next-query="total"></b><b class="net" data-next-query="total - tax"></b>
+      </template></div>`,
+      { ref_id: 'R1' },
+    );
+    await bindOrder(engine, vi.fn());
+    await settle(engine);
+    const text = (s: string) => document.querySelector(s)?.textContent;
+    expect([text('.gross'), text('.net')]).toEqual(['$96.12', '$89.00']);
   });
 
   it('writes cart.total_before_shipping as money, a field of the cart', async () => {

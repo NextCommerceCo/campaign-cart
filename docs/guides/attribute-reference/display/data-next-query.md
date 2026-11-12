@@ -30,9 +30,9 @@ parentheses. Put a space on each side of an operator: a `-` inside a path is par
 (`options.bundle-1x`).
 
 ```html
-<p><span data-next-query="cart.total - cart.shipping_method.price"></span> before shipping</p>
 <p><span data-next-query="total / 30"></span> a day</p>
 <p><span data-next-query="cart.total / cart.quantity"></span> each</p>
+<p><span data-next-query="total - tax"></span> before tax</p>
 ```
 
 The result is written as its first path's field is: `cart.total - …` is money, `quantity * 2` a

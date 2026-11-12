@@ -58,14 +58,14 @@ Pages built with the earlier attributes keep working: see [Legacy attributes](at
 
 ## Display
 
-| Page                                                              | For                                                   |
-| ----------------------------------------------------------------- | ----------------------------------------------------- |
-| [data-next-query](attribute-reference/display/data-next-query.md) | Writes a value; `data-next-format`, `data-next-empty` |
-| [data-next-show](attribute-reference/display/data-next-show.md)   | Shows on a condition                                  |
-| [data-next-hide](attribute-reference/display/data-next-hide.md)   | Hides on a condition                                  |
-| [data-next-each](attribute-reference/display/data-next-each.md)   | One copy of a template per item of a list             |
-| [data-next-for](attribute-reference/display/data-next-for.md)     | The object children read short paths from             |
-| [data-next-i18n](attribute-reference/display/data-next-i18n.md)   | Text or an attribute in the page's language           |
+| Page                                                              | For                                                                       |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [data-next-query](attribute-reference/display/data-next-query.md) | Writes a value, or a sum of values; `data-next-format`, `data-next-empty` |
+| [data-next-show](attribute-reference/display/data-next-show.md)   | Shows on a condition                                                      |
+| [data-next-hide](attribute-reference/display/data-next-hide.md)   | Hides on a condition                                                      |
+| [data-next-each](attribute-reference/display/data-next-each.md)   | One copy of a template per item of a list                                 |
+| [data-next-for](attribute-reference/display/data-next-for.md)     | The object children read short paths from                                 |
+| [data-next-i18n](attribute-reference/display/data-next-i18n.md)   | Text or an attribute in the page's language                               |
 
 ## Actions
 
