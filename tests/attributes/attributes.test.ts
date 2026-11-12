@@ -4,7 +4,7 @@ import { display } from '../../src/attributes/value';
 import { bindAll } from '../../src/bindings';
 import { useCurrencyFormats } from '../../src/engine/display/format';
 import { Query } from '../../src/engine/display/query';
-import { heldApi } from '../fixtures/api';
+import { fakeApi, heldApi } from '../fixtures/api';
 import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { FakeObserver } from '../bindings/observer';
@@ -57,6 +57,20 @@ describe('attributes v2: reading values', () => {
     expect(($('#input') as HTMLInputElement).value).toBe('$89.00');
     expect($('#pct').textContent).toBe('0%');
     expect($('#currency').innerHTML).toBe('USD');
+  });
+
+  it('writes cart.total_before_shipping as money, a field of the cart', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { engine, $ } = await mount(
+      '<span id="before" data-next-query="cart.total_before_shipping"></span>',
+      undefined,
+      fakeApi({ shipping: 9.99 }).fetch,
+    );
+    await engine.cart.addItem(1, 2);
+    await settle(engine);
+    expect($('#before').textContent).toBe('$98.00');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('writes in the format the page asks for, or the one a defined field gave', async () => {

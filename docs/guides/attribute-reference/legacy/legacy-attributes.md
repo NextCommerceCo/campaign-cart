@@ -67,6 +67,7 @@ attributes read keeps its old meaning there.
 | Old path                                                                           | Now                                                                       |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `cart.discountAmount`, `cart.totalDiscount`                                        | `cart.total_discount`                                                     |
+| `{totalBeforeShipping}` in a `data-next-cart-summary`                              | `cart.total_before_shipping`                                              |
 | `cart.discountPercentage`, `cart.totalDiscountPercentage`                          | `cart.discount_percentage`                                                |
 | `cart.hasItems`, `cart.isEmpty`, `cart.itemCount`                                  | `cart.lines` (as a condition, or its count)                               |
 | `cart.discountCode`, `cart.hasCoupon`                                              | `cart.coupons.0`, `cart.coupons`                                          |

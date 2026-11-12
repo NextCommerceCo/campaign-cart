@@ -880,6 +880,17 @@ describe('cart', () => {
     expect(publicCart(engine.getState(), engine.getState().cart.summary)).toMatchObject({ subtotal: 138, total: 138 });
   });
 
+  it('gives the total before shipping: the total without the shipping method’s price', async () => {
+    const { engine } = makeEngine({ fetch: fakeApi({ shipping: 9.99 }).fetch });
+    await engine.start();
+    await engine.cart.addItem(2);
+    await engine.cart.applyCoupon('save10');
+    await engine.cart.settled();
+    const cart = publicCart(engine.getState(), engine.getState().cart.summary);
+    expect(cart).toMatchObject({ subtotal: 89, total: 88.99, total_before_shipping: 79 });
+    expect(cart.shipping_method?.price).toBe(9.99);
+  });
+
   it('checks codes one at a time, so two codes that do not stack are not both applied', async () => {
     const api = fakeApi();
     const fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
