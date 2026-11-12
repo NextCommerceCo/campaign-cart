@@ -33,9 +33,9 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 
 ### Display
 
+- **`setCurrency` lets the shopper switch currency on a live page.** `data-next-action="setCurrency"` and `next.actions.setCurrency({ code })` open the page again with `?currency=<code>`, for a currency the campaign sells in; `campaign.available_currencies` lists them for `data-next-each`. See [Language and currency](docs/guides/recipes/language-and-currency.md). ([#124](https://github.com/NextCommerceCo/campaign-cart/issues/124))
 - **`formats.currency.<code>` in `nextConfig.translations` sets how a currency is written**: `narrowSymbol`, `symbol` or `code`, or a pattern of `{amount}`, `{symbol}`, `{narrowSymbol}` and `{code}` such as `C${amount}`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **`data-next-format="amount"` writes an amount in the currency's own decimals, without a symbol**: `49.90`, where `number` writes `49.9`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
-- **`setCurrency` lets the shopper switch currency on a live page.** `data-next-action="setCurrency"` and `next.actions.setCurrency({ code })` open the page again with `?currency=<code>`, for a currency the campaign sells in; `campaign.available_currencies` lists them for `data-next-each`. See [Language and currency](docs/guides/recipes/language-and-currency.md). ([#124](https://github.com/NextCommerceCo/campaign-cart/issues/124))
 - **A first visit is ready sooner on a slow connection.** The loader fetches the chunks a page's markup calls for (the checkout, the cart summary, the 0.4.x names) together with the core, not after it: on Chrome's Slow 4G a starter landing page is ready in 3.9 s where it took 4.7 s, and a checkout page in 3.2 s where it took 4.8 s.
 - **Boot is 26 KB**, up from 25.5 KB.
 

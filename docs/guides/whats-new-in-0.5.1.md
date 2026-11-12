@@ -17,6 +17,11 @@ Fixes for pages that moved to 0.5.0. Your page works without changes.
 - **Meta gets PageView from the SDK.** Remove `fbq('track', 'PageView')` from your pixel code, or
   it is counted twice.
 
+## New
+
+- **A currency switch for your page.** `data-next-action="setCurrency"` opens the page again in
+  the currency the shopper picks. [Language and currency](recipes/language-and-currency.md)
+
 ## Fixed
 
 - Order bumps count in the purchase again.
