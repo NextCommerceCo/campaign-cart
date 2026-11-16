@@ -3,6 +3,7 @@
   "version": "0.5.1-beta.2",
   "private": true,
   "description": "NEXT Campaign SDK: one headless Engine, everything else subscribes",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "bun dev/server.ts",

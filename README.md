@@ -128,3 +128,10 @@ git log --oneline v0.5.1-beta.1..v0.5.1-beta.2
 
 A tag is never moved: to fix a beta, go to `beta.2`. Write `beta.1`, not `beta1`, so `beta.10`
 sorts after `beta.2`.
+
+## License
+
+Copyright 2025-2026 Next Commerce Pte. Ltd. Licensed under the
+[Apache License, Version 2.0](LICENSE); see [NOTICE](NOTICE).
+
+Vendored code in `vendor/` and the dependency patches in `patches/` keep their original licences.
