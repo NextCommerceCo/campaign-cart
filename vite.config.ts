@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config';
 
 const HEADLESS = ['tests/engine/**/*.test.ts', 'tests/*/state/**/*.test.ts', 'tests/*/state.test.ts'];
 
+const BANNER = '/*! Campaign Cart (c) 2025-2026 Next Commerce Pte. Ltd., Apache-2.0 */';
+
 const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
 
 export default defineConfig({
@@ -13,8 +15,11 @@ export default defineConfig({
       name: 'minify-es',
       async generateBundle(_, bundle) {
         for (const chunk of Object.values(bundle)) {
-          if (chunk.type === 'chunk')
-            chunk.code = (await transformWithEsbuild(chunk.code, chunk.fileName, { minify: true })).code;
+          if (chunk.type !== 'chunk') continue;
+          chunk.code = (await transformWithEsbuild(chunk.code, chunk.fileName, { minify: true })).code;
+          // Vite's own esbuild pass drops a Rollup banner, so the notice goes on here, on the loader only:
+          // boot has no gzip budget left.
+          if (chunk.isEntry) chunk.code = `${BANNER}\n${chunk.code}`;
         }
       },
     },

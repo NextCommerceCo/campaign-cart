@@ -135,3 +135,4 @@ Copyright 2025-2026 Next Commerce Pte. Ltd. Licensed under the
 [Apache License, Version 2.0](LICENSE); see [NOTICE](NOTICE).
 
 Vendored code in `vendor/` and the dependency patches in `patches/` keep their original licences.
+`vendor/tsugi/tsugi.css` includes Tailwind CSS's preflight and theme (MIT, Tailwind Labs).

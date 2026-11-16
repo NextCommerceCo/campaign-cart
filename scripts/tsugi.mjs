@@ -114,7 +114,12 @@ try {
   execFileSync('npx', ['@tailwindcss/cli', '-i', join(dir, 'entry.css'), '-o', join(dir, 'out.css'), '--minify'], {
     stdio: 'inherit',
   });
-  let css = readFileSync(join(dir, 'out.css'), 'utf8').replace(/^\/\*![^*]*\*\/\s*/, '');
+  // Keep Tailwind's own licence comment: tsugi.css bundles its MIT-licensed preflight.
+  const out = readFileSync(join(dir, 'out.css'), 'utf8');
+  const tailwind = out.match(/^\/\*! tailwindcss [^*]*\*\//)?.[0];
+  if (!tailwind)
+    throw new Error(`tsugi ${tag}: no tailwindcss licence comment in the CLI output; update scripts/tsugi.mjs`);
+  let css = out.slice(tailwind.length).trimStart();
   css = replace(
     css,
     /@layer properties\{@supports [^{]*\{(\*,:before,:after,::backdrop\{[^}]*\})\}\}/,
@@ -125,7 +130,7 @@ try {
   mkdirSync('vendor/tsugi', { recursive: true });
   writeFileSync(
     OUT,
-    `/*! tsugi ${tag}: Tailwind preflight, base and ${COMPONENTS.join(', ')}, made for a shadow root by scripts/tsugi.mjs. Do not edit; run npm run tsugi -- <tag>. */\n${css}\n`,
+    `/*! tsugi ${tag}: Tailwind preflight, base and ${COMPONENTS.join(', ')}, made for a shadow root by scripts/tsugi.mjs. Do not edit; run npm run tsugi -- <tag>. */\n${tailwind}\n${css}\n`,
   );
   console.log(`${OUT}: tsugi ${tag}, ${(css.length / 1024).toFixed(1)} KB`);
 } finally {
