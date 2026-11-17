@@ -21,27 +21,32 @@ stay safe, and what the shopper sees when a payment does not go through.
 
 ## Methods
 
-A method shows only when the campaign offers it. [data-next-payment](../attribute-reference/widgets/data-next-payment.md)
-draws the ones in the form, [data-next-express](../attribute-reference/widgets/data-next-express.md)
-the buttons.
+The campaign decides which methods show, in the form and as express buttons: a method it adds later
+shows without an SDK update, under the campaign's name for it, and its form is checked in full.
+[data-next-payment](../attribute-reference/widgets/data-next-payment.md) draws the form's,
+[data-next-express](../attribute-reference/widgets/data-next-express.md) the buttons.
 
-| Method            | In the form | Express button  | Form checked before paying in the form |
-| ----------------- | ----------- | --------------- | -------------------------------------- |
-| Card              | ✓           |                 | Every field                            |
-| PayPal            | ✓           | ✓               | What `requireValidation` asks          |
-| Apple Pay         | ✓           | ✓ (not Android) | What `requireValidation` asks          |
-| Google Pay        | ✓           | ✓               | What `requireValidation` asks          |
-| Shop Pay          | ✓           | ✓               | What `requireValidation` asks          |
-| Klarna            | ✓           |                 | Every field                            |
-| Affirm            | ✓           |                 | Every field                            |
-| iDEAL             | ✓           |                 | Every field                            |
-| Bancontact        | ✓           |                 | Every field                            |
-| SEPA Direct Debit | ✓           |                 | Every field                            |
-| Twint             | ✓           |                 | Every field                            |
-| Swish             | ✓           |                 | Every field                            |
+| Method            | Code          | Express button  | Form checked before paying in the form |
+| ----------------- | ------------- | --------------- | -------------------------------------- |
+| Card              | `card_token`  |                 | Every field                            |
+| PayPal            | `paypal`      | ✓               | What `requireValidation` asks          |
+| Apple Pay         | `apple_pay`   | ✓ (not Android) | What `requireValidation` asks          |
+| Google Pay        | `google_pay`  | ✓               | What `requireValidation` asks          |
+| Shop Pay          | `shop_pay`    | ✓               | What `requireValidation` asks          |
+| Link              | `link`        | ✓               | Every field                            |
+| Klarna            | `klarna`      |                 | Every field                            |
+| Afterpay          | `afterpay`    |                 | Every field                            |
+| Affirm            | `affirm`      |                 | Every field                            |
+| iDEAL             | `ideal`       |                 | Every field                            |
+| Bancontact        | `bancontact`  |                 | Every field                            |
+| SEPA Direct Debit | `sepa_direct` |                 | Every field                            |
+| Twint             | `twint`       |                 | Every field                            |
+| Swish             | `swish`       |                 | Every field                            |
 
-An express button skips the page's form, as in 0.4.x: the wallet collects and checks the shopper's
-details itself.
+The express column is where the payment platform offers a button; the campaign turns each on.
+[Payment methods](https://developers.nextcommerce.com/docs/admin-api/guides/payment-methods) lists
+which also take upsells. An express button skips the page's form, as in 0.4.x: the wallet collects
+and checks the shopper's details itself.
 
 ## When the shopper pays
 
