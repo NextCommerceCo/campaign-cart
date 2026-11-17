@@ -354,8 +354,7 @@
     },
     "Purchase": {
       "from": [
-        "checkout_completed",
-        "upsell_completed"
+        "checkout_completed"
       ],
       "event_id": "1001",
       "params": {
