@@ -21,19 +21,32 @@ stay safe, and what the shopper sees when a payment does not go through.
 
 ## Methods
 
-A method shows only when the campaign offers it.
+A method shows only when the campaign offers it. [data-next-payment](../attribute-reference/widgets/data-next-payment.md)
+draws the ones in the form, [data-next-express](../attribute-reference/widgets/data-next-express.md)
+the buttons.
 
-| Kind            | Methods                                                                   | Drawn by                                                                                                              |
-| --------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Card            | Credit or debit card                                                      | [data-next-payment](../attribute-reference/widgets/data-next-payment.md)                                              |
-| Wallet          | PayPal, Apple Pay (not on Android), Google Pay; Shop Pay as a button only | `data-next-payment` as a choice, [data-next-express](../attribute-reference/widgets/data-next-express.md) as a button |
-| At the provider | Klarna, iDEAL, SEPA Direct Debit, Bancontact, Affirm, Twint, Swish, …     | `data-next-payment`                                                                                                   |
+| Method            | In the form | Express button  | Form checked before paying in the form |
+| ----------------- | ----------- | --------------- | -------------------------------------- |
+| Card              | ✓           |                 | Every field                            |
+| PayPal            | ✓           | ✓               | What `requireValidation` asks          |
+| Apple Pay         | ✓           | ✓ (not Android) | What `requireValidation` asks          |
+| Google Pay        | ✓           | ✓               | What `requireValidation` asks          |
+| Shop Pay          | ✓           | ✓               | What `requireValidation` asks          |
+| Klarna            | ✓           |                 | Every field                            |
+| Affirm            | ✓           |                 | Every field                            |
+| iDEAL             | ✓           |                 | Every field                            |
+| Bancontact        | ✓           |                 | Every field                            |
+| SEPA Direct Debit | ✓           |                 | Every field                            |
+| Twint             | ✓           |                 | Every field                            |
+| Swish             | ✓           |                 | Every field                            |
+
+An express button skips the page's form, as in 0.4.x: the wallet collects and checks the shopper's
+details itself.
 
 ## When the shopper pays
 
-1. The form is checked: every field for a card or a provider method. A wallet picked in the form
-   checks what `requireValidation` asks ([Migrating from 0.4.x](../migrating-from-0.4.md)); an
-   express button checks nothing, since the wallet gives the details.
+1. The form is checked, as the table above says. `requireValidation` is set in `nextConfig`
+   ([Migrating from 0.4.x](../migrating-from-0.4.md)).
 2. The SDK waits for the cart's latest price, so the order matches what the page shows.
 3. A card is turned into a token by the payment provider.
 4. The order is created. Paid at once, the shopper goes to the page `data-next-go` names. Otherwise
