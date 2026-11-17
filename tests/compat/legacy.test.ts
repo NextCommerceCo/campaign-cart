@@ -135,6 +135,16 @@ describe('attribution metadata (0.4.x)', () => {
     expect(cleared).toMatchObject({ device_type: 'desktop', domain: location.hostname });
   });
 
+  it('warns that a tracking-tag meta tag is no longer read, naming setMetadata', async () => {
+    document.head.innerHTML = '<meta name="data-next-tracking-tag" data-tag-name="fb_test_code" data-tag-value="T1">';
+    const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;
+    await vi.waitFor(() => expect(next.getMetadata).toBeDefined());
+    const warned = next.log.entries().filter((e) => e.level === 'warn' && e.message.includes('tracking-tag'));
+    expect(warned.map((e) => e.message)).toEqual([expect.stringContaining('next.actions.setMetadata')]);
+    expect(next.getMetadata()).not.toHaveProperty('fb_test_code');
+    document.head.innerHTML = '';
+  });
+
   it('keeps an Everflow id set after load over localStorage.evclid when the cart changes', async () => {
     localStorage.setItem('evclid', 'OLD-ID');
     const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;

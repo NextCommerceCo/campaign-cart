@@ -36,5 +36,9 @@ export function legacyHandler(
 
 /** @deprecated Adds the 0.4.x metadata methods to `window.next` once this chunk has loaded. */
 export function legacyMetadata(engine: Engine): void {
+  if (document.querySelector('meta[name="data-next-tracking-tag"], meta[name="os-tracking-tag"]'))
+    engine.log.warn(
+      'the tracking-tag meta tag is no longer read: set the value with next.actions.setMetadata({ name: value })',
+    );
   Object.assign((window as { next?: object }).next ?? {}, legacyMetadataApi(engine));
 }

@@ -36,6 +36,7 @@ Every 0.4.43 attribute, method, event and config key is listed in
 | Event `upsell:accepted`                                                                                               | Listen for `upsell:added`                                                                                                                          |
 | `dl_package_swapped`                                                                                                  | A bundle change now sends `dl_remove_from_cart` + `dl_add_to_cart`                                                                                 |
 | `token` and `pmData` on `payment:tokenized`                                                                           | The event still fires without them; a warning says so once a page                                                                                  |
+| `<meta name="data-next-tracking-tag">`, `os-tracking-tag` (logs a warning)                                            | Set the value from a script: `next.actions.setMetadata({ fb_test_code: 'TEST30399' })` ([JavaScript API](javascript-api.md))                       |
 
 ## Works differently
 
