@@ -79,7 +79,9 @@ await next.actions.setMetadata({ everflow_transaction_id: 'abc123', quiz_result:
 A value is a string or a number, kept to 2000 characters. It stays for the rest of the browser tab
 and is sent with the cart and the order, after the SDK's own keys (`landing_page`, `referrer`,
 `fb_fbp`, …), so a key of the same name takes the page's value. `everflow_transaction_id` is also
-the order's Everflow id, ahead of `?evclid` and `localStorage.evclid`.
+the order's Everflow id, ahead of `?evclid` and `localStorage.evclid`. `ax_aleid`, `ax_alart` and
+`ax_axwrt` are AppLovin's `_axeid`, `_axart` and `_axwrt` cookies, which the AXON app's server reads
+to send the purchase through AppLovin's Conversions API; each is empty when its cookie is not set.
 
 The 0.5 calls `addItem(packageId, qty)`, `removeItem(packageId)`, `setQuantity(packageId, qty)`,
 `applyCoupon(code)`, `removeCoupon(code)` and `setShipping(id)` still work, with their old results.

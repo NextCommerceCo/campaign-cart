@@ -72,6 +72,14 @@ export function buildAttribution(
   const pick = (...keys: string[]) => keys.map((k) => params[k]).find(Boolean);
   const sub = (n: number) => pick(`subaffiliate${n}`, `sub${n}`)?.slice(0, 225);
   const evclid = String(metadata?.everflow_transaction_id || params.evclid || storedEvclid || '');
+  const decoded = (name: string) => {
+    const raw = cookies?.get(name) || '';
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  };
   const result: Attribution = {
     affiliate: pick('affid', 'aff'),
     funnel: params.funnel || funnel,
@@ -95,6 +103,9 @@ export function buildAttribution(
         device_type: visit?.deviceType ?? 'desktop',
         fb_fbp: cookies?.get('_fbp') || visit?.fbp || '',
         fb_fbc: cookies?.get('_fbc') || visit?.fbc || '',
+        ax_aleid: decoded('_axeid'),
+        ax_alart: decoded('_axart'),
+        ax_axwrt: decoded('_axwrt'),
         domain: visit?.domain ?? '',
         fb_pixel_id: visit?.pixelId ?? '',
         sdk_version: __VERSION__,
