@@ -14,6 +14,11 @@ export function legacyFunnel(doc: Document, win: Window): string {
   return nextConfig(win).funnel || meta(doc, 'next-funnel');
 }
 
+/** @deprecated `nextConfig.currencyBehavior: 'auto'`. Put it on the script tag: `data-currency="auto"`. */
+export function legacyAutoCurrency(win: Window): boolean {
+  return nextConfig(win).currencyBehavior === 'auto';
+}
+
 /** @deprecated Use `?debug=1` and `?reset=1`. */
 export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: boolean } {
   const debug = params.get('debugger') === 'true' || params.get('debug') === 'true';
