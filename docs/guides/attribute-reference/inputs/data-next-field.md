@@ -34,9 +34,10 @@ address, a line, or the action of the form it is in.
 
 HTML does the rest: `required`, `type`, `autocomplete`.
 
-The card fields forget what was typed, for the shopper's security: the security code 3 minutes after
-it was typed (its field then asks for it again, text `payment.card.cvv.errors.cleared`), and the
-whole card after 1 hour (`payment.card.errors.session_expired`).
+The card number and security code are typed into fields the payment provider hosts, so they never
+reach the page or the SDK, as PCI DSS asks. Those fields forget what was typed: the security code 3
+minutes after its last digit (its field then asks for it again, text `payment.card.cvv.errors.cleared`),
+and the whole card after 1 hour (`payment.card.errors.session_expired`).
 
 ## Variant pickers
 
