@@ -113,6 +113,8 @@ interface CardView {
   errors: Map<string, string>;
   valid: Flags;
   focused: Flags;
+  /** The hosted field emptied the security code three minutes after it was typed, until it is typed again. */
+  cvvCleared: boolean;
   render(): void;
   changed(): void;
 }
@@ -129,15 +131,19 @@ function cardView(hosts: HostedFields, expiry: Expiry, checkout: CheckoutActions
     if (valid.number && valid.cvv && expiry.month() && expiry.year()) checkout.paymentReady();
     render();
   };
-  return { errors, valid, focused, render, changed };
+  return { errors, valid, focused, cvvCleared: false, render, changed };
 }
 
-function applyFieldState(state: FieldChange | undefined, { errors, valid, focused }: CardView): boolean {
+function applyFieldState(state: FieldChange | undefined, view: CardView): boolean {
+  const { errors, valid, focused } = view;
   const field = state?.field;
   if (field !== 'number' && field !== 'cvv') return false;
   if (typeof state?.validNumber === 'boolean') valid.number = state.validNumber;
   if (typeof state?.validCvv === 'boolean') valid.cvv = state.validCvv;
-  if (state?.action === 'input') errors.delete(field);
+  if (state?.action === 'input') {
+    errors.delete(field);
+    if (field === 'cvv') view.cvvCleared = false;
+  }
   if (state?.action === 'focus' || state?.action === 'blur') focused[field] = state.action === 'focus';
   return true;
 }
@@ -193,7 +199,14 @@ function connect(envKey: string, form: HTMLFormElement, view: CardView): Payment
       if (view.errors.size) settle(undefined, [...view.errors.values()].join('. '));
     };
     instance.onError = (error) => {
-      const message = (error as { message?: unknown } | undefined)?.message;
+      const { message, reason } = (error ?? {}) as { message?: unknown; reason?: unknown };
+      if (reason !== undefined) {
+        view.cvvCleared = true;
+        view.valid.cvv = false;
+        view.errors.set('cvv', cardText('cvv_cleared'));
+        view.render();
+        return settle(undefined, cardText('cvv_cleared'));
+      }
       settle(undefined, typeof message === 'string' ? message : undefined);
     };
     instance.onTokenized = (result) => {
@@ -254,13 +267,14 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
     check() {
       errors.clear();
       if (!view.valid.number) errors.set('number', cardText('number'));
-      if (!view.valid.cvv) errors.set('cvv', cardText('cvv'));
+      if (!view.valid.cvv) errors.set('cvv', cardText(view.cvvCleared ? 'cvv_cleared' : 'cvv'));
       expiry.check(errors);
       render();
     },
     tokenize() {
       errors.clear();
       expiry.check(errors);
+      if (view.cvvCleared) errors.set('cvv', cardText('cvv_cleared'));
       render();
       if (errors.size) return Promise.reject(new Error([...errors.values()].join('. ')));
       if (!paymentJs.ready()) {

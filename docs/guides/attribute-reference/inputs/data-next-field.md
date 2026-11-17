@@ -34,6 +34,10 @@ address, a line, or the action of the form it is in.
 
 HTML does the rest: `required`, `type`, `autocomplete`.
 
+The card fields forget what was typed, for the shopper's security: the security code 3 minutes after
+it was typed (its field then asks for it again, text `payment.card.cvv.errors.cleared`), and the
+whole card after 1 hour (`payment.card.errors.session_expired`).
+
 ## Variant pickers
 
 On a `<select>`, the SDK fills one `<option>` per value. On any other element it draws one button

@@ -33,12 +33,14 @@ class FakeNextPayment {
   static refuse: Array<{ attribute?: string; message?: string }> | undefined;
   static submitted: Array<Record<string, string>> = [];
   static metadata: Record<string, string> | undefined;
+  static last: FakeNextPayment;
   onReady = () => {};
   onFieldStateChange = (_: unknown) => {};
   onValidation = (_: unknown) => {};
   onError = (_: unknown) => {};
   onTokenized = (_: unknown) => {};
   constructor() {
+    FakeNextPayment.last = this;
     queueMicrotask(() => this.onReady());
   }
   submit(card: Record<string, string>, options?: { metadata?: Record<string, string> }) {
@@ -369,6 +371,25 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('[data-next-component="credit-error-text"]').textContent).toBe('Card number is invalid');
     expect(document.querySelector('[data-next-error-for="month"]')).toBeNull();
     expect(orders()).toHaveLength(0);
+  });
+
+  it('asks for the security code again, at its field, once the hosted field emptied it', async () => {
+    const { fill, card, submit, $, orders } = await mount('olympus/checkout.html');
+    const again = 'For your security, enter your security code again';
+    const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
+    fill(SHIPPING);
+    card();
+    FakeNextPayment.last.onError({ message: 'Your card details timed out', reason: 'cvvExpired' });
+    expect(atField()).toBe(again);
+    await submit();
+    await flush();
+    expect(FakeNextPayment.submitted).toHaveLength(0);
+    expect([atField(), $('[data-next-component="credit-error-text"]').textContent]).toEqual([again, again]);
+    FakeNextPayment.last.onFieldStateChange({ field: 'cvv', action: 'input', validCvv: true });
+    expect(atField()).toBeUndefined();
+    await submit();
+    await flush();
+    expect(orders()).toHaveLength(1);
   });
 
   it('words what payment.js refused without a message in the page’s translations', async () => {
