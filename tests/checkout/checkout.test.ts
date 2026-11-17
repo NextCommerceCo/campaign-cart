@@ -535,6 +535,34 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(off.orders()).toHaveLength(1);
   });
 
+  it('draws an express button for each method the campaign offers, by name when the SDK has no logo for it', async () => {
+    const page = await mount('olympus/checkout.html', {
+      campaign: {
+        available_express_payment_methods: [
+          ...CAMPAIGN.available_express_payment_methods!,
+          { code: 'link', label: 'Link' },
+          { code: 'acme_pay', label: 'Acme Pay' },
+        ],
+      },
+    });
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('button[data-next-express-checkout]')];
+    expect(buttons.map((b) => b.getAttribute('data-next-express-checkout'))).toEqual([
+      'paypal',
+      'apple_pay',
+      'link',
+      'acme_pay',
+    ]);
+    expect(buttons[0]!.querySelector('svg')).not.toBeNull();
+    expect(buttons.slice(2).map((b) => b.querySelector('.payment-btn__label')?.textContent)).toEqual([
+      'Link',
+      'Acme Pay',
+    ]);
+    buttons[3]!.click();
+    await flush();
+    await flush();
+    expect(page.orders()[0]!.body.payment_detail).toMatchObject({ payment_method: 'acme_pay' });
+  });
+
   it('applies the same checks to Shop Pay picked in the form, as 0.4.x did', async () => {
     (window as unknown as { nextConfig: unknown }).nextConfig = {
       paymentConfig: { expressCheckout: { requireValidation: true, requiredFields: ['email'] } },

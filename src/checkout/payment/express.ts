@@ -1,15 +1,21 @@
 import type { Engine } from '../../engine/engine';
-import { isExpress, paymentCode } from '../../engine/order/payment';
+import { paymentCode, paymentLabel, type OfferedMethod } from '../../engine/order/payment';
 import { EXPRESS_BUTTONS } from './logos';
 
-function button(method: string): HTMLButtonElement {
-  const look = EXPRESS_BUTTONS[method]!;
+/** A method's button: its logo, or its name for a method the SDK has no logo for. */
+function button(method: string, offered: OfferedMethod[]): HTMLButtonElement {
+  const look = EXPRESS_BUTTONS[method];
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = `payment-btn ${look.className}`;
+  el.className = `payment-btn ${look?.className ?? `cc-${method.replace(/_/g, '-')}`}`;
   el.setAttribute('data-next-express-checkout', method);
   el.setAttribute('data-action', 'submit');
-  const logo = Object.assign(document.createElement('div'), { className: look.logoClass, innerHTML: look.svg });
+  const logo = Object.assign(
+    document.createElement('div'),
+    look
+      ? { className: look.logoClass, innerHTML: look.svg }
+      : { className: 'payment-btn__label', textContent: paymentLabel(method, offered) },
+  );
   const spinner = Object.assign(document.createElement('div'), {
     className: 'payment-btn-spinner',
     innerHTML: '<div class="spinner"></div>',
@@ -23,7 +29,7 @@ export function expressMethods(engine: Engine, order?: string[]): string[] {
   const offered = (engine.getState().campaign?.available_express_payment_methods ?? []).map((m) => paymentCode(m.code));
   const methods = order ? order.filter((m) => offered.includes(m)) : offered;
   const android = /android/i.test(navigator.userAgent);
-  return methods.filter((m) => isExpress(m) && !(m === 'apple_pay' && android));
+  return methods.filter((m) => !(m === 'apple_pay' && android));
 }
 
 export function bindExpress(
@@ -36,6 +42,7 @@ export function bindExpress(
   ];
   if (!containers.length) return () => {};
   const methods = expressMethods(engine, order);
+  const offered = engine.getState().campaign?.available_express_payment_methods ?? [];
   const buttons: HTMLButtonElement[] = [];
 
   for (const container of containers) {
@@ -45,7 +52,7 @@ export function bindExpress(
       continue;
     }
     for (const method of methods) {
-      const el = button(method);
+      const el = button(method, offered);
       el.addEventListener('click', (e) => {
         e.preventDefault();
         if (el.disabled) return;
