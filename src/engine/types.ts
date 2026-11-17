@@ -230,13 +230,15 @@ export interface ApiOrder {
 }
 
 /** The parts of State an action changes with `update()`. */
-export type Slice = Exclude<keyof State, 'locale'>;
+export type Slice = Exclude<keyof State, 'locale' | 'currency'>;
 
 /** The boot slices; a lazy chunk adds its own (`checkout`, `order`, `debug`) with `declare module`. */
 export interface State {
   campaign?: Campaign;
   /** The page's language (0.4.x `nextConfig.locale`), over the campaign's. */
   locale?: string;
+  /** The currency the campaign was asked for (`?currency=`, or the visitor's); `campaign.currency` is the one it answered in. */
+  currency?: string;
   cart: CartState;
   selectors: Record<string, SelectorState>;
   toggles: Record<number, Toggle>;
