@@ -34,10 +34,8 @@ address, a line, or the action of the form it is in.
 
 HTML does the rest: `required`, `type`, `autocomplete`.
 
-The card number and security code are typed into fields the payment provider hosts, so they never
-reach the page or the SDK, as PCI DSS asks. Those fields forget what was typed: the security code 3
-minutes after its last digit (its field then asks for it again, text `payment.card.cvv.errors.cleared`),
-and the whole card after 1 hour (`payment.card.errors.session_expired`).
+`card.number` and `card.cvv` are hosted by the payment provider and forget what was typed after a
+while ([Payments](../../building-pages/payments.md#card-details)).
 
 ## Variant pickers
 
