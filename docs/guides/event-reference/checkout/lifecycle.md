@@ -50,7 +50,7 @@ An express button (Apple Pay, Google Pay, PayPal, … in `data-next-express-chec
 wallet's details:
 
 - The form is not checked, only that the cart has lines.
-- PayPal, Apple Pay or Google Pay picked as the payment method in the form gets the checks the
+- PayPal, Apple Pay, Google Pay or Shop Pay picked as the payment method in the form gets the checks the
   0.4.x `nextConfig.paymentConfig.expressCheckout.requireValidation` asks for, or the full checks
   when it is unset. Klarna and the other methods get the full checks, like a card.
 

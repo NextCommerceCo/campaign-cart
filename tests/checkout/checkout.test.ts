@@ -535,6 +535,28 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(off.orders()).toHaveLength(1);
   });
 
+  it('applies the same checks to Shop Pay picked in the form, as 0.4.x did', async () => {
+    (window as unknown as { nextConfig: unknown }).nextConfig = {
+      paymentConfig: { expressCheckout: { requireValidation: true, requiredFields: ['email'] } },
+    };
+    const page = await mount('olympus/checkout.html', {
+      campaign: {
+        available_payment_methods: [...CAMPAIGN.available_payment_methods!, { code: 'shop_pay', label: 'Shop Pay' }],
+      },
+      markup: (body) =>
+        body
+          .querySelector('input[name="payment_method"][value="paypal"]')!
+          .insertAdjacentHTML('afterend', '<input type="radio" name="payment_method" value="shop_pay">'),
+    });
+    const radio = page.$('input[name="payment_method"][value="shop_pay"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+    page.type('email', 'jane@example.com');
+    await page.submit();
+    expect(page.orders()).toHaveLength(1);
+    expect(page.orders()[0]!.body.payment_detail).toMatchObject({ payment_method: 'shop_pay' });
+  });
+
   it('keeps the states and express order nextConfig.addressConfig and paymentConfig ask for, like 0.4.x', async () => {
     (window as unknown as { nextConfig: unknown }).nextConfig = {
       addressConfig: { dontShowStates: ['NY'] },

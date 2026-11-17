@@ -42,7 +42,7 @@ Every 0.4.43 attribute, method, event and config key is listed in
 ### Checkout
 
 - **Express buttons** place the order without checking the form, as in 0.4.x.
-  - PayPal, Apple Pay or Google Pay chosen _in the form_ checks what
+  - PayPal, Apple Pay, Google Pay or Shop Pay chosen _in the form_ checks what
     `nextConfig.paymentConfig.expressCheckout.requireValidation` asks: the `requiredFields`
     listed, the whole form when none are listed, nothing when it is `false`. Unset, the whole
     form. It sends the shopper's details.

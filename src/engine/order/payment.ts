@@ -16,7 +16,7 @@ export const PAYMENT_METHODS: Readonly<Record<string, PaymentMethod>> = {
   apple_pay: { label: 'Apple Pay', wallet: true, express: true },
   google_pay: { label: 'Google Pay', wallet: true, express: true },
   paypal: { label: 'PayPal', wallet: true, express: true },
-  shop_pay: { label: 'Shop Pay', express: true },
+  shop_pay: { label: 'Shop Pay', wallet: true, express: true },
   ideal: { label: 'iDEAL' },
   sepa_debit: { label: 'SEPA Direct Debit' },
   klarna: { label: 'Klarna' },

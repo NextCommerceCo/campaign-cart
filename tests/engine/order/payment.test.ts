@@ -31,6 +31,7 @@ describe('payment methods', () => {
       'paypal',
       'apple_pay',
       'google_pay',
+      'shop_pay',
     ]);
     expect(['paypal', 'apple_pay', 'google_pay', 'shop_pay', 'klarna'].filter(isExpress)).toEqual([
       'paypal',
