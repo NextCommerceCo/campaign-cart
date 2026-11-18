@@ -48,6 +48,8 @@ The express column is where the payment platform offers a button; the campaign t
 which also take upsells. An express button skips the page's form, as in 0.4.x: the wallet collects
 and checks the shopper's details itself.
 
+A 0.4.x page's `sepa_debit` still works and is deprecated: use `sepa_direct`.
+
 ## When the shopper pays
 
 1. The form is checked, as the table above says. `requireValidation` is set in `nextConfig`

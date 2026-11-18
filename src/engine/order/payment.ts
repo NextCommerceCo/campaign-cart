@@ -16,7 +16,9 @@ export const PAYMENT_METHODS: Readonly<Record<string, PaymentMethod>> = {
   paypal: { label: 'PayPal', wallet: true },
   shop_pay: { label: 'Shop Pay', wallet: true },
   ideal: { label: 'iDEAL' },
-  sepa_direct: { label: 'SEPA Direct Debit', aliases: ['sepa_debit'] },
+  sepa_direct: { label: 'SEPA Direct Debit' },
+  /** @deprecated The code 0.4.x pages use; new pages use `sepa_direct`. */
+  sepa_debit: { label: 'SEPA Direct Debit' },
   klarna: { label: 'Klarna' },
   afterpay: { label: 'Afterpay' },
   link: { label: 'Link' },
