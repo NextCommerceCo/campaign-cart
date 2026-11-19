@@ -405,6 +405,27 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('.next-error-label[data-next-error-for="number"]').textContent).toBe('กรุณากรอกหมายเลขบัตรให้ถูกต้อง');
   });
 
+  it('pays by SEPA as `sepa_direct` from a 0.4.x page that calls it `sepa_debit`', async () => {
+    const { fill, submit, orders, $ } = await mount('starter/olympus-checkout.html', {
+      campaign: {
+        available_payment_methods: [
+          ...CAMPAIGN.available_payment_methods!,
+          { code: 'sepa_direct', label: 'SEPA Direct Debit' },
+        ],
+      },
+    });
+    expect($('[data-next-payment-method="sepa_debit"]').classList.contains('next-hidden')).toBe(false);
+    const sepa = $('input[name="payment_method"][value="sepa_debit"]');
+    sepa.checked = true;
+    sepa.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect($('[data-next-payment-method="sepa_debit"]').classList.contains('next-selected')).toBe(true);
+    fill(SHIPPING);
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'sepa_direct' });
+  });
+
   it('pays by Klarna without touching the card form', async () => {
     const { fill, submit, orders, $ } = await mount('olympus/checkout.html');
     const klarna = $('input[name="payment_method"][value="klarna"]');

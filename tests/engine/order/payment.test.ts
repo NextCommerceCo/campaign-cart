@@ -5,7 +5,7 @@ describe('payment methods', () => {
   it('turns page and campaign payment words into API codes', () => {
     expect(
       ['credit', 'apple-pay', 'Klarna', 'card_token', 'bankcard', 'Credit Card', 'sepa_debit'].map(paymentCode),
-    ).toEqual(['card_token', 'apple_pay', 'klarna', 'card_token', 'card_token', 'card_token', 'sepa_debit']);
+    ).toEqual(['card_token', 'apple_pay', 'klarna', 'card_token', 'card_token', 'card_token', 'sepa_direct']);
   });
 
   it('names a method for the page, else by the campaign’s label, else by the code the API sent', () => {
