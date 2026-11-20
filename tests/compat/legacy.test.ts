@@ -135,6 +135,22 @@ describe('attribution metadata (0.4.x)', () => {
     expect(cleared).toMatchObject({ device_type: 'desktop', domain: location.hostname });
   });
 
+  it('puts 0.4.x tracking-tag meta tags on the order’s metadata, and warns once that they are deprecated', async () => {
+    document.head.innerHTML =
+      '<meta name="data-next-tracking-tag" data-tag-name="fb_test_code" data-tag-value="T1">' +
+      '<meta name="os-tracking-tag" data-tag-name="offer_id" data-tag-value="42">' +
+      '<meta name="data-next-tracking-tag" data-tag-name="empty">';
+    const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;
+    await vi.waitFor(() => expect(next.getMetadata).toBeDefined());
+    const warned = next.log.entries().filter((e) => e.level === 'warn' && e.message.includes('tracking-tag'));
+    expect(warned.map((e) => e.message)).toEqual([expect.stringContaining('next.actions.setMetadata')]);
+    expect(next.getMetadata()).toMatchObject({ fb_test_code: 'T1', offer_id: '42' });
+    expect(next.getMetadata()).not.toHaveProperty('empty');
+    next.setMetadata({ fb_test_code: 'T2' });
+    expect(next.getMetadata()).toMatchObject({ fb_test_code: 'T2', offer_id: '42' });
+    document.head.innerHTML = '';
+  });
+
   it('keeps an Everflow id set after load over localStorage.evclid when the cart changes', async () => {
     localStorage.setItem('evclid', 'OLD-ID');
     const next = boot(config, Promise.resolve(campaign)) as NextApi & Metadata;

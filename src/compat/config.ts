@@ -9,9 +9,10 @@ export function legacyApiKey(doc: Document, win: Window): string {
   return nextConfig(win).apiKey || meta(doc, 'next-api-key');
 }
 
-/** @deprecated Put the funnel on the script tag: `data-funnel="…"`. */
+/** @deprecated Put the funnel on the script tag: `data-funnel="…"`. The 0.4.x tracking tag `funnel_name` names it too. */
 export function legacyFunnel(doc: Document, win: Window): string {
-  return nextConfig(win).funnel || meta(doc, 'next-funnel');
+  const tag = doc.querySelector('meta[name$="tracking-tag"][data-tag-name="funnel_name"]');
+  return nextConfig(win).funnel || meta(doc, 'next-funnel') || tag?.getAttribute('data-tag-value') || '';
 }
 
 /** @deprecated Use `?debug=1` and `?reset=1`. */
