@@ -33,12 +33,14 @@ class FakeNextPayment {
   static refuse: Array<{ attribute?: string; message?: string }> | undefined;
   static submitted: Array<Record<string, string>> = [];
   static metadata: Record<string, string> | undefined;
+  static last: FakeNextPayment;
   onReady = () => {};
   onFieldStateChange = (_: unknown) => {};
   onValidation = (_: unknown) => {};
   onError = (_: unknown) => {};
   onTokenized = (_: unknown) => {};
   constructor() {
+    FakeNextPayment.last = this;
     queueMicrotask(() => this.onReady());
   }
   submit(card: Record<string, string>, options?: { metadata?: Record<string, string> }) {
@@ -371,6 +373,31 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(orders()).toHaveLength(0);
   });
 
+  it('asks for the security code again, at its field, once the hosted field emptied it', async () => {
+    const { fill, card, submit, $, orders } = await mount('olympus/checkout.html');
+    const again = 'For your security, enter your security code again';
+    const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
+    fill(SHIPPING);
+    card();
+    FakeNextPayment.last.onError({ message: 'Session ended', reason: 'timeout' });
+    expect(atField()).toBeUndefined();
+    FakeNextPayment.last.onError({ message: 'CVV expired after 3 minutes', reason: 'PCI DSS 3.2.3 TTL compliance' });
+    expect(atField()).toBe(again);
+    const scrolled = vi.fn();
+    $('#spreedly-cvv').scrollIntoView = scrolled;
+    await submit();
+    await flush();
+    expect(FakeNextPayment.submitted).toHaveLength(0);
+    expect([atField(), $('[data-next-component="credit-error-text"]').textContent]).toEqual([again, again]);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(scrolled).toHaveBeenCalled();
+    FakeNextPayment.last.onFieldStateChange({ field: 'cvv', action: 'input', validCvv: true });
+    expect(atField()).toBeUndefined();
+    await submit();
+    await flush();
+    expect(orders()).toHaveLength(1);
+  });
+
   it('words what payment.js refused without a message in the page’s translations', async () => {
     const { fill, card, submit, $ } = await mount('olympus/checkout.html', {
       locale: 'th-TH',
@@ -382,6 +409,27 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     await submit();
     await flush();
     expect($('.next-error-label[data-next-error-for="number"]').textContent).toBe('กรุณากรอกหมายเลขบัตรให้ถูกต้อง');
+  });
+
+  it('pays by SEPA under `sepa_debit`, the code the page and the orders API share', async () => {
+    const { fill, submit, orders, $ } = await mount('starter/olympus-checkout.html', {
+      campaign: {
+        available_payment_methods: [
+          ...CAMPAIGN.available_payment_methods!,
+          { code: 'sepa_debit', label: 'SEPA Direct Debit' },
+        ],
+      },
+    });
+    expect($('[data-next-payment-method="sepa_debit"]').classList.contains('next-hidden')).toBe(false);
+    const sepa = $('input[name="payment_method"][value="sepa_debit"]');
+    sepa.checked = true;
+    sepa.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    expect($('[data-next-payment-method="sepa_debit"]').classList.contains('next-selected')).toBe(true);
+    fill(SHIPPING);
+    await submit();
+    await flush();
+    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'sepa_debit' });
   });
 
   it('pays by Klarna without touching the card form', async () => {
@@ -512,6 +560,54 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     pickPaypal(off);
     await off.submit();
     expect(off.orders()).toHaveLength(1);
+  });
+
+  it('draws an express button for each method the campaign offers, by name when the SDK has no logo for it', async () => {
+    const page = await mount('olympus/checkout.html', {
+      campaign: {
+        available_express_payment_methods: [
+          ...CAMPAIGN.available_express_payment_methods!,
+          { code: 'link', label: 'Link' },
+          { code: 'acme_pay', label: 'Acme Pay' },
+        ],
+      },
+    });
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('button[data-next-express-checkout]')];
+    expect(buttons.map((b) => b.getAttribute('data-next-express-checkout'))).toEqual([
+      'paypal',
+      'apple_pay',
+      'link',
+      'acme_pay',
+    ]);
+    expect(buttons.slice(0, 3).every((b) => b.querySelector('svg'))).toBe(true);
+    expect(buttons[2]!.classList).toContain('cc-link');
+    expect(buttons[3]!.querySelector('.payment-btn__label')?.textContent).toBe('Acme Pay');
+    buttons[3]!.click();
+    await flush();
+    await flush();
+    expect(page.orders()[0]!.body.payment_detail).toMatchObject({ payment_method: 'acme_pay' });
+  });
+
+  it('applies the same checks to Shop Pay picked in the form, as 0.4.x did', async () => {
+    (window as unknown as { nextConfig: unknown }).nextConfig = {
+      paymentConfig: { expressCheckout: { requireValidation: true, requiredFields: ['email'] } },
+    };
+    const page = await mount('olympus/checkout.html', {
+      campaign: {
+        available_payment_methods: [...CAMPAIGN.available_payment_methods!, { code: 'shop_pay', label: 'Shop Pay' }],
+      },
+      markup: (body) =>
+        body
+          .querySelector('input[name="payment_method"][value="paypal"]')!
+          .insertAdjacentHTML('afterend', '<input type="radio" name="payment_method" value="shop_pay">'),
+    });
+    const radio = page.$('input[name="payment_method"][value="shop_pay"]');
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+    page.type('email', 'jane@example.com');
+    await page.submit();
+    expect(page.orders()).toHaveLength(1);
+    expect(page.orders()[0]!.body.payment_detail).toMatchObject({ payment_method: 'shop_pay' });
   });
 
   it('keeps the states and express order nextConfig.addressConfig and paymentConfig ask for, like 0.4.x', async () => {

@@ -34,6 +34,9 @@ address, a line, or the action of the form it is in.
 
 HTML does the rest: `required`, `type`, `autocomplete`.
 
+`card.number` and `card.cvv` are hosted by the payment provider and forget what was typed after a
+while ([Payments](../../building-pages/payments.md#card-details)).
+
 ## Variant pickers
 
 On a `<select>`, the SDK fills one `<option>` per value. On any other element it draws one button

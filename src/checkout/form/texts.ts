@@ -34,6 +34,7 @@ const FIELD: Record<string, string> = {
 const CARD: Record<string, string> = {
   number: 'Enter a valid card number',
   cvv: 'Enter a valid security code',
+  cvv_cleared: 'For your security, enter your security code again',
   month: 'Select an expiry month',
   year: 'Select an expiry year',
   expiry: 'Enter the expiry date as MM / YY',
@@ -66,6 +67,7 @@ const REFUSED: Record<string, string> = {
 const CARD_KEYS: Record<string, string> = {
   number: 'payment.card.number.errors.invalid',
   cvv: 'payment.card.cvv.errors.invalid',
+  cvv_cleared: 'payment.card.cvv.errors.cleared',
   month: 'payment.card.expiry_month.errors.blank',
   year: 'payment.card.expiry_year.errors.blank',
   expired: 'payment.card.expiry_month.errors.expired',

@@ -38,6 +38,22 @@ describe('order values', () => {
     expect(orderValue(engine.getState(), 'nope')).toBeUndefined();
   });
 
+  it('names a payment method the SDK does not know by the campaign’s label', async () => {
+    const { engine, order } = await setup();
+    await order.load('R1');
+    engine.attach((ctx) => {
+      ctx.update('campaign', {
+        ...ctx.getState().campaign!,
+        available_payment_methods: [{ code: 'acme_pay', label: 'Acme Pay' }],
+      });
+      ctx.update('order', {
+        ...ctx.getState().order!,
+        order: { ...ctx.getState().order!.order!, payment_method: 'acme_pay' },
+      });
+    });
+    expect(orderValue(engine.getState(), 'paymentMethod')).toEqual({ type: 'text', value: 'Acme Pay' });
+  });
+
   it('lists every order path, and reads the customer and addresses by their own fields only', async () => {
     expect(pathsOf('order', ORDER_VALUES)).toMatchInlineSnapshot(`
       [

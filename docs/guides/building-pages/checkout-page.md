@@ -101,7 +101,8 @@ them as a lead with an Open Cart (`user.created`); `cart.abandoned` follows that
 campaign offers, with the card fields under the card; the card number and CVV are drawn by the
 payment provider, so the page never sees the card.
 [data-next-express](../attribute-reference/widgets/data-next-express.md) adds Apple Pay, Google Pay
-and PayPal buttons, which place the order with the wallet's details.
+and PayPal buttons, which place the order with the wallet's details. How paying works, card
+security and failed payments: [Payments](payments.md).
 
 ## Multi-step checkout
 

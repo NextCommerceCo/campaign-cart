@@ -122,12 +122,13 @@ function stepOf(engine: Engine, form: HTMLFormElement, page: string, stepUrl: st
   );
 }
 
-function focusFirstError(engine: Engine, fields: Fields): void {
+function focusFirstError(engine: Engine, fields: Fields, card?: Card): void {
   const errors = engine.getState().checkout?.errors ?? {};
   const first = [...fields].find(([name, el]) => errors[name] && shown(el))?.[1];
   setTimeout(() => {
-    first?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    first?.focus({ preventScroll: true });
+    if (!first) return void card?.focus();
+    first.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    first.focus({ preventScroll: true });
   }, 100);
 }
 
@@ -244,7 +245,7 @@ function bindOrder(
     if (!order) {
       const errors = Object.keys(engine.getState().checkout?.errors ?? {});
       if (!expressMethod && box === 'card_token' && errors.some((name) => name !== 'form')) card?.check();
-      return focusFirstError(engine, fields);
+      return focusFirstError(engine, fields, box === 'card_token' ? card : undefined);
     }
     hooks.placed?.();
     navigate(redirectFor(order, successUrl(), current(), engine.getState().visit.params));

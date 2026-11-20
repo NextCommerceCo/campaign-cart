@@ -1,6 +1,6 @@
 import { formatAddress, ORDER_LAYOUT } from '../engine/order/address-line';
 import { appliedCodes, paymentMethodCode } from '../engine/order/order';
-import { paymentLabel } from '../engine/order/payment';
+import { paymentLabel, type OfferedMethod } from '../engine/order/payment';
 import { bool, cents, money, type Value } from '../engine/display/format';
 import type { ApiOrder, ApiOrderAddress, State } from '../engine/types';
 
@@ -49,7 +49,7 @@ const SHIPPING: Fields<ApiOrder> = {
 };
 
 /** The order and the codes the shopper applied to it: what the public `Order` is made from. */
-type OrderSource = ApiOrder & { coupons: string[] };
+type OrderSource = ApiOrder & { coupons: string[]; methods: OfferedMethod[] };
 
 export const ORDER_VALUES: Fields<OrderSource> = {
   number: (o) => ({ type: 'text', value: o.number === undefined ? '' : String(o.number) }),
@@ -80,7 +80,7 @@ export const ORDER_VALUES: Fields<OrderSource> = {
   'itemCount lines': (o) => ({ type: 'int', value: linesOf(o).length }),
   shippingMethod: (o) => filled(o.shipping_method),
   shipping_method: (o, prop) => fieldOf(SHIPPING, prop || 'name')?.(o, ''),
-  paymentMethod: (o) => ({ type: 'text', value: paymentLabel(paymentMethodCode(o.payment_method)) }),
+  paymentMethod: (o) => ({ type: 'text', value: paymentLabel(paymentMethodCode(o.payment_method), o.methods) }),
   payment_method: (o) => filled(paymentMethodCode(o.payment_method)),
   status_url: (o) => filled(o.order_status_url),
   'customer user': (o, prop) => fieldOf(CUSTOMER, prop)?.(o.user ?? {}, ''),
@@ -92,5 +92,7 @@ export function orderValue(state: State, path: string): Value | undefined {
   const order = state.order?.order;
   if (!order) return path.startsWith('has') || path.startsWith('is') ? bool(false) : { type: 'text', value: undefined };
   const [head = '', prop = ''] = path.split('.');
-  return fieldOf(ORDER_VALUES, head)?.({ ...order, coupons: appliedCodes(order, state.order?.coupon) }, prop);
+  const { available_payment_methods = [], available_express_payment_methods = [] } = state.campaign ?? {};
+  const methods = [...available_payment_methods, ...available_express_payment_methods];
+  return fieldOf(ORDER_VALUES, head)?.({ ...order, coupons: appliedCodes(order, state.order?.coupon), methods }, prop);
 }

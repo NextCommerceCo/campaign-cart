@@ -6,7 +6,7 @@ import { writtenAddress } from './address';
 import type { cartView } from './cart';
 import { icon } from '../ui/icons';
 import { badge, blockHead, button, type Child, h, plural, rows } from '../ui/view';
-import { PAYMENT_METHODS, paymentCode, paymentLabel } from '../../engine/order/payment';
+import { paymentLabel } from '../../engine/order/payment';
 
 const PROBLEMS: Record<string, string> = {
   blank: 'Missing',
@@ -81,8 +81,7 @@ const block = (title: string, description: Child, ...children: Child[]) =>
 
 function payment(engine: Engine, state: CheckoutState): Step {
   const method = state.paymentMethod;
-  const offered = engine.getState().campaign?.available_payment_methods?.find((m) => paymentCode(m.code) === method);
-  const name = method in PAYMENT_METHODS ? paymentLabel(method) : (offered?.label ?? method);
+  const name = paymentLabel(method, engine.getState().campaign?.available_payment_methods);
   const icons = h('span', 'kicons', ...iconOf(method).map(paymentIcon));
   if (method !== 'card_token') return { title: 'Payment', detail: h('span', {}, icons, name), tone: 'done' };
   const broken = cardSetup(engine);
