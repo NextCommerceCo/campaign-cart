@@ -63,7 +63,9 @@ describe('loader', () => {
       'https://i18n-rules.nextcommerce.com/v1/geo',
       'https://campaigns.apps.29next.com/api/v1/campaigns/?currency=CAD',
     ]);
-    await vi.waitFor(() => expect((window as unknown as { next?: NextApi }).next).toBeDefined());
+    const win = window as unknown as { next?: NextApi };
+    await vi.waitFor(() => expect(win.next).toBeDefined());
+    expect(win.next!.getState().currency).toBe('CAD');
     await flush();
   });
 });

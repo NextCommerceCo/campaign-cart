@@ -12,6 +12,7 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 - **`dl_add_shipping_info` waits for a valid shipping address and always follows `dl_begin_checkout`.** A shipping method priced earlier, such as a bundle card with `data-next-shipping-id` or the checkout loading, no longer sends it. ([#140](https://github.com/NextCommerceCo/campaign-cart/issues/140))
 - **`dl_purchase` and `dl_upsell_purchase` carry the customer in `user_properties` again**, with the 0.4.x field names: `customer_email`, `customer_first_name`, `customer_last_name`, `customer_phone` and the billing address as `customer_address_1`, `customer_city`, `customer_province`, `customer_zip`, `customer_country`. Every other `dl_*` push keeps `visitor_type` only. ([#134](https://github.com/NextCommerceCo/campaign-cart/issues/134), [#131](https://github.com/NextCommerceCo/campaign-cart/issues/131))
 - **A 0.4.x page is shown once its 0.4.x `window.next` methods have loaded**, so `next.setMetadata` is there for its ready callbacks.
+- **A page can ask for the visitor's currency: `data-currency="auto"` on the script tag.** The loader looks up the currency of the visitor's country once per tab (1.5 s at most) and asks the campaign for it; the page shows the currency the campaign answers in. `?currency=` comes first. A 0.4.x page gets this unless `nextConfig.currencyBehavior` is `'manual'`, as in 0.4.x, so its first page in a tab starts after the lookup. ([#151](https://github.com/NextCommerceCo/campaign-cart/issues/151))
 
 ### Tracking
 

@@ -89,7 +89,7 @@ export const SECTIONS: Array<[ConfigSection, string, Field[]]> = [
 ];
 
 const DEFAULTS = new Map(SECTIONS.flatMap(([, , fields]) => fields.map((f) => [f.path, f.fallback])));
-export const LOADER = new Set<string>(LOADER_KEYS);
+export const LOADER = new Set<string>([...LOADER_KEYS, 'currencyBehavior']);
 export const READ = new Set([
   'analytics',
   'storeName',
@@ -99,7 +99,11 @@ export const READ = new Set([
   'paymentConfig',
   'pageType',
 ]);
-export const SCRIPT_TAG: Record<string, string> = { apiKey: 'data-campaign', funnel: 'data-funnel' };
+export const SCRIPT_TAG: Record<string, string> = {
+  apiKey: 'data-campaign',
+  funnel: 'data-funnel',
+  currencyBehavior: 'data-currency',
+};
 const LEGACY: Array<[from: string, to: string]> = [
   ['analytics.providers.gtm', 'analytics.destinations.gtm'],
   ['analytics.providers.facebook', 'analytics.destinations.meta'],

@@ -29,7 +29,7 @@ export function readConfig(doc: Document, win: Window): BootConfig {
     apiBase: API_BASE,
     funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
     currency,
-    autoCurrency: !currency && (scriptAttr(doc, 'data-currency') === 'auto' || legacyAutoCurrency(win)),
+    autoCurrency: !currency && (scriptAttr(doc, 'data-currency') === 'auto' || legacyAutoCurrency(doc, win)),
     lang: params.get('lang') || undefined,
     debug: debug === '1' || legacy.debug ? true : debug === '0' ? false : undefined,
     reset: params.get('reset') === '1' || legacy.reset,
@@ -38,7 +38,8 @@ export function readConfig(doc: Document, win: Window): BootConfig {
 
 /**
  * The currency of the visitor's country, as i18n-rules' `/v1/geo` resolves it: asked once per tab, and none
- * when it does not answer within `timeout`. The campaign falls back to its own currency for one it does not sell in.
+ * when it does not answer within `timeout`. The tab keeps its first answer, none included, so its pages share one
+ * currency. The campaign falls back to its own currency for one it does not sell in.
  */
 export async function visitorCurrency(win: Window, timeout = GEO_TIMEOUT): Promise<string | undefined> {
   try {
@@ -47,19 +48,16 @@ export async function visitorCurrency(win: Window, timeout = GEO_TIMEOUT): Promi
   } catch {}
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeout);
+  let currency = '';
   try {
     const res = await win.fetch(GEO, { signal: abort.signal });
-    if (!res.ok) return undefined;
-    const currency = ((await res.json()) as { currency?: string | null }).currency ?? '';
-    try {
-      win.sessionStorage.setItem(VISITOR_CURRENCY, currency);
-    } catch {}
-    return currency || undefined;
-  } catch {
-    return undefined;
-  } finally {
-    clearTimeout(timer);
-  }
+    if (res.ok) currency = ((await res.json()) as { currency?: string | null }).currency ?? '';
+  } catch {}
+  clearTimeout(timer);
+  try {
+    win.sessionStorage.setItem(VISITOR_CURRENCY, currency);
+  } catch {}
+  return currency || undefined;
 }
 
 export function campaignUrl(base: string, currency?: string): string {

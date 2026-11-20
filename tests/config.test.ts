@@ -53,14 +53,14 @@ describe('visitorCurrency', () => {
     expect(fetch).toHaveBeenCalledWith('https://i18n-rules.nextcommerce.com/v1/geo', expect.anything());
   });
 
-  it('keeps an answer without a currency, and asks again after one that failed', async () => {
+  it('keeps the tab’s first answer, one without a currency or one that failed included', async () => {
     const none = answering(async () => new Response(JSON.stringify({ currency: null })));
     expect([await visitorCurrency(none.win), await visitorCurrency(none.win)]).toEqual([undefined, undefined]);
     expect(none.fetch).toHaveBeenCalledTimes(1);
     sessionStorage.clear();
     const down = answering(async () => new Response(null, { status: 503 }));
     expect([await visitorCurrency(down.win), await visitorCurrency(down.win)]).toEqual([undefined, undefined]);
-    expect(down.fetch).toHaveBeenCalledTimes(2);
+    expect(down.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('gives up when the answer takes longer than the timeout', async () => {
@@ -71,7 +71,7 @@ describe('visitorCurrency', () => {
         ),
     );
     const win = { fetch, sessionStorage } as unknown as Window;
-    expect(await visitorCurrency(win, 10)).toBeUndefined();
-    expect(sessionStorage.length).toBe(0);
+    expect([await visitorCurrency(win, 10), await visitorCurrency(win, 10)]).toEqual([undefined, undefined]);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

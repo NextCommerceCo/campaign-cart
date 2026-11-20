@@ -20,11 +20,11 @@ being parsed.
 
 ## Attributes
 
-| Attribute       | Means                                                                                                                                                                                                                                                |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-campaign` | The campaign's API key. Without it the SDK does not start, logs an error and sets `html[data-next-error="config"]`                                                                                                                                   |
-| `data-funnel`   | Optional. The cart, checkout fields and visit are kept per campaign; this splits them further, for two funnels of one campaign that must not share a cart. Without it, the first folder of the page's path is used (`/vip/checkout.html` → `vip`)    |
-| `data-currency` | Optional. `auto` asks the campaign for the currency of the visitor's country, looked up once per tab before the campaign loads (1.5 s at most). A campaign that does not sell in it answers in its own currency. `?currency=` on the URL comes first |
+| Attribute       | Means                                                                                                                                                                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-campaign` | The campaign's API key. Without it the SDK does not start, logs an error and sets `html[data-next-error="config"]`                                                                                                                                                                                       |
+| `data-funnel`   | Optional. The cart, checkout fields and visit are kept per campaign; this splits them further, for two funnels of one campaign that must not share a cart. Without it, the first folder of the page's path is used (`/vip/checkout.html` → `vip`)                                                        |
+| `data-currency` | Optional. `auto` asks the campaign for the currency of the visitor's country, looked up once per tab before the SDK starts (1.5 s at most; a tab whose lookup fails keeps the campaign's currency). A campaign that does not sell in it answers in its own currency. `?currency=` on the URL comes first |
 
 Every page of one funnel uses the same `data-campaign`. `?currency=EUR` on the
 URL asks the campaign for that currency (see [URL parameters](url-parameters.md)).
