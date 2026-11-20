@@ -716,15 +716,15 @@ describe('0.4.x event names', () => {
   });
 
   it('SDK events: campaign:loaded once with the campaign, and the ones a page listening late still gets', async () => {
-    history.replaceState(null, '', '/lp/?currency=eur');
-    boot(config, Promise.resolve(campaign));
+    const asked = { ...config, currency: 'eur' };
+    boot(asked, Promise.resolve(campaign));
     await flush();
     const seen: Record<string, unknown[]> = {};
     const names = ['campaign:loaded', 'currency:fallback', 'sdk:url-parameters-processed', 'error:occurred'];
     (window as unknown as { nextReady: unknown[] }).nextReady = [
       (next: NextApi) => names.forEach((name) => (seen[name] = heard(next, name))),
     ];
-    boot(config, Promise.reject(Object.assign(new Error('down'), { status: 503 })));
+    boot(asked, Promise.reject(Object.assign(new Error('down'), { status: 503 })));
     await vi.waitFor(() => expect(seen['sdk:url-parameters-processed']).toEqual([{}]));
     expect(seen['campaign:loaded']).toEqual([campaign]);
     expect(seen['currency:fallback']).toEqual([{ requested: 'EUR', actual: 'USD', reason: 'cached' }]);
@@ -732,14 +732,14 @@ describe('0.4.x event names', () => {
       { message: 'down', code: expect.any(String), details: expect.objectContaining({ action: 'campaign.load' }) },
     ]);
 
-    const next = boot(config, Promise.resolve(campaign));
+    const next = boot(asked, Promise.resolve(campaign));
     const fallback = heard(next, 'currency:fallback');
     const loaded = heard(next, 'campaign:loaded');
     await flush();
     expect(fallback).toEqual([{ requested: 'EUR', actual: 'USD', reason: 'cached' }]);
     expect(loaded).toEqual([campaign]);
     localStorage.clear();
-    const fresh = heard(boot(config, Promise.resolve(campaign)), 'currency:fallback');
+    const fresh = heard(boot(asked, Promise.resolve(campaign)), 'currency:fallback');
     await flush();
     expect(fresh).toEqual([{ requested: 'EUR', actual: 'USD', reason: 'api' }]);
   });

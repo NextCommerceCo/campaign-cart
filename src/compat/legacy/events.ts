@@ -82,8 +82,6 @@ function couponText(reason: EventMap['coupon.denied']['reason'], code: string, s
 /** Each click's first `cart.added`: 0.4.43 sent one `action:success` per button, whatever its change set off. */
 const firstAdded = new WeakMap<Event, EngineEvent>();
 
-const requestedCurrency = () => new URLSearchParams(location.search).get('currency')?.toUpperCase();
-
 /** @deprecated 0.4.x `next.on` names, each made from the events at the moment 0.4.43 sent it, with its payload. */
 export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
   'campaign:loaded': alias({ from: ['campaign.loaded'], once: true, replay: true, data: (e) => e.data.campaign }),
@@ -91,9 +89,10 @@ export const LEGACY_EVENTS: Record<string, LegacyEvent> = {
     from: ['campaign.loaded'],
     once: true,
     replay: true,
-    when: ({ data }) => !!requestedCurrency() && requestedCurrency() !== data.campaign.currency.toUpperCase(),
-    data: ({ data }) => ({
-      requested: requestedCurrency(),
+    when: ({ data }, state) =>
+      !!state.currency && state.currency.toUpperCase() !== data.campaign.currency.toUpperCase(),
+    data: ({ data }, state) => ({
+      requested: state.currency?.toUpperCase(),
       actual: data.campaign.currency,
       reason: data.fromCache ? 'cached' : 'api',
     }),

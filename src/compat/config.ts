@@ -15,6 +15,15 @@ export function legacyFunnel(doc: Document, win: Window): string {
   return nextConfig(win).funnel || meta(doc, 'next-funnel') || tag?.getAttribute('data-tag-value') || '';
 }
 
+/**
+ * @deprecated `nextConfig.currencyBehavior`: a 0.4.x page gets the visitor's currency unless it says `'manual'`,
+ * the 0.4.x default. Put it on the script tag: `data-currency="auto"`.
+ */
+export function legacyAutoCurrency(doc: Document, win: Window): boolean {
+  const config = (win as { nextConfig?: NextConfig }).nextConfig;
+  return (!!config || !!meta(doc, 'next-api-key')) && config?.currencyBehavior !== 'manual';
+}
+
 /** @deprecated Use `?debug=1` and `?reset=1`. */
 export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: boolean } {
   const debug = params.get('debugger') === 'true' || params.get('debug') === 'true';

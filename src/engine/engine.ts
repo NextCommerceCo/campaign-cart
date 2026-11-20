@@ -111,6 +111,7 @@ export class Engine {
     if (this.debug) this.log.level = 'debug';
     this.state = {
       locale: options.locale,
+      currency: options.currency,
       cart: emptyCart(),
       selectors: {},
       toggles: {},

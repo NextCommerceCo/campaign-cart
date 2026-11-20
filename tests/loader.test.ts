@@ -45,4 +45,27 @@ describe('loader', () => {
     await vi.waitFor(() => expect(error).toHaveBeenCalled());
     expect(error.mock.calls[0]![0]).toEqual({ action: 'campaign.load', ...expected, message: expect.any(String) });
   });
+
+  it('asks the campaign for the visitor’s currency with data-currency="auto"', async () => {
+    vi.resetModules();
+    localStorage.clear();
+    sessionStorage.clear();
+    delete (window as unknown as { next?: NextApi }).next;
+    document.head.innerHTML = '<script data-campaign="pk_test" data-currency="auto"></script>';
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(String(url));
+      return new Response(JSON.stringify(String(url).includes('/v1/geo') ? { currency: 'CAD' } : campaign));
+    });
+    await import('../src/loader');
+    await vi.waitFor(() => expect(urls.some((u) => u.includes('/api/v1/campaigns/'))).toBe(true));
+    expect(urls.slice(0, 2)).toEqual([
+      'https://i18n-rules.nextcommerce.com/v1/geo',
+      'https://campaigns.apps.29next.com/api/v1/campaigns/?currency=CAD',
+    ]);
+    const win = window as unknown as { next?: NextApi };
+    await vi.waitFor(() => expect(win.next).toBeDefined());
+    expect(win.next!.getState().currency).toBe('CAD');
+    await flush();
+  });
 });

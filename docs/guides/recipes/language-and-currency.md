@@ -36,6 +36,9 @@ neither the page's `translations` nor the address service has keeps the words wr
 page. `?currency=EUR` loads the campaign priced in euros, and prices are written in the page's
 language (`49,00 €` in `fr-FR`). Links to the site's other pages carry both parameters.
 
+`data-currency="auto"` on the loader script prices the page in the currency of the visitor's country,
+when the campaign sells in it and the URL names none.
+
 `setCurrency` opens the page again with `?currency=<code>`, for a currency the campaign sells in;
 the cart keeps its lines and is priced again. The page loads again, so its page view is sent again.
 The button of the currency in use is disabled. A `<select>` calls the same action:

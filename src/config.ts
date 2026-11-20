@@ -1,12 +1,17 @@
-import { legacyApiKey, legacyFlags, legacyFunnel } from './compat/config';
+import { legacyApiKey, legacyAutoCurrency, legacyFlags, legacyFunnel } from './compat/config';
 
 export const API_BASE = 'https://campaigns.apps.29next.com';
+const GEO = 'https://i18n-rules.nextcommerce.com/v1/geo';
+const VISITOR_CURRENCY = 'next:visitor-currency';
+const GEO_TIMEOUT = 1500;
 
 export interface BootConfig {
   apiKey: string;
   apiBase: string;
   funnel: string;
   currency?: string;
+  /** `data-currency="auto"` without `?currency=`: the campaign is asked for the visitor's currency. */
+  autoCurrency?: boolean;
   lang?: string;
   debug?: boolean;
   reset: boolean;
@@ -18,15 +23,41 @@ export function readConfig(doc: Document, win: Window): BootConfig {
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);
   const debug = params.get('debug');
+  const currency = params.get('currency') || undefined;
   return {
     apiKey: scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win),
     apiBase: API_BASE,
     funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
-    currency: params.get('currency') || undefined,
+    currency,
+    autoCurrency: !currency && (scriptAttr(doc, 'data-currency') === 'auto' || legacyAutoCurrency(doc, win)),
     lang: params.get('lang') || undefined,
     debug: debug === '1' || legacy.debug ? true : debug === '0' ? false : undefined,
     reset: params.get('reset') === '1' || legacy.reset,
   };
+}
+
+/**
+ * The currency of the visitor's country, as i18n-rules' `/v1/geo` resolves it: asked once per tab, and none
+ * when it does not answer within `timeout`. The tab keeps its first answer, none included, so its pages share one
+ * currency. The campaign falls back to its own currency for one it does not sell in.
+ */
+export async function visitorCurrency(win: Window, timeout = GEO_TIMEOUT): Promise<string | undefined> {
+  try {
+    const kept = win.sessionStorage.getItem(VISITOR_CURRENCY);
+    if (kept !== null) return kept || undefined;
+  } catch {}
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), timeout);
+  let currency = '';
+  try {
+    const res = await win.fetch(GEO, { signal: abort.signal });
+    if (res.ok) currency = ((await res.json()) as { currency?: string | null }).currency ?? '';
+  } catch {}
+  clearTimeout(timer);
+  try {
+    win.sessionStorage.setItem(VISITOR_CURRENCY, currency);
+  } catch {}
+  return currency || undefined;
 }
 
 export function campaignUrl(base: string, currency?: string): string {

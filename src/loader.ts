@@ -1,5 +1,5 @@
 import { announceLegacyLoaded, legacyGlobals } from './compat/config';
-import { campaignUrl, pagePreloads, readConfig } from './config';
+import { campaignUrl, pagePreloads, readConfig, visitorCurrency } from './config';
 
 const STYLESHEET = 'campaign-cart.css';
 
@@ -14,13 +14,14 @@ if (!config.apiKey) {
   console.error('[next] no campaign key: add data-campaign="pk_…" to the loader.js script tag');
   document.documentElement.setAttribute('data-next-error', 'config');
 } else {
-  const campaign = fetch(campaignUrl(config.apiBase, config.currency), {
-    headers: { Authorization: config.apiKey },
-  }).then((r) =>
-    r.ok
-      ? r.json()
-      : Promise.reject(Object.assign(new Error(`campaign request failed: ${r.status}`), { status: r.status })),
-  );
+  const load = (currency?: string) =>
+    fetch(campaignUrl(config.apiBase, currency), { headers: { Authorization: config.apiKey } }).then((r) =>
+      r.ok
+        ? r.json()
+        : Promise.reject(Object.assign(new Error(`campaign request failed: ${r.status}`), { status: r.status })),
+    );
+  const located = config.autoCurrency ? visitorCurrency(window) : undefined;
+  const campaign = located ? located.then(load) : load(config.currency);
   campaign.catch(() => {});
 
   const parsed =
@@ -43,7 +44,7 @@ if (!config.apiKey) {
     .then(async ({ boot }) => {
       announceLegacyLoaded(window);
       await parsed;
-      boot(config, campaign);
+      boot(located ? { ...config, currency: await located } : config, campaign);
     })
     .catch((err) => {
       console.error('[next] failed to start', err);

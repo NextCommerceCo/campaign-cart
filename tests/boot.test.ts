@@ -50,6 +50,28 @@ describe('readConfig', () => {
     expect(readConfig(document, window)).toMatchObject({ currency: undefined, lang: undefined });
   });
 
+  it('asks for the visitor’s currency with data-currency="auto", or on a 0.4.x page that does not say manual, unless the URL names one', () => {
+    const auto = (search = '') => {
+      history.replaceState(null, '', `/lp/${search}`);
+      return readConfig(document, window).autoCurrency;
+    };
+    expect(auto()).toBe(false);
+    document.head.innerHTML = '<script data-campaign="pk_test" data-currency="auto"></script>';
+    expect([auto(), auto('?currency=EUR')]).toEqual([true, false]);
+    document.head.innerHTML = '';
+    const win = window as { nextConfig?: object };
+    win.nextConfig = { currencyBehavior: 'auto' };
+    expect(auto()).toBe(true);
+    win.nextConfig = {};
+    expect([auto(), auto('?currency=EUR')]).toEqual([true, false]);
+    win.nextConfig = { currencyBehavior: 'manual' };
+    expect(auto()).toBe(false);
+    delete win.nextConfig;
+    document.head.innerHTML = '<meta name="next-api-key" content="pk_test">';
+    expect(auto()).toBe(true);
+    document.head.innerHTML = '';
+  });
+
   it('reads the script tag first, then the deprecated config', () => {
     document.head.innerHTML = `<script data-campaign="pk_live_1"></script><script data-funnel="helloweenA"></script>`;
     expect(readConfig(document, window)).toMatchObject({ apiKey: 'pk_live_1', funnel: 'helloweenA' });
