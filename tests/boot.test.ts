@@ -55,6 +55,9 @@ describe('readConfig', () => {
     expect(readConfig(document, window)).toMatchObject({ apiKey: 'pk_live_1', funnel: 'helloweenA' });
     document.head.innerHTML = `<meta name="next-api-key" content="pk_old"><meta name="next-funnel" content="f1">`;
     expect(readConfig(document, window)).toMatchObject({ apiKey: 'pk_old', funnel: 'f1' });
+    document.head.innerHTML = `<meta name="os-tracking-tag" data-tag-name="funnel_name" data-tag-value="f2">`;
+    expect(readConfig(document, window).funnel).toBe('f2');
+    document.head.innerHTML = '';
   });
 });
 

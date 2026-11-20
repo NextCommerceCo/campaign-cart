@@ -34,11 +34,26 @@ export function legacyHandler(
   };
 }
 
-/** @deprecated Adds the 0.4.x metadata methods to `window.next` once this chunk has loaded. */
+/**
+ * @deprecated 0.4.x `<meta name="data-next-tracking-tag" data-tag-name="…" data-tag-value="…">` (or `os-tracking-tag`):
+ * each tag is attribution metadata, as `next.actions.setMetadata({ name: value })` sets it.
+ */
+function legacyTrackingTags(engine: Engine): void {
+  const tags: Record<string, string> = {};
+  for (const tag of document.querySelectorAll('meta[name="data-next-tracking-tag"], meta[name="os-tracking-tag"]')) {
+    const name = tag.getAttribute('data-tag-name');
+    const value = tag.getAttribute('data-tag-value');
+    if (name && value) tags[name] = value;
+  }
+  if (!Object.keys(tags).length) return;
+  engine.visit.setMetadata({ ...engine.getState().visit.metadata, ...tags });
+  engine.log.warn(
+    'the tracking-tag meta tag is deprecated: set the value with next.actions.setMetadata({ name: value })',
+  );
+}
+
+/** @deprecated Adds the 0.4.x metadata methods to `window.next` once this chunk has loaded, and reads the tracking tags. */
 export function legacyMetadata(engine: Engine): void {
-  if (document.querySelector('meta[name="data-next-tracking-tag"], meta[name="os-tracking-tag"]'))
-    engine.log.warn(
-      'the tracking-tag meta tag is no longer read: set the value with next.actions.setMetadata({ name: value })',
-    );
+  legacyTrackingTags(engine);
   Object.assign((window as { next?: object }).next ?? {}, legacyMetadataApi(engine));
 }
