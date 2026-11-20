@@ -35,11 +35,19 @@ export function checkoutReports({ engine, emit, skip, once }: Report) {
       );
   };
 
+  const BEGIN = 'Once per checkout, when its form is ready and the cart is priced';
+  let owed = false;
+  const begin = (trigger: EventName, reason: string, unpriced = false) => {
+    const checkout = current();
+    owed = started() && !unpriced && checkout.cart.total === undefined && !once.sent('checkout', 'checkout_started');
+    if (owed) return skip(trigger, 'checkout_started', 'The cart is not priced yet');
+    oncePerCheckout(trigger, 'checkout_started', () => checkout, reason);
+    shippingSteps(trigger);
+  };
+
   const handlers: Handlers = {
-    'checkout.started': (checkout, name) => {
-      oncePerCheckout(name, 'checkout_started', () => checkout, 'Once per checkout, when its form is ready');
-      shippingSteps(name);
-    },
+    'checkout.started': (_, name) => begin(name, BEGIN),
+    'cart.calculated': (_, name) => (owed ? begin(name, BEGIN) : undefined),
     'user.created': (_, name) =>
       emit('checkout_contact_info_submitted', current(), {
         trigger: name,
@@ -50,23 +58,20 @@ export function checkoutReports({ engine, emit, skip, once }: Report) {
       current().shipping_address
         ? shippingSteps(name)
         : skip(name, 'checkout_shipping_method_submitted', 'The shipping address is not valid yet'),
-    'checkout.submitted': (checkout, name) =>
+    'checkout.submitted': (checkout, name) => {
+      if (owed) begin(name, 'The cart was never priced before the submit', true);
       oncePerCheckout(
         name,
         'checkout_payment_info_submitted',
         () => checkout,
         'Once per checkout, when a submit passes its checks',
-      ),
+      );
+    },
   };
 
   const beginOwed = () => {
     if (started() && !once.sent('checkout', 'checkout_started'))
-      oncePerCheckout(
-        'checkout.started',
-        'checkout_started',
-        current,
-        'Not sent on the page that started this checkout',
-      );
+      return begin('checkout.started', 'Not sent on the page that started this checkout');
     shippingSteps('checkout.started');
   };
 

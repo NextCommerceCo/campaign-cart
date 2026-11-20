@@ -261,6 +261,23 @@ describe('analytics', () => {
     expect(payment).toMatchObject({ event: 'dl_add_payment_info', payment_type: 'Credit Card' });
   });
 
+  it('sends begin_checkout at the cart price, after add_to_cart, when the checkout starts before the cart is priced', async () => {
+    const engine = await ready();
+    startAnalytics(engine, options);
+    await flush();
+    startCheckout(engine);
+    const added = engine.cart.addItem(2);
+    expect(engine.getState().checkout?.id).toBeTruthy();
+    expect(names()).not.toContain('dl_begin_checkout');
+    await added;
+    await flush();
+    const sent = names().filter((n) => ['dl_add_to_cart', 'dl_begin_checkout'].includes(n));
+    expect(sent).toEqual(['dl_add_to_cart', 'dl_begin_checkout']);
+    const begin = win.NextDataLayer!.find((e) => e.event === 'dl_begin_checkout');
+    expect(begin).toMatchObject({ cart_total: '89.00', ecommerce: { value: 89 } });
+    expect(begin.ecommerce.items).toEqual([expect.objectContaining({ item_id: '12', price: 44.5, quantity: 2 })]);
+  });
+
   it('sends begin_checkout, add_shipping_info and add_payment_info once per checkout, across its pages', async () => {
     const session = new MemoryStorage();
     const steps = ['dl_begin_checkout', 'dl_add_shipping_info', 'dl_add_payment_info'];

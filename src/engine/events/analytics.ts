@@ -46,7 +46,7 @@ export interface TrackingMap {
    */
   cart_updated: Cart;
   /**
-   * Once per checkout, when its form is ready.
+   * Once per checkout, when its form is ready and the cart is priced: after the cart's `product_added_to_cart`.
    * @group Checkout
    */
   checkout_started: Checkout;
