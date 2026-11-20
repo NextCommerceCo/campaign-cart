@@ -76,7 +76,7 @@ export interface MetaEventMap {
    */
   AddPaymentInfo: MetaContents;
   /**
-   * An order was paid: the order, or one accepted upsell.
+   * An order was paid: once per order, as the store's server-side event counts it with the upsells accepted after.
    * @see https://developers.facebook.com/docs/meta-pixel/reference#standard-events
    */
   Purchase: MetaContents & { value: number };
@@ -102,7 +102,6 @@ export const META: Partial<Record<TrackingName, MetaName>> = {
   checkout_contact_info_submitted: 'Lead',
   checkout_payment_info_submitted: 'AddPaymentInfo',
   checkout_completed: 'Purchase',
-  upsell_completed: 'Purchase',
 };
 
 export interface MetaOptions {
@@ -137,10 +136,9 @@ export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?
     const num_items = units.reduce((n, l) => n + l.quantity, 0);
     return { name, params: { ...contents(e, lines, units), num_items }, event_id };
   }
-  if (e.event_type === 'checkout_completed' || e.event_type === 'upsell_completed') {
-    const order = e.event_type === 'checkout_completed';
+  if (e.event_type === 'checkout_completed') {
     const params = { ...contents(e, lines, units), value: trackingValue(lines) ?? 0 };
-    const id = order && options.storeName ? `${options.storeName}-${e.data.number ?? e.data.ref_id}` : event_id;
+    const id = options.storeName ? `${options.storeName}-${e.data.number ?? e.data.ref_id}` : event_id;
     return { name: 'Purchase', params, event_id: id };
   }
   return { name: name as 'ViewContent' | 'AddToCart' | 'AddPaymentInfo', params: contents(e, lines, units), event_id };

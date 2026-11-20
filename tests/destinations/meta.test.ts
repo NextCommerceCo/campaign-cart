@@ -86,22 +86,6 @@ describe('metaEvent', () => {
     expect(metaEvent(event('checkout_completed'), { storeName: 'shop' })?.event_id).toBe('shop-1001');
     const { number: _, ...unnumbered } = EXAMPLES.checkout_completed.data as { number: string };
     expect(metaEvent(event('checkout_completed', unnumbered), { storeName: 'shop' })?.event_id).toBe('shop-R1');
-    expect(metaEvent(event('upsell_completed'), { storeName: 'shop' })?.event_id).toBe('R1-US1');
-  });
-
-  it('sends an accepted upsell as Purchase of its one line', () => {
-    expect(metaEvent(event('upsell_completed'))).toEqual({
-      name: 'Purchase',
-      params: {
-        content_ids: ['99'],
-        contents: [{ id: '99', quantity: 1, item_price: 20 }],
-        content_type: 'product',
-        content_name: 'Bump',
-        value: 20,
-        currency: 'USD',
-      },
-      event_id: 'R1-US1',
-    });
   });
 
   it('names no product and sums every line for a cart of several', () => {
@@ -158,6 +142,7 @@ describe('metaEvent', () => {
     'cart_updated',
     'checkout_shipping_address_submitted',
     'checkout_shipping_method_submitted',
+    'upsell_completed',
     'upsell_viewed',
     'upsell_skipped',
     'promotion_viewed',
