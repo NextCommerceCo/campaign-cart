@@ -379,12 +379,18 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
     fill(SHIPPING);
     card();
-    FakeNextPayment.last.onError({ message: 'Your card details timed out', reason: 'cvvExpired' });
+    FakeNextPayment.last.onError({ message: 'Session ended', reason: 'timeout' });
+    expect(atField()).toBeUndefined();
+    FakeNextPayment.last.onError({ message: 'CVV expired after 3 minutes', reason: 'PCI DSS 3.2.3 TTL compliance' });
     expect(atField()).toBe(again);
+    const scrolled = vi.fn();
+    $('#spreedly-cvv').scrollIntoView = scrolled;
     await submit();
     await flush();
     expect(FakeNextPayment.submitted).toHaveLength(0);
     expect([atField(), $('[data-next-component="credit-error-text"]').textContent]).toEqual([again, again]);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(scrolled).toHaveBeenCalled();
     FakeNextPayment.last.onFieldStateChange({ field: 'cvv', action: 'input', validCvv: true });
     expect(atField()).toBeUndefined();
     await submit();
@@ -405,12 +411,12 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect($('.next-error-label[data-next-error-for="number"]').textContent).toBe('กรุณากรอกหมายเลขบัตรให้ถูกต้อง');
   });
 
-  it('pays by SEPA as `sepa_direct` from a 0.4.x page that calls it `sepa_debit`', async () => {
+  it('pays by SEPA under `sepa_debit`, the code the page and the orders API share', async () => {
     const { fill, submit, orders, $ } = await mount('starter/olympus-checkout.html', {
       campaign: {
         available_payment_methods: [
           ...CAMPAIGN.available_payment_methods!,
-          { code: 'sepa_direct', label: 'SEPA Direct Debit' },
+          { code: 'sepa_debit', label: 'SEPA Direct Debit' },
         ],
       },
     });
@@ -423,7 +429,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     fill(SHIPPING);
     await submit();
     await flush();
-    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'sepa_direct' });
+    expect(orders()[0]!.body.payment_detail).toEqual({ payment_method: 'sepa_debit' });
   });
 
   it('pays by Klarna without touching the card form', async () => {
@@ -573,11 +579,9 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
       'link',
       'acme_pay',
     ]);
-    expect(buttons[0]!.querySelector('svg')).not.toBeNull();
-    expect(buttons.slice(2).map((b) => b.querySelector('.payment-btn__label')?.textContent)).toEqual([
-      'Link',
-      'Acme Pay',
-    ]);
+    expect(buttons.slice(0, 3).every((b) => b.querySelector('svg'))).toBe(true);
+    expect(buttons[2]!.classList).toContain('cc-link');
+    expect(buttons[3]!.querySelector('.payment-btn__label')?.textContent).toBe('Acme Pay');
     buttons[3]!.click();
     await flush();
     await flush();

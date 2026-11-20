@@ -64,6 +64,8 @@ export interface Card {
   tokenize(): Promise<string>;
   check(): void;
   render(): void;
+  /** Brings the first hosted field with an error into view; `false` when none has one. */
+  focus(): boolean;
 }
 
 type HostedField = 'number' | 'cvv';
@@ -200,7 +202,7 @@ function connect(envKey: string, form: HTMLFormElement, view: CardView): Payment
     };
     instance.onError = (error) => {
       const { message, reason } = (error ?? {}) as { message?: unknown; reason?: unknown };
-      if (reason !== undefined) {
+      if (reason !== undefined && /cvv/i.test(`${String(message)} ${String(reason)}`)) {
         view.cvvCleared = true;
         view.valid.cvv = false;
         view.errors.set('cvv', cardText('cvv_cleared'));
@@ -264,6 +266,12 @@ export function bindCard(engine: Engine, checkout: CheckoutActions, form: HTMLFo
 
   return {
     render,
+    focus() {
+      const host = hosts.find(([, field]) => errors.has(field))?.[0];
+      host?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      host?.querySelector('iframe')?.focus();
+      return !!host;
+    },
     check() {
       errors.clear();
       if (!view.valid.number) errors.set('number', cardText('number'));

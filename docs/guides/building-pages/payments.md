@@ -26,29 +26,27 @@ shows without an SDK update, under the campaign's name for it, and its form is c
 [data-next-payment](../attribute-reference/widgets/data-next-payment.md) draws the form's,
 [data-next-express](../attribute-reference/widgets/data-next-express.md) the buttons.
 
-| Method            | Code          | Express button  | Form checked before paying in the form |
-| ----------------- | ------------- | --------------- | -------------------------------------- |
-| Card              | `card_token`  |                 | Every field                            |
-| PayPal            | `paypal`      | ✓               | What `requireValidation` asks          |
-| Apple Pay         | `apple_pay`   | ✓ (not Android) | What `requireValidation` asks          |
-| Google Pay        | `google_pay`  | ✓               | What `requireValidation` asks          |
-| Shop Pay          | `shop_pay`    | ✓               | What `requireValidation` asks          |
-| Link              | `link`        | ✓               | Every field                            |
-| Klarna            | `klarna`      |                 | Every field                            |
-| Afterpay          | `afterpay`    |                 | Every field                            |
-| Affirm            | `affirm`      |                 | Every field                            |
-| iDEAL             | `ideal`       |                 | Every field                            |
-| Bancontact        | `bancontact`  |                 | Every field                            |
-| SEPA Direct Debit | `sepa_direct` |                 | Every field                            |
-| Twint             | `twint`       |                 | Every field                            |
-| Swish             | `swish`       |                 | Every field                            |
+| Method            | Code         | Express button  | Form checked before paying in the form |
+| ----------------- | ------------ | --------------- | -------------------------------------- |
+| Card              | `card_token` |                 | Every field                            |
+| PayPal            | `paypal`     | ✓               | What `requireValidation` asks          |
+| Apple Pay         | `apple_pay`  | ✓ (not Android) | What `requireValidation` asks          |
+| Google Pay        | `google_pay` | ✓               | What `requireValidation` asks          |
+| Shop Pay          | `shop_pay`   | ✓               | What `requireValidation` asks          |
+| Link              | `link`       | ✓               | Every field                            |
+| Klarna            | `klarna`     |                 | Every field                            |
+| Afterpay          | `afterpay`   |                 | Every field                            |
+| Affirm            | `affirm`     |                 | Every field                            |
+| iDEAL             | `ideal`      |                 | Every field                            |
+| Bancontact        | `bancontact` |                 | Every field                            |
+| SEPA Direct Debit | `sepa_debit` |                 | Every field                            |
+| Twint             | `twint`      |                 | Every field                            |
+| Swish             | `swish`      |                 | Every field                            |
 
 The express column is where the payment platform offers a button; the campaign turns each on.
 [Payment methods](https://developers.nextcommerce.com/docs/admin-api/guides/payment-methods) lists
 which also take upsells. An express button skips the page's form, as in 0.4.x: the wallet collects
 and checks the shopper's details itself.
-
-A 0.4.x page's `sepa_debit` still works, paid as `sepa_direct`, and is deprecated: use `sepa_direct`.
 
 ## When the shopper pays
 
