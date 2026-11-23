@@ -59,6 +59,9 @@ describe('attribution', () => {
         device_type: 'mobile',
         fb_fbp: 'fb.1',
         fb_fbc: '',
+        ax_aleid: '',
+        ax_alart: '',
+        ax_axwrt: '',
         domain: 'shop.test',
         fb_pixel_id: '123456',
         sdk_version: expect.any(String),
@@ -67,6 +70,25 @@ describe('attribution', () => {
         fbclid: 'F',
         everflow_transaction_id: 'E',
       },
+    });
+  });
+
+  it('copies AppLovin’s _axeid, _axart and _axwrt cookies, decoded, as ax_aleid, ax_alart and ax_axwrt', () => {
+    const jar: Record<string, string> = { _axeid: 'click%3A9', _axart: 'art-7', _axwrt: 'w'.repeat(2500) };
+    const cookies = { get: (name: string) => jar[name] };
+    const built = (metadata?: Record<string, string | number>) =>
+      buildAttribution({ params: {}, metadata }, undefined, 0, cookies).metadata;
+
+    expect(built()).toMatchObject({ ax_aleid: 'click:9', ax_alart: 'art-7', ax_axwrt: 'w'.repeat(2000) });
+    expect(built({ ax_aleid: 'PAGE' }).ax_aleid).toBe('PAGE');
+
+    jar._axeid = '%E0%A4%A';
+    expect(built().ax_aleid).toBe('%E0%A4%A');
+
+    expect(buildAttribution({ params: {} }, undefined, 0).metadata).toMatchObject({
+      ax_aleid: '',
+      ax_alart: '',
+      ax_axwrt: '',
     });
   });
 
