@@ -4,7 +4,7 @@ import type { TrackingEvent, TrackingName } from '../../engine/events/analytics'
 import { paymentType } from '../../engine/order/payment';
 import { apiOrder, PRODUCT_LIST, promotionFields, shippingTier, upsellPackage } from '../../engine/tracking';
 import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ecommerce';
-import { customer, visitor } from './customer';
+import { customer, userData } from './customer';
 import type { DataLayerEcommerce, DataLayerEventMap, DataLayerName, DataLayerPush } from './schema';
 import type { NAMES } from '.';
 
@@ -115,7 +115,7 @@ export function dataLayerFields(
     case 'page_viewed': {
       const cart = reportedCart(engine);
       return {
-        user_properties: visitor(engine),
+        user_properties: userData(engine),
         cart_total: String(cart.value),
         ecommerce: cart,
       } satisfies Of<'page_viewed'>;

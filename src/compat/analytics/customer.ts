@@ -60,7 +60,7 @@ export interface DataLayerShopper {
 }
 
 /** `user_properties` of `dl_user_data`: also the shopper's name and phone; the order's customer on an order page. */
-export interface DataLayerVisitor extends DataLayerShopper {
+export interface DataLayerUserData extends DataLayerShopper {
   customer_first_name?: string;
   customer_last_name?: string;
   /** E.164. */
@@ -85,7 +85,7 @@ export const shopper = (engine: Engine): DataLayerShopper => {
 };
 
 /** @deprecated The 0.4.x `user_properties` of `dl_user_data`: the order's customer on an order page, else the form's. */
-export const visitor = (engine: Engine): DataLayerVisitor => {
+export const userData = (engine: Engine): DataLayerUserData => {
   const { checkout, order } = engine.getState();
   const user = order?.refId ? apiOrder(engine, order.refId)?.user : undefined;
   const form = checkout?.fields ?? {};

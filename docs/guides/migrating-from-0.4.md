@@ -86,7 +86,7 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in
   sessionStorage. As in 0.4.x, a line the order was paid with (an order bump with
   `data-next-is-upsell="true"`) is in `dl_purchase`, not a `dl_upsell_purchase`.
-- `user_properties` carries, as 0.4.43 did:
+- `user_properties` carries:
 
   | Event                               | Besides `visitor_type`                                                                  |
   | ----------------------------------- | --------------------------------------------------------------------------------------- |
