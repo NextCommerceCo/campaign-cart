@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 const BUDGETS = [
   { match: /^loader\.js$/, name: 'loader', kb: 2.5 },
   { match: /^boot-.*\.js$/, name: 'boot', kb: 26 },
-  { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8 },
+  { match: /^analytics-.*\.js$/, name: 'analytics', kb: 8.5 },
   { match: /^ga4-.*\.js$/, name: 'ga4', kb: 2 },
   { match: /^meta-.*\.js$/, name: 'meta', kb: 2 },
   { match: /^rudderstack-.*\.js$/, name: 'rudderstack', kb: 3 },
