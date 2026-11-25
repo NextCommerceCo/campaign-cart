@@ -47,7 +47,7 @@ export function checkoutReports({ engine, emit, skip, once }: Report) {
           ? 'product_added_to_cart has not been sent for the cart yet'
           : undefined;
     owed = !!wait && started() && !unpriced && !once.sent('checkout', 'checkout_started');
-    if (owed && wait) return skip(trigger, 'checkout_started', wait);
+    if (wait && owed) return skip(trigger, 'checkout_started', wait);
     oncePerCheckout(trigger, 'checkout_started', () => checkout, reason);
     shippingSteps(trigger);
   };
