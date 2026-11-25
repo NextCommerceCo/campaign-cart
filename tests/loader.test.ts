@@ -86,4 +86,55 @@ describe('loader', () => {
     expect(win.next!.getState().currency).toBe('CAD');
     await flush();
   });
+
+  describe('the tab’s currency', () => {
+    const open = async (search: string, head = '<script data-campaign="pk_test"></script>', answers = 'CAD,EUR') => {
+      vi.resetModules();
+      localStorage.clear();
+      delete (window as unknown as { next?: NextApi }).next;
+      history.replaceState(null, '', `/lp/${search}`);
+      document.head.innerHTML = head;
+      const urls: string[] = [];
+      vi.stubGlobal('fetch', async (url: string) => {
+        urls.push(String(url));
+        if (String(url).includes('/v1/geo')) return new Response(JSON.stringify({ currency: 'GBP' }));
+        const asked = new URL(url).searchParams.get('currency') ?? '';
+        return new Response(JSON.stringify({ ...campaign, currency: answers.includes(asked) ? asked : 'USD' }));
+      });
+      await import('../src/loader');
+      const win = window as unknown as { next?: NextApi };
+      await vi.waitFor(() => expect(win.next?.getState().campaign).toBeDefined());
+      await flush();
+      return urls.filter((u) => !u.includes('/v1/geo') && u.includes('/api/v1/campaigns/'))[0];
+    };
+    const asked = (currency?: string) =>
+      `https://campaigns.apps.29next.com/api/v1/campaigns/${currency ? `?currency=${currency}` : ''}`;
+
+    afterAll(() => history.replaceState(null, '', '/'));
+
+    it('keeps ?currency= for a page opened without it in the same tab, and a new one replaces it', async () => {
+      sessionStorage.clear();
+      expect(await open('?currency=CAD')).toBe(asked('CAD'));
+      expect(await open('')).toBe(asked('CAD'));
+      expect(await open('?currency=EUR')).toBe(asked('EUR'));
+      expect(await open('')).toBe(asked('EUR'));
+      sessionStorage.clear();
+      expect(await open('')).toBe(asked());
+    });
+
+    it('keeps a ?currency= choice over the visitor’s currency', async () => {
+      sessionStorage.clear();
+      const auto = '<script data-campaign="pk_test" data-currency="auto"></script>';
+      expect(await open('', auto)).toBe(asked('GBP'));
+      expect(await open('?currency=CAD', auto)).toBe(asked('CAD'));
+      expect(await open('', auto)).toBe(asked('CAD'));
+    });
+
+    it('keeps the campaign’s answer for a currency it does not sell in', async () => {
+      sessionStorage.clear();
+      expect(await open('?currency=JPY')).toBe(asked('JPY'));
+      expect((window as unknown as { next: NextApi }).next.getState().campaign!.currency).toBe('USD');
+      expect(await open('')).toBe(asked('USD'));
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { legacyApiKey, legacyAutoCurrency, legacyFlags, legacyFunnel } from './c
 export const API_BASE = 'https://campaigns.apps.29next.com';
 const GEO = 'https://i18n-rules.nextcommerce.com/v1/geo';
 const VISITOR_CURRENCY = 'next:visitor-currency';
+const CHOSEN_CURRENCY = 'next:currency';
 const GEO_TIMEOUT = 1500;
 
 export interface BootConfig {
@@ -23,7 +24,7 @@ export function readConfig(doc: Document, win: Window): BootConfig {
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);
   const debug = params.get('debug');
-  const currency = params.get('currency') || undefined;
+  const currency = params.get('currency') || keptCurrency(win);
   return {
     apiKey: scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win),
     apiBase: API_BASE,
@@ -34,6 +35,19 @@ export function readConfig(doc: Document, win: Window): BootConfig {
     debug: debug === '1' || legacy.debug ? true : debug === '0' ? false : undefined,
     reset: params.get('reset') === '1' || legacy.reset,
   };
+}
+
+function keptCurrency(win: Window): string | undefined {
+  try {
+    return win.sessionStorage.getItem(CHOSEN_CURRENCY) || undefined;
+  } catch {}
+}
+
+/** Keeps the currency a page asked for, as the campaign answered it, for the tab's pages without `?currency=`. */
+export function keepCurrency(win: Window, currency: string): void {
+  try {
+    win.sessionStorage.setItem(CHOSEN_CURRENCY, currency);
+  } catch {}
 }
 
 /**
