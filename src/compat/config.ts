@@ -37,6 +37,7 @@ const sanitize = (raw: string) =>
     .slice(0, 40)
     .replace(/^-+|-+$/g, '');
 
+/** `hash` of `engine/visit/scope`, copied: the loader shares no module with boot. */
 const fnv1a = (value: string) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < value.length; i++) h = Math.imul(h ^ value.charCodeAt(i), 0x01000193);
