@@ -398,6 +398,62 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
     expect(orders()).toHaveLength(1);
   });
 
+  describe('when the hosted field empties the security code', () => {
+    const again = 'For your security, enter your security code again';
+    const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
+    const typed = { validNumber: true, validCvv: true, numberLength: 16, cvvLength: 3 };
+    const emptied = { validNumber: true, validCvv: false, numberLength: 16, cvvLength: 0 };
+
+    async function typedCard() {
+      const page = await mount('olympus/checkout.html');
+      page.fill(SHIPPING);
+      page.card();
+      const fields = FakeNextPayment.last;
+      fields.onFieldStateChange({ ...typed, field: 'cvv', action: 'focus' });
+      fields.onFieldStateChange({ ...typed, field: 'cvv', action: 'input' });
+      fields.onFieldStateChange({ ...typed, field: 'cvv', action: 'blur' });
+      return { ...page, fields };
+    }
+
+    it('asks for it again at its field as soon as the field reports it empty', async () => {
+      const { fields } = await typedCard();
+      fields.onFieldStateChange({ ...emptied, field: 'cvv', action: 'input' });
+      expect(atField()).toBe(again);
+    });
+
+    it('keeps asking when the field reports itself empty after the clear message', async () => {
+      const { fields } = await typedCard();
+      fields.onError({ message: 'CVV expired after 3 minutes', reason: 'PCI DSS 3.2.3 TTL compliance' });
+      fields.onFieldStateChange({ ...emptied, field: 'cvv', action: 'input' });
+      expect(atField()).toBe(again);
+    });
+
+    it('does not ask again when the shopper deletes it in the field', async () => {
+      const { fields } = await typedCard();
+      fields.onFieldStateChange({ ...typed, field: 'cvv', action: 'focus' });
+      fields.onFieldStateChange({ ...emptied, field: 'cvv', action: 'input' });
+      expect(atField()).toBeUndefined();
+    });
+
+    it('asks for it again on pay, not “required”, when payment.js refuses a code it reported typed', async () => {
+      const { fields, submit, $, orders } = await typedCard();
+      FakeNextPayment.refuse = [{ attribute: 'cvv', message: 'Security code is required' }];
+      await submit();
+      await flush();
+      expect([atField(), $('[data-next-component="credit-error-text"]').textContent]).toEqual([again, again]);
+      FakeNextPayment.refuse = undefined;
+      await submit();
+      await flush();
+      expect(FakeNextPayment.submitted).toHaveLength(1);
+      expect(atField()).toBe(again);
+      fields.onFieldStateChange({ ...typed, field: 'cvv', action: 'input' });
+      expect(atField()).toBeUndefined();
+      await submit();
+      await flush();
+      expect(orders()).toHaveLength(1);
+    });
+  });
+
   it('words what payment.js refused without a message in the page’s translations', async () => {
     const { fill, card, submit, $ } = await mount('olympus/checkout.html', {
       locale: 'th-TH',
