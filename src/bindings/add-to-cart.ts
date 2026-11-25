@@ -2,16 +2,14 @@ import { nextUrl } from '../engine/visit/params';
 import type { BindContext, Render } from '../dom/context';
 
 const WAIT = 3000;
-type Page = { nextConfig?: { analytics?: { addToCartBeforeRedirect?: boolean } } };
 
 export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: string) => void): Render[] {
-  const wait = (window as unknown as Page).nextConfig?.analytics?.addToCartBeforeRedirect === true;
   b.each(root, 'data-next-action', (el) => {
     if (el.getAttribute('data-next-action') !== 'add-to-cart') return;
     const packageId = () => Number(el.getAttribute('data-next-package-id'));
     const quantity = () => Number(el.getAttribute('data-next-quantity') || 1);
     const clears = () => el.getAttribute('data-next-clear-cart') === 'true';
-    if (wait && el.hasAttribute('data-next-url') && packageId())
+    if (el.hasAttribute('data-next-url') && packageId())
       b.offs.push(
         b.engine.on('sdk.ready', () => b.engine.cart.quoteItem(packageId(), quantity(), clears()), { replay: true }),
       );
@@ -38,7 +36,6 @@ export function bindAddToCart(root: ParentNode, b: BindContext, navigate: (url: 
         gone = true;
         navigate(nextUrl(url, new URL(location.href), b.engine.getState().visit.params));
       };
-      if (!wait) return go();
       void added.then(go, go);
       setTimeout(go, WAIT);
     });

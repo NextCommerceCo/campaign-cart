@@ -30,9 +30,6 @@ changes.
 - **A name for a sum.** `data-next-define="cart.free_shipping_left = 75 - total_before_shipping"`
   makes it a field every query and condition can read.
   [data-next-define](attribute-reference/display/data-next-define.md)
-- **Add to cart, counted at the click.** With `analytics.addToCartBeforeRedirect: true`, an
-  add-to-cart button that goes to another page sends `dl_add_to_cart` and Meta's `AddToCart` before
-  it leaves. [Destinations](analytics-reference/destinations/overview.md#config)
 
 ## Fixed
 
@@ -43,6 +40,8 @@ changes.
 - The 0.4.x visitor id is in `localStorage` again, for pages that send it to Meta as `external_id`.
 - `dl_user_data` no longer reports the bundle a checkout pre-selects at its list price, and
   `dl_begin_checkout` always comes after `dl_add_to_cart`.
+- An add-to-cart button with `data-next-url` sends `dl_add_to_cart` and Meta's `AddToCart` on the
+  page it is clicked on, before it leaves.
 - A currency picked with `?currency=` stays for the rest of the tab.
 - Affiliate and ad tracking reaches the order: on a first visit, after PayPal, Apple Pay or 3-D
   Secure, and when a shopper taps a link early.

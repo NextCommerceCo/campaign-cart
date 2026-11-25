@@ -50,14 +50,13 @@ vendor gets.
 </script>
 ```
 
-| Setting                                   | Effect                                                                                                                                               |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `analytics.enabled: false`                | No analytics at all: no chunk loads and `next.analytics.on` receives nothing                                                                         |
-| `destinations.gtm.enabled: false`         | Nothing on `window.dataLayer`; pushes still reach `window.NextDataLayer`                                                                             |
-| `destinations.ga4.enabled: true`          | Tracking events go to `gtag`                                                                                                                         |
-| `destinations.meta.enabled: true`         | Tracking events go to `fbq`; `storeName` sets an order's `Purchase` `eventID`                                                                        |
-| `destinations.rudderstack.enabled: true`  | Tracking events go to `rudderanalytics`, as 0.4.x sent them                                                                                          |
-| `analytics.addToCartBeforeRedirect: true` | An `add-to-cart` button with `data-next-url` sends its add to cart, at the cart price, before it leaves the page. Without it, the next page sends it |
+| Setting                                  | Effect                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
+| `analytics.enabled: false`               | No analytics at all: no chunk loads and `next.analytics.on` receives nothing  |
+| `destinations.gtm.enabled: false`        | Nothing on `window.dataLayer`; pushes still reach `window.NextDataLayer`      |
+| `destinations.ga4.enabled: true`         | Tracking events go to `gtag`                                                  |
+| `destinations.meta.enabled: true`        | Tracking events go to `fbq`; `storeName` sets an order's `Purchase` `eventID` |
+| `destinations.rudderstack.enabled: true` | Tracking events go to `rudderanalytics`, as 0.4.x sent them                   |
 
 The 0.4.x keys still work under `destinations`, which wins when both are set:
 

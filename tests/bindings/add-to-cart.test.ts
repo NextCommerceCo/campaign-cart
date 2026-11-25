@@ -4,31 +4,30 @@ import { heldApi } from '../fixtures/api';
 import { flush } from '../fixtures/engine';
 import { mount } from '../fixtures/pages';
 
-const win = window as unknown as { nextConfig?: unknown; dataLayer?: Array<{ event?: string }> };
+const win = window as unknown as { dataLayer?: Array<{ event?: string }> };
 const BUY = `<a id="buy" href="#" data-next-action="add-to-cart" data-next-package-id="1" data-next-quantity="2" data-next-url="/checkout"></a>`;
 const prices = (api: ReturnType<typeof heldApi>) => api.calls.filter((c) => c.body?.lines && c.body.vouchers);
 
 afterEach(() => {
   document.body.innerHTML = '';
-  delete win.nextConfig;
   delete win.dataLayer;
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe('add to cart', () => {
-  it('adds and goes to the next page right away with attribution params', async () => {
+  it('adds and goes to the next page with attribution params', async () => {
     const { engine, navigate, $ } = await mount(BUY, { params: { utm_source: 'fb', debugger: 'true' } });
     $('#buy').click();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
+    await flush();
     expect(navigate).toHaveBeenCalledWith(`${location.origin}/checkout?utm_source=fb`);
     $('#buy').click();
     expect(engine.cart.lines()).toEqual([{ package_id: 1, quantity: 2 }]);
   });
 
-  describe('with analytics.addToCartBeforeRedirect', () => {
+  describe('before it leaves the page', () => {
     const page = async (html = BUY) => {
-      win.nextConfig = { analytics: { addToCartBeforeRedirect: true } };
       const api = heldApi();
       return { ...(await mount(html, { fetch: api.fetch })), api };
     };
@@ -61,7 +60,6 @@ describe('add to cart', () => {
     });
 
     it('goes without the price when pricing fails, and after 3 s when it does not answer', async () => {
-      win.nextConfig = { analytics: { addToCartBeforeRedirect: true } };
       const api = heldApi();
       let fail = false;
       const fetch = ((input, init) =>
