@@ -23,7 +23,8 @@ if (!config.apiKey) {
   const located = config.autoCurrency ? visitorCurrency(window) : undefined;
   const campaign = located ? located.then(load) : load(config.currency);
   campaign.then(
-    (answer: { currency?: string }) => config.currency && answer.currency && keepCurrency(window, answer.currency),
+    (answer: { currency?: string }) =>
+      config.currency && answer.currency && keepCurrency(window, config.apiKey, answer.currency),
     () => {},
   );
 

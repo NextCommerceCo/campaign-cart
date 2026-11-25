@@ -91,8 +91,14 @@ describe('the tab’s currency', () => {
   it('is the kept currency on a page without ?currency=, over the visitor’s, and ?currency= comes first', () => {
     document.head.innerHTML = '<script data-campaign="pk_test" data-currency="auto"></script>';
     expect(read('')).toMatchObject({ currency: undefined, autoCurrency: true });
-    keepCurrency(window, 'CAD');
+    keepCurrency(window, 'pk_test', 'CAD');
     expect(read('')).toMatchObject({ currency: 'CAD', autoCurrency: false });
     expect(read('?currency=EUR')).toMatchObject({ currency: 'EUR', autoCurrency: false });
+  });
+
+  it('is kept per campaign: another campaign in the tab does not get it', () => {
+    keepCurrency(window, 'pk_test', 'CAD');
+    document.head.innerHTML = '<script data-campaign="pk_other" data-currency="auto"></script>';
+    expect(read('')).toMatchObject({ currency: undefined, autoCurrency: true });
   });
 });

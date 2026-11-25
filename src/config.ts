@@ -3,7 +3,7 @@ import { legacyApiKey, legacyAutoCurrency, legacyFlags, legacyFunnel } from './c
 export const API_BASE = 'https://campaigns.apps.29next.com';
 const GEO = 'https://i18n-rules.nextcommerce.com/v1/geo';
 const VISITOR_CURRENCY = 'next:visitor-currency';
-const CHOSEN_CURRENCY = 'next:currency';
+const chosenCurrency = (apiKey: string) => `next:currency:${apiKey}`;
 const GEO_TIMEOUT = 1500;
 
 export interface BootConfig {
@@ -11,7 +11,7 @@ export interface BootConfig {
   apiBase: string;
   funnel: string;
   currency?: string;
-  /** `data-currency="auto"` without `?currency=`: the campaign is asked for the visitor's currency. */
+  /** `data-currency="auto"` with no `?currency=` and none kept for the tab: the campaign is asked for the visitor's currency. */
   autoCurrency?: boolean;
   lang?: string;
   debug?: boolean;
@@ -24,9 +24,10 @@ export function readConfig(doc: Document, win: Window): BootConfig {
   const params = new URLSearchParams(win.location.search);
   const legacy = legacyFlags(params);
   const debug = params.get('debug');
-  const currency = params.get('currency') || keptCurrency(win);
+  const apiKey = scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win);
+  const currency = params.get('currency') || keptCurrency(win, apiKey);
   return {
-    apiKey: scriptAttr(doc, 'data-campaign') || legacyApiKey(doc, win),
+    apiKey,
     apiBase: API_BASE,
     funnel: scriptAttr(doc, 'data-funnel') || legacyFunnel(doc, win),
     currency,
@@ -37,16 +38,16 @@ export function readConfig(doc: Document, win: Window): BootConfig {
   };
 }
 
-function keptCurrency(win: Window): string | undefined {
+function keptCurrency(win: Window, apiKey: string): string | undefined {
   try {
-    return win.sessionStorage.getItem(CHOSEN_CURRENCY) || undefined;
+    return win.sessionStorage.getItem(chosenCurrency(apiKey)) || undefined;
   } catch {}
 }
 
-/** Keeps the currency a page asked for, as the campaign answered it, for the tab's pages without `?currency=`. */
-export function keepCurrency(win: Window, currency: string): void {
+/** Keeps the currency a page asked for, as the campaign answered it, for this campaign's pages in the tab without `?currency=`. */
+export function keepCurrency(win: Window, apiKey: string, currency: string): void {
   try {
-    win.sessionStorage.setItem(CHOSEN_CURRENCY, currency);
+    win.sessionStorage.setItem(chosenCurrency(apiKey), currency);
   } catch {}
 }
 
