@@ -54,6 +54,29 @@ describe('checkout rules', () => {
     expect(fieldError('line2', '', false)).toBeUndefined();
   });
 
+  it('checks a name, address line or city against the pattern i18n-rules serves, over its own', () => {
+    const served = (pattern: string) => ({
+      ...US,
+      fields: Object.fromEntries(
+        ['first_name', 'last_name', 'line1', 'line2', 'city'].map((f) => [f, { required: false, format: { pattern } }]),
+      ),
+    });
+    const digits = served('^\\D+$');
+    expect(fieldError('first_name', 'Smith, Jr.', true)).toBe('invalid_characters');
+    expect(fieldError('first_name', ' Smith, Jr. ', true, digits)).toBeUndefined();
+    expect(fieldError('last_name', 'Smith 3rd', true, digits)).toBe('invalid_characters');
+    expect(fieldError('city', 'Dublin 2', true, digits)).toBe('invalid');
+    expect(fieldError('line1', 'PO Box 12', true, served('^(?!.*\\bPO Box\\b).*$'))).toBe('invalid');
+    expect(fieldError('line2', 'Apt 4', false, served('^(?!.*\\bPO Box\\b).*$'))).toBeUndefined();
+    expect(fieldError('first_name', 'สุดา', true, served('^\\p{L}[\\p{L}\\p{M}]*$'))).toBeUndefined();
+    expect(fieldError('first_name', 'J4ne', true, served('[('))).toBeUndefined();
+    const loose = served('^(?=.*\\p{L})[^\\p{Cc}@<>]+$');
+    for (const name of ['Smith, Jr.', 'John Smith 3rd', '迈克尔·杰克逊', 'สุดา'])
+      expect(fieldError('first_name', name, true, loose)).toBeUndefined();
+    expect(fieldError('last_name', 'jane@example.com', true, loose)).toBe('invalid_characters');
+    expect(fieldError('city', '12345', true, loose)).toBe('invalid');
+  });
+
   it('asks for state and postcode only where the country does', () => {
     expect(formErrors(checkout({ ...SHIPPING, state: '', postcode: '' }), 'all')).toEqual({
       state: 'not_selected',

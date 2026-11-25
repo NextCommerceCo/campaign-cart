@@ -91,6 +91,21 @@ export type Scope = 'shipping' | 'all' | string[];
 
 const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 const NAME = /^[\p{L}\p{M}\s'’.-]+$/u;
+const NAMES = ['first_name', 'last_name'];
+const SERVED = [...NAMES, 'line1', 'line2', 'city'];
+const served = new Map<string, RegExp | null>();
+
+/** i18n-rules' pattern for a text field, as 0.4.x read it: `u` flag, trimmed value; one that does not compile passes. */
+function passesServed(value: string, pattern: string): boolean {
+  if (!served.has(pattern)) {
+    let compiled: RegExp | null = null;
+    try {
+      compiled = new RegExp(pattern, 'u');
+    } catch {}
+    served.set(pattern, compiled);
+  }
+  return served.get(pattern)?.test(value) ?? true;
+}
 const EMOJI = /\p{Extended_Pictographic}/u;
 const SELECTS = ['country', 'state'];
 
@@ -141,7 +156,10 @@ export function fieldError(
   if (EMOJI.test(v)) return 'contains_emoji';
   if (rule?.input?.max_length && v.length > rule.input.max_length) return 'too_long';
   if (field === 'email') return validEmail(v) ? undefined : 'invalid';
-  if (field === 'first_name' || field === 'last_name') return NAME.test(v) ? undefined : 'invalid_characters';
+  const refused = NAMES.includes(field) ? 'invalid_characters' : 'invalid';
+  if (SERVED.includes(field) && rule?.format?.pattern)
+    return passesServed(v, rule.format.pattern) ? undefined : refused;
+  if (NAMES.includes(field)) return NAME.test(v) ? undefined : refused;
   if (field === 'postcode' && rule?.format?.pattern) {
     return new RegExp(rule.format.pattern).test(significant(v)) ? undefined : 'invalid';
   }
