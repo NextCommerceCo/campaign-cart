@@ -1,3 +1,4 @@
+import { dollars } from '../../engine/display/format';
 import type { Engine } from '../../engine/engine';
 import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import { paymentType } from '../../engine/order/payment';
@@ -33,6 +34,17 @@ export function lineFields(engine: Engine, run: LineEvent[]): Of<LineEvent['even
   const first_in_session = run.some((e) => 'first_in_session' in e.data && e.data.first_in_session);
   return run[0]!.event_type === 'product_added_to_cart' ? { ecommerce: cart, first_in_session } : { ecommerce: cart };
 }
+
+/** The cart as the pages before reported it, at the unit price they reported: not what this page adds. */
+const reportedCart = (engine: Engine) =>
+  ecommerce(
+    engine,
+    (engine.getState().cart.reported ?? []).map(({ package_id, quantity, price }) => ({
+      package_id,
+      quantity,
+      price: dollars(price * (engine.getPackage(package_id)?.qty || 1)),
+    })),
+  );
 
 const cartTotal = (engine: Engine) => engine.getState().cart.summary?.total ?? '0';
 
@@ -98,11 +110,10 @@ export function dataLayerFields(
   e: Exclude<TrackingEvent, LineEvent>,
 ): Of<Exclude<TrackingName, LineEvent['event_type']>> | undefined {
   switch (e.event_type) {
-    case 'page_viewed':
-      return {
-        cart_total: cartTotal(engine),
-        ecommerce: ecommerce(engine, engine.cart.current().lines),
-      } satisfies Of<'page_viewed'>;
+    case 'page_viewed': {
+      const cart = reportedCart(engine);
+      return { cart_total: String(cart.value), ecommerce: cart } satisfies Of<'page_viewed'>;
+    }
     case 'product_viewed':
       return { ecommerce: ecommerce(engine, [e.data]) } satisfies Of<'product_viewed'>;
     case 'product_list_viewed': {

@@ -6,7 +6,13 @@ import { OBJECTS, type TrackingEvent, type TrackingMap, type TrackingName } from
 import type { Cart, CartItem } from '../../src/engine/events/carts';
 import { newId } from '../../src/engine/runtime/id';
 import { publicOrder } from '../../src/engine/order/order';
-import { makeEngine } from '../fixtures/engine';
+import type { SelectorCard } from '../../src/engine/cart/types';
+import type { Campaign } from '../../src/engine/types';
+import { json } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
+import { startAnalytics } from '../../src/analytics';
+import { flush, makeEngine } from '../fixtures/engine';
+import { MemoryStorage } from '../fixtures/storage';
 import { fakeRules } from '../fixtures/rules';
 import { ORDER, withUpsell } from '../fixtures/order';
 
@@ -327,5 +333,103 @@ describe('0.4.x data layer from tracking events', () => {
         upsell_metadata: { original_order_id: 'R1', upsell_number: 1, package_id: '9', package_name: 'Bump' },
       },
     ]);
+  });
+});
+
+describe('dl_user_data', () => {
+  const pkg = (ref_id: number, price: string) => ({
+    ...campaign.packages[0]!,
+    ref_id,
+    external_id: ref_id,
+    price,
+    price_total: price,
+    price_retail: price,
+    price_retail_total: price,
+  });
+  const FUNNEL: Campaign = { ...campaign, packages: [pkg(101, '100.00'), pkg(104, '29.99')] };
+  /** The cart price of a package after offers, by `package:quantity`; its list price is `price`. */
+  const OFFER: Record<string, number> = { '101:1': 50, '101:2': 40, '101:3': 30, '104:1': 14.99 };
+  const CARDS: SelectorCard[] = [
+    { id: '1x', lines: [{ packageId: 101, quantity: 1 }], vouchers: [] },
+    { id: '2x', lines: [{ packageId: 101, quantity: 2 }], vouchers: [] },
+    { id: '3x', lines: [{ packageId: 101, quantity: 3 }], vouchers: [] },
+    { id: 'voucher', lines: [{ packageId: 104, quantity: 1 }], vouchers: ['BUNDLE'] },
+  ];
+
+  /** The Campaigns API at offer prices; after `hold()` a price request answers on `release()`. */
+  function offerApi() {
+    let gate: Promise<void> | undefined;
+    let open = () => {};
+    const fetch = (async (_url: RequestInfo | URL, init: RequestInit = {}) => {
+      const body = JSON.parse(String(init.body)) as { lines: Array<{ package_id: number; quantity: number }> };
+      await gate;
+      const lines = body.lines.map((l) => {
+        const listed = Number(FUNNEL.packages.find((p) => p.ref_id === l.package_id)!.price_total);
+        const paid = OFFER[`${l.package_id}:${l.quantity}`]!;
+        return {
+          package_id: l.package_id,
+          quantity: l.quantity,
+          unit_price: paid.toFixed(2),
+          original_unit_price: listed.toFixed(2),
+          package_price: paid.toFixed(2),
+          original_package_price: listed.toFixed(2),
+          subtotal: (listed * l.quantity).toFixed(2),
+          total_discount: ((listed - paid) * l.quantity).toFixed(2),
+          total: (paid * l.quantity).toFixed(2),
+          discounts: [],
+        };
+      });
+      const sum = (k: 'subtotal' | 'total' | 'total_discount') =>
+        lines.reduce((n, l) => n + Number(l[k]), 0).toFixed(2);
+      return json({
+        lines,
+        offer_discounts: [],
+        voucher_discounts: [],
+        subtotal: sum('subtotal'),
+        total_discount: sum('total_discount'),
+        total: sum('total'),
+        currency: 'USD',
+        shipping_method: { id: 1, name: 'Standard', code: 'standard', price: '0.00', original_price: '0.00' },
+      });
+    }) as typeof globalThis.fetch;
+    return { fetch, hold: () => void (gate = new Promise<void>((r) => (open = r))), release: () => open() };
+  }
+
+  /** A page whose selector pre-selects `card`; analytics starts while the cart's price is on its way. */
+  async function page(card: string, storage = { session: new MemoryStorage(), local: new MemoryStorage() }) {
+    delete win.NextDataLayer;
+    delete win.dataLayer;
+    const api = offerApi();
+    const { engine } = makeEngine({ ...storage, fetch: api.fetch, campaign: Promise.resolve(FUNNEL) });
+    api.hold();
+    void engine.selectors.register('main', CARDS, 'swap', card);
+    await engine.start();
+    startAnalytics(engine, { ...options, nextCampaign: false });
+    api.release();
+    await engine.cart.settled();
+    await flush();
+    return { engine, userData: pushes('dl_user_data')[0] };
+  }
+
+  it.each([
+    ['1x', 50],
+    ['2x', 80],
+    ['3x', 90],
+    ['voucher', 14.99],
+  ])('carries no cart for the %s bundle the page pre-selects, as 0.4.43 did', async (card, cart) => {
+    const { engine, userData } = await page(card);
+    expect(engine.cart.current().total).toBe(cart);
+    expect(userData).toMatchObject({ cart_total: '0', ecommerce: { currency: 'USD', value: 0, items: [] } });
+  });
+
+  it('carries the cart an earlier page filled, at the price it was quoted there, as 0.4.43 did', async () => {
+    const storage = { session: new MemoryStorage(), local: new MemoryStorage() };
+    await page('2x', storage);
+    const { userData } = await page('2x', storage);
+    expect(userData).toMatchObject({
+      cart_total: '80',
+      ecommerce: { currency: 'USD', value: 80, items: [{ item_id: '101', price: 40, quantity: 2, index: 0 }] },
+    });
+    expect(userData.ecommerce.items).toHaveLength(1);
   });
 });

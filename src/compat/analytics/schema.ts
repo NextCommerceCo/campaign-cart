@@ -125,11 +125,12 @@ export interface DataLayerPopup {
  */
 export interface DataLayerEventMap {
   /**
-   * Every page load, with the cart.
+   * Every page load, with the cart as earlier pages reported it, at the price they reported: not what this page
+   * adds, such as its pre-selected bundle.
    * @see https://docs.getelevar.com/docs/view-all-event-triggers-and-data-layer-variables
    */
   dl_user_data: DataLayerPush & {
-    /** The cart's total, as the API priced it. */
+    /** `ecommerce.value` as `String(number)`: `'80'`, `'0'` for no cart. */
     cart_total: string;
     ecommerce: DataLayerEcommerce;
   };

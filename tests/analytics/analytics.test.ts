@@ -187,7 +187,7 @@ describe('analytics', () => {
     startAnalytics(engine, options);
     await flush();
     expect(names()).toEqual(['dl_user_data', 'dl_add_to_cart', 'dl_cart_updated']);
-    expect(win.NextDataLayer![0].ecommerce.items).toMatchObject([{ item_id: '12' }]);
+    expect(win.NextDataLayer![0].ecommerce.items).toEqual([]);
     const [, add, updated] = win.NextDataLayer!;
     expect(add).toMatchObject({ first_in_session: true, ecommerce: { currency: 'USD', value: 89 } });
     expect(add.ecommerce.items).toEqual(updated.ecommerce.items);
