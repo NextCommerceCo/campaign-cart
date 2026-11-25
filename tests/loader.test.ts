@@ -46,7 +46,7 @@ describe('loader', () => {
     expect(error.mock.calls[0]![0]).toEqual({ action: 'campaign.load', ...expected, message: expect.any(String) });
   });
 
-  it('has the 0.4.x visitor id in localStorage before ready callbacks, with analytics off', async () => {
+  it('has the session id as the 0.4.x visitor id in localStorage before ready callbacks, with analytics off', async () => {
     vi.resetModules();
     localStorage.clear();
     sessionStorage.clear();
@@ -59,7 +59,8 @@ describe('loader', () => {
     win.nextReady = [() => atReady(localStorage.getItem('visitor_id__q38pip'))];
     await import('../src/loader');
     await vi.waitFor(() => expect(atReady).toHaveBeenCalled());
-    expect(atReady.mock.calls[0]![0]).toMatch(/^visitor_[0-9a-z]+_[0-9a-z]{1,9}$/);
+    expect(atReady.mock.calls[0]![0]).toBe(win.next!.context().session_id);
+    expect(atReady.mock.calls[0]![0]).toMatch(/^[0-9a-f]{32}$/);
     delete win.nextConfig;
     await flush();
   });

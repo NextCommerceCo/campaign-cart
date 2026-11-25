@@ -35,16 +35,11 @@ describe('visitor id (0.4.x localStorage)', () => {
     expect(key('/hu/earbuds', '')).toBe('visitor_id__promo-b');
   });
 
-  it('creates a 0.4.43-format id once, and keeps an existing one untouched', () => {
+  it('is the campaign session id, over a 0.4.43 value', () => {
+    const session = '3f2b8c1d9e7a4b6c8d5e2f1a0b9c8d7e';
     history.replaceState(null, '', '/hu/earbuds');
-    keepLegacyVisitorId(document, window, 'pk_test');
-    const first = localStorage.getItem('visitor_id__jv1v6y');
-    expect(first).toMatch(/^visitor_[0-9a-z]+_[0-9a-z]{1,9}$/);
-    history.replaceState(null, '', '/hu/earbuds/upsell1');
-    keepLegacyVisitorId(document, window, 'pk_test');
-    expect(localStorage.getItem('visitor_id__jv1v6y')).toBe(first);
     localStorage.setItem('visitor_id__jv1v6y', 'visitor_m1abc2de_k3j4h5g6f');
-    keepLegacyVisitorId(document, window, 'pk_test');
-    expect(localStorage.getItem('visitor_id__jv1v6y')).toBe('visitor_m1abc2de_k3j4h5g6f');
+    keepLegacyVisitorId(document, window, 'pk_test', session);
+    expect(localStorage.getItem('visitor_id__jv1v6y')).toBe(session);
   });
 });

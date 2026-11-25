@@ -58,12 +58,10 @@ export function legacyVisitorKey(doc: Document, win: Window, apiKey: string): st
   return scope ? `visitor_id__${scope}` : 'visitor_id';
 }
 
-/** @deprecated 0.4.x's visitor id, which pages read from localStorage as Meta's `external_id`: kept, or created as 0.4.43 did. */
-export function keepLegacyVisitorId(doc: Document, win: Window, apiKey: string): void {
+/** @deprecated 0.4.x's visitor id, which pages read from localStorage as Meta's `external_id`: the campaign session id. */
+export function keepLegacyVisitorId(doc: Document, win: Window, apiKey: string, sessionId: string): void {
   try {
-    const key = legacyVisitorKey(doc, win, apiKey);
-    win.localStorage.getItem(key) ||
-      win.localStorage.setItem(key, `visitor_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 11)}`);
+    win.localStorage.setItem(legacyVisitorKey(doc, win, apiKey), sessionId);
   } catch {}
 }
 

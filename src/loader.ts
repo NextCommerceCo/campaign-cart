@@ -32,9 +32,6 @@ if (!config.apiKey) {
     document.readyState === 'loading'
       ? new Promise((done) => document.addEventListener('DOMContentLoaded', done, { once: true }))
       : undefined;
-  const keepVisitorId = () => keepLegacyVisitorId(document, window, config.apiKey);
-  if (parsed) void parsed.then(keepVisitorId);
-  else keepVisitorId();
 
   if (!parsed) {
     for (const file of pagePreloads('%PRELOAD%', document, location.search)) {
@@ -51,7 +48,8 @@ if (!config.apiKey) {
     .then(async ({ boot }) => {
       announceLegacyLoaded(window);
       await parsed;
-      boot(located ? { ...config, currency: await located } : config, campaign);
+      const next = boot(located ? { ...config, currency: await located } : config, campaign);
+      keepLegacyVisitorId(document, window, config.apiKey, next.context().session_id);
     })
     .catch((err) => {
       console.error('[next] failed to start', err);
