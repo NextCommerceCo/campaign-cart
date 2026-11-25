@@ -146,9 +146,10 @@ Analytics is a subscriber in its own chunk. It loads when the browser is idle af
   then into `window.NextDataLayer`, then into `dataLayer` after a `{ecommerce: null}` reset.
   Page forwarders and GTM keep working unchanged.
 - **No personal data** in events: `user_properties` is `{visitor_type}` only and
-  `page_location` has no query string. The two exceptions, both as 0.4.x sent them: `dl_purchase`
-  and `dl_upsell_purchase` carry the order's customer in `user_properties` (email, name, phone and
-  billing address, with `visitor_type: 'logged_in'`), and the RudderStack destination's
+  `page_location` has no query string. The exceptions, all as 0.4.43 sent them: the `dl_*` pushes
+  carry the checkout form's email and billing country in `user_properties`, `dl_user_data` the
+  name and E.164 phone too, `dl_purchase` and `dl_upsell_purchase` the order's customer (email,
+  name, phone and billing address, with `visitor_type: 'logged_in'`), and the RudderStack destination's
   `identify()` sends the shopper's email, name, phone and address. The destination trace in the
   log keeps `visitor_type` only.
 - **NEXT page view:** the `nextCampaign` script loads on idle and sends its own page view.

@@ -264,7 +264,7 @@ describe('0.4.x data layer from tracking events', () => {
     expect(pushes('dl_purchase')[0].user_properties).toEqual({ visitor_type: 'guest' });
   });
 
-  it('sends only visitor_type in user_properties of every other push, with the order loaded', async () => {
+  it('sends only visitor_type in user_properties of every other push without a checkout form, with the order loaded', async () => {
     const engine = await started();
     engine.attach((ctx) => ctx.update('order', { order: ORDER }));
     track(engine, 'checkout_started', { id: 'c1', step: 1, cart: emptyCart } as TrackingMap['checkout_started']);
@@ -277,6 +277,124 @@ describe('0.4.x data layer from tracking events', () => {
       ['dl_begin_checkout', { visitor_type: 'guest' }],
       ['dl_viewed_upsell', { visitor_type: 'guest' }],
     ]);
+  });
+
+  describe('user_properties before the purchase, as 0.4.43 sent them', () => {
+    const TYPED = {
+      email: ' jane@example.com ',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      phone_number: '(415) 555-0100',
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'TX',
+      postcode: '73301',
+      country: 'US',
+    };
+    const cart: Cart = { ...emptyCart, lines: [line(2, 1, 89)] };
+
+    async function checkoutPage(fields: Record<string, string>, more: object = {}) {
+      const engine = await started();
+      engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+      engine.attach((ctx) => ctx.update('checkout', { id: 'c1', fields, ...more }));
+      return engine;
+    }
+
+    const funnel = (engine: Engine) => {
+      track(engine, 'checkout_started', { id: 'c1', cart });
+      track(engine, 'checkout_shipping_address_submitted', { id: 'c1', cart });
+      track(engine, 'checkout_payment_info_submitted', { id: 'c1', cart, payment_method: 'card_token' });
+      return Object.fromEntries(win.NextDataLayer!.map((e) => [e.event, e.user_properties]));
+    };
+
+    it('sends only visitor_type before the shopper has typed anything', async () => {
+      const engine = await checkoutPage({});
+      track(engine, 'page_viewed', {});
+      expect(funnel(engine)).toEqual({
+        dl_user_data: { visitor_type: 'guest' },
+        dl_begin_checkout: { visitor_type: 'guest' },
+        dl_add_shipping_info: { visitor_type: 'guest' },
+        dl_add_payment_info: { visitor_type: 'guest' },
+      });
+    });
+
+    it('sends the country on dl_begin_checkout before the email is typed', async () => {
+      const engine = await checkoutPage({ country: 'US', email: '' });
+      track(engine, 'checkout_started', { id: 'c1', cart });
+      expect(pushes('dl_begin_checkout')[0].user_properties).toEqual({ visitor_type: 'guest', customer_country: 'US' });
+    });
+
+    it('sends the email and country on the checkout steps, without the name, phone or address', async () => {
+      const engine = await checkoutPage(TYPED, { phones: { phone_number: { value: '+14155550100', country: 'US' } } });
+      const sent = { visitor_type: 'guest', customer_email: 'jane@example.com', customer_country: 'US' };
+      expect(funnel(engine)).toEqual({
+        dl_begin_checkout: sent,
+        dl_add_shipping_info: sent,
+        dl_add_payment_info: sent,
+      });
+      expect(win.dataLayer!.filter((e) => e.event).map((e) => e.user_properties)).toEqual([sent, sent, sent]);
+    });
+
+    it('sends the billing country when the billing address is separate', async () => {
+      const engine = await checkoutPage({ ...TYPED, billing_country: 'CA' }, { sameAsShipping: false });
+      track(engine, 'checkout_payment_info_submitted', { id: 'c1', cart });
+      expect(pushes('dl_add_payment_info')[0].user_properties).toMatchObject({ customer_country: 'CA' });
+      engine.attach((ctx) => ctx.update('checkout', { sameAsShipping: true }));
+      track(engine, 'cart_updated', cart);
+      expect(pushes('dl_cart_updated')[0].user_properties).toMatchObject({ customer_country: 'US' });
+    });
+
+    it('sends the name and E.164 phone on dl_user_data of the checkout page, without the address', async () => {
+      const engine = await checkoutPage(TYPED, { phones: { phone_number: { value: '+14155550100', country: 'US' } } });
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).toEqual({
+        visitor_type: 'guest',
+        customer_email: 'jane@example.com',
+        customer_country: 'US',
+        customer_first_name: 'Jane',
+        customer_last_name: 'Doe',
+        customer_phone: '+14155550100',
+      });
+    });
+
+    it('sends the order’s email, name and phone on dl_user_data of an order page', async () => {
+      const engine = await started();
+      const user = { ...ORDER.user, phone_number: '+14155550100' };
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: { ...ORDER, user } }));
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).toEqual({
+        visitor_type: 'guest',
+        customer_email: 'jane@example.com',
+        customer_first_name: 'Jane',
+        customer_last_name: 'Doe',
+        customer_phone: '+14155550100',
+      });
+    });
+
+    it('leaves out a phone that is not E.164', async () => {
+      const engine = await started();
+      const user = { ...ORDER.user, phone_number: '4155550100' };
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: { ...ORDER, user } }));
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).not.toHaveProperty('customer_phone');
+    });
+
+    it('keeps the order’s customer on dl_purchase with the checkout form filled', async () => {
+      const engine = await checkoutPage(TYPED);
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: ORDER }));
+      track(engine, 'checkout_completed', publicOrder(ORDER), '1001');
+      expect(pushes('dl_purchase')[0].user_properties).toEqual(CUSTOMER);
+    });
+
+    it('logs the checkout pushes with visitor_type only in user_properties', async () => {
+      const engine = await checkoutPage(TYPED);
+      const logged: unknown[] = [];
+      engine.log.stream((entry) => logged.push(entry));
+      track(engine, 'page_viewed', {});
+      funnel(engine);
+      expect(logged).toHaveLength(4);
+      for (const text of ['jane@example.com', 'Jane', 'customer_']) expect(JSON.stringify(logged)).not.toContain(text);
+    });
   });
 
   it('logs dl_purchase and dl_upsell_purchase with visitor_type only in user_properties', async () => {

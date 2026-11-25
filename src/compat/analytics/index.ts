@@ -4,6 +4,7 @@ import type { DestinationTrace, TrackingEvent, TrackingName } from '../../engine
 import type { EngineEvent } from '../../engine/events/bus';
 import type { EventContext } from '../../engine/events/context';
 import { createOnce, startDestination } from '../../engine/tracking';
+import { shopper } from './customer';
 import { exitIntentPushes } from './exit-pushes';
 import { dataLayerFields, type Fields, isLineEvent, lineFields, type LineEvent } from './pushes';
 import type { DataLayerName, DataLayerPush } from './schema';
@@ -88,7 +89,7 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
     event: name,
     event_id: id,
     event_time: time,
-    user_properties: { visitor_type: 'guest' },
+    user_properties: shopper(engine),
     page_location: context.page_location,
     page_title: context.page_title,
     page_referrer: context.page_referrer,

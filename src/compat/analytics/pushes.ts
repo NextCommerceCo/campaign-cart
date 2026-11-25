@@ -4,7 +4,7 @@ import type { TrackingEvent, TrackingName } from '../../engine/events/analytics'
 import { paymentType } from '../../engine/order/payment';
 import { apiOrder, PRODUCT_LIST, promotionFields, shippingTier, upsellPackage } from '../../engine/tracking';
 import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ecommerce';
-import { customer } from './customer';
+import { customer, visitor } from './customer';
 import type { DataLayerEcommerce, DataLayerEventMap, DataLayerName, DataLayerPush } from './schema';
 import type { NAMES } from '.';
 
@@ -13,7 +13,9 @@ export type Fields<N extends DataLayerName> = N extends DataLayerName
   ? Omit<DataLayerEventMap[N], Exclude<keyof DataLayerPush, OwnKey<N>>>
   : never;
 
-type OwnKey<N extends DataLayerName> = N extends 'dl_purchase' | 'dl_upsell_purchase' ? 'user_properties' : never;
+type OwnKey<N extends DataLayerName> = N extends 'dl_user_data' | 'dl_purchase' | 'dl_upsell_purchase'
+  ? 'user_properties'
+  : never;
 
 type Of<K extends TrackingName> = Fields<(typeof NAMES)[K]>;
 
@@ -112,7 +114,11 @@ export function dataLayerFields(
   switch (e.event_type) {
     case 'page_viewed': {
       const cart = reportedCart(engine);
-      return { cart_total: String(cart.value), ecommerce: cart } satisfies Of<'page_viewed'>;
+      return {
+        user_properties: visitor(engine),
+        cart_total: String(cart.value),
+        ecommerce: cart,
+      } satisfies Of<'page_viewed'>;
     }
     case 'product_viewed':
       return { ecommerce: ecommerce(engine, [e.data]) } satisfies Of<'product_viewed'>;
