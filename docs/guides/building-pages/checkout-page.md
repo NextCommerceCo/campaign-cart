@@ -61,6 +61,10 @@ Name each input with [data-next-field](../attribute-reference/inputs/data-next-f
 checks every field as the shopper leaves it, saves what was typed in this tab, and gives a field
 with an error `data-next-invalid`; its message reads as `checkout.errors.<field>`.
 
+A name, address line or city is refused only for an emoji or an HTML tag;
+digits, emails and every script pass. The rule comes from the address service, so a fix to it
+reaches every page without an SDK update.
+
 ```html
 <form data-next-checkout data-next-go="upsell.html">
   <input data-next-field="email" type="email" autocomplete="email" required />

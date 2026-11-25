@@ -375,7 +375,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
 
   it('asks for the security code again, at its field, once the hosted field emptied it', async () => {
     const { fill, card, submit, $, orders } = await mount('olympus/checkout.html');
-    const again = 'For your security, enter your security code again';
+    const again = 'Enter your security code again';
     const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
     fill(SHIPPING);
     card();
@@ -399,7 +399,7 @@ describe('checkout page (olympus, 0.4.43 markup)', () => {
   });
 
   describe('when the hosted field empties the security code', () => {
-    const again = 'For your security, enter your security code again';
+    const again = 'Enter your security code again';
     const atField = () => document.querySelector('.next-error-label[data-next-error-for="cvv"]')?.textContent;
     const typed = { validNumber: true, validCvv: true, numberLength: 16, cvvLength: 3 };
     const emptied = { validNumber: true, validCvv: false, numberLength: 16, cvvLength: 0 };
