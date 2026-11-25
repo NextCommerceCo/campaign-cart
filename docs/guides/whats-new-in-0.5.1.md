@@ -47,5 +47,7 @@ changes.
 - Affiliate and ad tracking reaches the order: on a first visit, after PayPal, Apple Pay or 3-D
   Secure, and when a shopper taps a link early.
 - Checkout tells the shopper why an order could not be placed.
+- A name, address line or city is refused only for an emoji or an HTML tag:
+  `Smith, Jr.`, `John Smith 3rd` and `迈克尔·杰克逊` go through.
 - A personalisation typed once for the whole order stays when the shopper picks another bundle.
 - Pages are ready sooner on a slow connection: about a second sooner on a checkout page.
