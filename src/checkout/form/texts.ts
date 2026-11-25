@@ -34,7 +34,7 @@ const FIELD: Record<string, string> = {
 const CARD: Record<string, string> = {
   number: 'Enter a valid card number',
   cvv: 'Enter a valid security code',
-  cvv_cleared: 'For your security, enter your security code again',
+  cvv_cleared: 'Enter your security code again',
   month: 'Select an expiry month',
   year: 'Select an expiry year',
   expiry: 'Enter the expiry date as MM / YY',
