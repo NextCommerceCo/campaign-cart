@@ -28,9 +28,10 @@ The Meta destination sends `PageView` itself, as 0.4.x did. A page that keeps
 `fbq('track', 'PageView')` in its pixel base code sends it twice: remove that line.
 
 The `checkout_*` events carry the Checkout and `checkout_completed` the Order as `next.on` does,
-with the shopper's `user` and addresses. GTM, GA4 and Meta leave them out; RudderStack sends the
-`identify()` 0.4.x sent, with the email, name, phone and address; a listener picks what its vendor
-gets.
+with the shopper's `user` and addresses. GA4 and Meta leave them out; the `dl_*` pushes carry what
+0.4.x sent in `user_properties` ([Migrating from 0.4](../../migrating-from-0.4.md)); RudderStack sends
+the `identify()` 0.4.x sent, with the email, name, phone and address; a listener picks what its
+vendor gets.
 
 ## Config
 
