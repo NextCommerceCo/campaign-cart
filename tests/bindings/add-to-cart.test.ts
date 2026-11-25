@@ -61,13 +61,17 @@ describe('add to cart', () => {
 
     it('goes without the price when pricing fails, and after 3 s when it does not answer', async () => {
       const api = heldApi();
+      let answer: (r: Response) => void = () => {};
       let fail = false;
       const fetch = ((input, init) =>
-        fail ? Promise.resolve(new Response('{}', { status: 500 })) : api.fetch(input, init)) as typeof api.fetch;
+        fail ? new Promise<Response>((r) => (answer = r)) : api.fetch(input, init)) as typeof api.fetch;
       const failing = await mount(BUY, { fetch });
       fail = true;
       failing.$('#buy').setAttribute('data-next-quantity', '5');
       failing.$('#buy').click();
+      await flush();
+      expect(failing.navigate).not.toHaveBeenCalled();
+      answer(new Response('{}', { status: 500 }));
       await flush();
       expect(failing.navigate).toHaveBeenCalledOnce();
 
