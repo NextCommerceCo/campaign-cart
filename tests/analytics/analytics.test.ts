@@ -10,7 +10,8 @@ import { paidLineId, publicOrder, purchaseId, REPORTED } from '../../src/engine/
 import type { ApiOrder } from '../../src/engine/types';
 import { upsellId } from '../../src/engine/order/order';
 import { createOrder, type OrderState } from '../../src/order/state';
-import { fakeApi, json } from '../fixtures/api';
+import { fakeApi, heldApi, json } from '../fixtures/api';
+import { startMeta } from '../../src/destinations/meta';
 import { campaign } from '../fixtures/campaign';
 import { flush, makeEngine } from '../fixtures/engine';
 import { ORDER, withUpsell } from '../fixtures/order';
@@ -276,6 +277,52 @@ describe('analytics', () => {
     const begin = win.NextDataLayer!.find((e) => e.event === 'dl_begin_checkout');
     expect(begin).toMatchObject({ cart_total: '89.00', ecommerce: { value: 89 } });
     expect(begin.ecommerce.items).toEqual([expect.objectContaining({ item_id: '12', price: 44.5, quantity: 2 })]);
+  });
+
+  describe('on a checkout whose cart is filled on that load', () => {
+    type Step = 'campaign' | 'fill' | 'priced' | 'analytics';
+    const ORDERS: Step[][] = [
+      ['campaign', 'fill', 'priced', 'analytics'],
+      ['campaign', 'fill', 'analytics', 'priced'],
+      ['campaign', 'analytics', 'fill', 'priced'],
+      ['fill', 'campaign', 'priced', 'analytics'],
+      ['fill', 'campaign', 'analytics', 'priced'],
+    ];
+    afterEach(() => delete (window as { fbq?: unknown }).fbq);
+
+    it.each(ORDERS.map((o) => [o.join(' → '), o]))(
+      'sends add_to_cart before begin_checkout, to the data layer and to Meta: %s',
+      async (_, order) => {
+        const api = heldApi();
+        api.hold();
+        let loaded = () => {};
+        const { engine } = makeEngine({
+          fetch: api.fetch,
+          campaign: new Promise((r) => (loaded = () => r(campaign))),
+        });
+        void engine.start();
+        const steps: Record<Step, () => void> = {
+          campaign: loaded,
+          fill: () => void (startCheckout(engine), engine.cart.addItem(2)),
+          priced: api.release,
+          analytics: () => startAnalytics(engine, options),
+        };
+        for (const step of order) {
+          steps[step]();
+          await flush();
+        }
+        const fbq = vi.fn();
+        (window as { fbq?: unknown }).fbq = fbq;
+        startMeta(engine);
+        await flush();
+
+        const sent = names().filter((n) => ['dl_add_to_cart', 'dl_begin_checkout'].includes(n));
+        expect(sent).toEqual(['dl_add_to_cart', 'dl_begin_checkout']);
+        expect(win.NextDataLayer!.find((e) => e.event === 'dl_begin_checkout')).toMatchObject({ cart_total: '89.00' });
+        const meta = fbq.mock.calls.map((c) => c[1]).filter((n) => ['AddToCart', 'InitiateCheckout'].includes(n));
+        expect(meta).toEqual(['AddToCart', 'InitiateCheckout']);
+      },
+    );
   });
 
   it('sends begin_checkout, add_shipping_info and add_payment_info once per checkout, across its pages', async () => {

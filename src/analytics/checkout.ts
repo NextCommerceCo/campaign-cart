@@ -1,6 +1,7 @@
 import type { TrackingMap } from '../engine/events/analytics';
 import type { EventName } from '../engine/events/bus';
 import type { Checkout } from '../engine/events/checkout';
+import { addPending } from './carts';
 import type { Handlers, Report } from './report';
 
 type OncePerCheckout = { [K in keyof TrackingMap]: TrackingMap[K] extends Checkout ? K : never }[keyof TrackingMap];
@@ -35,12 +36,18 @@ export function checkoutReports({ engine, emit, skip, once }: Report) {
       );
   };
 
-  const BEGIN = 'Once per checkout, when its form is ready and the cart is priced';
+  const BEGIN = 'Once per checkout, when its form is ready, the cart is priced and its add is reported';
   let owed = false;
   const begin = (trigger: EventName, reason: string, unpriced = false) => {
     const checkout = current();
-    owed = started() && !unpriced && checkout.cart.total === undefined && !once.sent('checkout', 'checkout_started');
-    if (owed) return skip(trigger, 'checkout_started', 'The cart is not priced yet');
+    const wait =
+      checkout.cart.total === undefined
+        ? 'The cart is not priced yet'
+        : addPending(engine)
+          ? 'product_added_to_cart has not been sent for the cart yet'
+          : undefined;
+    owed = !!wait && started() && !unpriced && !once.sent('checkout', 'checkout_started');
+    if (owed && wait) return skip(trigger, 'checkout_started', wait);
     oncePerCheckout(trigger, 'checkout_started', () => checkout, reason);
     shippingSteps(trigger);
   };
