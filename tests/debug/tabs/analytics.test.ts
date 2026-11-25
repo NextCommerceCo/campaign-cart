@@ -15,6 +15,7 @@ import {
 } from '../../../src/debug/tabs/providers';
 import { nodes, priceText } from '../../../src/debug/ui/view';
 import { GA4 } from '../../../src/destinations/ga4';
+import { startMeta } from '../../../src/destinations/meta';
 import {
   type AnalyticsTrace,
   type DestinationTrace,
@@ -417,6 +418,24 @@ describe('analytics tab', () => {
     ]);
     expect(open(0).problems()).toEqual([]);
     expect(open(0).places()[0]).toBe('GTM |  | dl_add_shipping_info already sent this checkout | off');
+    expect(flow.problems()).toEqual([]);
+  });
+
+  it('shows an event the 0.4.x blockedEvents keeps from GTM and Meta as skipped there, not as a problem', () => {
+    const { engine, flow, paint, send, open } = setup({ ...ON, meta: true });
+    win.NextDataLayer = [];
+    win.dataLayer = [];
+    win.fbq = vi.fn();
+    startLegacyDataLayer(engine, { apiKey: 'pk_test', version: 'test', blocked: ['dl_begin_checkout'] });
+    startMeta(engine, { blocked: { checkout_started: 'dl_begin_checkout' } });
+    send('checkout.started', 'checkout_started', CHECKOUT, 'cs', { layers: false });
+    paint();
+    expect(open(0).problems()).toEqual([]);
+    expect(open(0).places().slice(0, 3)).toEqual([
+      'GTM |  | dl_begin_checkout in blockedEvents | off',
+      'GA4 |  | off | off',
+      'Meta |  | dl_begin_checkout in blockedEvents | off',
+    ]);
     expect(flow.problems()).toEqual([]);
   });
 

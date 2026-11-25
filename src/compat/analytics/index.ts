@@ -1,6 +1,6 @@
 import { type Attribution, withoutQuery } from '../../engine/visit/attribution';
 import type { Engine } from '../../engine/engine';
-import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
+import type { DestinationTrace, TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import type { EngineEvent } from '../../engine/events/bus';
 import type { EventContext } from '../../engine/events/context';
 import { createOnce, startDestination } from '../../engine/tracking';
@@ -13,7 +13,8 @@ type Win = Window & {
   dataLayer?: unknown[];
   NextDataLayerTransformFn?: (event: DataLayerPush) => DataLayerPush | null | undefined | false;
 };
-type Options = { apiKey: string; version: string; dataLayer?: boolean };
+/** `blocked`: the `dl_*` names 0.4.x `providers.gtm.blockedEvents` keeps off `window.dataLayer`. */
+type Options = { apiKey: string; version: string; dataLayer?: boolean; blocked?: string[] };
 
 export const NAMES = {
   page_viewed: 'dl_user_data',
@@ -131,6 +132,14 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
       if (!out) return false;
       w.NextDataLayer!.push(out);
       if (options.dataLayer === false) return;
+      if (options.blocked?.includes(out.event))
+        return void engine.log.debug(`destination dataLayer ${out.event} not sent: in blockedEvents`, {
+          trace: 'destination',
+          destination: 'dataLayer',
+          name: out.event,
+          event_id: out.event_id,
+          skipped: 'in blockedEvents',
+        } satisfies DestinationTrace);
       w.dataLayer!.push({ ecommerce: null });
       w.dataLayer!.push(out);
     },

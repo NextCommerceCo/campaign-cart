@@ -44,7 +44,7 @@ interface Flow {
   events: Map<string, TrackingEvent>;
   runs: Run[];
   sentTo: Map<string, DestinationTrace[]>;
-  skipped: Map<string, DestinationTrace>;
+  skipped: Map<string, DestinationTrace[]>;
 }
 
 const BURST: ReadonlySet<string> = new Set<TrackingName>(['product_added_to_cart', 'product_removed_from_cart']);
@@ -77,6 +77,12 @@ const capped = <V>(map: Map<string, V>, key: string, value: V) => {
 
 const eventOf = (f: Flow, run: Run) => (run.id ? f.events.get(run.id) : undefined);
 
+/** Why `place` did not get the run: a data layer skip holds for both layers. */
+const skippedAt = (f: Flow, run: Run, place: Place) =>
+  f.skipped
+    .get(run.id ?? '')
+    ?.find((t) => t.destination === place || (t.destination === 'NextDataLayer' && LAYERS.includes(place as Layer)));
+
 const started = (f: Flow) => f.runs.length > 0 || !!(window as Win).NextDataLayer;
 
 const burst = (f: Flow, run: Run): string[] => {
@@ -97,7 +103,7 @@ const issues = (f: Flow, run: Run, layers: Layer[]) => {
   const event = eventOf(f, run);
   return [
     ...(event ? checks(event.event_type, event.data) : []),
-    ...layers.filter((l) => !pushedTo(l, burst(f, run)) && !f.skipped.has(run.id ?? '')).map((l) => `not in ${l}`),
+    ...layers.filter((l) => !pushedTo(l, burst(f, run)) && !skippedAt(f, run, l)).map((l) => `not in ${l}`),
   ];
 };
 
@@ -137,12 +143,12 @@ function status(
   layers: Layer[],
 ): ['ok' | 'warn' | 'bad' | 'off', string] {
   const hit = got.find((g) => g.place === d.place);
-  const skip = f.skipped.get(run.id ?? '');
+  const skip = skippedAt(f, run, d.place);
   if (!d.on && !hit) return ['off', 'off'];
   if (d.missing) return ['warn', `${hit ? 'received · ' : ''}no ${d.missing} on the page`];
   if (hit) return ['ok', 'received'];
-  if (!layers.includes(d.place as Layer)) return ['off', 'nothing for this event'];
-  return skip ? ['off', `${skip.name} ${skip.skipped}`] : ['bad', 'not pushed'];
+  if (skip) return ['off', `${skip.name} ${skip.skipped}`];
+  return layers.includes(d.place as Layer) ? ['bad', 'not pushed'] : ['off', 'nothing for this event'];
 }
 
 /** Each platform but NextDataLayer, with what it got of the run. */
@@ -266,7 +272,7 @@ export function analyticsFlow(ui: Flow['ui']) {
     const trace = traceOf(entry.data);
     if (trace === 'destination' && (entry.data as DestinationTrace).skipped) {
       const t = entry.data as DestinationTrace;
-      capped(f.skipped, t.event_id, t);
+      capped(f.skipped, t.event_id, [...(f.skipped.get(t.event_id) ?? []), t]);
     } else if (trace === 'destination') {
       const t = entry.data as DestinationTrace;
       capped(f.sentTo, t.event_id, [...(f.sentTo.get(t.event_id) ?? []), t]);

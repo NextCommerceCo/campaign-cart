@@ -11,7 +11,7 @@ export interface NextConfig {
   translations?: unknown;
   analytics?: {
     enabled?: boolean;
-    providers?: Record<string, { enabled?: boolean } | undefined>;
+    providers?: Record<string, { enabled?: boolean; blockedEvents?: unknown } | undefined>;
   };
   addressConfig?: { countries?: Array<{ code: string }>; dontShowStates?: string[]; enableAutocomplete?: boolean };
   paymentConfig?: {

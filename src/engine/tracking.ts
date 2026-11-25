@@ -149,6 +149,9 @@ interface Sending {
   tracking?: TrackingName;
 }
 
+/** Tracking events a destination leaves out, each under the name the page blocked it by. */
+export type Blocked = Partial<Record<TrackingName, string>>;
+
 /** How one destination turns tracking events into calls on a vendor's page script. */
 export interface Destination<V, C> {
   destination: DestinationTrace['destination'];
@@ -160,6 +163,7 @@ export interface Destination<V, C> {
   failed: string;
   /** Why this destination leaves a tracking event out, logged as a skipped trace. */
   skip?: (e: TrackingEvent) => { name: string; reason: string } | undefined;
+  blocked?: Blocked;
   /** The vendor calls a tracking event becomes; none skips it. */
   calls: (e: TrackingEvent) => C[];
   /**
@@ -229,15 +233,17 @@ export function startDestination<V, C>(engine: Engine, d: Destination<V, C>) {
   engine.on(
     'analytics',
     ({ data: e }) => {
-      if (d.burst?.of(e)) {
+      const blocked = d.blocked?.[e.event_type];
+      const skipped = blocked ? { name: blocked, reason: 'in blockedEvents' } : undefined;
+      if (!skipped && d.burst?.of(e)) {
         if (run[0] && run[0].event_type !== e.event_type) flushRun();
         if (!run.length) queueMicrotask(flushRun);
         run.push(e);
         return;
       }
-      const skipped = d.skip?.(e);
-      if (skipped) {
-        const { name, reason } = skipped;
+      const skip = skipped ?? d.skip?.(e);
+      if (skip) {
+        const { name, reason } = skip;
         return engine.log.debug(`destination ${d.destination} ${name} not sent for ${e.event_type}: ${reason}`, {
           trace: 'destination',
           destination: d.destination,
