@@ -1,10 +1,10 @@
 import type { Engine } from '../engine/engine';
 import { trackingLines, type TrackingEvent, type TrackingLine, type TrackingName } from '../engine/events/analytics';
 import {
-  type Blocked,
   defined,
   type Packages,
   perUnit,
+  type Skip,
   startDestination,
   trackingCurrency,
   trackingLineId,
@@ -108,7 +108,7 @@ export const META: Partial<Record<TrackingName, MetaName>> = {
 export interface MetaOptions {
   /** With a store name, `Purchase` of an order is sent with `eventID: '<storeName>-<order number>'`, the id the store's server-side events use. */
   storeName?: string;
-  blocked?: Blocked;
+  skip?: Skip;
 }
 
 type Win = Window & { fbq?: (...args: unknown[]) => void };
@@ -150,7 +150,7 @@ export function metaEvent(e: TrackingEvent, options: MetaOptions = {}, packages?
 export function startMeta(engine: Engine, options: MetaOptions = {}): void {
   startDestination(engine, {
     destination: 'meta',
-    blocked: options.blocked,
+    skip: options.skip,
     vendor: () => {
       const fbq = (window as Win).fbq;
       return typeof fbq === 'function' ? fbq : undefined;

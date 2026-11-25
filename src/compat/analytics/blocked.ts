@@ -1,16 +1,16 @@
-import type { Blocked } from '../../engine/tracking';
-import type { NextConfig } from '../legacy/globals';
-import { NAMES } from '.';
+import type { Skip } from '../../engine/tracking';
+import { nextConfig } from '../legacy/globals';
+import { BLOCKED, NAMES } from '.';
 
 const blockedEvents = (provider: 'gtm' | 'facebook' | 'rudderstack'): string[] => {
-  const list = (window as { nextConfig?: NextConfig }).nextConfig?.analytics?.providers?.[provider]?.blockedEvents;
+  const list = nextConfig().analytics?.providers?.[provider]?.blockedEvents;
   return Array.isArray(list) ? list.filter((name): name is string => typeof name === 'string') : [];
 };
 
-const blockedTracking = (names: string[]): Blocked | undefined => {
-  const entries = Object.entries(NAMES).filter(([, dl]) => names.includes(dl));
-  return entries.length ? (Object.fromEntries(entries) as Blocked) : undefined;
-};
+const skipBlocked = (names: string[]): Skip | undefined =>
+  names.length
+    ? ({ event_type }) => (names.includes(NAMES[event_type]) ? { name: NAMES[event_type], reason: BLOCKED } : undefined)
+    : undefined;
 
 /**
  * @deprecated 0.4.x `analytics.providers.<gtm|facebook|rudderstack>.blockedEvents`: `dl_*` names, matched
@@ -21,7 +21,7 @@ export function legacyBlocked() {
   const gtm = blockedEvents('gtm');
   return {
     dataLayer: gtm.length ? gtm : undefined,
-    meta: blockedTracking(blockedEvents('facebook')),
-    rudderstack: blockedTracking(blockedEvents('rudderstack')),
+    meta: skipBlocked(blockedEvents('facebook')),
+    rudderstack: skipBlocked(blockedEvents('rudderstack')),
   };
 }

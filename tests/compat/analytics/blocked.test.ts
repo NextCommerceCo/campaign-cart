@@ -95,10 +95,11 @@ describe('0.4.x blockedEvents', () => {
     };
     expect(legacyBlocked()).toEqual({ dataLayer: ['dl_purchase'] });
     win.nextConfig = { analytics: { providers: { rudderstack: { blockedEvents: ['dl_add_shipping_info'] } } } };
-    expect(legacyBlocked().rudderstack).toEqual({
-      checkout_shipping_address_submitted: 'dl_add_shipping_info',
-      checkout_shipping_method_submitted: 'dl_add_shipping_info',
-    });
+    const skip = (event_type: TrackingName) => legacyBlocked().rudderstack?.({ event_type } as TrackingEvent);
+    const blocked = { name: 'dl_add_shipping_info', reason: 'in blockedEvents' };
+    expect(skip('checkout_shipping_address_submitted')).toEqual(blocked);
+    expect(skip('checkout_shipping_method_submitted')).toEqual(blocked);
+    expect(skip('checkout_started')).toBeUndefined();
   });
 
   it.each([

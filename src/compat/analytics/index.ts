@@ -14,8 +14,15 @@ type Win = Window & {
   dataLayer?: unknown[];
   NextDataLayerTransformFn?: (event: DataLayerPush) => DataLayerPush | null | undefined | false;
 };
-/** `blocked`: the `dl_*` names 0.4.x `providers.gtm.blockedEvents` keeps off `window.dataLayer`. */
-type Options = { apiKey: string; version: string; dataLayer?: boolean; blocked?: string[] };
+type Options = {
+  apiKey: string;
+  version: string;
+  dataLayer?: boolean;
+  /** The `dl_*` names 0.4.x `providers.gtm.blockedEvents` keeps off `window.dataLayer`. */
+  blocked?: string[];
+};
+
+export const BLOCKED = 'in blockedEvents';
 
 export const NAMES = {
   page_viewed: 'dl_user_data',
@@ -134,12 +141,12 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
       w.NextDataLayer!.push(out);
       if (options.dataLayer === false) return;
       if (options.blocked?.includes(out.event))
-        return void engine.log.debug(`destination dataLayer ${out.event} not sent: in blockedEvents`, {
+        return void engine.log.debug(`destination dataLayer ${out.event} not sent: ${BLOCKED}`, {
           trace: 'destination',
           destination: 'dataLayer',
           name: out.event,
           event_id: out.event_id,
-          skipped: 'in blockedEvents',
+          skipped: BLOCKED,
         } satisfies DestinationTrace);
       w.dataLayer!.push({ ecommerce: null });
       w.dataLayer!.push(out);

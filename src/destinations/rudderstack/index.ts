@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { type Blocked, createOnce, startDestination } from '../../engine/tracking';
+import { createOnce, type Skip, startDestination } from '../../engine/tracking';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -19,7 +19,7 @@ const meta = (name: string) => document.querySelector<HTMLMetaElement>(`meta[nam
 /** Sends every tracking event of this page, and each later one, to the page's `rudderanalytics`. */
 export function startRudderStack(
   engine: Engine,
-  { blocked, ...options }: Pick<RudderStackOptions, 'apiKey'> & { blocked?: Blocked } = {},
+  { skip, ...options }: Pick<RudderStackOptions, 'apiKey'> & { skip?: Skip } = {},
 ): void {
   const win = window as Win;
   const page: RudderStackOptions = {
@@ -39,7 +39,7 @@ export function startRudderStack(
     (vendor() ? once('checkout', STEP) : !once.sent('checkout', STEP));
   startDestination(engine, {
     destination: 'rudderstack',
-    blocked,
+    skip,
     vendor,
     missing:
       "RudderStack destination is on but the page has no rudderanalytics; add RudderStack's JS SDK snippet. Events before it loads are not sent",

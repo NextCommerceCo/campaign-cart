@@ -1,7 +1,7 @@
 import type { LegacyAnalytics } from '../compat/legacy/globals';
 import type { Engine } from '../engine/engine';
 import type { EngineEvent } from '../engine/events/bus';
-import type { Blocked } from '../engine/tracking';
+import type { Skip } from '../engine/tracking';
 
 type Switch = { enabled?: boolean } | undefined;
 
@@ -26,7 +26,7 @@ export interface Destinations {
   rudderstack: boolean;
   storeName?: string;
   /** What each destination leaves out: `dl_*` names off `window.dataLayer`, tracking events off a vendor. */
-  blocked?: { dataLayer?: string[]; meta?: Blocked; rudderstack?: Blocked };
+  blocked?: { dataLayer?: string[]; meta?: Skip; rudderstack?: Skip };
 }
 
 /** `nextConfig.analytics.destinations`, over what the 0.4.x options asked for. GTM is on unless turned off. */
@@ -62,11 +62,11 @@ export function startDestinations(
   if (destinations.ga4) void import('../destinations/ga4').then((m) => m.startGa4(engine));
   if (destinations.meta)
     void import('../destinations/meta').then((m) =>
-      m.startMeta(engine, { storeName: destinations.storeName, blocked: blocked.meta }),
+      m.startMeta(engine, { storeName: destinations.storeName, skip: blocked.meta }),
     );
   if (destinations.rudderstack)
     void import('../destinations/rudderstack').then((m) =>
-      m.startRudderStack(engine, { apiKey: options.apiKey, blocked: blocked.rudderstack }),
+      m.startRudderStack(engine, { apiKey: options.apiKey, skip: blocked.rudderstack }),
     );
   return exitIntent;
 }

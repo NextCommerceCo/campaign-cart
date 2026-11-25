@@ -427,7 +427,7 @@ describe('analytics tab', () => {
     win.dataLayer = [];
     win.fbq = vi.fn();
     startLegacyDataLayer(engine, { apiKey: 'pk_test', version: 'test', blocked: ['dl_begin_checkout'] });
-    startMeta(engine, { blocked: { checkout_started: 'dl_begin_checkout' } });
+    startMeta(engine, { skip: () => ({ name: 'dl_begin_checkout', reason: 'in blockedEvents' }) });
     send('checkout.started', 'checkout_started', CHECKOUT, 'cs', { layers: false });
     paint();
     expect(open(0).problems()).toEqual([]);
