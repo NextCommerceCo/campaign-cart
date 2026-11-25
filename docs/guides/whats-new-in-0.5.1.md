@@ -30,6 +30,9 @@ changes.
 - **A name for a sum.** `data-next-define="cart.free_shipping_left = 75 - total_before_shipping"`
   makes it a field every query and condition can read.
   [data-next-define](attribute-reference/display/data-next-define.md)
+- **Add to cart, counted at the click.** With `analytics.addToCartBeforeRedirect: true`, an
+  add-to-cart button that goes to another page sends `dl_add_to_cart` and Meta's `AddToCart` before
+  it leaves. [Destinations](analytics-reference/destinations/overview.md#config)
 
 ## Fixed
 

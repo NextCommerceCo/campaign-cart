@@ -38,6 +38,8 @@ export interface CartActions {
   setQuantity(packageId: number, quantity: number, action?: CartOperation['action']): Promise<void>;
   removeItem(packageId: number): Promise<void>;
   addItem(packageId: number, quantity?: number, groupId?: string): Promise<void>;
+  /** Prices the cart as adding this item would leave it (`alone`: after a clear), so the add is priced at once. */
+  quoteItem(packageId: number, quantity?: number, alone?: boolean): void;
   clear(): Promise<void>;
   applyCoupon(code: string): Promise<boolean>;
   removeCoupon(code: string): Promise<void>;
@@ -264,6 +266,13 @@ export function createCart(ctx: Context): CartActions {
       return commit({ groups });
     },
     ...createGroupEdits(ctx, commit),
+    quoteItem(packageId, quantity = 1, alone = false) {
+      const all = ctx.getState();
+      if (!all.campaign || state().frozen) return;
+      const groups = alone ? {} : state().groups;
+      const items = withItem(groups.items ?? { lines: [], vouchers: [] }, packageId, quantity);
+      void quotes.calculate({ ...cartBody(all, alone ? [] : vouchers()), lines: mergeLines({ ...groups, items }) });
+    },
     clear() {
       if (state().frozen) return Promise.resolve();
       const { coupons: applied, held } = state();
