@@ -70,8 +70,8 @@ describe('checkout rules', () => {
     expect(fieldError('line2', 'Apt 4', false, served('^(?!.*\\bPO Box\\b).*$'))).toBeUndefined();
     expect(fieldError('first_name', 'สุดา', true, served('^\\p{L}[\\p{L}\\p{M}]*$'))).toBeUndefined();
     expect(fieldError('first_name', 'J4ne', true, served('[('))).toBeUndefined();
-    const loose = served('^(?=.*\\p{L})[^\\p{Cc}@<>]+$');
-    for (const name of ['Smith, Jr.', 'John Smith 3rd', '迈克尔·杰克逊', 'สุดา'])
+    const loose = served('^(?=.*\\p{L})(?:\\s|[^\\p{Cc}@<>])+$');
+    for (const name of ['Smith, Jr.', 'John Smith 3rd', '迈克尔·杰克逊', 'สุดา', 'Jane\tDoe'])
       expect(fieldError('first_name', name, true, loose)).toBeUndefined();
     expect(fieldError('last_name', 'jane@example.com', true, loose)).toBe('invalid_characters');
     expect(fieldError('city', '12345', true, loose)).toBe('invalid');
