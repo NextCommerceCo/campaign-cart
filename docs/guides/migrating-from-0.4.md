@@ -73,11 +73,12 @@ Every 0.4.43 attribute, method, event and config key is listed in
 
 - `dl_begin_checkout`, `dl_add_shipping_info`, `dl_add_payment_info`: once per checkout. A later
   step, a reload or a return from the payment gateway does not send them again.
-  `dl_begin_checkout` waits for the cart's price, so it comes after the cart's `dl_add_to_cart`.
+  `dl_begin_checkout` waits for the cart's price and its `dl_add_to_cart`, so it always comes after it.
   `dl_add_shipping_info` is sent when the shipping address is valid, after `dl_begin_checkout`; a
   shipping method priced before that (a bundle card with `data-next-shipping-id`) does not send it.
 - `dl_add_to_cart` is now sent for a cart filled before the page loaded (default bundle,
-  `forcePackageId`, `forceBundleId`, a redirecting add-to-cart button), at the cart price.
+  `forcePackageId`, `forceBundleId`), at the cart price. An add-to-cart button with `data-next-url`
+  sends it on its own page before it leaves (0.4.x lost it).
   Filter on `first_in_session` to send one AddToCart per tab. The Meta destination does this itself.
 - The Meta destination sends `PageView` itself, as 0.4.x did: a page whose pixel base code keeps
   `fbq('track', 'PageView')` sends it twice, so remove that line.
@@ -86,9 +87,16 @@ Every 0.4.43 attribute, method, event and config key is listed in
 - `dl_upsell_purchase` is sent on the next page from the order's own lines; nothing is queued in
   sessionStorage. As in 0.4.x, a line the order was paid with (an order bump with
   `data-next-is-upsell="true"`) is in `dl_purchase`, not a `dl_upsell_purchase`.
-- `user_properties` carries the customer's email, name, phone and billing address on `dl_purchase`
-  and `dl_upsell_purchase` only, from the order. Every other `dl_*` event has
-  `{ visitor_type: 'guest' }`.
+- `user_properties` carries:
+
+  | Event                               | Besides `visitor_type`                                                                  |
+  | ----------------------------------- | --------------------------------------------------------------------------------------- |
+  | `dl_purchase`, `dl_upsell_purchase` | The order's email, name, phone and billing address                                      |
+  | `dl_user_data`                      | Email, name and E.164 phone (the order's on an upsell or receipt page), billing country |
+  | Every other `dl_*` event            | `customer_email` and `customer_country` (billing) from the checkout form, once typed    |
+
+  The billing name, phone and street address are not sent before the order.
+
 - `dl_purchase`:
   - No URL query strings in `page_referrer` / `attribution.metadata`.
   - Same `transaction_id`, value, tax basis (picked per order, as 0.4.x did), `item_sku`, per-item
@@ -119,6 +127,7 @@ Still works. Use the right column on new pages.
 | `nextConfig.currencyBehavior: 'auto'`                                                                                                                                      | `data-currency="auto"` on the script tag ([Loader script](attribute-reference/setup/loader-script.md))                                                                                                                                                                    |
 | `nextConfig.analytics.providers.gtm.enabled`, `providers.facebook.enabled`, `nextConfig.storeName`                                                                         | `nextConfig.analytics.destinations.gtm.enabled`, `destinations.meta.enabled` and `destinations.meta.storeName` ([Destinations](analytics-reference/destinations/overview.md#config)). The Meta pixel is built in again, and the 0.4.x keys still turn GTM off and Meta on |
 | `nextConfig.analytics.providers.rudderstack.enabled`                                                                                                                       | `nextConfig.analytics.destinations.rudderstack.enabled` ([RudderStack](analytics-reference/destinations/rudderstack.md)): the same calls, event names and properties as 0.4.x. The 0.4.x key still turns it on                                                            |
+| `nextConfig.analytics.providers.<gtm\|facebook\|rudderstack>.blockedEvents`                                                                                                | Still read (deprecated): each `dl_*` name, matched verbatim, stays off that one destination (`window.dataLayer`, Meta, RudderStack). `window.NextDataLayer` still gets it                                                                                                 |
 | `nextConfig.analytics.providers.custom`                                                                                                                                    | A listener: `next.analytics.on('*', (event) => fetch(url, { method: 'POST', keepalive: true, body: JSON.stringify(event) }))` ([By hand](analytics-reference/destinations/overview.md#by-hand))                                                                           |
 | `data-next-timer`, `data-next-accordion`, `data-next-tooltip`, `data-next-component="scroll-hint"`                                                                         | Your own script or CSS: `<details>` for an accordion, `title` or CSS for a tooltip                                                                                                                                                                                        |
 | `<meta name="data-next-tracking-tag">`, `os-tracking-tag`                                                                                                                  | `next.actions.setMetadata({ fb_test_code: 'TEST30399' })` from a script ([JavaScript API](javascript-api.md))                                                                                                                                                             |
@@ -151,3 +160,5 @@ use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordio
   `next-skipped`.
 - **Receipt**: `order.*` display paths and `[data-next-order-items]` `{item.*}` tokens.
 - **Timer**: counts down from where the tab left it, then shows `[data-next-timer-expired]`.
+- **Visitor id**: `localStorage['visitor_id__<scope>']`, same key. Its value is now the campaign
+  session id, the `session_id` of every event (32 hex digits), not `visitor_…`.

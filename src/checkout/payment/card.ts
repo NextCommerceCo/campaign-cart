@@ -8,7 +8,7 @@ import { bindExpiry, type Expiry } from './expiry';
 
 declare const __VERSION__: string;
 
-type FieldChange = { field?: string; action?: string; validNumber?: boolean; validCvv?: boolean };
+type FieldChange = { field?: string; action?: string; validNumber?: boolean; validCvv?: boolean; cvvLength?: number };
 type Validation = { errors?: Array<{ attribute?: string; message?: string }> };
 
 interface NextPaymentInstance {
@@ -115,7 +115,7 @@ interface CardView {
   errors: Map<string, string>;
   valid: Flags;
   focused: Flags;
-  /** The hosted field emptied the security code three minutes after it was typed, until it is typed again. */
+  /** The hosted field emptied the security code (after three minutes), or refused one it reported typed, until it is typed again. */
   cvvCleared: boolean;
   render(): void;
   changed(): void;
@@ -136,24 +136,33 @@ function cardView(hosts: HostedFields, expiry: Expiry, checkout: CheckoutActions
   return { errors, valid, focused, cvvCleared: false, render, changed };
 }
 
+function clearCvv(view: CardView): void {
+  view.cvvCleared = true;
+  view.valid.cvv = false;
+  view.errors.set('cvv', cardText('cvv_cleared'));
+}
+
 function applyFieldState(state: FieldChange | undefined, view: CardView): boolean {
   const { errors, valid, focused } = view;
   const field = state?.field;
   if (field !== 'number' && field !== 'cvv') return false;
+  const emptied = valid.cvv && state?.cvvLength === 0 && !focused.cvv;
   if (typeof state?.validNumber === 'boolean') valid.number = state.validNumber;
   if (typeof state?.validCvv === 'boolean') valid.cvv = state.validCvv;
-  if (state?.action === 'input') {
+  if (state?.action === 'input' && !(field === 'cvv' && view.cvvCleared && state.cvvLength === 0)) {
     errors.delete(field);
     if (field === 'cvv') view.cvvCleared = false;
   }
+  if (emptied) clearCvv(view);
   if (state?.action === 'focus' || state?.action === 'blur') focused[field] = state.action === 'focus';
   return true;
 }
 
-function addValidationErrors(errors: Map<string, string>, payload?: Validation): void {
+function addValidationErrors(view: CardView, payload?: Validation): void {
   for (const e of payload?.errors ?? []) {
     const field = e.attribute === 'month' || e.attribute === 'year' || e.attribute === 'cvv' ? e.attribute : 'number';
-    errors.set(field, e.message ?? refusedText(field));
+    if (field === 'cvv' && (view.valid.cvv || view.cvvCleared)) clearCvv(view);
+    else view.errors.set(field, e.message ?? refusedText(field));
   }
 }
 
@@ -197,15 +206,13 @@ function connect(envKey: string, form: HTMLFormElement, view: CardView): Payment
     instance.onReady = () => form.classList.remove('next-loading-spreedly');
     instance.onFieldStateChange = (state) => applyFieldState(state, view) && view.changed();
     instance.onValidation = (payload) => {
-      addValidationErrors(view.errors, payload);
+      addValidationErrors(view, payload);
       if (view.errors.size) settle(undefined, [...view.errors.values()].join('. '));
     };
     instance.onError = (error) => {
       const { message, reason } = (error ?? {}) as { message?: unknown; reason?: unknown };
       if (reason !== undefined && /cvv/i.test(`${String(message)} ${String(reason)}`)) {
-        view.cvvCleared = true;
-        view.valid.cvv = false;
-        view.errors.set('cvv', cardText('cvv_cleared'));
+        clearCvv(view);
         view.render();
         return settle(undefined, cardText('cvv_cleared'));
       }

@@ -1,5 +1,5 @@
-import { announceLegacyLoaded, legacyGlobals } from './compat/config';
-import { campaignUrl, pagePreloads, readConfig, visitorCurrency } from './config';
+import { announceLegacyLoaded, keepLegacyVisitorId, legacyGlobals } from './compat/config';
+import { campaignUrl, keepCurrency, pagePreloads, readConfig, visitorCurrency } from './config';
 
 const STYLESHEET = 'campaign-cart.css';
 
@@ -22,7 +22,11 @@ if (!config.apiKey) {
     );
   const located = config.autoCurrency ? visitorCurrency(window) : undefined;
   const campaign = located ? located.then(load) : load(config.currency);
-  campaign.catch(() => {});
+  campaign.then(
+    (answer: { currency?: string }) =>
+      config.currency && answer.currency && keepCurrency(window, config.apiKey, answer.currency),
+    () => {},
+  );
 
   const parsed =
     document.readyState === 'loading'
@@ -44,7 +48,8 @@ if (!config.apiKey) {
     .then(async ({ boot }) => {
       announceLegacyLoaded(window);
       await parsed;
-      boot(located ? { ...config, currency: await located } : config, campaign);
+      const next = boot(located ? { ...config, currency: await located } : config, campaign);
+      keepLegacyVisitorId(document, window, config.apiKey, next.context().session_id);
     })
     .catch((err) => {
       console.error('[next] failed to start', err);

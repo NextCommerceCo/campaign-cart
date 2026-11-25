@@ -1,13 +1,14 @@
 import type { LegacyAnalytics } from '../compat/legacy/globals';
 import type { Engine } from '../engine/engine';
 import type { EngineEvent } from '../engine/events/bus';
+import type { Skip } from '../engine/tracking';
 
 type Switch = { enabled?: boolean } | undefined;
 
 /** Starts the `dl_*` data layer (compat/analytics, wired in by the chunk entry); returns its exit-intent handler. */
 export type DataLayerStart = (
   engine: Engine,
-  options: { apiKey: string; version: string; dataLayer: boolean },
+  options: { apiKey: string; version: string; dataLayer: boolean; blocked?: string[] },
 ) => (e: EngineEvent) => void;
 
 interface DestinationsConfig {
@@ -24,6 +25,8 @@ export interface Destinations {
   meta: boolean;
   rudderstack: boolean;
   storeName?: string;
+  /** What each destination leaves out: `dl_*` names off `window.dataLayer`, tracking events off a vendor. */
+  blocked?: { dataLayer?: string[]; meta?: Skip; rudderstack?: Skip };
 }
 
 /** `nextConfig.analytics.destinations`, over what the 0.4.x options asked for. GTM is on unless turned off. */
@@ -54,11 +57,16 @@ export function startDestinations(
   options: { apiKey: string; version: string },
   startDataLayer: DataLayerStart,
 ): (e: EngineEvent) => void {
-  const exitIntent = startDataLayer(engine, { ...options, dataLayer: destinations.gtm });
+  const { blocked = {} } = destinations;
+  const exitIntent = startDataLayer(engine, { ...options, dataLayer: destinations.gtm, blocked: blocked.dataLayer });
   if (destinations.ga4) void import('../destinations/ga4').then((m) => m.startGa4(engine));
   if (destinations.meta)
-    void import('../destinations/meta').then((m) => m.startMeta(engine, { storeName: destinations.storeName }));
+    void import('../destinations/meta').then((m) =>
+      m.startMeta(engine, { storeName: destinations.storeName, skip: blocked.meta }),
+    );
   if (destinations.rudderstack)
-    void import('../destinations/rudderstack').then((m) => m.startRudderStack(engine, { apiKey: options.apiKey }));
+    void import('../destinations/rudderstack').then((m) =>
+      m.startRudderStack(engine, { apiKey: options.apiKey, skip: blocked.rudderstack }),
+    );
   return exitIntent;
 }

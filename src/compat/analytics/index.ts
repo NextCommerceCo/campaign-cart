@@ -1,9 +1,10 @@
 import { type Attribution, withoutQuery } from '../../engine/visit/attribution';
 import type { Engine } from '../../engine/engine';
-import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
+import type { DestinationTrace, TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import type { EngineEvent } from '../../engine/events/bus';
 import type { EventContext } from '../../engine/events/context';
 import { createOnce, startDestination } from '../../engine/tracking';
+import { shopper } from './customer';
 import { exitIntentPushes } from './exit-pushes';
 import { dataLayerFields, type Fields, isLineEvent, lineFields, type LineEvent } from './pushes';
 import type { DataLayerName, DataLayerPush } from './schema';
@@ -13,7 +14,15 @@ type Win = Window & {
   dataLayer?: unknown[];
   NextDataLayerTransformFn?: (event: DataLayerPush) => DataLayerPush | null | undefined | false;
 };
-type Options = { apiKey: string; version: string; dataLayer?: boolean };
+type Options = {
+  apiKey: string;
+  version: string;
+  dataLayer?: boolean;
+  /** The `dl_*` names 0.4.x `providers.gtm.blockedEvents` keeps off `window.dataLayer`. */
+  blocked?: string[];
+};
+
+export const BLOCKED = 'in blockedEvents';
 
 export const NAMES = {
   page_viewed: 'dl_user_data',
@@ -87,7 +96,7 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
     event: name,
     event_id: id,
     event_time: time,
-    user_properties: { visitor_type: 'guest' },
+    user_properties: shopper(engine),
     page_location: context.page_location,
     page_title: context.page_title,
     page_referrer: context.page_referrer,
@@ -131,6 +140,14 @@ export function startLegacyDataLayer(engine: Engine, options: Options): (e: Engi
       if (!out) return false;
       w.NextDataLayer!.push(out);
       if (options.dataLayer === false) return;
+      if (options.blocked?.includes(out.event))
+        return void engine.log.debug(`destination dataLayer ${out.event} not sent: ${BLOCKED}`, {
+          trace: 'destination',
+          destination: 'dataLayer',
+          name: out.event,
+          event_id: out.event_id,
+          skipped: BLOCKED,
+        } satisfies DestinationTrace);
       w.dataLayer!.push({ ecommerce: null });
       w.dataLayer!.push(out);
     },

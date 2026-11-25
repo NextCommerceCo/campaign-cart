@@ -30,6 +30,41 @@ export function legacyFlags(params: URLSearchParams): { debug: boolean; reset: b
   return { debug, reset: params.get('reset') === 'true' };
 }
 
+const sanitize = (raw: string) =>
+  raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, 40)
+    .replace(/^-+|-+$/g, '');
+
+/** `hash` of `engine/visit/scope`, copied: the loader shares no module with boot. */
+const fnv1a = (value: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) h = Math.imul(h ^ value.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
+};
+
+/**
+ * @deprecated 0.4.x's `visitor_id__<scope>`: scope = `nextConfig.storageScope`, else `<meta name="next-storage-scope">`,
+ * else fnv1a(key + "\n" + first folder of a page two folders deep); bare `visitor_id` with none.
+ */
+export function legacyVisitorKey(doc: Document, win: Window, apiKey: string): string {
+  const configured = nextConfig(win).storageScope;
+  const segments = win.location.pathname.split('/').filter(Boolean);
+  const scope =
+    (typeof configured === 'string' && sanitize(configured)) ||
+    sanitize(meta(doc, 'next-storage-scope')) ||
+    (apiKey && fnv1a(`${apiKey}\n${segments.length > 1 ? sanitize(segments[0]!) : ''}`));
+  return scope ? `visitor_id__${scope}` : 'visitor_id';
+}
+
+/** @deprecated 0.4.x's visitor id, which pages read from localStorage as Meta's `external_id`: the campaign session id. */
+export function keepLegacyVisitorId(doc: Document, win: Window, apiKey: string, sessionId: string): void {
+  try {
+    win.localStorage.setItem(legacyVisitorKey(doc, win, apiKey), sessionId);
+  } catch {}
+}
+
 declare const __VERSION__: string;
 
 /** @deprecated The 0.4.x loader created `window.dataLayer`; pages that push to it early keep working. */

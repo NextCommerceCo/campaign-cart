@@ -159,7 +159,7 @@ export interface AnalyticsTrace {
 
 export interface DestinationTrace {
   trace: 'destination';
-  destination: 'NextDataLayer' | 'ga4' | 'meta' | 'rudderstack';
+  destination: 'NextDataLayer' | 'dataLayer' | 'ga4' | 'meta' | 'rudderstack';
   name: string;
   /** None on a push no tracking event made (exit intent). */
   tracking?: TrackingName;

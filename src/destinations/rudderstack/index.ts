@@ -1,5 +1,5 @@
 import type { Engine } from '../../engine/engine';
-import { createOnce, startDestination } from '../../engine/tracking';
+import { createOnce, type Skip, startDestination } from '../../engine/tracking';
 import { rudderStackCalls } from './calls';
 import type { RudderStackCall, RudderStackOptions } from './types';
 
@@ -17,7 +17,10 @@ const STEP = 'rudderstack:Checkout Step Completed';
 const meta = (name: string) => document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content || undefined;
 
 /** Sends every tracking event of this page, and each later one, to the page's `rudderanalytics`. */
-export function startRudderStack(engine: Engine, options: Pick<RudderStackOptions, 'apiKey'> = {}): void {
+export function startRudderStack(
+  engine: Engine,
+  { skip, ...options }: Pick<RudderStackOptions, 'apiKey'> & { skip?: Skip } = {},
+): void {
   const win = window as Win;
   const page: RudderStackOptions = {
     ...options,
@@ -36,6 +39,7 @@ export function startRudderStack(engine: Engine, options: Pick<RudderStackOption
     (vendor() ? once('checkout', STEP) : !once.sent('checkout', STEP));
   startDestination(engine, {
     destination: 'rudderstack',
+    skip,
     vendor,
     missing:
       "RudderStack destination is on but the page has no rudderanalytics; add RudderStack's JS SDK snippet. Events before it loads are not sent",

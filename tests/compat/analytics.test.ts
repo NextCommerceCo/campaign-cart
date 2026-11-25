@@ -6,7 +6,13 @@ import { OBJECTS, type TrackingEvent, type TrackingMap, type TrackingName } from
 import type { Cart, CartItem } from '../../src/engine/events/carts';
 import { newId } from '../../src/engine/runtime/id';
 import { publicOrder } from '../../src/engine/order/order';
-import { makeEngine } from '../fixtures/engine';
+import type { SelectorCard } from '../../src/engine/cart/types';
+import type { Campaign } from '../../src/engine/types';
+import { json } from '../fixtures/api';
+import { campaign } from '../fixtures/campaign';
+import { startAnalytics } from '../../src/analytics';
+import { flush, makeEngine } from '../fixtures/engine';
+import { MemoryStorage } from '../fixtures/storage';
 import { fakeRules } from '../fixtures/rules';
 import { ORDER, withUpsell } from '../fixtures/order';
 
@@ -258,7 +264,7 @@ describe('0.4.x data layer from tracking events', () => {
     expect(pushes('dl_purchase')[0].user_properties).toEqual({ visitor_type: 'guest' });
   });
 
-  it('sends only visitor_type in user_properties of every other push, with the order loaded', async () => {
+  it('sends only visitor_type in user_properties of every other push without a checkout form, with the order loaded', async () => {
     const engine = await started();
     engine.attach((ctx) => ctx.update('order', { order: ORDER }));
     track(engine, 'checkout_started', { id: 'c1', step: 1, cart: emptyCart } as TrackingMap['checkout_started']);
@@ -271,6 +277,124 @@ describe('0.4.x data layer from tracking events', () => {
       ['dl_begin_checkout', { visitor_type: 'guest' }],
       ['dl_viewed_upsell', { visitor_type: 'guest' }],
     ]);
+  });
+
+  describe('user_properties before the purchase, as 0.4.43 sent them', () => {
+    const TYPED = {
+      email: ' jane@example.com ',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      phone_number: '(415) 555-0100',
+      line1: '1 Main St',
+      city: 'Austin',
+      state: 'TX',
+      postcode: '73301',
+      country: 'US',
+    };
+    const cart: Cart = { ...emptyCart, lines: [line(2, 1, 89)] };
+
+    async function checkoutPage(fields: Record<string, string>, more: object = {}) {
+      const engine = await started();
+      engine.checkout = engine.attach((ctx) => createCheckout(ctx, engine.cart, fakeRules().api));
+      engine.attach((ctx) => ctx.update('checkout', { id: 'c1', fields, ...more }));
+      return engine;
+    }
+
+    const funnel = (engine: Engine) => {
+      track(engine, 'checkout_started', { id: 'c1', cart });
+      track(engine, 'checkout_shipping_address_submitted', { id: 'c1', cart });
+      track(engine, 'checkout_payment_info_submitted', { id: 'c1', cart, payment_method: 'card_token' });
+      return Object.fromEntries(win.NextDataLayer!.map((e) => [e.event, e.user_properties]));
+    };
+
+    it('sends only visitor_type before the shopper has typed anything', async () => {
+      const engine = await checkoutPage({});
+      track(engine, 'page_viewed', {});
+      expect(funnel(engine)).toEqual({
+        dl_user_data: { visitor_type: 'guest' },
+        dl_begin_checkout: { visitor_type: 'guest' },
+        dl_add_shipping_info: { visitor_type: 'guest' },
+        dl_add_payment_info: { visitor_type: 'guest' },
+      });
+    });
+
+    it('sends the country on dl_begin_checkout before the email is typed', async () => {
+      const engine = await checkoutPage({ country: 'US', email: '' });
+      track(engine, 'checkout_started', { id: 'c1', cart });
+      expect(pushes('dl_begin_checkout')[0].user_properties).toEqual({ visitor_type: 'guest', customer_country: 'US' });
+    });
+
+    it('sends the email and country on the checkout steps, without the name, phone or address', async () => {
+      const engine = await checkoutPage(TYPED, { phones: { phone_number: { value: '+14155550100', country: 'US' } } });
+      const sent = { visitor_type: 'guest', customer_email: 'jane@example.com', customer_country: 'US' };
+      expect(funnel(engine)).toEqual({
+        dl_begin_checkout: sent,
+        dl_add_shipping_info: sent,
+        dl_add_payment_info: sent,
+      });
+      expect(win.dataLayer!.filter((e) => e.event).map((e) => e.user_properties)).toEqual([sent, sent, sent]);
+    });
+
+    it('sends the billing country when the billing address is separate', async () => {
+      const engine = await checkoutPage({ ...TYPED, billing_country: 'CA' }, { sameAsShipping: false });
+      track(engine, 'checkout_payment_info_submitted', { id: 'c1', cart });
+      expect(pushes('dl_add_payment_info')[0].user_properties).toMatchObject({ customer_country: 'CA' });
+      engine.attach((ctx) => ctx.update('checkout', { sameAsShipping: true }));
+      track(engine, 'cart_updated', cart);
+      expect(pushes('dl_cart_updated')[0].user_properties).toMatchObject({ customer_country: 'US' });
+    });
+
+    it('sends the name and E.164 phone on dl_user_data of the checkout page, without the address', async () => {
+      const engine = await checkoutPage(TYPED, { phones: { phone_number: { value: '+14155550100', country: 'US' } } });
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).toEqual({
+        visitor_type: 'guest',
+        customer_email: 'jane@example.com',
+        customer_country: 'US',
+        customer_first_name: 'Jane',
+        customer_last_name: 'Doe',
+        customer_phone: '+14155550100',
+      });
+    });
+
+    it('sends the order’s email, name and phone on dl_user_data of an order page', async () => {
+      const engine = await started();
+      const user = { ...ORDER.user, phone_number: '+14155550100' };
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: { ...ORDER, user } }));
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).toEqual({
+        visitor_type: 'guest',
+        customer_email: 'jane@example.com',
+        customer_first_name: 'Jane',
+        customer_last_name: 'Doe',
+        customer_phone: '+14155550100',
+      });
+    });
+
+    it('leaves out a phone that is not E.164', async () => {
+      const engine = await started();
+      const user = { ...ORDER.user, phone_number: '4155550100' };
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: { ...ORDER, user } }));
+      track(engine, 'page_viewed', {});
+      expect(pushes('dl_user_data')[0].user_properties).not.toHaveProperty('customer_phone');
+    });
+
+    it('keeps the order’s customer on dl_purchase with the checkout form filled', async () => {
+      const engine = await checkoutPage(TYPED);
+      engine.attach((ctx) => ctx.update('order', { refId: 'R1', order: ORDER }));
+      track(engine, 'checkout_completed', publicOrder(ORDER), '1001');
+      expect(pushes('dl_purchase')[0].user_properties).toEqual(CUSTOMER);
+    });
+
+    it('logs the checkout pushes with visitor_type only in user_properties', async () => {
+      const engine = await checkoutPage(TYPED);
+      const logged: unknown[] = [];
+      engine.log.stream((entry) => logged.push(entry));
+      track(engine, 'page_viewed', {});
+      funnel(engine);
+      expect(logged).toHaveLength(4);
+      for (const text of ['jane@example.com', 'Jane', 'customer_']) expect(JSON.stringify(logged)).not.toContain(text);
+    });
   });
 
   it('logs dl_purchase and dl_upsell_purchase with visitor_type only in user_properties', async () => {
@@ -327,5 +451,103 @@ describe('0.4.x data layer from tracking events', () => {
         upsell_metadata: { original_order_id: 'R1', upsell_number: 1, package_id: '9', package_name: 'Bump' },
       },
     ]);
+  });
+});
+
+describe('dl_user_data', () => {
+  const pkg = (ref_id: number, price: string) => ({
+    ...campaign.packages[0]!,
+    ref_id,
+    external_id: ref_id,
+    price,
+    price_total: price,
+    price_retail: price,
+    price_retail_total: price,
+  });
+  const FUNNEL: Campaign = { ...campaign, packages: [pkg(101, '100.00'), pkg(104, '29.99')] };
+  /** The cart price of a package after offers, by `package:quantity`; its list price is `price`. */
+  const OFFER: Record<string, number> = { '101:1': 50, '101:2': 40, '101:3': 30, '104:1': 14.99 };
+  const CARDS: SelectorCard[] = [
+    { id: '1x', lines: [{ packageId: 101, quantity: 1 }], vouchers: [] },
+    { id: '2x', lines: [{ packageId: 101, quantity: 2 }], vouchers: [] },
+    { id: '3x', lines: [{ packageId: 101, quantity: 3 }], vouchers: [] },
+    { id: 'voucher', lines: [{ packageId: 104, quantity: 1 }], vouchers: ['BUNDLE'] },
+  ];
+
+  /** The Campaigns API at offer prices; after `hold()` a price request answers on `release()`. */
+  function offerApi() {
+    let gate: Promise<void> | undefined;
+    let open = () => {};
+    const fetch = (async (_url: RequestInfo | URL, init: RequestInit = {}) => {
+      const body = JSON.parse(String(init.body)) as { lines: Array<{ package_id: number; quantity: number }> };
+      await gate;
+      const lines = body.lines.map((l) => {
+        const listed = Number(FUNNEL.packages.find((p) => p.ref_id === l.package_id)!.price_total);
+        const paid = OFFER[`${l.package_id}:${l.quantity}`]!;
+        return {
+          package_id: l.package_id,
+          quantity: l.quantity,
+          unit_price: paid.toFixed(2),
+          original_unit_price: listed.toFixed(2),
+          package_price: paid.toFixed(2),
+          original_package_price: listed.toFixed(2),
+          subtotal: (listed * l.quantity).toFixed(2),
+          total_discount: ((listed - paid) * l.quantity).toFixed(2),
+          total: (paid * l.quantity).toFixed(2),
+          discounts: [],
+        };
+      });
+      const sum = (k: 'subtotal' | 'total' | 'total_discount') =>
+        lines.reduce((n, l) => n + Number(l[k]), 0).toFixed(2);
+      return json({
+        lines,
+        offer_discounts: [],
+        voucher_discounts: [],
+        subtotal: sum('subtotal'),
+        total_discount: sum('total_discount'),
+        total: sum('total'),
+        currency: 'USD',
+        shipping_method: { id: 1, name: 'Standard', code: 'standard', price: '0.00', original_price: '0.00' },
+      });
+    }) as typeof globalThis.fetch;
+    return { fetch, hold: () => void (gate = new Promise<void>((r) => (open = r))), release: () => open() };
+  }
+
+  /** A page whose selector pre-selects `card`; analytics starts while the cart's price is on its way. */
+  async function page(card: string, storage = { session: new MemoryStorage(), local: new MemoryStorage() }) {
+    delete win.NextDataLayer;
+    delete win.dataLayer;
+    const api = offerApi();
+    const { engine } = makeEngine({ ...storage, fetch: api.fetch, campaign: Promise.resolve(FUNNEL) });
+    api.hold();
+    void engine.selectors.register('main', CARDS, 'swap', card);
+    await engine.start();
+    startAnalytics(engine, { ...options, nextCampaign: false });
+    api.release();
+    await engine.cart.settled();
+    await flush();
+    return { engine, userData: pushes('dl_user_data')[0] };
+  }
+
+  it.each([
+    ['1x', 50],
+    ['2x', 80],
+    ['3x', 90],
+    ['voucher', 14.99],
+  ])('carries no cart for the %s bundle the page pre-selects, as 0.4.43 did', async (card, cart) => {
+    const { engine, userData } = await page(card);
+    expect(engine.cart.current().total).toBe(cart);
+    expect(userData).toMatchObject({ cart_total: '0', ecommerce: { currency: 'USD', value: 0, items: [] } });
+  });
+
+  it('carries the cart an earlier page filled, at the price it was quoted there, as 0.4.43 did', async () => {
+    const storage = { session: new MemoryStorage(), local: new MemoryStorage() };
+    await page('2x', storage);
+    const { userData } = await page('2x', storage);
+    expect(userData).toMatchObject({
+      cart_total: '80',
+      ecommerce: { currency: 'USD', value: 80, items: [{ item_id: '101', price: 40, quantity: 2, index: 0 }] },
+    });
+    expect(userData.ecommerce.items).toHaveLength(1);
   });
 });

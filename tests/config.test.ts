@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { pagePreloads, visitorCurrency } from '../src/config';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { keepCurrency, pagePreloads, readConfig, visitorCurrency } from '../src/config';
 
 const MAP =
   'legacy:legacy-1.js|attributes:attributes-1.js,variants-1.js,address-1.js|checkout:checkout-1.js,geo-1.js,address-1.js|order:order-1.js,address-1.js|cart-summary:summary-1.js|slots:slots-1.js';
@@ -73,5 +73,32 @@ describe('visitorCurrency', () => {
     const win = { fetch, sessionStorage } as unknown as Window;
     expect([await visitorCurrency(win, 10), await visitorCurrency(win, 10)]).toEqual([undefined, undefined]);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the tab’s currency', () => {
+  const read = (search: string) => {
+    history.replaceState(null, '', `/lp/${search}`);
+    return readConfig(document, window);
+  };
+
+  afterEach(() => {
+    sessionStorage.clear();
+    document.head.innerHTML = '';
+    history.replaceState(null, '', '/');
+  });
+
+  it('is the kept currency on a page without ?currency=, over the visitor’s, and ?currency= comes first', () => {
+    document.head.innerHTML = '<script data-campaign="pk_test" data-currency="auto"></script>';
+    expect(read('')).toMatchObject({ currency: undefined, autoCurrency: true });
+    keepCurrency(window, 'pk_test', 'CAD');
+    expect(read('')).toMatchObject({ currency: 'CAD', autoCurrency: false });
+    expect(read('?currency=EUR')).toMatchObject({ currency: 'EUR', autoCurrency: false });
+  });
+
+  it('is kept per campaign: another campaign in the tab does not get it', () => {
+    keepCurrency(window, 'pk_test', 'CAD');
+    document.head.innerHTML = '<script data-campaign="pk_other" data-currency="auto"></script>';
+    expect(read('')).toMatchObject({ currency: undefined, autoCurrency: true });
   });
 });

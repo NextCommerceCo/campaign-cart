@@ -34,6 +34,16 @@ changes.
 ## Fixed
 
 - Order bumps count in the purchase again.
+- `blockedEvents` keeps an event from one destination again, as on 0.4.x.
+- The data layer carries the shopper's email and country before the purchase again, for tags that
+  match the shopper early.
+- The 0.4.x visitor id key is in `localStorage` again, holding the campaign session id, for pages
+  that send it to Meta as `external_id`.
+- `dl_user_data` no longer reports the bundle a checkout pre-selects at its list price, and
+  `dl_begin_checkout` always comes after `dl_add_to_cart`.
+- An add-to-cart button with `data-next-url` sends `dl_add_to_cart` on the page it is clicked on,
+  once the price is in (3 s at most), before it leaves.
+- A currency picked with `?currency=` stays for the rest of the tab.
 - Affiliate and ad tracking reaches the order: on a first visit, after PayPal, Apple Pay or 3-D
   Secure, and when a shopper taps a link early.
 - Checkout tells the shopper why an order could not be placed.

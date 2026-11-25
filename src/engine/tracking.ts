@@ -149,6 +149,9 @@ interface Sending {
   tracking?: TrackingName;
 }
 
+/** Why a destination leaves a tracking event out, logged as a skipped trace; none sends it. */
+export type Skip = (e: TrackingEvent) => { name: string; reason: string } | undefined;
+
 /** How one destination turns tracking events into calls on a vendor's page script. */
 export interface Destination<V, C> {
   destination: DestinationTrace['destination'];
@@ -158,8 +161,7 @@ export interface Destination<V, C> {
   missing?: string;
   /** Logged with the error of a call that throws. */
   failed: string;
-  /** Why this destination leaves a tracking event out, logged as a skipped trace. */
-  skip?: (e: TrackingEvent) => { name: string; reason: string } | undefined;
+  skip?: Skip;
   /** The vendor calls a tracking event becomes; none skips it. */
   calls: (e: TrackingEvent) => C[];
   /**
@@ -229,15 +231,15 @@ export function startDestination<V, C>(engine: Engine, d: Destination<V, C>) {
   engine.on(
     'analytics',
     ({ data: e }) => {
-      if (d.burst?.of(e)) {
+      const skip = d.skip?.(e);
+      if (!skip && d.burst?.of(e)) {
         if (run[0] && run[0].event_type !== e.event_type) flushRun();
         if (!run.length) queueMicrotask(flushRun);
         run.push(e);
         return;
       }
-      const skipped = d.skip?.(e);
-      if (skipped) {
-        const { name, reason } = skipped;
+      if (skip) {
+        const { name, reason } = skip;
         return engine.log.debug(`destination ${d.destination} ${name} not sent for ${e.event_type}: ${reason}`, {
           trace: 'destination',
           destination: d.destination,

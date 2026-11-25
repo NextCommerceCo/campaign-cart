@@ -1,26 +1,37 @@
 import type { Line, SummaryLine } from '../engine/cart/types';
+import type { Engine } from '../engine/engine';
 import type { EventName } from '../engine/events/bus';
 import { catalogItem, reportedItem } from './items';
 import type { Handlers, Report } from './report';
+
+function changes(engine: Engine, lines: SummaryLine[]) {
+  const { reported = [] } = engine.getState().cart;
+  const before = new Map(reported.map((l) => [l.package_id, l]));
+  const after = new Map<number, { quantity: number; line: SummaryLine }>();
+  for (const line of lines) {
+    const seen = after.get(line.package_id);
+    after.set(line.package_id, { quantity: (seen?.quantity ?? 0) + line.quantity, line: seen?.line ?? line });
+  }
+  const added: Line[] = [];
+  const removed: Line[] = [];
+  for (const id of new Set([...before.keys(), ...after.keys()])) {
+    const diff = (after.get(id)?.quantity ?? 0) - (before.get(id)?.quantity ?? 0);
+    if (diff > 0) added.push({ package_id: id, quantity: diff });
+    if (diff < 0) removed.push({ package_id: id, quantity: -diff });
+  }
+  return { before, after, added, removed };
+}
+
+/** The priced cart holds more of a package than the last `product_added_to_cart` reported. */
+export const addPending = (engine: Engine) =>
+  changes(engine, engine.getState().cart.summary?.lines ?? []).added.length > 0;
 
 export function cartReports({ engine, emit, skip }: Report) {
   const label = (l: Line) => `${engine.getPackage(l.package_id)?.name ?? l.package_id} ×${l.quantity}`;
 
   const reportCart = (lines: SummaryLine[], trigger: EventName) => {
-    const { reported = [], added: addedBefore } = engine.getState().cart;
-    const before = new Map(reported.map((l) => [l.package_id, l]));
-    const after = new Map<number, { quantity: number; line: SummaryLine }>();
-    for (const line of lines) {
-      const seen = after.get(line.package_id);
-      after.set(line.package_id, { quantity: (seen?.quantity ?? 0) + line.quantity, line: seen?.line ?? line });
-    }
-    const added: Line[] = [];
-    const removed: Line[] = [];
-    for (const id of new Set([...before.keys(), ...after.keys()])) {
-      const diff = (after.get(id)?.quantity ?? 0) - (before.get(id)?.quantity ?? 0);
-      if (diff > 0) added.push({ package_id: id, quantity: diff });
-      if (diff < 0) removed.push({ package_id: id, quantity: -diff });
-    }
+    const { added: addedBefore } = engine.getState().cart;
+    const { before, after, added, removed } = changes(engine, lines);
     const nothingAdded = 'Nothing was added since the last report';
     const nothingRemoved = 'Nothing was removed since the last report';
     if (!added.length && !removed.length) {

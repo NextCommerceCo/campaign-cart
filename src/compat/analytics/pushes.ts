@@ -1,9 +1,10 @@
+import { dollars } from '../../engine/display/format';
 import type { Engine } from '../../engine/engine';
 import type { TrackingEvent, TrackingName } from '../../engine/events/analytics';
 import { paymentType } from '../../engine/order/payment';
 import { apiOrder, PRODUCT_LIST, promotionFields, shippingTier, upsellPackage } from '../../engine/tracking';
 import { cartEcommerce, currency, ecommerce, purchase, upsellPurchase, valueOf } from './ecommerce';
-import { customer } from './customer';
+import { customer, userData } from './customer';
 import type { DataLayerEcommerce, DataLayerEventMap, DataLayerName, DataLayerPush } from './schema';
 import type { NAMES } from '.';
 
@@ -12,7 +13,9 @@ export type Fields<N extends DataLayerName> = N extends DataLayerName
   ? Omit<DataLayerEventMap[N], Exclude<keyof DataLayerPush, OwnKey<N>>>
   : never;
 
-type OwnKey<N extends DataLayerName> = N extends 'dl_purchase' | 'dl_upsell_purchase' ? 'user_properties' : never;
+type OwnKey<N extends DataLayerName> = N extends 'dl_user_data' | 'dl_purchase' | 'dl_upsell_purchase'
+  ? 'user_properties'
+  : never;
 
 type Of<K extends TrackingName> = Fields<(typeof NAMES)[K]>;
 
@@ -33,6 +36,17 @@ export function lineFields(engine: Engine, run: LineEvent[]): Of<LineEvent['even
   const first_in_session = run.some((e) => 'first_in_session' in e.data && e.data.first_in_session);
   return run[0]!.event_type === 'product_added_to_cart' ? { ecommerce: cart, first_in_session } : { ecommerce: cart };
 }
+
+/** The cart as the pages before reported it, at the unit price they reported: not what this page adds. */
+const reportedCart = (engine: Engine) =>
+  ecommerce(
+    engine,
+    (engine.getState().cart.reported ?? []).map(({ package_id, quantity, price }) => ({
+      package_id,
+      quantity,
+      price: dollars(price * (engine.getPackage(package_id)?.qty || 1)),
+    })),
+  );
 
 const cartTotal = (engine: Engine) => engine.getState().cart.summary?.total ?? '0';
 
@@ -98,11 +112,14 @@ export function dataLayerFields(
   e: Exclude<TrackingEvent, LineEvent>,
 ): Of<Exclude<TrackingName, LineEvent['event_type']>> | undefined {
   switch (e.event_type) {
-    case 'page_viewed':
+    case 'page_viewed': {
+      const cart = reportedCart(engine);
       return {
-        cart_total: cartTotal(engine),
-        ecommerce: ecommerce(engine, engine.cart.current().lines),
+        user_properties: userData(engine),
+        cart_total: String(cart.value),
+        ecommerce: cart,
       } satisfies Of<'page_viewed'>;
+    }
     case 'product_viewed':
       return { ecommerce: ecommerce(engine, [e.data]) } satisfies Of<'product_viewed'>;
     case 'product_list_viewed': {

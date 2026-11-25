@@ -1,5 +1,5 @@
 import type { Attribution } from '../../engine/visit/attribution';
-import type { DataLayerCustomer } from './customer';
+import type { DataLayerCustomer, DataLayerShopper, DataLayerUserData } from './customer';
 
 /**
  * The fields every `dl_*` push carries, in the 0.4.x Elevar format.
@@ -12,8 +12,11 @@ export interface DataLayerPush {
   event_id: string;
   /** Its ISO time. */
   event_time: string;
-  /** In the Elevar format; `dl_purchase` and `dl_upsell_purchase` carry the order's customer in it. */
-  user_properties: { visitor_type: 'guest' };
+  /**
+   * In the Elevar format: the checkout form's email and billing country once filled; `dl_user_data`
+   * adds the name and phone, `dl_purchase` and `dl_upsell_purchase` carry the order's customer.
+   */
+  user_properties: DataLayerShopper;
   /** The page, without the query string. */
   page_location: string;
   page_title: string;
@@ -125,11 +128,13 @@ export interface DataLayerPopup {
  */
 export interface DataLayerEventMap {
   /**
-   * Every page load, with the cart.
+   * Every page load, with the cart as earlier pages reported it, at the price they reported: not what this page
+   * adds, such as its pre-selected bundle.
    * @see https://docs.getelevar.com/docs/view-all-event-triggers-and-data-layer-variables
    */
-  dl_user_data: DataLayerPush & {
-    /** The cart's total, as the API priced it. */
+  dl_user_data: Omit<DataLayerPush, 'user_properties'> & {
+    user_properties: DataLayerUserData;
+    /** `ecommerce.value` as `String(number)`: `'80'`, `'0'` for no cart. */
     cart_total: string;
     ecommerce: DataLayerEcommerce;
   };

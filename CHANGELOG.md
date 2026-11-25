@@ -11,11 +11,18 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 - **The Meta destination sends `AddToCart` only for the first add of a session.** GA4, RudderStack and the `dl_*` pushes still get every add. ([#126](https://github.com/NextCommerceCo/campaign-cart/issues/126))
 - **`dl_add_shipping_info` waits for a valid shipping address and always follows `dl_begin_checkout`.** A shipping method priced earlier, such as a bundle card with `data-next-shipping-id` or the checkout loading, no longer sends it. ([#140](https://github.com/NextCommerceCo/campaign-cart/issues/140))
 - **`dl_purchase` and `dl_upsell_purchase` carry the customer in `user_properties` again**, with the 0.4.x field names: `customer_email`, `customer_first_name`, `customer_last_name`, `customer_phone` and the billing address as `customer_address_1`, `customer_city`, `customer_province`, `customer_zip`, `customer_country`. Every other `dl_*` push keeps `visitor_type` only. ([#134](https://github.com/NextCommerceCo/campaign-cart/issues/134), [#131](https://github.com/NextCommerceCo/campaign-cart/issues/131))
+- **The `dl_*` pushes before the purchase carry the shopper's email and country again**, as `customer_email` and `customer_country` in `user_properties` once the checkout form has them; `dl_user_data` adds `customer_first_name`, `customer_last_name` and an E.164 `customer_phone`. ([#134](https://github.com/NextCommerceCo/campaign-cart/issues/134))
+- **`localStorage['visitor_id__<scope>']` is written again, with the campaign session id as its value**, not the 0.4.x `visitor_…` id. A page that sends it to Meta as `external_id` sends the session id. ([#163](https://github.com/NextCommerceCo/campaign-cart/issues/163))
+- **An add-to-cart button with `data-next-url` waits for the cart's price, 3 s at most, before it leaves**, so `dl_add_to_cart` is sent on its own page; 0.4.x lost it. The SDK prices each such button's add when the page loads. ([#155](https://github.com/NextCommerceCo/campaign-cart/issues/155))
 - **A 0.4.x page is shown once its 0.4.x `window.next` methods have loaded**, so `next.setMetadata` is there for its ready callbacks.
+- **A currency picked with `?currency=` stays for the campaign's pages in the tab**, over the visitor's own, as in 0.4.x. ([#151](https://github.com/NextCommerceCo/campaign-cart/issues/151))
 - **A page can ask for the visitor's currency: `data-currency="auto"` on the script tag.** The loader looks up the currency of the visitor's country once per tab (1.5 s at most) and asks the campaign for it; the page shows the currency the campaign answers in. `?currency=` comes first. A 0.4.x page gets this unless `nextConfig.currencyBehavior` is `'manual'`, as in 0.4.x, so its first page in a tab starts after the lookup. ([#151](https://github.com/NextCommerceCo/campaign-cart/issues/151))
 
 ### Tracking
 
+- **`analytics.providers.<gtm|facebook|rudderstack>.blockedEvents` keeps a `dl_*` event from that one destination again**, matched by its exact name; `window.NextDataLayer` still gets it. ([#152](https://github.com/NextCommerceCo/campaign-cart/issues/152))
+- **`dl_user_data` no longer carries the bundle a checkout pre-selects at its list price.** It carries the cart earlier pages reported, at their price; `cart_total` is its value, without shipping. ([#164](https://github.com/NextCommerceCo/campaign-cart/issues/164))
+- **`dl_begin_checkout` always comes after the cart's `dl_add_to_cart`**, also when analytics loads after the cart is priced. ([#154](https://github.com/NextCommerceCo/campaign-cart/issues/154))
 - **An order bump flagged `data-next-is-upsell="true"` is part of the purchase again.** A line that was in the order when it was paid is in `dl_purchase` and in `checkout_completed` (GA4, Meta, RudderStack); `dl_upsell_purchase` and `upsell_completed` are sent only for an upsell accepted after payment, numbered from `-US1`. ([#141](https://github.com/NextCommerceCo/campaign-cart/issues/141))
 
 ### Attribution
@@ -44,7 +51,7 @@ Fixes for what pages and tags noticed after moving to 0.5.0: what a purchase rep
 - **`formats.currency.<code>` in `nextConfig.translations` sets how a currency is written**: `narrowSymbol`, `symbol` or `code`, or a pattern of `{amount}`, `{symbol}`, `{narrowSymbol}` and `{code}` such as `C${amount}`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **`data-next-format="amount"` writes an amount in the currency's own decimals, without a symbol**: `49.90`, where `number` writes `49.9`. ([#125](https://github.com/NextCommerceCo/campaign-cart/issues/125))
 - **A first visit is ready sooner on a slow connection.** The loader fetches the chunks a page's markup calls for (the checkout, the cart summary, the 0.4.x names) together with the core, not after it: on Chrome's Slow 4G a starter landing page is ready in 3.9 s where it took 4.7 s, and a checkout page in 3.2 s where it took 4.8 s.
-- **Boot is 26 KB**, up from 25.5 KB.
+- **Boot is 26.5 KB**, up from 25.5 KB; the analytics chunk is 8.5 KB, up from 8 KB.
 
 ## [0.5.0] — Unreleased — A New Campaign SDK, and Events Named Like Webhooks
 

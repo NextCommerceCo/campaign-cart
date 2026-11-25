@@ -10,6 +10,7 @@ import { reportPage } from './pages';
 import { promotionReports } from './promotions';
 import { createReport, dispatch } from './report';
 import { startLegacyDataLayer } from '../compat/analytics';
+import { legacyBlocked } from '../compat/analytics/blocked';
 
 export interface AnalyticsOptions {
   apiKey: string;
@@ -29,7 +30,7 @@ export function startAnalytics(engine: Engine, options: AnalyticsOptions): void 
   const win = window as Win;
   const legacyExitIntent = startDestinations(
     engine,
-    readDestinations(options.legacy),
+    { ...readDestinations(options.legacy), blocked: legacyBlocked() },
     { apiKey: options.apiKey, version: options.version },
     startLegacyDataLayer,
   );
