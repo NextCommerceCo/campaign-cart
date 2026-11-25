@@ -115,7 +115,7 @@ interface CardView {
   errors: Map<string, string>;
   valid: Flags;
   focused: Flags;
-  /** The hosted field emptied the security code three minutes after it was typed, until it is typed again. */
+  /** The hosted field emptied the security code (after three minutes), or refused one it reported typed, until it is typed again. */
   cvvCleared: boolean;
   render(): void;
   changed(): void;
