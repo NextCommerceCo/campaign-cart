@@ -139,7 +139,7 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
   postcode) is neither checked nor sent. A name, address line or city is checked against the
   `format.pattern` i18n-rules serves for it, as 0.4.x did (`u` flag, trimmed; one that does not
   compile passes), so a check is changed there without a release; a name without one falls back
-  to the SDK's own letters-and-marks check.
+  to the same pattern built in. An emoji is what 0.4.x refused: `™`, `®` and `©` pass.
 - **Remote checks** (`/v1/validate`) give the phone in E.164 for the order and show a
   postcode outside its state as a warning. They never block, and never on our failure.
   The phone (shipping and billing, each against its own address country) is read after a

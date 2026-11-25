@@ -43,10 +43,13 @@ describe('checkout rules', () => {
     }
   });
 
-  it('refuses names with digits, any emoji, and postcodes the country does not use', () => {
-    expect(fieldError('first_name', 'J4ne', true)).toBe('invalid_characters');
+  it('refuses names with no letter, emoji, and postcodes the country does not use', () => {
+    expect(fieldError('first_name', '12345', true)).toBe('invalid_characters');
+    expect(fieldError('first_name', 'Smith, Jr.', true)).toBeUndefined();
     expect(fieldError('last_name', "O'Brien-Smith", true)).toBeUndefined();
     expect(fieldError('city', 'Austin 🤠', true)).toBe('contains_emoji');
+    expect(fieldError('first_name', 'Jane ❤️', true)).toBe('contains_emoji');
+    for (const sign of ['Smith™', 'Smith®', 'Smith©']) expect(fieldError('last_name', sign, true)).toBeUndefined();
     expect(fieldError('postcode', '9021', true, US)).toBe('invalid');
     expect(fieldError('postcode', 'sw1a 1aa', true, GB)).toBeUndefined();
     expect(fieldError('phone_number', '12', false)).toBe('invalid');
@@ -62,7 +65,6 @@ describe('checkout rules', () => {
       ),
     });
     const digits = served('^\\D+$');
-    expect(fieldError('first_name', 'Smith, Jr.', true)).toBe('invalid_characters');
     expect(fieldError('first_name', ' Smith, Jr. ', true, digits)).toBeUndefined();
     expect(fieldError('last_name', 'Smith 3rd', true, digits)).toBe('invalid_characters');
     expect(fieldError('city', 'Dublin 2', true, digits)).toBe('invalid');

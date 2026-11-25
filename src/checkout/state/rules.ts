@@ -90,7 +90,8 @@ export function withPageTexts(rules: CountryRules, page: Texts): CountryRules {
 export type Scope = 'shipping' | 'all' | string[];
 
 const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
-const NAME = /^[\p{L}\p{M}\s'’.-]+$/u;
+/** i18n-rules' name pattern: a letter, and no `@`, `<`, `>` or non-space control character. */
+const NAME = /^(?=.*\p{L})(?:\s|[^\p{Cc}@<>])+$/u;
 const NAMES = ['first_name', 'last_name'];
 const SERVED = [...NAMES, 'line1', 'line2', 'city'];
 const served = new Map<string, RegExp | null>();
@@ -106,7 +107,7 @@ function passesServed(value: string, pattern: string): boolean {
   }
   return served.get(pattern)?.test(value) ?? true;
 }
-const EMOJI = /\p{Extended_Pictographic}/u;
+const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\u20E3/u;
 const SELECTS = ['country', 'state'];
 
 export function validEmail(value: string): boolean {
