@@ -138,8 +138,9 @@ contains_emoji, too_long`), so its translated `fields.<name>.errors` show as the
   picked in the form. A city, state or postcode the country does not have (Singapore has no city, Hong Kong no
   postcode) is neither checked nor sent. A name, address line or city is checked against the
   `format.pattern` i18n-rules serves for it, as 0.4.x did (`u` flag, trimmed; one that does not
-  compile passes), so a check is changed there without a release; a name without one falls back
-  to the same pattern built in. An emoji is what 0.4.x refused: `™`, `®` and `©` pass.
+  compile passes), so a check is changed there without a release; without one the SDK uses the
+  same pattern built in. An HTML tag and an emoji are refused (`™`, `®`, `©` and `❤` count
+  as emoji), anything else passes.
 - **Remote checks** (`/v1/validate`) give the phone in E.164 for the order and show a
   postcode outside its state as a warning. They never block, and never on our failure.
   The phone (shipping and billing, each against its own address country) is read after a

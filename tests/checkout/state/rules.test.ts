@@ -43,13 +43,16 @@ describe('checkout rules', () => {
     }
   });
 
-  it('refuses names with no letter, emoji, and postcodes the country does not use', () => {
-    expect(fieldError('first_name', '12345', true)).toBe('invalid_characters');
-    expect(fieldError('first_name', 'Smith, Jr.', true)).toBeUndefined();
+  it('refuses emoji, trademark signs and HTML tags, and postcodes the country does not use', () => {
+    expect(fieldError('first_name', '<b>Jane</b>', true)).toBe('invalid_characters');
+    expect(fieldError('line1', '1 Main <script>', true)).toBe('invalid');
+    for (const value of ['12345', 'jane@example.com', 'Smith, Jr.', '迈克尔·杰克逊', 'Jane <3'])
+      expect(fieldError('last_name', value, true)).toBeUndefined();
     expect(fieldError('last_name', "O'Brien-Smith", true)).toBeUndefined();
     expect(fieldError('city', 'Austin 🤠', true)).toBe('contains_emoji');
     expect(fieldError('first_name', 'Jane ❤️', true)).toBe('contains_emoji');
-    for (const sign of ['Smith™', 'Smith®', 'Smith©']) expect(fieldError('last_name', sign, true)).toBeUndefined();
+    for (const sign of ['Smith™', 'Smith®', 'Smith©', 'Jane ❤'])
+      expect(fieldError('last_name', sign, true)).toBe('contains_emoji');
     expect(fieldError('postcode', '9021', true, US)).toBe('invalid');
     expect(fieldError('postcode', 'sw1a 1aa', true, GB)).toBeUndefined();
     expect(fieldError('phone_number', '12', false)).toBe('invalid');
@@ -72,11 +75,11 @@ describe('checkout rules', () => {
     expect(fieldError('line2', 'Apt 4', false, served('^(?!.*\\bPO Box\\b).*$'))).toBeUndefined();
     expect(fieldError('first_name', 'สุดา', true, served('^\\p{L}[\\p{L}\\p{M}]*$'))).toBeUndefined();
     expect(fieldError('first_name', 'J4ne', true, served('[('))).toBeUndefined();
-    const loose = served('^(?=.*\\p{L})(?:\\s|[^\\p{Cc}@<>])+$');
-    for (const name of ['Smith, Jr.', 'John Smith 3rd', '迈克尔·杰克逊', 'สุดา', 'Jane\tDoe'])
-      expect(fieldError('first_name', name, true, loose)).toBeUndefined();
-    expect(fieldError('last_name', 'jane@example.com', true, loose)).toBe('invalid_characters');
-    expect(fieldError('city', '12345', true, loose)).toBe('invalid');
+    const html = served('^(?![\\s\\S]*<\\/?[A-Za-z][^<>]*>)[\\s\\S]*$');
+    for (const value of ['Smith, Jr.', '12345', 'jane@example.com', '迈克尔·杰克逊', 'Jane\tDoe'])
+      expect(fieldError('first_name', value, true, html)).toBeUndefined();
+    expect(fieldError('last_name', '<b>Doe</b>', true, html)).toBe('invalid_characters');
+    expect(fieldError('city', 'Paris</a>', true, html)).toBe('invalid');
   });
 
   it('asks for state and postcode only where the country does', () => {

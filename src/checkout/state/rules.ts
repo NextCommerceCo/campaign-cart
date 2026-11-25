@@ -90,8 +90,8 @@ export function withPageTexts(rules: CountryRules, page: Texts): CountryRules {
 export type Scope = 'shipping' | 'all' | string[];
 
 const EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
-/** i18n-rules' name pattern: a letter, and no `@`, `<`, `>` or non-space control character. */
-const NAME = /^(?=.*\p{L})(?:\s|[^\p{Cc}@<>])+$/u;
+/** i18n-rules' text pattern: anything but an HTML tag. */
+const TEXT = '^(?![\\s\\S]*<\\/?[A-Za-z][^<>]*>)[\\s\\S]*$';
 const NAMES = ['first_name', 'last_name'];
 const SERVED = [...NAMES, 'line1', 'line2', 'city'];
 const served = new Map<string, RegExp | null>();
@@ -107,7 +107,7 @@ function passesServed(value: string, pattern: string): boolean {
   }
   return served.get(pattern)?.test(value) ?? true;
 }
-const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\u20E3/u;
+const EMOJI = /\p{Extended_Pictographic}/u;
 const SELECTS = ['country', 'state'];
 
 export function validEmail(value: string): boolean {
@@ -158,9 +158,7 @@ export function fieldError(
   if (rule?.input?.max_length && v.length > rule.input.max_length) return 'too_long';
   if (field === 'email') return validEmail(v) ? undefined : 'invalid';
   const refused = NAMES.includes(field) ? 'invalid_characters' : 'invalid';
-  if (SERVED.includes(field) && rule?.format?.pattern)
-    return passesServed(v, rule.format.pattern) ? undefined : refused;
-  if (NAMES.includes(field)) return NAME.test(v) ? undefined : refused;
+  if (SERVED.includes(field)) return passesServed(v, rule?.format?.pattern ?? TEXT) ? undefined : refused;
   if (field === 'postcode' && rule?.format?.pattern) {
     return new RegExp(rule.format.pattern).test(significant(v)) ? undefined : 'invalid';
   }
