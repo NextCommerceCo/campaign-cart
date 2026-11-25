@@ -1,4 +1,4 @@
-import { announceLegacyLoaded, legacyGlobals } from './compat/config';
+import { announceLegacyLoaded, keepLegacyVisitorId, legacyGlobals } from './compat/config';
 import { campaignUrl, pagePreloads, readConfig, visitorCurrency } from './config';
 
 const STYLESHEET = 'campaign-cart.css';
@@ -28,6 +28,9 @@ if (!config.apiKey) {
     document.readyState === 'loading'
       ? new Promise((done) => document.addEventListener('DOMContentLoaded', done, { once: true }))
       : undefined;
+  const keepVisitorId = () => keepLegacyVisitorId(document, window, config.apiKey);
+  if (parsed) void parsed.then(keepVisitorId);
+  else keepVisitorId();
 
   if (!parsed) {
     for (const file of pagePreloads('%PRELOAD%', document, location.search)) {

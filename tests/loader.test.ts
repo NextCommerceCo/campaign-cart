@@ -46,6 +46,24 @@ describe('loader', () => {
     expect(error.mock.calls[0]![0]).toEqual({ action: 'campaign.load', ...expected, message: expect.any(String) });
   });
 
+  it('has the 0.4.x visitor id in localStorage before ready callbacks, with analytics off', async () => {
+    vi.resetModules();
+    localStorage.clear();
+    sessionStorage.clear();
+    const win = window as unknown as { next?: NextApi; nextReady?: unknown[]; nextConfig?: unknown };
+    delete win.next;
+    win.nextConfig = { analytics: { enabled: false } };
+    document.head.innerHTML = '<script data-campaign="pk_test"></script>';
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(campaign)));
+    const atReady = vi.fn();
+    win.nextReady = [() => atReady(localStorage.getItem('visitor_id__q38pip'))];
+    await import('../src/loader');
+    await vi.waitFor(() => expect(atReady).toHaveBeenCalled());
+    expect(atReady.mock.calls[0]![0]).toMatch(/^visitor_[0-9a-z]+_[0-9a-z]{1,9}$/);
+    delete win.nextConfig;
+    await flush();
+  });
+
   it('asks the campaign for the visitor’s currency with data-currency="auto"', async () => {
     vi.resetModules();
     localStorage.clear();

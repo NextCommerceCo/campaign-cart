@@ -151,3 +151,5 @@ use them, and keep their 0.4.x attributes and events (`timer:expired`, `accordio
   `next-skipped`.
 - **Receipt**: `order.*` display paths and `[data-next-order-items]` `{item.*}` tokens.
 - **Timer**: counts down from where the tab left it, then shows `[data-next-timer-expired]`.
+- **Visitor id**: `localStorage['visitor_id__<scope>']`, same key and `visitor_…` value; a browser's
+  0.4.x id is kept.
