@@ -88,7 +88,12 @@ export class Engine {
   constructor(private options: EngineOptions) {
     this.log = new Logger(options.logLevel, options.now);
     this.events = new Events(this.log);
-    this.sessionId = campaignSession(options.cookies, options.storage.local, hash(options.apiKey));
+    this.sessionId = campaignSession(
+      options.cookies,
+      options.storage.local,
+      hash(options.apiKey),
+      options.now ?? Date.now,
+    );
     this.api = new Api(options.apiKey, options.send, options.apiBase, this.log, this.sessionId);
     const adapter = (name: string, backends: Array<Storage | null>) =>
       new StorageAdapter({

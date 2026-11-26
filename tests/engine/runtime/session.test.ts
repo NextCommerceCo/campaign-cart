@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { type Cookies, campaignSession } from '../../../src/engine/runtime/session';
 import { MemoryStorage } from '../../fixtures/storage';
 
@@ -8,10 +8,17 @@ const jar = (initial: Record<string, string> = {}): Cookies & { values: Record<s
   return { values, get: (name) => values[name], set: (name, value) => void (values[name] = value) };
 };
 
+let clock = 0;
+const now = () => clock;
+
 describe('campaign session', () => {
+  beforeEach(() => {
+    clock = 1_700_000_000_000;
+  });
+
   it('keeps the id the NEXT script or the server already gave, and follows it when it changes', () => {
     const cookies = jar({ ncsid: SERVER });
-    const sessionId = campaignSession(cookies, new MemoryStorage(), 'a');
+    const sessionId = campaignSession(cookies, new MemoryStorage(), 'a', now);
     expect(sessionId()).toBe(SERVER);
     cookies.values.ncsid = 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d';
     expect(sessionId()).toBe('a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d');
@@ -20,7 +27,7 @@ describe('campaign session', () => {
   it('makes one UUID v4 hex id when there is none or it is not one, and keeps it like the NEXT script', () => {
     const cookies = jar({ ncsid: 'not-a-session' });
     const local = new MemoryStorage();
-    const sessionId = campaignSession(cookies, local, 'a');
+    const sessionId = campaignSession(cookies, local, 'a', now);
     const id = sessionId();
     expect(id).toMatch(/^[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}$/);
     expect(sessionId()).toBe(id);
@@ -37,18 +44,18 @@ describe('campaign session', () => {
         throw new Error('blocked');
       },
     };
-    const sessionId = campaignSession(blocked, new MemoryStorage('always'), 'a');
+    const sessionId = campaignSession(blocked, new MemoryStorage('always'), 'a', now);
     expect(sessionId()).toBe(sessionId());
   });
 
   it('gives each campaign of a domain its own id, and a campaign its id back', () => {
     const cookies = jar();
     const local = new MemoryStorage();
-    const a = campaignSession(cookies, local, 'a')();
-    const b = campaignSession(cookies, local, 'b')();
+    const a = campaignSession(cookies, local, 'a', now)();
+    const b = campaignSession(cookies, local, 'b', now)();
     expect(b).not.toBe(a);
     expect(cookies.values.ncsid).toBe(b);
-    expect(campaignSession(cookies, local, 'a')()).toBe(a);
+    expect(campaignSession(cookies, local, 'a', now)()).toBe(a);
     expect(cookies.values.ncsid).toBe(a);
     expect(local.getItem('ncsid')).toBe(a);
   });
@@ -56,22 +63,37 @@ describe('campaign session', () => {
   it('keeps an id no campaign has taken, and the one the server changes it to', () => {
     const cookies = jar({ ncsid: SERVER });
     const local = new MemoryStorage();
-    const sessionId = campaignSession(cookies, local, 'a');
+    const sessionId = campaignSession(cookies, local, 'a', now);
     expect(sessionId()).toBe(SERVER);
     const rotated = 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d';
     cookies.values.ncsid = rotated;
     expect(sessionId()).toBe(rotated);
-    expect(campaignSession(cookies, local, 'b')()).not.toBe(rotated);
-    expect(campaignSession(cookies, local, 'a')()).toBe(rotated);
+    expect(campaignSession(cookies, local, 'b', now)()).not.toBe(rotated);
+    expect(campaignSession(cookies, local, 'a', now)()).toBe(rotated);
   });
 
   it('puts its id back when another campaign writes its own in another tab', () => {
     const cookies = jar();
     const local = new MemoryStorage();
-    const sessionA = campaignSession(cookies, local, 'a');
+    const sessionA = campaignSession(cookies, local, 'a', now);
     const a = sessionA();
-    campaignSession(cookies, local, 'b')();
+    campaignSession(cookies, local, 'b', now)();
     expect(sessionA()).toBe(a);
     expect(cookies.values.ncsid).toBe(a);
+  });
+
+  it('starts a new id 24 hours after the campaign first used its own', () => {
+    const cookies = jar();
+    const local = new MemoryStorage();
+    const sessionId = campaignSession(cookies, local, 'a', now);
+    const first = sessionId();
+    clock += 24 * 3_600_000 - 1;
+    expect(sessionId()).toBe(first);
+    clock += 1;
+    const second = sessionId();
+    expect(second).not.toBe(first);
+    expect(cookies.values.ncsid).toBe(second);
+    expect(local.getItem('ncsid')).toBe(second);
+    expect(campaignSession(cookies, local, 'a', now)()).toBe(second);
   });
 });
