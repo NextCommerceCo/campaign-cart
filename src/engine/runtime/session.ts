@@ -7,11 +7,12 @@ export interface Cookies {
 
 // `ncsid` is where the NEXT analytics script keeps the campaign session, so both send the same id.
 const KEY = 'ncsid';
-// One domain has one `ncsid`; each campaign's own id is kept beside it as `<id>.<first used, ms>` and put back
+// One domain has one `ncsid`; each campaign's own id is kept beside it as `<id>.<last used, ms>` and put back
 // when its page opens.
 const OWN = 'ncsid__';
 const DAYS = 1;
-const LIFETIME = DAYS * 86_400_000;
+const IDLE = 3_600_000;
+const TOUCH = 60_000;
 const UUID4_HEX = /^[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}$/;
 
 const attempt = <T>(read: () => T): T | undefined => {
@@ -48,8 +49,9 @@ export function campaignSession(
   return () => {
     const shared = [attempt(() => cookies?.get(KEY)), attempt(() => local?.getItem(KEY))].find(valid);
     const [mine, since] = (attempt(() => local?.getItem(own)) ?? memory ?? '').split('.');
-    const kept = valid(mine) && now() - Number(since) < LIFETIME;
-    if (shared && shared === mine && kept) return shared;
+    const idle = now() - Number(since);
+    const kept = valid(mine) && idle < IDLE;
+    if (shared && shared === mine && kept) return idle > TOUCH ? remember(shared) : shared;
     if (shared && shared !== mine && !ofAnotherCampaign(shared)) return remember(shared);
     const id = kept ? mine! : remember(newId());
     attempt(() => cookies?.set(KEY, id, DAYS));

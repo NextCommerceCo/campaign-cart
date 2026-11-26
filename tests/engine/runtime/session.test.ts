@@ -82,14 +82,16 @@ describe('campaign session', () => {
     expect(cookies.values.ncsid).toBe(a);
   });
 
-  it('starts a new id 24 hours after the campaign first used its own', () => {
+  it('keeps its id while it is used, and starts a new one after an hour unused', () => {
     const cookies = jar();
     const local = new MemoryStorage();
     const sessionId = campaignSession(cookies, local, 'a', now);
     const first = sessionId();
-    clock += 24 * 3_600_000 - 1;
-    expect(sessionId()).toBe(first);
-    clock += 1;
+    for (let used = 0; used < 30; used++) {
+      clock += 59 * 60_000;
+      expect(sessionId()).toBe(first);
+    }
+    clock += 60 * 60_000;
     const second = sessionId();
     expect(second).not.toBe(first);
     expect(cookies.values.ncsid).toBe(second);
