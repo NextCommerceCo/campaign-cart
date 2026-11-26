@@ -11,6 +11,7 @@ import { createSelectors, type SelectorActions } from './cart/selectors';
 import { campaignSession, type Cookies } from './runtime/session';
 import { StorageAdapter } from './runtime/storage';
 import { createToggles, type ToggleActions } from './cart/toggles';
+import { hash } from './visit/scope';
 import { createVisit, type VisitActions } from './visit/visit';
 import type { EventMap, EventName } from './events/bus';
 import type { Campaign, Package, Send, Slice, State } from './types';
@@ -87,7 +88,7 @@ export class Engine {
   constructor(private options: EngineOptions) {
     this.log = new Logger(options.logLevel, options.now);
     this.events = new Events(this.log);
-    this.sessionId = campaignSession(options.cookies, options.storage.local);
+    this.sessionId = campaignSession(options.cookies, options.storage.local, hash(options.apiKey));
     this.api = new Api(options.apiKey, options.send, options.apiBase, this.log, this.sessionId);
     const adapter = (name: string, backends: Array<Storage | null>) =>
       new StorageAdapter({

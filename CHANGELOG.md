@@ -32,6 +32,7 @@ Fixes for pages and tags that moved to 0.5.0, and a few things a page can now do
 - **The `dl_*` pushes before the purchase carry `customer_email` and `customer_country` again**, once the checkout form has them; `dl_user_data` adds the name and an E.164 `customer_phone`. ([#134](https://github.com/NextCommerceCo/campaign-cart/issues/134))
 - **`blockedEvents` keeps a `dl_*` event from one destination again**, set as `analytics.providers.<gtm|facebook|rudderstack>.blockedEvents`; `window.NextDataLayer` still gets it. ([#152](https://github.com/NextCommerceCo/campaign-cart/issues/152))
 - **`dl_user_data` no longer reports the bundle a checkout pre-selects at its list price.** It carries the cart earlier pages reported; `cart_total` is without shipping. ([#164](https://github.com/NextCommerceCo/campaign-cart/issues/164))
+- **Each campaign of a domain has its own session id.** A visitor who opens a second campaign on the same domain gets a new `session_id` there, and the first campaign's id again on its pages; 0.5.0 sent the first campaign's id to both.
 - **`dl_begin_checkout` always comes after `dl_add_to_cart`.** ([#154](https://github.com/NextCommerceCo/campaign-cart/issues/154))
 
 ### Attribution

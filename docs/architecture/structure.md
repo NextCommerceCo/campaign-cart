@@ -123,7 +123,7 @@ src/
                                    product and tax-basis guess (@deprecated)
     runtime/                       what the engine runs on: api.ts (the API; also maps order errors: one request less per
                                    lazy chunk), storage.ts, session.ts (the campaign session the NEXT analytics script
-                                   shares), log.ts (the one logger), flow.ts (latestWins, serialize), id.ts (event ids)
+                                   shares, one per campaign of a domain), log.ts (the one logger), flow.ts (latestWins, serialize), id.ts (event ids)
     visit/                         the visit: visit.ts (timers, exit-intent count: engine.visit), attribution.ts, params.ts
                                    (kept URL params), scope.ts (storage scope), geo.ts (the visitor's country; a chunk),
                                    debug-config.ts (a nextConfig tried from the debug panel)
